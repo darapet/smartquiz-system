@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Create Quiz — Admin — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;display:flex;align-items:center;gap:8px;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+.aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.aqs-btn-primary:hover{background:#4338ca;}
+.aqs-btn-success{background:#059669;color:#fff;border-color:#059669;}
+.aqs-btn-success:hover{background:#047857;}
+.aqs-btn-danger{background:#dc2626;color:#fff;border-color:#dc2626;}
+.aqs-btn-sm{padding:6px 12px;font-size:.8rem;}
+.aqs-full-btn{width:100%;justify-content:center;margin-top:12px;}
+@media(max-width:700px){.aqs-admin-sidebar{display:none;}}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    home_url: 'index.html',
+    dashboard_url: 'admin-dashboard.html',
+    is_logged_in: true,
+    is_host: true,
+    is_admin: true,
+    groq_key: '',
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<aside class="aqs-admin-sidebar">
+    <div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div>
+    <nav class="aqs-admin-nav">
+        <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a>
+        <a href="admin-create-quiz.html" class="active"><span class="aqs-nav-icon">✏️</span> Create Quiz</a>
+        <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
+        <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
+        <a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+    </nav>
+    <div class="aqs-admin-sidebar-footer"><a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a></div>
+</aside>
+
+<div class="aqs-admin-content">
+<div class="wrap aqs-admin-wrap">
+    <div class="aqs-admin-header">
+        <h1>Create Quiz</h1>
+        <a href="admin-dashboard.html" class="aqs-btn">← Back to Quizzes</a>
+    </div>
+
+    <div class="aqs-create-grid" id="aqs-create-form-wrap">
+
+        <!-- STEP 1 -->
+        <div class="aqs-card" id="step-details">
+            <div class="aqs-card-header"><span class="aqs-step-num">1</span> Quiz Details</div>
+            <div class="aqs-card-body">
+                <div class="aqs-field">
+                    <label>Quiz Title *</label>
+                    <input type="text" id="aqs-title" placeholder="e.g. Biology Mid-Term Exam" />
+                </div>
+                <div class="aqs-field">
+                    <label>Subject *</label>
+                    <input type="text" id="aqs-subject" placeholder="e.g. Biology" />
+                </div>
+                <div class="aqs-field-row">
+                    <div class="aqs-field">
+                        <label>Number of Questions</label>
+                        <input type="number" id="aqs-num-questions" value="10" min="1" max="50" />
+                    </div>
+                    <div class="aqs-field">
+                        <label>Time Limit (minutes)</label>
+                        <input type="number" id="aqs-time-limit" value="30" min="1" max="300" />
+                    </div>
+                </div>
+                <div class="aqs-field">
+                    <label>Mode</label>
+                    <div class="aqs-toggle-group">
+                        <button class="aqs-toggle active" data-mode="exam" id="mode-exam">Exam</button>
+                        <button class="aqs-toggle" data-mode="practice" id="mode-practice">Practice</button>
+                    </div>
+                    <input type="hidden" id="aqs-mode" value="exam" />
+                </div>
+                <div class="aqs-field">
+                    <label>Retake Attempts Limit</label>
+                    <select id="aqs-max-attempts" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:.9rem;width:100%;max-width:260px;">
+                        <option value="0">Unlimited</option>
+                        <option value="1">1 attempt only</option>
+                        <option value="2">Up to 2 attempts</option>
+                        <option value="3">Up to 3 attempts</option>
+                        <option value="5">Up to 5 attempts</option>
+                        <option value="10">Up to 10 attempts</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2 -->
+        <div class="aqs-card" id="step-source">
+            <div class="aqs-card-header"><span class="aqs-step-num">2</span> Question Source</div>
+            <div class="aqs-card-body">
+                <div class="aqs-source-tabs">
+                    <button class="aqs-source-tab active" data-source="upload">Upload Document</button>
+                    <button class="aqs-source-tab" data-source="topic">Generate from Topic</button>
+                    <button class="aqs-source-tab" data-source="manual">Enter Manually</button>
+                </div>
+
+                <div id="source-upload" class="aqs-source-panel">
+                    <div class="aqs-upload-zone" id="aqs-upload-zone">
+                        <p>Drop your PDF or Word document here</p>
+                        <p class="aqs-upload-hint">Supports PDF and .docx files</p>
+                        <input type="file" id="aqs-file-input" accept=".pdf,.docx,.doc" style="display:none;" />
+                        <button class="aqs-btn" id="aqs-browse-btn">Browse File</button>
+                    </div>
+                    <div id="aqs-file-info" style="display:none;" class="aqs-file-info">
+                        <span id="aqs-file-name"></span>
+                        <button class="aqs-btn aqs-btn-sm aqs-btn-danger" id="aqs-remove-file">Remove</button>
+                    </div>
+                </div>
+
+                <div id="source-topic" class="aqs-source-panel" style="display:none;">
+                    <div class="aqs-field">
+                        <label>Topic or Subject Area</label>
+                        <textarea id="aqs-topic-input" rows="4" placeholder="e.g. The causes and effects of World War II"></textarea>
+                    </div>
+                    <div class="aqs-field">
+                        <label>Difficulty Level</label>
+                        <select id="aqs-difficulty">
+                            <option value="easy">Easy</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="source-manual" class="aqs-source-panel" style="display:none;">
+                    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:16px;color:#0369a1;">
+                        <p style="margin:0;">Click <strong>"+ Add Question"</strong> below to start building your quiz manually.</p>
+                    </div>
+                </div>
+
+                <button class="aqs-btn aqs-btn-primary aqs-full-btn" id="aqs-extract-btn">⚡ Extract / Generate Questions with AI</button>
+                <button class="aqs-btn aqs-btn-success aqs-full-btn" id="aqs-manual-start-btn" style="display:none;">✏️ Start Adding Questions Manually</button>
+                <div id="aqs-ai-progress" style="display:none;" class="aqs-progress-wrap">
+                    <div class="aqs-spinner"></div>
+                    <span id="aqs-ai-status">Processing with AI...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3 -->
+        <div class="aqs-card aqs-full-width" id="step-questions" style="display:none;">
+            <div class="aqs-card-header">
+                <span class="aqs-step-num">3</span> Review Questions
+                <span id="aqs-q-count" class="aqs-badge">0 questions</span>
+                <button class="aqs-btn aqs-btn-sm" id="aqs-add-question-btn">+ Add Question</button>
+            </div>
+            <div class="aqs-card-body">
+                <div id="aqs-questions-list"></div>
+            </div>
+        </div>
+
+        <!-- STEP 4 -->
+        <div class="aqs-card aqs-full-width" id="step-publish" style="display:none;">
+            <div class="aqs-card-header"><span class="aqs-step-num">4</span> Save or Publish</div>
+            <div class="aqs-card-body">
+                <div style="margin-bottom:16px;">
+                    <strong style="font-size:.9rem;display:block;margin-bottom:8px;">⏳ Quiz Expiry (optional)</strong>
+                    <label style="display:block;margin-bottom:4px;cursor:pointer;"><input type="radio" name="aqs_expiry_type" value="none" checked /> No expiry</label>
+                    <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;cursor:pointer;">
+                        <input type="radio" name="aqs_expiry_type" value="datetime" /> Specific date &amp; time:
+                        <input type="datetime-local" id="aqs-expiry-datetime" style="border:1px solid #d1d5db;border-radius:5px;padding:3px 8px;font-size:.85rem;" />
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="radio" name="aqs_expiry_type" value="duration" /> After:
+                        <input type="number" id="aqs-expiry-days" min="0" value="0" style="width:55px;border:1px solid #d1d5db;border-radius:5px;padding:3px 7px;font-size:.85rem;" /> days
+                        <input type="number" id="aqs-expiry-hours" min="0" value="0" style="width:55px;border:1px solid #d1d5db;border-radius:5px;padding:3px 7px;font-size:.85rem;" /> hours
+                    </label>
+                </div>
+                <div class="aqs-publish-actions">
+                    <button class="aqs-btn" id="aqs-save-draft-btn">💾 Save as Draft</button>
+                    <button class="aqs-btn aqs-btn-success" id="aqs-publish-btn">🚀 Publish &amp; Get Link</button>
+                </div>
+            </div>
+            <div id="aqs-publish-result" style="display:none;" class="aqs-publish-result">
+                <strong>✅ Quiz Published!</strong>
+                <p>Share this link with participants:</p>
+                <div class="aqs-link-box">
+                    <input type="text" id="aqs-quiz-link" readonly />
+                    <button class="aqs-btn aqs-btn-sm" id="aqs-copy-link">Copy</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+</div>
+
+<script src="js/aqs-create.js"></script>
+<script>
+// Source tab switching
+document.querySelectorAll('.aqs-source-tab').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        var src = this.dataset.source;
+        document.querySelectorAll('.aqs-source-tab').forEach(function(b){b.classList.remove('active');});
+        document.querySelectorAll('.aqs-source-panel').forEach(function(p){p.style.display='none';});
+        this.classList.add('active');
+        document.getElementById('source-' + src).style.display = 'block';
+        document.getElementById('aqs-extract-btn').style.display = src==='manual'?'none':'flex';
+        document.getElementById('aqs-manual-start-btn').style.display = src==='manual'?'flex':'none';
+    });
+});
+// Mode toggles
+document.querySelectorAll('.aqs-toggle').forEach(function(btn){
+    btn.addEventListener('click',function(){
+        document.querySelectorAll('.aqs-toggle').forEach(function(b){b.classList.remove('active');});
+        this.classList.add('active');
+        document.getElementById('aqs-mode').value = this.dataset.mode;
+    });
+});
+// Browse file
+var browseBtn = document.getElementById('aqs-browse-btn');
+var fileInput = document.getElementById('aqs-file-input');
+if(browseBtn && fileInput){
+    browseBtn.addEventListener('click',function(){fileInput.click();});
+    fileInput.addEventListener('change',function(){
+        if(this.files[0]){
+            document.getElementById('aqs-upload-zone').style.display='none';
+            document.getElementById('aqs-file-info').style.display='flex';
+            document.getElementById('aqs-file-name').textContent = this.files[0].name;
+        }
+    });
+    document.getElementById('aqs-remove-file').addEventListener('click',function(){
+        fileInput.value='';
+        document.getElementById('aqs-upload-zone').style.display='block';
+        document.getElementById('aqs-file-info').style.display='none';
+    });
+}
+// Copy link
+var copyBtn = document.getElementById('aqs-copy-link');
+if(copyBtn) copyBtn.addEventListener('click',function(){
+    var inp = document.getElementById('aqs-quiz-link');
+    inp.select(); document.execCommand('copy');
+    this.textContent = 'Copied!';
+    setTimeout(function(){copyBtn.textContent='Copy';},2000);
+});
+</script>
+</body>
+</html>

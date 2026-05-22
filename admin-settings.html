@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Settings — Admin — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+/* Sidebar */
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+.aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
+/* Content */
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+/* Settings Cards */
+.aqs-settings-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;}
+.aqs-settings-card-header{display:flex;align-items:flex-start;gap:14px;padding:20px 24px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
+.aqs-settings-card-icon{font-size:1.5rem;flex-shrink:0;}
+.aqs-settings-card-title{margin:0 0 3px;font-size:1rem;font-weight:700;color:#1e293b;}
+.aqs-settings-card-desc{margin:0;font-size:.82rem;color:#64748b;}
+.aqs-settings-card-body{padding:22px 24px;}
+/* Form fields */
+.aqs-field-group{margin-bottom:16px;}
+.aqs-field-group label{display:block;font-weight:600;font-size:.84rem;color:#374151;margin-bottom:6px;}
+.aqs-field-group input[type=text],.aqs-field-group input[type=email],.aqs-field-group input[type=url],.aqs-field-group input[type=password],.aqs-field-group input[type=number],.aqs-field-group select,.aqs-field-group textarea{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:.9rem;color:#1e293b;transition:border-color .15s;box-sizing:border-box;font-family:inherit;}
+.aqs-field-group input:focus,.aqs-field-group select:focus,.aqs-field-group textarea:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.aqs-field-group .aqs-field-hint{font-size:.78rem;color:#9ca3af;margin-top:4px;}
+.aqs-settings-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.aqs-settings-4col{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
+.aqs-settings-actions{display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;}
+/* Buttons */
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.aqs-btn-primary:hover{background:#4338ca;}
+.aqs-btn-sm{padding:6px 12px;font-size:.8rem;}
+/* Toggle */
+.aqs-toggle-wrap{display:flex;align-items:center;gap:10px;}
+.aqs-toggle-switch{position:relative;display:inline-block;width:46px;height:26px;}
+.aqs-toggle-switch input{opacity:0;width:0;height:0;}
+.aqs-toggle-slider{position:absolute;inset:0;background:#d1d5db;border-radius:26px;transition:.3s;cursor:pointer;}
+.aqs-toggle-slider:before{content:'';position:absolute;width:20px;height:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+.aqs-toggle-switch input:checked + .aqs-toggle-slider{background:#6366f1;}
+.aqs-toggle-switch input:checked + .aqs-toggle-slider:before{transform:translateX(20px);}
+/* Status messages */
+.aqs-status-msg{font-size:.875rem;align-self:center;}
+/* Page tiles */
+.aqs-page-tile{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;}
+.aqs-page-tile .aqs-tile-label{font-size:.75rem;font-weight:700;color:#64748b;margin-bottom:4px;}
+.aqs-page-tile a{font-size:.8rem;color:#4f46e5;word-break:break-all;}
+@media(max-width:900px){.aqs-settings-4col{grid-template-columns:1fr 1fr;}}
+@media(max-width:700px){.aqs-admin-sidebar{display:none;}.aqs-settings-2col,.aqs-settings-4col{grid-template-columns:1fr;}}
+</style>
+<script>
+window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
+
+function _whenFirebaseReady(fn) {
+    if (window._aqsFirebaseReady) { fn(); return; }
+    document.addEventListener('aqs:firebase:ready', fn, { once: true });
+}
+
+function _showStatus(statusId, success, message) {
+    var $s = document.getElementById(statusId);
+    if (!$s) return;
+    $s.style.cssText = success
+        ? 'color:#065f46;background:#d1fae5;padding:4px 10px;border-radius:6px;'
+        : 'color:#991b1b;background:#fee2e2;padding:4px 10px;border-radius:6px;';
+    $s.textContent = (success ? '✓ ' : '✗ ') + (message || (success ? 'Saved!' : 'Error saving.'));
+    setTimeout(function(){ $s.textContent=''; $s.style.cssText=''; }, 4000);
+}
+
+function saveSettings(endpoint, data, statusId, btnEl, defaultBtnText) {
+    btnEl.disabled = true; btnEl.textContent = 'Saving…';
+    _whenFirebaseReady(function() {
+        jQuery.post(window.AQS.ajax_url,
+            Object.assign({ action: 'aqs_save_settings', nonce: '' }, data),
+            function(res) {
+                btnEl.disabled = false; btnEl.textContent = defaultBtnText;
+                var ok = res && res.success;
+                _showStatus(statusId, ok, ok ? (res.data && res.data.message) || 'Saved!' : (res && res.data) || 'Error saving.');
+            }
+        ).fail(function() {
+            btnEl.disabled = false; btnEl.textContent = defaultBtnText;
+            _showStatus(statusId, false, 'Request failed. Make sure you are signed in as admin.');
+        });
+    });
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+    _whenFirebaseReady(function() {
+        jQuery.post(window.AQS.ajax_url, { action: 'aqs_get_settings', nonce: '' }, function(res) {
+            var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
+            var setVal = function(id, val){ var el=document.getElementById(id); if(el && val!==undefined && val!==null) el.value=val; };
+            var setChk = function(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; };
+            /* Load up to 5 Groq keys — support both new array and legacy single-key */
+            var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : (s.groq_api_key ? [s.groq_api_key] : []);
+            for (var gi = 1; gi <= 5; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
+            setVal('aqs-groq-model', s.groq_model);
+            setVal('aqs-music-url', s.bg_music_url);
+            setChk('aqs-splash-enabled', s.splash_enabled);
+            setVal('aqs-splash-logo', s.splash_logo_url);
+            setVal('aqs-brevo-key', s.brevo_api_key);
+            setVal('aqs-brevo-from-name', s.brevo_from_name);
+            setVal('aqs-brevo-from-email', s.brevo_from_email);
+            setChk('aqs-cd-enabled', s.countdown_enabled);
+            setVal('aqs-cd-label', s.countdown_label);
+            setVal('aqs-cd-date', s.countdown_date);
+            setVal('aqs-cd-hour', s.countdown_hour);
+            setVal('aqs-cd-minute', s.countdown_minute);
+            setVal('aqs-ticker-text', s.ticker_text);
+            setVal('aqs-oauth-google-id', s.google_client_id);
+            setVal('aqs-oauth-google-secret', s.google_client_secret);
+            setVal('aqs-oauth-github-id', s.github_client_id);
+            setVal('aqs-oauth-github-secret', s.github_client_secret);
+            setVal('aqs-oauth-microsoft-id', s.microsoft_client_id);
+            setVal('aqs-oauth-microsoft-secret', s.microsoft_client_secret);
+            setVal('aqs-oauth-yahoo-id', s.yahoo_client_id);
+            setVal('aqs-oauth-yahoo-secret', s.yahoo_client_secret);
+        });
+    });
+});
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<aside class="aqs-admin-sidebar">
+    <div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div>
+    <nav class="aqs-admin-nav">
+        <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a>
+        <a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a>
+        <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
+        <a href="admin-settings.html" class="active"><span class="aqs-nav-icon">⚙️</span> Settings</a>
+        <a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+    </nav>
+    <div class="aqs-admin-sidebar-footer"><a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a></div>
+</aside>
+
+<div class="aqs-admin-content">
+<div style="max-width:900px;">
+<div class="aqs-admin-header">
+    <h1>⚙️ Plugin Settings</h1>
+</div>
+
+<!-- AI Provider -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🤖</span>
+        <div>
+            <h2 class="aqs-settings-card-title">AI Provider (Groq)</h2>
+            <p class="aqs-settings-card-desc">Add up to 5 Groq API keys — they rotate automatically to spread load and avoid rate limits. Keys are stored securely in Firestore, never in your code. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-1">Groq API Key 1 (Primary)</label>
+                <input type="password" id="aqs-groq-key-1" placeholder="gsk_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-2">Groq API Key 2</label>
+                <input type="password" id="aqs-groq-key-2" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-3">Groq API Key 3</label>
+                <input type="password" id="aqs-groq-key-3" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-4">Groq API Key 4</label>
+                <input type="password" id="aqs-groq-key-4" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-5">Groq API Key 5</label>
+                <input type="password" id="aqs-groq-key-5" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-model">Default Model</label>
+                <select id="aqs-groq-model">
+                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended)</option>
+                    <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
+                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fast)</option>
+                    <option value="mixtral-8x7b-32768">Mixtral-8x7B</option>
+                    <option value="gemma2-9b-it">Gemma 2 9B</option>
+                </select>
+            </div>
+        </div>
+        <p style="font-size:.8rem;color:#6b7280;margin:0 0 14px;">⚠️ Leave extra slots blank if you only have 1 key. Empty slots are ignored.</p>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-ai-btn">💾 Save AI Settings</button>
+            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#0ea5e9;color:#fff;border-color:#0284c7;">🔌 Test AI Connection</button>
+            <span id="aqs-ai-status" class="aqs-status-msg"></span>
+        </div>
+        <!-- Test results panel (hidden by default) -->
+        <div id="aqs-ai-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
+<!-- Background Music -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🎵</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Background Music</h2>
+            <p class="aqs-settings-card-desc">URL to the MP3 played during quizzes and challenge mode. Leave blank to disable.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-field-group">
+            <label for="aqs-music-url">Music File URL</label>
+            <input type="url" id="aqs-music-url" placeholder="https://example.com/music.mp3 or leave blank to use default" />
+            <p class="aqs-field-hint">The default bundled track is used if left blank. Accepted: .mp3, .ogg</p>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-music-btn">💾 Save Music Settings</button>
+            <span id="aqs-music-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Splash Screen -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">✨</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Splash Screen</h2>
+            <p class="aqs-settings-card-desc">Show a branded splash animation when visitors first load the site.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-field-group">
+            <div class="aqs-toggle-wrap">
+                <label class="aqs-toggle-switch">
+                    <input type="checkbox" id="aqs-splash-enabled" />
+                    <span class="aqs-toggle-slider"></span>
+                </label>
+                <span style="font-size:.9rem;font-weight:500;">Enable Splash Screen</span>
+            </div>
+        </div>
+        <div class="aqs-field-group">
+            <label for="aqs-splash-logo">Logo URL (optional)</label>
+            <input type="url" id="aqs-splash-logo" placeholder="https://example.com/logo.png" />
+            <p class="aqs-field-hint">Leave blank to use the default icon. Recommended: PNG/SVG, square.</p>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-splash-btn">💾 Save Splash Settings</button>
+            <span id="aqs-splash-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Email / Brevo -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">📧</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Email (Brevo / SendinBlue)</h2>
+            <p class="aqs-settings-card-desc">Used to send quiz result emails, welcome emails, and notifications to participants.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-field-group">
+            <label for="aqs-brevo-key">Brevo API Key</label>
+            <input type="password" id="aqs-brevo-key" placeholder="xkeysib-…" autocomplete="off" />
+            <p class="aqs-field-hint">Get your API key at <a href="https://app.brevo.com" target="_blank">app.brevo.com</a> → API Keys</p>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-field-group">
+                <label for="aqs-brevo-from-name">Sender Name</label>
+                <input type="text" id="aqs-brevo-from-name" placeholder="xzily AI Quiz System" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-brevo-from-email">Sender Email</label>
+                <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-brevo-btn">💾 Save Email Settings</button>
+            <span id="aqs-brevo-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Countdown Timer -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">⏱️</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Countdown Timer</h2>
+            <p class="aqs-settings-card-desc">Display a countdown timer on the home page for an upcoming event or quiz session.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-field-group">
+            <div class="aqs-toggle-wrap">
+                <label class="aqs-toggle-switch">
+                    <input type="checkbox" id="aqs-cd-enabled" />
+                    <span class="aqs-toggle-slider"></span>
+                </label>
+                <span style="font-size:.9rem;font-weight:500;">Enable Countdown</span>
+            </div>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-field-group">
+                <label for="aqs-cd-label">Label</label>
+                <input type="text" id="aqs-cd-label" placeholder="e.g. Next Quiz Starts In" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-cd-date">Target Date</label>
+                <input type="date" id="aqs-cd-date" />
+            </div>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-field-group">
+                <label for="aqs-cd-hour">Hour (0–23)</label>
+                <input type="number" id="aqs-cd-hour" min="0" max="23" value="9" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-cd-minute">Minute (0–59)</label>
+                <input type="number" id="aqs-cd-minute" min="0" max="59" value="0" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-countdown-btn">💾 Save Countdown Settings</button>
+            <span id="aqs-countdown-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- News Ticker -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">📰</span>
+        <div>
+            <h2 class="aqs-settings-card-title">News Ticker</h2>
+            <p class="aqs-settings-card-desc">A scrolling announcement banner shown on the home page.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-field-group">
+            <label for="aqs-ticker-text">Ticker Text</label>
+            <input type="text" id="aqs-ticker-text" placeholder="e.g. 🎉 Welcome to xzily AI Quiz System! · New features available!" />
+            <p class="aqs-field-hint">Separate multiple messages with · (bullet). Leave blank to hide the ticker.</p>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-ticker-btn">💾 Save News Ticker</button>
+            <span id="aqs-ticker-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- OAuth / Social Login -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🔐</span>
+        <div>
+            <h2 class="aqs-settings-card-title">OAuth / Social Login</h2>
+            <p class="aqs-settings-card-desc">Enable Google, GitHub, Microsoft, and Yahoo login buttons on the sign-in and register pages.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-settings-2col" style="margin-bottom:18px;">
+            <div class="aqs-field-group">
+                <label>🔵 Google Client ID</label>
+                <input type="text" id="aqs-oauth-google-id" placeholder="your-client-id.apps.googleusercontent.com" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label>Google Client Secret</label>
+                <input type="password" id="aqs-oauth-google-secret" placeholder="GOCSPX-…" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-2col" style="margin-bottom:18px;">
+            <div class="aqs-field-group">
+                <label>🐙 GitHub Client ID</label>
+                <input type="text" id="aqs-oauth-github-id" placeholder="Iv1.…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label>GitHub Client Secret</label>
+                <input type="password" id="aqs-oauth-github-secret" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-2col" style="margin-bottom:18px;">
+            <div class="aqs-field-group">
+                <label>🪟 Microsoft Client ID</label>
+                <input type="text" id="aqs-oauth-microsoft-id" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label>Microsoft Client Secret</label>
+                <input type="password" id="aqs-oauth-microsoft-secret" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-2col" style="margin-bottom:18px;">
+            <div class="aqs-field-group">
+                <label>🟣 Yahoo Client ID</label>
+                <input type="text" id="aqs-oauth-yahoo-id" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label>Yahoo Client Secret</label>
+                <input type="password" id="aqs-oauth-yahoo-secret" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-oauth-btn">💾 Save OAuth Settings</button>
+            <span id="aqs-oauth-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Plugin Pages -->
+<div class="aqs-settings-card" style="margin-top:24px;">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">📄</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Plugin Pages</h2>
+            <p class="aqs-settings-card-desc">All standalone HTML pages in the application.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px;">
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Home / Landing Page</div><a href="index.html">index.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Quiz Dashboard</div><a href="dashboard.html">dashboard.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Create Quiz</div><a href="create-quiz.html">create-quiz.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Take Quiz</div><a href="take-quiz.html">take-quiz.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Challenge Mode</div><a href="challenge.html">challenge.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ AI Studio Chat</div><a href="studio.html">studio.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ AI Image Creator</div><a href="image-gen.html">image-gen.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Text to Speech</div><a href="tts.html">tts.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Login / Sign In</div><a href="login.html">login.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Register</div><a href="register.html">register.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ My Dashboard</div><a href="user-dashboard.html">user-dashboard.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Image Editor</div><a href="image-editor.html">image-editor.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Docs Generator</div><a href="docs-gen.html">docs-gen.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Quiz Results</div><a href="quiz-results.html">quiz-results.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Unauthorized</div><a href="unauthorized.html">unauthorized.html</a></div>
+        </div>
+    </div>
+</div>
+
+</div>
+</div>
+
+<script>
+function btn(id){ return document.getElementById(id); }
+
+btn('aqs-save-ai-btn').addEventListener('click', function(){
+    var keys = [];
+    for (var gi = 1; gi <= 5; gi++) {
+        var el = document.getElementById('aqs-groq-key-' + gi);
+        if (el && el.value.trim()) keys.push(el.value.trim());
+    }
+    saveSettings('/api/settings', {
+        groq_keys: keys,
+        groq_model: document.getElementById('aqs-groq-model').value
+    }, 'aqs-ai-status', this, '💾 Save AI Settings');
+});
+
+btn('aqs-test-ai-btn').addEventListener('click', async function(){
+    var keys = [];
+    for (var gi = 1; gi <= 5; gi++) {
+        var el = document.getElementById('aqs-groq-key-' + gi);
+        if (el && el.value.trim()) keys.push({ slot: gi, key: el.value.trim() });
+    }
+    var results = document.getElementById('aqs-ai-test-results');
+    var testBtn = this;
+
+    if (!keys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys entered. Add at least one Groq API key above and try again.</span>';
+        return;
+    }
+
+    testBtn.disabled = true;
+    testBtn.textContent = '⏳ Testing…';
+    results.style.display = 'block';
+    results.innerHTML = '<span style="color:#94a3b8;">Testing ' + keys.length + ' key(s)… this takes a few seconds.</span>';
+
+    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
+    for (var i = 0; i < keys.length; i++) {
+        var slot = keys[i].slot;
+        var key  = keys[i].key;
+        var masked = key.substring(0, 7) + '…' + key.slice(-4);
+        try {
+            var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                body: JSON.stringify({
+                    model: 'llama-3.1-8b-instant',
+                    messages: [{ role: 'user', content: 'Reply with one word: OK' }],
+                    max_tokens: 5
+                })
+            });
+            if (res.ok) {
+                var data = await res.json();
+                var reply = (((data.choices || [])[0] || {}).message || {}).content || '(empty)';
+                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#052e16;border:1px solid #166534;border-radius:7px;">' +
+                    '<span style="font-size:1rem;">✅</span>' +
+                    '<span style="color:#86efac;font-weight:600;">Key ' + slot + '</span>' +
+                    '<span style="color:#4ade80;font-family:monospace;">' + masked + '</span>' +
+                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">Active · replied: "' + reply.trim() + '"</span>' +
+                    '</div>';
+            } else if (res.status === 401) {
+                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
+                    '<span style="font-size:1rem;">❌</span>' +
+                    '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
+                    '<span style="color:#f87171;font-family:monospace;">' + masked + '</span>' +
+                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Invalid / Revoked (401)</span>' +
+                    '</div>';
+            } else if (res.status === 429) {
+                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c1001;border:1px solid #78350f;border-radius:7px;">' +
+                    '<span style="font-size:1rem;">⚠️</span>' +
+                    '<span style="color:#fcd34d;font-weight:600;">Key ' + slot + '</span>' +
+                    '<span style="color:#fbbf24;font-family:monospace;">' + masked + '</span>' +
+                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;">Rate limited (429) — try again later</span>' +
+                    '</div>';
+            } else {
+                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1e1b4b;border:1px solid #4338ca;border-radius:7px;">' +
+                    '<span style="font-size:1rem;">⚠️</span>' +
+                    '<span style="color:#a5b4fc;font-weight:600;">Key ' + slot + '</span>' +
+                    '<span style="color:#818cf8;font-family:monospace;">' + masked + '</span>' +
+                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">HTTP ' + res.status + ' — unexpected error</span>' +
+                    '</div>';
+            }
+        } catch (e) {
+            html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
+                '<span style="font-size:1rem;">❌</span>' +
+                '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
+                '<span style="color:#f87171;font-family:monospace;">' + masked + '</span>' +
+                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Network error — check your connection</span>' +
+                '</div>';
+        }
+    }
+    html += '</div>';
+    results.innerHTML = html;
+    testBtn.disabled = false;
+    testBtn.textContent = '🔌 Test AI Connection';
+});
+
+btn('aqs-save-music-btn').addEventListener('click', function(){
+    saveSettings('/api/settings', {
+        bg_music_url: document.getElementById('aqs-music-url').value.trim()
+    }, 'aqs-music-status', this, '💾 Save Music Settings');
+});
+
+btn('aqs-save-splash-btn').addEventListener('click', function(){
+    saveSettings('/api/settings', {
+        splash_enabled: document.getElementById('aqs-splash-enabled').checked,
+        splash_logo_url: document.getElementById('aqs-splash-logo').value.trim()
+    }, 'aqs-splash-status', this, '💾 Save Splash Settings');
+});
+
+btn('aqs-save-brevo-btn').addEventListener('click', function(){
+    saveSettings('/api/settings', {
+        brevo_api_key: document.getElementById('aqs-brevo-key').value.trim(),
+        brevo_from_name: document.getElementById('aqs-brevo-from-name').value.trim(),
+        brevo_from_email: document.getElementById('aqs-brevo-from-email').value.trim()
+    }, 'aqs-brevo-status', this, '💾 Save Email Settings');
+});
+
+btn('aqs-save-countdown-btn').addEventListener('click', function(){
+    saveSettings('/api/settings', {
+        countdown_enabled: document.getElementById('aqs-cd-enabled').checked,
+        countdown_label: document.getElementById('aqs-cd-label').value.trim(),
+        countdown_date: document.getElementById('aqs-cd-date').value,
+        countdown_hour: document.getElementById('aqs-cd-hour').value,
+        countdown_minute: document.getElementById('aqs-cd-minute').value
+    }, 'aqs-countdown-status', this, '💾 Save Countdown Settings');
+});
+
+btn('aqs-save-ticker-btn').addEventListener('click', function(){
+    saveSettings('/api/settings', {
+        ticker_text: document.getElementById('aqs-ticker-text').value.trim()
+    }, 'aqs-ticker-status', this, '💾 Save News Ticker');
+});
+
+btn('aqs-save-oauth-btn').addEventListener('click', function(){
+    saveSettings('/api/settings', {
+        google_client_id: document.getElementById('aqs-oauth-google-id').value.trim(),
+        google_client_secret: document.getElementById('aqs-oauth-google-secret').value.trim(),
+        github_client_id: document.getElementById('aqs-oauth-github-id').value.trim(),
+        github_client_secret: document.getElementById('aqs-oauth-github-secret').value.trim(),
+        microsoft_client_id: document.getElementById('aqs-oauth-microsoft-id').value.trim(),
+        microsoft_client_secret: document.getElementById('aqs-oauth-microsoft-secret').value.trim(),
+        yahoo_client_id: document.getElementById('aqs-oauth-yahoo-id').value.trim(),
+        yahoo_client_secret: document.getElementById('aqs-oauth-yahoo-secret').value.trim()
+    }, 'aqs-oauth-status', this, '💾 Save OAuth Settings');
+});
+</script>
+</body>
+</html>

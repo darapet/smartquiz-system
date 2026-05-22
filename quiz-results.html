@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quiz Results — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.aqs-site-header a{text-decoration:none;color:#4f46e5;font-weight:700;font-size:1.1rem;}
+.aqs-page-main{padding:40px 20px;}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    home_url: 'index.html',
+    create_page_url: 'create-quiz.html',
+    studio_url: 'studio.html',
+    dashboard_url: 'dashboard.html',
+    is_logged_in: true,
+    is_host: true,
+    is_admin: false,
+    groq_key: '',
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+<header class="aqs-site-header">
+    <a href="index.html">⚡ xzily AI</a>
+    <nav style="display:flex;gap:12px;">
+        <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+        <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">My Account</a>
+    </nav>
+</header>
+<main class="aqs-page-main">
+<div class="aqs-wrap">
+    <h2>Quiz Results</h2>
+    <div id="aqs-results-content">
+        <p class="aqs-loading">Loading results...</p>
+    </div>
+</div>
+</main>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

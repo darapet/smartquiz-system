@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Document Generator — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-imagegen.css">
+    <style>
+        .aqs-dg-upload-zone{border:2px dashed #6366f1;border-radius:16px;padding:36px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#f8f8ff}
+        .aqs-dg-upload-zone:hover,.aqs-dg-upload-zone.drag-over{border-color:#4f46e5;background:#eef2ff}
+        .aqs-dg-upload-zone svg{color:#6366f1;margin-bottom:10px}
+        .aqs-dg-upload-zone p{margin:4px 0;color:#555;font-size:.92rem}
+        .aqs-dg-upload-zone small{color:#999;font-size:.8rem}
+        .aqs-dg-file-info{display:flex;align-items:center;gap:12px;background:#f0f0fa;border-radius:12px;padding:12px 16px;margin-bottom:16px}
+        .aqs-dg-file-icon{width:44px;height:44px;background:#6366f1;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+        .aqs-dg-file-icon svg{color:#fff}
+        .aqs-dg-file-meta{flex:1;min-width:0}
+        .aqs-dg-file-meta strong{display:block;font-size:.95rem;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .aqs-dg-file-meta span{color:#777;font-size:.82rem}
+        .aqs-dg-remove-btn{background:none;border:none;cursor:pointer;color:#999;padding:4px;border-radius:6px;transition:color .2s}
+        .aqs-dg-remove-btn:hover{color:#e53e3e}
+        .aqs-dg-type-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin:12px 0}
+        .aqs-dg-type-card{border:1.5px solid #e0e0f0;border-radius:12px;padding:14px 12px;cursor:pointer;text-align:center;transition:all .2s;background:#fff}
+        .aqs-dg-type-card:hover{border-color:#6366f1;background:#f5f3ff}
+        .aqs-dg-type-card.active{border-color:#6366f1;background:#6366f1;color:#fff}
+        .aqs-dg-type-card.active svg{color:#fff}
+        .aqs-dg-type-card svg{color:#6366f1;margin-bottom:6px;transition:color .2s}
+        .aqs-dg-type-card .aqs-dg-type-name{font-weight:700;font-size:.85rem;display:block}
+        .aqs-dg-type-card .aqs-dg-type-desc{font-size:.75rem;color:#888;margin-top:2px}
+        .aqs-dg-type-card.active .aqs-dg-type-desc{color:rgba(255,255,255,.8)}
+        .aqs-dg-output-wrap{background:#fff;border:1.5px solid #e8e8f5;border-radius:14px;overflow:hidden;margin-top:16px}
+        .aqs-dg-output-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#f5f5fb;border-bottom:1px solid #eee}
+        .aqs-dg-output-header h3{margin:0;font-size:.95rem;color:#333;font-weight:700}
+        .aqs-dg-output-actions{display:flex;gap:8px}
+        .aqs-dg-output-body{padding:20px;min-height:160px;max-height:540px;overflow-y:auto;white-space:pre-wrap;font-size:.9rem;line-height:1.7;color:#333}
+        .aqs-dg-output-body.streaming::after{content:'▋';animation:blink .7s steps(1) infinite;color:#6366f1}
+        @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+        .aqs-dg-pbar-wrap{height:4px;background:#e8e8f5;border-radius:2px;overflow:hidden;margin-top:12px}
+        .aqs-dg-pbar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:2px;transition:width .4s;width:0%}
+    </style>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ SIDEBAR ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
+    <div class="aqs-sidebar-nav-label">NAVIGATE</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio Home</a>
+        <a href="image-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
+        <a href="image-editor.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Image Editor</a>
+        <a href="docs-gen.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
+        <a href="tts.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>Text to Speech</a>
+    </nav>
+    <div class="aqs-sidebar-nav-label" style="margin-top:14px;">QUIZ</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
+        <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge</a>
+    </nav>
+    <div class="aqs-sidebar-footer"><div class="aqs-sidebar-user"><div class="aqs-sidebar-avatar">U</div><div class="aqs-sidebar-user-name">User</div></div></div>
+</nav>
+
+<div class="aqs-sidebar-body">
+<main class="aqs-page-main">
+
+<div class="aqs-wrap aqs-imagegen-wrap" id="aqs-docsgen-wrap">
+    <div class="aqs-imagegen-hero">
+        <div class="aqs-imagegen-hero-inner">
+            <div class="aqs-imagegen-hero-icon">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            </div>
+            <div>
+                <h1 class="aqs-imagegen-title">AI Document Generator</h1>
+                <p class="aqs-imagegen-sub">Upload any PDF or Word document and let AI instantly create summaries, study guides, FAQs, key points, and more.</p>
+                <p class="aqs-imagegen-credit">Powered by Darapet Technology &mdash; Omomo Excellence</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="aqs-imagegen-prompt-card">
+        <h3 style="margin:0 0 14px;font-size:1rem;color:#444;font-weight:700;">Step 1: Upload Your Document</h3>
+        <div class="aqs-dg-upload-zone" id="aqs-dg-upload-zone">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            <p><strong>Click to upload</strong> or drag &amp; drop your document</p>
+            <small>PDF, DOCX, DOC, or TXT &bull; Max 20 MB</small>
+        </div>
+        <input type="file" id="aqs-dg-file-input" accept=".pdf,.docx,.doc,.txt" style="display:none">
+        <div class="aqs-dg-file-info" id="aqs-dg-file-info" style="display:none">
+            <div class="aqs-dg-file-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <div class="aqs-dg-file-meta"><strong id="aqs-dg-file-name">—</strong><span id="aqs-dg-file-size"></span></div>
+            <button class="aqs-dg-remove-btn" id="aqs-dg-remove-file" title="Remove"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+    </div>
+
+    <div id="aqs-dg-controls" class="aqs-imagegen-prompt-card" style="display:none">
+        <h3 style="margin:0 0 14px;font-size:1rem;color:#444;font-weight:700;">Step 2: Choose Output Type</h3>
+        <div class="aqs-dg-type-grid">
+            <div class="aqs-dg-type-card active" data-type="summary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="11" y2="18"/></svg><span class="aqs-dg-type-name">Summary</span><div class="aqs-dg-type-desc">Concise overview</div></div>
+            <div class="aqs-dg-type-card" data-type="study_guide"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg><span class="aqs-dg-type-name">Study Guide</span><div class="aqs-dg-type-desc">Structured notes</div></div>
+            <div class="aqs-dg-type-card" data-type="faq"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="aqs-dg-type-name">FAQ</span><div class="aqs-dg-type-desc">Q&amp;A format</div></div>
+            <div class="aqs-dg-type-card" data-type="key_points"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg><span class="aqs-dg-type-name">Key Points</span><div class="aqs-dg-type-desc">Bullet highlights</div></div>
+            <div class="aqs-dg-type-card" data-type="glossary"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg><span class="aqs-dg-type-name">Glossary</span><div class="aqs-dg-type-desc">Terms &amp; definitions</div></div>
+            <div class="aqs-dg-type-card" data-type="outline"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span class="aqs-dg-type-name">Outline</span><div class="aqs-dg-type-desc">Structured chapters</div></div>
+        </div>
+        <div class="aqs-imagegen-options" style="margin-top:16px">
+            <div class="aqs-ig-option-group">
+                <label>Detail Level</label>
+                <select id="aqs-dg-detail"><option value="brief">Brief</option><option value="standard" selected>Standard</option><option value="comprehensive">Comprehensive</option></select>
+            </div>
+            <div class="aqs-ig-option-group" style="flex:1">
+                <label>Focus Topic (optional)</label>
+                <input type="text" id="aqs-dg-topic" placeholder="e.g. Chapter 3, Machine Learning, Sales figures…" style="width:100%;padding:8px 12px;border:1.5px solid #ddd;border-radius:8px;font-size:.9rem;box-sizing:border-box">
+            </div>
+        </div>
+        <div class="aqs-imagegen-actions" style="margin-top:16px">
+            <button id="aqs-dg-generate-btn" class="aqs-btn aqs-btn-primary aqs-ig-generate-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>
+                Generate Document
+            </button>
+        </div>
+        <div id="aqs-dg-pbar-wrap" class="aqs-dg-pbar-wrap" style="display:none"><div class="aqs-dg-pbar-fill" id="aqs-dg-pbar-fill"></div></div>
+        <div id="aqs-dg-status-text" style="font-size:.82rem;color:#6366f1;margin-top:6px;min-height:18px;"></div>
+    </div>
+
+    <div id="aqs-dg-error" class="aqs-ig-error" style="display:none"></div>
+
+    <div id="aqs-dg-output-section" style="display:none">
+        <div class="aqs-dg-output-wrap">
+            <div class="aqs-dg-output-header">
+                <h3 id="aqs-dg-output-title">Generated Document</h3>
+                <div class="aqs-dg-output-actions">
+                    <button id="aqs-dg-copy-btn" class="aqs-btn aqs-btn-sm"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copy</button>
+                    <button id="aqs-dg-download-btn" class="aqs-btn aqs-btn-sm aqs-btn-primary"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download .txt</button>
+                </div>
+            </div>
+            <div class="aqs-dg-output-body" id="aqs-dg-output-body"></div>
+        </div>
+    </div>
+</div>
+
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script>
+var AQS = {ajax_url:'',nonce:'',public_nonce:'',groq_key:'',plugin_url:'./'};
+</script>
+<script src="js/aqs-docsgen.js"></script>
+<script>
+(function(){
+    var toggle=document.getElementById('aqs-sidebar-toggle');
+    var sidebar=document.getElementById('aqs-sidebar');
+    var overlay=document.getElementById('aqs-sidebar-overlay');
+    if(!toggle||!sidebar||!overlay)return;
+    toggle.addEventListener('click',function(){sidebar.classList.add('open');overlay.classList.add('open');});
+    overlay.addEventListener('click',function(){sidebar.classList.remove('open');overlay.classList.remove('open');});
+})();
+</script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

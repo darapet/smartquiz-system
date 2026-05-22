@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Edit Developer Profiles — Admin — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+.aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.aqs-btn-primary:hover{background:#4338ca;}
+/* Section cards */
+.aqs-settings-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;margin-top:24px;box-shadow:0 2px 12px rgba(0,0,0,.05);}
+.aqs-settings-section h2{margin:0 0 22px;font-size:1.05rem;color:#1e293b;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f1f5f9;padding-bottom:14px;}
+.aqs-about-field{margin-bottom:18px;}
+.aqs-about-field label{display:block;font-weight:600;font-size:.85rem;color:#374151;margin-bottom:6px;}
+.aqs-about-field input[type=text],.aqs-about-field input[type=email],.aqs-about-field input[type=url],.aqs-about-field textarea{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:.9rem;color:#1e293b;transition:border-color .15s;box-sizing:border-box;}
+.aqs-about-field input:focus,.aqs-about-field textarea:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
+.aqs-about-field textarea{resize:vertical;}
+.aqs-about-field .aqs-field-hint{font-size:.78rem;color:#9ca3af;margin-top:4px;}
+.aqs-image-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.aqs-image-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.1);flex-shrink:0;background:#e0e7ff;}
+.aqs-image-btns{display:flex;flex-direction:column;gap:8px;}
+.aqs-settings-2col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.aqs-save-row{margin-top:28px;display:flex;align-items:center;gap:14px;}
+#aqs-about-save-msg{margin:12px 0;padding:10px 16px;border-radius:8px;font-weight:600;font-size:.9rem;display:none;}
+@media(max-width:700px){.aqs-admin-sidebar{display:none;}.aqs-settings-2col{grid-template-columns:1fr;}}
+</style>
+<script>
+var API_BASE = '';
+window.addEventListener('DOMContentLoaded', function(){
+    fetch(API_BASE + '/api/settings', {credentials:'include'})
+        .then(function(r){return r.json();})
+        .then(function(d){
+            var s = d.settings || d || {};
+            var sv = function(id,val){var el=document.getElementById(id);if(el&&val!=null)el.value=val;};
+            sv('aqs_about_plugin_desc', s.about_plugin_desc);
+            sv('aqs_dev_main_name', s.dev_main_name);
+            sv('aqs_dev_main_title', s.dev_main_title ? s.dev_main_title.replace(/&amp;/g,'&') : '');
+            sv('aqs_dev_main_bio', s.dev_main_bio);
+            sv('aqs_dev_main_skills', s.dev_main_skills ? s.dev_main_skills.replace(/&amp;/g,'&') : '');
+            sv('aqs_dev_main_email', s.dev_main_email);
+            sv('aqs_dev_main_github', s.dev_main_github);
+            sv('aqs_dev_asst_name', s.dev_asst_name);
+            sv('aqs_dev_asst_title', s.dev_asst_title ? s.dev_asst_title.replace(/&amp;/g,'&') : '');
+            sv('aqs_dev_asst_bio', s.dev_asst_bio);
+            sv('aqs_dev_asst_skills', s.dev_asst_skills ? s.dev_asst_skills.replace(/&amp;/g,'&') : '');
+            sv('aqs_dev_asst_email', s.dev_asst_email);
+            sv('aqs_dev_asst_github', s.dev_asst_github);
+            if(s.dev_main_image){ var img=document.getElementById('aqs-main-img-preview'); img.src=s.dev_main_image; }
+            if(s.dev_asst_image){ var img=document.getElementById('aqs-asst-img-preview'); img.src=s.dev_asst_image; }
+        }).catch(function(){});
+});
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<aside class="aqs-admin-sidebar">
+    <div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div>
+    <nav class="aqs-admin-nav">
+        <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a>
+        <a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a>
+        <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
+        <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
+        <a href="admin-about.html" class="active"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+    </nav>
+    <div class="aqs-admin-sidebar-footer"><a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a></div>
+</aside>
+
+<div class="aqs-admin-content">
+<div style="max-width:860px;">
+    <div class="aqs-admin-header">
+        <h1>✏️ Edit Developer Profiles</h1>
+        <a href="admin-about.html" class="aqs-btn">← Back to About Page</a>
+    </div>
+
+    <div id="aqs-about-save-msg"></div>
+
+    <!-- Plugin Description -->
+    <div class="aqs-settings-section">
+        <h2>⚡ Plugin Description</h2>
+        <div class="aqs-about-field">
+            <label for="aqs_about_plugin_desc">Description text shown on the About page banner</label>
+            <textarea id="aqs_about_plugin_desc" rows="3" placeholder="A powerful AI quiz platform..."></textarea>
+        </div>
+    </div>
+
+    <!-- Lead Developer -->
+    <div class="aqs-settings-section">
+        <h2>🚀 Lead Developer</h2>
+        <div class="aqs-about-field">
+            <label>Profile Photo</label>
+            <div class="aqs-image-row">
+                <img id="aqs-main-img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23e0e7ff'/%3E%3Ctext x='40' y='52' text-anchor='middle' font-size='36' fill='%234f46e5'%3ED%3C/text%3E%3C/svg%3E" class="aqs-image-preview" alt="Lead Developer">
+                <input type="hidden" id="aqs_dev_main_image" value="">
+                <div class="aqs-image-btns">
+                    <input type="url" id="aqs-main-img-url-input" placeholder="Paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:220px;" />
+                    <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-main-img-set" style="padding:6px 12px;font-size:.8rem;">Set Image</button>
+                </div>
+            </div>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_name">Full Name</label>
+                <input type="text" id="aqs_dev_main_name" value="Daramola Peter Oluwaferanmi" placeholder="e.g. Daramola Peter Oluwaferanmi" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_title">Title / Role</label>
+                <input type="text" id="aqs_dev_main_title" value="Lead Developer & Architect" placeholder="e.g. Lead Developer & Architect" />
+            </div>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_main_bio">Bio</label>
+            <textarea id="aqs_dev_main_bio" rows="5" placeholder="Short biography..."></textarea>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_main_skills">Skills <span style="font-weight:400;color:#9ca3af;">(comma-separated)</span></label>
+            <input type="text" id="aqs_dev_main_skills" placeholder="e.g. PHP / WordPress, JavaScript, AI Integration" />
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_email">Contact Email</label>
+                <input type="email" id="aqs_dev_main_email" placeholder="email@example.com" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_github">GitHub URL</label>
+                <input type="url" id="aqs_dev_main_github" placeholder="https://github.com/username" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Assistant Developer -->
+    <div class="aqs-settings-section">
+        <h2>🛠️ Assistant Developer</h2>
+        <div class="aqs-about-field">
+            <label>Profile Photo</label>
+            <div class="aqs-image-row">
+                <img id="aqs-asst-img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23e0f2fe'/%3E%3Ctext x='40' y='52' text-anchor='middle' font-size='36' fill='%230ea5e9'%3EO%3C/text%3E%3C/svg%3E" class="aqs-image-preview" alt="Assistant Developer">
+                <input type="hidden" id="aqs_dev_asst_image" value="">
+                <div class="aqs-image-btns">
+                    <input type="url" id="aqs-asst-img-url-input" placeholder="Paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:220px;" />
+                    <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-asst-img-set" style="padding:6px 12px;font-size:.8rem;">Set Image</button>
+                </div>
+            </div>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_name">Full Name</label>
+                <input type="text" id="aqs_dev_asst_name" value="Omomo Excellence" placeholder="e.g. Omomo Excellence" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_title">Title / Role</label>
+                <input type="text" id="aqs_dev_asst_title" value="Assistant Developer & UI Engineer" placeholder="e.g. Assistant Developer & UI Engineer" />
+            </div>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_asst_bio">Bio</label>
+            <textarea id="aqs_dev_asst_bio" rows="5" placeholder="Short biography..."></textarea>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_asst_skills">Skills <span style="font-weight:400;color:#9ca3af;">(comma-separated)</span></label>
+            <input type="text" id="aqs_dev_asst_skills" placeholder="e.g. HTML / CSS, jQuery, UI / UX Design" />
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_email">Contact Email</label>
+                <input type="email" id="aqs_dev_asst_email" placeholder="email@example.com" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_github">GitHub URL</label>
+                <input type="url" id="aqs_dev_asst_github" placeholder="https://github.com/username" />
+            </div>
+        </div>
+    </div>
+
+    <!-- Save -->
+    <div class="aqs-save-row">
+        <button id="aqs-save-about-btn" class="aqs-btn aqs-btn-primary" style="font-size:14px;padding:10px 24px;">💾 Save Changes</button>
+        <a href="admin-about.html" class="aqs-btn">Preview About Page</a>
+        <span id="aqs-save-about-status" style="font-size:.875rem;"></span>
+    </div>
+</div>
+</div>
+
+<script>
+// Image set buttons
+document.getElementById('aqs-main-img-set').addEventListener('click', function(){
+    var url = document.getElementById('aqs-main-img-url-input').value.trim();
+    if(url){ document.getElementById('aqs-main-img-preview').src = url; document.getElementById('aqs_dev_main_image').value = url; }
+});
+document.getElementById('aqs-asst-img-set').addEventListener('click', function(){
+    var url = document.getElementById('aqs-asst-img-url-input').value.trim();
+    if(url){ document.getElementById('aqs-asst-img-preview').src = url; document.getElementById('aqs_dev_asst_image').value = url; }
+});
+
+// Save
+document.getElementById('aqs-save-about-btn').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var payload = {
+        about_plugin_desc: document.getElementById('aqs_about_plugin_desc').value.trim(),
+        dev_main_name: document.getElementById('aqs_dev_main_name').value.trim(),
+        dev_main_title: document.getElementById('aqs_dev_main_title').value.trim(),
+        dev_main_bio: document.getElementById('aqs_dev_main_bio').value.trim(),
+        dev_main_skills: document.getElementById('aqs_dev_main_skills').value.trim(),
+        dev_main_email: document.getElementById('aqs_dev_main_email').value.trim(),
+        dev_main_github: document.getElementById('aqs_dev_main_github').value.trim(),
+        dev_main_image: document.getElementById('aqs_dev_main_image').value.trim(),
+        dev_asst_name: document.getElementById('aqs_dev_asst_name').value.trim(),
+        dev_asst_title: document.getElementById('aqs_dev_asst_title').value.trim(),
+        dev_asst_bio: document.getElementById('aqs_dev_asst_bio').value.trim(),
+        dev_asst_skills: document.getElementById('aqs_dev_asst_skills').value.trim(),
+        dev_asst_email: document.getElementById('aqs_dev_asst_email').value.trim(),
+        dev_asst_github: document.getElementById('aqs_dev_asst_github').value.trim(),
+        dev_asst_image: document.getElementById('aqs_dev_asst_image').value.trim()
+    };
+    fetch('#firebase-admin-endpoint-removed/api/settings', {
+        method: 'POST', credentials: 'include',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(payload)
+    }).then(function(r){return r.json();})
+    .then(function(d){
+        btn.disabled = false; btn.textContent = '💾 Save Changes';
+        var msg = document.getElementById('aqs-about-save-msg');
+        var status = document.getElementById('aqs-save-about-status');
+        if(d.success){
+            msg.style.cssText = 'display:block;background:#d1fae5;color:#065f46;';
+            msg.textContent = '✓ Profile updated successfully!';
+            if(status){ status.style.color='#065f46'; status.textContent='✓ Saved!'; }
+        } else {
+            msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
+            msg.textContent = '✗ Error: ' + (d.message||'Failed to save.');
+        }
+        setTimeout(function(){msg.style.display='none'; if(status)status.textContent='';}, 5000);
+    }).catch(function(){
+        btn.disabled = false; btn.textContent = '💾 Save Changes';
+        var msg = document.getElementById('aqs-about-save-msg');
+        msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
+        msg.textContent = '✗ Network error — Firebase connection failed.';
+    });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Quiz — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-splash.css">
+    <link rel="stylesheet" href="css/aqs-ads-popup.css">
+    <link rel="stylesheet" href="css/aqs-notifications.css">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" as="style" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ TOP HEADER ══ -->
+<header class="aqs-site-header">
+    <div class="aqs-site-header-inner">
+        <a href="index.html" class="aqs-site-logo">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity="0.15"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
+            <div class="aqs-site-logo-text">
+                <span class="aqs-site-logo-name">AI Quiz</span>
+                <span class="aqs-site-logo-sub">System</span>
+            </div>
+        </a>
+        <nav class="aqs-site-nav" id="aqs-site-nav">
+            <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Create Quiz
+            </a>
+            <a href="studio.html" class="aqs-site-nav-link" style="color:#7c3aed;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                AI Studio
+            </a>
+            <a href="image-gen.html" class="aqs-site-nav-link" style="color:#db2777;">🎨 Image AI</a>
+            <a href="tts.html" class="aqs-site-nav-link" style="color:#059669;">🔊 TTS</a>
+            <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
+            <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
+            <div class="aqs-site-nav-mobile-auth">
+                <a href="index.html" class="aqs-site-nav-link">← Home</a>
+            </div>
+        </nav>
+        <div class="aqs-site-header-auth">
+            <a href="index.html" class="aqs-site-header-btn aqs-site-header-btn-ghost">← Home</a>
+        </div>
+        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</header>
+<script>
+(function(){
+    var btn=document.getElementById('aqs-site-nav-toggle');
+    var nav=document.getElementById('aqs-site-nav');
+    if(btn&&nav){btn.addEventListener('click',function(){nav.classList.toggle('aqs-site-nav-open');btn.classList.toggle('aqs-site-nav-toggle-open');});}
+})();
+</script>
+
+<main class="aqs-page-main">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+
+<div class="aqs-create-wrap" id="aqs-create-form-wrap">
+
+    <div class="aqs-create-topbar">
+        <h1 class="aqs-create-title">Create Quiz</h1>
+        <a href="index.html" class="aqs-btn">&larr; Back to Home</a>
+    </div>
+
+    <div class="aqs-notice-banner">
+        <span class="aqs-notice-icon">&#128196;</span>
+        <div>
+            <strong>AI may not give clean math questions.</strong><br>
+            The system may not always format math questions cleanly. If you have a question document (Word or PDF),
+            you are <em>advised to upload it</em> to the File Parser for more accurate results.
+        </div>
+        <a href="#source-upload" class="aqs-btn aqs-btn-primary" style="white-space:nowrap;" onclick="document.querySelector('[data-source=upload]').click();return false;">&#128196; Open File Parser &rarr;</a>
+    </div>
+
+    <div class="aqs-create-grid">
+
+        <!-- STEP 1: Quiz Details -->
+        <div class="aqs-card" id="step-details">
+            <div class="aqs-card-header"><span class="aqs-step-num">1</span> Quiz Details</div>
+            <div class="aqs-card-body">
+                <div class="aqs-field">
+                    <label>Quiz Title *</label>
+                    <input type="text" id="aqs-title" placeholder="e.g. Biology Mid-Term Exam" />
+                </div>
+                <div class="aqs-field">
+                    <label>Subject *</label>
+                    <input type="text" id="aqs-subject" placeholder="e.g. Biology" />
+                </div>
+                <div class="aqs-field-row">
+                    <div class="aqs-field">
+                        <label>Questions Per Section</label>
+                        <input type="number" id="aqs-num-questions" value="10" min="1" max="50" />
+                    </div>
+                    <div class="aqs-field">
+                        <label>Time Limit (minutes)</label>
+                        <input type="number" id="aqs-time-limit" value="30" min="1" max="300" />
+                    </div>
+                </div>
+                <div class="aqs-field">
+                    <label>Mode</label>
+                    <div class="aqs-toggle-group">
+                        <button class="aqs-toggle active" data-mode="exam" id="mode-exam">Exam</button>
+                        <button class="aqs-toggle" data-mode="practice" id="mode-practice">Practice</button>
+                    </div>
+                    <p class="aqs-hint">Exam: results shown at end. Practice: instant feedback per question.</p>
+                    <input type="hidden" id="aqs-mode" value="exam" />
+                </div>
+                <div class="aqs-field">
+                    <label>Retake Attempts Limit</label>
+                    <select id="aqs-max-attempts" style="border:1px solid #d1d5db;border-radius:8px;padding:7px 12px;font-size:.88rem;width:100%;max-width:260px;">
+                        <option value="0">Unlimited (no restriction)</option>
+                        <option value="1">1 attempt only (no retakes)</option>
+                        <option value="2">Up to 2 attempts</option>
+                        <option value="3">Up to 3 attempts</option>
+                        <option value="5">Up to 5 attempts</option>
+                        <option value="10">Up to 10 attempts</option>
+                    </select>
+                    <p class="aqs-hint">When limited, participants must provide their email to verify their attempt count.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 2: Quiz Format -->
+        <div class="aqs-card" id="step-format">
+            <div class="aqs-card-header"><span class="aqs-step-num">2</span> Quiz Format</div>
+            <div class="aqs-card-body">
+                <div class="aqs-format-cards">
+                    <div class="aqs-format-card aqs-format-card--active" data-format="single">
+                        <span class="aqs-format-icon">&#128196;</span>
+                        <strong>Single Quiz</strong>
+                        <span class="aqs-format-desc">All questions from one source</span>
+                    </div>
+                    <div class="aqs-format-card" data-format="multi">
+                        <span class="aqs-format-icon">&#128218;</span>
+                        <strong>Multi-Topic</strong>
+                        <span class="aqs-format-desc">Multiple sources, questions per topic</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 3: Question Source -->
+        <div class="aqs-card" id="step-source">
+            <div class="aqs-card-header"><span class="aqs-step-num">3</span> Question Source</div>
+            <div class="aqs-card-body">
+                <div class="aqs-source-tabs">
+                    <button class="aqs-source-tab active" data-source="upload">Upload Document</button>
+                    <button class="aqs-source-tab" data-source="topic">Generate from Topic</button>
+                    <button class="aqs-source-tab" data-source="manual">Enter Manually</button>
+                </div>
+
+                <div id="source-upload" class="aqs-source-panel">
+                    <div class="aqs-upload-zone" id="aqs-upload-zone">
+                        <span class="aqs-upload-icon">&#128196;</span>
+                        <p>Drop your PDF or Word document here</p>
+                        <p class="aqs-upload-hint">Supports PDF and .docx files</p>
+                        <input type="file" id="aqs-file-input" accept=".pdf,.docx,.doc" style="display:none;" />
+                        <button class="aqs-btn" id="aqs-browse-btn">Browse File</button>
+                    </div>
+                    <div id="aqs-file-info" style="display:none;" class="aqs-file-info">
+                        <span class="aqs-file-icon">&#128196;</span>
+                        <span id="aqs-file-name"></span>
+                        <button class="aqs-btn aqs-btn-sm aqs-btn-danger" id="aqs-remove-file">Remove</button>
+                    </div>
+                </div>
+
+                <div id="source-topic" class="aqs-source-panel" style="display:none;">
+                    <div class="aqs-field">
+                        <label>Topic or Subject Area</label>
+                        <textarea id="aqs-topic-input" rows="4"
+                            placeholder="e.g. The causes and effects of World War II, focusing on major battles and political outcomes"></textarea>
+                    </div>
+                    <div class="aqs-field">
+                        <label>Difficulty Level</label>
+                        <select id="aqs-difficulty">
+                            <option value="easy">Easy</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="hard">Hard</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="source-manual" class="aqs-source-panel" style="display:none;">
+                    <div class="aqs-manual-notice">
+                        <span>&#9999;&#65039;</span>
+                        <p>Click <strong>&#8220;+ Add Question&#8221;</strong> below to start building your quiz manually.</p>
+                    </div>
+                </div>
+
+                <button class="aqs-btn aqs-btn-primary aqs-full-btn" id="aqs-extract-btn">
+                    &#10024; Generate Questions with AI
+                </button>
+                <button class="aqs-btn aqs-btn-success aqs-full-btn" id="aqs-manual-start-btn" style="display:none;">
+                    &#9999;&#65039; Start Adding Questions Manually
+                </button>
+
+                <div id="aqs-ai-progress" style="display:none;" class="aqs-progress-wrap">
+                    <div class="aqs-spinner"></div>
+                    <span id="aqs-ai-status">Processing with AI...</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 4: Multi-Topic Sections -->
+        <div class="aqs-card aqs-full-width" id="step-multi-sections" style="display:none;">
+            <div class="aqs-card-header"><span class="aqs-step-num">4</span> Topic Sections</div>
+            <div class="aqs-card-body">
+                <p class="aqs-hint" style="margin-bottom:14px;">Add a section for each topic. Name it, choose a source and how many questions to generate, then hit &ldquo;Generate All Topics.&rdquo;</p>
+                <div id="aqs-sections-container"></div>
+                <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <button class="aqs-btn" id="aqs-add-section-btn">+ Add Topic</button>
+                    <button class="aqs-btn aqs-btn-primary" id="aqs-generate-all-btn">&#9889; Generate All Topics</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 5: Review Questions -->
+        <div class="aqs-card aqs-full-width" id="step-questions" style="display:none;">
+            <div class="aqs-card-header">
+                <span class="aqs-step-num">5</span> Review Questions
+                <span id="aqs-q-count" class="aqs-badge">0 questions</span>
+                <button class="aqs-btn aqs-btn-sm" id="aqs-add-question-btn">+ Add Question</button>
+            </div>
+            <div class="aqs-card-body">
+                <div id="aqs-questions-list"></div>
+            </div>
+        </div>
+
+        <!-- STEP 6: Custom Form Fields (participant registration fields) -->
+        <div class="aqs-card aqs-full-width" id="step-custom-form" style="display:none;">
+            <div class="aqs-card-header">
+                <span class="aqs-step-num">6</span> Participant Form Fields
+                <span style="margin-left:8px;font-size:.78rem;color:#6b7280;font-weight:400;">(optional)</span>
+            </div>
+            <div class="aqs-card-body">
+                <p class="aqs-hint" style="margin-bottom:14px;">
+                    Add extra fields that participants must fill out <strong>before starting the quiz</strong> — such as Student ID, Department, Phone Number, etc.
+                    Their responses will appear in the attendance report and exports.
+                </p>
+                <div id="aqs-custom-form-container">
+                    <p style="color:#6b7280;font-size:.85rem;margin:0 0 10px;">No custom fields yet. Click <strong>+ Add Field</strong> to add one.</p>
+                    <button class="aqs-btn aqs-btn-sm aqs-btn-primary" id="aqs-add-cf-btn">+ Add Field</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- STEP 7: Save / Publish -->
+        <div class="aqs-card aqs-full-width" id="step-publish" style="display:none;">
+            <div class="aqs-card-header"><span class="aqs-step-num">7</span> Save or Publish</div>
+            <div class="aqs-card-body">
+
+                <!-- ── Show Results Setting ── -->
+                <div style="margin-bottom:20px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;">
+                    <strong style="font-size:.9rem;display:block;margin-bottom:8px;">&#128202; Results Visibility</strong>
+                    <p style="font-size:.82rem;color:#6b7280;margin:0 0 10px;">Control whether participants can see their score and answers after submitting.</p>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:6px;">
+                        <input type="radio" name="aqs_show_results" id="aqs-show-results-yes" value="yes" checked style="width:16px;height:16px;accent-color:#4f46e5;" />
+                        <div>
+                            <strong style="font-size:.88rem;color:#1e293b;">&#9989; Show results</strong>
+                            <span style="font-size:.8rem;color:#6b7280;display:block;">Participants see their score, percentage, and a question-by-question review.</span>
+                        </div>
+                    </label>
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+                        <input type="radio" name="aqs_show_results" id="aqs-show-results-no" value="no" style="width:16px;height:16px;accent-color:#e11d48;" />
+                        <div>
+                            <strong style="font-size:.88rem;color:#1e293b;">&#128683; Hide results</strong>
+                            <span style="font-size:.8rem;color:#6b7280;display:block;">Participants only see "Thank you, your response has been recorded." You (the host) still see all scores in your dashboard.</span>
+                        </div>
+                    </label>
+                </div>
+
+                <div style="margin-bottom:16px;">
+                    <strong style="font-size:.9rem;display:block;margin-bottom:8px;">&#8987; Quiz Expiry <span style="font-weight:400;color:#9ca3af;">(optional)</span></strong>
+                    <label style="display:block;margin-bottom:4px;cursor:pointer;"><input type="radio" name="aqs_expiry_type" value="none" checked /> No expiry</label>
+                    <label style="display:flex;align-items:center;gap:6px;margin-bottom:4px;cursor:pointer;">
+                        <input type="radio" name="aqs_expiry_type" value="datetime" /> Specific date &amp; time:
+                        <input type="datetime-local" id="aqs-expiry-datetime" style="border:1px solid #d1d5db;border-radius:5px;padding:3px 8px;font-size:.85rem;" />
+                    </label>
+                    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                        <input type="radio" name="aqs_expiry_type" value="duration" /> After:
+                        <input type="number" id="aqs-expiry-days" min="0" value="0" style="width:55px;border:1px solid #d1d5db;border-radius:5px;padding:3px 7px;font-size:.85rem;" /> days
+                        <input type="number" id="aqs-expiry-hours" min="0" value="0" style="width:55px;border:1px solid #d1d5db;border-radius:5px;padding:3px 7px;font-size:.85rem;" /> hours
+                    </label>
+                </div>
+                <div class="aqs-publish-actions">
+                    <button class="aqs-btn" id="aqs-save-draft-btn">&#10003; Save as Draft</button>
+                    <button class="aqs-btn aqs-btn-success" id="aqs-publish-btn">&#128640; Publish &amp; Get Links</button>
+                </div>
+            </div>
+            <div id="aqs-publish-result" style="display:none;" class="aqs-publish-result">
+                <div class="aqs-publish-success-header">
+                    <span class="aqs-publish-check">&#10003;</span>
+                    <strong>Quiz Published!</strong>
+                </div>
+                <p style="margin:0 0 12px;">Share these links with your participants:</p>
+                <div style="margin-bottom:14px;">
+                    <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">&#127891; Quiz Link:</label>
+                    <div class="aqs-link-box">
+                        <input type="text" id="aqs-quiz-link" readonly />
+                        <button class="aqs-btn aqs-btn-sm" id="aqs-copy-quiz-link">Copy</button>
+                    </div>
+                </div>
+                <div>
+                    <label style="font-size:.85rem;font-weight:600;color:#374151;display:block;margin-bottom:4px;">&#9889; Challenge Link:</label>
+                    <div class="aqs-link-box">
+                        <input type="text" id="aqs-challenge-link" readonly />
+                        <button class="aqs-btn aqs-btn-sm" id="aqs-copy-challenge-link">Copy</button>
+                    </div>
+                </div>
+                <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+                    <a href="#" id="aqs-go-challenge-btn" class="aqs-btn aqs-btn-primary" target="_blank">&#9889; Host Live Challenge</a>
+                    <a href="index.html" class="aqs-btn">&#128202; Go to Home</a>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- .aqs-create-grid -->
+
+    <!-- Local Backend Quiz Result Renderer -->
+    <div id="aqs-quiz-result" style="display:none;margin-top:24px;"></div>
+
+</div><!-- .aqs-create-wrap -->
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"
+    onload="if(typeof renderMathInElement==='function'){renderMathInElement(document.body,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false});}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script>
+var AQS = {
+    ajax_url:'',nonce:'',public_nonce:'',auth_nonce:'',
+    home_url:'index.html',create_page_url:'create-quiz.html',
+    dashboard_url:'index.html',results_url:'index.html',
+    take_url:'index.html',register_url:'index.html',login_url:'index.html',
+    user_dashboard_url:'index.html',challenge_url:'index.html',
+    studio_url:'studio.html',is_admin:'yes',is_host:'yes',is_logged_in:'yes',
+    current_user_name:'User',current_user_role:'host',
+    quiz_bg_music_enabled:'0',quiz_bg_music_url:'audio/quiz-background.mp3',
+    groq_key:'',plugin_url:'./'
+};
+var AQS_CONTEXT='host';
+var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'Powered by Darapet Technology',logo_url:'',color_primary:'#6366f1',color_bg:'',color_text:'',duration:'3',sound:'0',music_url:'audio/quiz-background.mp3'};
+</script>
+<script src="js/aqs-splash.js"></script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-file-parser.js"></script>
+<script src="js/aqs-create.js"></script>
+
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

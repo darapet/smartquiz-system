@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Dashboard — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+/* ── Admin Sidebar ── */
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;display:flex;align-items:center;gap:8px;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+.aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;color:#6366f1;}
+/* ── Admin Main ── */
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.wrap.aqs-admin-wrap{max-width:1200px;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+.aqs-admin-tabs-bar{display:flex;gap:4px;margin-bottom:20px;flex-wrap:wrap;border-bottom:2px solid #e5e7eb;padding-bottom:0;}
+.aqs-admin-tab{background:none;border:none;padding:10px 18px;font-size:.88rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;font-family:inherit;}
+.aqs-admin-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.aqs-admin-tab:hover{color:#4f46e5;}
+.aqs-admin-tab-content{display:none;}
+.aqs-admin-tab-content.active{display:block;}
+.aqs-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-bottom:20px;}
+.aqs-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:20px;text-align:center;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.aqs-stat-card span{display:block;font-size:2rem;font-weight:800;color:#4f46e5;}
+.aqs-stat-card label{font-size:.8rem;color:#64748b;font-weight:500;}
+.aqs-table-wrap{overflow-x:auto;border-radius:12px;border:1px solid #e5e7eb;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.aqs-table{width:100%;border-collapse:collapse;font-size:.87rem;}
+.aqs-table th{background:#f8fafc;padding:12px 14px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap;}
+.aqs-table td{padding:11px 14px;border-bottom:1px solid #f1f5f9;color:#374151;vertical-align:middle;}
+.aqs-table tr:last-child td{border-bottom:none;}
+.aqs-table tr:hover td{background:#fafafa;}
+.aqs-loading{text-align:center;color:#94a3b8;font-style:italic;padding:24px;}
+.aqs-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;}
+.aqs-badge-draft{background:#fef3c7;color:#92400e;}
+.aqs-badge-published{background:#d1fae5;color:#065f46;}
+/* Modals */
+.aqs-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.aqs-modal-content{background:#fff;border-radius:16px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.aqs-modal-content.aqs-modal-xl{max-width:900px;}
+.aqs-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 24px;border-bottom:1px solid #e5e7eb;}
+.aqs-modal-header h3{margin:0;font-size:1.1rem;font-weight:700;}
+.aqs-modal-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;line-height:1;padding:4px;}
+.aqs-modal-body{padding:20px 24px;}
+.aqs-modal-footer{display:flex;gap:10px;padding:16px 24px;border-top:1px solid #e5e7eb;}
+.aqs-modal-sub{font-size:.82rem;color:#6b7280;margin:4px 0 0;}
+/* Buttons */
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.aqs-btn-primary:hover{background:#4338ca;}
+.aqs-btn-danger{background:#dc2626;color:#fff;border-color:#dc2626;}
+.aqs-btn-danger:hover{background:#b91c1c;}
+.aqs-btn-sm{padding:6px 12px;font-size:.8rem;}
+/* Ads */
+.aqs-ads-card{background:#fff;border:1px solid #e5e7eb;border-radius:12px;margin-bottom:20px;overflow:hidden;}
+.aqs-ads-card-header{display:flex;align-items:flex-start;gap:12px;padding:18px 20px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
+.aqs-ads-card-body{padding:20px;}
+.aqs-ads-settings-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:14px;}
+.aqs-form-group{display:flex;flex-direction:column;gap:5px;}
+.aqs-form-group label{font-size:.82rem;font-weight:600;color:#374151;}
+.aqs-form-group input,.aqs-form-group select,.aqs-form-group textarea{border:1.5px solid #d1d5db;border-radius:8px;padding:8px 10px;font-size:.88rem;color:#1e293b;width:100%;box-sizing:border-box;}
+.aqs-form-group input:focus,.aqs-form-group select:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.aqs-ads-form-footer{display:flex;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid #e5e7eb;}
+.aqs-tab-toolbar{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.aqs-export-dropdown{position:relative;}
+.aqs-export-menu{position:absolute;top:100%;left:0;background:#fff;border:1px solid #e5e7eb;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:50;min-width:160px;padding:6px 0;margin-top:4px;}
+.aqs-export-item{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 14px;font-size:.84rem;cursor:pointer;color:#374151;}
+.aqs-export-item:hover{background:#f8fafc;}
+.aqs-req-star{color:#ef4444;}
+.aqs-ad-upload-zone{border:2px dashed #d1d5db;border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;transition:border-color .2s;}
+.aqs-ad-upload-zone:hover{border-color:#6366f1;}
+.aqs-ad-upload-icon{font-size:2.5rem;margin-bottom:8px;}
+.aqs-ad-upload-msg{color:#64748b;font-size:.9rem;margin-bottom:12px;}
+.aqs-ad-upload-btns{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;}
+.aqs-upload-or{color:#9ca3af;font-size:.84rem;}
+.aqs-ad-upload-hint{font-size:.78rem;color:#9ca3af;margin-top:8px;}
+.aqs-ads-bottom-row{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
+.aqs-form-group-stack{display:flex;flex-direction:column;gap:10px;}
+@media(max-width:700px){.aqs-admin-sidebar{display:none;}.aqs-ads-bottom-row{grid-template-columns:1fr;}}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    auth_nonce: '',
+    home_url: 'index.html',
+    is_logged_in: true,
+    is_host: true,
+    is_admin: true,
+    groq_key: '',
+    plugin_url: './'
+};
+window._AQS_AJAX_URL = 'javascript:void(0) /* Firebase: use Firestore admin SDK */';
+window._AQS_SETTINGS_NONCE = '';
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<aside class="aqs-admin-sidebar">
+    <div class="aqs-admin-sidebar-brand">
+        <a href="index.html">⚡ xzily AI</a>
+    </div>
+    <nav class="aqs-admin-nav">
+        <a href="admin-dashboard.html" class="active"><span class="aqs-nav-icon">📊</span> Dashboard</a>
+        <a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a>
+        <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
+        <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
+        <a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+    </nav>
+    <div class="aqs-admin-sidebar-footer">
+        <a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a>
+    </div>
+</aside>
+
+<div class="aqs-admin-content">
+<div class="wrap aqs-admin-wrap">
+    <div class="aqs-admin-header">
+        <h1>AI Quiz System</h1>
+        <a href="admin-create-quiz.html" class="aqs-btn aqs-btn-primary">+ Create New Quiz</a>
+    </div>
+
+    <div class="aqs-admin-tabs-bar">
+        <button class="aqs-admin-tab active" data-tab="tab-my-quizzes">My Quizzes</button>
+        <button class="aqs-admin-tab" data-tab="tab-all-quizzes">All Host Quizzes</button>
+        <button class="aqs-admin-tab" data-tab="tab-deleted">🗑 Deleted Quizzes</button>
+        <button class="aqs-admin-tab" data-tab="tab-attendees">All Attendees</button>
+        <button class="aqs-admin-tab" data-tab="tab-ads">📢 Ads Manager</button>
+    </div>
+
+    <!-- TAB: My Quizzes -->
+    <div id="tab-my-quizzes" class="aqs-admin-tab-content active">
+        <div class="aqs-stats" id="aqs-stats">
+            <div class="aqs-stat-card"><span id="stat-total">0</span><label>Total Quizzes</label></div>
+            <div class="aqs-stat-card"><span id="stat-published">0</span><label>Published</label></div>
+            <div class="aqs-stat-card"><span id="stat-draft">0</span><label>Drafts</label></div>
+        </div>
+        <div class="aqs-table-wrap">
+            <table class="aqs-table" id="aqs-quizzes-table">
+                <thead><tr><th>Title</th><th>Subject</th><th>Qs</th><th>Time</th><th>Mode</th><th>Status</th><th>Host</th><th>Quiz Link</th><th>Actions</th></tr></thead>
+                <tbody id="aqs-quiz-rows"><tr><td colspan="9" class="aqs-loading">Loading quizzes...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: All Host Quizzes -->
+    <div id="tab-all-quizzes" class="aqs-admin-tab-content">
+        <div class="aqs-table-wrap">
+            <table class="aqs-table">
+                <thead><tr><th>Host</th><th>Title</th><th>Subject</th><th>Qs</th><th>Mode</th><th>Status</th><th>Host Status</th><th>Created</th><th>Actions</th></tr></thead>
+                <tbody id="aqs-all-quiz-rows"><tr><td colspan="9" class="aqs-loading">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: Deleted Quizzes -->
+    <div id="tab-deleted" class="aqs-admin-tab-content">
+        <p style="color:#666;margin-bottom:12px;">Soft-deleted quizzes — you can restore any of them.</p>
+        <div class="aqs-table-wrap">
+            <table class="aqs-table">
+                <thead><tr><th>Host</th><th>Title</th><th>Subject</th><th>Status</th><th>Deleted At</th><th>Actions</th></tr></thead>
+                <tbody id="aqs-deleted-rows"><tr><td colspan="6" class="aqs-loading">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: All Attendees -->
+    <div id="tab-attendees" class="aqs-admin-tab-content">
+        <div class="aqs-tab-toolbar">
+            <div class="aqs-export-dropdown">
+                <button class="aqs-btn aqs-btn-sm" id="aqs-all-att-export-btn">📤 Export ▾</button>
+                <div class="aqs-export-menu" id="aqs-all-att-export-menu" style="display:none;">
+                    <button class="aqs-export-item" data-format="csv">📄 Export CSV</button>
+                    <button class="aqs-export-item" data-format="excel">📊 Export Excel (.xlsx)</button>
+                    <button class="aqs-export-item" data-format="pdf">📑 Export PDF</button>
+                    <button class="aqs-export-item" data-format="word">📝 Export Word (.doc)</button>
+                </div>
+            </div>
+        </div>
+        <div class="aqs-table-wrap">
+            <table class="aqs-table" id="aqs-all-attempts-table">
+                <thead><tr><th>#</th><th>Participant</th><th>Quiz</th><th>Host</th><th>Score</th><th>Pct</th><th>Finished At</th></tr></thead>
+                <tbody id="aqs-all-attempts-rows"><tr><td colspan="7" class="aqs-loading">Loading...</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TAB: Ads Manager -->
+    <div id="tab-ads" class="aqs-admin-tab-content">
+        <div class="aqs-ads-card" id="aqs-ads-form">
+            <div class="aqs-ads-card-header">
+                <div>
+                    <h3 id="aqs-ads-form-title">➕ Create New Ad</h3>
+                    <p class="aqs-ads-card-sub">Ads appear to quiz takers as pop-up banners at configured moments.</p>
+                </div>
+            </div>
+            <div class="aqs-ads-card-body">
+                <input type="hidden" id="aqs-ad-id" value="0" />
+                <div class="aqs-ads-settings-row">
+                    <div class="aqs-form-group">
+                        <label>Ad Title <span class="aqs-req-star">*</span></label>
+                        <input type="text" id="aqs-ad-title" placeholder="e.g. Sponsor Banner" />
+                    </div>
+                    <div class="aqs-form-group">
+                        <label>Show On</label>
+                        <select id="aqs-ad-trigger">
+                            <option value="on_start">Quiz Start</option>
+                            <option value="on_section">Section Change</option>
+                            <option value="on_finish">Quiz Finish</option>
+                            <option value="timed">Timed (after N seconds)</option>
+                        </select>
+                    </div>
+                    <div class="aqs-form-group" id="aqs-ad-trigger-secs-wrap" style="display:none;">
+                        <label>Trigger After (seconds)</label>
+                        <input type="number" id="aqs-ad-trigger-seconds" value="30" min="5" />
+                    </div>
+                    <div class="aqs-form-group">
+                        <label>Don't Show Again For (hrs)</label>
+                        <input type="number" id="aqs-ad-show-again" value="24" min="1" />
+                    </div>
+                </div>
+                <div class="aqs-form-group" style="margin-bottom:18px;">
+                    <label>Image / Video <span class="aqs-req-star">*</span></label>
+                    <input type="hidden" id="aqs-ad-image-url" />
+                    <div class="aqs-ad-upload-zone" id="aqs-ad-upload-zone">
+                        <div id="aqs-ad-upload-placeholder">
+                            <div class="aqs-ad-upload-icon">🖼️</div>
+                            <p class="aqs-ad-upload-msg">Drag &amp; drop an image or video here</p>
+                            <div class="aqs-ad-upload-btns">
+                                <button type="button" class="aqs-btn aqs-btn-primary aqs-btn-sm" id="aqs-ad-choose-media">📂 Choose File</button>
+                                <span class="aqs-upload-or">or</span>
+                                <button type="button" class="aqs-btn aqs-btn-sm" id="aqs-ad-upload-file-btn">⬆️ Upload File</button>
+                            </div>
+                            <p class="aqs-ad-upload-hint">JPG · PNG · GIF · WebP · MP4 · WebM · Max 8 MB</p>
+                        </div>
+                        <div id="aqs-ad-media-preview" style="display:none;"></div>
+                    </div>
+                    <input type="file" id="aqs-ad-file-input" accept="image/*,video/*" style="display:none;" />
+                </div>
+                <div class="aqs-ads-bottom-row">
+                    <div class="aqs-form-group">
+                        <label>Ad Body Text</label>
+                        <textarea id="aqs-ad-body" rows="3" placeholder="Optional caption"></textarea>
+                    </div>
+                    <div class="aqs-form-group-stack">
+                        <div class="aqs-form-group">
+                            <label>CTA Button Label</label>
+                            <input type="text" id="aqs-ad-btn-label" placeholder="Learn More" />
+                        </div>
+                        <div class="aqs-form-group">
+                            <label>CTA Button URL</label>
+                            <input type="url" id="aqs-ad-btn-url" placeholder="https://example.com" />
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0;">
+                    <label style="display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:500;cursor:pointer;margin-bottom:14px;">
+                        <input type="checkbox" id="aqs-ad-typing" style="width:15px;height:15px;" />
+                        Animated typing effect for body text
+                    </label>
+                    <div class="aqs-ads-settings-row">
+                        <div class="aqs-form-group">
+                            <label>🎨 Template</label>
+                            <select id="aqs-ad-template">
+                                <option value="1">T1 — Classic White</option><option value="2">T2 — Dark Pro</option>
+                                <option value="3">T3 — Gradient Indigo</option><option value="4">T4 — Neon Cyber</option>
+                                <option value="5">T5 — Minimal Clean</option><option value="6">T6 — Warm Sunset</option>
+                                <option value="7">T7 — Ocean Blue</option><option value="8">T8 — Glassmorphism</option>
+                                <option value="9">T9 — Gold Premium</option><option value="10">T10 — Nature Green</option>
+                            </select>
+                        </div>
+                        <div class="aqs-form-group">
+                            <label>📍 Position</label>
+                            <select id="aqs-ad-position">
+                                <option value="center">Center</option><option value="top">Top Center</option>
+                                <option value="bottom">Bottom Center</option><option value="top-left">Top Left</option>
+                                <option value="top-right">Top Right</option><option value="bottom-left">Bottom Left</option>
+                                <option value="bottom-right">Bottom Right</option>
+                            </select>
+                        </div>
+                        <div class="aqs-form-group">
+                            <label>👁 Show On</label>
+                            <select id="aqs-ad-show-on">
+                                <option value="both">Both</option><option value="host">Host Pages Only</option>
+                                <option value="taker">Quiz Takers Only</option>
+                            </select>
+                        </div>
+                        <div class="aqs-form-group">
+                            <label>🎬 Intro</label>
+                            <select id="aqs-ad-intro">
+                                <option value="fadeIn">Fade In</option><option value="slideDown">Slide Down</option>
+                                <option value="slideUp">Slide Up</option><option value="zoomIn">Zoom In</option>
+                                <option value="flipIn">Flip In</option>
+                            </select>
+                        </div>
+                        <div class="aqs-form-group">
+                            <label>🎬 Outro</label>
+                            <select id="aqs-ad-outro">
+                                <option value="fadeOut">Fade Out</option><option value="slideUp">Slide Up</option>
+                                <option value="zoomOut">Zoom Out</option>
+                            </select>
+                        </div>
+                        <div class="aqs-form-group">
+                            <label>⏱ Auto-close (sec, 0=off)</label>
+                            <input type="number" id="aqs-ad-autoclose" value="0" min="0" max="300" />
+                        </div>
+                    </div>
+                </div>
+                <input type="hidden" id="aqs-ad-media-type" value="image" />
+                <div class="aqs-ads-form-footer">
+                    <button class="aqs-btn aqs-btn-primary" id="aqs-save-ad-btn">💾 Save Ad</button>
+                    <button class="aqs-btn" id="aqs-cancel-ad-btn" style="display:none;">✕ Cancel Edit</button>
+                </div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin:20px 0 12px;">
+            <h3 style="margin:0;font-size:1rem;font-weight:700;color:#111827;">All Ads</h3>
+            <span id="aqs-ads-count" style="font-size:0.82rem;color:#6b7280;"></span>
+        </div>
+        <div id="aqs-ads-grid"><div class="aqs-loading">Loading ads...</div></div>
+    </div>
+
+    <!-- Print-Before-Delete Modal -->
+    <div id="aqs-admin-print-delete-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content" style="max-width:560px;">
+            <div class="aqs-modal-header" style="border-bottom:3px solid #dc2626;">
+                <div><h3 style="color:#dc2626;">🖨️ Print Required Before Deleting</h3><p class="aqs-modal-sub" id="aqs-admin-pbd-sub"></p></div>
+                <button class="aqs-modal-close" id="aqs-close-admin-pbd">&times;</button>
+            </div>
+            <div id="aqs-admin-pbd-body" class="aqs-modal-body"></div>
+            <div class="aqs-modal-footer" style="flex-wrap:wrap;gap:8px;">
+                <div style="width:100%;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;font-size:.82rem;color:#92400e;">
+                    ⚠️ <strong>Print first to unlock delete.</strong>
+                </div>
+                <button class="aqs-btn aqs-btn-primary" id="aqs-admin-pbd-print-btn">🖨️ Print &amp; Unlock Delete</button>
+                <button class="aqs-btn aqs-btn-danger" id="aqs-admin-pbd-confirm-btn" disabled style="opacity:0.4;cursor:not-allowed;">Delete</button>
+                <button class="aqs-btn" id="aqs-admin-pbd-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attempts Modal -->
+    <div id="aqs-attempts-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content">
+            <div class="aqs-modal-header"><h3>Quiz Attempts</h3><button class="aqs-modal-close" id="aqs-close-attempts">&times;</button></div>
+            <div id="aqs-attempts-body" class="aqs-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Ad Preview Modal -->
+    <div id="aqs-ad-preview-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content" style="max-width:480px;">
+            <div class="aqs-modal-header"><h3>Ad Preview</h3><button class="aqs-modal-close" id="aqs-close-ad-preview">&times;</button></div>
+            <div id="aqs-ad-preview-body" class="aqs-modal-body"></div>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+// Tab switching
+document.querySelectorAll('.aqs-admin-tab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+        var tab = this.dataset.tab;
+        document.querySelectorAll('.aqs-admin-tab').forEach(function(b){b.classList.remove('active');});
+        document.querySelectorAll('.aqs-admin-tab-content').forEach(function(c){c.classList.remove('active');});
+        this.classList.add('active');
+        var el = document.getElementById(tab);
+        if(el) el.classList.add('active');
+    });
+});
+// Export dropdown toggle
+var expBtn = document.getElementById('aqs-all-att-export-btn');
+var expMenu = document.getElementById('aqs-all-att-export-menu');
+if(expBtn && expMenu){
+    expBtn.addEventListener('click', function(){expMenu.style.display = expMenu.style.display==='none'?'block':'none';});
+    document.addEventListener('click', function(e){if(!expBtn.contains(e.target)&&!expMenu.contains(e.target))expMenu.style.display='none';});
+}
+// Ad trigger show/hide
+var trigSel = document.getElementById('aqs-ad-trigger');
+if(trigSel){
+    trigSel.addEventListener('change', function(){
+        document.getElementById('aqs-ad-trigger-secs-wrap').style.display = this.value==='timed'?'flex':'none';
+    });
+}
+// File upload click
+var uploadZone = document.getElementById('aqs-ad-upload-zone');
+var fileInput = document.getElementById('aqs-ad-file-input');
+var uploadBtn = document.getElementById('aqs-ad-upload-file-btn');
+if(uploadBtn && fileInput) uploadBtn.addEventListener('click', function(){fileInput.click();});
+if(fileInput){
+    fileInput.addEventListener('change', function(){
+        if(this.files[0]){
+            var preview = document.getElementById('aqs-ad-media-preview');
+            var placeholder = document.getElementById('aqs-ad-upload-placeholder');
+            document.getElementById('aqs-ad-image-url').value = URL.createObjectURL(this.files[0]);
+            placeholder.style.display = 'none';
+            preview.style.display = 'block';
+            preview.innerHTML = '<p style="padding:16px;color:#065f46;">✓ File selected: ' + this.files[0].name + '</p>';
+        }
+    });
+}
+// Save Ad button
+document.getElementById('aqs-save-ad-btn').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var body = {
+        title: document.getElementById('aqs-ad-title').value,
+        trigger: document.getElementById('aqs-ad-trigger').value,
+        image_url: document.getElementById('aqs-ad-image-url').value,
+        body_text: document.getElementById('aqs-ad-body').value,
+        btn_label: document.getElementById('aqs-ad-btn-label').value,
+        btn_url: document.getElementById('aqs-ad-btn-url').value,
+        template: document.getElementById('aqs-ad-template').value,
+        position: document.getElementById('aqs-ad-position').value,
+    };
+    fetch('#firebase-admin-endpoint-removed/api/ads', {
+        method: 'POST', credentials: 'include',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+    }).then(function(r){return r.json();})
+    .then(function(d){
+        btn.disabled = false; btn.textContent = '💾 Save Ad';
+        alert(d.success ? '✓ Ad saved!' : '✗ Error: ' + (d.message||'Failed'));
+    }).catch(function(){btn.disabled=false;btn.textContent='💾 Save Ad';alert('Network error.');});
+});
+// Load dashboard data
+fetch('#firebase-admin-endpoint-removed/api/admin/quizzes', {credentials:'include'})
+    .then(function(r){return r.json();})
+    .then(function(data){
+        var rows = document.getElementById('aqs-quiz-rows');
+        var quizzes = Array.isArray(data) ? data : (data.quizzes || []);
+        var total = quizzes.length;
+        var pub = quizzes.filter(function(q){return q.status==='published';}).length;
+        var draft = total - pub;
+        document.getElementById('stat-total').textContent = total;
+        document.getElementById('stat-published').textContent = pub;
+        document.getElementById('stat-draft').textContent = draft;
+        if(total === 0){ rows.innerHTML = '<tr><td colspan="9" class="aqs-loading">No quizzes yet.</td></tr>'; return; }
+        rows.innerHTML = quizzes.map(function(q){
+            return '<tr><td>' + (q.title||'—') + '</td><td>' + (q.subject||'—') + '</td><td>' + (q.num_questions||0) + '</td><td>' + (q.time_limit||0) + 'm</td><td>' + (q.mode||'exam') + '</td><td><span class="aqs-badge aqs-badge-' + (q.status||'draft') + '">' + (q.status||'draft') + '</span></td><td>' + (q.host_name||'—') + '</td><td>' + (q.quiz_code||'—') + '</td><td><a href="take-quiz.html?code=' + (q.quiz_code||'') + '" class="aqs-btn aqs-btn-sm" target="_blank">View</a></td></tr>';
+        }).join('');
+    }).catch(function(){
+        document.getElementById('aqs-quiz-rows').innerHTML = '<tr><td colspan="9" class="aqs-loading">Failed to load. Check API server.</td></tr>';
+    });
+</script>
+</body>
+</html>

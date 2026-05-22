@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Dashboard — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.1rem;}
+.aqs-page-main{padding:32px 20px;max-width:1200px;margin:0 auto;}
+/* Responsive header nav */
+.aqs-hdr-nav{display:flex;gap:8px;align-items:center;}
+.aqs-hdr-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px;cursor:pointer;}
+.aqs-hdr-hamburger span{display:block;width:18px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
+.aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
+.aqs-hdr-drawer.open{display:flex;}
+.aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
+@media(max-width:640px){
+  .aqs-hdr-nav{display:none;}
+  .aqs-hdr-hamburger{display:flex;}
+  .aqs-page-main{padding:16px 12px;}
+  .aqs-user-topbar{flex-direction:column;align-items:flex-start;gap:12px;padding:16px;}
+  .aqs-user-topbar-actions{width:100%;display:flex;flex-direction:row;flex-wrap:wrap;gap:8px;}
+  .aqs-user-topbar-actions .aqs-btn{flex:1 1 auto;justify-content:center;min-width:0;font-size:.82rem;}
+  .aqs-create-grid{grid-template-columns:1fr !important;}
+}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    auth_nonce: '',
+    home_url: 'index.html',
+    create_page_url: 'create-quiz.html',
+    studio_url: 'studio.html',
+    dashboard_url: 'dashboard.html',
+    imagegen_url: 'image-gen.html',
+    is_logged_in: true,
+    is_host: true,
+    is_admin: false,
+    current_user_name: 'User',
+    current_user_email: '',
+    current_user_role: 'Member',
+    groq_key: '',
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+<header class="aqs-site-header">
+    <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
+    <nav class="aqs-hdr-nav">
+        <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
+        <a href="studio.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ Studio</a>
+        <a href="image-gen.html" class="aqs-btn aqs-btn-sm aqs-btn-success">🖼️ Images</a>
+        <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+    </nav>
+    <button class="aqs-hdr-hamburger" id="aqs-hdr-ham" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+</header>
+<div class="aqs-hdr-drawer" id="aqs-hdr-drawer">
+    <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
+    <a href="studio.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ Studio</a>
+    <a href="image-gen.html" class="aqs-btn aqs-btn-sm aqs-btn-success">🖼️ Images</a>
+    <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+</div>
+<script>
+(function(){
+    var ham=document.getElementById('aqs-hdr-ham');
+    var drawer=document.getElementById('aqs-hdr-drawer');
+    if(ham&&drawer) ham.addEventListener('click',function(){drawer.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(drawer&&!drawer.contains(e.target)&&e.target!==ham)drawer.classList.remove('open');});
+})();
+</script>
+<main class="aqs-page-main">
+<div class="aqs-wrap aqs-user-dash-wrap">
+
+    <div class="aqs-user-topbar">
+        <div class="aqs-user-topbar-left">
+            <div class="aqs-avatar" id="aqs-user-avatar-initial">U</div>
+            <div>
+                <div class="aqs-user-name" id="aqs-user-display-name">Hello!</div>
+                <div class="aqs-user-role-badge" id="aqs-user-role-badge">Member</div>
+            </div>
+        </div>
+        <div class="aqs-user-topbar-actions">
+            <a href="studio.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ Open Studio</a>
+            <a href="image-gen.html" class="aqs-btn aqs-btn-sm aqs-btn-success">🖼️ Image Creator</a>
+            <button class="aqs-btn aqs-btn-sm" id="aqs-user-logout-btn">Log Out</button>
+        </div>
+    </div>
+
+    <div class="aqs-create-grid" style="margin-top:24px;">
+        <div class="aqs-card">
+            <div class="aqs-card-header">⬡ AI Chat Studio</div>
+            <div class="aqs-card-body">
+                <p style="color:#64748b;font-size:.9rem;margin-bottom:16px;">Chat with XZILY AI, attach files, ask questions, solve problems — with voice mode and markdown support.</p>
+                <a href="studio.html" class="aqs-btn aqs-btn-primary" style="display:inline-block;">Go to Studio →</a>
+            </div>
+        </div>
+        <div class="aqs-card">
+            <div class="aqs-card-header">🖼️ AI Image Creator</div>
+            <div class="aqs-card-body">
+                <p style="color:#64748b;font-size:.9rem;margin-bottom:16px;">Generate professional-quality images using FLUX AI. Describe anything and watch it come to life.</p>
+                <a href="image-gen.html" class="aqs-btn aqs-btn-success" style="display:inline-block;">Create Images →</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="aqs-card aqs-full-width" style="margin-top:24px;">
+        <div class="aqs-card-header">👤 Account</div>
+        <div class="aqs-card-body">
+            <table style="width:100%;border-collapse:collapse;">
+                <tr>
+                    <td style="padding:8px 0;color:#64748b;width:140px;">Name</td>
+                    <td style="padding:8px 0;font-weight:500;" id="aqs-account-name">—</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0;color:#64748b;">Email</td>
+                    <td style="padding:8px 0;font-weight:500;" id="aqs-account-email">—</td>
+                </tr>
+                <tr>
+                    <td style="padding:8px 0;color:#64748b;">Role</td>
+                    <td style="padding:8px 0;font-weight:500;" id="aqs-account-role">Member</td>
+                </tr>
+            </table>
+            <div style="margin-top:16px;">
+                <button class="aqs-btn aqs-btn-sm aqs-btn-danger" id="aqs-user-logout-btn2" style="margin-top:4px;">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+</div>
+</main>
+<script>
+(function(){
+    fetch('#firebase-me-endpoint', {credentials:'include'})
+        .then(function(r){return r.json();})
+        .then(function(d){
+            if(d && d.name){
+                document.getElementById('aqs-user-avatar-initial').textContent = d.name.charAt(0).toUpperCase();
+                document.getElementById('aqs-user-display-name').textContent = 'Hello, ' + d.name + '!';
+                document.getElementById('aqs-account-name').textContent = d.name;
+                document.getElementById('aqs-account-email').textContent = d.email || '—';
+                document.getElementById('aqs-account-role').textContent = d.role || 'Member';
+                document.getElementById('aqs-user-role-badge').textContent = d.role || 'Member';
+            }
+        }).catch(function(){});
+
+    function doLogout(){
+        /* logout handled by Firebase auth — see aqs-firebase.js aqs_logout action */
+        jQuery.post('firebase', {action:'aqs_logout'})
+            .then(function(){window.location.href='index.html';})
+            .catch(function(){window.location.href='index.html';});
+    }
+    document.getElementById('aqs-user-logout-btn').addEventListener('click', doLogout);
+    document.getElementById('aqs-user-logout-btn2').addEventListener('click', doLogout);
+})();
+</script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-auth.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

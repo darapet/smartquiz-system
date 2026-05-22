@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Host Dashboard — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px;}
+.aqs-page-main{padding:32px 20px;max-width:1200px;margin:0 auto;}
+/* Responsive header nav */
+.aqs-hdr-nav{display:flex;gap:8px;align-items:center;}
+.aqs-hdr-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px;cursor:pointer;}
+.aqs-hdr-hamburger span{display:block;width:18px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
+.aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
+.aqs-hdr-drawer.open{display:flex;}
+.aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
+@media(max-width:640px){
+  .aqs-hdr-nav{display:none;}
+  .aqs-hdr-hamburger{display:flex;}
+  .aqs-page-main{padding:20px 14px;}
+  .aqs-header{flex-direction:column;align-items:flex-start;gap:10px;}
+  .aqs-header > div{width:100%;display:flex;flex-direction:column;gap:8px;}
+  .aqs-header > div .aqs-btn{width:100%;justify-content:center;}
+}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    auth_nonce: '',
+    home_url: 'index.html',
+    create_page_url: 'create-quiz.html',
+    studio_url: 'studio.html',
+    challenge_url: 'challenge.html',
+    user_dashboard_url: 'user-dashboard.html',
+    dashboard_url: 'dashboard.html',
+    take_url: 'take-quiz.html',
+    is_logged_in: true,
+    is_host: true,
+    is_admin: false,
+    groq_key: '',
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+<header class="aqs-site-header">
+    <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
+    <nav class="aqs-hdr-nav">
+        <a href="studio.html" class="aqs-btn aqs-btn-sm">⬡ Studio</a>
+        <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
+        <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
+    </nav>
+    <button class="aqs-hdr-hamburger" id="aqs-hdr-ham" aria-label="Menu">
+        <span></span><span></span><span></span>
+    </button>
+</header>
+<div class="aqs-hdr-drawer" id="aqs-hdr-drawer">
+    <a href="studio.html" class="aqs-btn aqs-btn-sm">⬡ Studio</a>
+    <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
+    <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
+</div>
+<script>
+(function(){
+    var ham=document.getElementById('aqs-hdr-ham');
+    var drawer=document.getElementById('aqs-hdr-drawer');
+    if(ham&&drawer) ham.addEventListener('click',function(){drawer.classList.toggle('open');});
+    document.addEventListener('click',function(e){if(drawer&&!drawer.contains(e.target)&&e.target!==ham)drawer.classList.remove('open');});
+})();
+</script>
+<main class="aqs-page-main">
+<div class="aqs-wrap">
+    <div class="aqs-header">
+        <h2>Host Dashboard</h2>
+        <div class="aqs-dash-action-bar">
+            <a href="challenge.html" class="aqs-btn aqs-btn-challenge">⚡ Create Challenge Quiz</a>
+            <a href="user-dashboard.html" class="aqs-btn">My Profile</a>
+            <a href="create-quiz.html" class="aqs-btn aqs-btn-primary">+ Create New Quiz</a>
+        </div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b);border:1px solid #fca5a5;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start;">
+        <span style="font-size:1.6rem;line-height:1;">⚠️</span>
+        <div style="color:#fff;flex:1;">
+            <strong style="font-size:.95rem;display:block;margin-bottom:4px;">Important: Your Quiz Results Are Automatically Deleted After 4 Days!</strong>
+            <p style="margin:0 0 8px;font-size:.84rem;opacity:.92;line-height:1.5;">All quiz results, attendance records, and participant scores are permanently deleted after <strong>4 days maximum</strong> and <strong>cannot be restored</strong>. Please print or export your results before then.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                <a href="https://wa.me/2347055428581" target="_blank" style="background:#25d366;color:#fff;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;">💬 Message Admin to Keep Your Data</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="aqs-host-contact-notice">
+        <span class="aqs-host-notice-icon">💬</span>
+        <div>
+            <strong>Need help with a deleted quiz?</strong> Only the admin can restore a deleted quiz. Contact admin directly:
+            <div class="aqs-notice-buttons">
+                <a href="https://wa.me/2347055428581" target="_blank" class="aqs-wa-btn">WhatsApp Admin</a>
+                <a href="tel:+2347055428581" class="aqs-call-btn">📞 Call Admin</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="aqs-stats" id="aqs-stats">
+        <div class="aqs-stat-card"><span id="stat-total">0</span><label>Total Quizzes</label></div>
+        <div class="aqs-stat-card"><span id="stat-published">0</span><label>Published</label></div>
+        <div class="aqs-stat-card"><span id="stat-draft">0</span><label>Drafts</label></div>
+    </div>
+
+    <div class="aqs-quiz-list-wrap">
+        <div id="aqs-quiz-list">
+            <p class="aqs-loading">Loading quizzes...</p>
+        </div>
+    </div>
+
+    <!-- Quiz Detail Modal -->
+    <div id="aqs-quiz-detail-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content">
+            <div class="aqs-modal-header">
+                <div><h3 id="aqs-quiz-detail-title">Quiz Details</h3></div>
+                <button class="aqs-modal-close" id="aqs-close-quiz-detail">&times;</button>
+            </div>
+            <div id="aqs-quiz-detail-body" class="aqs-modal-body"></div>
+            <div class="aqs-modal-footer" id="aqs-quiz-detail-actions" style="flex-wrap:wrap;gap:8px;"></div>
+        </div>
+    </div>
+
+    <!-- Attendance Modal -->
+    <div id="aqs-attendance-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content aqs-modal-xl">
+            <div class="aqs-modal-header no-print">
+                <div>
+                    <h3 id="aqs-attendance-title">Attendance</h3>
+                    <p id="aqs-attendance-sub" class="aqs-modal-sub"></p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <button class="aqs-btn aqs-btn-sm" id="aqs-show-leaderboard-btn">🏆 Leaderboard</button>
+                    <button class="aqs-btn aqs-btn-sm" id="aqs-print-attendance-btn">🖨️ Print</button>
+                    <div class="aqs-export-dropdown" style="position:relative;">
+                        <button class="aqs-btn aqs-btn-sm aqs-btn-success" id="aqs-export-attendance-toggle">📤 Export ▾</button>
+                        <div class="aqs-export-menu" id="aqs-export-attendance-menu" style="display:none;right:0;left:auto;">
+                            <button class="aqs-export-item" id="aqs-export-att-csv">📄 CSV</button>
+                            <button class="aqs-export-item" id="aqs-export-att-excel">📊 Excel (.xlsx)</button>
+                            <button class="aqs-export-item" id="aqs-export-att-pdf">📑 PDF</button>
+                            <button class="aqs-export-item" id="aqs-export-att-word">📝 Word (.doc)</button>
+                            <button class="aqs-export-item" id="aqs-export-att-json">🗂️ JSON</button>
+                            <button class="aqs-export-item" id="aqs-export-att-print">🖨️ Print (data only)</button>
+                        </div>
+                    </div>
+                    <button class="aqs-modal-close" id="aqs-close-attendance">&times;</button>
+                </div>
+            </div>
+            <div id="aqs-attendance-body" class="aqs-modal-body"><div class="aqs-loading">Loading attendance...</div></div>
+        </div>
+    </div>
+
+    <!-- Leaderboard Modal -->
+    <div id="aqs-leaderboard-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content">
+            <div class="aqs-modal-header">
+                <h3 id="aqs-lb-modal-title">🏆 Leaderboard</h3>
+                <button class="aqs-modal-close" id="aqs-close-leaderboard">&times;</button>
+            </div>
+            <div id="aqs-leaderboard-body" class="aqs-modal-body"><div class="aqs-loading">Loading...</div></div>
+        </div>
+    </div>
+
+    <!-- Analysis Modal -->
+    <div id="aqs-analysis-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content aqs-modal-xl">
+            <div class="aqs-modal-header no-print">
+                <div>
+                    <h3 id="aqs-analysis-title">Full Analysis</h3>
+                    <p id="aqs-analysis-sub" class="aqs-modal-sub"></p>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button class="aqs-btn aqs-btn-sm" id="aqs-print-analysis-btn">🖨️ Print Analysis</button>
+                    <button class="aqs-modal-close" id="aqs-close-analysis">&times;</button>
+                </div>
+            </div>
+            <div id="aqs-analysis-body" class="aqs-modal-body"><div class="aqs-loading">Loading analysis...</div></div>
+        </div>
+    </div>
+
+    <!-- Activity Print Modal -->
+    <div id="aqs-activity-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content">
+            <div class="aqs-modal-header">
+                <h3>📋 Quiz Activity — Review Before Deleting</h3>
+                <button class="aqs-modal-close" id="aqs-close-activity">&times;</button>
+            </div>
+            <div id="aqs-activity-body" class="aqs-modal-body" style="max-height:55vh;overflow-y:auto;"><div class="aqs-loading">Loading activity...</div></div>
+            <div class="aqs-modal-footer" style="flex-wrap:wrap;gap:8px;">
+                <div id="aqs-host-print-required-note" style="width:100%;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;font-size:.82rem;color:#92400e;display:none;">
+                    🖨️ <strong>You must print this activity report first.</strong> The delete button will unlock after you print.
+                </div>
+                <button class="aqs-btn" id="aqs-print-activity-btn">🖨️ Print Activity</button>
+                <button class="aqs-btn aqs-btn-danger" id="aqs-confirm-delete-btn" disabled style="opacity:0.4;cursor:not-allowed;">Yes, Delete Quiz</button>
+                <button class="aqs-btn" id="aqs-cancel-delete-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

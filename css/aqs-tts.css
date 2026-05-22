@@ -1,0 +1,280 @@
+/* xzily AI — Text-to-Speech styles */
+
+.tts-main {
+    overflow-y: auto;
+    min-height: 0;
+    height: 100dvh;
+    height: 100vh;
+    padding: 0 0 80px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ── Hero ── */
+.tts-hero {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid var(--dts-border);
+    background: linear-gradient(135deg, rgba(217,70,239,0.07) 0%, transparent 60%);
+}
+.tts-hero-icon {
+    width: 64px; height: 64px;
+    background: linear-gradient(135deg, #d946ef, #a21caf);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; flex-shrink: 0;
+}
+.tts-hero-title { font-size: 1.5rem; font-weight: 700; color: var(--dts-text); margin-bottom: 4px; }
+.tts-hero-sub   { font-size: 0.88rem; color: var(--dts-muted); max-width: 580px; line-height: 1.55; }
+
+/* ── Grid layout ── */
+.tts-grid {
+    display: grid;
+    grid-template-columns: 1fr 320px;
+    gap: 20px;
+    padding: 20px 32px 0;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .tts-grid { grid-template-columns: 1fr; padding: 14px 12px 0; }
+}
+
+/* ── Card ── */
+.tts-card {
+    background: var(--dts-surface);
+    border: 1.5px solid var(--dts-border);
+    border-radius: 16px;
+    padding: 22px;
+}
+.tts-card-title {
+    font-size: 0.9rem; font-weight: 700; color: var(--dts-text);
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Textarea ── */
+.tts-textarea {
+    width: 100%;
+    background: #fff;
+    border: 1.5px solid var(--dts-border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-family: inherit;
+    font-size: 0.94rem;
+    color: var(--dts-text);
+    resize: vertical;
+    min-height: 180px;
+    line-height: 1.65;
+    transition: border-color 0.15s;
+}
+.tts-textarea:focus { outline: none; border-color: #d946ef; }
+.tts-textarea::placeholder { color: #94a3b8; }
+
+.tts-char-count {
+    font-size: 0.73rem; color: var(--dts-muted);
+    text-align: right; margin-top: 5px;
+}
+.tts-char-count.warn { color: #f59e0b; font-weight: 600; }
+.tts-char-count.over { color: #ef4444; font-weight: 700; }
+
+/* ── Actions ── */
+.tts-actions {
+    display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; align-items: center;
+}
+
+/* ── Buttons ── */
+.tts-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px;
+    border-radius: 9px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    font-family: inherit;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+.tts-btn-primary { background: #d946ef; color: #fff; border-color: #d946ef; }
+.tts-btn-primary:hover { background: #c026d3; }
+.tts-btn-primary:disabled { background: #cbd5e1; border-color: #cbd5e1; cursor: not-allowed; }
+.tts-btn-ghost { background: #fff; color: var(--dts-muted); border-color: var(--dts-border); }
+.tts-btn-ghost:hover { border-color: #d946ef; color: #d946ef; }
+.tts-btn-sm { padding: 6px 12px; font-size: 0.8rem; border-radius: 7px; border-color: var(--dts-border); background: #fff; color: var(--dts-muted); }
+.tts-btn-sm:hover { border-color: #d946ef; color: #d946ef; }
+.tts-btn-green { background: #059669; color: #fff; border-color: #059669; }
+.tts-btn-green:hover { background: #047857; }
+.tts-btn-green:disabled { background: #cbd5e1; border-color: #cbd5e1; cursor: not-allowed; }
+
+/* ── Player ── */
+.tts-player {
+    margin-top: 18px;
+    padding: 16px;
+    background: linear-gradient(135deg, #fdf4ff, #faf5ff);
+    border: 1.5px solid #e9d5ff;
+    border-radius: 12px;
+    display: none;
+}
+.tts-player.visible { display: block; }
+.tts-player-label {
+    font-size: 0.72rem; font-weight: 700; color: #7e22ce;
+    text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px;
+}
+.tts-player audio {
+    width: 100%;
+    height: 40px;
+    border-radius: 8px;
+}
+.tts-player-actions {
+    display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap;
+}
+.tts-player-info {
+    font-size: 0.76rem; color: #7c3aed; margin-top: 8px; line-height: 1.4;
+}
+
+/* ── Status/error ── */
+.tts-status {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px;
+    background: rgba(217,70,239,0.07);
+    border: 1px solid rgba(217,70,239,0.2);
+    border-radius: 10px;
+    margin-top: 14px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--dts-text);
+    display: none;
+}
+.tts-status.visible { display: flex; }
+.tts-spinner-sm {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(217,70,239,0.2);
+    border-top-color: #d946ef;
+    border-radius: 50%;
+    animation: tts-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+@keyframes tts-spin { to { transform: rotate(360deg); } }
+.tts-error {
+    padding: 12px 16px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    color: #991b1b;
+    font-size: 0.875rem;
+    margin-top: 14px;
+    display: none;
+}
+.tts-error.visible { display: block; }
+
+/* ── Sidebar: Voice Settings ── */
+.tts-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.tts-lang-filter {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1.5px solid var(--dts-border);
+    border-radius: 8px;
+    background: #fff;
+    font-size: 0.85rem;
+    color: var(--dts-text);
+    font-family: inherit;
+    margin-bottom: 14px;
+    cursor: pointer;
+}
+.tts-lang-filter:focus { outline: none; border-color: #d946ef; }
+
+.tts-voice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7px;
+    max-height: 320px;
+    overflow-y: auto;
+    padding-right: 2px;
+    margin-bottom: 14px;
+}
+.tts-voice-card {
+    padding: 9px 10px;
+    border: 1.5px solid var(--dts-border);
+    border-radius: 9px;
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: left;
+}
+.tts-voice-card:hover { border-color: #d946ef; background: #fdf4ff; }
+.tts-voice-card.selected {
+    border-color: #d946ef;
+    background: linear-gradient(135deg, #fdf4ff, #faf5ff);
+    box-shadow: 0 0 0 2px rgba(217,70,239,0.15);
+}
+.tts-voice-name { font-size: 0.8rem; font-weight: 700; color: var(--dts-text); }
+.tts-voice-meta { font-size: 0.68rem; color: var(--dts-muted); margin-top: 2px; line-height: 1.3; }
+.tts-voice-gender {
+    display: inline-block;
+    font-size: 0.65rem; font-weight: 600;
+    padding: 1px 5px; border-radius: 4px; margin-top: 3px;
+}
+.tts-voice-gender.male   { background: #dbeafe; color: #1d4ed8; }
+.tts-voice-gender.female { background: #fce7f3; color: #be185d; }
+
+/* ── Speed control ── */
+.tts-speed-row {
+    display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+}
+.tts-speed-row input[type=range] {
+    flex: 1; accent-color: #d946ef;
+}
+.tts-speed-val {
+    font-size: 0.85rem; font-weight: 700; color: #d946ef;
+    min-width: 30px; text-align: right;
+}
+
+/* ── Save prefs ── */
+.tts-pref-saved {
+    font-size: 0.78rem; color: #16a34a; font-weight: 600;
+    display: none; margin-top: 8px;
+}
+
+/* ── History ── */
+.tts-history { margin: 20px 32px 40px; }
+@media (max-width: 900px) { .tts-history { margin: 16px 12px 40px; } }
+.tts-history-header {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;
+}
+.tts-history-header h3 { font-size: 1rem; font-weight: 700; color: var(--dts-text); }
+.tts-history-list { display: flex; flex-direction: column; gap: 8px; }
+.tts-history-item {
+    background: var(--dts-surface);
+    border: 1.5px solid var(--dts-border);
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex; align-items: center; gap: 14px;
+    cursor: pointer; transition: border-color 0.15s;
+}
+.tts-history-item:hover { border-color: #d946ef; }
+.tts-history-icon { font-size: 1.2rem; flex-shrink: 0; }
+.tts-history-info { flex: 1; min-width: 0; }
+.tts-history-text {
+    font-size: 0.85rem; font-weight: 600; color: var(--dts-text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tts-history-meta { font-size: 0.73rem; color: var(--dts-muted); margin-top: 2px; }
+.tts-history-play { flex-shrink: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .tts-hero { padding: 20px 16px 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
+    .tts-hero-icon { width: 48px; height: 48px; }
+    .tts-hero-title { font-size: 1.2rem; }
+    .tts-main { padding-top: 56px; }
+}

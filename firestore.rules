@@ -1,0 +1,71 @@
+rules_version = '2';
+  service cloud.firestore {
+    match /databases/{database}/documents {
+
+      // ─── Admin helper ───────────────────────────────────────────────
+      // Admin is identified by email address
+      function isAdmin() {
+        return request.auth != null
+            && request.auth.token.email == 'daramolapeter98@gmail.com';
+      }
+
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // ─── Quizzes ────────────────────────────────────────────────────
+      match /quizzes/{quizId} {
+        // Anyone can read a published quiz (needed for take-quiz page)
+        allow read: if true;
+        // Only admin or the quiz's own host can update/delete
+        allow update, delete: if isAdmin()
+            || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+        // Any signed-in user (host) can create a quiz
+        allow create: if isSignedIn();
+      }
+
+      // ─── Attempts ───────────────────────────────────────────────────
+      match /attempts/{attemptId} {
+        // Anyone can submit an attempt (quiz takers may not be logged in)
+        allow create: if true;
+        // Admin can read, update, delete all attempts
+        allow read, update, delete: if isAdmin()
+            || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+      }
+
+      // ─── Users ──────────────────────────────────────────────────────
+      match /users/{userId} {
+        // Admin has full access; users can read/write their own profile
+        allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      }
+
+      // ─── Settings ───────────────────────────────────────────────────
+      match /settings/{settingId} {
+        // Anyone can read settings (needed for notifications, splash, etc.)
+        allow read: if true;
+        // Only admin can write settings
+        allow write: if isAdmin();
+      }
+
+      // ─── Ads ────────────────────────────────────────────────────────
+      match /ads/{adId} {
+        // Anyone can read ads (shown on public pages)
+        allow read: if true;
+        // Only admin can create/update/delete ads
+        allow write: if isAdmin();
+      }
+
+      // ─── Deleted Quizzes Archive ────────────────────────────────────
+      match /deleted_quizzes/{docId} {
+        allow read, write: if isAdmin();
+      }
+
+      // ─── Challenges (Realtime DB handles most of this, but just in case)
+      match /challenges/{challengeId} {
+        allow read: if true;
+        allow write: if isAdmin() || isSignedIn();
+      }
+
+    }
+  }
+  

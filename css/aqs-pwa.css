@@ -1,0 +1,306 @@
+/* XZILY AI Studio — PWA Install Styles (loaded on every page) */
+
+/* ── Bottom install banner (Android/Chrome auto-prompt) ── */
+#aqs-pwa-banner,
+#aqs-pwa-ios-banner {
+    display: none;
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: calc(100% - 32px);
+    max-width: 480px;
+    background: #1e1b4b;
+    border: 1px solid rgba(99,102,241,0.4);
+    border-radius: 16px;
+    padding: 14px 16px;
+    align-items: center;
+    gap: 12px;
+    z-index: 99999;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    animation: aqsPwaSlideUp 0.35s cubic-bezier(.4,0,.2,1);
+}
+
+@keyframes aqsPwaSlideUp {
+    from { opacity: 0; transform: translateX(-50%) translateY(24px); }
+    to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.aqs-pwa-icon {
+    flex-shrink: 0;
+    width: 44px;
+    height: 44px;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+}
+
+.aqs-pwa-text { flex: 1; min-width: 0; }
+.aqs-pwa-title { font-size: 0.88rem; font-weight: 700; color: #e0e7ff; margin-bottom: 2px; }
+.aqs-pwa-sub   { font-size: 0.75rem; color: #a5b4fc; line-height: 1.4; }
+
+.aqs-pwa-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+#aqs-pwa-install-btn {
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+}
+#aqs-pwa-install-btn:hover { opacity: 0.9; }
+
+#aqs-pwa-dismiss-btn,
+#aqs-pwa-ios-dismiss {
+    background: transparent;
+    color: #6b7280;
+    border: none;
+    font-size: 0.75rem;
+    cursor: pointer;
+    text-align: center;
+    padding: 2px;
+}
+
+/* Share icon inside iOS banner */
+.aqs-pwa-share-icon {
+    display: inline-block;
+    vertical-align: middle;
+    width: 15px; height: 15px;
+    background: #a5b4fc;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8'/%3E%3Cpolyline points='16 6 12 2 8 6'/%3E%3Cline x1='12' y1='2' x2='12' y2='15'/%3E%3C/svg%3E") center/contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2'%3E%3Cpath d='M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8'/%3E%3Cpolyline points='16 6 12 2 8 6'/%3E%3Cline x1='12' y1='2' x2='12' y2='15'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+@media (max-width: 400px) {
+    #aqs-pwa-banner, #aqs-pwa-ios-banner {
+        bottom: 0; left: 0; transform: none;
+        width: 100%; max-width: 100%;
+        border-radius: 16px 16px 0 0;
+    }
+}
+
+/* ────────────────────────────────────────────────
+   Sidebar "Install App" button — shown on all pages
+   ──────────────────────────────────────────────── */
+#aqs-pwa-nav-wrap {
+    padding: 0 8px 10px;
+}
+
+.aqs-pwa-nav-install-btn {
+    display: flex !important;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 11px 14px;
+    background: linear-gradient(135deg, rgba(99,102,241,0.22), rgba(139,92,246,0.22));
+    border: 1px solid rgba(99,102,241,0.55);
+    border-radius: 10px;
+    color: #a5b4fc;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.15s, color 0.2s;
+    text-align: left;
+    box-sizing: border-box;
+    font-family: inherit;
+    line-height: 1.3;
+}
+.aqs-pwa-nav-install-btn:hover {
+    background: linear-gradient(135deg, rgba(99,102,241,0.45), rgba(139,92,246,0.45));
+    color: #fff;
+    border-color: rgba(99,102,241,0.9);
+    box-shadow: 0 4px 14px rgba(99,102,241,0.35);
+    transform: translateY(-1px);
+}
+.aqs-pwa-nav-install-btn:active { transform: translateY(0); }
+
+.aqs-pwa-nav-icon  { font-size: 1.05rem; flex-shrink: 0; line-height: 1; }
+.aqs-pwa-nav-label { flex: 1; }
+
+/* Installed state */
+.aqs-pwa-nav-install-btn.aqs-pwa-installed {
+    background: rgba(16,185,129,0.12) !important;
+    border-color: rgba(16,185,129,0.35) !important;
+    color: #6ee7b7 !important;
+    cursor: default;
+    pointer-events: none;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* ────────────────────────────────────────────────
+   Install instruction modal (full-screen overlay)
+   ──────────────────────────────────────────────── */
+#aqs-pwa-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: 999998;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: aqsPwaFadeIn 0.2s ease;
+}
+#aqs-pwa-modal-overlay.open {
+    display: flex;
+}
+@keyframes aqsPwaFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+#aqs-pwa-modal {
+    background: #1e1b4b;
+    border: 1px solid rgba(99,102,241,0.5);
+    border-radius: 20px;
+    padding: 28px 24px 24px;
+    width: 100%;
+    max-width: 380px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    animation: aqsPwaSlideModal 0.25s cubic-bezier(.4,0,.2,1);
+    position: relative;
+}
+@keyframes aqsPwaSlideModal {
+    from { opacity: 0; transform: translateY(20px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.aqs-pwa-modal-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 20px;
+}
+.aqs-pwa-modal-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem;
+    flex-shrink: 0;
+}
+.aqs-pwa-modal-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #e0e7ff;
+    line-height: 1.25;
+}
+.aqs-pwa-modal-sub {
+    font-size: 0.78rem;
+    color: #94a3b8;
+    margin-top: 3px;
+}
+
+.aqs-pwa-modal-close {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    border-radius: 50%;
+    width: 28px; height: 28px;
+    color: #94a3b8;
+    font-size: 1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, color 0.15s;
+    font-family: inherit;
+}
+.aqs-pwa-modal-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* Tab switcher */
+.aqs-pwa-modal-tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 18px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    padding: 4px;
+}
+.aqs-pwa-modal-tab {
+    flex: 1;
+    padding: 7px 10px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #64748b;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+    text-align: center;
+}
+.aqs-pwa-modal-tab.active {
+    background: rgba(99,102,241,0.35);
+    color: #c7d2fe;
+}
+.aqs-pwa-modal-tab:hover:not(.active) { color: #a5b4fc; }
+
+/* Step list */
+.aqs-pwa-modal-steps { display: none; }
+.aqs-pwa-modal-steps.active { display: block; }
+
+.aqs-pwa-modal-step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.aqs-pwa-modal-step:last-child { border-bottom: none; }
+
+.aqs-pwa-step-num {
+    width: 24px; height: 24px;
+    background: rgba(99,102,241,0.3);
+    border: 1px solid rgba(99,102,241,0.5);
+    border-radius: 50%;
+    color: #a5b4fc;
+    font-size: 0.72rem;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.aqs-pwa-step-text {
+    font-size: 0.82rem;
+    color: #cbd5e1;
+    line-height: 1.55;
+}
+.aqs-pwa-step-text strong { color: #e0e7ff; }
+.aqs-pwa-step-text .aqs-pwa-share-icon {
+    width: 12px; height: 12px;
+    background: #a5b4fc;
+}
+
+/* Native prompt button inside modal */
+#aqs-pwa-modal-native-btn {
+    display: none;
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.15s;
+    font-family: inherit;
+}
+#aqs-pwa-modal-native-btn:hover { opacity: 0.9; }

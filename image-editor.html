@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Editor — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-imagegen.css">
+    <style>
+        .aqs-ie-upload-zone{border:2px dashed #6366f1;border-radius:16px;padding:40px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#f8f8ff}
+        .aqs-ie-upload-zone:hover,.aqs-ie-upload-zone.drag-over{border-color:#4f46e5;background:#eef2ff}
+        .aqs-ie-upload-zone svg{color:#6366f1;margin-bottom:12px}
+        .aqs-ie-upload-zone p{margin:4px 0;color:#555;font-size:.92rem}
+        .aqs-ie-upload-zone small{color:#999;font-size:.8rem}
+        .aqs-ie-file-info{display:flex;align-items:center;gap:12px;background:#f0f0fa;border-radius:12px;padding:12px 16px;margin-bottom:16px}
+        .aqs-ie-file-preview{width:80px;height:80px;object-fit:cover;border-radius:10px;border:2px solid #ddd;flex-shrink:0}
+        .aqs-ie-file-meta{flex:1;min-width:0}
+        .aqs-ie-file-meta strong{display:block;font-size:.95rem;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .aqs-ie-file-meta span{color:#777;font-size:.82rem}
+        .aqs-ie-remove-btn{background:none;border:none;cursor:pointer;color:#999;padding:4px;border-radius:6px;transition:color .2s}
+        .aqs-ie-remove-btn:hover{color:#e53e3e}
+        .aqs-ie-strength-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+        .aqs-ie-strength-row label{font-weight:600;color:#444;font-size:.9rem;white-space:nowrap}
+        .aqs-ie-strength-row input[type=range]{flex:1;min-width:120px;accent-color:#6366f1}
+        .aqs-ie-strength-val{font-weight:700;color:#6366f1;min-width:32px;text-align:right;font-size:.92rem}
+        .aqs-ie-before-after{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
+        @media(max-width:600px){.aqs-ie-before-after{grid-template-columns:1fr}}
+        .aqs-ie-ba-card{border-radius:14px;overflow:hidden;border:1.5px solid #e8e8f5;background:#fff}
+        .aqs-ie-ba-label{padding:8px 14px;font-weight:700;font-size:.82rem;letter-spacing:.04em;color:#666;background:#f5f5fb;border-bottom:1px solid #eee}
+        .aqs-ie-ba-card img{width:100%;height:300px;object-fit:contain;background:#f0f0f8;display:block}
+        .aqs-ie-ba-actions{padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap}
+        .aqs-ie-edit-type-grid{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+        .aqs-ie-type-btn{padding:6px 14px;border-radius:20px;border:1.5px solid #d8d8ee;background:#fff;cursor:pointer;font-size:.82rem;font-weight:500;color:#555;transition:all .2s}
+        .aqs-ie-type-btn:hover{border-color:#6366f1;color:#6366f1}
+        .aqs-ie-type-btn.active{border-color:#6366f1;background:#6366f1;color:#fff}
+    </style>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ SIDEBAR ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
+    <div class="aqs-sidebar-nav-label">NAVIGATE</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio Home</a>
+        <a href="image-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
+        <a href="image-editor.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Image Editor</a>
+        <a href="docs-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
+        <a href="tts.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>Text to Speech</a>
+    </nav>
+    <div class="aqs-sidebar-nav-label" style="margin-top:14px;">QUIZ</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
+        <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge</a>
+    </nav>
+    <div class="aqs-sidebar-footer"><div class="aqs-sidebar-user"><div class="aqs-sidebar-avatar">U</div><div class="aqs-sidebar-user-name">User</div></div></div>
+</nav>
+
+<div class="aqs-sidebar-body">
+<main class="aqs-page-main">
+
+<div class="aqs-wrap aqs-imagegen-wrap" id="aqs-imageedit-wrap">
+    <div class="aqs-imagegen-hero">
+        <div class="aqs-imagegen-hero-inner">
+            <div class="aqs-imagegen-hero-icon">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <div>
+                <h1 class="aqs-imagegen-title">AI Image Editor</h1>
+                <p class="aqs-imagegen-sub">Upload any image and describe how to transform it. Change backgrounds, add elements, change styles, recolor — all with a simple text prompt.</p>
+                <p class="aqs-imagegen-credit">Powered by Darapet Technology &mdash; Omomo Excellence</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="aqs-imagegen-prompt-card" id="aqs-ie-upload-section">
+        <h3 style="margin:0 0 14px;font-size:1rem;color:#444;font-weight:700;">Step 1: Upload Your Image</h3>
+        <div class="aqs-ie-upload-zone" id="aqs-ie-upload-zone">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            <p><strong>Click to upload</strong> or drag &amp; drop your image here</p>
+            <small>Supports JPEG, PNG, WebP &bull; Max 5 MB</small>
+        </div>
+        <input type="file" id="aqs-ie-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none">
+    </div>
+
+    <div class="aqs-imagegen-prompt-card" id="aqs-ie-file-info" style="display:none">
+        <div class="aqs-ie-file-info">
+            <img id="aqs-ie-preview-thumb" class="aqs-ie-file-preview" src="" alt="Preview">
+            <div class="aqs-ie-file-meta">
+                <strong id="aqs-ie-file-name-label">—</strong>
+                <span id="aqs-ie-file-size-label"></span>
+            </div>
+            <button class="aqs-ie-remove-btn" id="aqs-ie-remove-file" title="Remove image">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+        <h3 style="margin:16px 0 10px;font-size:1rem;color:#444;font-weight:700;">Step 2: Describe Your Edit</h3>
+        <div class="aqs-imagegen-prompt-row">
+            <textarea id="aqs-ie-prompt" class="aqs-imagegen-textarea" rows="3"
+                placeholder="Describe your edit… e.g. 'Replace the background with a tropical beach at sunset' or 'Make it look like a watercolor painting'"></textarea>
+        </div>
+        <div class="aqs-imagegen-presets">
+            <span class="aqs-ig-preset-label">Edit Type:</span>
+            <div class="aqs-ie-edit-type-grid">
+                <button class="aqs-ie-type-btn active" data-type="">General Edit</button>
+                <button class="aqs-ie-type-btn" data-type="Change the background to">Background Change</button>
+                <button class="aqs-ie-type-btn" data-type="Convert to artistic style:">Style Transfer</button>
+                <button class="aqs-ie-type-btn" data-type="Change the color scheme to">Recolor</button>
+                <button class="aqs-ie-type-btn" data-type="Add to the image:">Add Element</button>
+                <button class="aqs-ie-type-btn" data-type="Remove from the image:">Remove Element</button>
+                <button class="aqs-ie-type-btn" data-type="Make it look like a">Scene Transform</button>
+                <button class="aqs-ie-type-btn" data-type="Enhance and improve:">Enhance Detail</button>
+            </div>
+        </div>
+        <div class="aqs-imagegen-options">
+            <div class="aqs-ig-option-group" style="flex:1">
+                <label>Transform Strength</label>
+                <div class="aqs-ie-strength-row">
+                    <input type="range" id="aqs-ie-strength" min="0.3" max="0.95" step="0.05" value="0.7">
+                    <span class="aqs-ie-strength-val" id="aqs-ie-strength-val">70%</span>
+                </div>
+                <small style="color:#999;font-size:.75rem">Low = subtle changes &nbsp;|&nbsp; High = dramatic transformation</small>
+            </div>
+            <div class="aqs-ig-option-group">
+                <label>Output Size</label>
+                <select id="aqs-ie-size">
+                    <option value="1024x1024" selected>Square (1024×1024)</option>
+                    <option value="1792x1024">Landscape (1792×1024)</option>
+                    <option value="1024x1792">Portrait (1024×1792)</option>
+                </select>
+            </div>
+        </div>
+        <div class="aqs-imagegen-actions">
+            <button id="aqs-ie-generate-btn" class="aqs-btn aqs-btn-primary aqs-ig-generate-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Apply AI Edit
+            </button>
+            <button id="aqs-ie-enhance-btn" class="aqs-btn aqs-ig-enhance-btn" title="Let AI refine your edit description">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Refine Prompt
+            </button>
+        </div>
+    </div>
+
+    <div id="aqs-ie-status" class="aqs-ig-status" style="display:none">
+        <div class="aqs-ig-spinner"></div>
+        <span id="aqs-ie-status-text">Processing your edit&hellip; this takes 15&ndash;30 seconds</span>
+    </div>
+    <div id="aqs-ie-error" class="aqs-ig-error" style="display:none"></div>
+
+    <div id="aqs-ie-result-section" style="display:none">
+        <div class="aqs-imagegen-prompt-card">
+            <h3 style="margin:0 0 14px;font-size:1rem;color:#444;font-weight:700;">Result — Before &amp; After</h3>
+            <div class="aqs-ie-before-after">
+                <div class="aqs-ie-ba-card">
+                    <div class="aqs-ie-ba-label">ORIGINAL</div>
+                    <img id="aqs-ie-before-img" src="" alt="Original">
+                    <div class="aqs-ie-ba-actions"><span style="font-size:.8rem;color:#888">Your uploaded image</span></div>
+                </div>
+                <div class="aqs-ie-ba-card">
+                    <div class="aqs-ie-ba-label">✦ AI EDITED</div>
+                    <img id="aqs-ie-after-img" src="" alt="Edited">
+                    <div class="aqs-ie-ba-actions">
+                        <a id="aqs-ie-download-btn" class="aqs-btn aqs-btn-primary aqs-btn-sm" href="#" download="darapet-ai-edit.jpg" target="_blank">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Download
+                        </a>
+                        <button id="aqs-ie-regen-btn" class="aqs-btn aqs-btn-sm">Try Again</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+</div>
+
+<script>
+var AQS = {ajax_url:'',nonce:'',public_nonce:'',groq_key:'',plugin_url:'./'};
+</script>
+<script src="js/aqs-imageedit.js"></script>
+<script>
+(function(){
+    var toggle=document.getElementById('aqs-sidebar-toggle');
+    var sidebar=document.getElementById('aqs-sidebar');
+    var overlay=document.getElementById('aqs-sidebar-overlay');
+    if(!toggle||!sidebar||!overlay)return;
+    toggle.addEventListener('click',function(){sidebar.classList.add('open');overlay.classList.add('open');});
+    overlay.addEventListener('click',function(){sidebar.classList.remove('open');overlay.classList.remove('open');});
+})();
+</script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

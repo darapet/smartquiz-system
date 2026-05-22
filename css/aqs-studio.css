@@ -1,0 +1,815 @@
+/* Darapet Technology Studio — Full Page CSS */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+    --dts-sidebar-w: 260px;
+    --dts-bg: #ffffff;
+    --dts-sidebar-bg: #0f172a;
+    --dts-sidebar-text: #cbd5e1;
+    --dts-sidebar-hover: rgba(255,255,255,0.08);
+    --dts-sidebar-active: rgba(99,102,241,0.25);
+    --dts-primary: #6366f1;
+    --dts-primary-dark: #4f46e5;
+    --dts-surface: #f8fafc;
+    --dts-border: #e2e8f0;
+    --dts-text: #0f172a;
+    --dts-muted: #64748b;
+    --dts-user-bubble: #6366f1;
+    --dts-ai-bubble: #f1f5f9;
+    --dts-footer-h: 80px;
+}
+
+html, body {
+    height: 100%;
+    /* Fallback for browsers that don't support dvh */
+    height: -webkit-fill-available;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-text-size-adjust: 100%;
+}
+.dts-body { background: var(--dts-bg); color: var(--dts-text); }
+
+/* ===== LAYOUT ===== */
+#dts-app {
+    display: flex;
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height — works on Android Chrome */
+    overflow: hidden;
+}
+
+/* ===== SIDEBAR ===== */
+.dts-sidebar {
+    width: var(--dts-sidebar-w);
+    background: var(--dts-sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    overflow: hidden;
+    transition: transform 0.3s;
+}
+
+.dts-logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 16px 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+.dts-logo-text { line-height: 1; }
+.dts-logo-name { font-size: 1rem; font-weight: 700; color: #fff; letter-spacing: 0.5px; }
+.dts-logo-sub  { font-size: 0.68rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 1.5px; }
+
+.dts-new-chat-btn {
+    margin: 14px 12px 8px;
+    padding: 10px 14px;
+    background: rgba(99,102,241,0.2);
+    border: 1px solid rgba(99,102,241,0.4);
+    border-radius: 10px;
+    color: #a5b4fc;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+}
+.dts-new-chat-btn:hover { background: rgba(99,102,241,0.35); color: #fff; }
+
+.dts-nav { flex: 1; padding: 8px 8px; overflow-y: auto; }
+.dts-nav-section-label { font-size: 0.68rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 1.5px; padding: 8px 10px 4px; }
+.dts-nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 8px;
+    color: var(--dts-sidebar-text);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.15s;
+    margin-bottom: 2px;
+}
+.dts-nav-link:hover { background: var(--dts-sidebar-hover); color: #fff; }
+.dts-nav-active    { background: var(--dts-sidebar-active) !important; color: #a5b4fc !important; }
+.dts-nav-divider   { border-top: 1px solid rgba(255,255,255,0.08); margin: 10px 8px; }
+.dts-logout-link   { color: #f87171 !important; }
+.dts-logout-link:hover { background: rgba(248,113,113,0.12) !important; }
+
+/* PWA nav button styles moved to aqs-pwa.css (loaded on all pages) */
+
+.dts-sidebar-footer { padding: 12px 8px; border-top: 1px solid rgba(255,255,255,0.08); }
+.dts-user-row { display: flex; align-items: center; gap: 10px; padding: 8px 12px; margin-bottom: 4px; }
+.dts-user-avatar { width: 32px; height: 32px; border-radius: 50%; background: var(--dts-primary); color: #fff; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.dts-user-name { font-size: 0.825rem; font-weight: 600; color: #f1f5f9; }
+.dts-user-role { font-size: 0.7rem; color: #94a3b8; text-transform: capitalize; }
+
+/* Mobile toggle */
+.dts-sidebar-toggle { display: none; position: fixed; top: 12px; left: 12px; z-index: 200; background: var(--dts-primary); border: none; border-radius: 8px; color: #fff; width: 36px; height: 36px; font-size: 1rem; cursor: pointer; }
+
+/* ===== MAIN ===== */
+.dts-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    padding-bottom: var(--dts-footer-h);
+}
+
+.dts-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px 0;
+      scroll-behavior: smooth;
+      /* Always keep last message above the fixed footer on all devices */
+      padding-bottom: calc(var(--dts-footer-h, 80px) + 60px);
+  }
+
+/* ===== WELCOME ===== */
+.dts-welcome {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 60px 24px 120px; /* 120px bottom clears the fixed footer */
+    text-align: center;
+    animation: dts-fade-in 0.4s ease;
+    z-index: 10;
+}
+
+.dts-welcome-icon { margin-bottom: 20px; }
+.dts-welcome-title { font-size: 1.8rem; font-weight: 700; color: var(--dts-text); margin-bottom: 10px; }
+.dts-welcome-sub { font-size: 1rem; color: var(--dts-muted); max-width: 520px; margin-bottom: 32px; line-height: 1.6; }
+
+.dts-suggestions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-width: 640px; width: 100%; }
+.dts-suggestion-btn {
+    padding: 14px 16px;
+    background: var(--dts-surface);
+    border: 1px solid var(--dts-border);
+    border-radius: 12px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--dts-text);
+    cursor: pointer;
+    text-align: left;
+    line-height: 1.4;
+    transition: all 0.15s;
+}
+.dts-suggestion-btn:hover { border-color: var(--dts-primary); background: #eef2ff; }
+
+/* ===== MESSAGES ===== */
+.dts-message {
+    display: flex;
+    gap: 14px;
+    padding: 8px 24px;
+    max-width: 900px;
+    margin: 0 auto;
+    width: 100%;
+    animation: dts-fade-in 0.25s ease;
+}
+
+.dts-message.dts-user   { flex-direction: row-reverse; }
+.dts-message.dts-ai     { flex-direction: row; }
+
+.dts-msg-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-top: 2px;
+}
+.dts-user .dts-msg-avatar { background: var(--dts-primary); color: #fff; }
+.dts-ai   .dts-msg-avatar { background: #0f172a; color: #fff; font-size: 1rem; }
+
+.dts-msg-content { max-width: 78%; }
+.dts-user .dts-msg-content { align-items: flex-end; display: flex; flex-direction: column; }
+
+.dts-msg-bubble {
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-size: 0.94rem;
+    line-height: 1.65;
+    word-wrap: break-word;
+}
+.dts-user .dts-msg-bubble {
+    background: var(--dts-primary);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+}
+.dts-ai .dts-msg-bubble {
+    background: var(--dts-ai-bubble);
+    color: var(--dts-text);
+    border-bottom-left-radius: 4px;
+}
+
+/* Markdown inside AI bubble */
+.dts-ai .dts-msg-bubble h1,
+.dts-ai .dts-msg-bubble h2,
+.dts-ai .dts-msg-bubble h3 { font-weight: 700; margin: 12px 0 6px; line-height: 1.3; }
+.dts-ai .dts-msg-bubble h1 { font-size: 1.2rem; }
+.dts-ai .dts-msg-bubble h2 { font-size: 1.05rem; }
+.dts-ai .dts-msg-bubble h3 { font-size: 0.95rem; }
+.dts-ai .dts-msg-bubble p  { margin: 6px 0; }
+.dts-ai .dts-msg-bubble ul,
+.dts-ai .dts-msg-bubble ol { margin: 6px 0 6px 20px; }
+.dts-ai .dts-msg-bubble li { margin: 3px 0; }
+.dts-ai .dts-msg-bubble strong { font-weight: 700; }
+.dts-ai .dts-msg-bubble em    { font-style: italic; }
+.dts-ai .dts-msg-bubble code:not(.hljs) { background: #e2e8f0; padding: 1px 5px; border-radius: 4px; font-size: 0.85em; font-family: 'Fira Code', 'Courier New', monospace; }
+.dts-ai .dts-msg-bubble pre   { background: #0f172a; border-radius: 10px; padding: 14px 16px; overflow-x: auto; margin: 8px 0; }
+.dts-ai .dts-msg-bubble pre code { color: #e2e8f0; font-size: 0.83rem; background: none; padding: 0; }
+.dts-ai .dts-msg-bubble blockquote { border-left: 3px solid var(--dts-primary); padding-left: 12px; color: var(--dts-muted); margin: 8px 0; }
+.dts-ai .dts-msg-bubble table { border-collapse: collapse; width: 100%; margin: 8px 0; font-size: 0.88rem; }
+.dts-ai .dts-msg-bubble th, .dts-ai .dts-msg-bubble td { border: 1px solid #cbd5e1; padding: 6px 10px; }
+.dts-ai .dts-msg-bubble th { background: #e2e8f0; font-weight: 600; }
+
+/* KaTeX display math */
+.dts-katex-display { overflow-x: auto; padding: 8px 0; text-align: center; }
+.katex-display { overflow-x: auto; }
+
+/* Copy button */
+.dts-msg-actions { display: flex; gap: 6px; margin-top: 6px; }
+.dts-copy-btn { background: none; border: 1px solid var(--dts-border); border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; color: var(--dts-muted); cursor: pointer; transition: all 0.15s; }
+.dts-copy-btn:hover { border-color: var(--dts-primary); color: var(--dts-primary); }
+
+/* Typing indicator */
+.dts-typing { display: flex; align-items: center; gap: 14px; padding: 8px 24px; max-width: 900px; margin: 0 auto; width: 100%; }
+.dts-typing-dots { display: flex; gap: 5px; background: var(--dts-ai-bubble); padding: 12px 16px; border-radius: 16px; border-bottom-left-radius: 4px; }
+.dts-typing-dots span { width: 7px; height: 7px; background: var(--dts-muted); border-radius: 50%; animation: dts-bounce 1.4s infinite ease-in-out; }
+.dts-typing-dots span:nth-child(1) { animation-delay: 0s; }
+.dts-typing-dots span:nth-child(2) { animation-delay: 0.16s; }
+.dts-typing-dots span:nth-child(3) { animation-delay: 0.32s; }
+
+@keyframes dts-bounce {
+    0%, 60%, 100% { transform: translateY(0); }
+    30%            { transform: translateY(-6px); }
+}
+@keyframes dts-fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ===== FOOTER INPUT ===== */
+.dts-footer {
+    position: fixed;
+    bottom: 0;
+    left: var(--dts-sidebar-w);
+    right: 0;
+    background: var(--dts-bg);
+    border-top: 1px solid var(--dts-border);
+    padding: 12px 24px 8px;
+    z-index: 100;
+}
+
+.dts-input-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+    background: var(--dts-surface);
+    border: 1.5px solid var(--dts-border);
+    border-radius: 14px;
+    padding: 10px 10px 10px 16px;
+    max-width: 860px;
+    margin: 0 auto;
+    transition: border-color 0.15s;
+}
+.dts-input-wrap:focus-within { border-color: var(--dts-primary); }
+
+.dts-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-size: 0.94rem;
+    font-family: inherit;
+    color: var(--dts-text);
+    resize: none;
+    max-height: 180px;
+    line-height: 1.5;
+}
+.dts-input::placeholder { color: #94a3b8; }
+
+.dts-send-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: var(--dts-primary);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background 0.15s;
+}
+.dts-send-btn:hover { background: var(--dts-primary-dark); }
+.dts-send-btn:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+.dts-disclaimer {
+    text-align: center;
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin-top: 6px;
+}
+
+/* ===== FIX: Prevent horizontal scroll from AI responses ===== */
+.dts-messages { overflow-x: hidden; }
+.dts-msg-bubble { overflow-wrap: anywhere; word-break: break-word; }
+.dts-ai .dts-msg-bubble pre { max-width: 100%; overflow-x: auto; }
+.dts-ai .dts-msg-bubble table { display: block; overflow-x: auto; max-width: 100%; }
+
+/* ===== Typewriter / streaming text effect ===== */
+.aqs-type-stream {
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: inherit;
+    font-size: inherit;
+    line-height: 1.65;
+    min-height: 1.2em;
+}
+
+/* Blinking block cursor shown while text is streaming */
+.aqs-type-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: var(--dts-primary, #6366f1);
+    border-radius: 1px;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    -webkit-animation: aqs-cursor-blink 0.65s step-end infinite;
+    animation: aqs-cursor-blink 0.65s step-end infinite;
+}
+
+@keyframes aqs-cursor-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
+/* ===== Overlay for mobile sidebar ===== */
+.dts-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    z-index: 280;
+    -webkit-tap-highlight-color: transparent;
+    cursor: pointer;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    /* Sidebar — slides in from left, crisp rendering on mobile GPU */
+    .dts-sidebar {
+        position: fixed;
+        left: 0;
+        top: 0;
+        height: 100vh;
+        z-index: 300;
+        transform: translateX(-100%);
+        will-change: transform;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .dts-sidebar.open { transform: translateX(0); box-shadow: 4px 0 24px rgba(0,0,0,0.35); }
+
+    /* Hamburger button — sits above everything */
+    .dts-sidebar-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 320;
+        top: 14px;
+        left: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+
+    /* Main area — push content below the hamburger and above footer */
+    .dts-main {
+        padding-top: 56px;
+        padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Footer chat input — full width, safe-area aware */
+    .dts-footer {
+        left: 0;
+        padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Messages */
+    .dts-message { padding: 8px 12px; }
+    .dts-msg-content { max-width: 88%; }
+
+    /* Welcome screen */
+    .dts-welcome { padding-top: 20px; padding-bottom: 16px; }
+    .dts-welcome-title { font-size: 1.4rem; }
+    .dts-welcome-sub { font-size: 0.88rem; }
+    .dts-suggestions { grid-template-columns: 1fr; gap: 10px; }
+    .dts-suggestion-btn { padding: 12px 14px; }
+
+    /* Input area */
+    .dts-input-wrap { border-radius: 12px; }
+    .dts-input { font-size: 0.92rem; }
+
+    /* Typing indicator */
+    .dts-typing { padding: 8px 12px; }
+}
+
+@media (max-width: 480px) {
+    .dts-welcome-title { font-size: 1.2rem; }
+    .dts-msg-bubble { font-size: 0.88rem; padding: 10px 13px; }
+    .dts-msg-avatar { width: 28px; height: 28px; font-size: 0.75rem; }
+}
+
+
+
+/* ── Improved mobile touch scrolling ── */
+.dts-messages {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* ── Footer keyboard safe area on iOS/Android ── */
+@supports (padding-bottom: env(keyboard-inset-height)) {
+    .dts-footer {
+        padding-bottom: calc(10px + env(keyboard-inset-height, 0px) + env(safe-area-inset-bottom, 0px));
+    }
+}
+
+/* ── Better message bubbles on small screens ── */
+@media (max-width: 400px) {
+    .dts-msg-content { max-width: 95%; }
+    .dts-msg-bubble { font-size: 0.87rem; padding: 9px 12px; }
+    .dts-footer-inner { padding: 0 10px; }
+    .dts-input-wrap { border-radius: 10px; }
+}
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE SCROLL & LAYOUT FIX — ensures messages are
+   visible and scrollable on iOS Safari & Android Chrome
+   ══════════════════════════════════════════════════════════ */
+
+/* Force the messages container to be a proper scroll box on all mobile browsers */
+.dts-messages {
+    -webkit-overflow-scrolling: touch;   /* iOS momentum scroll */
+    overscroll-behavior-y: contain;      /* prevent page scroll bleed */
+    /* Ensure it never collapses to zero height in any flex quirk */
+    min-height: 0;
+}
+
+/* Make sure the main column always fills available height correctly on iOS */
+#dts-app {
+    /* Fallback chain: dvh → svh → -webkit-fill-available → 100vh */
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100svh;
+    height: 100dvh;
+}
+
+html {
+    /* Prevent iOS rubber-band bounce from throwing off layout */
+    overscroll-behavior: none;
+}
+
+@media (max-width: 768px) {
+    /* Guarantee messages stretch into all available space
+       between the hamburger topbar and the fixed footer */
+    .dts-main {
+        /* Grid is more reliable than flex for this on mobile */
+        display: grid;
+        grid-template-rows: 1fr;
+        min-height: 0;
+    }
+    .dts-messages {
+        height: 100%;
+        min-height: 0;
+        padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+    }
+
+    /* Prevent iOS from hiding the footer behind the home-indicator bar */
+    .dts-footer {
+        padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    /* Ensure all message text wraps properly on narrow screens */
+    .dts-msg-bubble {
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Extra small phones — tighter message padding */
+    .dts-message { padding: 6px 10px; }
+    .dts-msg-content { max-width: 92%; }
+    .dts-input { font-size: 16px; } /* Prevent iOS auto-zoom on input focus */
+}
+
+/* ===== FILE UPLOAD ===== */
+
+/* Paperclip attach button inside the input row */
+.dts-file-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: none;
+    border: 1.5px solid var(--dts-border);
+    color: var(--dts-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: border-color 0.15s, color 0.15s;
+}
+.dts-file-btn:hover { border-color: var(--dts-primary); color: var(--dts-primary); }
+
+/* Status strip that appears above the input row */
+.dts-file-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: 860px;
+    margin: 0 auto 6px;
+    padding: 6px 12px;
+    background: #eef2ff;
+    border: 1px solid #c7d2fe;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    overflow: hidden;
+}
+.dts-file-loading { color: var(--dts-muted); }
+.dts-file-attached {
+    color: #3730a3;
+    font-weight: 500;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.dts-file-error { color: #991b1b; }
+.dts-file-clear {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--dts-muted);
+    font-size: 0.8rem;
+    padding: 2px 5px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    line-height: 1;
+}
+.dts-file-clear:hover { color: #ef4444; background: rgba(239,68,68,0.1); }
+
+/* ===== VOICE CONVERSATION OVERLAY ===== */
+
+.dts-voice-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 30, 0.92);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    animation: dts-fade-in 0.25s ease;
+}
+
+.dts-voice-modal {
+    background: #0f172a;
+    border: 1px solid rgba(99,102,241,0.35);
+    border-radius: 24px;
+    padding: 40px 32px 36px;
+    max-width: 420px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.6);
+}
+
+/* Close button */
+.dts-voice-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    color: #94a3b8;
+    font-size: 1rem;
+    cursor: pointer;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+.dts-voice-close:hover { background: rgba(239,68,68,0.2); color: #f87171; }
+
+/* ── Animated orb ── */
+.dts-voice-orb {
+    position: relative;
+    width: 110px;
+    height: 110px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dts-voice-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(99,102,241,0.4);
+    animation: dts-voice-pulse 2.4s ease-out infinite;
+    opacity: 0;
+}
+.dts-voice-ring1 { width: 100%; height: 100%; animation-delay: 0s;    }
+.dts-voice-ring2 { width: 78%;  height: 78%;  animation-delay: 0.6s;  }
+.dts-voice-ring3 { width: 56%;  height: 56%;  animation-delay: 1.2s;  }
+
+/* Rings only animate when listening */
+.dts-voice-orb[data-state="idle"]      .dts-voice-ring,
+.dts-voice-orb[data-state="thinking"]  .dts-voice-ring,
+.dts-voice-orb[data-state="error"]     .dts-voice-ring { animation: none; opacity: 0; }
+.dts-voice-orb[data-state="speaking"]  .dts-voice-ring { border-color: rgba(16,185,129,0.4); }
+.dts-voice-orb[data-state="listening"] .dts-voice-ring { border-color: rgba(99,102,241,0.5); }
+
+@keyframes dts-voice-pulse {
+    0%   { transform: scale(0.7); opacity: 0.6; }
+    100% { transform: scale(1.4); opacity: 0; }
+}
+
+.dts-voice-orb-inner {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    box-shadow: 0 0 0 0 rgba(99,102,241,0.4);
+    transition: background 0.3s;
+    z-index: 1;
+}
+
+/* Colour shifts by state */
+.dts-voice-orb[data-state="listening"] .dts-voice-orb-inner {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    animation: dts-orb-listening 1.2s ease-in-out infinite alternate;
+}
+.dts-voice-orb[data-state="thinking"] .dts-voice-orb-inner {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+}
+.dts-voice-orb[data-state="speaking"] .dts-voice-orb-inner {
+    background: linear-gradient(135deg, #10b981, #34d399);
+    animation: dts-orb-speaking 0.8s ease-in-out infinite alternate;
+}
+.dts-voice-orb[data-state="error"] .dts-voice-orb-inner {
+    background: linear-gradient(135deg, #ef4444, #f87171);
+}
+
+@keyframes dts-orb-listening {
+    from { transform: scale(1);    box-shadow: 0 0 0  4px rgba(99,102,241,0.25); }
+    to   { transform: scale(1.06); box-shadow: 0 0 0 16px rgba(99,102,241,0.08); }
+}
+@keyframes dts-orb-speaking {
+    from { transform: scale(1);    box-shadow: 0 0 0  4px rgba(16,185,129,0.25); }
+    to   { transform: scale(1.05); box-shadow: 0 0 0 14px rgba(16,185,129,0.08); }
+}
+
+/* Status label */
+.dts-voice-status {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: #e2e8f0;
+    text-align: center;
+    letter-spacing: 0.01em;
+}
+
+/* Live transcript */
+.dts-voice-transcript {
+    min-height: 48px;
+    max-height: 100px;
+    overflow-y: auto;
+    font-size: 0.9rem;
+    color: #94a3b8;
+    text-align: center;
+    line-height: 1.5;
+    font-style: italic;
+    padding: 0 8px;
+    white-space: pre-line;
+}
+
+/* Hint */
+.dts-voice-hint {
+    font-size: 0.75rem;
+    color: #475569;
+    text-align: center;
+    line-height: 1.5;
+}
+
+/* Controls row */
+.dts-voice-controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.dts-voice-toggle-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 22px;
+    background: #6366f1;
+    border: none;
+    border-radius: 12px;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+}
+.dts-voice-toggle-btn:hover  { background: #4f46e5; transform: translateY(-1px); }
+.dts-voice-toggle-btn:active { transform: translateY(0); }
+
+.dts-voice-end-btn {
+    padding: 11px 20px;
+    background: rgba(239,68,68,0.12);
+    border: 1px solid rgba(239,68,68,0.35);
+    border-radius: 12px;
+    color: #f87171;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.dts-voice-end-btn:hover { background: rgba(239,68,68,0.25); }
+
+/* Voice button in input bar */
+.dts-voice-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #6366f1, #4f46e5);
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s, transform 0.1s;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.35);
+}
+.dts-voice-btn:hover  { opacity: 0.88; transform: translateY(-1px); }
+.dts-voice-btn:active { transform: translateY(0); }
+
+/* Mobile tweaks */
+@media (max-width: 480px) {
+    .dts-voice-modal  { padding: 32px 20px 28px; border-radius: 20px; }
+    .dts-voice-status { font-size: 0.95rem; }
+    .dts-voice-controls { gap: 8px; }
+    .dts-voice-toggle-btn,
+    .dts-voice-end-btn  { padding: 10px 16px; font-size: 0.85rem; }
+}
+
+/* File chip shown above the user's message bubble */
+.dts-file-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.73rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.18);
+    border-radius: 6px;
+    padding: 3px 10px;
+    margin-bottom: 5px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}

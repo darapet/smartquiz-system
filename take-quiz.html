@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Take Quiz — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.1rem;}
+.aqs-page-main{padding:20px;}
+/* Mobile quiz layout */
+@media(max-width:640px){
+  .aqs-page-main{padding:12px 10px;}
+  .aqs-quiz-cover{padding:20px 14px!important;border-radius:14px!important;}
+  .aqs-quiz-cover h1{font-size:1.2rem!important;}
+  .aqs-quiz-meta{flex-direction:column;gap:6px!important;align-items:flex-start!important;}
+  .aqs-option{padding:12px 14px!important;font-size:.9rem!important;}
+  .aqs-question-text{font-size:1rem!important;line-height:1.6!important;}
+  .aqs-options-grid{grid-template-columns:1fr!important;gap:8px!important;}
+  .aqs-quiz-progress-bar{height:6px!important;}
+  .aqs-timer-circle{width:52px!important;height:52px!important;font-size:1.1rem!important;}
+  .aqs-result-header{padding:24px 16px!important;}
+  .aqs-result-stats{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+  .aqs-result-card{padding:14px!important;}
+  .aqs-result-actions{flex-direction:column!important;}
+  .aqs-result-actions a,.aqs-result-actions button{width:100%;text-align:center;justify-content:center;}
+}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    auth_nonce: '',
+    home_url: 'index.html',
+    create_page_url: 'create-quiz.html',
+    studio_url: 'studio.html',
+    dashboard_url: 'dashboard.html',
+    is_logged_in: true,
+    is_host: false,
+    is_admin: false,
+    current_user_name: '',
+    groq_key: '',
+    quiz_bg_music_url: 'audio/quiz-background.mp3',
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+<header class="aqs-site-header">
+    <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
+    <a href="index.html" class="aqs-btn aqs-btn-sm" style="font-size:.85rem;padding:7px 14px;">← Home</a>
+</header>
+<main class="aqs-page-main">
+
+<canvas id="aqs-particle-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none;"></canvas>
+<div class="aqs-ambient-bg" id="aqs-ambient-bg" style="display:none;"></div>
+
+<div class="aqs-wrap aqs-quiz-wrap" id="aqs-take-quiz" style="position:relative;z-index:1;">
+
+    <!-- Entry Screen -->
+    <div id="aqs-entry-screen" class="aqs-screen">
+        <div id="aqs-quiz-loading" class="aqs-loading-screen">
+            <div class="aqs-spinner aqs-spinner-lg"></div>
+            <p>Loading quiz...</p>
+        </div>
+
+        <div id="aqs-quiz-info" style="display:none;">
+            <div class="aqs-quiz-cover">
+                <h1 id="take-quiz-title"></h1>
+                <p class="aqs-quiz-subject" id="take-quiz-subject"></p>
+                <div class="aqs-quiz-meta">
+                    <span>📋 <strong id="take-num-q"></strong> Questions</span>
+                    <span>⏱️ <strong id="take-time"></strong> Minutes</span>
+                    <span>📚 <span id="take-mode" class="aqs-mode-badge"></span></span>
+                </div>
+                <div id="aqs-quiz-note-box" style="display:none;" class="aqs-quiz-note-box"></div>
+                <div class="aqs-field">
+                    <label>Your Name</label>
+                    <input type="text" id="take-participant-name" placeholder="Enter your name" value="" />
+                </div>
+                <div class="aqs-field" id="aqs-email-field-wrap" style="display:none;">
+                    <label>Your Email <span class="aqs-req-star">*</span>
+                        <span class="aqs-hint" style="display:block;font-weight:400;margin-top:2px;">Required to verify your attempt. This quiz allows only one submission per email.</span>
+                    </label>
+                    <input type="email" id="take-taker-email" placeholder="yourname@example.com" />
+                </div>
+                <div id="aqs-already-taken-notice" style="display:none;" class="aqs-already-taken-notice">
+                    <div class="aqs-at-icon">🚫</div>
+                    <h3>You've Already Completed This Quiz</h3>
+                    <p id="aqs-at-message"></p>
+                    <p class="aqs-at-sub">Contact your host if you believe this is an error.</p>
+                </div>
+                <div id="aqs-custom-form-fields"></div>
+                <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="aqs-start-quiz-btn">Start Quiz →</button>
+            </div>
+        </div>
+
+        <div id="aqs-quiz-not-found" style="display:none;" class="aqs-not-found">
+            <p>❌ Quiz not found or not yet published.</p>
+        </div>
+
+        <div id="aqs-quiz-disabled" style="display:none;" class="aqs-not-found">
+            <div style="text-align:center;padding:32px 20px;">
+                <div style="font-size:3rem;margin-bottom:16px;">⛔</div>
+                <h2 style="color:#92400e;margin-bottom:10px;">Quiz Temporarily Unavailable</h2>
+                <p style="color:#78350f;max-width:480px;margin:0 auto 20px;">This quiz has been temporarily disabled by the host.</p>
+                <button class="aqs-btn" onclick="history.back()">← Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="aqs-quiz-screen" class="aqs-screen" style="display:none;">
+        <div id="aqs-section-progress" class="aqs-section-progress" style="display:none;"></div>
+        <div class="aqs-quiz-topbar">
+            <div class="aqs-quiz-topbar-left"><span id="aqs-q-num" class="aqs-q-counter"></span></div>
+            <div class="aqs-quiz-topbar-center">
+                <div id="aqs-timer" class="aqs-timer"><span id="aqs-timer-display"></span></div>
+            </div>
+            <div class="aqs-quiz-topbar-right">
+                <button id="aqs-sound-toggle" class="aqs-mute-btn" title="Toggle sound">🔊</button>
+            </div>
+        </div>
+        <div class="aqs-progress-bar-wrap" style="margin-bottom:10px;">
+            <div id="aqs-progress-bar" style="height:6px;background:var(--aqs-primary);border-radius:3px;width:0%;transition:width .3s;"></div>
+        </div>
+        <div id="aqs-dots" class="aqs-dots-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;justify-content:center;"></div>
+
+        <div id="aqs-section-intro" class="aqs-section-overlay" style="display:none;">
+            <div class="aqs-section-overlay-card">
+                <div class="aqs-sec-overlay-letter" id="aqs-sec-intro-letter">A</div>
+                <h2 class="aqs-sec-overlay-title" id="aqs-sec-intro-label">Section A</h2>
+                <p class="aqs-sec-overlay-sub" id="aqs-sec-intro-count"></p>
+                <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="aqs-sec-intro-start">Begin Section →</button>
+            </div>
+        </div>
+
+        <div id="aqs-section-complete" class="aqs-section-overlay" style="display:none;">
+            <div class="aqs-section-overlay-card aqs-sec-complete-card">
+                <div class="aqs-sec-overlay-letter" id="aqs-sec-done-letter">A</div>
+                <h2 class="aqs-sec-overlay-title">Section Complete!</h2>
+                <p class="aqs-sec-overlay-sub" id="aqs-sec-done-msg"></p>
+                <div class="aqs-sec-done-score" id="aqs-sec-done-score"></div>
+                <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="aqs-sec-done-btn">Next Section →</button>
+            </div>
+        </div>
+
+        <div id="aqs-question-card" class="aqs-question-card">
+            <div class="aqs-section-label-tag" id="aqs-q-section-label" style="display:none;"></div>
+            <p class="aqs-question-text" id="aqs-question-text"></p>
+            <div class="aqs-options-list" id="aqs-options-list"></div>
+            <div class="aqs-practice-feedback" id="aqs-answer-feedback" style="display:none;"></div>
+            <div class="aqs-quiz-nav aqs-nav-btns" id="aqs-nav-btns">
+                <button class="aqs-btn" id="aqs-prev-btn">← Prev</button>
+                <button class="aqs-btn" id="aqs-next-btn">Next →</button>
+                <div class="aqs-submit-wrap">
+                    <button class="aqs-btn aqs-btn-success" id="aqs-submit-quiz-btn" style="display:none;">Submit Quiz ✓</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="aqs-results-screen" class="aqs-screen" style="display:none;">
+        <div class="aqs-results-header">
+            <h2>Quiz Complete!</h2>
+            <div class="aqs-score-ring">
+                <svg viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#e5e7eb" stroke-width="12"/>
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#10b981" stroke-width="12"
+                        stroke-dasharray="339.3" id="aqs-score-circle" stroke-dashoffset="339.3"
+                        stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="aqs-score-text">
+                    <span id="aqs-final-score">0</span>/<span id="aqs-final-total">0</span>
+                </div>
+            </div>
+            <p id="aqs-score-message" class="aqs-score-message"></p>
+        </div>
+        <div id="aqs-review-section" style="display:none;" class="aqs-review-section">
+            <h3>Answer Review</h3>
+            <div id="aqs-review-list"></div>
+        </div>
+        <div class="aqs-results-actions">
+            <button class="aqs-btn" id="aqs-retake-btn">🔄 Retake Quiz</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-lb-btn">🏆 Leaderboard</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-cert-btn">🎓 Certificate</button>
+        </div>
+        <div id="aqs-leaderboard-section" class="aqs-leaderboard-section" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- Certificate Modal -->
+<div id="aqs-cert-modal" class="aqs-modal aqs-cert-modal-wrap" style="display:none;">
+    <div class="aqs-cert-modal-inner">
+        <div class="aqs-cert-modal-toolbar no-print">
+            <button class="aqs-btn aqs-btn-success" id="aqs-download-cert-pdf-btn">⬇️ Download PDF</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-print-cert-btn">🖨️ Print</button>
+            <button class="aqs-modal-close" id="aqs-close-cert" style="font-size:1.4rem;line-height:1;">&times;</button>
+        </div>
+        <div class="aqs-certificate" id="aqs-certificate">
+            <div class="aqs-cert-corner-tl"></div>
+            <div class="aqs-cert-corner-tr"></div>
+            <div class="aqs-cert-corner-bl"></div>
+            <div class="aqs-cert-corner-br"></div>
+            <div class="aqs-cert-header">
+                <div class="aqs-cert-org">DARAPET TECHNOLOGY</div>
+                <div class="aqs-cert-ornament-row">❧&nbsp;&nbsp;✦&nbsp;&nbsp;❧</div>
+                <div class="aqs-cert-main-title" id="cert-main-title">Certificate of Achievement</div>
+            </div>
+            <div class="aqs-cert-hr"><div class="aqs-cert-hr-line"></div><span class="aqs-cert-hr-diamond">◆</span><div class="aqs-cert-hr-line"></div></div>
+            <p class="aqs-cert-to-text">This is to certify that</p>
+            <div class="aqs-cert-name" id="cert-name"></div>
+            <p class="aqs-cert-completed-text">has successfully completed</p>
+            <div class="aqs-cert-quiz-title" id="cert-quiz-title"></div>
+            <p class="aqs-cert-subject-line" id="cert-subject-line"></p>
+            <div class="aqs-cert-scores-row">
+                <div class="aqs-cert-score-cell">
+                    <div class="aqs-cert-score-val" id="cert-score"></div>
+                    <div class="aqs-cert-score-lbl">Score</div>
+                </div>
+                <div class="aqs-cert-center-seal">
+                    <div class="aqs-cert-seal-ring">
+                        <div class="aqs-cert-seal-pct" id="cert-pct"></div>
+                        <div class="aqs-cert-seal-lbl">Percentage</div>
+                    </div>
+                </div>
+                <div class="aqs-cert-score-cell">
+                    <div class="aqs-cert-score-val" id="cert-grade"></div>
+                    <div class="aqs-cert-score-lbl">Grade</div>
+                </div>
+            </div>
+            <div class="aqs-cert-hr"><div class="aqs-cert-hr-line"></div><span class="aqs-cert-hr-diamond">◆</span><div class="aqs-cert-hr-line"></div></div>
+            <div class="aqs-cert-footer-row">
+                <div class="aqs-cert-footer-cell">
+                    <div class="aqs-cert-footer-val" id="cert-date"></div>
+                    <div class="aqs-cert-footer-lbl">Date Issued</div>
+                </div>
+                <div class="aqs-cert-footer-cell">
+                    <div class="aqs-cert-footer-val aqs-cert-id" id="cert-id"></div>
+                    <div class="aqs-cert-footer-lbl">Certificate ID</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+<script>
+(function(){
+    var obs=new MutationObserver(function(){var qs=document.getElementById('aqs-quiz-screen'),cv=document.getElementById('aqs-particle-canvas'),bg=document.getElementById('aqs-ambient-bg');if(!qs||!cv||!bg)return;var show=qs.style.display!=='none';cv.style.display=show?'block':'none';bg.style.display=show?'block':'none';});
+    var qs=document.getElementById('aqs-quiz-screen');if(qs)obs.observe(qs,{attributes:true,attributeFilter:['style']});
+})();
+</script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

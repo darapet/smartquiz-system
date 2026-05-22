@@ -1,0 +1,504 @@
+/* ============================================================
+   AQS SPLASH SCREEN — 10 Templates
+   © Darapet Technology / XZILY AI System
+============================================================ */
+
+/* ── Base overlay ── */
+#aqs-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    transition: opacity 0.6s ease, transform 0.6s ease;
+}
+#aqs-splash.aqs-splash-hiding {
+    opacity: 0;
+    pointer-events: none;
+}
+#aqs-splash-canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+.aqs-splash-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+.aqs-splash-logo-wrap {
+    margin-bottom: 8px;
+}
+.aqs-splash-logo-wrap img {
+    max-width: 90px;
+    max-height: 90px;
+    object-fit: contain;
+    border-radius: 18px;
+}
+.aqs-splash-icon-default {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.4rem;
+    margin: 0 auto;
+}
+.aqs-splash-name {
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+}
+.aqs-splash-tagline {
+    font-size: 0.95rem;
+    font-weight: 400;
+    opacity: 0.75;
+    line-height: 1.4;
+}
+.aqs-splash-bar-wrap {
+    width: 180px;
+    height: 3px;
+    border-radius: 99px;
+    background: rgba(255,255,255,0.2);
+    overflow: hidden;
+    margin-top: 12px;
+}
+.aqs-splash-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: currentColor;
+    animation: aqsSplashBar var(--aqs-splash-dur, 3s) linear forwards;
+}
+@keyframes aqsSplashBar {
+    from { width: 0%; }
+    to   { width: 100%; }
+}
+
+/* ── Fade out transition ── */
+#aqs-splash.aqs-splash-out {
+    animation: aqsSplashOut 0.65s ease forwards;
+    pointer-events: none;
+}
+@keyframes aqsSplashOut {
+    0%   { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(1.04); }
+}
+
+/* ============================================================
+   TEMPLATE 1 — Minimal Fade (White, clean)
+============================================================ */
+#aqs-splash.aqs-t1 {
+    background: var(--sp-bg, #ffffff);
+}
+#aqs-splash.aqs-t1 .aqs-splash-icon-default {
+    background: var(--sp-primary, #6366f1);
+    color: #fff;
+}
+#aqs-splash.aqs-t1 .aqs-splash-name {
+    color: var(--sp-text, #1e293b);
+    animation: t1FadeName 0.8s 0.3s ease both;
+}
+#aqs-splash.aqs-t1 .aqs-splash-tagline {
+    color: var(--sp-text, #64748b);
+    animation: t1FadeTag 0.8s 0.55s ease both;
+}
+#aqs-splash.aqs-t1 .aqs-splash-logo-wrap {
+    animation: t1FadeLogo 0.7s ease both;
+}
+#aqs-splash.aqs-t1 .aqs-splash-bar-fill {
+    background: var(--sp-primary, #6366f1);
+}
+@keyframes t1FadeLogo { from { opacity:0; transform:translateY(-16px); } to { opacity:1; transform:translateY(0); } }
+@keyframes t1FadeName { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+@keyframes t1FadeTag  { from { opacity:0; } to { opacity:0.75; } }
+
+/* ============================================================
+   TEMPLATE 2 — Cosmic Dark (Stars, glow)
+============================================================ */
+#aqs-splash.aqs-t2 {
+    background: var(--sp-bg, #050816);
+}
+#aqs-splash.aqs-t2 .aqs-splash-icon-default {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #fff;
+    box-shadow: 0 0 40px rgba(99,102,241,0.7);
+    animation: t2Pulse 2s ease-in-out infinite;
+}
+#aqs-splash.aqs-t2 .aqs-splash-name {
+    color: var(--sp-text, #ffffff);
+    text-shadow: 0 0 30px rgba(139,92,246,0.8);
+    animation: t2Name 1s 0.4s ease both;
+}
+#aqs-splash.aqs-t2 .aqs-splash-tagline {
+    color: rgba(255,255,255,0.6);
+    animation: t1FadeTag 1s 0.7s ease both;
+}
+#aqs-splash.aqs-t2 .aqs-splash-logo-wrap {
+    animation: t2LogoIn 0.9s ease both;
+}
+#aqs-splash.aqs-t2 .aqs-splash-bar-fill {
+    background: linear-gradient(90deg, #6366f1, #a78bfa);
+}
+@keyframes t2Pulse    { 0%,100%{box-shadow:0 0 40px rgba(99,102,241,.7)} 50%{box-shadow:0 0 70px rgba(139,92,246,.9)} }
+@keyframes t2LogoIn   { from{opacity:0;transform:scale(0.5);} to{opacity:1;transform:scale(1);} }
+@keyframes t2Name     { from{opacity:0;letter-spacing:8px;} to{opacity:1;letter-spacing:-0.5px;} }
+
+/* ============================================================
+   TEMPLATE 3 — Gradient Wave (Animated gradient bg)
+============================================================ */
+#aqs-splash.aqs-t3 {
+    background: linear-gradient(-45deg, var(--sp-primary,#6366f1), var(--sp-bg,#4f46e5), #8b5cf6, #06b6d4);
+    background-size: 400% 400%;
+    animation: t3GradientShift 6s ease infinite;
+}
+#aqs-splash.aqs-t3 .aqs-splash-icon-default {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.3);
+    animation: t3BounceIn 0.8s cubic-bezier(.36,.07,.19,.97) both;
+}
+#aqs-splash.aqs-t3 .aqs-splash-name {
+    color: var(--sp-text, #ffffff);
+    animation: t3SlideUp 0.7s 0.35s cubic-bezier(.22,.68,0,1.2) both;
+}
+#aqs-splash.aqs-t3 .aqs-splash-tagline {
+    color: rgba(255,255,255,0.85);
+    animation: t3SlideUp 0.7s 0.5s cubic-bezier(.22,.68,0,1.2) both;
+}
+#aqs-splash.aqs-t3 .aqs-splash-bar-fill { background: rgba(255,255,255,0.9); }
+@keyframes t3GradientShift { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+@keyframes t3BounceIn  { from{opacity:0;transform:scale(0.3) rotate(-10deg);} to{opacity:1;transform:scale(1) rotate(0);} }
+@keyframes t3SlideUp   { from{opacity:0;transform:translateY(20px);} to{opacity:1;transform:translateY(0);} }
+
+/* ============================================================
+   TEMPLATE 4 — Neon Glow (Dark + electric neon)
+============================================================ */
+#aqs-splash.aqs-t4 {
+    background: var(--sp-bg, #0d0d0d);
+}
+#aqs-splash.aqs-t4 .aqs-splash-icon-default {
+    background: transparent;
+    color: var(--sp-primary, #00f5ff);
+    border: 3px solid var(--sp-primary, #00f5ff);
+    box-shadow: 0 0 16px var(--sp-primary, #00f5ff), inset 0 0 16px rgba(0,245,255,0.1);
+    animation: t4NeonFlicker 2s ease-in-out infinite;
+}
+#aqs-splash.aqs-t4 .aqs-splash-logo-wrap img { filter: drop-shadow(0 0 16px var(--sp-primary, #00f5ff)); }
+#aqs-splash.aqs-t4 .aqs-splash-name {
+    color: var(--sp-primary, #00f5ff);
+    text-shadow: 0 0 10px var(--sp-primary, #00f5ff), 0 0 30px var(--sp-primary, #00f5ff);
+    animation: t4NeonFlicker 2s ease-in-out infinite, t1FadeName 0.7s 0.2s ease both;
+}
+#aqs-splash.aqs-t4 .aqs-splash-tagline {
+    color: rgba(255,255,255,0.6);
+    animation: t1FadeTag 0.8s 0.5s ease both;
+}
+#aqs-splash.aqs-t4 .aqs-splash-bar-fill {
+    background: var(--sp-primary, #00f5ff);
+    box-shadow: 0 0 8px var(--sp-primary, #00f5ff);
+}
+#aqs-splash.aqs-t4 .aqs-splash-bar-wrap { background: rgba(0,245,255,0.1); }
+@keyframes t4NeonFlicker {
+    0%,19%,21%,23%,25%,54%,56%,100% { opacity:1; }
+    20%,24%,55% { opacity:0.7; }
+}
+
+/* ============================================================
+   TEMPLATE 5 — Typewriter (Clean, text reveal)
+============================================================ */
+#aqs-splash.aqs-t5 {
+    background: var(--sp-bg, #f8fafc);
+}
+#aqs-splash.aqs-t5 .aqs-splash-icon-default {
+    background: var(--sp-primary, #4f46e5);
+    color: #fff;
+    animation: t3BounceIn 0.6s ease both;
+}
+#aqs-splash.aqs-t5 .aqs-splash-logo-wrap {
+    animation: t1FadeLogo 0.5s ease both;
+}
+#aqs-splash.aqs-t5 .aqs-splash-name {
+    color: var(--sp-text, #1e293b);
+    overflow: hidden;
+    white-space: nowrap;
+    border-right: 3px solid var(--sp-primary, #4f46e5);
+    width: 0;
+    animation: t5TypeName 1.2s 0.4s steps(30, end) forwards, t5Cursor 0.6s step-end infinite;
+}
+#aqs-splash.aqs-t5 .aqs-splash-tagline {
+    color: var(--sp-text, #64748b);
+    animation: t1FadeTag 0.8s 1.8s ease both;
+    opacity: 0;
+}
+#aqs-splash.aqs-t5 .aqs-splash-bar-fill { background: var(--sp-primary, #4f46e5); }
+@keyframes t5TypeName { to { width: 100%; } }
+@keyframes t5Cursor   { 50% { border-color: transparent; } }
+
+/* ============================================================
+   TEMPLATE 6 — Particles Burst (Confetti dots from JS canvas)
+============================================================ */
+#aqs-splash.aqs-t6 {
+    background: var(--sp-bg, #ffffff);
+}
+#aqs-splash.aqs-t6 .aqs-splash-icon-default {
+    background: linear-gradient(135deg, var(--sp-primary,#6366f1), #ec4899);
+    color: #fff;
+    animation: t3BounceIn 0.7s 0.1s cubic-bezier(.36,.07,.19,.97) both;
+}
+#aqs-splash.aqs-t6 .aqs-splash-name {
+    color: var(--sp-text, #1e293b);
+    animation: t6PopIn 0.6s 0.35s cubic-bezier(.36,.07,.19,.97) both;
+}
+#aqs-splash.aqs-t6 .aqs-splash-tagline {
+    color: var(--sp-text, #64748b);
+    animation: t1FadeTag 0.6s 0.6s ease both;
+}
+#aqs-splash.aqs-t6 .aqs-splash-bar-fill {
+    background: linear-gradient(90deg, var(--sp-primary,#6366f1), #ec4899);
+}
+@keyframes t6PopIn {
+    0%  { opacity:0; transform: scale(0.5); }
+    70% { transform: scale(1.08); }
+    100%{ opacity:1; transform: scale(1); }
+}
+
+/* ============================================================
+   TEMPLATE 7 — Glitch (Retro glitch effect)
+============================================================ */
+#aqs-splash.aqs-t7 {
+    background: var(--sp-bg, #0a0a0a);
+}
+#aqs-splash.aqs-t7 .aqs-splash-icon-default {
+    background: transparent;
+    color: var(--sp-primary, #39ff14);
+    border: 2px solid var(--sp-primary, #39ff14);
+    animation: t7GlitchIcon 3s infinite;
+}
+#aqs-splash.aqs-t7 .aqs-splash-name {
+    color: var(--sp-text, #ffffff);
+    animation: t7GlitchText 3s infinite, t1FadeName 0.5s ease both;
+    position: relative;
+}
+#aqs-splash.aqs-t7 .aqs-splash-name::before,
+#aqs-splash.aqs-t7 .aqs-splash-name::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    overflow: hidden;
+}
+#aqs-splash.aqs-t7 .aqs-splash-name::before {
+    color: #ff0055;
+    animation: t7GlitchBefore 3s infinite;
+    clip: rect(24px, 550px, 90px, 0);
+}
+#aqs-splash.aqs-t7 .aqs-splash-name::after {
+    color: #00ffff;
+    animation: t7GlitchAfter 3s infinite;
+    clip: rect(85px, 550px, 140px, 0);
+}
+#aqs-splash.aqs-t7 .aqs-splash-tagline { color: rgba(255,255,255,0.55); animation: t1FadeTag 0.7s 0.5s ease both; }
+#aqs-splash.aqs-t7 .aqs-splash-bar-fill { background: var(--sp-primary, #39ff14); box-shadow: 0 0 6px var(--sp-primary, #39ff14); }
+#aqs-splash.aqs-t7 .aqs-splash-bar-wrap { background: rgba(57,255,20,0.15); }
+@keyframes t7GlitchText   { 0%,100%{transform:translate(0)} 2%{transform:translate(-3px,1px)} 4%{transform:translate(3px,-1px)} 6%{transform:translate(0)} }
+@keyframes t7GlitchBefore { 0%,100%{clip:rect(24px,550px,90px,0);transform:translate(-3px,0)} 25%{clip:rect(60px,550px,120px,0);transform:translate(3px,0)} 75%{clip:rect(10px,550px,50px,0);transform:translate(-2px,0)} }
+@keyframes t7GlitchAfter  { 0%,100%{clip:rect(85px,550px,140px,0);transform:translate(3px,0)} 25%{clip:rect(30px,550px,70px,0);transform:translate(-3px,0)} 75%{clip:rect(90px,550px,150px,0);transform:translate(2px,0)} }
+@keyframes t7GlitchIcon   { 0%,100%{box-shadow:0 0 8px var(--sp-primary,#39ff14)} 2%{box-shadow:-4px 0 0 #ff0055, 4px 0 0 #00ffff} 4%{box-shadow:0 0 8px var(--sp-primary,#39ff14)} }
+
+/* ============================================================
+   TEMPLATE 8 — Orbit (Spinning rings around logo)
+============================================================ */
+#aqs-splash.aqs-t8 {
+    background: var(--sp-bg, #0f172a);
+}
+.aqs-t8-orbit-wrap {
+    position: relative;
+    width: 160px;
+    height: 160px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 8px;
+}
+.aqs-t8-orbit {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid transparent;
+}
+.aqs-t8-orbit-1 {
+    width: 120px; height: 120px;
+    border-top-color: var(--sp-primary, #6366f1);
+    border-right-color: var(--sp-primary, #6366f1);
+    animation: t8Orbit1 1.4s linear infinite;
+}
+.aqs-t8-orbit-2 {
+    width: 150px; height: 150px;
+    border-bottom-color: #8b5cf6;
+    border-left-color: #8b5cf6;
+    animation: t8Orbit2 2s linear infinite;
+}
+.aqs-t8-orbit-3 {
+    width: 90px; height: 90px;
+    border-top-color: #06b6d4;
+    animation: t8Orbit3 0.9s linear infinite;
+}
+#aqs-splash.aqs-t8 .aqs-splash-icon-default {
+    background: var(--sp-primary, #6366f1);
+    color: #fff;
+    position: relative; z-index:2;
+    animation: t1FadeLogo 0.6s ease both;
+}
+#aqs-splash.aqs-t8 .aqs-splash-name {
+    color: var(--sp-text, #ffffff);
+    animation: t1FadeName 0.7s 0.5s ease both;
+}
+#aqs-splash.aqs-t8 .aqs-splash-tagline { color: rgba(255,255,255,0.6); animation: t1FadeTag 0.8s 0.75s ease both; }
+#aqs-splash.aqs-t8 .aqs-splash-bar-fill { background: var(--sp-primary, #6366f1); }
+@keyframes t8Orbit1 { to { transform: rotate(360deg); } }
+@keyframes t8Orbit2 { to { transform: rotate(-360deg); } }
+@keyframes t8Orbit3 { to { transform: rotate(360deg); } }
+
+/* ============================================================
+   TEMPLATE 9 — Luxury Gold (Black/gold, shimmer)
+============================================================ */
+#aqs-splash.aqs-t9 {
+    background: var(--sp-bg, #0a0800);
+}
+#aqs-splash.aqs-t9::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 50%, rgba(212,175,55,0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+#aqs-splash.aqs-t9 .aqs-splash-icon-default {
+    background: linear-gradient(135deg, #b8860b, #ffd700, #b8860b);
+    color: #0a0800;
+    font-size: 2rem;
+    animation: t9GoldScale 0.9s cubic-bezier(.22,.68,0,1.2) both;
+}
+#aqs-splash.aqs-t9 .aqs-splash-logo-wrap img { filter: drop-shadow(0 0 20px rgba(212,175,55,0.7)); animation: t9GoldScale 0.9s ease both; }
+#aqs-splash.aqs-t9 .aqs-splash-name {
+    background: linear-gradient(90deg, #b8860b, #ffd700, #b8860b);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: t9Shimmer 2.5s linear infinite, t1FadeName 0.8s 0.4s ease both;
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 2.2rem;
+    letter-spacing: 2px;
+}
+#aqs-splash.aqs-t9 .aqs-splash-tagline { color: rgba(212,175,55,0.7); font-family: Georgia, serif; letter-spacing: 1px; animation: t1FadeTag 0.8s 0.7s ease both; }
+#aqs-splash.aqs-t9 .aqs-splash-bar-fill { background: linear-gradient(90deg, #b8860b, #ffd700); }
+#aqs-splash.aqs-t9 .aqs-splash-bar-wrap { background: rgba(212,175,55,0.15); }
+@keyframes t9GoldScale { from{opacity:0;transform:scale(0.7);} to{opacity:1;transform:scale(1);} }
+@keyframes t9Shimmer   { to { background-position: 200% center; } }
+
+/* ============================================================
+   TEMPLATE 10 — Ripple (Wave ripple reveal)
+============================================================ */
+#aqs-splash.aqs-t10 {
+    background: var(--sp-bg, #0c4a6e);
+}
+#aqs-splash.aqs-t10::before,
+#aqs-splash.aqs-t10::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.15);
+    animation: t10Ripple 3s ease-out infinite;
+}
+#aqs-splash.aqs-t10::before { width: 300px; height: 300px; animation-delay: 0s; }
+#aqs-splash.aqs-t10::after  { width: 300px; height: 300px; animation-delay: 1.5s; }
+.aqs-t10-extra-ripple {
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.1);
+    width: 300px; height: 300px;
+    animation: t10Ripple 3s ease-out infinite;
+    animation-delay: 0.75s;
+}
+#aqs-splash.aqs-t10 .aqs-splash-icon-default {
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(12px);
+    color: #fff;
+    border: 2px solid rgba(255,255,255,0.4);
+    animation: t10WaveIn 0.8s cubic-bezier(.22,.68,0,1.2) both;
+}
+#aqs-splash.aqs-t10 .aqs-splash-name {
+    color: var(--sp-text, #ffffff);
+    animation: t10WaveIn 0.8s 0.3s cubic-bezier(.22,.68,0,1.2) both;
+}
+#aqs-splash.aqs-t10 .aqs-splash-tagline { color: rgba(255,255,255,0.7); animation: t1FadeTag 0.8s 0.6s ease both; }
+#aqs-splash.aqs-t10 .aqs-splash-bar-fill { background: rgba(255,255,255,0.9); }
+#aqs-splash.aqs-t10 .aqs-splash-bar-wrap { background: rgba(255,255,255,0.2); }
+@keyframes t10Ripple  { 0%{transform:scale(0.3);opacity:1} 100%{transform:scale(3.5);opacity:0} }
+@keyframes t10WaveIn  { from{opacity:0;transform:scale(0.6) translateY(20px);} to{opacity:1;transform:scale(1) translateY(0);} }
+
+/* ============================================================
+   ADMIN SPLASH PREVIEWS (Settings page thumbnails)
+============================================================ */
+.aqs-splash-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+.aqs-splash-thumb {
+    border: 3px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    overflow: hidden;
+    transition: border-color .18s, transform .15s;
+    position: relative;
+}
+.aqs-splash-thumb:hover { transform: translateY(-2px); }
+.aqs-splash-thumb.selected { border-color: #6366f1; }
+.aqs-splash-thumb input[type="radio"] { display: none; }
+.aqs-splash-thumb-inner {
+    height: 90px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    padding: 8px;
+}
+.aqs-splash-thumb-icon { font-size: 1.5rem; margin-bottom: 2px; }
+.aqs-splash-thumb-label {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: rgba(0,0,0,0.55);
+    color: #fff;
+    font-size: 0.68rem;
+    text-align: center;
+    padding: 3px 4px;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+}
+/* Thumb backgrounds per template */
+.aqs-thumb-t1  { background: #ffffff; color: #1e293b; }
+.aqs-thumb-t2  { background: #050816; color: #a5b4fc; }
+.aqs-thumb-t3  { background: linear-gradient(135deg,#6366f1,#06b6d4); color: #fff; }
+.aqs-thumb-t4  { background: #0d0d0d; color: #00f5ff; }
+.aqs-thumb-t5  { background: #f8fafc; color: #1e293b; }
+.aqs-thumb-t6  { background: #fff; color: #6366f1; }
+.aqs-thumb-t7  { background: #0a0a0a; color: #39ff14; }
+.aqs-thumb-t8  { background: #0f172a; color: #818cf8; }
+.aqs-thumb-t9  { background: #0a0800; color: #ffd700; }
+.aqs-thumb-t10 { background: #0c4a6e; color: #ffffff; }

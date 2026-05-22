@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>About — Admin — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+.aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+/* About styles */
+.aqs-about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px;margin-top:8px;}
+.aqs-dev-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(79,70,229,.08);overflow:hidden;transition:transform .2s,box-shadow .2s;}
+.aqs-dev-card:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(79,70,229,.14);}
+.aqs-dev-card-banner{height:80px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);position:relative;}
+.aqs-dev-card-banner.assistant{background:linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%);}
+.aqs-dev-badge{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.22);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.35);}
+.aqs-dev-avatar-wrap{padding:0 28px;margin-top:-44px;margin-bottom:18px;}
+.aqs-dev-avatar{width:90px;height:90px;border-radius:50%;border:4px solid #fff;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,.15);display:block;background:#e0e7ff;font-size:2rem;display:flex;align-items:center;justify-content:center;}
+.aqs-dev-body{padding:0 28px 28px;}
+.aqs-dev-name{font-size:1.18rem;font-weight:700;color:#1e293b;margin:0 0 2px;}
+.aqs-dev-title{font-size:.82rem;font-weight:600;color:#4f46e5;margin:0 0 12px;text-transform:uppercase;letter-spacing:.05em;}
+.aqs-dev-bio{font-size:.875rem;color:#475569;line-height:1.7;margin:0 0 18px;}
+.aqs-dev-skills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;}
+.aqs-dev-skill{background:#ede9fe;color:#5b21b6;font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:20px;letter-spacing:.02em;}
+.aqs-dev-links{display:flex;gap:10px;flex-wrap:wrap;}
+.aqs-dev-link{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-size:.8rem;font-weight:600;text-decoration:none;transition:opacity .15s;border:1px solid #c7d2fe;color:#4f46e5;background:#f5f3ff;}
+.aqs-dev-link:hover{opacity:.8;color:#4f46e5;}
+.aqs-about-plugin{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border-radius:16px;padding:32px 36px;color:#fff;margin-top:32px;display:flex;align-items:center;gap:28px;flex-wrap:wrap;}
+.aqs-about-plugin-icon{font-size:3rem;flex-shrink:0;}
+.aqs-about-plugin-text h2{color:#fff;font-size:1.2rem;margin:0 0 6px;}
+.aqs-about-plugin-text p{margin:0;opacity:.88;font-size:.9rem;line-height:1.65;}
+.aqs-about-plugin-meta{margin-top:16px;display:flex;gap:20px;flex-wrap:wrap;}
+.aqs-about-plugin-meta span{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:5px 12px;border-radius:20px;font-size:.8rem;font-weight:600;}
+@media(max-width:700px){.aqs-admin-sidebar{display:none;}}
+</style>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<aside class="aqs-admin-sidebar">
+    <div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div>
+    <nav class="aqs-admin-nav">
+        <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a>
+        <a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a>
+        <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
+        <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
+        <a href="admin-about.html" class="active"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+    </nav>
+    <div class="aqs-admin-sidebar-footer"><a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a></div>
+</aside>
+
+<div class="aqs-admin-content">
+<div style="max-width:1100px;">
+    <div class="aqs-admin-header">
+        <h1>👨‍💻 About the Developers</h1>
+        <a href="admin-about-settings.html" class="aqs-btn aqs-btn-primary">✏️ Edit Developer Profiles</a>
+    </div>
+
+    <!-- Plugin info banner -->
+    <div class="aqs-about-plugin">
+        <div class="aqs-about-plugin-icon">⚡</div>
+        <div class="aqs-about-plugin-text" style="flex:1;min-width:220px;">
+            <h2>AI Quiz System — Challenge Mode</h2>
+            <p id="aqs-plugin-desc">A powerful standalone web app that brings AI-generated quizzes and real-time multiplayer challenge battles. Built with passion for education, engagement, and seamless learning experiences.</p>
+            <div class="aqs-about-plugin-meta">
+                <span>📦 Version 2.3.1</span>
+                <span>🧠 AI-Powered</span>
+                <span>⚡ Real-time Multiplayer</span>
+                <span>🇳🇬 Made with ❤️ in Nigeria</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Developer cards -->
+    <div class="aqs-about-grid" style="margin-top:32px;">
+
+        <div class="aqs-dev-card">
+            <div class="aqs-dev-card-banner">
+                <span class="aqs-dev-badge">🚀 Lead Developer</span>
+            </div>
+            <div class="aqs-dev-avatar-wrap">
+                <div class="aqs-dev-avatar" id="main-avatar-wrap">
+                    <img id="main-avatar-img" src="" alt="Lead Developer" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;" />
+                    <span id="main-avatar-letter" style="font-size:2rem;">D</span>
+                </div>
+            </div>
+            <div class="aqs-dev-body">
+                <p class="aqs-dev-name" id="main-name">Daramola Peter Oluwaferanmi</p>
+                <p class="aqs-dev-title" id="main-title">Lead Developer &amp; Architect</p>
+                <p class="aqs-dev-bio" id="main-bio">A driven developer and science student with a rare passion that bridges the natural world and the digital one. The sole architect behind the AI Quiz System — designing and building the entire platform from the ground up, including the real-time multiplayer challenge engine, the AI question generation pipeline, and the full infrastructure.</p>
+                <div class="aqs-dev-skills" id="main-skills">
+                    <span class="aqs-dev-skill">PHP / WordPress</span><span class="aqs-dev-skill">JavaScript</span>
+                    <span class="aqs-dev-skill">AI Integration</span><span class="aqs-dev-skill">MySQL</span>
+                    <span class="aqs-dev-skill">REST APIs</span><span class="aqs-dev-skill">EdTech</span>
+                    <span class="aqs-dev-skill">Meteorology &amp; Climate Science</span>
+                </div>
+                <div class="aqs-dev-links">
+                    <a href="mailto:support@aiquizsystem.com" class="aqs-dev-link" id="main-email-link">✉️ Contact</a>
+                    <a href="https://github.com" target="_blank" class="aqs-dev-link" id="main-github-link">🐙 GitHub</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="aqs-dev-card">
+            <div class="aqs-dev-card-banner assistant">
+                <span class="aqs-dev-badge">🛠️ Assistant Developer</span>
+            </div>
+            <div class="aqs-dev-avatar-wrap">
+                <div class="aqs-dev-avatar" id="asst-avatar-wrap">
+                    <img id="asst-avatar-img" src="" alt="Assistant Developer" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;" />
+                    <span id="asst-avatar-letter" style="font-size:2rem;">O</span>
+                </div>
+            </div>
+            <div class="aqs-dev-body">
+                <p class="aqs-dev-name" id="asst-name">Omomo Excellence</p>
+                <p class="aqs-dev-title" id="asst-title">Assistant Developer &amp; UI Engineer</p>
+                <p class="aqs-dev-bio" id="asst-bio">A creative technologist with an eye for detail and a genuine love for polished user experiences. The talent responsible for bringing the challenge mode interface to life — crafting the sleek animated UI, the responsive design system, and the real-time scoreboard experience.</p>
+                <div class="aqs-dev-skills" id="asst-skills">
+                    <span class="aqs-dev-skill">HTML / CSS</span><span class="aqs-dev-skill">jQuery</span>
+                    <span class="aqs-dev-skill">UI / UX Design</span><span class="aqs-dev-skill">Animations</span>
+                    <span class="aqs-dev-skill">Responsive Design</span><span class="aqs-dev-skill">WordPress</span>
+                    <span class="aqs-dev-skill">Meteorology &amp; Climate Science</span>
+                </div>
+                <div class="aqs-dev-links">
+                    <a href="mailto:support@aiquizsystem.com" class="aqs-dev-link" id="asst-email-link">✉️ Contact</a>
+                    <a href="https://github.com" target="_blank" class="aqs-dev-link" id="asst-github-link">🐙 GitHub</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p style="margin-top:28px;text-align:center;color:#94a3b8;font-size:.82rem;">
+        AI Quiz System &copy; 2026 &mdash; Built for educators, by educators.
+        For support, visit <a href="mailto:support@aiquizsystem.com" style="color:#6366f1;">support@aiquizsystem.com</a>
+    </p>
+</div>
+</div>
+
+<script>
+// Load profile data from API if available
+fetch('#firebase-admin-endpoint-removed/api/settings', {credentials:'include'})
+    .then(function(r){return r.json();})
+    .then(function(d){
+        var s = d.settings || d || {};
+        if(s.dev_main_name) document.getElementById('main-name').textContent = s.dev_main_name;
+        if(s.dev_main_title) document.getElementById('main-title').innerHTML = s.dev_main_title;
+        if(s.dev_main_bio) document.getElementById('main-bio').textContent = s.dev_main_bio;
+        if(s.dev_main_email){ var el=document.getElementById('main-email-link'); el.href='mailto:'+s.dev_main_email; }
+        if(s.dev_main_github){ var el=document.getElementById('main-github-link'); el.href=s.dev_main_github; }
+        if(s.dev_main_image){
+            var img=document.getElementById('main-avatar-img');
+            img.src=s.dev_main_image; img.style.display='block';
+            document.getElementById('main-avatar-letter').style.display='none';
+        }
+        if(s.dev_asst_name) document.getElementById('asst-name').textContent = s.dev_asst_name;
+        if(s.dev_asst_title) document.getElementById('asst-title').innerHTML = s.dev_asst_title;
+        if(s.dev_asst_bio) document.getElementById('asst-bio').textContent = s.dev_asst_bio;
+        if(s.dev_asst_email){ var el=document.getElementById('asst-email-link'); el.href='mailto:'+s.dev_asst_email; }
+        if(s.dev_asst_github){ var el=document.getElementById('asst-github-link'); el.href=s.dev_asst_github; }
+        if(s.dev_asst_image){
+            var img=document.getElementById('asst-avatar-img');
+            img.src=s.dev_asst_image; img.style.display='block';
+            document.getElementById('asst-avatar-letter').style.display='none';
+        }
+        if(s.about_plugin_desc) document.getElementById('aqs-plugin-desc').textContent = s.about_plugin_desc;
+    }).catch(function(){});
+</script>
+</body>
+</html>

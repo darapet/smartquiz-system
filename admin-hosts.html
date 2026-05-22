@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Host Management — Admin — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+.aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+.aqs-badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:700;}
+.aqs-badge-draft{background:#fef3c7;color:#92400e;}
+.aqs-table-wrap{overflow-x:auto;border-radius:12px;border:1px solid #e5e7eb;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.05);}
+.aqs-table{width:100%;border-collapse:collapse;font-size:.87rem;}
+.aqs-table th{background:#f8fafc;padding:12px 14px;text-align:left;font-weight:700;color:#374151;border-bottom:1px solid #e5e7eb;white-space:nowrap;}
+.aqs-table td{padding:11px 14px;border-bottom:1px solid #f1f5f9;color:#374151;vertical-align:middle;}
+.aqs-table tr:last-child td{border-bottom:none;}
+.aqs-table tr:hover td{background:#fafafa;}
+.aqs-loading{text-align:center;color:#94a3b8;font-style:italic;padding:24px;}
+.aqs-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;}
+.aqs-modal-content{background:#fff;border-radius:16px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.25);}
+.aqs-modal-content.aqs-modal-xl{max-width:900px;}
+.aqs-modal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:20px 24px;border-bottom:1px solid #e5e7eb;}
+.aqs-modal-header h3{margin:0;font-size:1.1rem;font-weight:700;}
+.aqs-modal-close{background:none;border:none;font-size:1.5rem;cursor:pointer;color:#94a3b8;line-height:1;padding:4px;}
+.aqs-modal-body{padding:20px 24px;}
+.aqs-modal-footer{display:flex;gap:10px;padding:16px 24px;border-top:1px solid #e5e7eb;}
+.aqs-modal-sub{font-size:.82rem;color:#6b7280;margin:4px 0 0;}
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.aqs-btn-danger{background:#dc2626;color:#fff;border-color:#dc2626;}
+.aqs-btn-sm{padding:6px 12px;font-size:.8rem;}
+@media(max-width:700px){.aqs-admin-sidebar{display:none;}}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    is_logged_in: true,
+    is_admin: true,
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<aside class="aqs-admin-sidebar">
+    <div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div>
+    <nav class="aqs-admin-nav">
+        <a href="admin-dashboard.html"><span class="aqs-nav-icon">📊</span> Dashboard</a>
+        <a href="admin-create-quiz.html"><span class="aqs-nav-icon">✏️</span> Create Quiz</a>
+        <a href="admin-hosts.html" class="active"><span class="aqs-nav-icon">👥</span> Hosts</a>
+        <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
+        <a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+    </nav>
+    <div class="aqs-admin-sidebar-footer"><a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a></div>
+</aside>
+
+<div class="aqs-admin-content">
+<div class="wrap aqs-admin-wrap">
+    <div class="aqs-admin-header">
+        <h1>Host Management</h1>
+        <span id="aqs-host-count" class="aqs-badge aqs-badge-draft" style="font-size:14px;padding:6px 14px;">Loading…</span>
+    </div>
+
+    <div class="aqs-table-wrap">
+        <table class="aqs-table" id="aqs-hosts-table">
+            <thead>
+                <tr><th>#</th><th>Name</th><th>Username</th><th>Email</th><th>Status</th><th>Quizzes</th><th>Registered</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="aqs-host-rows">
+                <tr><td colspan="8" class="aqs-loading">Loading hosts…</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Host Quiz Activity Modal -->
+    <div id="aqs-host-quizzes-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content aqs-modal-xl">
+            <div class="aqs-modal-header">
+                <div>
+                    <h3 id="aqs-host-quizzes-title">Quiz Activity</h3>
+                    <p id="aqs-host-quizzes-sub" class="aqs-modal-sub"></p>
+                </div>
+                <button class="aqs-modal-close" id="aqs-close-host-quizzes">&times;</button>
+            </div>
+            <div id="aqs-host-quizzes-body" class="aqs-modal-body"><div class="aqs-loading">Loading quizzes…</div></div>
+        </div>
+    </div>
+
+    <!-- Host Delete Print-Before-Delete Modal -->
+    <div id="aqs-host-pbd-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content" style="max-width:560px;">
+            <div class="aqs-modal-header" style="border-bottom:3px solid #dc2626;">
+                <div>
+                    <h3 style="color:#dc2626;">🖨️ Print Required Before Deleting Host</h3>
+                    <p class="aqs-modal-sub" id="aqs-host-pbd-sub"></p>
+                </div>
+                <button class="aqs-modal-close" id="aqs-close-host-pbd">&times;</button>
+            </div>
+            <div id="aqs-host-pbd-body" class="aqs-modal-body" style="max-height:50vh;overflow-y:auto;"></div>
+            <div class="aqs-modal-footer" style="flex-wrap:wrap;gap:8px;">
+                <div style="width:100%;background:#fef3c7;border:1px solid #f59e0b;border-radius:6px;padding:8px 12px;font-size:.82rem;color:#92400e;">
+                    ⚠️ <strong>Print first to unlock delete.</strong>
+                </div>
+                <button class="aqs-btn aqs-btn-primary" id="aqs-host-pbd-print-btn">🖨️ Print &amp; Unlock Delete</button>
+                <button class="aqs-btn aqs-btn-danger" id="aqs-host-pbd-confirm-btn" disabled style="opacity:0.4;cursor:not-allowed;">Permanently Delete Host</button>
+                <button class="aqs-btn" id="aqs-host-pbd-cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Modal -->
+    <div id="aqs-admin-attendance-modal" class="aqs-modal" style="display:none;">
+        <div class="aqs-modal-content aqs-modal-xl">
+            <div class="aqs-modal-header">
+                <div>
+                    <h3 id="aqs-admin-attendance-title">Attendance</h3>
+                    <p id="aqs-admin-attendance-sub" class="aqs-modal-sub"></p>
+                </div>
+                <button class="aqs-modal-close" id="aqs-close-admin-attendance">&times;</button>
+            </div>
+            <div id="aqs-admin-attendance-body" class="aqs-modal-body"><div class="aqs-loading">Loading attendance…</div></div>
+        </div>
+    </div>
+</div>
+</div>
+
+<script>
+// Modal close handlers
+['aqs-close-host-quizzes','aqs-close-host-pbd','aqs-close-admin-attendance','aqs-host-pbd-cancel-btn'].forEach(function(id){
+    var el = document.getElementById(id);
+    if(el) el.addEventListener('click', function(){
+        document.querySelectorAll('.aqs-modal').forEach(function(m){m.style.display='none';});
+    });
+});
+// Print before delete
+var printBtn = document.getElementById('aqs-host-pbd-print-btn');
+var confirmBtn = document.getElementById('aqs-host-pbd-confirm-btn');
+if(printBtn) printBtn.addEventListener('click', function(){
+    window.print();
+    if(confirmBtn){ confirmBtn.disabled=false; confirmBtn.style.opacity='1'; confirmBtn.style.cursor='pointer'; }
+});
+// Load hosts
+fetch('#firebase-admin-endpoint-removed/api/admin/hosts', {credentials:'include'})
+    .then(function(r){return r.json();})
+    .then(function(data){
+        var hosts = Array.isArray(data) ? data : (data.hosts || []);
+        document.getElementById('aqs-host-count').textContent = hosts.length + ' Hosts';
+        var tbody = document.getElementById('aqs-host-rows');
+        if(!hosts.length){ tbody.innerHTML='<tr><td colspan="8" class="aqs-loading">No hosts yet.</td></tr>'; return; }
+        tbody.innerHTML = hosts.map(function(h, i){
+            return '<tr><td>' + (i+1) + '</td><td>' + (h.name||'—') + '</td><td>' + (h.username||'—') + '</td><td>' + (h.email||'—') + '</td><td>' + (h.status||'active') + '</td><td>' + (h.quiz_count||0) + '</td><td>' + (h.registered||'—') + '</td><td><button class="aqs-btn aqs-btn-sm" onclick="viewHostQuizzes(' + JSON.stringify(h) + ')">View Quizzes</button></td></tr>';
+        }).join('');
+    }).catch(function(){
+        document.getElementById('aqs-host-rows').innerHTML='<tr><td colspan="8" class="aqs-loading">Failed to load. Check API server.</td></tr>';
+        document.getElementById('aqs-host-count').textContent = 'Error';
+    });
+
+function viewHostQuizzes(host){
+    document.getElementById('aqs-host-quizzes-title').textContent = 'Quiz Activity — ' + (host.name||host.username||'Host');
+    document.getElementById('aqs-host-quizzes-sub').textContent = (host.email||'');
+    document.getElementById('aqs-host-quizzes-body').innerHTML = '<div class="aqs-loading">Loading quizzes…</div>';
+    document.getElementById('aqs-host-quizzes-modal').style.display='flex';
+    fetch('#firebase-admin-endpoint-removed/api/admin/host-quizzes?host_id=' + (host.id||''), {credentials:'include'})
+        .then(function(r){return r.json();})
+        .then(function(d){
+            var quizzes = Array.isArray(d) ? d : (d.quizzes||[]);
+            if(!quizzes.length){ document.getElementById('aqs-host-quizzes-body').innerHTML='<p>No quizzes found.</p>'; return; }
+            document.getElementById('aqs-host-quizzes-body').innerHTML = '<table class="aqs-table"><thead><tr><th>Title</th><th>Subject</th><th>Status</th><th>Created</th></tr></thead><tbody>' + quizzes.map(function(q){return '<tr><td>' + q.title + '</td><td>' + (q.subject||'—') + '</td><td>' + (q.status||'draft') + '</td><td>' + (q.created||'—') + '</td></tr>';}).join('') + '</tbody></table>';
+        }).catch(function(){document.getElementById('aqs-host-quizzes-body').innerHTML='<p>Error loading quizzes.</p>';});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XZILY AI — Quiz System &amp; AI Studio</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-splash.css">
+    <link rel="stylesheet" href="css/aqs-ads-popup.css">
+    <link rel="stylesheet" href="css/aqs-notifications.css">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" as="style" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ TOP HEADER ══ -->
+<header class="aqs-site-header">
+    <div class="aqs-site-header-inner">
+        <a href="index.html" class="aqs-site-logo">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity="0.15"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
+            <div class="aqs-site-logo-text">
+                <span class="aqs-site-logo-name">AI Quiz</span>
+                <span class="aqs-site-logo-sub">System</span>
+            </div>
+        </a>
+        <nav class="aqs-site-nav" id="aqs-site-nav">
+            <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Create Quiz
+            </a>
+            <a href="studio.html" class="aqs-site-nav-link" style="color:#7c3aed;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                AI Studio
+            </a>
+            <a href="image-gen.html" class="aqs-site-nav-link" style="color:#db2777;">🎨 Image AI</a>
+            <a href="tts.html" class="aqs-site-nav-link" style="color:#059669;">🔊 TTS</a>
+            <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
+            <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
+            <div class="aqs-site-nav-mobile-auth">
+                <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">Get Started</a>
+            </div>
+        </nav>
+        <div class="aqs-site-header-auth">
+            <a href="create-quiz.html" class="aqs-site-header-btn aqs-site-header-btn-primary">Get Started</a>
+        </div>
+        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</header>
+<script>
+(function(){
+    var btn=document.getElementById('aqs-site-nav-toggle');
+    var nav=document.getElementById('aqs-site-nav');
+    if(btn&&nav){btn.addEventListener('click',function(){nav.classList.toggle('aqs-site-nav-open');btn.classList.toggle('aqs-site-nav-toggle-open');});}
+})();
+</script>
+
+<main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
+
+<style>
+/* Ticker/countdown CSS now in aqs-notifs-bar.js */
+
+.aqs-home{font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;color:#1e293b}
+.aqs-hero{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 50%,#6366f1 100%);color:white;padding:80px 20px 100px;text-align:center;position:relative;overflow:hidden}
+.aqs-hero::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");pointer-events:none}
+.aqs-hero-inner{position:relative;max-width:780px;margin:0 auto}
+.aqs-hero-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:100px;padding:6px 16px;font-size:0.82rem;font-weight:600;letter-spacing:.03em;margin-bottom:24px;backdrop-filter:blur(4px)}
+.aqs-hero-badge-dot{width:7px;height:7px;border-radius:50%;background:#34d399;flex-shrink:0}
+.aqs-hero h1{font-size:clamp(2rem,5vw,3.2rem);font-weight:800;line-height:1.15;margin-bottom:20px;letter-spacing:-.02em}
+.aqs-hero h1 span{color:#a5f3fc}
+.aqs-hero-sub{font-size:1.1rem;opacity:.85;max-width:520px;margin:0 auto 40px;line-height:1.7}
+.aqs-hero-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.aqs-hero-btn{display:inline-flex;align-items:center;gap:8px;padding:14px 30px;border-radius:10px;font-size:1rem;font-weight:600;text-decoration:none;transition:transform .15s,box-shadow .15s;border:none;cursor:pointer}
+.aqs-hero-btn:hover{transform:translateY(-2px)}
+.aqs-hero-btn-primary{background:white;color:#4f46e5;box-shadow:0 4px 20px rgba(0,0,0,.2)}
+.aqs-hero-btn-primary:hover{box-shadow:0 8px 32px rgba(0,0,0,.28)}
+.aqs-hero-btn-secondary{background:rgba(255,255,255,.15);color:white;border:1px solid rgba(255,255,255,.35);backdrop-filter:blur(4px)}
+.aqs-hero-btn-secondary:hover{background:rgba(255,255,255,.25)}
+.aqs-wave{display:block;margin-top:-2px}
+.aqs-features{padding:72px 20px;background:#f8fafc}
+.aqs-features-inner{max-width:960px;margin:0 auto}
+.aqs-section-label{text-align:center;font-size:0.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin-bottom:12px}
+.aqs-section-title{text-align:center;font-size:clamp(1.5rem,3vw,2.2rem);font-weight:800;margin-bottom:12px;letter-spacing:-.02em}
+.aqs-section-sub{text-align:center;font-size:1rem;color:#64748b;max-width:520px;margin:0 auto 56px;line-height:1.7}
+.aqs-feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.aqs-feature-card{background:white;border-radius:16px;padding:32px 28px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.05),0 8px 24px rgba(0,0,0,.04);transition:transform .2s,box-shadow .2s}
+.aqs-feature-card:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(79,70,229,.12)}
+.aqs-feature-icon{width:52px;height:52px;border-radius:14px;margin-bottom:20px;display:flex;align-items:center;justify-content:center;font-size:1.6rem}
+.aqs-feature-icon-purple{background:#ede9fe}
+.aqs-feature-icon-amber{background:#fef3c7}
+.aqs-feature-icon-green{background:#d1fae5}
+.aqs-feature-icon-blue{background:#dbeafe}
+.aqs-feature-card h3{font-size:1.1rem;font-weight:700;margin-bottom:10px}
+.aqs-feature-card p{font-size:0.9rem;color:#64748b;line-height:1.65;margin:0}
+.aqs-modes{padding:72px 20px;background:white}
+.aqs-modes-inner{max-width:960px;margin:0 auto}
+.aqs-mode-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px}
+.aqs-mode-card{border-radius:20px;padding:40px 36px;position:relative;overflow:hidden;display:flex;flex-direction:column;min-height:300px;text-decoration:none;transition:transform .2s,box-shadow .2s}
+.aqs-mode-card:hover{transform:translateY(-5px)}
+.aqs-mode-card-quiz{background:linear-gradient(135deg,#4f46e5 0%,#6366f1 100%);box-shadow:0 8px 32px rgba(79,70,229,.35);color:white}
+.aqs-mode-card-studio{background:linear-gradient(135deg,#7c3aed 0%,#a855f7 100%);box-shadow:0 8px 32px rgba(124,58,237,.35);color:white}
+.aqs-mode-card-image{background:linear-gradient(135deg,#db2777 0%,#f43f5e 100%);box-shadow:0 8px 32px rgba(219,39,119,.35);color:white}
+.aqs-mode-card-bg{position:absolute;right:-20px;bottom:-20px;opacity:.08;font-size:10rem;line-height:1;pointer-events:none;user-select:none}
+.aqs-mode-tag{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.2);border-radius:100px;padding:5px 14px;font-size:0.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:20px;width:fit-content}
+.aqs-mode-card h2{font-size:1.5rem;font-weight:800;margin-bottom:14px;letter-spacing:-.02em}
+.aqs-mode-card p{font-size:0.95rem;opacity:.88;line-height:1.7;flex:1;margin:0 0 28px}
+.aqs-mode-cta{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);backdrop-filter:blur(4px);border-radius:10px;padding:12px 24px;font-size:0.95rem;font-weight:700;color:white;text-decoration:none;width:fit-content;transition:background .15s}
+.aqs-mode-cta:hover{background:rgba(255,255,255,.35);color:white}
+.aqs-mode-cta svg{transition:transform .15s}
+.aqs-mode-card:hover .aqs-mode-cta svg{transform:translateX(4px)}
+.aqs-how{padding:72px 20px;background:#f8fafc}
+.aqs-how-inner{max-width:860px;margin:0 auto}
+.aqs-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px}
+.aqs-step{text-align:center;padding:12px 8px}
+.aqs-step-num{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#6366f1);color:white;font-size:1.1rem;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;box-shadow:0 4px 16px rgba(79,70,229,.4)}
+.aqs-step h4{font-size:0.95rem;font-weight:700;margin-bottom:8px}
+.aqs-step p{font-size:0.85rem;color:#64748b;line-height:1.6;margin:0}
+.aqs-devs{padding:72px 20px;background:white}
+.aqs-devs-inner{max-width:960px;margin:0 auto}
+.aqs-dev-public-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:28px}
+.aqs-dev-public-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:20px;padding:36px 32px;text-align:center;box-shadow:0 4px 24px rgba(79,70,229,.07);transition:transform .2s,box-shadow .2s}
+.aqs-dev-public-card:hover{transform:translateY(-5px);box-shadow:0 12px 36px rgba(79,70,229,.14)}
+.aqs-dev-public-avatar{width:110px;height:110px;border-radius:50%;object-fit:cover;border:4px solid #fff;box-shadow:0 4px 20px rgba(79,70,229,.2);margin:0 auto 20px;display:block;background:#ede9fe;display:flex;align-items:center;justify-content:center;font-size:3rem}
+.aqs-dev-public-role{display:inline-block;background:#ede9fe;color:#5b21b6;font-size:.72rem;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:4px 14px;border-radius:20px;margin-bottom:14px}
+.aqs-dev-public-name{font-size:1.25rem;font-weight:800;color:#1e293b;margin:0 0 4px}
+.aqs-dev-public-title{font-size:.82rem;color:#6366f1;font-weight:600;margin:0 0 14px}
+.aqs-dev-public-bio{font-size:.88rem;color:#64748b;line-height:1.7;margin:0 0 20px}
+.aqs-dev-public-skills{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.aqs-dev-public-skill{background:#f1f5f9;color:#475569;font-size:.72rem;font-weight:600;padding:4px 11px;border-radius:20px}
+.aqs-cta-bar{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);color:white;padding:64px 20px;text-align:center}
+.aqs-cta-bar h2{font-size:clamp(1.4rem,3vw,2rem);font-weight:800;margin-bottom:12px;letter-spacing:-.02em}
+.aqs-cta-bar p{opacity:.85;margin-bottom:32px;font-size:1rem}
+.aqs-cta-actions{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+.aqs-cta-btn-white{display:inline-flex;align-items:center;gap:8px;background:white;color:#4f46e5;border-radius:10px;padding:14px 30px;font-size:1rem;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .15s,box-shadow .15s}
+.aqs-cta-btn-white:hover{transform:translateY(-2px);box-shadow:0 8px 32px rgba(0,0,0,.28)}
+.aqs-cta-btn-outline{display:inline-flex;align-items:center;gap:8px;background:transparent;color:white;border:2px solid rgba(255,255,255,.5);border-radius:10px;padding:14px 30px;font-size:1rem;font-weight:700;text-decoration:none;transition:background .15s,border-color .15s}
+.aqs-cta-btn-outline:hover{background:rgba(255,255,255,.1);border-color:white;color:white}
+</style>
+
+<div class="aqs-home">
+
+
+
+    <section class="aqs-hero">
+        <div class="aqs-hero-inner">
+            <div class="aqs-hero-badge">
+                <span class="aqs-hero-badge-dot"></span>
+                Powered by Local AI Backend — No Cloud Keys Required
+            </div>
+            <h1>The Smarter Way to<br><span>Create &amp; Play Quizzes</span></h1>
+            <p class="aqs-hero-sub">Generate AI-powered multiple-choice quizzes from any topic in seconds, then challenge your friends in live head-to-head battles.</p>
+            <div class="aqs-hero-actions">
+                <a href="create-quiz.html" class="aqs-hero-btn aqs-hero-btn-primary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                    Generate a Quiz
+                </a>
+                <a href="studio.html" class="aqs-hero-btn aqs-hero-btn-secondary">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    Open AI Studio
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <svg class="aqs-wave" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 60" preserveAspectRatio="none" style="display:block;background:#f8fafc;"><path fill="#4f46e5" fill-opacity="0.08" d="M0,40 C360,0 1080,80 1440,40 L1440,0 L0,0 Z"/><path fill="#6366f1" fill-opacity="0.06" d="M0,60 C480,20 960,80 1440,30 L1440,0 L0,0 Z"/></svg>
+
+    <section class="aqs-features">
+        <div class="aqs-features-inner">
+            <p class="aqs-section-label">Why XZILY AI Studio</p>
+            <h2 class="aqs-section-title">Everything you need, powered by local AI</h2>
+            <p class="aqs-section-sub">From instant quiz generation to AI image creation and text-to-speech — all running through your local backend. No API keys.</p>
+            <div class="aqs-feature-grid">
+                <div class="aqs-feature-card">
+                    <div class="aqs-feature-icon aqs-feature-icon-purple">🤖</div>
+                    <h3>AI Question Generation</h3>
+                    <p>Type any topic and get high-quality multiple-choice questions generated instantly via AI.</p>
+                </div>
+                <div class="aqs-feature-card">
+                    <div class="aqs-feature-icon aqs-feature-icon-amber">🎨</div>
+                    <h3>AI Image Creator</h3>
+                    <p>Generate professional-quality images, logos, and designs using AI. Describe what you want and watch it come to life in seconds.</p>
+                </div>
+                <div class="aqs-feature-card">
+                    <div class="aqs-feature-icon aqs-feature-icon-green">📄</div>
+                    <h3>AI Document Generator</h3>
+                    <p>Upload any PDF or Word document and AI instantly creates summaries, study guides, FAQs, key points, and glossaries.</p>
+                </div>
+                <div class="aqs-feature-card">
+                    <div class="aqs-feature-icon aqs-feature-icon-blue">🔊</div>
+                    <h3>Text to Speech</h3>
+                    <p>Convert any text to natural-sounding audio. Choose from 60+ voices in 20+ languages and download as MP3 instantly.</p>
+                </div>
+                <div class="aqs-feature-card">
+                    <div class="aqs-feature-icon aqs-feature-icon-purple">✏️</div>
+                    <h3>AI Image Editor</h3>
+                    <p>Upload any image and transform it with a text prompt — change backgrounds, add elements, transfer styles, and recolor with AI.</p>
+                </div>
+                <div class="aqs-feature-card">
+                    <div class="aqs-feature-icon aqs-feature-icon-green">💬</div>
+                    <h3>AI Chat Studio</h3>
+                    <p>Have intelligent conversations with AI about any topic. Ask complex questions, get explanations, solve problems, and prepare for exams.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="aqs-modes">
+        <div class="aqs-modes-inner">
+            <p class="aqs-section-label">Powerful AI Tools</p>
+            <h2 class="aqs-section-title">Pick your experience</h2>
+            <p class="aqs-section-sub">Six integrated AI tools, all talking to your local backend. Zero cloud accounts required.</p>
+            <div class="aqs-mode-grid">
+                <a href="create-quiz.html" class="aqs-mode-card aqs-mode-card-quiz">
+                    <span class="aqs-mode-card-bg">📝</span>
+                    <span class="aqs-mode-tag">Quiz Generation</span>
+                    <h2>Create AI Quizzes</h2>
+                    <p>Enter a topic or upload a document and let AI build a full quiz for you. Review, edit, then share with anyone.</p>
+                    <span class="aqs-mode-cta">Generate a Quiz <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+                </a>
+                <a href="studio.html" class="aqs-mode-card aqs-mode-card-studio">
+                    <span class="aqs-mode-card-bg">✦</span>
+                    <span class="aqs-mode-tag">AI Studio</span>
+                    <h2>xzily AI Chat</h2>
+                    <p>Your intelligent learning assistant. Ask anything — from quiz prep to complex math problems. Upload files for AI analysis.</p>
+                    <span class="aqs-mode-cta">Open Studio <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+                </a>
+                <a href="image-gen.html" class="aqs-mode-card aqs-mode-card-image">
+                    <span class="aqs-mode-card-bg">🎨</span>
+                    <span class="aqs-mode-tag">Image AI</span>
+                    <h2>AI Image Creator</h2>
+                    <p>Generate stunning images from text descriptions. Multiple styles, sizes, and quality settings. Edit existing images with AI.</p>
+                    <span class="aqs-mode-cta">Create Images <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <section class="aqs-how">
+        <div class="aqs-how-inner">
+            <p class="aqs-section-label">How it works</p>
+            <h2 class="aqs-section-title">Up and running in 3 steps</h2>
+            <p class="aqs-section-sub">No complicated setup. All AI calls go directly from your browser — no server required.</p>
+            <div class="aqs-steps">
+                <div class="aqs-step">
+                    <div class="aqs-step-num">1</div>
+                    <h4>Start Local Backend</h4>
+                    <p>Run your Node.js server on port 5000. It handles all AI generation, TTS, image creation, and translation.</p>
+                </div>
+                <div class="aqs-step">
+                    <div class="aqs-step-num">2</div>
+                    <h4>Open Any Tool</h4>
+                    <p>Choose from Quiz Creator, AI Studio, Image Generator, Image Editor, Docs Generator, or Text to Speech.</p>
+                </div>
+                <div class="aqs-step">
+                    <div class="aqs-step-num">3</div>
+                    <h4>Create &amp; Export</h4>
+                    <p>Generate content, download results, and share — everything runs privately through your own backend.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="aqs-devs">
+        <div class="aqs-devs-inner">
+            <p class="aqs-section-label">The Team Behind It</p>
+            <h2 class="aqs-section-title">Meet the Developers</h2>
+            <p class="aqs-section-sub">Built with passion for education and technology by two dedicated developers.</p>
+            <div class="aqs-dev-public-grid">
+                <div class="aqs-dev-public-card">
+                    <div class="aqs-dev-public-avatar" style="width:110px;height:110px;border-radius:50%;background:#ede9fe;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:3rem;">👨‍💻</div>
+                    <span class="aqs-dev-public-role">🚀 Lead Developer</span>
+                    <p class="aqs-dev-public-name">Abdulrahman</p>
+                    <p class="aqs-dev-public-title">Lead Developer &amp; Architect</p>
+                    <p class="aqs-dev-public-bio">The mind behind AI Quiz System. Designed and built the entire platform — from the real-time multiplayer challenge engine to the AI question generation pipeline.</p>
+                    <div class="aqs-dev-public-skills">
+                        <span class="aqs-dev-public-skill">Node.js</span>
+                        <span class="aqs-dev-public-skill">JavaScript</span>
+                        <span class="aqs-dev-public-skill">AI Integration</span>
+                        <span class="aqs-dev-public-skill">SQL</span>
+                    </div>
+                </div>
+                <div class="aqs-dev-public-card">
+                    <div class="aqs-dev-public-avatar" style="width:110px;height:110px;border-radius:50%;background:#d1fae5;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:3rem;">👩‍🎨</div>
+                    <span class="aqs-dev-public-role">🛠️ Assistant Developer</span>
+                    <p class="aqs-dev-public-name">Favour</p>
+                    <p class="aqs-dev-public-title">Assistant Developer &amp; UI Engineer</p>
+                    <p class="aqs-dev-public-bio">The creative force behind the challenge mode interface. Brought every screen to life with smooth animations, a polished design system, and a real-time scoreboard experience.</p>
+                    <div class="aqs-dev-public-skills">
+                        <span class="aqs-dev-public-skill">HTML / CSS</span>
+                        <span class="aqs-dev-public-skill">jQuery</span>
+                        <span class="aqs-dev-public-skill">UI / UX Design</span>
+                        <span class="aqs-dev-public-skill">Animations</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="aqs-cta-bar">
+        <h2>Ready to test your knowledge?</h2>
+        <p>Create your first AI quiz in seconds — all powered by your local backend.</p>
+        <div class="aqs-cta-actions">
+            <a href="create-quiz.html" class="aqs-cta-btn-white">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Create a Quiz Now
+            </a>
+            <a href="studio.html" class="aqs-cta-btn-outline">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                Open AI Studio
+            </a>
+        </div>
+    </section>
+
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script>
+var AQS = {
+    ajax_url:'',nonce:'',public_nonce:'',auth_nonce:'',
+    home_url:'index.html',create_page_url:'create-quiz.html',
+    dashboard_url:'index.html',results_url:'index.html',
+    take_url:'index.html',register_url:'index.html',login_url:'index.html',
+    user_dashboard_url:'index.html',challenge_url:'index.html',
+    studio_url:'studio.html',is_admin:'yes',is_host:'yes',is_logged_in:'yes',
+    current_user_name:'User',current_user_role:'host',
+    quiz_bg_music_enabled:'0',quiz_bg_music_url:'audio/quiz-background.mp3',
+    groq_key:'',plugin_url:'./'
+};
+var AQS_CONTEXT='host';
+var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'Powered by Darapet Technology',logo_url:'',color_primary:'#6366f1',color_bg:'',color_text:'',duration:'3',sound:'0',music_url:'audio/quiz-background.mp3'};
+</script>
+<!-- Ticker/countdown handled by aqs-notifs-bar.js -->
+<script src="js/aqs-splash.js"></script>
+<script src="js/aqs-main.js"></script>
+
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

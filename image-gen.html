@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Creator — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-imagegen.css">
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ SIDEBAR ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        How to Install
+    </a>
+    <div class="aqs-sidebar-nav-label">NAVIGATE</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio Home</a>
+        <a href="image-gen.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
+        <a href="image-editor.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Image Editor</a>
+        <a href="docs-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
+        <a href="tts.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg></span>Text to Speech</a>
+    </nav>
+    <div class="aqs-sidebar-nav-label" style="margin-top:14px;">QUIZ</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
+        <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge</a>
+    </nav>
+    <div class="aqs-sidebar-footer"><div class="aqs-sidebar-user"><div class="aqs-sidebar-avatar">U</div><div class="aqs-sidebar-user-name">User</div></div></div>
+</nav>
+
+<div class="aqs-sidebar-body">
+<main class="aqs-page-main">
+
+<div class="aqs-wrap aqs-imagegen-wrap" id="aqs-imagegen-wrap">
+    <div class="aqs-imagegen-hero">
+        <div class="aqs-imagegen-hero-inner">
+            <div class="aqs-imagegen-hero-icon">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+            </div>
+            <div>
+                <h1 class="aqs-imagegen-title">AI Image Creator</h1>
+                <p class="aqs-imagegen-sub">Generate professional-quality images, graphics, and designs with AI. Perfect for posters, social media, thumbnails, and more.</p>
+                <p class="aqs-imagegen-credit">Powered by Darapet Technology &mdash; Omomo Excellence</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="aqs-imagegen-prompt-card">
+        <div class="aqs-imagegen-prompt-row">
+            <textarea id="aqs-ig-prompt" class="aqs-imagegen-textarea" rows="3"
+                placeholder="Describe the image you want… e.g. 'A professional business logo for a tech startup, blue and white, minimalist' or 'A vibrant poster for a music festival with neon colors'"></textarea>
+        </div>
+        <div class="aqs-imagegen-presets" id="aqs-ig-presets">
+            <span class="aqs-ig-preset-label">Style:</span>
+            <button class="aqs-ig-preset active" data-style="">Auto</button>
+            <button class="aqs-ig-preset" data-style="photorealistic, ultra-detailed, professional photography">Photo Realistic</button>
+            <button class="aqs-ig-preset" data-style="digital art, vibrant colors, highly detailed illustration">Digital Art</button>
+            <button class="aqs-ig-preset" data-style="minimalist flat design, clean lines, professional graphic design">Flat Design</button>
+            <button class="aqs-ig-preset" data-style="cinematic, dramatic lighting, film-quality, professional">Cinematic</button>
+            <button class="aqs-ig-preset" data-style="watercolor painting, artistic, soft colors, brushstrokes">Watercolor</button>
+            <button class="aqs-ig-preset" data-style="3D render, octane render, professional, studio lighting">3D Render</button>
+            <button class="aqs-ig-preset" data-style="neon glow, cyberpunk aesthetic, futuristic, high contrast">Neon / Cyberpunk</button>
+            <button class="aqs-ig-preset" data-style="logo design, vector art, professional branding, clean">Logo / Branding</button>
+        </div>
+        <div class="aqs-imagegen-options">
+            <div class="aqs-ig-option-group">
+                <label>Size</label>
+                <select id="aqs-ig-size">
+                    <option value="1024x1024">Square (1024×1024)</option>
+                    <option value="1792x1024">Landscape (1792×1024)</option>
+                    <option value="1024x1792">Portrait (1024×1792)</option>
+                </select>
+            </div>
+            <div class="aqs-ig-option-group">
+                <label>Quality</label>
+                <select id="aqs-ig-quality">
+                    <option value="standard">Standard</option>
+                    <option value="hd" selected>HD (High Detail)</option>
+                </select>
+            </div>
+            <div class="aqs-ig-option-group">
+                <label>Count</label>
+                <select id="aqs-ig-count">
+                    <option value="1" selected>1 image</option>
+                    <option value="2">2 images</option>
+                    <option value="4">4 images</option>
+                </select>
+            </div>
+        </div>
+        <div class="aqs-imagegen-actions">
+            <button id="aqs-ig-generate-btn" class="aqs-btn aqs-btn-primary aqs-ig-generate-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/><path d="M17.8 11.8 19 13"/><path d="M15 9h.01"/><path d="M17.8 6.2 19 5"/><path d="m3 21 9-9"/><path d="M12.2 6.2 11 5"/></svg>
+                Generate Image
+            </button>
+            <button id="aqs-ig-enhance-btn" class="aqs-btn aqs-ig-enhance-btn" title="Let AI enhance your prompt for better results">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                Enhance Prompt
+            </button>
+            <button id="aqs-ig-clear-btn" class="aqs-btn aqs-ig-clear-btn">Clear</button>
+        </div>
+    </div>
+
+    <div id="aqs-ig-status" class="aqs-ig-status" style="display:none">
+        <div class="aqs-ig-spinner"></div>
+        <span id="aqs-ig-status-text">Generating your image&hellip; this takes 10&ndash;20 seconds</span>
+    </div>
+    <div id="aqs-ig-error" class="aqs-ig-error" style="display:none"></div>
+
+    <div id="aqs-ig-results" class="aqs-ig-results" style="display:none">
+        <div class="aqs-ig-results-header">
+            <h3>Generated Images</h3>
+            <button id="aqs-ig-download-all" class="aqs-btn aqs-btn-sm" style="display:none">Download All</button>
+        </div>
+        <div id="aqs-ig-grid" class="aqs-ig-grid"></div>
+    </div>
+
+    <div class="aqs-imagegen-history-section" id="aqs-ig-history-section" style="display:none">
+        <div class="aqs-ig-history-header">
+            <h3>Recent Creations</h3>
+            <button id="aqs-ig-clear-history" class="aqs-btn aqs-btn-sm aqs-btn-ghost">Clear History</button>
+        </div>
+        <div id="aqs-ig-history-grid" class="aqs-ig-grid"></div>
+    </div>
+</div>
+
+<div id="aqs-ig-lightbox" class="aqs-ig-lightbox" style="display:none">
+    <button id="aqs-ig-lb-close" class="aqs-ig-lb-close">✕</button>
+    <img id="aqs-ig-lb-img" src="" alt="">
+    <div class="aqs-ig-lb-actions">
+        <a id="aqs-ig-lb-download" href="#" download class="aqs-btn aqs-btn-primary">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download HD
+        </a>
+        <button id="aqs-ig-lb-regen" class="aqs-btn">Regenerate</button>
+    </div>
+    <div class="aqs-ig-lb-prompt" id="aqs-ig-lb-prompt"></div>
+</div>
+<div id="aqs-ig-lb-overlay" class="aqs-ig-lb-overlay" style="display:none"></div>
+
+</main>
+</div><!-- /.aqs-sidebar-body -->
+
+<script>
+var AQS = {
+    ajax_url:'',nonce:'',public_nonce:'',home_url:'index.html',studio_url:'studio.html',
+    imagegen_url:'image-gen.html',imageedit_url:'image-editor.html',
+    docsgen_url:'docs-gen.html',tts_url:'tts.html',groq_key:'',plugin_url:'./'
+};
+</script>
+<script src="js/aqs-imagegen.js"></script>
+<script>
+(function(){
+    var toggle=document.getElementById('aqs-sidebar-toggle');
+    var sidebar=document.getElementById('aqs-sidebar');
+    var overlay=document.getElementById('aqs-sidebar-overlay');
+    if(!toggle||!sidebar||!overlay)return;
+    toggle.addEventListener('click',function(){sidebar.classList.add('open');overlay.classList.add('open');});
+    overlay.addEventListener('click',function(){sidebar.classList.remove('open');overlay.classList.remove('open');});
+})();
+</script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>
