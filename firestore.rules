@@ -39,6 +39,14 @@ rules_version = '2';
         allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       }
 
+      // ─── Usernames (public lookup for registration uniqueness check) ─
+      // Keyed by username → { uid }. Public read so the unauthenticated
+      // registration page can check availability before creating the Auth user.
+      match /usernames/{username} {
+        allow read: if true;
+        allow write: if isAdmin() || isSignedIn();
+      }
+
       // ─── Settings ───────────────────────────────────────────────────
       match /settings/{settingId} {
         // Anyone can read settings (needed for notifications, splash, etc.)

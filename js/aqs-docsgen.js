@@ -463,7 +463,7 @@
 
             lastOutput = result;
             $outputTitle.textContent = typeConf.title;
-            $outputBody.textContent  = result;
+            $outputBody.innerHTML    = renderMarkdown(result);
             $outputBody.classList.remove('streaming');
             $outputSec.style.display = 'block';
             setStatus('Done!');
@@ -518,6 +518,125 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
     });
+
+    /* ── Markdown → HTML renderer ── */
+    function renderMarkdown(text) {
+        /* Escape HTML special chars first */
+        var s = text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+
+        var lines = s.split('\n');
+        var out   = [];
+        var inUl  = false;
+        var inOl  = false;
+
+        function closeList() {
+            if (inUl) { out.push('</ul>'); inUl = false; }
+            if (inOl) { out.push('</ol>'); inOl = false; }
+        }
+
+        function inlineFmt(line) {
+            return line
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/__(.+?)__/g,     '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g,     '<em>$1</em>')
+                .replace(/★/g, '<span style="color:#f59e0b;font-size:1.1em;">★</span>');
+        }
+
+        lines.forEach(function (raw) {
+            var line = raw.trimEnd();
+
+            /* Blank line — close any open list, add spacer */
+            if (!line.trim()) {
+                closeList();
+                out.push('<div style="height:6px;"></div>');
+                return;
+            }
+
+            /* H1 # */
+            if (/^# (.+)/.test(line)) {
+                closeList();
+                out.push('<h2 style="font-size:1.15rem;font-weight:800;color:#1e1b4b;margin:18px 0 6px;">' + inlineFmt(line.replace(/^# /, '')) + '</h2>');
+                return;
+            }
+            /* H2 ## */
+            if (/^## (.+)/.test(line)) {
+                closeList();
+                out.push('<h3 style="font-size:1rem;font-weight:700;color:#1e1b4b;margin:14px 0 5px;">' + inlineFmt(line.replace(/^## /, '')) + '</h3>');
+                return;
+            }
+            /* H3 ### */
+            if (/^### (.+)/.test(line)) {
+                closeList();
+                out.push('<h4 style="font-size:.95rem;font-weight:700;color:#374151;margin:12px 0 4px;">' + inlineFmt(line.replace(/^### /, '')) + '</h4>');
+                return;
+            }
+            /* Roman numeral section: I. II. III. etc */
+            if (/^(X{0,3})(IX|IV|V?I{0,3})\. .+/.test(line) && line.indexOf('. ') < 8) {
+                closeList();
+                out.push('<h3 style="font-size:1rem;font-weight:700;color:#1e1b4b;margin:14px 0 5px;">' + inlineFmt(line) + '</h3>');
+                return;
+            }
+            /* Lettered sub-section: A. B. C. */
+            if (/^[A-Z]\. .+/.test(line) && line.indexOf('. ') < 4) {
+                closeList();
+                out.push('<h4 style="font-size:.9rem;font-weight:700;color:#374151;margin:10px 0 4px;padding-left:14px;">' + inlineFmt(line) + '</h4>');
+                return;
+            }
+            /* Q: — FAQ question */
+            if (/^Q: /.test(line)) {
+                closeList();
+                out.push('<div style="font-weight:700;color:#4f46e5;margin-top:16px;font-size:.93rem;">❓ ' + inlineFmt(line.replace(/^Q: /, '')) + '</div>');
+                return;
+            }
+            /* A: — FAQ answer */
+            if (/^A: /.test(line)) {
+                closeList();
+                out.push('<div style="padding:8px 0 10px 14px;border-left:3px solid #6366f1;margin-bottom:4px;color:#374151;">' + inlineFmt(line.replace(/^A: /, '')) + '</div>');
+                return;
+            }
+            /* Bullet: - or • or * (not bold) */
+            if (/^[-•]\s/.test(line) || (/^\* /.test(line) && !/^\*\*/.test(line))) {
+                if (inOl) { out.push('</ol>'); inOl = false; }
+                if (!inUl) { out.push('<ul style="margin:6px 0;padding-left:22px;">'); inUl = true; }
+                out.push('<li style="margin:3px 0;">' + inlineFmt(line.replace(/^[-•*]\s/, '')) + '</li>');
+                return;
+            }
+            /* Indented bullet */
+            if (/^\s{2,}[-•]\s/.test(raw)) {
+                if (!inUl) { out.push('<ul style="margin:6px 0;padding-left:22px;">'); inUl = true; }
+                out.push('<li style="margin:3px 0;list-style-type:circle;margin-left:18px;">' + inlineFmt(line.replace(/^\s+[-•]\s/, '')) + '</li>');
+                return;
+            }
+            /* Numbered list */
+            if (/^\d+\.\s/.test(line)) {
+                if (inUl) { out.push('</ul>'); inUl = false; }
+                if (!inOl) { out.push('<ol style="margin:6px 0;padding-left:24px;">'); inOl = true; }
+                out.push('<li style="margin:3px 0;">' + inlineFmt(line.replace(/^\d+\.\s/, '')) + '</li>');
+                return;
+            }
+            /* Numbered sub-item: 1. 2. indented */
+            if (/^\s{2,}\d+\.\s/.test(raw)) {
+                if (!inOl) { out.push('<ol style="margin:6px 0;padding-left:24px;">'); inOl = true; }
+                out.push('<li style="margin:3px 0;margin-left:16px;">' + inlineFmt(line.replace(/^\s+\d+\.\s/, '')) + '</li>');
+                return;
+            }
+            /* Glossary term: **Term**: definition */
+            if (/^\*\*(.+?)\*\*:/.test(line)) {
+                closeList();
+                out.push('<div style="margin:10px 0 2px;"><strong style="color:#1e1b4b;">' + inlineFmt(line.replace(/^\*\*(.+?)\*\*:?\s*/, function(m,t){ return t + ': '; })) + '</strong></div>');
+                return;
+            }
+            /* Plain paragraph line */
+            closeList();
+            out.push('<p style="margin:5px 0;line-height:1.75;">' + inlineFmt(line) + '</p>');
+        });
+
+        closeList();
+        return out.join('');
+    }
 
     /* ── Helpers ── */
     function setPbar(pct) { $pbarFill.style.width = Math.min(100, pct) + '%'; }

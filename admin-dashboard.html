@@ -88,7 +88,17 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 .aqs-ad-upload-hint{font-size:.78rem;color:#9ca3af;margin-top:8px;}
 .aqs-ads-bottom-row{display:grid;grid-template-columns:2fr 1fr;gap:14px;}
 .aqs-form-group-stack{display:flex;flex-direction:column;gap:10px;}
-@media(max-width:700px){.aqs-admin-sidebar{display:none;}.aqs-ads-bottom-row{grid-template-columns:1fr;}}
+
+  /* ── Mobile hamburger ── */
+  .aqs-admin-hamburger{display:none;position:fixed;top:12px;left:12px;z-index:1001;background:#1e1b4b;color:#fff;border:none;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:1.3rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .aqs-admin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;}
+  @media(max-width:700px){
+    .aqs-admin-hamburger{display:block;}
+    .aqs-admin-sidebar{display:none!important;position:fixed!important;top:0;left:0;z-index:1000;height:100vh;overflow-y:auto;}
+    .aqs-admin-sidebar.open{display:flex!important;}
+    .aqs-admin-overlay.open{display:block;}
+    .aqs-admin-content{padding:16px 14px!important;}
+  }}
 </style>
 <script>
 window.AQS = {

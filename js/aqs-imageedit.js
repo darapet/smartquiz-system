@@ -13,33 +13,26 @@
        Pollinations can fetch for img2img.
     ───────────────────────────────────────────────────────────── */
     function uploadImageToServer(file) {
+        /* Upload to catbox.moe — free, no API key, returns a public URL
+           that Pollinations can fetch for img2img editing */
         return new Promise(function (resolve, reject) {
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                fetch(AQS_LOCAL + '/api/upload-image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        imageData: e.target.result,
-                        filename:  file.name,
-                        mimeType:  file.type
-                    })
-                })
-                .then(function (r) {
-                    if (!r.ok) throw new Error('Upload failed (' + r.status + ')');
-                    return r.json();
-                })
-                .then(function (data) {
-                    var url = data.url || data.imageUrl || data.image_url || '';
-                    if (!url) throw new Error('No URL returned from upload.');
-                    /* Convert relative path to absolute for Pollinations */
-                    if (url.startsWith('/')) url = window.location.origin + url;
-                    resolve(url);
-                })
-                .catch(reject);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
+            var formData = new FormData();
+            formData.append('reqtype', 'fileupload');
+            formData.append('fileToUpload', file);
+            fetch('https://catbox.moe/user/api.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function (r) {
+                if (!r.ok) throw new Error('Image upload failed (' + r.status + '). Please try again.');
+                return r.text();
+            })
+            .then(function (url) {
+                url = (url || '').trim();
+                if (!url.startsWith('https://')) throw new Error('Upload failed — could not get a public image URL. Please try again.');
+                resolve(url);
+            })
+            .catch(reject);
         });
     }
 

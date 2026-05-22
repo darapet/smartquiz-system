@@ -196,7 +196,8 @@
         var pollinationsUrl = 'https://audio.pollinations.ai/' + encodedText +
             '?model=openai-audio&voice=' + pollinationsVoice + '&nologo=true' +
             (langCode ? '&language=' + encodeURIComponent(langCode) : '') +
-            '&_v=' + pollinationsVoice;
+            '&_v=' + pollinationsVoice +
+            '&_t=' + Date.now();
         try {
             var pCtrl = new AbortController();
             var pTid  = setTimeout(function() { pCtrl.abort(); }, 45000);

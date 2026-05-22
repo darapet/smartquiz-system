@@ -1283,7 +1283,7 @@
         window.speechSynthesis.cancel();
         function doSpeak() {
             var utter  = new SpeechSynthesisUtterance(spoken);
-            utter.lang = 'en-US'; utter.rate = 1.0; utter.pitch = 1.05; utter.volume = 1.0;
+            utter.lang = 'en-US'; utter.rate = 1.05; utter.pitch = 1.05; utter.volume = 1.0;
             var voices = window.speechSynthesis.getVoices();
             var pick   = voices.find(function(v) {
                 return v.lang.startsWith('en') && /Google|Natural|Samantha|Karen|Moira|Daniel/i.test(v.name);
@@ -1328,7 +1328,19 @@
                            '?model=openai-audio&voice=shimmer&nologo=true';
 
         var audio        = new Audio(ttsUrl);
+        audio.volume     = 1.0;   /* max HTML5 volume */
         currentStudioAudio = audio;
+
+        /* Boost volume via Web Audio API GainNode — allows amplification
+           beyond the default 1.0 cap of the HTML5 Audio element */
+        try {
+            var _actx  = new (window.AudioContext || window.webkitAudioContext)();
+            var _src   = _actx.createMediaElementSource(audio);
+            var _gain  = _actx.createGain();
+            _gain.gain.value = 2.0;   /* 2× louder */
+            _src.connect(_gain);
+            _gain.connect(_actx.destination);
+        } catch (_gainErr) { /* fallback: plain audio.volume already set to 1.0 */ }
 
         /* Timeout — if Pollinations hasn't started within 7 s, fall back */
         var fallbackTimer = setTimeout(function() {

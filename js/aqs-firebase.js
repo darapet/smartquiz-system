@@ -314,9 +314,10 @@ async function actionRegister(data) {
     var role     = (data.role || 'student').trim();
     var password = (data.password || '').trim();
 
-    /* Check username uniqueness */
-    var existing = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
-    if (!existing.empty) throw new Error('Username already taken. Please choose another.');
+    /* Check username uniqueness via public /usernames collection
+       (avoids a permission error — users collection requires auth) */
+    var usernameSnap = await getDoc(doc(db, 'usernames', username));
+    if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
 
     /* Create Firebase Auth user */
     var cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -331,6 +332,9 @@ async function actionRegister(data) {
         role: role, created_at: serverTimestamp(), status: 'active'
     };
     await setDoc(doc(db, 'users', user.uid), profile);
+
+    /* Reserve username in public lookup map */
+    await setDoc(doc(db, 'usernames', username), { uid: user.uid });
 
     /* Send email verification */
     await sendEmailVerification(user);
@@ -378,8 +382,9 @@ async function actionSocialLogin(data) {
         var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
         /* Check for username collision and append random digits if needed */
         var finalUsername = baseUsername;
-        var collision = await getDocs(query(collection(db, 'users'), where('username', '==', finalUsername)));
-        if (!collision.empty) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+        /* Check collision via public usernames collection */
+        var collision = await getDoc(doc(db, 'usernames', finalUsername));
+        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
 
         profile = {
             uid:        user.uid,
@@ -394,6 +399,8 @@ async function actionSocialLogin(data) {
             last_login: serverTimestamp()
         };
         await setDoc(profileRef, profile);
+        /* Reserve username in public lookup map */
+        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
     }
 
     _updateAqsGlobals(user, profile);
