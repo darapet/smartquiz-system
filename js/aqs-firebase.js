@@ -119,6 +119,33 @@ window.aqsAjax = async function(data, successFn, failFn) {
     }
 };
 
+/* ── File upload to Firebase Storage (used by admin pages) ──────────────
+   Usage: window.aqsUploadFile(file, 'uploads/music/track.mp3')
+          .then(function(url){ ... })
+   Returns: promise resolving to the public download URL              */
+window.aqsUploadFile = async function(file, storagePath) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('You must be signed in as admin to upload files.');
+    var token     = await user.getIdToken();
+    var bucket    = 'smartquiz-darapet.firebasestorage.app';
+    var encoded   = encodeURIComponent(storagePath);
+    var uploadUrl = 'https://firebasestorage.googleapis.com/v0/b/' + bucket +
+                    '/o?uploadType=media&name=' + encoded;
+    var res = await fetch(uploadUrl, {
+        method:  'POST',
+        headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': file.type || 'application/octet-stream' },
+        body:    file
+    });
+    if (!res.ok) {
+        var errBody = await res.text();
+        throw new Error('Upload failed (' + res.status + '): ' + errBody);
+    }
+    var json        = await res.json();
+    var downloadUrl = 'https://firebasestorage.googleapis.com/v0/b/' + bucket +
+                      '/o/' + encoded + '?alt=media&token=' + json.downloadTokens;
+    return downloadUrl;
+};
+
 /* Patch jQuery $.post and $.ajax to intercept AQS AJAX calls */
 (function patchJQuery() {
     if (typeof jQuery === 'undefined') {
@@ -262,8 +289,10 @@ async function handleAction(data) {
         case 'aqs_studio_ai':     return await actionAiGenerate(data);
 
         /* ── ADMIN SETTINGS ── */
-        case 'aqs_get_settings':  return await actionGetSettings();
-        case 'aqs_save_settings': return await actionSaveSettings(data);
+        case 'aqs_get_settings':       return await actionGetSettings();
+        case 'aqs_save_settings':      return await actionSaveSettings(data);
+        case 'aqs_get_about_settings': return await actionGetAboutSettings();
+        case 'aqs_save_about_settings':return await actionSaveAboutSettings(data);
 
         default:
             console.warn('[AQS Firebase] Unknown action:', action);
@@ -320,8 +349,12 @@ async function actionRegister(data) {
     if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
 
     /* Create Firebase Auth user */
+    window._aqsIsRegistering = true;
     var cred = await createUserWithEmailAndPassword(auth, email, password);
     var user = cred.user;
+
+    /* Force token refresh so Firestore immediately recognises the new user */
+    try { await user.getIdToken(true); } catch(_) {}
 
     /* Update display name */
     await updateProfile(user, { displayName: name });
@@ -1797,6 +1830,31 @@ async function actionSaveSettings(data) {
 }
 
 /* ============================================================
+   ABOUT PAGE SETTINGS (Firestore — stored at settings/about)
+   ============================================================ */
+async function actionGetAboutSettings() {
+    try {
+        var snap = await getDoc(doc(db, 'settings', 'about'));
+        if (snap.exists()) return snap.data();
+    } catch(_) {}
+    return {};
+}
+
+async function actionSaveAboutSettings(data) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('Not authenticated.');
+    var allowed = [
+        'about_plugin_desc',
+        'dev_main_name','dev_main_title','dev_main_bio','dev_main_skills','dev_main_email','dev_main_github','dev_main_image',
+        'dev_asst_name','dev_asst_title','dev_asst_bio','dev_asst_skills','dev_asst_email','dev_asst_github','dev_asst_image'
+    ];
+    var payload = {};
+    allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    await setDoc(doc(db, 'settings', 'about'), payload, { merge: true });
+    return { success: true, message: 'About settings saved.' };
+}
+
+/* ============================================================
    NOTIFICATIONS & ADS (Firestore — optional admin setup)
    ============================================================ */
 async function actionGetNotifications() {
@@ -1847,10 +1905,21 @@ function _updateAqsGlobals(user, profile) {
         });
     }
     if (authPages.indexOf(page) !== -1) {
-        onAuthStateChanged(auth, function(user) {
+        onAuthStateChanged(auth, async function(user) {
+            /* Do NOT redirect while a registration is in progress — the register
+               success callback will do its own role-aware redirect. */
+            if (window._aqsIsRegistering) return;
             if (user) {
                 var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
-                window.location.href = redirectUrl || 'user-dashboard.html';
+                if (redirectUrl) { window.location.href = redirectUrl; return; }
+                /* Look up the user's role so hosts go to the correct dashboard */
+                try {
+                    var profileSnap = await getDoc(doc(db, 'users', user.uid));
+                    var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
+                    window.location.href = _dashboardUrl(role);
+                } catch(_) {
+                    window.location.href = 'user-dashboard.html';
+                }
             }
         });
     }

@@ -1056,48 +1056,125 @@ async function loadHostActivity() {
     if (!container) return;
     container.innerHTML = '<div class="adm-loading">Loading host activity…</div>';
     try {
-        var [quizSnap, attemptSnap] = await Promise.all([
+        var [quizSnap, attemptSnap, usersSnap] = await Promise.all([
             getDocs(query(collection(db, 'quizzes'), orderBy('created_at', 'desc'))),
-            getDocs(collection(db, 'attempts'))
+            getDocs(collection(db, 'attempts')),
+            getDocs(query(collection(db, 'users'), where('role', '==', 'host')))
         ]);
-        if (quizSnap.empty) {
+
+        /* Build uid → profile map from users collection */
+        var uidToProfile = {};
+        usersSnap.docs.forEach(function(d) {
+            uidToProfile[d.id] = d.data();
+        });
+
+        if (quizSnap.empty && usersSnap.empty) {
             container.innerHTML = '<div class="adm-empty">No host quiz activity yet.</div>';
             return;
         }
+
+        /* Collect hosts keyed by uid (prefer uid over email to avoid dupes) */
         var hosts = {};
         quizSnap.docs.forEach(function(d) {
             var q = d.data();
+            var uid   = q.host_uid || '';
             var email = q.host_email || q.created_by || 'Unknown';
-            if (!hosts[email]) hosts[email] = { name: q.host_name || email, email: email, quizzes: 0, attempts: 0, lastActive: null };
-            hosts[email].quizzes++;
+            var key   = uid || email;
+            if (!hosts[key]) {
+                var prof = uid && uidToProfile[uid];
+                hosts[key] = {
+                    uid:        uid,
+                    name:       (prof && prof.name) || q.host_name || email,
+                    email:      (prof && prof.email) || email,
+                    status:     (prof && prof.status) || 'active',
+                    quizzes:    0,
+                    attempts:   0,
+                    lastActive: null
+                };
+            }
+            hosts[key].quizzes++;
             if (q.created_at) {
                 var t = q.created_at.toDate ? q.created_at.toDate() : new Date(q.created_at);
-                if (!hosts[email].lastActive || t > hosts[email].lastActive) hosts[email].lastActive = t;
+                if (!hosts[key].lastActive || t > hosts[key].lastActive) hosts[key].lastActive = t;
             }
         });
-        attemptSnap.docs.forEach(function(d) {
-            var a = d.data();
-            var email = a.host_email || '';
-            if (email && hosts[email]) hosts[email].attempts++;
+
+        /* Also add hosts who are registered but haven't created quizzes yet */
+        usersSnap.docs.forEach(function(d) {
+            if (!hosts[d.id]) {
+                var p = d.data();
+                hosts[d.id] = { uid: d.id, name: p.name || p.email, email: p.email, status: p.status || 'active', quizzes: 0, attempts: 0, lastActive: null };
+            }
         });
+
+        attemptSnap.docs.forEach(function(d) {
+            var a   = d.data();
+            var uid = a.host_uid || '';
+            var key = uid || a.host_email || '';
+            if (key && hosts[key]) hosts[key].attempts++;
+        });
+
         var rows = Object.values(hosts).sort(function(a,b) { return b.quizzes - a.quizzes; });
         var html = '<table class="adm-table"><thead><tr>' +
-            '<th>Host</th><th>Email</th><th>Quizzes</th><th>Attempts</th><th>Last Active</th>' +
+            '<th>Host</th><th>Email</th><th>Quizzes</th><th>Attempts</th><th>Last Active</th><th>Actions</th>' +
             '</tr></thead><tbody>';
         rows.forEach(function(h) {
             var lastActive = h.lastActive ? h.lastActive.toISOString().replace('T',' ').substring(0,16) : '—';
+            var deleteBtn  = h.uid
+                ? '<button class="adm-btn adm-btn-danger adm-btn-sm" onclick="confirmDeleteHost(' +
+                  JSON.stringify(h.uid) + ',' + JSON.stringify(h.name) + ',' + JSON.stringify(h.email) +
+                  ')">🗑 Delete</button>'
+                : '<span style="color:#94a3b8;font-size:.75rem">No UID</span>';
             html += '<tr>' +
                 '<td><strong>' + esc(h.name) + '</strong></td>' +
                 '<td>' + esc(h.email) + '</td>' +
                 '<td><span class="adm-badge adm-badge-green">' + h.quizzes + '</span></td>' +
                 '<td>' + h.attempts + '</td>' +
                 '<td style="font-size:.75rem;color:#94a3b8">' + esc(lastActive) + '</td>' +
+                '<td>' + deleteBtn + '</td>' +
                 '</tr>';
         });
         html += '</tbody></table>';
         container.innerHTML = html;
     } catch(e) {
         container.innerHTML = '<div class="adm-error">Error: ' + esc(e.message) + '</div>';
+    }
+}
+
+async function confirmDeleteHost(uid, name, email) {
+    if (!uid) { alert('Cannot delete — this host has no UID on record.'); return; }
+    var confirmed = window.confirm(
+        '⚠️ DELETE HOST: ' + name + ' (' + email + ')\n\n' +
+        'This will:\n' +
+        '  • Remove their account profile from the database\n' +
+        '  • Mark all their quizzes as deleted\n\n' +
+        'Their Firebase Auth login is NOT deleted (contact Firebase Console to fully revoke access).\n\n' +
+        'Type OK to confirm.'
+    );
+    if (!confirmed) return;
+    try {
+        /* Mark all their quizzes as deleted */
+        var quizSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', uid)));
+        var batch = [];
+        quizSnap.docs.forEach(function(d) {
+            batch.push(updateDoc(doc(db, 'quizzes', d.id), { status: 'deleted', deleted_by: 'admin', deleted_at: serverTimestamp() }));
+        });
+        await Promise.all(batch);
+
+        /* Delete the user profile document */
+        await deleteDoc(doc(db, 'users', uid));
+
+        /* Remove their username reservation if available */
+        try {
+            var userDoc = quizSnap.docs.length > 0 ? quizSnap.docs[0].data() : null;
+            var username = userDoc && userDoc.host_username;
+            if (username) await deleteDoc(doc(db, 'usernames', username));
+        } catch(_) {}
+
+        alert('✓ Host "' + name + '" has been deleted. Their ' + quizSnap.size + ' quiz(zes) have been marked as deleted.');
+        loadHostActivity(); /* Refresh the list */
+    } catch(e) {
+        alert('Error deleting host: ' + (e.message || e));
     }
 }
 

@@ -163,16 +163,59 @@
 
     /* ── Load settings from Firebase ─────────────────────────── */
     function loadNotifSettings() {
-        if (typeof window.aqsAjax !== 'function') {
-            setTimeout(function() {
-                if (typeof window.aqsAjax === 'function') _fetch();
-            }, 800);
-            return;
-        }
-        _fetch();
+        /* Use the Firestore REST API for public reads — this works for ALL
+           visitors (logged-in or not) without requiring aqsAjax to be ready. */
+        _fetchViaRestApi();
     }
 
-    function _fetch() {
+    /* ── Firestore REST helper: parses typed field values ── */
+    function _parseField(f) {
+        if (!f) return undefined;
+        if (f.stringValue  !== undefined) return f.stringValue;
+        if (f.booleanValue !== undefined) return f.booleanValue;
+        if (f.integerValue !== undefined) return parseInt(f.integerValue, 10);
+        if (f.doubleValue  !== undefined) return parseFloat(f.doubleValue);
+        if (f.mapValue && f.mapValue.fields) {
+            var obj = {};
+            for (var k in f.mapValue.fields) {
+                obj[k] = _parseField(f.mapValue.fields[k]);
+            }
+            return obj;
+        }
+        return undefined;
+    }
+
+    function _fetchViaRestApi() {
+        var PROJECT = 'smartquiz-darapet';
+        var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
+        var url = 'https://firestore.googleapis.com/v1/projects/' + PROJECT +
+                  '/databases/(default)/documents/settings/notifications?key=' + API_KEY;
+        fetch(url)
+            .then(function(r) { return r.ok ? r.json() : Promise.reject(r.status); })
+            .then(function(doc) {
+                var fields = (doc && doc.fields) || {};
+                var tk = _parseField(fields.ticker)    || {};
+                var cd = _parseField(fields.countdown) || {};
+                if (tk.enabled && tk.text) {
+                    startTicker(tk.text, tk.speed, tk.label, tk.bg, tk.color);
+                }
+                if (cd.enabled && cd.target) {
+                    startCountdown(cd.label, cd.target, cd.bg, cd.color, cd.accent);
+                }
+            })
+            .catch(function() {
+                /* Fallback: if REST API fails try aqsAjax (requires Firebase SDK) */
+                if (typeof window.aqsAjax === 'function') {
+                    _fetchViaAjax();
+                } else {
+                    setTimeout(function() {
+                        if (typeof window.aqsAjax === 'function') _fetchViaAjax();
+                    }, 1200);
+                }
+            });
+    }
+
+    function _fetchViaAjax() {
         window.aqsAjax({ action: 'aqs_get_pub_notifications' }, function(res) {
             if (!res || !res.success) return;
             var d  = res.data || {};
@@ -190,11 +233,9 @@
     /* ── Bootstrap ───────────────────────────────────────────── */
     function init() {
         buildBars();
-        if (window._aqsFirebaseReady) {
-            loadNotifSettings();
-        } else {
-            document.addEventListener('aqs:firebase:ready', loadNotifSettings, { once: true });
-        }
+        /* Use REST API directly — no need to wait for Firebase SDK to be ready.
+           This ensures the ticker appears for ALL visitors, including logged-out ones. */
+        loadNotifSettings();
     }
 
     if (document.readyState === 'loading') {

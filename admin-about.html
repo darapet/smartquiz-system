@@ -167,33 +167,56 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 </div>
 
 <script>
-// Load profile data from API if available
-fetch('#firebase-admin-endpoint-removed/api/settings', {credentials:'include'})
-    .then(function(r){return r.json();})
-    .then(function(d){
-        var s = d.settings || d || {};
-        if(s.dev_main_name) document.getElementById('main-name').textContent = s.dev_main_name;
-        if(s.dev_main_title) document.getElementById('main-title').innerHTML = s.dev_main_title;
-        if(s.dev_main_bio) document.getElementById('main-bio').textContent = s.dev_main_bio;
-        if(s.dev_main_email){ var el=document.getElementById('main-email-link'); el.href='mailto:'+s.dev_main_email; }
-        if(s.dev_main_github){ var el=document.getElementById('main-github-link'); el.href=s.dev_main_github; }
-        if(s.dev_main_image){
-            var img=document.getElementById('main-avatar-img');
-            img.src=s.dev_main_image; img.style.display='block';
-            document.getElementById('main-avatar-letter').style.display='none';
+window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
+(function loadAboutSettings() {
+    function applySettings(s) {
+        if (s.dev_main_name)  document.getElementById('main-name').textContent  = s.dev_main_name;
+        if (s.dev_main_title) document.getElementById('main-title').innerHTML   = s.dev_main_title;
+        if (s.dev_main_bio)   document.getElementById('main-bio').textContent   = s.dev_main_bio;
+        if (s.dev_main_email)  { document.getElementById('main-email-link').href  = 'mailto:' + s.dev_main_email; }
+        if (s.dev_main_github) { document.getElementById('main-github-link').href = s.dev_main_github; }
+        if (s.dev_main_image) {
+            var img = document.getElementById('main-avatar-img');
+            img.src = s.dev_main_image; img.style.display = 'block';
+            document.getElementById('main-avatar-letter').style.display = 'none';
         }
-        if(s.dev_asst_name) document.getElementById('asst-name').textContent = s.dev_asst_name;
-        if(s.dev_asst_title) document.getElementById('asst-title').innerHTML = s.dev_asst_title;
-        if(s.dev_asst_bio) document.getElementById('asst-bio').textContent = s.dev_asst_bio;
-        if(s.dev_asst_email){ var el=document.getElementById('asst-email-link'); el.href='mailto:'+s.dev_asst_email; }
-        if(s.dev_asst_github){ var el=document.getElementById('asst-github-link'); el.href=s.dev_asst_github; }
-        if(s.dev_asst_image){
-            var img=document.getElementById('asst-avatar-img');
-            img.src=s.dev_asst_image; img.style.display='block';
-            document.getElementById('asst-avatar-letter').style.display='none';
+        if (s.dev_asst_name)  document.getElementById('asst-name').textContent  = s.dev_asst_name;
+        if (s.dev_asst_title) document.getElementById('asst-title').innerHTML   = s.dev_asst_title;
+        if (s.dev_asst_bio)   document.getElementById('asst-bio').textContent   = s.dev_asst_bio;
+        if (s.dev_asst_email)  { document.getElementById('asst-email-link').href  = 'mailto:' + s.dev_asst_email; }
+        if (s.dev_asst_github) { document.getElementById('asst-github-link').href = s.dev_asst_github; }
+        if (s.dev_asst_image) {
+            var img = document.getElementById('asst-avatar-img');
+            img.src = s.dev_asst_image; img.style.display = 'block';
+            document.getElementById('asst-avatar-letter').style.display = 'none';
         }
-        if(s.about_plugin_desc) document.getElementById('aqs-plugin-desc').textContent = s.about_plugin_desc;
-    }).catch(function(){});
+        if (s.about_plugin_desc) document.getElementById('aqs-plugin-desc').textContent = s.about_plugin_desc;
+        if (s.dev_main_skills && typeof s.dev_main_skills === 'string') {
+            var wrap = document.getElementById('main-skills');
+            if (wrap) {
+                wrap.innerHTML = s.dev_main_skills.split(',').map(function(sk){
+                    return '<span class="aqs-dev-skill">' + sk.trim() + '</span>';
+                }).join('');
+            }
+        }
+        if (s.dev_asst_skills && typeof s.dev_asst_skills === 'string') {
+            var wrap = document.getElementById('asst-skills');
+            if (wrap) {
+                wrap.innerHTML = s.dev_asst_skills.split(',').map(function(sk){
+                    return '<span class="aqs-dev-skill">' + sk.trim() + '</span>';
+                }).join('');
+            }
+        }
+    }
+    function doLoad() {
+        window.aqsAjax({ action: 'aqs_get_about_settings' }, function(res) {
+            var s = (res && res.success && res.data) ? res.data : {};
+            applySettings(s);
+        });
+    }
+    if (window._aqsFirebaseReady) { doLoad(); }
+    else { document.addEventListener('aqs:firebase:ready', doLoad, { once: true }); }
+})();
 </script>
 </body>
 </html>

@@ -234,6 +234,14 @@ window.addEventListener('DOMContentLoaded', function() {
             <input type="url" id="aqs-music-url" placeholder="https://example.com/music.mp3 or leave blank to use default" />
             <p class="aqs-field-hint">The default bundled track is used if left blank. Accepted: .mp3, .ogg</p>
         </div>
+        <div class="aqs-field-group" style="margin-top:4px;">
+            <label style="font-size:.82rem;color:#6b7280;font-weight:500;">— or upload a music file directly —</label>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;">
+                <input type="file" id="aqs-music-file" accept=".mp3,.ogg,.wav" style="font-size:.84rem;flex:1;min-width:0;" />
+                <button class="aqs-btn" id="aqs-music-upload-btn" style="flex-shrink:0;">☁️ Upload</button>
+                <span id="aqs-music-upload-status" class="aqs-status-msg"></span>
+            </div>
+        </div>
         <div class="aqs-settings-actions">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-music-btn">💾 Save Music Settings</button>
             <span id="aqs-music-status" class="aqs-status-msg"></span>
@@ -264,6 +272,17 @@ window.addEventListener('DOMContentLoaded', function() {
             <label for="aqs-splash-logo">Logo URL (optional)</label>
             <input type="url" id="aqs-splash-logo" placeholder="https://example.com/logo.png" />
             <p class="aqs-field-hint">Leave blank to use the default icon. Recommended: PNG/SVG, square.</p>
+        </div>
+        <div class="aqs-field-group" style="margin-top:4px;">
+            <label style="font-size:.82rem;color:#6b7280;font-weight:500;">— or upload a logo image directly —</label>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;">
+                <input type="file" id="aqs-splash-logo-file" accept="image/*" style="font-size:.84rem;flex:1;min-width:0;" />
+                <button class="aqs-btn" id="aqs-splash-logo-upload-btn" style="flex-shrink:0;">☁️ Upload</button>
+                <span id="aqs-splash-logo-upload-status" class="aqs-status-msg"></span>
+            </div>
+            <div id="aqs-splash-logo-preview-wrap" style="display:none;margin-top:10px;">
+                <img id="aqs-splash-logo-preview" src="" alt="Logo preview" style="max-height:60px;max-width:200px;border:1px solid #e2e8f0;border-radius:8px;padding:4px;" />
+            </div>
         </div>
         <div class="aqs-settings-actions">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-splash-btn">💾 Save Splash Settings</button>
@@ -556,6 +575,44 @@ btn('aqs-test-ai-btn').addEventListener('click', async function(){
     results.innerHTML = html;
     testBtn.disabled = false;
     testBtn.textContent = '🔌 Test AI Connection';
+});
+
+/* ── File upload helper ── */
+function _aqsDoUpload(fileInputId, urlInputId, uploadBtnId, statusId, storagePath, onSuccess) {
+    var fileInput = document.getElementById(fileInputId);
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) { _showStatus(statusId, false, 'Please choose a file first.'); return; }
+    var uploadBtn = document.getElementById(uploadBtnId);
+    if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.textContent = '⏳ Uploading…'; }
+    _showStatus(statusId, true, 'Uploading…');
+    function doUpload() {
+        window.aqsUploadFile(file, storagePath + '/' + file.name)
+            .then(function(url) {
+                var urlInput = document.getElementById(urlInputId);
+                if (urlInput) urlInput.value = url;
+                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = '☁️ Upload'; }
+                _showStatus(statusId, true, '✓ Uploaded! Click Save to apply.');
+                if (onSuccess) onSuccess(url);
+            })
+            .catch(function(err) {
+                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = '☁️ Upload'; }
+                _showStatus(statusId, false, 'Upload failed: ' + (err.message || err));
+            });
+    }
+    if (window._aqsFirebaseReady) { doUpload(); }
+    else { document.addEventListener('aqs:firebase:ready', doUpload, { once: true }); }
+}
+
+btn('aqs-music-upload-btn').addEventListener('click', function(){
+    _aqsDoUpload('aqs-music-file', 'aqs-music-url', 'aqs-music-upload-btn', 'aqs-music-upload-status', 'uploads/music');
+});
+
+btn('aqs-splash-logo-upload-btn').addEventListener('click', function(){
+    _aqsDoUpload('aqs-splash-logo-file', 'aqs-splash-logo', 'aqs-splash-logo-upload-btn', 'aqs-splash-logo-upload-status', 'uploads/logo', function(url){
+        var wrap = document.getElementById('aqs-splash-logo-preview-wrap');
+        var img  = document.getElementById('aqs-splash-logo-preview');
+        if (wrap && img) { img.src = url; wrap.style.display = 'block'; }
+    });
 });
 
 btn('aqs-save-music-btn').addEventListener('click', function(){

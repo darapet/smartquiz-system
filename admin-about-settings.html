@@ -53,29 +53,42 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
   }}
 </style>
 <script>
-var API_BASE = '';
+window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
+
+function _whenFirebaseReady(fn) {
+    if (window._aqsFirebaseReady) { fn(); return; }
+    document.addEventListener('aqs:firebase:ready', fn, { once: true });
+}
+
+/* Load settings from Firestore on page load */
 window.addEventListener('DOMContentLoaded', function(){
-    fetch(API_BASE + '/api/settings', {credentials:'include'})
-        .then(function(r){return r.json();})
-        .then(function(d){
-            var s = d.settings || d || {};
-            var sv = function(id,val){var el=document.getElementById(id);if(el&&val!=null)el.value=val;};
+    _whenFirebaseReady(function(){
+        window.aqsAjax({ action: 'aqs_get_about_settings' }, function(res) {
+            var s = (res && res.success && res.data) ? res.data : {};
+            var sv = function(id, val){ var el = document.getElementById(id); if (el && val != null) el.value = val; };
             sv('aqs_about_plugin_desc', s.about_plugin_desc);
-            sv('aqs_dev_main_name', s.dev_main_name);
-            sv('aqs_dev_main_title', s.dev_main_title ? s.dev_main_title.replace(/&amp;/g,'&') : '');
-            sv('aqs_dev_main_bio', s.dev_main_bio);
+            sv('aqs_dev_main_name',   s.dev_main_name);
+            sv('aqs_dev_main_title',  s.dev_main_title  ? s.dev_main_title.replace(/&amp;/g,'&')  : '');
+            sv('aqs_dev_main_bio',    s.dev_main_bio);
             sv('aqs_dev_main_skills', s.dev_main_skills ? s.dev_main_skills.replace(/&amp;/g,'&') : '');
-            sv('aqs_dev_main_email', s.dev_main_email);
+            sv('aqs_dev_main_email',  s.dev_main_email);
             sv('aqs_dev_main_github', s.dev_main_github);
-            sv('aqs_dev_asst_name', s.dev_asst_name);
-            sv('aqs_dev_asst_title', s.dev_asst_title ? s.dev_asst_title.replace(/&amp;/g,'&') : '');
-            sv('aqs_dev_asst_bio', s.dev_asst_bio);
+            sv('aqs_dev_asst_name',   s.dev_asst_name);
+            sv('aqs_dev_asst_title',  s.dev_asst_title  ? s.dev_asst_title.replace(/&amp;/g,'&')  : '');
+            sv('aqs_dev_asst_bio',    s.dev_asst_bio);
             sv('aqs_dev_asst_skills', s.dev_asst_skills ? s.dev_asst_skills.replace(/&amp;/g,'&') : '');
-            sv('aqs_dev_asst_email', s.dev_asst_email);
+            sv('aqs_dev_asst_email',  s.dev_asst_email);
             sv('aqs_dev_asst_github', s.dev_asst_github);
-            if(s.dev_main_image){ var img=document.getElementById('aqs-main-img-preview'); img.src=s.dev_main_image; }
-            if(s.dev_asst_image){ var img=document.getElementById('aqs-asst-img-preview'); img.src=s.dev_asst_image; }
-        }).catch(function(){});
+            if (s.dev_main_image) {
+                document.getElementById('aqs_dev_main_image').value = s.dev_main_image;
+                document.getElementById('aqs-main-img-preview').src = s.dev_main_image;
+            }
+            if (s.dev_asst_image) {
+                document.getElementById('aqs_dev_asst_image').value = s.dev_asst_image;
+                document.getElementById('aqs-asst-img-preview').src = s.dev_asst_image;
+            }
+        });
+    });
 });
 </script>
 
@@ -124,8 +137,15 @@ window.addEventListener('DOMContentLoaded', function(){
                 <img id="aqs-main-img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23e0e7ff'/%3E%3Ctext x='40' y='52' text-anchor='middle' font-size='36' fill='%234f46e5'%3ED%3C/text%3E%3C/svg%3E" class="aqs-image-preview" alt="Lead Developer">
                 <input type="hidden" id="aqs_dev_main_image" value="">
                 <div class="aqs-image-btns">
-                    <input type="url" id="aqs-main-img-url-input" placeholder="Paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:220px;" />
-                    <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-main-img-set" style="padding:6px 12px;font-size:.8rem;">Set Image</button>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <input type="file" id="aqs-main-img-file" accept="image/*" style="font-size:.82rem;max-width:200px;" />
+                        <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-main-img-upload-btn" style="padding:6px 12px;font-size:.8rem;">☁️ Upload</button>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+                        <input type="url" id="aqs-main-img-url-input" placeholder="or paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:200px;" />
+                        <button type="button" class="aqs-btn" id="aqs-main-img-set" style="padding:6px 10px;font-size:.8rem;">Set</button>
+                    </div>
+                    <span id="aqs-main-img-status" style="font-size:.78rem;margin-top:4px;display:block;"></span>
                 </div>
             </div>
         </div>
@@ -168,8 +188,15 @@ window.addEventListener('DOMContentLoaded', function(){
                 <img id="aqs-asst-img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23e0f2fe'/%3E%3Ctext x='40' y='52' text-anchor='middle' font-size='36' fill='%230ea5e9'%3EO%3C/text%3E%3C/svg%3E" class="aqs-image-preview" alt="Assistant Developer">
                 <input type="hidden" id="aqs_dev_asst_image" value="">
                 <div class="aqs-image-btns">
-                    <input type="url" id="aqs-asst-img-url-input" placeholder="Paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:220px;" />
-                    <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-asst-img-set" style="padding:6px 12px;font-size:.8rem;">Set Image</button>
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <input type="file" id="aqs-asst-img-file" accept="image/*" style="font-size:.82rem;max-width:200px;" />
+                        <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-asst-img-upload-btn" style="padding:6px 12px;font-size:.8rem;">☁️ Upload</button>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+                        <input type="url" id="aqs-asst-img-url-input" placeholder="or paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:200px;" />
+                        <button type="button" class="aqs-btn" id="aqs-asst-img-set" style="padding:6px 10px;font-size:.8rem;">Set</button>
+                    </div>
+                    <span id="aqs-asst-img-status" style="font-size:.78rem;margin-top:4px;display:block;"></span>
                 </div>
             </div>
         </div>
@@ -213,61 +240,103 @@ window.addEventListener('DOMContentLoaded', function(){
 </div>
 
 <script>
-// Image set buttons
+/* ── Image: URL-paste "Set" buttons ── */
 document.getElementById('aqs-main-img-set').addEventListener('click', function(){
     var url = document.getElementById('aqs-main-img-url-input').value.trim();
-    if(url){ document.getElementById('aqs-main-img-preview').src = url; document.getElementById('aqs_dev_main_image').value = url; }
+    if (url) {
+        document.getElementById('aqs-main-img-preview').src = url;
+        document.getElementById('aqs_dev_main_image').value = url;
+    }
 });
 document.getElementById('aqs-asst-img-set').addEventListener('click', function(){
     var url = document.getElementById('aqs-asst-img-url-input').value.trim();
-    if(url){ document.getElementById('aqs-asst-img-preview').src = url; document.getElementById('aqs_dev_asst_image').value = url; }
+    if (url) {
+        document.getElementById('aqs-asst-img-preview').src = url;
+        document.getElementById('aqs_dev_asst_image').value = url;
+    }
 });
 
-// Save
+/* ── Image: File Upload buttons ── */
+function _aqsUploadDevPhoto(fileInputId, hiddenId, previewId, uploadBtnId, statusId, storagePath) {
+    var fileInput = document.getElementById(fileInputId);
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) { document.getElementById(statusId).textContent = '⚠️ Choose a file first.'; return; }
+    var btn = document.getElementById(uploadBtnId);
+    btn.disabled = true; btn.textContent = '⏳ Uploading…';
+    document.getElementById(statusId).textContent = 'Uploading…';
+    function doUpload() {
+        window.aqsUploadFile(file, storagePath + '/' + file.name)
+            .then(function(url) {
+                document.getElementById(hiddenId).value  = url;
+                document.getElementById(previewId).src   = url;
+                btn.disabled = false; btn.textContent = '☁️ Upload';
+                document.getElementById(statusId).style.color = '#065f46';
+                document.getElementById(statusId).textContent = '✓ Uploaded! Remember to Save Changes.';
+            })
+            .catch(function(err) {
+                btn.disabled = false; btn.textContent = '☁️ Upload';
+                document.getElementById(statusId).style.color = '#991b1b';
+                document.getElementById(statusId).textContent = '✗ ' + (err.message || 'Upload failed');
+            });
+    }
+    if (window._aqsFirebaseReady) { doUpload(); }
+    else { document.addEventListener('aqs:firebase:ready', doUpload, { once: true }); }
+}
+
+document.getElementById('aqs-main-img-upload-btn').addEventListener('click', function(){
+    _aqsUploadDevPhoto('aqs-main-img-file','aqs_dev_main_image','aqs-main-img-preview',
+                       'aqs-main-img-upload-btn','aqs-main-img-status','uploads/dev-photos');
+});
+document.getElementById('aqs-asst-img-upload-btn').addEventListener('click', function(){
+    _aqsUploadDevPhoto('aqs-asst-img-file','aqs_dev_asst_image','aqs-asst-img-preview',
+                       'aqs-asst-img-upload-btn','aqs-asst-img-status','uploads/dev-photos');
+});
+
+/* ── Save all about settings via Firebase ── */
 document.getElementById('aqs-save-about-btn').addEventListener('click', function(){
     var btn = this;
     btn.disabled = true; btn.textContent = 'Saving…';
     var payload = {
+        action:            'aqs_save_about_settings',
         about_plugin_desc: document.getElementById('aqs_about_plugin_desc').value.trim(),
-        dev_main_name: document.getElementById('aqs_dev_main_name').value.trim(),
-        dev_main_title: document.getElementById('aqs_dev_main_title').value.trim(),
-        dev_main_bio: document.getElementById('aqs_dev_main_bio').value.trim(),
-        dev_main_skills: document.getElementById('aqs_dev_main_skills').value.trim(),
-        dev_main_email: document.getElementById('aqs_dev_main_email').value.trim(),
-        dev_main_github: document.getElementById('aqs_dev_main_github').value.trim(),
-        dev_main_image: document.getElementById('aqs_dev_main_image').value.trim(),
-        dev_asst_name: document.getElementById('aqs_dev_asst_name').value.trim(),
-        dev_asst_title: document.getElementById('aqs_dev_asst_title').value.trim(),
-        dev_asst_bio: document.getElementById('aqs_dev_asst_bio').value.trim(),
-        dev_asst_skills: document.getElementById('aqs_dev_asst_skills').value.trim(),
-        dev_asst_email: document.getElementById('aqs_dev_asst_email').value.trim(),
-        dev_asst_github: document.getElementById('aqs_dev_asst_github').value.trim(),
-        dev_asst_image: document.getElementById('aqs_dev_asst_image').value.trim()
+        dev_main_name:     document.getElementById('aqs_dev_main_name').value.trim(),
+        dev_main_title:    document.getElementById('aqs_dev_main_title').value.trim(),
+        dev_main_bio:      document.getElementById('aqs_dev_main_bio').value.trim(),
+        dev_main_skills:   document.getElementById('aqs_dev_main_skills').value.trim(),
+        dev_main_email:    document.getElementById('aqs_dev_main_email').value.trim(),
+        dev_main_github:   document.getElementById('aqs_dev_main_github').value.trim(),
+        dev_main_image:    document.getElementById('aqs_dev_main_image').value.trim(),
+        dev_asst_name:     document.getElementById('aqs_dev_asst_name').value.trim(),
+        dev_asst_title:    document.getElementById('aqs_dev_asst_title').value.trim(),
+        dev_asst_bio:      document.getElementById('aqs_dev_asst_bio').value.trim(),
+        dev_asst_skills:   document.getElementById('aqs_dev_asst_skills').value.trim(),
+        dev_asst_email:    document.getElementById('aqs_dev_asst_email').value.trim(),
+        dev_asst_github:   document.getElementById('aqs_dev_asst_github').value.trim(),
+        dev_asst_image:    document.getElementById('aqs_dev_asst_image').value.trim()
     };
-    fetch('#firebase-admin-endpoint-removed/api/settings', {
-        method: 'POST', credentials: 'include',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify(payload)
-    }).then(function(r){return r.json();})
-    .then(function(d){
-        btn.disabled = false; btn.textContent = '💾 Save Changes';
-        var msg = document.getElementById('aqs-about-save-msg');
-        var status = document.getElementById('aqs-save-about-status');
-        if(d.success){
-            msg.style.cssText = 'display:block;background:#d1fae5;color:#065f46;';
-            msg.textContent = '✓ Profile updated successfully!';
-            if(status){ status.style.color='#065f46'; status.textContent='✓ Saved!'; }
-        } else {
+    function doSave() {
+        window.aqsAjax(payload, function(res) {
+            btn.disabled = false; btn.textContent = '💾 Save Changes';
+            var msg    = document.getElementById('aqs-about-save-msg');
+            var status = document.getElementById('aqs-save-about-status');
+            if (res && res.success) {
+                msg.style.cssText = 'display:block;background:#d1fae5;color:#065f46;';
+                msg.textContent   = '✓ Profile updated successfully!';
+                if (status) { status.style.color = '#065f46'; status.textContent = '✓ Saved!'; }
+            } else {
+                msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
+                msg.textContent   = '✗ Error: ' + ((res && res.data) || 'Failed to save.');
+            }
+            setTimeout(function(){ msg.style.display='none'; if(status) status.textContent=''; }, 5000);
+        }, function(err) {
+            btn.disabled = false; btn.textContent = '💾 Save Changes';
+            var msg = document.getElementById('aqs-about-save-msg');
             msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
-            msg.textContent = '✗ Error: ' + (d.message||'Failed to save.');
-        }
-        setTimeout(function(){msg.style.display='none'; if(status)status.textContent='';}, 5000);
-    }).catch(function(){
-        btn.disabled = false; btn.textContent = '💾 Save Changes';
-        var msg = document.getElementById('aqs-about-save-msg');
-        msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
-        msg.textContent = '✗ Network error — Firebase connection failed.';
-    });
+            msg.textContent   = '✗ ' + (err.message || 'Save failed. Make sure you are signed in as admin.');
+        });
+    }
+    if (window._aqsFirebaseReady) { doSave(); }
+    else { document.addEventListener('aqs:firebase:ready', doSave, { once: true }); }
 });
 </script>
 </body>
