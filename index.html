@@ -351,17 +351,17 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
             var base = window.AQS_SPLASH || {};
             window.aqsRunSplash && window.aqsRunSplash({
                 enabled:       '1',
-                once:          base.once          || '1',
-                template:      base.template      || '1',
-                app_name:      base.app_name      || 'XZILY AI',
-                tagline:       base.tagline       || 'Powered by Darapet Technology',
-                logo_url:      s.splash_logo_url  || base.logo_url || '',
-                color_primary: base.color_primary || '#6366f1',
-                color_bg:      base.color_bg      || '',
-                color_text:    base.color_text     || '',
-                duration:      base.duration      || '3',
-                sound:         base.sound         || '0',
-                music_url:     s.bg_music_url     || base.music_url || ''
+                once:          (s.splash_once === false || s.splash_once === '0') ? '0' : '1',
+                template:      s.splash_template  || '1',
+                app_name:      s.splash_app_name  || 'XZILY AI',
+                tagline:       s.splash_tagline   || 'Powered by Darapet Technology',
+                logo_url:      s.splash_logo_url  || '',
+                color_primary: s.splash_color     || '#6366f1',
+                color_bg:      '',
+                color_text:    '',
+                duration:      s.splash_duration  || '3',
+                sound:         s.splash_sound     ? '1' : '0',
+                music_url:     s.bg_music_url     || ''
             });
         });
     }
