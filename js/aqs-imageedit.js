@@ -4,35 +4,52 @@
 (function () {
     'use strict';
 
-    /* ── Local Node.js backend endpoint ── */
-    var AQS_LOCAL = '';
-
     /* ─────────────────────────────────────────────────────────────
-       UPLOAD image to local Express backend.
-       Saves to /public/uploads/ and returns a hosted URL that
-       Pollinations can fetch for img2img.
+       UPLOAD image via tmpfiles.org — free, no account needed,
+       CORS-friendly, files live for 60 min (enough for editing).
+       Falls back to file.io if tmpfiles fails.
     ───────────────────────────────────────────────────────────── */
     function uploadImageToServer(file) {
-        /* Upload to catbox.moe — free, no API key, returns a public URL
-           that Pollinations can fetch for img2img editing */
+        return _tryTmpfiles(file).catch(function () { return _tryFileIo(file); });
+    }
+
+    function _tryTmpfiles(file) {
         return new Promise(function (resolve, reject) {
-            var formData = new FormData();
-            formData.append('reqtype', 'fileupload');
-            formData.append('fileToUpload', file);
-            fetch('https://catbox.moe/user/api.php', {
-                method: 'POST',
-                body: formData
-            })
+            var fd = new FormData();
+            fd.append('file', file);
+            fetch('https://tmpfiles.org/api/v1/upload', { method: 'POST', body: fd })
             .then(function (r) {
-                if (!r.ok) throw new Error('Image upload failed (' + r.status + '). Please try again.');
-                return r.text();
+                if (!r.ok) throw new Error('tmpfiles ' + r.status);
+                return r.json();
             })
-            .then(function (url) {
-                url = (url || '').trim();
-                if (!url.startsWith('https://')) throw new Error('Upload failed — could not get a public image URL. Please try again.');
+            .then(function (json) {
+                /* tmpfiles returns page URL — convert to direct download URL */
+                var url = (json.data && json.data.url) || '';
+                if (!url) throw new Error('no url');
+                /* https://tmpfiles.org/123456/file.jpg → https://tmpfiles.org/dl/123456/file.jpg */
+                url = url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
                 resolve(url);
             })
             .catch(reject);
+        });
+    }
+
+    function _tryFileIo(file) {
+        return new Promise(function (resolve, reject) {
+            var fd = new FormData();
+            fd.append('file', file);
+            fetch('https://file.io/?expires=1h', { method: 'POST', body: fd })
+            .then(function (r) {
+                if (!r.ok) throw new Error('file.io ' + r.status);
+                return r.json();
+            })
+            .then(function (json) {
+                if (!json.link) throw new Error('no link');
+                resolve(json.link);
+            })
+            .catch(function () {
+                reject(new Error('Image upload failed. Both upload services are unavailable. Please try again later.'));
+            });
         });
     }
 
