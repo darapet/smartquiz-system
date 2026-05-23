@@ -5,11 +5,21 @@
 (function () {
     'use strict';
 
-    var cfg = window.AQS_SPLASH || {};
+    /* ── Public entry point — can be called from Firebase settings loader ── */
+    window.aqsRunSplash = function(cfg) {
+        /* Guard: disabled or already shown this session */
+        if (!cfg || !cfg.enabled || cfg.enabled === '0') return;
+        if (cfg.once === '1' && sessionStorage.getItem('aqs_splash_shown')) return;
+        _runSplash(cfg);
+    };
 
-    /* Guard: disabled or already shown this session */
-    if (!cfg.enabled || cfg.enabled === '0') return;
-    if (cfg.once === '1' && sessionStorage.getItem('aqs_splash_shown')) return;
+    /* Auto-run only when hardcoded config has enabled:'1' */
+    var _autoCfg = window.AQS_SPLASH || {};
+    if (_autoCfg.enabled && _autoCfg.enabled !== '0') {
+        window.aqsRunSplash(_autoCfg);
+    }
+
+    function _runSplash(cfg) {
 
     var template  = parseInt(cfg.template  || '1', 10);
     var appName   = cfg.app_name   || 'XZILY AI';
@@ -308,4 +318,5 @@
         if(max===min){h=s=0;}else{var d=max-min;s=l>0.5?d/(2-max-min):d/(max+min);switch(max){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;case b:h=(r-g)/d+4;break;}h/=6;}
         return [Math.round(h*360),Math.round(s*100),Math.round(l*100)];
     }
+    } /* end _runSplash */
 })();
