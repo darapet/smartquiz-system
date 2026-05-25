@@ -365,8 +365,10 @@
               var $b=$(this);btnLoading($b,'Starting…');
               $.post(AQS.ajax_url,{action:'aqs_ch_start',nonce:AQS.nonce,code:CH.code},function(res){
                   if(!res.success){btnRestore($b,'▶ Start Challenge');flash(res.data||'Error');}
-                  /* On success the poll loop will detect phase='active' and transition the screen */
-                  else{ showLobbyCountdown(5, function(){ $b.text('✓ Started!'); }, CH._lastPlayers||[]);  }
+                  /* Countdown + game screen transition is handled for ALL players (including
+                     host) by the poll loop when it detects phase='active' — no duplicate
+                     countdown here so the host doesn't see the hype screen twice. */
+                  else{ $b.text('⏳ Starting…'); }
               }).fail(function(){btnRestore($b,'▶ Start Challenge');});
           });
 
@@ -537,7 +539,23 @@
               return;
           }
           if(d.phase==='active'||d.phase==='reveal'){
-              if(CH.lastPhase==='waiting'||CH.lastPhase===''){showScreen('aqs-ch-screen-game');initGameLayout(d);}
+              if(CH.lastPhase==='waiting'||CH.lastPhase===''){
+                  /* ── Transition: waiting room → game ─────────────────────────────
+                     Show the hype countdown for EVERY player (host + non-host) so
+                     everyone sees the pre-game animation before the first question.
+                     Polling is paused during the countdown to avoid a mid-animation
+                     game-screen flash, then resumed after the countdown ends.       */
+                  CH.lastPhase='starting';   /* guard: prevents re-entry on next poll tick */
+                  stopPolling();
+                  var _snapD=d;              /* capture poll snapshot for post-countdown use */
+                  showLobbyCountdown(5, function(){
+                      showScreen('aqs-ch-screen-game');
+                      initGameLayout(_snapD);
+                      renderGameState(_snapD);
+                      startPolling();        /* resume normal polling after countdown */
+                  }, d.players||CH._lastPlayers||[]);
+                  return;                    /* CH.lastPhase already set above — skip bottom assignment */
+              }
               /* Coming back from league elimination — remove overlay and reset answered */
               if(CH.lastPhase==='league_elimination'){
                   $('#aqs-ch-league-elim').remove();

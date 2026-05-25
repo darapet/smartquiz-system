@@ -27,9 +27,13 @@
         '#aqs-news-ticker-bar{display:none;overflow:hidden;height:36px;line-height:36px;font-size:.82rem;font-weight:500;position:fixed;bottom:0;left:0;right:0;z-index:9989;border-top:1px solid rgba(255,255,255,.12);}',
         '#aqs-news-ticker-bar .aqs-ticker-label{display:inline-flex;align-items:center;height:36px;padding:0 14px;font-weight:700;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0;position:relative;z-index:2;}',
         '#aqs-ticker-scroll-wrap{overflow:hidden;flex:1;display:inline-block;vertical-align:top;}',
-        '#aqs-ticker-track{display:inline-block;white-space:nowrap;padding-left:100%;animation:aqsTickerScroll 35s linear infinite;}',
+        '#aqs-ticker-track{display:inline-block;white-space:nowrap;padding-left:100%;animation:aqsTickerScroll 80s linear infinite;}',
         '#aqs-ticker-track:hover{animation-play-state:paused;}',
         '@keyframes aqsTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}',
+
+        /* ── Hamburger-aware countdown placement ── */
+        /* Sidebar pages use aqs-full-page-body — hamburger is fixed at top:8px,height:40px */
+        '@media(max-width:768px){body.aqs-full-page-body #aqs-countdown-bar{top:56px !important;}}',
 
         /* ── Responsive ── */
         '@media(max-width:480px){#aqs-news-ticker-bar{height:30px;line-height:30px;font-size:.75rem;}#aqs-news-ticker-bar .aqs-ticker-label{font-size:.7rem;padding:0 10px;}#aqs-countdown-bar{font-size:.8rem;padding:6px 10px;}.aqs-cd-block{font-size:.82rem;padding:2px 7px;min-width:32px;}}'
@@ -75,8 +79,17 @@
             document.body.style.paddingBottom = Math.max(exB, 42) + 'px';
         }
         if (cd && cd.style.display !== 'none') {
+            /* Use actual bar height for accurate offset */
+            var cdH = (cd.offsetHeight || 42) + 4;
             var exT = parseInt(window.getComputedStyle(document.body).paddingTop) || 0;
-            document.body.style.paddingTop = Math.max(exT, 50) + 'px';
+            document.body.style.paddingTop = Math.max(exT, cdH) + 'px';
+
+            /* Shift any sticky site-header so it sits BELOW the countdown bar
+               (this keeps the hamburger inside the header fully visible) */
+            document.querySelectorAll('.aqs-site-header').forEach(function(h) {
+                if (!h._aqsOrigTop) h._aqsOrigTop = h.style.top || '';
+                h.style.top = cdH + 'px';
+            });
         }
     }
 
@@ -103,10 +116,11 @@
         var fullText = msgs.join('   ·   ') + '          ';
         track.textContent = fullText + fullText + fullText;
 
-        /* Speed: admin setting (words per minute-ish) → animation duration */
+        /* Speed: admin setting (words per minute-ish) → animation duration
+           Multiplier increased to 20 (was 8) for a noticeably slower, readable scroll */
         var spd = parseInt(speed) || 40;
-        var dur = Math.round(track.textContent.length * 8 / spd);
-        dur = Math.max(10, Math.min(180, dur));
+        var dur = Math.round(track.textContent.length * 20 / spd);
+        dur = Math.max(40, Math.min(400, dur));
         track.style.animationDuration = dur + 's';
 
         bar.style.display = 'flex';

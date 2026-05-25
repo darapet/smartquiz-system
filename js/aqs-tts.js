@@ -191,13 +191,17 @@
         /* Pollinations TTS — free, no key, works from any browser */
         var encodedText = encodeURIComponent(text);
         /* Add voice + lang hint so the API uses the correct language accent.
-           Cache-buster (_t) prevents browser from reusing a cached response from
-           a previous voice — different voice → new request even for same text. */
+           Cache-busters: _v (voice name), _t (timestamp), _s (random seed) ensure
+           each voice selection generates a fresh request — different voice ALWAYS
+           produces a distinct network request even for identical text. */
+        var _seed = Math.random().toString(36).substring(2, 9);
         var pollinationsUrl = 'https://audio.pollinations.ai/' + encodedText +
             '?model=openai-audio&voice=' + pollinationsVoice + '&nologo=true' +
             (langCode ? '&language=' + encodeURIComponent(langCode) : '') +
             '&_v=' + pollinationsVoice +
-            '&_t=' + Date.now();
+            '&_id=' + encodeURIComponent(voice) +
+            '&_t=' + Date.now() +
+            '&_s=' + _seed;
         try {
             var pCtrl = new AbortController();
             var pTid  = setTimeout(function() { pCtrl.abort(); }, 45000);
@@ -480,8 +484,9 @@
         var sysMsg = 'You are a professional translator. Translate the text into ' + langName +
             '. Output ONLY the translated text — no explanations, no quotes, no extra formatting.';
 
-        /* 1️⃣  Try backend translate proxy (Render server) */
+        /* 1️⃣  Try backend translate proxy (Render server) — only if AQS_LOCAL is defined */
         try {
+            if (typeof AQS_LOCAL === 'undefined' || !AQS_LOCAL) throw new Error('no local server');
             var localRes = await fetch(AQS_LOCAL + '/api/translate', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
