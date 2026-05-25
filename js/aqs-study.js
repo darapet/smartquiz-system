@@ -1,22 +1,17 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload
-   ─────────────────────────────────────────────────────────
-   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
-   ─────────────────────────────────────────────────────────── */
+   Now uses window.groqFetch() from aqs-groq-key.js automatically. */
 (function () {
 'use strict';
 
-/* ── CONFIG ─────────────────────────────────────────────────── */
 var CFG        = window.AQS_CONFIG || {};
 var GROQ_MODEL = CFG.groqModel || 'llama-3.3-70b-versatile';
 
-/* ── CONSTANTS ─────────────────────────────────────────────── */
 var POLL_URL  = 'https://text.pollinations.ai/openai';
 var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
 var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
 var HIST_KEY  = 'aqs_study_hist';
 var MAX_HIST  = 15;
 
-/* ── STATE ──────────────────────────────────────────────────── */
 var S = {
     query:'', title:'', source:'', description:'', wikiTitle:'',
     chapters:[], activeIdx:-1, cache:{},
@@ -26,561 +21,255 @@ var S = {
     aiReady: false,
 };
 
-/* ── INIT ───────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
-    injectKaTeX();
-    setupSearch();
-    setupFileUpload();
-    setupEvents();
-    renderHistory();
-    checkAI();
+    injectKaTeX(); setupSearch(); setupFileUpload();
+    setupEvents(); renderHistory(); checkAI();
 });
 
-/* ── KATEX ──────────────────────────────────────────────────── */
 function injectKaTeX() {
     if (document.getElementById('katex-css')) return;
-    var link   = document.createElement('link');
-    link.id    = 'katex-css';
-    link.rel   = 'stylesheet';
-    link.href  = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+    var link = document.createElement('link');
+    link.id = 'katex-css'; link.rel = 'stylesheet';
+    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
     document.head.appendChild(link);
     loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js', function () {
-        loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js', function () {
-            renderPageMath();
-        });
+        loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js', function () { renderPageMath(); });
     });
 }
-
-function loadScript(src, cb) {
-    var s = document.createElement('script');
-    s.src = src;
-    s.onload = cb || function () {};
-    document.head.appendChild(s);
-}
-
-function renderPageMath() {
-    if (typeof renderMathInElement === 'undefined') return;
-    document.querySelectorAll('.std-content-body,.std-ai-panel-body,.std-test-q,.std-res-exp').forEach(renderMath);
-}
-
+function loadScript(src, cb) { var s = document.createElement('script'); s.src = src; s.onload = cb || function(){}; document.head.appendChild(s); }
+function renderPageMath() { if (typeof renderMathInElement === 'undefined') return; document.querySelectorAll('.std-content-body,.std-ai-panel-body,.std-test-q,.std-res-exp').forEach(renderMath); }
 function renderMath(el) {
     if (!el || typeof renderMathInElement === 'undefined') return;
-    try {
-        renderMathInElement(el, {
-            delimiters: [
-                { left: '$$', right: '$$', display: true },
-                { left: '$',  right: '$',  display: false },
-                { left: '\\(', right: '\\)', display: false },
-                { left: '\\[', right: '\\]', display: true }
-            ],
-            throwOnError: false
-        });
-    } catch (e) {}
+    try { renderMathInElement(el, { delimiters: [{ left:'$$', right:'$$', display:true },{ left:'$', right:'$', display:false },{ left:'\\(', right:'\\)', display:false },{ left:'\\[', right:'\\]', display:true }], throwOnError:false }); } catch(e) {}
 }
 
-/* ── FILE UPLOAD ────────────────────────────────────────────── */
 function setupFileUpload() {
     var searchSection = document.querySelector('.std-search-section');
     if (!searchSection || document.getElementById('std-upload-wrap')) return;
-
     var wrap = document.createElement('div');
-    wrap.id = 'std-upload-wrap';
-    wrap.className = 'std-upload-wrap';
-    wrap.innerHTML =
-        '<label class="std-upload-btn" for="std-file-input">' +
-        '📎 Upload Textbook / Image' +
-        '<input type="file" id="std-file-input" accept=".txt,.md,.csv,.pdf,image/*" style="display:none">' +
-        '</label>' +
-        '<span id="std-upload-info" class="std-upload-info"></span>';
+    wrap.id = 'std-upload-wrap'; wrap.className = 'std-upload-wrap';
+    wrap.innerHTML = '<label class="std-upload-btn" for="std-file-input">📎 Upload Textbook / Image<input type="file" id="std-file-input" accept=".txt,.md,.csv,.pdf,image/*" style="display:none"></label><span id="std-upload-info" class="std-upload-info"></span>';
     searchSection.appendChild(wrap);
-
     var input = document.getElementById('std-file-input');
-    if (input) input.addEventListener('change', function () {
-        if (input.files[0]) { handleFileUpload(input.files[0]); input.value = ''; }
-    });
+    if (input) input.addEventListener('change', function () { if (input.files[0]) { handleFileUpload(input.files[0]); input.value=''; } });
 }
-
 function handleFileUpload(file) {
     var info = document.getElementById('std-upload-info');
-    var setInfo = function (t) { if (info) info.textContent = t; };
-    S.uploadedFileName = file.name;
-    S.uploadedBase64   = null;
-    S.uploadedContent  = null;
-    S.uploadedMime     = file.type;
-
+    var setInfo = function(t) { if (info) info.textContent = t; };
+    S.uploadedFileName = file.name; S.uploadedBase64 = null; S.uploadedContent = null; S.uploadedMime = file.type;
     if (file.type.startsWith('image/')) {
-        setInfo('⏳ Reading image…');
-        var r = new FileReader();
-        r.onload = function (e) {
-            S.uploadedBase64  = e.target.result;
-            S.uploadedContent = '[Image: ' + file.name + ']';
-            setInfo('🖼 ' + file.name + ' ready');
-            showUploadStudy(file.name, 'img');
-        };
+        setInfo('⏳ Reading image…'); var r = new FileReader();
+        r.onload = function(e) { S.uploadedBase64 = e.target.result; S.uploadedContent = '[Image: '+file.name+']'; setInfo('🖼 '+file.name+' ready'); showUploadStudy(file.name,'img'); };
         r.readAsDataURL(file);
     } else if (file.type === 'application/pdf' && window.pdfjsLib) {
-        setInfo('⏳ Extracting PDF…');
-        var r2 = new FileReader();
-        r2.onload = function (e) { extractPDFText(e.target.result, file.name, setInfo); };
-        r2.readAsArrayBuffer(file);
+        setInfo('⏳ Extracting PDF…'); var r2 = new FileReader();
+        r2.onload = function(e) { extractPDFText(e.target.result, file.name, setInfo); }; r2.readAsArrayBuffer(file);
     } else {
-        setInfo('⏳ Reading…');
-        var r3 = new FileReader();
-        r3.onload = function (e) {
-            S.uploadedContent = (e.target.result || '').slice(0, 80000);
-            setInfo('📄 ' + file.name + ' (' + Math.round(S.uploadedContent.length / 1000) + 'k chars)');
-            showUploadStudy(file.name, 'text');
-        };
-        r3.onerror = function () { setInfo('❌ Could not read file.'); };
-        r3.readAsText(file);
+        setInfo('⏳ Reading…'); var r3 = new FileReader();
+        r3.onload = function(e) { S.uploadedContent = (e.target.result||'').slice(0,80000); setInfo('📄 '+file.name+' ('+Math.round(S.uploadedContent.length/1000)+'k chars)'); showUploadStudy(file.name,'text'); };
+        r3.onerror = function() { setInfo('❌ Could not read file.'); }; r3.readAsText(file);
     }
 }
-
 function extractPDFText(buf, filename, setInfo) {
-    window.pdfjsLib.getDocument({ data: buf }).promise.then(function (pdf) {
-        var pp = [];
-        for (var i = 1; i <= pdf.numPages; i++) pp.push(pdf.getPage(i).then(function (p) {
-            return p.getTextContent().then(function (tc) { return tc.items.map(function (x) { return x.str; }).join(' '); });
-        }));
-        return Promise.all(pp).then(function (pages) {
-            S.uploadedContent = pages.join('\n').slice(0, 80000);
-            setInfo('📄 ' + filename + ' (' + pdf.numPages + ' pages)');
-            showUploadStudy(filename, 'text');
-        });
-    }).catch(function () { setInfo('❌ PDF parse failed. Try copy-pasting text.'); });
+    window.pdfjsLib.getDocument({data:buf}).promise.then(function(pdf) {
+        var pp = []; for (var i=1; i<=pdf.numPages; i++) pp.push(pdf.getPage(i).then(function(p) { return p.getTextContent().then(function(tc) { return tc.items.map(function(x){return x.str;}).join(' '); }); }));
+        return Promise.all(pp).then(function(pages) { S.uploadedContent = pages.join('\n').slice(0,80000); setInfo('📄 '+filename+' ('+pdf.numPages+' pages)'); showUploadStudy(filename,'text'); });
+    }).catch(function() { setInfo('❌ PDF parse failed. Try copy-pasting text.'); });
 }
-
-function showUploadStudy(filename, type) {
-    S.query = filename;
-    S.title = filename.replace(/\.[^.]+$/, '');
-    setView('loading');
-    setLoadMsg('🤖 Analysing "' + esc(S.title) + '"…');
-    loadUploadedDoc(S.title, type);
-}
-
+function showUploadStudy(filename, type) { S.query = filename; S.title = filename.replace(/\.[^.]+$/,''); setView('loading'); setLoadMsg('🤖 Analysing "'+esc(S.title)+'"…'); loadUploadedDoc(S.title, type); }
 async function loadUploadedDoc(name, type) {
     try {
         var msgs;
         if (type === 'img' && S.uploadedBase64) {
-            msgs = [
-                { role: 'system', content: 'You are an expert tutor. Return ONLY valid JSON.' },
-                { role: 'user', content: [
-                    { type: 'text', text: 'Analyse this image and create a study guide. Return ONLY JSON:\n{"description":"2-3 sentences","chapters":[{"title":"Chapter Name","summary":"2-3 sentence overview"}]}' },
-                    { type: 'image_url', image_url: { url: S.uploadedBase64 } }
-                ]}
-            ];
+            msgs = [{ role:'system', content:'You are an expert tutor. Return ONLY valid JSON.' },{ role:'user', content:[{ type:'text', text:'Analyse this image and create a study guide. Return ONLY JSON:\n{"description":"2-3 sentences","chapters":[{"title":"Chapter Name","summary":"2-3 sentence overview"}]}' },{ type:'image_url', image_url:{ url:S.uploadedBase64 } }] }];
         } else {
-            var snippet = (S.uploadedContent || '').slice(0, 7000);
-            msgs = [
-                { role: 'system', content: 'You are an expert tutor. Return ONLY valid JSON.' },
-                { role: 'user', content: 'Create a study guide with 8-12 chapters for this content.\n\nTitle: "' + name + '"\n\nContent:\n' + snippet + '\n\nReturn ONLY JSON:\n{"description":"2-3 sentences","chapters":[{"title":"Chapter Name","summary":"2-3 sentence overview"}]}' }
-            ];
+            var snippet = (S.uploadedContent||'').slice(0,7000);
+            msgs = [{ role:'system', content:'You are an expert tutor. Return ONLY valid JSON.' },{ role:'user', content:'Create a study guide with 8-12 chapters for this content.\n\nTitle: "'+name+'"\n\nContent:\n'+snippet+'\n\nReturn ONLY JSON:\n{"description":"2-3 sentences","chapters":[{"title":"Chapter Name","summary":"2-3 sentence overview"}]}' }];
         }
-        var raw  = await aiChat(msgs, 0.5);
-        var m    = raw.match(/\{[\s\S]*\}/);
-        var data = m ? JSON.parse(m[0]) : null;
+        var raw = await aiChat(msgs, 0.5); var m = raw.match(/\{[\s\S]*\}/); var data = m ? JSON.parse(m[0]) : null;
         if (data && data.chapters && data.chapters.length) {
-            S.source      = type;
-            S.description = data.description || '';
-            S.chapters    = data.chapters.map(function (c, i) { return { title: c.title, index: i, summary: c.summary }; });
-            S.cache       = {};
-            saveHist({ query: name, title: S.title, type: type, chapters: S.chapters.map(function (c) { return c.title; }) });
-            renderStudy();
-            selectChapter(0);
-        } else {
-            S.source = type; S.description = 'Uploaded: ' + name;
-            S.chapters = [{ title: 'Full Document', index: 0 }];
-            S.cache = { 0: S.uploadedContent || '' };
+            S.source = type; S.description = data.description||'';
+            S.chapters = data.chapters.map(function(c,i){return{title:c.title,index:i,summary:c.summary};}); S.cache = {};
+            saveHist({query:name,title:S.title,type:type,chapters:S.chapters.map(function(c){return c.title;})});
             renderStudy(); selectChapter(0);
-        }
-    } catch (e) {
-        showErr('Could not analyse document: ' + e.message);
-        setView('home');
-    }
+        } else { S.source=type; S.description='Uploaded: '+name; S.chapters=[{title:'Full Document',index:0}]; S.cache={0:S.uploadedContent||''}; renderStudy(); selectChapter(0); }
+    } catch(e) { showErr('Could not analyse document: '+e.message); setView('home'); }
 }
 
-/* ── SEARCH ─────────────────────────────────────────────────── */
 function setupSearch() {
-    var form = document.getElementById('std-search-form');
-    var inp  = document.getElementById('std-search-input');
-    if (form) form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var q = (inp ? inp.value : '').trim();
-        if (q) doSearch(q);
-    });
+    var form = document.getElementById('std-search-form'), inp = document.getElementById('std-search-input');
+    if (form) form.addEventListener('submit', function(e) { e.preventDefault(); var q=(inp?inp.value:'').trim(); if(q) doSearch(q); });
 }
-
 async function doSearch(q) {
-    S.query = q;
-    setView('loading');
-    setLoadMsg('🔍 Searching for "' + esc(q) + '"…');
+    S.query = q; setView('loading'); setLoadMsg('🔍 Searching for "'+esc(q)+'"…');
     var results = await Promise.allSettled([wikiSearch(q), bookSearch(q)]);
-    var wiki    = results[0].status === 'fulfilled' ? results[0].value : [];
-    var books   = results[1].status === 'fulfilled' ? results[1].value : [];
+    var wiki = results[0].status==='fulfilled'?results[0].value:[];
+    var books = results[1].status==='fulfilled'?results[1].value:[];
     if (!wiki.length && !books.length) { await loadAI(q); } else { showResults(wiki, books, q); }
 }
-
 async function wikiSearch(q) {
-    var r = await fetch(WIKI_API + '?action=query&list=search&srsearch=' + encodeURIComponent(q) + '&srlimit=6&format=json&origin=*', { signal: AbortSignal.timeout(8000) });
+    var r = await fetch(WIKI_API+'?action=query&list=search&srsearch='+encodeURIComponent(q)+'&srlimit=6&format=json&origin=*', {signal:AbortSignal.timeout(8000)});
     if (!r.ok) throw new Error('Wiki error');
     var d = await r.json();
-    return ((d.query && d.query.search) || []).map(function (x) {
-        return { title: x.title, desc: (x.snippet || '').replace(/<[^>]*>/g, ''), type: 'wiki' };
-    });
+    return ((d.query&&d.query.search)||[]).map(function(x){return{title:x.title,desc:(x.snippet||'').replace(/<[^>]*>/g,''),type:'wiki'};});
 }
-
 async function bookSearch(q) {
-    var r = await fetch(BOOKS_API + '?q=' + encodeURIComponent(q) + '&maxResults=6&orderBy=relevance', { signal: AbortSignal.timeout(8000) });
+    var r = await fetch(BOOKS_API+'?q='+encodeURIComponent(q)+'&maxResults=6&orderBy=relevance', {signal:AbortSignal.timeout(8000)});
     if (!r.ok) return [];
     var d = await r.json();
-    return (d.items || []).map(function (b) {
-        var v = b.volumeInfo || {};
-        return { id: b.id, title: v.title || 'Unknown', authors: (v.authors || []).join(', '), desc: (v.description || '').slice(0, 300), thumb: v.imageLinks ? v.imageLinks.thumbnail : null, year: (v.publishedDate || '').slice(0, 4), type: 'book' };
-    });
+    return (d.items||[]).map(function(b){var v=b.volumeInfo||{};return{id:b.id,title:v.title||'Unknown',authors:(v.authors||[]).join(', '),desc:(v.description||'').slice(0,300),thumb:v.imageLinks?v.imageLinks.thumbnail:null,year:(v.publishedDate||'').slice(0,4),type:'book'};});
 }
-
 function showResults(wiki, books, q) {
-    var html = '<div class="std-results-head"><h2>Results for "' + esc(q) + '"</h2><p>Select a source to study</p></div>';
-    if (wiki.length) {
-        html += '<div class="std-res-sec"><div class="std-res-sec-lbl">📖 Wikipedia Topics</div><div class="std-res-grid">';
-        wiki.forEach(function (r) {
-            html += '<div class="std-res-card" data-type="wiki" data-title="' + esc(r.title) + '"><div class="std-res-icon">📖</div><div class="std-res-info"><div class="std-res-title">' + esc(r.title) + '</div><div class="std-res-desc">' + esc(r.desc) + '</div></div></div>';
-        });
-        html += '</div></div>';
-    }
-    if (books.length) {
-        html += '<div class="std-res-sec"><div class="std-res-sec-lbl">📚 Books &amp; Textbooks</div><div class="std-res-grid">';
-        books.forEach(function (b) {
-            var img = b.thumb ? '<img src="' + b.thumb + '" class="std-res-thumb" alt="" loading="lazy">' : '<div class="std-res-thumb-ph">📚</div>';
-            html += '<div class="std-res-card" data-type="book" data-bookid="' + esc(b.id) + '" data-title="' + esc(b.title) + '" data-desc="' + esc(b.desc) + '">' + img + '<div class="std-res-info"><div class="std-res-title">' + esc(b.title) + '</div><div class="std-res-meta">' + (b.authors ? 'by ' + esc(b.authors) : '') + (b.year ? ' · ' + b.year : '') + '</div><div class="std-res-desc">' + esc(b.desc) + '</div></div></div>';
-        });
-        html += '</div></div>';
-    }
-    html += '<div class="std-res-sec"><div class="std-res-sec-lbl">🤖 AI-Generated Study Guide</div><div class="std-res-grid"><div class="std-res-card std-res-ai" data-type="ai" data-title="' + esc(q) + '"><div class="std-res-icon">🤖</div><div class="std-res-info"><div class="std-res-title">AI Study Guide: ' + esc(q) + '</div><div class="std-res-desc">Full guide with chapters, KaTeX math, summaries &amp; practice tests — powered by Groq AI.</div></div></div></div></div>';
+    var html = '<div class="std-results-head"><h2>Results for "'+esc(q)+'"</h2><p>Select a source to study</p></div>';
+    if (wiki.length) { html += '<div class="std-res-sec"><div class="std-res-sec-lbl">📖 Wikipedia Topics</div><div class="std-res-grid">'; wiki.forEach(function(r){html+='<div class="std-res-card" data-type="wiki" data-title="'+esc(r.title)+'"><div class="std-res-icon">📖</div><div class="std-res-info"><div class="std-res-title">'+esc(r.title)+'</div><div class="std-res-desc">'+esc(r.desc)+'</div></div></div>';}); html+='</div></div>'; }
+    if (books.length) { html += '<div class="std-res-sec"><div class="std-res-sec-lbl">📚 Books &amp; Textbooks</div><div class="std-res-grid">'; books.forEach(function(b){var img=b.thumb?'<img src="'+b.thumb+'" class="std-res-thumb" alt="" loading="lazy">':'<div class="std-res-thumb-ph">📚</div>'; html+='<div class="std-res-card" data-type="book" data-bookid="'+esc(b.id)+'" data-title="'+esc(b.title)+'" data-desc="'+esc(b.desc)+'">'+img+'<div class="std-res-info"><div class="std-res-title">'+esc(b.title)+'</div><div class="std-res-meta">'+(b.authors?'by '+esc(b.authors):'')+(b.year?' · '+b.year:'')+'</div><div class="std-res-desc">'+esc(b.desc)+'</div></div></div>';}); html+='</div></div>'; }
+    html += '<div class="std-res-sec"><div class="std-res-sec-lbl">🤖 AI-Generated Study Guide</div><div class="std-res-grid"><div class="std-res-card std-res-ai" data-type="ai" data-title="'+esc(q)+'"><div class="std-res-icon">🤖</div><div class="std-res-info"><div class="std-res-title">AI Study Guide: '+esc(q)+'</div><div class="std-res-desc">Full guide with chapters, KaTeX math, summaries &amp; practice tests — powered by Groq AI.</div></div></div></div></div>';
     var c = document.getElementById('std-results-container');
-    if (c) {
-        c.innerHTML = html;
-        c.querySelectorAll('.std-res-card').forEach(function (card) {
-            card.addEventListener('click', function () {
-                var t = card.dataset.type;
-                if (t === 'wiki') loadWiki(card.dataset.title);
-                else if (t === 'book') loadBook(card.dataset.bookid, card.dataset.title, card.dataset.desc);
-                else loadAI(card.dataset.title);
-            });
-        });
-    }
+    if (c) { c.innerHTML = html; c.querySelectorAll('.std-res-card').forEach(function(card){card.addEventListener('click',function(){var t=card.dataset.type; if(t==='wiki') loadWiki(card.dataset.title); else if(t==='book') loadBook(card.dataset.bookid,card.dataset.title,card.dataset.desc); else loadAI(card.dataset.title);});}); }
     setView('results');
 }
 
-/* ── LOAD WIKIPEDIA ─────────────────────────────────────────── */
 async function loadWiki(title) {
-    setView('loading');
-    setLoadMsg('📖 Loading "' + esc(title) + '" from Wikipedia…');
+    setView('loading'); setLoadMsg('📖 Loading "'+esc(title)+'" from Wikipedia…');
     try {
-        var [sumRes, secRes] = await Promise.all([
-            fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g, '_')), { signal: AbortSignal.timeout(10000) }),
-            fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=sections&format=json&origin=*', { signal: AbortSignal.timeout(10000) })
-        ]);
-        var sum = await sumRes.json();
-        var sec = await secRes.json();
-        var rawSecs  = (sec.parse && sec.parse.sections) ? sec.parse.sections : [];
-        var chapters = [{ title: 'Introduction', index: 0, level: 1 }];
-        rawSecs.filter(function (s) { return parseInt(s.toclevel) <= 2 && s.line; }).slice(0, 20)
-            .forEach(function (s) { chapters.push({ title: s.line.replace(/<[^>]*>/g, ''), index: parseInt(s.index), level: parseInt(s.toclevel) }); });
-        S.source = 'wiki'; S.title = title; S.wikiTitle = title;
-        S.description = sum.extract || sum.description || '';
-        S.chapters = chapters; S.cache = {}; S.cache[0] = S.description;
-        saveHist({ query: S.query, title: title, type: 'wiki', chapters: chapters.map(function (c) { return c.title; }) });
+        var [sumRes,secRes] = await Promise.all([fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title.replace(/ /g,'_')),{signal:AbortSignal.timeout(10000)}),fetch(WIKI_API+'?action=parse&page='+encodeURIComponent(title)+'&prop=sections&format=json&origin=*',{signal:AbortSignal.timeout(10000)})]);
+        var sum = await sumRes.json(), sec = await secRes.json();
+        var rawSecs = (sec.parse&&sec.parse.sections)?sec.parse.sections:[];
+        var chapters = [{title:'Introduction',index:0,level:1}];
+        rawSecs.filter(function(s){return parseInt(s.toclevel)<=2&&s.line;}).slice(0,20).forEach(function(s){chapters.push({title:s.line.replace(/<[^>]*>/g,''),index:parseInt(s.index),level:parseInt(s.toclevel)});});
+        S.source='wiki'; S.title=title; S.wikiTitle=title; S.description=sum.extract||sum.description||'';
+        S.chapters=chapters; S.cache={}; S.cache[0]=S.description;
+        saveHist({query:S.query,title:title,type:'wiki',chapters:chapters.map(function(c){return c.title;})});
         renderStudy(); selectChapter(0);
-    } catch (e) { await loadAI(title); }
+    } catch(e) { await loadAI(title); }
 }
-
-/* ── LOAD BOOK ──────────────────────────────────────────────── */
 async function loadBook(bookId, title, desc) {
-    setView('loading');
-    setLoadMsg('🤖 Generating chapters for "' + esc(title) + '"…');
+    setView('loading'); setLoadMsg('🤖 Generating chapters for "'+esc(title)+'"…');
     try {
-        var raw = await aiChat([
-            { role: 'system', content: 'You are an expert curriculum designer. Return ONLY valid JSON, no markdown.' },
-            { role: 'user', content: 'Create a comprehensive chapter structure for the textbook "' + title + '".\n' + (desc ? 'Description: ' + desc + '\n' : '') + 'Return ONLY JSON array:\n[{"title":"Chapter Name","level":1}]  — 10-14 chapters.' }
-        ], 0.4);
-        var m   = raw.match(/\[[\s\S]*\]/);
-        if (!m) throw new Error('No chapters');
-        var chapters = JSON.parse(m[0]).map(function (c, i) { return { title: c.title, index: i, level: c.level || 1 }; });
-        S.source = 'book'; S.title = title; S.description = desc;
-        S.chapters = chapters; S.cache = {};
-        saveHist({ query: S.query, title: title, type: 'book', chapters: chapters.map(function (c) { return c.title; }) });
+        var raw = await aiChat([{role:'system',content:'You are an expert curriculum designer. Return ONLY valid JSON, no markdown.'},{role:'user',content:'Create a comprehensive chapter structure for the textbook "'+title+'".\n'+(desc?'Description: '+desc+'\n':'')+'Return ONLY JSON array:\n[{"title":"Chapter Name","level":1}]  — 10-14 chapters.'}], 0.4);
+        var m = raw.match(/\[[\s\S]*\]/); if (!m) throw new Error('No chapters');
+        var chapters = JSON.parse(m[0]).map(function(c,i){return{title:c.title,index:i,level:c.level||1};});
+        S.source='book'; S.title=title; S.description=desc; S.chapters=chapters; S.cache={};
+        saveHist({query:S.query,title:title,type:'book',chapters:chapters.map(function(c){return c.title;})});
         renderStudy(); selectChapter(0);
-    } catch (e) { await loadAI(title); }
+    } catch(e) { await loadAI(title); }
 }
-
-/* ── LOAD AI ────────────────────────────────────────────────── */
 async function loadAI(q) {
-    setView('loading');
-    setLoadMsg('🤖 Generating AI study guide for "' + esc(q) + '"…');
+    setView('loading'); setLoadMsg('🤖 Generating AI study guide for "'+esc(q)+'"…');
     try {
-        var raw = await aiChat([
-            { role: 'system', content: 'You are an expert academic content creator. Return ONLY valid JSON, no markdown.' },
-            { role: 'user', content: 'Create a comprehensive study guide for: "' + q + '"\n\nReturn ONLY this JSON:\n{"description":"2-3 sentence overview","chapters":[{"title":"Chapter Name","summary":"2-3 sentence preview"}]}\n\nRules:\n- 10-14 chapters\n- Logical progression: intro → core → advanced → applications\n- Include Glossary at the end\n- Note if topic involves math/science/engineering' }
-        ], 0.5);
-        var m    = raw.match(/\{[\s\S]*\}/);
-        var data = m ? JSON.parse(m[0]) : null;
-        if (!data || !data.chapters) throw new Error('Parse failed');
-        S.source = 'ai'; S.title = q; S.description = data.description || '';
-        S.chapters = data.chapters.map(function (c, i) { return { title: c.title, index: i, summary: c.summary }; });
-        S.cache    = {};
-        saveHist({ query: q, title: q, type: 'ai', chapters: S.chapters.map(function (c) { return c.title; }) });
+        var raw = await aiChat([{role:'system',content:'You are an expert academic content creator. Return ONLY valid JSON, no markdown.'},{role:'user',content:'Create a comprehensive study guide for: "'+q+'"\n\nReturn ONLY this JSON:\n{"description":"2-3 sentence overview","chapters":[{"title":"Chapter Name","summary":"2-3 sentence preview"}]}\n\nRules:\n- 10-14 chapters\n- Logical progression: intro → core → advanced → applications\n- Include Glossary at the end\n- Note if topic involves math/science/engineering'}], 0.5);
+        var m = raw.match(/\{[\s\S]*\}/); var data = m?JSON.parse(m[0]):null;
+        if (!data||!data.chapters) throw new Error('Parse failed');
+        S.source='ai'; S.title=q; S.description=data.description||'';
+        S.chapters=data.chapters.map(function(c,i){return{title:c.title,index:i,summary:c.summary};}); S.cache={};
+        saveHist({query:q,title:q,type:'ai',chapters:S.chapters.map(function(c){return c.title;})});
         renderStudy(); selectChapter(0);
-    } catch (e) {
-        showErr('Could not generate guide: ' + e.message);
-        setView('home');
-    }
+    } catch(e) { showErr('Could not generate guide: '+e.message); setView('home'); }
 }
 
-/* ── RENDER STUDY VIEW ──────────────────────────────────────── */
 function renderStudy() {
-    var titleEl = document.getElementById('std-study-title');
-    var chList  = document.getElementById('std-chapters-list');
+    var titleEl=document.getElementById('std-study-title'), chList=document.getElementById('std-chapters-list');
     if (titleEl) titleEl.textContent = S.title;
-    if (chList) {
-        chList.innerHTML = S.chapters.map(function (c, i) {
-            var cls = 'std-ch-item' + (c.level === 2 ? ' std-ch-sub' : '');
-            return '<div class="' + cls + '" data-idx="' + i + '"><span class="std-ch-num">' + (i + 1) + '</span><span class="std-ch-label">' + esc(c.title) + '</span></div>';
-        }).join('');
-        chList.querySelectorAll('.std-ch-item').forEach(function (el) {
-            el.addEventListener('click', function () { selectChapter(parseInt(el.dataset.idx)); });
-        });
-    }
+    if (chList) { chList.innerHTML=S.chapters.map(function(c,i){var cls='std-ch-item'+(c.level===2?' std-ch-sub':''); return '<div class="'+cls+'" data-idx="'+i+'"><span class="std-ch-num">'+(i+1)+'</span><span class="std-ch-label">'+esc(c.title)+'</span></div>';}).join(''); chList.querySelectorAll('.std-ch-item').forEach(function(el){el.addEventListener('click',function(){selectChapter(parseInt(el.dataset.idx));});}); }
     setView('study');
 }
-
 function selectChapter(idx) {
-    S.activeIdx = idx;
-    document.querySelectorAll('.std-ch-item').forEach(function (el, i) { el.classList.toggle('active', i === idx); });
-    hideAIPanel();
-    loadChapterContent(idx);
-    var panel = document.querySelector('.std-chapters-panel');
-    if (panel) panel.classList.remove('open');
+    S.activeIdx=idx; document.querySelectorAll('.std-ch-item').forEach(function(el,i){el.classList.toggle('active',i===idx);}); hideAIPanel(); loadChapterContent(idx);
+    var panel=document.querySelector('.std-chapters-panel'); if(panel) panel.classList.remove('open');
 }
-
 async function loadChapterContent(idx) {
-    var ch = S.chapters[idx]; if (!ch) return;
-    var contentArea = document.getElementById('std-chapter-content');
-    var titleEl     = document.getElementById('std-content-title');
-    if (titleEl) titleEl.textContent = ch.title;
-    if (contentArea) contentArea.innerHTML = '<div class="std-content-loading"><div class="std-spinner"></div><p>Loading content…</p></div>';
-    if (S.cache[idx]) { showContent(idx, S.cache[idx]); return; }
+    var ch=S.chapters[idx]; if(!ch) return;
+    var contentArea=document.getElementById('std-chapter-content'), titleEl=document.getElementById('std-content-title');
+    if(titleEl) titleEl.textContent=ch.title;
+    if(contentArea) contentArea.innerHTML='<div class="std-content-loading"><div class="std-spinner"></div><p>Loading content…</p></div>';
+    if(S.cache[idx]){showContent(idx,S.cache[idx]);return;}
     try {
-        var text = '';
-        if (S.source === 'wiki') {
-            text = await fetchWikiSection(S.wikiTitle, ch.index);
-        } else if (S.source === 'text' && S.uploadedContent) {
-            text = await aiChat([
-                { role: 'system', content: 'You are an expert tutor. Use $...$ for inline math and $$...$$ for display math.' },
-                { role: 'user', content: 'Based on this document, write a detailed educational explanation of the section "' + ch.title + '" from "' + S.title + '".\n\nDocument:\n' + S.uploadedContent.slice(0, 10000) + '\n\nWrite 400-700 words with clear explanations, examples, and key points. Include LaTeX math where relevant.' }
-            ], 0.6);
-        } else if (S.source === 'img' && S.uploadedBase64) {
-            text = await aiChatVision([
-                { role: 'system', content: 'You are an expert tutor. Write clear educational content with LaTeX math where relevant.' },
-                { role: 'user', content: [
-                    { type: 'text', text: 'Write a detailed educational explanation of "' + ch.title + '" based on this image. 400-700 words. Use $...$ inline math and $$...$$ display math where relevant.' },
-                    { type: 'image_url', image_url: { url: S.uploadedBase64 } }
-                ]}
-            ], 0.6);
-        } else {
-            text = await aiChat([
-                { role: 'system', content: 'You are an expert academic author. Write detailed, engaging educational content. Use $...$ for inline math and $$...$$ for block/display math. Use clear structure.' },
-                { role: 'user', content: 'Write a comprehensive educational chapter on "' + ch.title + '" from the study guide "' + S.title + '".' + (ch.summary ? '\nChapter overview: ' + ch.summary : '') + '\n\nRequirements:\n- 500-800 words\n- Clear introduction, core concepts, examples\n- Use LaTeX math notation where applicable\n- Key takeaways at end\n- Write as a high-quality textbook chapter' }
-            ], 0.65);
-        }
-        S.cache[idx] = text;
-        showContent(idx, text);
-    } catch (e) {
-        if (contentArea) contentArea.innerHTML = '<div class="std-content-empty"><p>⚠️ Could not load content: ' + esc(e.message) + '</p><button class="std-btn std-btn-primary" onclick="loadChapterContent(' + idx + ')">🔄 Retry</button></div>';
-    }
+        var text='';
+        if(S.source==='wiki'){text=await fetchWikiSection(S.wikiTitle,ch.index);}
+        else if(S.source==='text'&&S.uploadedContent){text=await aiChat([{role:'system',content:'You are an expert tutor. Use $...$ for inline math and $$...$$ for display math.'},{role:'user',content:'Based on this document, write a detailed educational explanation of the section "'+ch.title+'" from "'+S.title+'".\n\nDocument:\n'+S.uploadedContent.slice(0,10000)+'\n\nWrite 400-700 words with clear explanations, examples, and key points. Include LaTeX math where relevant.'}],0.6);}
+        else if(S.source==='img'&&S.uploadedBase64){text=await aiChatVision([{role:'system',content:'You are an expert tutor. Write clear educational content with LaTeX math where relevant.'},{role:'user',content:[{type:'text',text:'Write a detailed educational explanation of "'+ch.title+'" based on this image. 400-700 words. Use $...$ inline math and $$...$$ display math where relevant.'},{type:'image_url',image_url:{url:S.uploadedBase64}}]}],0.6);}
+        else{text=await aiChat([{role:'system',content:'You are an expert academic author. Write detailed, engaging educational content. Use $...$ for inline math and $$...$$ for block/display math. Use clear structure.'},{role:'user',content:'Write a comprehensive educational chapter on "'+ch.title+'" from the study guide "'+S.title+'".'+( ch.summary?'\nChapter overview: '+ch.summary:'')+'\n\nRequirements:\n- 500-800 words\n- Clear introduction, core concepts, examples\n- Use LaTeX math notation where applicable\n- Key takeaways at end\n- Write as a high-quality textbook chapter'}],0.65);}
+        S.cache[idx]=text; showContent(idx,text);
+    } catch(e) { if(contentArea) contentArea.innerHTML='<div class="std-content-empty"><p>⚠️ Could not load content: '+esc(e.message)+'</p><button class="std-btn std-btn-primary" onclick="loadChapterContent('+idx+')">🔄 Retry</button></div>'; }
 }
-
 async function fetchWikiSection(title, sectionIdx) {
-    if (sectionIdx === 0) {
-        var r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g, '_')), { signal: AbortSignal.timeout(10000) });
-        var d = await r.json();
-        return d.extract || d.description || '';
-    }
-    var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', { signal: AbortSignal.timeout(10000) });
-    var d2 = await r2.json();
-    var wt = (d2.parse && d2.parse.wikitext && d2.parse.wikitext['*']) || '';
-    return wt.replace(/\{\{[^}]*\}\}/g, '').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, '$2').replace(/'{2,3}/g, '').replace(/==+[^=]+=+/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 4000);
+    if(sectionIdx===0){var r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title.replace(/ /g,'_')),{signal:AbortSignal.timeout(10000)});var d=await r.json();return d.extract||d.description||'';}
+    var r2=await fetch(WIKI_API+'?action=parse&page='+encodeURIComponent(title)+'&prop=wikitext&section='+sectionIdx+'&format=json&origin=*',{signal:AbortSignal.timeout(10000)});
+    var d2=await r2.json(); var wt=(d2.parse&&d2.parse.wikitext&&d2.parse.wikitext['*'])||'';
+    return wt.replace(/\{\{[^}]*\}\}/g,'').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,'$2').replace(/'{2,3}/g,'').replace(/==+[^=]+=+/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,4000);
 }
+function showContent(idx, text) { var contentArea=document.getElementById('std-chapter-content'); if(!contentArea) return; contentArea.innerHTML='<div class="std-content-body">'+renderParagraphs(text)+'</div>'; var body=contentArea.querySelector('.std-content-body'); if(body) setTimeout(function(){renderMath(body);},100); }
 
-function showContent(idx, text) {
-    var contentArea = document.getElementById('std-chapter-content');
-    if (!contentArea) return;
-    contentArea.innerHTML = '<div class="std-content-body">' + renderParagraphs(text) + '</div>';
-    var body = contentArea.querySelector('.std-content-body');
-    if (body) setTimeout(function () { renderMath(body); }, 100);
-}
-
-/* ── STUDY FEATURES ─────────────────────────────────────────── */
 async function doSummarise() {
-    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-    showAIPanel('📝 Summary', 'Generating summary…', null);
-    try {
-        var res = await aiChat([
-            { role: 'system', content: 'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $$...$$ for block math.' },
-            { role: 'user', content: 'Summarise "' + ch.title + '" from "' + S.title + '"' + (content ? ' using:\n' + content.slice(0, 3000) : '') + '\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.' }
-        ], 0.6);
-        showAIPanel('📝 Summary — ' + ch.title, null, res);
-    } catch (e) { showAIPanel('📝 Summary', null, '⚠️ Error: ' + e.message); }
+    if(S.activeIdx<0){showErr('Select a chapter first.');return;}
+    var ch=S.chapters[S.activeIdx], content=S.cache[S.activeIdx]||'';
+    showAIPanel('📝 Summary','Generating summary…',null);
+    try { var res=await aiChat([{role:'system',content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $$...$$ for block math.'},{role:'user',content:'Summarise "'+ch.title+'" from "'+S.title+'"'+(content?' using:\n'+content.slice(0,3000):'')+'\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.'}],0.6); showAIPanel('📝 Summary — '+ch.title,null,res); }
+    catch(e){showAIPanel('📝 Summary',null,'⚠️ Error: '+e.message);}
 }
-
 async function doExplain() {
-    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-    showAIPanel('💡 Explanation', 'Generating explanation…', null);
-    try {
-        var res = await aiChat([
-            { role: 'system', content: 'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $$...$$ for display math.' },
-            { role: 'user', content: 'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content ? 'Reference:\n' + content.slice(0, 2500) + '\n\n' : '') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.' }
-        ], 0.7);
-        showAIPanel('💡 Explanation — ' + ch.title, null, res);
-    } catch (e) { showAIPanel('💡 Explanation', null, '⚠️ Error: ' + e.message); }
+    if(S.activeIdx<0){showErr('Select a chapter first.');return;}
+    var ch=S.chapters[S.activeIdx], content=S.cache[S.activeIdx]||'';
+    showAIPanel('💡 Explanation','Generating explanation…',null);
+    try { var res=await aiChat([{role:'system',content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $$...$$ for display math.'},{role:'user',content:'Write a comprehensive explanation of "'+ch.title+'" from "'+S.title+'".\n'+(content?'Reference:\n'+content.slice(0,2500)+'\n\n':'')+'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.'}],0.7); showAIPanel('💡 Explanation — '+ch.title,null,res); }
+    catch(e){showAIPanel('💡 Explanation',null,'⚠️ Error: '+e.message);}
 }
-
 function showAIPanel(title, loading, content) {
-    var p  = document.getElementById('std-ai-panel');
-    var tE = document.getElementById('std-ai-panel-title');
-    var bE = document.getElementById('std-ai-panel-body');
-    if (!p) return;
-    p.style.display = 'block';
-    if (tE) tE.textContent = title;
-    if (bE) {
-        if (loading) {
-            bE.innerHTML = '<div class="std-ai-loading"><div class="std-spinner"></div><span>' + esc(loading) + '</span></div>';
-        } else if (content) {
-            bE.innerHTML = renderParagraphs(content);
-            setTimeout(function () { renderMath(bE); }, 100);
-        }
-    }
-    setTimeout(function () { if (p.scrollIntoView) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
+    var p=document.getElementById('std-ai-panel'), tE=document.getElementById('std-ai-panel-title'), bE=document.getElementById('std-ai-panel-body');
+    if(!p) return; p.style.display='block';
+    if(tE) tE.textContent=title;
+    if(bE){if(loading){bE.innerHTML='<div class="std-ai-loading"><div class="std-spinner"></div><span>'+esc(loading)+'</span></div>';}else if(content){bE.innerHTML=renderParagraphs(content);setTimeout(function(){renderMath(bE);},100);}}
+    setTimeout(function(){if(p.scrollIntoView) p.scrollIntoView({behavior:'smooth',block:'start'});},80);
 }
+function hideAIPanel(){var p=document.getElementById('std-ai-panel');if(p) p.style.display='none';}
 
-function hideAIPanel() {
-    var p = document.getElementById('std-ai-panel');
-    if (p) p.style.display = 'none';
-}
-
-/* ── PRACTICE TEST ──────────────────────────────────────────── */
 async function openTest() {
-    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-    var ch      = S.chapters[S.activeIdx];
-    var content = S.cache[S.activeIdx] || '';
-    var modal   = document.getElementById('std-test-modal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating 20 Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
-
-    var PROMPT = [
-        { role: 'system', content: 'You are an expert educator. Return ONLY valid JSON, no markdown, no extra text.' },
-        { role: 'user', content: 'Generate exactly 20 multiple-choice questions for:\nTopic: "' + S.title + '"\nSection: "' + ch.title + '"\n' + (content ? 'Material:\n' + content.slice(0, 3500) + '\n\n' : '') + 'Return ONLY this JSON array:\n[{"q":"question","opts":["A","B","C","D"],"ans":0,"exp":"Thorough explanation minimum 10 lines."}]\n\nRules: Exactly 20. Mix difficulty. Include math in LaTeX where relevant.' }
-    ];
-
-    var qStr;
-    try { qStr = await aiChat(PROMPT, 0.35); }
-    catch (e) {
-        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
-        return;
-    }
-
-    var qs = [];
-    try {
-        var m = qStr.match(/\[[\s\S]*\]/);
-        if (m) qs = JSON.parse(m[0]);
-    } catch (e) {
-        try { var c2 = qStr.replace(/```json\n?/g,'').replace(/```\n?/g,''); var m2 = c2.match(/\[[\s\S]*\]/); if (m2) qs = JSON.parse(m2[0]); } catch(e2){}
-    }
-
-    if (!qs || qs.length < 4) {
-        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Parse Questions</h3><p>Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
-        return;
-    }
-
-    qs = qs.slice(0, 20);
-    S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
-    renderTestQ(0);
+    if(S.activeIdx<0){showErr('Select a chapter first.');return;}
+    var ch=S.chapters[S.activeIdx], content=S.cache[S.activeIdx]||'', modal=document.getElementById('std-test-modal');
+    if(!modal) return; modal.style.display='flex';
+    modal.innerHTML='<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating 20 Practice Questions</h3><p>Chapter: <strong>'+esc(ch.title)+'</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
+    var PROMPT=[{role:'system',content:'You are an expert educator. Return ONLY valid JSON, no markdown, no extra text.'},{role:'user',content:'Generate exactly 20 multiple-choice questions for:\nTopic: "'+S.title+'"\nSection: "'+ch.title+'"\n'+(content?'Material:\n'+content.slice(0,3500)+'\n\n':'')+'Return ONLY this JSON array:\n[{"q":"question","opts":["A","B","C","D"],"ans":0,"exp":"Thorough explanation minimum 10 lines."}]\n\nRules: Exactly 20. Mix difficulty. Include math in LaTeX where relevant.'}];
+    var qStr; try{qStr=await aiChat(PROMPT,0.35);}catch(e){modal.innerHTML='<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>'+esc(e.message)+'</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';return;}
+    var qs=[];
+    try{var m=qStr.match(/\[[\s\S]*\]/);if(m) qs=JSON.parse(m[0]);}catch(e){try{var c2=qStr.replace(/```json\n?/g,'').replace(/```\n?/g,'');var m2=c2.match(/\[[\s\S]*\]/);if(m2) qs=JSON.parse(m2[0]);}catch(e2){}}
+    if(!qs||qs.length<4){modal.innerHTML='<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Parse Questions</h3><p>Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';return;}
+    qs=qs.slice(0,20); S.testQ=qs; S.testAns=new Array(qs.length).fill(-1); renderTestQ(0);
 }
-
 function renderTestQ(idx) {
-    var q = S.testQ[idx]; if (!q) { showTestResults(); return; }
-    var modal = document.getElementById('std-test-modal'); if (!modal) return;
-    var prog = Math.round((idx / S.testQ.length) * 100);
-    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-header"><div class="std-test-prog-bar"><div class="std-test-prog-fill" style="width:' + prog + '%"></div></div><div class="std-test-meta">Question ' + (idx + 1) + ' of ' + S.testQ.length + '</div></div><div class="std-test-body"><div class="std-test-q">' + esc(q.q) + '</div><div class="std-test-opts">' +
-        (q.opts || []).map(function (o, oi) {
-            return '<button class="std-test-opt" data-i="' + oi + '"><span class="std-test-opt-ltr">' + ['A','B','C','D'][oi] + '</span><span class="std-test-opt-txt">' + esc(o) + '</span></button>';
-        }).join('') + '</div></div><div class="std-test-footer"><span class="std-test-ch-tag">' + esc((S.chapters[S.activeIdx]||{}).title||'') + '</span></div></div>';
-    modal.querySelectorAll('.std-test-opt').forEach(function (btn) {
-        btn.addEventListener('click', function () { handleAnswer(idx, parseInt(btn.dataset.i)); });
-    });
-    setTimeout(function () { var q_el = modal.querySelector('.std-test-q'); if (q_el) renderMath(q_el); }, 80);
+    var q=S.testQ[idx]; if(!q){showTestResults();return;}
+    var modal=document.getElementById('std-test-modal'); if(!modal) return;
+    var prog=Math.round((idx/S.testQ.length)*100);
+    modal.innerHTML='<div class="std-test-inner"><div class="std-test-header"><div class="std-test-prog-bar"><div class="std-test-prog-fill" style="width:'+prog+'%"></div></div><div class="std-test-meta">Question '+(idx+1)+' of '+S.testQ.length+'</div></div><div class="std-test-body"><div class="std-test-q">'+esc(q.q)+'</div><div class="std-test-opts">'+(q.opts||[]).map(function(o,oi){return'<button class="std-test-opt" data-i="'+oi+'"><span class="std-test-opt-ltr">'+['A','B','C','D'][oi]+'</span><span class="std-test-opt-txt">'+esc(o)+'</span></button>';}).join('')+'</div></div><div class="std-test-footer"><span class="std-test-ch-tag">'+esc((S.chapters[S.activeIdx]||{}).title||'')+'</span></div></div>';
+    modal.querySelectorAll('.std-test-opt').forEach(function(btn){btn.addEventListener('click',function(){handleAnswer(idx,parseInt(btn.dataset.i));});});
+    setTimeout(function(){var q_el=modal.querySelector('.std-test-q');if(q_el) renderMath(q_el);},80);
 }
-
 function handleAnswer(qIdx, sel) {
-    var q = S.testQ[qIdx]; S.testAns[qIdx] = sel;
-    var ok = sel === q.ans;
-    var modal = document.getElementById('std-test-modal'); if (!modal) return;
-    modal.querySelectorAll('.std-test-opt').forEach(function (btn) {
-        var i = parseInt(btn.dataset.i); btn.disabled = true;
-        if (i === q.ans) btn.classList.add('correct');
-        else if (i === sel && !ok) btn.classList.add('wrong');
-    });
-    var body = modal.querySelector('.std-test-body');
-    if (body) {
-        var fb = document.createElement('div');
-        fb.className = 'std-test-fb ' + (ok ? 'correct' : 'wrong');
-        fb.innerHTML = (ok ? '✅ Correct!' : '❌ Wrong. Correct: <strong>' + ['A','B','C','D'][q.ans] + '</strong>') +
-            '<div class="std-test-exp-prev">' + esc((q.exp||'').slice(0,320)) + ((q.exp||'').length>320?'…':'') + '</div>';
-        body.appendChild(fb);
-        renderMath(fb);
-    }
-    var footer = modal.querySelector('.std-test-footer');
-    var isLast = qIdx === S.testQ.length - 1;
-    if (footer) {
-        footer.innerHTML = '<button class="std-btn std-btn-primary" id="std-nxt-btn">' + (isLast ? '🏁 See Results' : 'Next →') + '</button>';
-        var nxt = document.getElementById('std-nxt-btn');
-        if (nxt) nxt.addEventListener('click', function () { if (isLast) showTestResults(); else renderTestQ(qIdx + 1); });
-    }
+    var q=S.testQ[qIdx]; S.testAns[qIdx]=sel; var ok=sel===q.ans;
+    var modal=document.getElementById('std-test-modal'); if(!modal) return;
+    modal.querySelectorAll('.std-test-opt').forEach(function(btn){var i=parseInt(btn.dataset.i);btn.disabled=true;if(i===q.ans) btn.classList.add('correct');else if(i===sel&&!ok) btn.classList.add('wrong');});
+    var body=modal.querySelector('.std-test-body');
+    if(body){var fb=document.createElement('div');fb.className='std-test-fb '+(ok?'correct':'wrong');fb.innerHTML=(ok?'✅ Correct!':'❌ Wrong. Correct: <strong>'+['A','B','C','D'][q.ans]+'</strong>')+'<div class="std-test-exp-prev">'+esc((q.exp||'').slice(0,320))+((q.exp||'').length>320?'…':'')+'</div>';body.appendChild(fb);renderMath(fb);}
+    var footer=modal.querySelector('.std-test-footer'), isLast=qIdx===S.testQ.length-1;
+    if(footer){footer.innerHTML='<button class="std-btn std-btn-primary" id="std-nxt-btn">'+(isLast?'🏁 See Results':'Next →')+'</button>';var nxt=document.getElementById('std-nxt-btn');if(nxt) nxt.addEventListener('click',function(){if(isLast) showTestResults();else renderTestQ(qIdx+1);});}
 }
-
 function showTestResults() {
-    var qs = S.testQ, ans = S.testAns; if (!qs) return;
-    var correct = ans.filter(function (a, i) { return a === qs[i].ans; }).length;
-    var pct     = Math.round(correct / qs.length * 100);
-    var emoji, msg, col;
-    if (pct >= 90)      { emoji='🏆'; msg='Outstanding! You\'ve mastered this!';    col='#10b981'; }
-    else if (pct >= 70) { emoji='🌟'; msg='Great job! Solid understanding!';         col='#7c3aed'; }
-    else if (pct >= 50) { emoji='👍'; msg='Good effort! Keep reviewing!';            col='#f59e0b'; }
-    else if (pct >= 30) { emoji='💪'; msg='Keep going! Practice makes perfect!';     col='#f59e0b'; }
-    else                { emoji='📚'; msg='Review the chapters carefully, then retry.'; col='#ef4444'; }
-    var modal = document.getElementById('std-test-modal'); if (!modal) return;
-    var html = '<div class="std-test-inner" style="overflow-y:auto;max-height:90vh"><div class="std-test-res-head"><div class="std-test-score-circle" style="border-color:' + col + '"><div class="std-test-score-pct">' + pct + '%</div><div class="std-test-score-sub">' + correct + '/' + qs.length + '</div></div><div style="font-size:2.6rem">' + emoji + '</div><p style="color:' + col + ';font-weight:700;font-size:1rem;margin:0;max-width:320px;text-align:center">' + esc(msg) + '</p></div><div class="std-test-res-actions"><button class="std-btn std-btn-primary" id="std-retry-btn">🔄 Retry</button><button class="std-btn std-btn-ghost" onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'">✕ Close</button></div><div class="std-test-res-list"><h3>Results &amp; Explanations</h3>';
-    qs.forEach(function (q, i) {
-        var ua = ans[i], ok = ua === q.ans;
-        html += '<div class="std-res-item ' + (ok?'correct':'wrong') + '"><div class="std-res-item-head"><span class="std-res-num">' + (i+1) + '</span><span>' + (ok?'✅':'❌') + '</span><div class="std-res-q">' + esc(q.q) + '</div></div><div class="std-res-ans"><span style="color:#10b981">Correct: </span><strong>' + ['A','B','C','D'][q.ans] + '. ' + esc(((q.opts||[])[q.ans])||'') + '</strong>' + (ua>=0&&!ok?'<br><span style="color:#ef4444">Your answer: </span>' + ['A','B','C','D'][ua] + '. ' + esc(((q.opts||[])[ua])||''):'') + '</div><div class="std-res-exp"><strong>Explanation:</strong>' + renderParagraphs(q.exp||'No explanation.') + '</div></div>';
-    });
-    html += '</div></div>';
-    modal.innerHTML = html;
-    var rb = document.getElementById('std-retry-btn');
-    if (rb) rb.addEventListener('click', function () { S.testQ = null; openTest(); });
-    setTimeout(function () { renderMath(modal); }, 150);
+    var qs=S.testQ, ans=S.testAns; if(!qs) return;
+    var correct=ans.filter(function(a,i){return a===qs[i].ans;}).length, pct=Math.round(correct/qs.length*100);
+    var emoji,msg,col;
+    if(pct>=90){emoji='🏆';msg='Outstanding! You\'ve mastered this!';col='#10b981';}else if(pct>=70){emoji='🌟';msg='Great job! Solid understanding!';col='#7c3aed';}else if(pct>=50){emoji='👍';msg='Good effort! Keep reviewing!';col='#f59e0b';}else if(pct>=30){emoji='💪';msg='Keep going! Practice makes perfect!';col='#f59e0b';}else{emoji='📚';msg='Review the chapters carefully, then retry.';col='#ef4444';}
+    var modal=document.getElementById('std-test-modal'); if(!modal) return;
+    var html='<div class="std-test-inner" style="overflow-y:auto;max-height:90vh"><div class="std-test-res-head"><div class="std-test-score-circle" style="border-color:'+col+'"><div class="std-test-score-pct">'+pct+'%</div><div class="std-test-score-sub">'+correct+'/'+qs.length+'</div></div><div style="font-size:2.6rem">'+emoji+'</div><p style="color:'+col+';font-weight:700;font-size:1rem;margin:0;max-width:320px;text-align:center">'+esc(msg)+'</p></div><div class="std-test-res-actions"><button class="std-btn std-btn-primary" id="std-retry-btn">🔄 Retry</button><button class="std-btn std-btn-ghost" onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'">✕ Close</button></div><div class="std-test-res-list"><h3>Results &amp; Explanations</h3>';
+    qs.forEach(function(q,i){var ua=ans[i],ok=ua===q.ans;html+='<div class="std-res-item '+(ok?'correct':'wrong')+'"><div class="std-res-item-head"><span class="std-res-num">'+(i+1)+'</span><span>'+(ok?'✅':'❌')+'</span><div class="std-res-q">'+esc(q.q)+'</div></div><div class="std-res-ans"><span style="color:#10b981">Correct: </span><strong>'+['A','B','C','D'][q.ans]+'. '+esc(((q.opts||[])[q.ans])||'')+'</strong>'+(ua>=0&&!ok?'<br><span style="color:#ef4444">Your answer: </span>'+['A','B','C','D'][ua]+'. '+esc(((q.opts||[])[ua])||''):'')+'</div><div class="std-res-exp"><strong>Explanation:</strong>'+renderParagraphs(q.exp||'No explanation.')+'</div></div>';});
+    html+='</div></div>'; modal.innerHTML=html;
+    var rb=document.getElementById('std-retry-btn'); if(rb) rb.addEventListener('click',function(){S.testQ=null;openTest();});
+    setTimeout(function(){renderMath(modal);},150);
 }
 
 /* ── AI HELPERS ─────────────────────────────────────────────── */
-function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
 
-/* Primary: window.groqFetch() — uses keys from Firebase admin (aqs-groq-key.js).
-   Fallback: Pollinations (free, no key needed).                               */
 async function aiChat(messages, temp) {
-    /* ── Groq via shared key manager (aqs-groq-key.js) ── */
+    /* PRIMARY: window.groqFetch() — uses keys set by Firebase admin in aqs-groq-key.js */
     if (typeof window.groqFetch === 'function') {
         try {
             var rg = await window.groqFetch(
@@ -589,51 +278,34 @@ async function aiChat(messages, temp) {
             );
             if (!rg.ok) {
                 var errTxt = '';
-                try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e){}
+                try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e) {}
                 throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
             }
             var dg = await rg.json();
             if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
             return dg.choices[0].message.content || '';
-        } catch (e) {
-            /* Fall through to Pollinations fallback */
-            console.warn('[aqs-study] Groq failed, using fallback:', e.message);
+        } catch(e) {
+            console.warn('[aqs-study] Groq failed, trying fallback:', e.message);
         }
     }
-
-    /* ── Pollinations fallback ── */
+    /* FALLBACK: Pollinations (free, no key needed) */
     for (var pa = 0; pa < 2; pa++) {
         try {
-            var rp = await fetch('https://text.pollinations.ai/openai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
-                signal: AbortSignal.timeout(60000)
-            });
-            if (rp.status === 429) { await sleep((pa + 1) * 3000); continue; }
-            if (!rp.ok) throw new Error('AI error ' + rp.status);
+            var rp = await fetch('https://text.pollinations.ai/openai', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'openai',messages:messages,temperature:temp||0.7,max_tokens:2000}), signal:AbortSignal.timeout(60000) });
+            if (rp.status === 429) { await sleep((pa+1)*3000); continue; }
+            if (!rp.ok) throw new Error('AI error '+rp.status);
             var dp = await rp.json();
-            if (!dp.choices || !dp.choices[0]) throw new Error('No AI response');
+            if (!dp.choices||!dp.choices[0]) throw new Error('No AI response');
             return dp.choices[0].message.content || '';
-        } catch (e) {
-            if (pa < 1) { await sleep(3000); continue; }
-            throw e;
-        }
+        } catch(e) { if(pa<1){await sleep(3000);continue;} throw e; }
     }
     throw new Error('AI unavailable. Please try again in a moment.');
 }
 
-/* Vision — uses Pollinations (supports image_url content type) */
 async function aiChatVision(messages, temp) {
-    var r = await fetch('https://text.pollinations.ai/openai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
-        signal: AbortSignal.timeout(60000)
-    });
-    if (!r.ok) throw new Error('Vision AI error ' + r.status);
-    var d = await r.json();
-    if (!d.choices || !d.choices[0]) throw new Error('No vision response');
+    var r = await fetch('https://text.pollinations.ai/openai', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({model:'openai',messages:messages,temperature:temp||0.7,max_tokens:2000}), signal:AbortSignal.timeout(60000) });
+    if (!r.ok) throw new Error('Vision AI error '+r.status);
+    var d = await r.json(); if (!d.choices||!d.choices[0]) throw new Error('No vision response');
     return d.choices[0].message.content || '';
 }
 
@@ -641,139 +313,37 @@ function checkAI() {
     var badge = document.querySelector('.std-groq-badge');
     if (badge) {
         var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
-        if (hasKey) {
-            badge.className = 'std-groq-badge ok';
-            badge.textContent = '✓ Groq Ready';
-        } else {
-            badge.className = 'std-groq-badge warn';
-            badge.textContent = '⚠ No Groq Key (using fallback)';
-        }
+        if (hasKey) { badge.className='std-groq-badge ok'; badge.textContent='✓ Groq Ready'; }
+        else { badge.className='std-groq-badge warn'; badge.textContent='⚠ No Groq Key (using fallback)'; }
     }
 }
 
-/* ── EVENTS ─────────────────────────────────────────────────── */
 function setupEvents() {
-    var $ = function (id) { return document.getElementById(id); };
-
-    /* Navigation */
-    $('std-back-btn')     && $('std-back-btn').addEventListener('click', function () { setView('home'); });
-    $('std-results-back') && $('std-results-back').addEventListener('click', function () { setView('home'); });
-
-    /* Study action buttons */
-    $('std-summarise-btn') && $('std-summarise-btn').addEventListener('click', doSummarise);
-    $('std-explain-btn')   && $('std-explain-btn').addEventListener('click', doExplain);
-    $('std-test-btn')      && $('std-test-btn').addEventListener('click', openTest);
-
-    /* AI panel close */
-    $('std-ai-panel-close') && $('std-ai-panel-close').addEventListener('click', hideAIPanel);
-
-    /* Test modal close */
-    $('std-test-close-btn') && $('std-test-close-btn').addEventListener('click', function () {
-        var m = $('std-test-modal'); if (m) m.style.display = 'none';
-    });
-
-    /* Action bar data attributes */
-    document.addEventListener('click', function (e) {
-        var btn = e.target.closest('[data-std-action]');
-        if (!btn) return;
-        var a = btn.dataset.stdAction;
-        if (a === 'summarise') doSummarise();
-        else if (a === 'explain') doExplain();
-        else if (a === 'test') openTest();
-    });
-
-    /* Mobile chapter toggle */
-    $('std-ch-toggle') && $('std-ch-toggle').addEventListener('click', function () {
-        var p = document.querySelector('.std-chapters-panel');
-        if (p) p.classList.toggle('open');
-    });
-
-    /* History delete */
-    var histList = $('std-history-list');
-    if (histList) histList.addEventListener('click', function (e) {
-        var del = e.target.closest('.std-hist-del');
-        if (del) { e.stopPropagation(); deleteHist(parseInt(del.dataset.id)); }
-    });
-
-    /* Test modal backdrop */
-    var tm = $('std-test-modal');
-    if (tm) tm.addEventListener('click', function (e) { if (e.target === tm) tm.style.display = 'none'; });
+    var $=function(id){return document.getElementById(id);};
+    $('std-back-btn')&&$('std-back-btn').addEventListener('click',function(){setView('home');});
+    $('std-results-back')&&$('std-results-back').addEventListener('click',function(){setView('home');});
+    $('std-summarise-btn')&&$('std-summarise-btn').addEventListener('click',doSummarise);
+    $('std-explain-btn')&&$('std-explain-btn').addEventListener('click',doExplain);
+    $('std-test-btn')&&$('std-test-btn').addEventListener('click',openTest);
+    $('std-ai-panel-close')&&$('std-ai-panel-close').addEventListener('click',hideAIPanel);
+    $('std-test-close-btn')&&$('std-test-close-btn').addEventListener('click',function(){var m=$('std-test-modal');if(m) m.style.display='none';});
+    document.addEventListener('click',function(e){var btn=e.target.closest('[data-std-action]');if(!btn) return;var a=btn.dataset.stdAction;if(a==='summarise') doSummarise();else if(a==='explain') doExplain();else if(a==='test') openTest();});
+    $('std-ch-toggle')&&$('std-ch-toggle').addEventListener('click',function(){var p=document.querySelector('.std-chapters-panel');if(p) p.classList.toggle('open');});
+    var histList=$('std-history-list'); if(histList) histList.addEventListener('click',function(e){var del=e.target.closest('.std-hist-del');if(del){e.stopPropagation();deleteHist(parseInt(del.dataset.id));}});
+    var tm=$('std-test-modal'); if(tm) tm.addEventListener('click',function(e){if(e.target===tm) tm.style.display='none';});
 }
 
-/* ── HISTORY ────────────────────────────────────────────────── */
-function saveHist(item) {
-    try {
-        var h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
-        h = h.filter(function (x) { return x.title !== item.title; });
-        h.unshift(Object.assign({ id: Date.now() }, item));
-        if (h.length > MAX_HIST) h = h.slice(0, MAX_HIST);
-        localStorage.setItem(HIST_KEY, JSON.stringify(h));
-        renderHistory();
-    } catch (e) {}
-}
-
+function saveHist(item) { try{var h=JSON.parse(localStorage.getItem(HIST_KEY)||'[]');h=h.filter(function(x){return x.title!==item.title;});h.unshift(Object.assign({id:Date.now()},item));if(h.length>MAX_HIST) h=h.slice(0,MAX_HIST);localStorage.setItem(HIST_KEY,JSON.stringify(h));renderHistory();}catch(e){} }
 function renderHistory() {
-    var c = document.getElementById('std-history-list');
-    if (!c) return;
-    try {
-        var h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
-        if (!h.length) {
-            c.innerHTML = '<div class="std-hist-empty">No recent topics yet. Search above or upload a file to get started!</div>';
-            return;
-        }
-        var icons = { wiki:'📖', book:'📚', ai:'🤖', text:'📄', img:'🖼' };
-        c.innerHTML = h.map(function (x) {
-            return '<div class="std-hist-item" data-q="' + esc(x.query || x.title) + '"><span class="std-hist-icon">' + (icons[x.type]||'📝') + '</span><div class="std-hist-info"><div class="std-hist-title">' + esc(x.title) + '</div><div class="std-hist-meta">' + (x.chapters ? x.chapters.length + ' chapters · ' : '') + new Date(x.id).toLocaleDateString() + '</div></div><button class="std-hist-del" data-id="' + x.id + '" title="Remove">✕</button></div>';
-        }).join('');
-        c.querySelectorAll('.std-hist-item').forEach(function (el) {
-            el.addEventListener('click', function (e) {
-                if (!e.target.classList.contains('std-hist-del')) doSearch(el.dataset.q);
-            });
-        });
-    } catch (e) { c.innerHTML = ''; }
+    var c=document.getElementById('std-history-list'); if(!c) return;
+    try { var h=JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); if(!h.length){c.innerHTML='<div class="std-hist-empty">No recent topics yet. Search above or upload a file to get started!</div>';return;} var icons={wiki:'📖',book:'📚',ai:'🤖',text:'📄',img:'🖼'}; c.innerHTML=h.map(function(x){return'<div class="std-hist-item" data-q="'+esc(x.query||x.title)+'"><span class="std-hist-icon">'+(icons[x.type]||'📝')+'</span><div class="std-hist-info"><div class="std-hist-title">'+esc(x.title)+'</div><div class="std-hist-meta">'+(x.chapters?x.chapters.length+' chapters · ':'')+new Date(x.id).toLocaleDateString()+'</div></div><button class="std-hist-del" data-id="'+x.id+'" title="Remove">✕</button></div>';}).join(''); c.querySelectorAll('.std-hist-item').forEach(function(el){el.addEventListener('click',function(e){if(!e.target.classList.contains('std-hist-del')) doSearch(el.dataset.q);});}); } catch(e){c.innerHTML='';}
 }
+function deleteHist(id){try{var h=JSON.parse(localStorage.getItem(HIST_KEY)||'[]');localStorage.setItem(HIST_KEY,JSON.stringify(h.filter(function(x){return x.id!==id;})));renderHistory();}catch(e){}}
 
-function deleteHist(id) {
-    try {
-        var h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
-        localStorage.setItem(HIST_KEY, JSON.stringify(h.filter(function (x) { return x.id !== id; })));
-        renderHistory();
-    } catch (e) {}
-}
-
-/* ── UTILS ──────────────────────────────────────────────────── */
-function setView(v) {
-    var views = {
-        home:    document.getElementById('std-home'),
-        loading: document.getElementById('std-loading-view'),
-        results: document.getElementById('std-results-view'),
-        study:   document.getElementById('std-study-view')
-    };
-    Object.keys(views).forEach(function (k) {
-        if (views[k]) views[k].style.display = (k === v) ? '' : 'none';
-    });
-}
-
-function setLoadMsg(msg) {
-    var el = document.getElementById('std-load-msg');
-    if (el) el.textContent = msg;
-}
-
-function showErr(msg) {
-    var el = document.getElementById('std-global-error');
-    if (!el) return;
-    el.textContent = msg;
-    el.style.display = 'block';
-    setTimeout(function () { el.style.display = 'none'; }, 5000);
-}
-
-function renderParagraphs(text) {
-    if (!text) return '';
-    return '<p>' + esc(text).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>') + '</p>';
-}
-
-function esc(s) {
-    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+function setView(v){var views={home:document.getElementById('std-home'),loading:document.getElementById('std-loading-view'),results:document.getElementById('std-results-view'),study:document.getElementById('std-study-view')};Object.keys(views).forEach(function(k){if(views[k]) views[k].style.display=(k===v)?'':'none';});}
+function setLoadMsg(msg){var el=document.getElementById('std-load-msg');if(el) el.textContent=msg;}
+function showErr(msg){var el=document.getElementById('std-global-error');if(!el) return;el.textContent=msg;el.style.display='block';setTimeout(function(){el.style.display='none';},5000);}
+function renderParagraphs(text){if(!text) return'';return'<p>'+esc(text).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>')+'</p>';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 })();
