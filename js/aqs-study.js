@@ -1,18 +1,15 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload
    ─────────────────────────────────────────────────────────
-   CONFIG: Before loading this script, set your Groq key in HTML:
-     <script>window.AQS_CONFIG = { groqKey: 'gsk_...' };</script>
+   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
    ─────────────────────────────────────────────────────────── */
 (function () {
 'use strict';
 
-/* ── CONFIG (set via window.AQS_CONFIG in your HTML) ────────── */
-var CFG      = window.AQS_CONFIG || {};
-var GROQ_KEY = CFG.groqKey || '';
+/* ── CONFIG ─────────────────────────────────────────────────── */
+var CFG        = window.AQS_CONFIG || {};
 var GROQ_MODEL = CFG.groqModel || 'llama-3.3-70b-versatile';
 
 /* ── CONSTANTS ─────────────────────────────────────────────── */
-var GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions';
 var POLL_URL  = 'https://text.pollinations.ai/openai';
 var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
 var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
@@ -383,7 +380,6 @@ async function loadChapterContent(idx) {
                 { role: 'user', content: 'Based on this document, write a detailed educational explanation of the section "' + ch.title + '" from "' + S.title + '".\n\nDocument:\n' + S.uploadedContent.slice(0, 10000) + '\n\nWrite 400-700 words with clear explanations, examples, and key points. Include LaTeX math where relevant.' }
             ], 0.6);
         } else if (S.source === 'img' && S.uploadedBase64) {
-            /* For image uploads use aiChatVision via Pollinations */
             text = await aiChatVision([
                 { role: 'system', content: 'You are an expert tutor. Write clear educational content with LaTeX math where relevant.' },
                 { role: 'user', content: [
@@ -579,51 +575,36 @@ function showTestResults() {
 }
 
 /* ── AI HELPERS ─────────────────────────────────────────────── */
-/* Sleeps for ms milliseconds */
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-/* Primary: Groq (if key configured). Fallback: Pollinations.
-   Retries up to 3 times on 429 with increasing delay.         */
+/* Primary: window.groqFetch() — uses keys from Firebase admin (aqs-groq-key.js).
+   Fallback: Pollinations (free, no key needed).                               */
 async function aiChat(messages, temp) {
-    /* ── Groq ── */
-    if (GROQ_KEY) {
-        for (var attempt = 0; attempt < 3; attempt++) {
-            try {
-                var rg = await fetch(GROQ_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-                    body: JSON.stringify({ model: GROQ_MODEL, messages: messages, temperature: temp || 0.7, max_tokens: 3000 }),
-                    signal: AbortSignal.timeout(60000)
-                });
-                if (rg.status === 429) {
-                    /* Rate limited — back off and retry */
-                    var wait = (attempt + 1) * 2000;
-                    await sleep(wait);
-                    continue;
-                }
-                if (!rg.ok) {
-                    var errTxt = '';
-                    try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e){}
-                    throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
-                }
-                var dg = await rg.json();
-                if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
-                return dg.choices[0].message.content || '';
-            } catch (e) {
-                if (attempt < 2 && (e.name === 'AbortError' || (e.message && e.message.includes('429')))) {
-                    await sleep((attempt + 1) * 1500);
-                    continue;
-                }
-                /* Last attempt or non-retryable — fall through to Pollinations */
-                break;
+    /* ── Groq via shared key manager (aqs-groq-key.js) ── */
+    if (typeof window.groqFetch === 'function') {
+        try {
+            var rg = await window.groqFetch(
+                { model: GROQ_MODEL, messages: messages, temperature: temp || 0.7, max_tokens: 3000 },
+                { signal: AbortSignal.timeout(60000) }
+            );
+            if (!rg.ok) {
+                var errTxt = '';
+                try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e){}
+                throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
             }
+            var dg = await rg.json();
+            if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
+            return dg.choices[0].message.content || '';
+        } catch (e) {
+            /* Fall through to Pollinations fallback */
+            console.warn('[aqs-study] Groq failed, using fallback:', e.message);
         }
     }
 
     /* ── Pollinations fallback ── */
     for (var pa = 0; pa < 2; pa++) {
         try {
-            var rp = await fetch(POLL_URL, {
+            var rp = await fetch('https://text.pollinations.ai/openai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
@@ -635,7 +616,7 @@ async function aiChat(messages, temp) {
             if (!dp.choices || !dp.choices[0]) throw new Error('No AI response');
             return dp.choices[0].message.content || '';
         } catch (e) {
-            if (pa === 0 && (rp && rp.status === 429)) { await sleep(3000); continue; }
+            if (pa < 1) { await sleep(3000); continue; }
             throw e;
         }
     }
@@ -644,7 +625,7 @@ async function aiChat(messages, temp) {
 
 /* Vision — uses Pollinations (supports image_url content type) */
 async function aiChatVision(messages, temp) {
-    var r = await fetch(POLL_URL, {
+    var r = await fetch('https://text.pollinations.ai/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
@@ -659,7 +640,8 @@ async function aiChatVision(messages, temp) {
 function checkAI() {
     var badge = document.querySelector('.std-groq-badge');
     if (badge) {
-        if (GROQ_KEY) {
+        var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
+        if (hasKey) {
             badge.className = 'std-groq-badge ok';
             badge.textContent = '✓ Groq Ready';
         } else {
