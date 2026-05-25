@@ -2,11 +2,11 @@
 (function () {
 'use strict';
 
-var POLL_URL   = 'https://text.pollinations.ai/openai';
-var WIKI_API   = 'https://en.wikipedia.org/w/api.php';
-var BOOKS_API  = 'https://www.googleapis.com/books/v1/volumes';
-var HIST_KEY   = 'aqs_study_hist';
-var MAX_HIST   = 15;
+var POLL_URL  = 'https://text.pollinations.ai/openai';
+var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
+var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
+var HIST_KEY  = 'aqs_study_hist';
+var MAX_HIST  = 15;
 
 var S = {
     query:'', title:'', source:'', description:'', wikiTitle:'',
@@ -153,12 +153,12 @@ async function loadWiki(title) {
     setView('loading');
     setLoadMsg('📖 Loading "' + esc(title) + '" from Wikipedia…');
     try {
-        var sumRes  = await fetch(
+        var sumRes = await fetch(
             'https://en.wikipedia.org/api/rest_v1/page/summary/' +
             encodeURIComponent(title.replace(/ /g, '_')),
             { signal: AbortSignal.timeout(10000) }
         );
-        var secRes  = await fetch(
+        var secRes = await fetch(
             WIKI_API + '?action=parse&page=' + encodeURIComponent(title) +
             '&prop=sections&format=json&origin=*',
             { signal: AbortSignal.timeout(10000) }
@@ -178,13 +178,13 @@ async function loadWiki(title) {
             });
         });
 
-        S.source    = 'wiki';
-        S.title     = title;
-        S.wikiTitle = title;
+        S.source      = 'wiki';
+        S.title       = title;
+        S.wikiTitle   = title;
         S.description = sum.extract || sum.description || '';
-        S.chapters  = chapters;
-        S.cache     = {};
-        S.cache[0]  = S.description;
+        S.chapters    = chapters;
+        S.cache       = {};
+        S.cache[0]    = S.description;
 
         saveHist({ query: S.query, title: title, type: 'wiki', chapters: chapters.map(function (c) { return c.title; }) });
         renderStudy();
@@ -289,7 +289,7 @@ function updActiveChapter() {
 }
 
 /* ============================================================
-   SELECT CHAPTER  
+   SELECT CHAPTER
    ============================================================ */
 async function selectChapter(idx) {
     S.activeIdx = idx;
@@ -375,7 +375,7 @@ function renderParagraphs(text) {
    ============================================================ */
 async function doSummary() {
     if (S.activeIdx < 0) { showErr('Please select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx];
+    var ch      = S.chapters[S.activeIdx];
     var content = S.cache[S.activeIdx] || '';
     showAIPanel('📋 Summary', 'Generating summary…', null);
     try {
@@ -396,7 +396,7 @@ async function doSummary() {
    ============================================================ */
 async function doExplain() {
     if (S.activeIdx < 0) { showErr('Please select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx];
+    var ch      = S.chapters[S.activeIdx];
     var content = S.cache[S.activeIdx] || '';
     showAIPanel('💡 Explanation', 'Generating detailed explanation…', null);
     try {
@@ -449,7 +449,7 @@ async function openTest() {
         '<div class="std-spinner lg"></div>' +
         '<h3>🤖 Generating 20 Practice Questions</h3>' +
         '<p>Creating questions for:<br><strong>' + esc(ch.title) + '</strong></p>' +
-        '<div class="std-test-load-sub" id="std-test-status-msg">Using Groq AI — please wait about 20 seconds…</div>' +
+        '<div class="std-test-load-sub" id="std-test-status-msg">Using AI — please wait about 20 seconds…</div>' +
         '</div></div>';
 
     var PROMPT = [
@@ -578,11 +578,11 @@ function showTestResults() {
     var pct     = Math.round(correct / qs.length * 100);
     var emoji, msg, col;
 
-    if (pct >= 90) { emoji = '🏆'; msg = 'Outstanding! You have mastered this topic excellently!'; col = '#10b981'; }
-    else if (pct >= 70) { emoji = '🌟'; msg = 'Great job! You have a solid understanding of this material!'; col = '#6366f1'; }
+    if (pct >= 90)      { emoji = '🏆'; msg = 'Outstanding! You have mastered this topic excellently!'; col = '#10b981'; }
+    else if (pct >= 70) { emoji = '🌟'; msg = 'Great job! You have a solid understanding of this material!'; col = '#7c3aed'; }
     else if (pct >= 50) { emoji = '👍'; msg = 'Good effort! Keep reviewing and you\'ll master it very soon!'; col = '#f59e0b'; }
     else if (pct >= 30) { emoji = '💪'; msg = 'Keep going! Practice makes perfect — review the chapters and try again!'; col = '#f59e0b'; }
-    else { emoji = '📚'; msg = 'This topic needs more study. Go through the chapters carefully, then try again!'; col = '#ef4444'; }
+    else                { emoji = '📚'; msg = 'This topic needs more study. Go through the chapters carefully, then try again!'; col = '#ef4444'; }
 
     var modal = document.getElementById('std-test-modal');
     if (!modal) return;
@@ -633,13 +633,13 @@ function setupSpeech() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
     S.recog = new SR();
-    S.recog.continuous = false;
+    S.recog.continuous     = false;
     S.recog.interimResults = false;
-    S.recog.lang = 'en-US';
+    S.recog.lang           = 'en-US';
     S.recog.onresult = function (e) {
         var t = e.results[0][0].transcript;
         addVMsg('user', t);
-        sendAIMsg(t);
+        sendAIMsg();           /* message is already in S.voiceHist via addVMsg */
         setMic(false);
     };
     S.recog.onerror = function () { setMic(false); };
@@ -672,48 +672,76 @@ function openVoice() {
 }
 
 function addVMsg(role, text) {
-    if (role !== 'system') S.voiceHist.push({ role: role, content: text });
+    /* Always push both user and assistant messages into the conversation history */
+    if (role === 'user' || role === 'assistant') {
+        S.voiceHist.push({ role: role, content: text });
+    }
     var msgs = document.getElementById('std-voice-msgs');
     if (!msgs) return;
     var d = document.createElement('div');
-    d.className = 'std-vmsg std-vmsg-' + role;
+    d.className = 'std-vmsg std-vmsg-' + (role === 'assistant' ? 'ai' : role);
     d.innerHTML = '<div class="std-vbubble">' + esc(text) + '</div>';
     msgs.appendChild(d);
     msgs.scrollTop = msgs.scrollHeight;
 }
 
-async function sendAIMsg(text) {
+/* sendAIMsg — the user message is ALREADY in S.voiceHist before this is called */
+async function sendAIMsg() {
     var msgs = document.getElementById('std-voice-msgs');
-    var tp   = document.createElement('div');
+
+    /* Typing indicator */
+    var tp = document.createElement('div');
     tp.className = 'std-vmsg std-vmsg-ai';
     tp.innerHTML = '<div class="std-vbubble std-vtyping">● ● ●</div>';
     if (msgs) { msgs.appendChild(tp); msgs.scrollTop = msgs.scrollHeight; }
 
     try {
-        var resp = await aiChat(
-            S.voiceHist.concat([{ role: 'user', content: text }]),
-            0.8
-        );
+        var resp = await aiChat(S.voiceHist, 0.8);
+
         if (msgs && msgs.contains(tp)) msgs.removeChild(tp);
-        addVMsg('ai', resp);
+        addVMsg('assistant', resp);
         speak(resp);
     } catch (e) {
         if (msgs && msgs.contains(tp)) msgs.removeChild(tp);
-        addVMsg('ai', 'Sorry, I had trouble responding right now. Please try again.');
+        var errMsg = 'I had a little trouble connecting. Please try again in a moment!';
+        addVMsg('assistant', errMsg);
     }
 }
 
+/* speak — waits for voices to load, picks the best English voice */
 function speak(text) {
     if (!S.synth) return;
     S.synth.cancel();
-    S.voiceActive = true;
-    var u = new SpeechSynthesisUtterance(text);
-    u.rate  = 0.95;
-    u.pitch = 1;
-    u.onend   = function () { S.voiceActive = false; setSpeakBtn(false); };
-    u.onerror = function () { S.voiceActive = false; setSpeakBtn(false); };
-    S.synth.speak(u);
-    setSpeakBtn(true);
+
+    function doSpeak() {
+        S.voiceActive = true;
+        var u = new SpeechSynthesisUtterance(text);
+        u.rate   = 0.95;
+        u.pitch  = 1;
+        u.volume = 1;
+
+        /* Prefer a local (device) English voice for reliability */
+        var voices  = S.synth.getVoices();
+        var picked  = voices.find(function (v) { return v.lang === 'en-US' && v.localService; }) ||
+                      voices.find(function (v) { return v.lang === 'en-GB' && v.localService; }) ||
+                      voices.find(function (v) { return /^en/i.test(v.lang); });
+        if (picked) u.voice = picked;
+
+        u.onend   = function () { S.voiceActive = false; setSpeakBtn(false); };
+        u.onerror = function () { S.voiceActive = false; setSpeakBtn(false); };
+        S.synth.speak(u);
+        setSpeakBtn(true);
+    }
+
+    /* Voices may not have loaded yet on first call */
+    if (S.synth.getVoices().length > 0) {
+        doSpeak();
+    } else {
+        S.synth.onvoiceschanged = function () {
+            S.synth.onvoiceschanged = null;
+            doSpeak();
+        };
+    }
 }
 
 function stopSpeak() {
@@ -809,6 +837,7 @@ function setView(name) {
 }
 
 function setLoadMsg(m) { var el = document.getElementById('std-loading-msg'); if (el) el.textContent = m; }
+
 function showErr(m) {
     var el = document.getElementById('std-global-error');
     if (el) { el.textContent = m; el.style.display = 'block'; setTimeout(function () { el.style.display = 'none'; }, 5000); }
@@ -817,15 +846,42 @@ function showErr(m) {
 /* ============================================================
    AI UTILITIES
    ============================================================ */
+
+/*
+ * aiChat — calls the Pollinations OpenAI-compatible endpoint.
+ *
+ * The endpoint returns a standard OpenAI JSON object:
+ *   { choices: [{ message: { role, content } }] }
+ *
+ * We parse the JSON and extract choices[0].message.content.
+ * If parsing fails for any reason we fall back to the raw text
+ * so the rest of the app still works.
+ */
 async function aiChat(msgs, temp) {
     var r = await fetch(POLL_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ model: 'openai', temperature: temp !== undefined ? temp : 0.7, messages: msgs }),
+        body: JSON.stringify({
+            model: 'openai',
+            temperature: temp !== undefined ? temp : 0.7,
+            messages: msgs,
+            stream: false
+        }),
         signal: AbortSignal.timeout(50000)
     });
     if (!r.ok) throw new Error('AI service unavailable (' + r.status + ')');
-    return await r.text();
+
+    var rawText = await r.text();
+
+    /* Try to parse as OpenAI JSON and extract the message content */
+    try {
+        var d = JSON.parse(rawText);
+        if (d && d.choices && d.choices[0] && d.choices[0].message) {
+            return d.choices[0].message.content;
+        }
+    } catch (e) { /* Not JSON — fall through to return raw text */ }
+
+    return rawText;
 }
 
 async function groqChat(msgs, temp) {
@@ -872,9 +928,10 @@ function checkAI() {
     var el = document.getElementById('std-groq-badge');
     if (!el) return;
     var ok = typeof window.getGroqKey === 'function' && !!window.getGroqKey();
-    el.className = 'std-groq-badge ' + (ok ? 'ok' : 'warn');
-    el.textContent = ok ? '🤖 AI Ready' : '⚠️ No Groq Key';
-    el.title = ok ? 'Groq AI active — all features ready' : 'No Groq key detected. Practice Tests will fall back to backup AI.';
+    el.className  = 'std-groq-badge ' + (ok ? 'ok' : 'warn');
+    el.textContent = ok ? '🤖 AI Ready' : '⚠️ Backup AI';
+    el.title       = ok ? 'Groq AI active — all features ready'
+                        : 'Groq key not found. Using Pollinations AI as backup — all features still work.';
 }
 
 /* ============================================================
@@ -883,13 +940,13 @@ function checkAI() {
 function setupEvents() {
     var $ = function (id) { return document.getElementById(id); };
 
-    $('std-summary-btn')  && $('std-summary-btn').addEventListener('click', doSummary);
-    $('std-explain-btn')  && $('std-explain-btn').addEventListener('click', doExplain);
-    $('std-test-btn')     && $('std-test-btn').addEventListener('click', openTest);
-    $('std-voice-btn')    && $('std-voice-btn').addEventListener('click', openVoice);
-    $('std-test-hdr-btn') && $('std-test-hdr-btn').addEventListener('click', openTest);
-    $('std-voice-hdr-btn')&& $('std-voice-hdr-btn').addEventListener('click', openVoice);
-    $('std-close-ai-btn') && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
+    $('std-summary-btn')   && $('std-summary-btn').addEventListener('click', doSummary);
+    $('std-explain-btn')   && $('std-explain-btn').addEventListener('click', doExplain);
+    $('std-test-btn')      && $('std-test-btn').addEventListener('click', openTest);
+    $('std-voice-btn')     && $('std-voice-btn').addEventListener('click', openVoice);
+    $('std-test-hdr-btn')  && $('std-test-hdr-btn').addEventListener('click', openTest);
+    $('std-voice-hdr-btn') && $('std-voice-hdr-btn').addEventListener('click', openVoice);
+    $('std-close-ai-btn')  && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
 
     $('std-back-btn') && $('std-back-btn').addEventListener('click', function () {
         var rv = $('std-results-view');
@@ -916,8 +973,8 @@ function setupEvents() {
         var t = inp ? inp.value.trim() : '';
         if (!t) return;
         inp.value = '';
-        addVMsg('user', t);
-        sendAIMsg(t);
+        addVMsg('user', t);     /* adds to S.voiceHist and renders the bubble */
+        sendAIMsg();            /* sends S.voiceHist as-is — no duplication */
     }
     if (snd) snd.addEventListener('click', sendText);
     if (inp) inp.addEventListener('keydown', function (e) {
