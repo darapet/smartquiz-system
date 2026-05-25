@@ -1,24 +1,26 @@
 /* aqs-study.css — AI Study Feature */
 :root {
     /* Base backgrounds */
-    --std-bg:       #080812;
-    --std-surface:  #0f0d1e;
-    --std-surface2: #16132b;
-    --std-surface3: #1e1a36;
+    --std-bg:       #09091a;
+    --std-surface:  #0e0c20;
+    --std-surface2: #141128;
+    --std-surface3: #1c1837;
 
     /* Borders */
-    --std-border:   #2a2550;
-    --std-border2:  #3a3368;
+    --std-border:   #252048;
+    --std-border2:  #342d62;
 
     /* Text */
-    --std-text:     #ddd8f8;
-    --std-muted:    #7a74a8;
+    --std-text:     #eeeaff;
+    --std-text-body:#c8c2f0;
+    --std-muted:    #8c84b8;
 
     /* Brand colours */
-    --std-accent:   #7c3aed;        /* primary — purple */
-    --std-accent-lt:#a78bfa;        /* light purple for text on dark */
-    --std-second:   #0891b2;        /* secondary — teal */
-    --std-second-lt:#22d3ee;        /* light teal */
+    --std-accent:   #8b5cf6;        /* primary — violet */
+    --std-accent-dk:#6d28d9;        /* darker violet for hover */
+    --std-accent-lt:#c4b5fd;        /* light violet for body text labels */
+    --std-second:   #06b6d4;        /* secondary — cyan */
+    --std-second-lt:#67e8f9;        /* light cyan */
 
     /* Semantic */
     --std-green:    #10b981;
@@ -113,7 +115,7 @@
     font-family: inherit;
     letter-spacing: 0.01em;
 }
-.std-search-btn:hover { background: #6d28d9; }
+.std-search-btn:hover { background: var(--std-accent-dk); }
 .std-search-btn:active { transform: scale(.98); }
 
 /* AI status indicator */
@@ -237,7 +239,7 @@
 .std-res-icon { font-size: 1.9rem; flex-shrink: 0; }
 .std-res-info { flex: 1; min-width: 0; }
 .std-res-title { font-size: .92rem; font-weight: 700; color: var(--std-text); margin-bottom: 3px; }
-.std-res-meta  { font-size: .72rem; color: var(--std-second-lt); margin-bottom: 3px; }
+.std-res-meta  { font-size: .72rem; color: var(--std-second); margin-bottom: 3px; }
 .std-res-desc  {
     font-size: .78rem;
     color: var(--std-muted);
@@ -380,7 +382,7 @@
     padding-bottom: 12px;
     border-bottom: 1px solid var(--std-border);
 }
-.std-ch-body { font-size: .92rem; color: #bab5e8; line-height: 1.76; }
+.std-ch-body { font-size: .92rem; color: var(--std-text-body); line-height: 1.76; }
 .std-ch-body p  { margin: 0 0 13px; }
 .std-ch-body p:last-child { margin-bottom: 0; }
 .std-ch-body ul { margin: 0 0 13px 18px; }
@@ -436,7 +438,7 @@
     transition: color .15s, background .15s;
 }
 .std-ai-close:hover { color: var(--std-text); background: var(--std-surface3); }
-#std-ai-panel-body { font-size: .89rem; color: #bab5e8; line-height: 1.72; }
+#std-ai-panel-body { font-size: .89rem; color: var(--std-text-body); line-height: 1.72; }
 #std-ai-panel-body p  { margin: 0 0 11px; }
 #std-ai-panel-body p:last-child { margin-bottom: 0; }
 #std-ai-panel-body ul { margin: 0 0 11px 18px; }
@@ -492,7 +494,7 @@
     border-color: var(--std-accent);
     color: #fff;
 }
-.std-btn-primary:hover { background: #6d28d9; border-color: #6d28d9; }
+.std-btn-primary:hover { background: var(--std-accent-dk); border-color: var(--std-accent-dk); }
 .std-btn-ghost { background: transparent; border-color: var(--std-border); color: var(--std-muted); }
 .std-btn-ghost:hover { background: var(--std-surface2); color: var(--std-text); }
 
@@ -643,7 +645,7 @@
 .std-res-ans { font-size: .8rem; color: var(--std-muted); margin-bottom: 10px; line-height: 1.6; }
 .std-res-exp {
     font-size: .8rem;
-    color: #9090cc;
+    color: var(--std-text-body);
     line-height: 1.72;
     border-top: 1px solid var(--std-border);
     padding-top: 10px;
@@ -798,4 +800,94 @@
     .std-act-btn { font-size: .78rem; padding: 8px 11px; }
     .std-test-inner { border-radius: 14px; }
     .std-modal { padding: 8px; }
+}
+
+/* ── VOICE GLOW & STATUS ENHANCEMENTS ── */
+
+/* Status bar injected below voice header */
+.std-voice-status {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 7px 16px;
+    background: var(--std-surface3);
+    border-bottom: 1px solid var(--std-border);
+    font-size: .75rem;
+    color: var(--std-muted);
+    flex-shrink: 0;
+    transition: background .3s;
+}
+
+.std-voice-status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--std-border2);
+    flex-shrink: 0;
+    transition: background .3s, box-shadow .3s;
+}
+
+/* Listening — red pulse */
+.std-voice-status-dot.listening {
+    background: var(--std-red);
+    box-shadow: 0 0 0 0 rgba(239,68,68,0.5);
+    animation: vdot-mic 1.2s ease-out infinite;
+}
+@keyframes vdot-mic {
+    0%   { box-shadow: 0 0 0 0   rgba(239,68,68,0.5); }
+    70%  { box-shadow: 0 0 0 8px rgba(239,68,68,0);   }
+    100% { box-shadow: 0 0 0 0   rgba(239,68,68,0);   }
+}
+
+/* Thinking — violet pulse */
+.std-voice-status-dot.thinking {
+    background: var(--std-accent);
+    animation: vdot-think .8s ease infinite;
+}
+@keyframes vdot-think {
+    0%, 100% { opacity: .3; transform: scale(.85); }
+    50%       { opacity: 1;  transform: scale(1);   }
+}
+
+/* Speaking — cyan ripple */
+.std-voice-status-dot.speaking {
+    background: var(--std-second);
+    box-shadow: 0 0 0 0 rgba(6,182,212,0.5);
+    animation: vdot-speak 1.4s ease-out infinite;
+}
+@keyframes vdot-speak {
+    0%   { box-shadow: 0 0 0 0   rgba(6,182,212,0.5); }
+    70%  { box-shadow: 0 0 0 9px rgba(6,182,212,0);   }
+    100% { box-shadow: 0 0 0 0   rgba(6,182,212,0);   }
+}
+
+/* Mic button: AI is currently speaking */
+.std-voice-mic-btn.ai-speaking {
+    background: rgba(139,92,246,0.12);
+    border-color: var(--std-accent);
+    color: var(--std-accent-lt);
+    animation: vbtn-speak 1.6s ease-out infinite;
+}
+@keyframes vbtn-speak {
+    0%   { box-shadow: 0 0 0 0   rgba(139,92,246,0.4); }
+    70%  { box-shadow: 0 0 0 8px rgba(139,92,246,0);   }
+    100% { box-shadow: 0 0 0 0   rgba(139,92,246,0);   }
+}
+
+/* Latest AI bubble — subtle always-on glow */
+.std-vmsg--latest .std-vbubble {
+    border: 1px solid rgba(139,92,246,0.35);
+    box-shadow: 0 0 12px rgba(139,92,246,0.1);
+}
+
+/* Speaking AI bubble — stronger animated glow */
+.std-vmsg--speaking .std-vbubble {
+    border-color: var(--std-second) !important;
+    box-shadow: 0 0 0 0 rgba(6,182,212,0.4);
+    animation: bubble-speak 1.8s ease-out infinite;
+}
+@keyframes bubble-speak {
+    0%   { box-shadow: 0 0 0 0    rgba(6,182,212,0.4); }
+    60%  { box-shadow: 0 0 16px 4px rgba(6,182,212,0.18); }
+    100% { box-shadow: 0 0 0 0    rgba(6,182,212,0);   }
 }
