@@ -12,7 +12,11 @@ var S = {
     query:'', title:'', source:'', description:'', wikiTitle:'',
     chapters:[], activeIdx:-1, cache:{},
     testQ:null, testAns:[], testIdx:0,
-    voiceHist:[], voiceActive:false, recog:null,
+    voiceHist:[], voiceActive:false,
+    isResponding:false,   /* blocks duplicate sends */
+    voiceMode:false,      /* hands-free continuous mode */
+    micActive:false,      /* mic is open right now */
+    recog:null,
     synth: window.speechSynthesis || null
 };
 
@@ -636,27 +640,39 @@ function setupSpeech() {
     S.recog.continuous     = false;
     S.recog.interimResults = false;
     S.recog.lang           = 'en-US';
+
     S.recog.onresult = function (e) {
-        var t = e.results[0][0].transcript;
-        addVMsg('user', t);
-        sendAIMsg();           /* message is already in S.voiceHist via addVMsg */
+        var t = (e.results[0][0].transcript || '').trim();
+        if (!t) { setMic(false); return; }
+        /* Interrupt AI if it is currently speaking */
+        if (S.voiceActive) stopSpeak();
         setMic(false);
+        addVMsg('user', t);
+        sendAIMsg();
     };
-    S.recog.onerror = function () { setMic(false); };
-    S.recog.onend   = function () { setMic(false); };
+    S.recog.onerror = function () {
+        setMic(false);
+        setVoiceStatus('idle');
+    };
+    S.recog.onend = function () {
+        /* onend fires even on successful result — only reset if nothing is already in progress */
+        if (!S.isResponding && !S.voiceActive) setMic(false);
+    };
 }
 
 function openVoice() {
     if (S.activeIdx < 0) { showErr('Please select a chapter first.'); return; }
     var ch = S.chapters[S.activeIdx];
+
     S.voiceHist = [{
         role: 'system',
         content: 'You are an expert, friendly AI tutor helping a student study "' + S.title + '".' +
-                 (ch ? ' The student is currently on chapter: "' + ch.title + '".' : '') +
-                 ' Be warm, encouraging, and educational. Explain concepts clearly and simply. ' +
-                 'Ask follow-up questions to check understanding. ' +
-                 'Keep responses to 3-5 sentences so they are easy to read and hear aloud.'
+                 (ch ? ' The student is currently studying chapter: "' + ch.title + '".' : '') +
+                 ' Be warm, encouraging, and educational. Keep responses to 3-5 sentences — clear and easy to hear aloud.'
     }];
+    S.isResponding = false;
+    S.voiceMode    = false;
+    S.micActive    = false;
 
     var panel = document.getElementById('std-voice-panel');
     var msgs  = document.getElementById('std-voice-msgs');
@@ -664,76 +680,120 @@ function openVoice() {
     panel.style.display = 'flex';
     msgs.innerHTML = '';
 
+    /* Inject live status bar once */
+    if (!document.getElementById('std-voice-status-bar')) {
+        var bar = document.createElement('div');
+        bar.id = 'std-voice-status-bar';
+        bar.className = 'std-voice-status';
+        bar.innerHTML = '<span class="std-voice-status-dot"></span>' +
+                        '<span class="std-voice-status-lbl">Tap Speak to start</span>';
+        var hdr = panel.querySelector('.std-voice-hdr');
+        if (hdr) hdr.insertAdjacentElement('afterend', bar);
+    }
+    setVoiceStatus('idle');
+
     var welcome = 'Hello! I\'m your AI tutor for "' + S.title + '".' +
                   (ch ? ' We\'re on "' + ch.title + '".' : '') +
-                  ' What would you like to know? Feel free to type or speak your question!';
+                  ' Tap Speak — after I reply I\'ll automatically listen for your next question so we can have a real back-and-forth conversation!';
     addVMsg('ai', welcome);
     speak(welcome);
 }
 
 function addVMsg(role, text) {
-    /* Always push both user and assistant messages into the conversation history */
+    var isAI = (role === 'assistant' || role === 'ai');
+
+    /* Push into conversation history */
     if (role === 'user' || role === 'assistant') {
         S.voiceHist.push({ role: role, content: text });
     }
+
     var msgs = document.getElementById('std-voice-msgs');
     if (!msgs) return;
+
+    /* Remove latest-glow from the previous latest AI bubble */
+    var prevLatest = msgs.querySelector('.std-vmsg--latest');
+    if (prevLatest) prevLatest.classList.remove('std-vmsg--latest');
+
     var d = document.createElement('div');
-    d.className = 'std-vmsg std-vmsg-' + (role === 'assistant' ? 'ai' : role);
+    d.className = 'std-vmsg std-vmsg-' + (isAI ? 'ai' : 'user') + (isAI ? ' std-vmsg--latest' : '');
     d.innerHTML = '<div class="std-vbubble">' + esc(text) + '</div>';
     msgs.appendChild(d);
     msgs.scrollTop = msgs.scrollHeight;
+    return d;
 }
 
-/* sendAIMsg — the user message is ALREADY in S.voiceHist before this is called */
+/* sendAIMsg — guarded: only one request in flight at a time */
 async function sendAIMsg() {
-    var msgs = document.getElementById('std-voice-msgs');
+    if (S.isResponding) return;
+    S.isResponding = true;
+    setVoiceStatus('thinking');
 
-    /* Typing indicator */
-    var tp = document.createElement('div');
+    var msgs = document.getElementById('std-voice-msgs');
+    var tp   = document.createElement('div');
     tp.className = 'std-vmsg std-vmsg-ai';
     tp.innerHTML = '<div class="std-vbubble std-vtyping">● ● ●</div>';
     if (msgs) { msgs.appendChild(tp); msgs.scrollTop = msgs.scrollHeight; }
 
     try {
         var resp = await aiChat(S.voiceHist, 0.8);
-
         if (msgs && msgs.contains(tp)) msgs.removeChild(tp);
         addVMsg('assistant', resp);
         speak(resp);
     } catch (e) {
         if (msgs && msgs.contains(tp)) msgs.removeChild(tp);
-        var errMsg = 'I had a little trouble connecting. Please try again in a moment!';
-        addVMsg('assistant', errMsg);
+        addVMsg('assistant', 'I had a little trouble connecting. Please try again!');
+        setVoiceStatus('idle');
+        /* Auto-restart mic even after an error in voice mode */
+        if (S.voiceMode) setTimeout(startListen, 800);
+    } finally {
+        S.isResponding = false;
     }
 }
 
-/* speak — waits for voices to load, picks the best English voice */
+/* speak — picks best voice; auto-restarts mic when done in voice mode */
 function speak(text) {
-    if (!S.synth) return;
+    if (!S.synth) {
+        setVoiceStatus('idle');
+        if (S.voiceMode) setTimeout(startListen, 400);
+        return;
+    }
     S.synth.cancel();
 
     function doSpeak() {
         S.voiceActive = true;
+        setVoiceStatus('speaking');
+
+        /* Add speaking glow to the latest bubble */
+        var msgs = document.getElementById('std-voice-msgs');
+        var latestBubble = msgs && msgs.querySelector('.std-vmsg--latest');
+        if (latestBubble) latestBubble.classList.add('std-vmsg--speaking');
+
         var u = new SpeechSynthesisUtterance(text);
         u.rate   = 0.95;
         u.pitch  = 1;
         u.volume = 1;
 
-        /* Prefer a local (device) English voice for reliability */
-        var voices  = S.synth.getVoices();
-        var picked  = voices.find(function (v) { return v.lang === 'en-US' && v.localService; }) ||
-                      voices.find(function (v) { return v.lang === 'en-GB' && v.localService; }) ||
-                      voices.find(function (v) { return /^en/i.test(v.lang); });
+        var voices = S.synth.getVoices();
+        var picked = voices.find(function (v) { return v.lang === 'en-US' && v.localService; }) ||
+                     voices.find(function (v) { return v.lang === 'en-GB' && v.localService; }) ||
+                     voices.find(function (v) { return /^en/i.test(v.lang); });
         if (picked) u.voice = picked;
 
-        u.onend   = function () { S.voiceActive = false; setSpeakBtn(false); };
-        u.onerror = function () { S.voiceActive = false; setSpeakBtn(false); };
+        function afterSpeak() {
+            S.voiceActive = false;
+            setSpeakBtn(false);
+            setVoiceStatus('idle');
+            if (latestBubble) latestBubble.classList.remove('std-vmsg--speaking');
+            /* In voice mode, automatically open mic for next question */
+            if (S.voiceMode && !S.isResponding) setTimeout(startListen, 400);
+        }
+
+        u.onend   = afterSpeak;
+        u.onerror = afterSpeak;
         S.synth.speak(u);
         setSpeakBtn(true);
     }
 
-    /* Voices may not have loaded yet on first call */
     if (S.synth.getVoices().length > 0) {
         doSpeak();
     } else {
@@ -748,23 +808,63 @@ function stopSpeak() {
     if (S.synth) S.synth.cancel();
     S.voiceActive = false;
     setSpeakBtn(false);
+    setVoiceStatus(S.micActive ? 'listening' : 'idle');
+    var msgs = document.getElementById('std-voice-msgs');
+    if (msgs) {
+        var sp = msgs.querySelector('.std-vmsg--speaking');
+        if (sp) sp.classList.remove('std-vmsg--speaking');
+    }
 }
 
 function startListen() {
-    if (!S.recog) { alert('Voice recognition is not supported in this browser. Please type your question.'); return; }
+    if (!S.recog) {
+        alert('Voice recognition is not supported in this browser. Please type your question.');
+        return;
+    }
+    if (S.isResponding) return;   /* AI is thinking — wait */
     stopSpeak();
+    S.voiceMode = true;           /* Engage continuous hands-free mode */
     setMic(true);
     try { S.recog.start(); } catch (e) { setMic(false); }
 }
 
 function setMic(on) {
+    S.micActive = on;
     var b = document.getElementById('std-voice-mic-btn');
-    if (b) { b.classList.toggle('active', on); b.textContent = on ? '🔴 Listening…' : '🎤 Speak'; }
+    if (!b) return;
+    b.classList.toggle('active', on);
+    b.classList.remove('ai-speaking');
+    b.textContent = on ? '🔴 Listening…' : '🎤 Speak';
+    if (!on && !S.voiceActive) setVoiceStatus('idle');
+    if (on)  setVoiceStatus('listening');
 }
 
 function setSpeakBtn(on) {
-    var b = document.getElementById('std-voice-stop-btn');
-    if (b) b.style.display = on ? 'inline-flex' : 'none';
+    var stop = document.getElementById('std-voice-stop-btn');
+    var mic  = document.getElementById('std-voice-mic-btn');
+    if (stop) stop.style.display = on ? 'inline-flex' : 'none';
+    if (mic) {
+        mic.classList.toggle('ai-speaking', on);
+        if (on && !S.micActive)       mic.textContent = '🔊 Speaking…';
+        else if (!on && !S.micActive) mic.textContent = '🎤 Speak';
+    }
+}
+
+/* setVoiceStatus — update the live status bar */
+function setVoiceStatus(state) {
+    var bar = document.getElementById('std-voice-status-bar');
+    if (!bar) return;
+    var dot = bar.querySelector('.std-voice-status-dot');
+    var lbl = bar.querySelector('.std-voice-status-lbl');
+    var map = {
+        idle:      { cls: '',          txt: 'Ready — tap Speak or type below' },
+        listening: { cls: 'listening', txt: '🎤 Listening… speak now' },
+        thinking:  { cls: 'thinking',  txt: '🤖 AI is thinking…' },
+        speaking:  { cls: 'speaking',  txt: '🔊 AI is speaking — say something to interrupt' }
+    };
+    var s = map[state] || map.idle;
+    if (dot) { dot.className = 'std-voice-status-dot'; if (s.cls) dot.classList.add(s.cls); }
+    if (lbl) lbl.textContent = s.txt;
 }
 
 /* ============================================================
@@ -962,6 +1062,10 @@ function setupEvents() {
     $('std-voice-mic-btn')   && $('std-voice-mic-btn').addEventListener('click', startListen);
     $('std-voice-stop-btn')  && $('std-voice-stop-btn').addEventListener('click', stopSpeak);
     $('std-voice-close-btn') && $('std-voice-close-btn').addEventListener('click', function () {
+        S.voiceMode    = false;
+        S.isResponding = false;
+        S.micActive    = false;
+        try { if (S.recog) S.recog.abort(); } catch (e) {}
         stopSpeak();
         var p = $('std-voice-panel');
         if (p) p.style.display = 'none';
@@ -972,9 +1076,11 @@ function setupEvents() {
     function sendText() {
         var t = inp ? inp.value.trim() : '';
         if (!t) return;
+        if (S.isResponding) return;   /* block double-send */
         inp.value = '';
-        addVMsg('user', t);     /* adds to S.voiceHist and renders the bubble */
-        sendAIMsg();            /* sends S.voiceHist as-is — no duplication */
+        if (S.voiceActive) stopSpeak();   /* interrupt AI if speaking */
+        addVMsg('user', t);
+        sendAIMsg();
     }
     if (snd) snd.addEventListener('click', sendText);
     if (inp) inp.addEventListener('keydown', function (e) {
