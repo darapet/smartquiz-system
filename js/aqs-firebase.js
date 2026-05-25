@@ -277,8 +277,8 @@ async function handleAction(data) {
         case 'aqs_ch_play_again':    return await actionChPlayAgain(data);
         case 'aqs_ch_chat':          return await actionChChat(data);
         case 'aqs_ch_update_settings': return await actionChUpdateSettings(data);
-        case 'aqs_ch_voice_push':    return { ok: true };
-        case 'aqs_ch_voice_poll':    return { chunks: [] };
+        case 'aqs_ch_voice_push':    return await actionChVoicePush(data);
+        case 'aqs_ch_voice_poll':    return await actionChVoicePoll(data);
 
         /* ── NOTIFICATIONS & ADS ── */
         case 'aqs_get_pub_notifications': return await actionGetNotifications();
@@ -1977,5 +1977,46 @@ function _updateAqsGlobals(user, profile) {
     /* Note: _aqsFirebaseReady and aqs:firebase:ready are already set/dispatched
        by the patchJQuery IIFE above — no need to duplicate them here. */
 })();
+
+/* ============================================================
+   CHALLENGE VOICE CHAT (Firebase Realtime Database)
+   Each player's latest audio chunk is stored at:
+   challenges/{code}/voice/{position} = { data, ts, mime }
+   Only the NEWEST chunk per player is kept — no accumulation.
+   ============================================================ */
+async function actionChVoicePush(data) {
+    var code  = (data.code || '').toUpperCase();
+    var pos   = String(parseInt(data.position) || 0);
+    var chunk = data.chunk || '';
+    var mime  = data.mime  || 'audio/webm';
+    if (!code || !chunk) return { ok: false };
+    try {
+        await update(ref(rtdb, 'challenges/' + code + '/voice/' + pos), {
+            data: chunk, ts: Date.now(), mime: mime
+        });
+        return { ok: true };
+    } catch(e) { return { ok: false }; }
+}
+
+async function actionChVoicePoll(data) {
+    var code   = (data.code  || '').toUpperCase();
+    var myPos  = parseInt(data.my_pos !== undefined ? data.my_pos : -1);
+    var since  = parseInt(data.since) || 0;
+    if (!code) return { chunks: [] };
+    try {
+        var snap = await get(ref(rtdb, 'challenges/' + code + '/voice'));
+        if (!snap.exists()) return { chunks: [] };
+        var voiceMap = snap.val() || {};
+        var chunks = [];
+        Object.keys(voiceMap).forEach(function(posStr) {
+            var pos = parseInt(posStr);
+            if (pos === myPos) return;           /* never echo own audio */
+            var v = voiceMap[posStr];
+            if (!v || !v.data || v.ts <= since) return;
+            chunks.push({ pos: pos, data: v.data, mime: v.mime || 'audio/webm', ts: v.ts });
+        });
+        return { chunks: chunks, server_time: Date.now() };
+    } catch(e) { return { chunks: [] }; }
+}
 
 export { auth, db, rtdb, requireAuth, generateToken };

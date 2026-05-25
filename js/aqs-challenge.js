@@ -89,9 +89,15 @@
   var _micStream       = null;
   var _voiceChunkHashes= {};
   var _voiceInitDone   = false;
+  var _voicePollTimer  = null;   /* dedicated voice-poll interval */
+  var _voiceSince      = 0;      /* epoch-ms of newest chunk we've played */
 
   function initVoiceChat(){
-      _voiceEnabled=false; _mediaRecorder=null; _micStream=null; _voiceChunkHashes={};
+      _voiceEnabled=false; _mediaRecorder=null; _micStream=null;
+      _voiceChunkHashes={}; _voiceSince=0;
+      if(_voicePollTimer){ clearInterval(_voicePollTimer); _voicePollTimer=null; }
+      /* Start a dedicated 700ms voice-receive loop */
+      _voicePollTimer=setInterval(pollVoice, 700);
       $('#aqs-ch-mic-btn').show()
           .removeClass('active')
           .off('click').on('click', toggleMic)
@@ -102,7 +108,11 @@
       if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
           flash('Voice chat is not supported in this browser.'); return;
       }
-      navigator.mediaDevices.getUserMedia({audio:true,video:false}).then(function(stream){
+      /* echoCancellation/noiseSuppression prevent hearing own voice back */
+      navigator.mediaDevices.getUserMedia({
+          audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true },
+          video:false
+      }).then(function(stream){
           _micStream=stream; _voiceEnabled=true;
           $('#aqs-ch-mic-btn').text('🔴 Stop Mic').addClass('active');
           var mime=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -110,11 +120,20 @@
               :(MediaRecorder.isTypeSupported('audio/ogg')?'audio/ogg':'audio/webm');
           _mediaRecorder=new MediaRecorder(stream,{mimeType:mime});
           _mediaRecorder.ondataavailable=function(e){
-              if(e.data.size<100) return;
-              /* Voice push disabled on static hosting — no backend available */
-              void e.data;
+              if(e.data.size<100||!CH.code) return;
+              /* Convert blob → base64 then push to Firebase via the action layer */
+              var reader=new FileReader();
+              reader.onloadend=function(){
+                  var b64=(reader.result||'').split(',')[1];
+                  if(!b64) return;
+                  $.post(AQS.ajax_url,{
+                      action:'aqs_ch_voice_push', nonce:AQS.nonce,
+                      code:CH.code, position:CH.position, chunk:b64, mime:mime
+                  }, function(){});
+              };
+              reader.readAsDataURL(e.data);
           };
-          _mediaRecorder.start(500); /* 500ms chunks for smoother voice */
+          _mediaRecorder.start(800); /* 800 ms chunks — good balance of latency vs. size */
       }).catch(function(err){ flash('Mic access denied: '+err.message); });
   }
   function stopMic(){
@@ -125,8 +144,20 @@
       $('#aqs-ch-mic-btn').text('🎤 Voice').removeClass('active');
   }
   function pollVoice(){
-      /* Voice chat requires a server backend — disabled on static hosting */
-      return;
+      if(!CH.code||!_voiceInitDone) return;
+      $.get(AQS.ajax_url,{
+          action:'aqs_ch_voice_poll', nonce:AQS.public_nonce,
+          code:CH.code, my_pos:CH.position, since:_voiceSince
+      },function(res){
+          if(!res||!res.success||!res.data) return;
+          var chunks=res.data.chunks||[];
+          var maxTs=_voiceSince;
+          chunks.forEach(function(c){
+              if(c.ts>maxTs) maxTs=c.ts;
+              playVoiceChunk(c.pos, c.data);
+          });
+          if(maxTs>_voiceSince) _voiceSince=maxTs;
+      });
   }
   /* Voice playback queue — prevents gaps and cracking between chunks */
     var _voiceQueue=[];var _voicePlaying=false;var _voiceAudioCtx=null;
@@ -365,10 +396,10 @@
               var $b=$(this);btnLoading($b,'Starting…');
               $.post(AQS.ajax_url,{action:'aqs_ch_start',nonce:AQS.nonce,code:CH.code},function(res){
                   if(!res.success){btnRestore($b,'▶ Start Challenge');flash(res.data||'Error');}
-                  /* Countdown + game screen transition is handled for ALL players (including
-                     host) by the poll loop when it detects phase='active' — no duplicate
-                     countdown here so the host doesn't see the hype screen twice. */
-                  else{ $b.text('⏳ Starting…'); }
+                  /* Show the hype countdown immediately for the host.
+                     The poll loop will detect phase='active' and load the game screen
+                     UNDER this overlay — the overlay dismisses itself when done. */
+                  else{ showLobbyCountdown(5, function(){ $b.text('✓ Started!'); }, CH._lastPlayers||[]); }
               }).fail(function(){btnRestore($b,'▶ Start Challenge');});
           });
 
@@ -540,21 +571,46 @@
           }
           if(d.phase==='active'||d.phase==='reveal'){
               if(CH.lastPhase==='waiting'||CH.lastPhase===''){
-                  /* ── Transition: waiting room → game ─────────────────────────────
-                     Show the hype countdown for EVERY player (host + non-host) so
-                     everyone sees the pre-game animation before the first question.
-                     Polling is paused during the countdown to avoid a mid-animation
-                     game-screen flash, then resumed after the countdown ends.       */
-                  CH.lastPhase='starting';   /* guard: prevents re-entry on next poll tick */
-                  stopPolling();
-                  var _snapD=d;              /* capture poll snapshot for post-countdown use */
-                  showLobbyCountdown(5, function(){
+                  /* ── Transition: waiting room → game ────────────────────────────
+                     TWO cases:
+                     A) Host: the hype overlay is ALREADY showing (shown immediately
+                        when Start was clicked). Just load the game screen beneath it
+                        — the overlay removes itself when the countdown finishes.
+                     B) Players (and hosts whose overlay already dismissed): compute
+                        how many seconds remain of the 5-second intro window using
+                        question_started_at (set by the server at game-start), then
+                        show a synced countdown so everyone finishes at the same time.
+                  ── */
+                  if(document.getElementById('aqs-ch-lobby-cd')){
+                      /* Case A — host overlay is already visible, load game beneath */
                       showScreen('aqs-ch-screen-game');
-                      initGameLayout(_snapD);
-                      renderGameState(_snapD);
-                      startPolling();        /* resume normal polling after countdown */
-                  }, d.players||CH._lastPlayers||[]);
-                  return;                    /* CH.lastPhase already set above — skip bottom assignment */
+                      initGameLayout(d);
+                      /* fall through to renderGameState(d) below */
+                  } else {
+                      /* Case B — player (or delayed host): synced countdown */
+                      var _now   = Date.now() / 1000;
+                      var _qStart= d.question_started_at || _now;
+                      var _elap  = Math.max(0, _now - _qStart);
+                      var _cdSecs= Math.max(0, Math.round(5 - _elap));
+                      CH.lastPhase='starting';   /* guard: prevents re-entry */
+                      stopPolling();
+                      var _snapD=d;
+                      if(_cdSecs > 0){
+                          showLobbyCountdown(_cdSecs, function(){
+                              showScreen('aqs-ch-screen-game');
+                              initGameLayout(_snapD);
+                              renderGameState(_snapD);
+                              startPolling();
+                          }, d.players||CH._lastPlayers||[]);
+                      } else {
+                          /* Game started too long ago — skip countdown, go straight in */
+                          showScreen('aqs-ch-screen-game');
+                          initGameLayout(_snapD);
+                          renderGameState(_snapD);
+                          startPolling();
+                      }
+                      return;  /* CH.lastPhase already set — skip bottom assignment */
+                  }
               }
               /* Coming back from league elimination — remove overlay and reset answered */
               if(CH.lastPhase==='league_elimination'){

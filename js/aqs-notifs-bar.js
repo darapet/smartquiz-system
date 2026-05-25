@@ -27,7 +27,7 @@
         '#aqs-news-ticker-bar{display:none;overflow:hidden;height:36px;line-height:36px;font-size:.82rem;font-weight:500;position:fixed;bottom:0;left:0;right:0;z-index:9989;border-top:1px solid rgba(255,255,255,.12);}',
         '#aqs-news-ticker-bar .aqs-ticker-label{display:inline-flex;align-items:center;height:36px;padding:0 14px;font-weight:700;font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0;position:relative;z-index:2;}',
         '#aqs-ticker-scroll-wrap{overflow:hidden;flex:1;display:inline-block;vertical-align:top;}',
-        '#aqs-ticker-track{display:inline-block;white-space:nowrap;padding-left:100%;animation:aqsTickerScroll 80s linear infinite;}',
+        '#aqs-ticker-track{display:inline-block;white-space:nowrap;padding-left:100%;animation:aqsTickerScroll 120s linear infinite;}',
         '#aqs-ticker-track:hover{animation-play-state:paused;}',
         '@keyframes aqsTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}',
 
@@ -116,11 +116,12 @@
         var fullText = msgs.join('   ·   ') + '          ';
         track.textContent = fullText + fullText + fullText;
 
-        /* Speed: admin setting (words per minute-ish) → animation duration
-           Multiplier increased to 20 (was 8) for a noticeably slower, readable scroll */
+        /* Speed: admin setting (words per minute-ish) → animation duration.
+           Multiplier 35 (was 20) + 90s minimum ensures a very readable, slow scroll
+           even at high admin speed values. Max raised to 700s for very long texts. */
         var spd = parseInt(speed) || 40;
-        var dur = Math.round(track.textContent.length * 20 / spd);
-        dur = Math.max(40, Math.min(400, dur));
+        var dur = Math.round(track.textContent.length * 35 / spd);
+        dur = Math.max(90, Math.min(700, dur));
         track.style.animationDuration = dur + 's';
 
         bar.style.display = 'flex';

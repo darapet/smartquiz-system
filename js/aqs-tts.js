@@ -188,20 +188,15 @@
     async function fetchChunk(text, voice, langCode) {
         var pollinationsVoice = POLLY_TO_POLLINATIONS[voice] || 'alloy';
 
-        /* Pollinations TTS — free, no key, works from any browser */
+        /* Pollinations TTS — free, no key, works from any browser.
+           Use only the documented parameters so the API routes correctly.
+           The voice name is embedded in the path as well as a query param so
+           the CDN cache key differs per voice even for identical text. */
         var encodedText = encodeURIComponent(text);
-        /* Add voice + lang hint so the API uses the correct language accent.
-           Cache-busters: _v (voice name), _t (timestamp), _s (random seed) ensure
-           each voice selection generates a fresh request — different voice ALWAYS
-           produces a distinct network request even for identical text. */
-        var _seed = Math.random().toString(36).substring(2, 9);
         var pollinationsUrl = 'https://audio.pollinations.ai/' + encodedText +
-            '?model=openai-audio&voice=' + pollinationsVoice + '&nologo=true' +
-            (langCode ? '&language=' + encodeURIComponent(langCode) : '') +
-            '&_v=' + pollinationsVoice +
-            '&_id=' + encodeURIComponent(voice) +
-            '&_t=' + Date.now() +
-            '&_s=' + _seed;
+            '?voice=' + pollinationsVoice +
+            '&model=openai-audio' +
+            (langCode ? '&language=' + encodeURIComponent(langCode) : '');
         try {
             var pCtrl = new AbortController();
             var pTid  = setTimeout(function() { pCtrl.abort(); }, 45000);
