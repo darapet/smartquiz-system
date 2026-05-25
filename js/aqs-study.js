@@ -1,16 +1,23 @@
-/* aqs-study.js — AI Study v3 | KaTeX · File Upload · Voice Orb · Streaming */
+/* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload
+   ─────────────────────────────────────────────────────────
+   CONFIG: Before loading this script, set your Groq key in HTML:
+     <script>window.AQS_CONFIG = { groqKey: 'gsk_...' };</script>
+   ─────────────────────────────────────────────────────────── */
 (function () {
 'use strict';
 
+/* ── CONFIG (set via window.AQS_CONFIG in your HTML) ────────── */
+var CFG      = window.AQS_CONFIG || {};
+var GROQ_KEY = CFG.groqKey || '';
+var GROQ_MODEL = CFG.groqModel || 'llama-3.3-70b-versatile';
+
 /* ── CONSTANTS ─────────────────────────────────────────────── */
-var POLL_URL     = 'https://text.pollinations.ai/openai';
-var WIKI_API     = 'https://en.wikipedia.org/w/api.php';
-var BOOKS_API    = 'https://www.googleapis.com/books/v1/volumes';
-var HIST_KEY     = 'aqs_study_hist';
-var ORB_HIST_KEY = 'aqs_orb_sessions';
-var MAX_HIST     = 15;
-var SILENCE_MS   = 1600;
-var WAKE_WORDS   = ['ai assist','hey assistant','ai help','assistant activate','hey ai'];
+var GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions';
+var POLL_URL  = 'https://text.pollinations.ai/openai';
+var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
+var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
+var HIST_KEY  = 'aqs_study_hist';
+var MAX_HIST  = 15;
 
 /* ── STATE ──────────────────────────────────────────────────── */
 var S = {
@@ -19,23 +26,14 @@ var S = {
     testQ:null, testAns:[], testIdx:0,
     uploadedContent:null, uploadedFileName:null,
     uploadedBase64:null, uploadedMime:null,
-    orbState:'closed',
-    isResponding:false,
-    voiceHist:[],
-    pendingText:'',
-    silenceTimer:null,
-    streamEl:null,
-    recog:null,
-    synth: window.speechSynthesis || null,
+    aiReady: false,
 };
 
 /* ── INIT ───────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
     injectKaTeX();
-    injectOrbHTML();
     setupSearch();
     setupFileUpload();
-    setupVoiceOrb();
     setupEvents();
     renderHistory();
     checkAI();
@@ -44,61 +42,47 @@ document.addEventListener('DOMContentLoaded', function () {
 /* ── KATEX ──────────────────────────────────────────────────── */
 function injectKaTeX() {
     if (document.getElementById('katex-css')) return;
-    var link = document.createElement('link');
-    link.id  = 'katex-css';
-    link.rel = 'stylesheet';
-    link.href = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
+    var link   = document.createElement('link');
+    link.id    = 'katex-css';
+    link.rel   = 'stylesheet';
+    link.href  = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css';
     document.head.appendChild(link);
+    loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js', function () {
+        loadScript('https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js', function () {
+            renderPageMath();
+        });
+    });
+}
 
-    var script = document.createElement('script');
-    script.src  = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js';
-    script.defer = true;
-    document.head.appendChild(script);
-
-    var auto = document.createElement('script');
-    auto.src  = 'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js';
-    auto.defer = true;
-    auto.onload = function () {
-        /* Auto-render any existing math on the page */
-        renderPageMath();
-    };
-    document.head.appendChild(auto);
+function loadScript(src, cb) {
+    var s = document.createElement('script');
+    s.src = src;
+    s.onload = cb || function () {};
+    document.head.appendChild(s);
 }
 
 function renderPageMath() {
     if (typeof renderMathInElement === 'undefined') return;
-    var targets = document.querySelectorAll('.std-content-body, .std-ai-panel-body, .std-orb-msg-text');
-    targets.forEach(function (el) {
-        try {
-            renderMathInElement(el, {
-                delimiters:[
-                    {left:'$$',right:'$$',display:true},
-                    {left:'$',right:'$',display:false},
-                    {left:'\\(',right:'\\)',display:false},
-                    {left:'\\[',right:'\\]',display:true}
-                ],
-                throwOnError:false
-            });
-        } catch(e){}
-    });
+    document.querySelectorAll('.std-content-body,.std-ai-panel-body,.std-test-q,.std-res-exp').forEach(renderMath);
 }
 
 function renderMath(el) {
-    if (typeof renderMathInElement === 'undefined') return;
+    if (!el || typeof renderMathInElement === 'undefined') return;
     try {
         renderMathInElement(el, {
-            delimiters:[
-                {left:'$$',right:'$$',display:true},
-                {left:'$',right:'$',display:false}
+            delimiters: [
+                { left: '$$', right: '$$', display: true },
+                { left: '$',  right: '$',  display: false },
+                { left: '\\(', right: '\\)', display: false },
+                { left: '\\[', right: '\\]', display: true }
             ],
-            throwOnError:false
+            throwOnError: false
         });
-    } catch(e){}
+    } catch (e) {}
 }
 
 /* ── FILE UPLOAD ────────────────────────────────────────────── */
 function setupFileUpload() {
-    /* Inject upload button after search form */
     var searchSection = document.querySelector('.std-search-section');
     if (!searchSection || document.getElementById('std-upload-wrap')) return;
 
@@ -106,93 +90,70 @@ function setupFileUpload() {
     wrap.id = 'std-upload-wrap';
     wrap.className = 'std-upload-wrap';
     wrap.innerHTML =
-        '<label class="std-upload-btn" for="std-file-input" title="Upload a textbook, document or image">' +
-        '<span>📎</span><span>Upload Textbook / Image</span>' +
+        '<label class="std-upload-btn" for="std-file-input">' +
+        '📎 Upload Textbook / Image' +
         '<input type="file" id="std-file-input" accept=".txt,.md,.csv,.pdf,image/*" style="display:none">' +
         '</label>' +
-        '<div id="std-upload-info" class="std-upload-info" style="display:none"></div>';
+        '<span id="std-upload-info" class="std-upload-info"></span>';
     searchSection.appendChild(wrap);
 
     var input = document.getElementById('std-file-input');
     if (input) input.addEventListener('change', function () {
-        var file = input.files[0];
-        if (!file) return;
-        handleFileUpload(file);
-        input.value = '';
+        if (input.files[0]) { handleFileUpload(input.files[0]); input.value = ''; }
     });
 }
 
 function handleFileUpload(file) {
     var info = document.getElementById('std-upload-info');
-    if (info) { info.style.display = 'flex'; info.textContent = '⏳ Reading ' + file.name + '…'; }
-
-    var mime = file.type;
+    var setInfo = function (t) { if (info) info.textContent = t; };
     S.uploadedFileName = file.name;
     S.uploadedBase64   = null;
     S.uploadedContent  = null;
-    S.uploadedMime     = mime;
+    S.uploadedMime     = file.type;
 
-    if (mime.startsWith('image/')) {
-        /* Read image as base64 for vision */
-        var reader = new FileReader();
-        reader.onload = function (e) {
-            S.uploadedBase64 = e.target.result; /* data:image/...;base64,... */
-            S.uploadedContent = '[Image uploaded: ' + file.name + ']';
-            if (info) { info.style.display = 'flex'; info.textContent = '🖼 ' + file.name + ' — AI can now see this image'; }
-            showUploadStudy(file.name, 'image');
+    if (file.type.startsWith('image/')) {
+        setInfo('⏳ Reading image…');
+        var r = new FileReader();
+        r.onload = function (e) {
+            S.uploadedBase64  = e.target.result;
+            S.uploadedContent = '[Image: ' + file.name + ']';
+            setInfo('🖼 ' + file.name + ' ready');
+            showUploadStudy(file.name, 'img');
         };
-        reader.readAsDataURL(file);
-    } else if (mime === 'application/pdf') {
-        /* Use pdf.js if available, else prompt to copy text */
-        if (window.pdfjsLib) {
-            var reader2 = new FileReader();
-            reader2.onload = function (e) { extractPDFText(e.target.result, file.name); };
-            reader2.readAsArrayBuffer(file);
-        } else {
-            /* Fallback: ask user to paste content */
-            S.uploadedContent = '';
-            if (info) { info.style.display = 'flex'; info.textContent = '📄 ' + file.name + ' — PDF detected. Tip: copy-paste text into the search box for best results.'; }
-        }
+        r.readAsDataURL(file);
+    } else if (file.type === 'application/pdf' && window.pdfjsLib) {
+        setInfo('⏳ Extracting PDF…');
+        var r2 = new FileReader();
+        r2.onload = function (e) { extractPDFText(e.target.result, file.name, setInfo); };
+        r2.readAsArrayBuffer(file);
     } else {
-        /* Text, markdown, CSV */
-        var reader3 = new FileReader();
-        reader3.onload = function (e) {
-            var text = e.target.result || '';
-            S.uploadedContent = text.slice(0, 80000); /* cap at 80k chars */
-            if (info) { info.style.display = 'flex'; info.textContent = '📄 ' + file.name + ' loaded (' + Math.round(text.length/1000) + 'k chars)'; }
+        setInfo('⏳ Reading…');
+        var r3 = new FileReader();
+        r3.onload = function (e) {
+            S.uploadedContent = (e.target.result || '').slice(0, 80000);
+            setInfo('📄 ' + file.name + ' (' + Math.round(S.uploadedContent.length / 1000) + 'k chars)');
             showUploadStudy(file.name, 'text');
         };
-        reader3.onerror = function () {
-            if (info) { info.textContent = '❌ Could not read file.'; }
-        };
-        reader3.readAsText(file);
+        r3.onerror = function () { setInfo('❌ Could not read file.'); };
+        r3.readAsText(file);
     }
 }
 
-function extractPDFText(arrayBuffer, filename) {
-    var info = document.getElementById('std-upload-info');
-    window.pdfjsLib.getDocument({data: arrayBuffer}).promise.then(function (pdf) {
-        var textPromises = [];
-        for (var i = 1; i <= pdf.numPages; i++) {
-            textPromises.push(pdf.getPage(i).then(function (page) {
-                return page.getTextContent().then(function (tc) {
-                    return tc.items.map(function (item) { return item.str; }).join(' ');
-                });
-            }));
-        }
-        return Promise.all(textPromises);
-    }).then(function (pages) {
-        var text = pages.join('\n');
-        S.uploadedContent = text.slice(0, 80000);
-        if (info) { info.textContent = '📄 ' + filename + ' (' + pdf.numPages + ' pages loaded)'; }
-        showUploadStudy(filename, 'text');
-    }).catch(function () {
-        if (info) { info.textContent = '❌ Could not parse PDF.'; }
-    });
+function extractPDFText(buf, filename, setInfo) {
+    window.pdfjsLib.getDocument({ data: buf }).promise.then(function (pdf) {
+        var pp = [];
+        for (var i = 1; i <= pdf.numPages; i++) pp.push(pdf.getPage(i).then(function (p) {
+            return p.getTextContent().then(function (tc) { return tc.items.map(function (x) { return x.str; }).join(' '); });
+        }));
+        return Promise.all(pp).then(function (pages) {
+            S.uploadedContent = pages.join('\n').slice(0, 80000);
+            setInfo('📄 ' + filename + ' (' + pdf.numPages + ' pages)');
+            showUploadStudy(filename, 'text');
+        });
+    }).catch(function () { setInfo('❌ PDF parse failed. Try copy-pasting text.'); });
 }
 
 function showUploadStudy(filename, type) {
-    /* Treat uploaded file as a study topic */
     S.query = filename;
     S.title = filename.replace(/\.[^.]+$/, '');
     setView('loading');
@@ -202,46 +163,38 @@ function showUploadStudy(filename, type) {
 
 async function loadUploadedDoc(name, type) {
     try {
-        var contextSnippet = S.uploadedContent ? S.uploadedContent.slice(0, 6000) : '';
-        var imageMsg = null;
-        if (S.uploadedBase64) {
-            imageMsg = {
-                role: 'user',
-                content: [
-                    { type: 'text', text: 'Analyse this document/image and create a comprehensive study guide with 8-12 chapters. The title is "' + name + '".\n\nReturn ONLY valid JSON:\n{"chapters":[{"title":"Chapter Title","summary":"2-3 sentence overview"}],"description":"Overall topic description 2-3 sentences"}' },
+        var msgs;
+        if (type === 'img' && S.uploadedBase64) {
+            msgs = [
+                { role: 'system', content: 'You are an expert tutor. Return ONLY valid JSON.' },
+                { role: 'user', content: [
+                    { type: 'text', text: 'Analyse this image and create a study guide. Return ONLY JSON:\n{"description":"2-3 sentences","chapters":[{"title":"Chapter Name","summary":"2-3 sentence overview"}]}' },
                     { type: 'image_url', image_url: { url: S.uploadedBase64 } }
-                ]
-            };
+                ]}
+            ];
+        } else {
+            var snippet = (S.uploadedContent || '').slice(0, 7000);
+            msgs = [
+                { role: 'system', content: 'You are an expert tutor. Return ONLY valid JSON.' },
+                { role: 'user', content: 'Create a study guide with 8-12 chapters for this content.\n\nTitle: "' + name + '"\n\nContent:\n' + snippet + '\n\nReturn ONLY JSON:\n{"description":"2-3 sentences","chapters":[{"title":"Chapter Name","summary":"2-3 sentence overview"}]}' }
+            ];
         }
-
-        var prompt = imageMsg ? [
-            { role: 'system', content: 'You are an expert academic tutor. Return ONLY valid JSON.' },
-            imageMsg
-        ] : [
-            { role: 'system', content: 'You are an expert academic tutor. Return ONLY valid JSON.' },
-            { role: 'user', content: 'Based on this content, create a comprehensive study guide with 8-12 chapters.\n\nContent:\n' + contextSnippet + '\n\nTitle: "' + name + '"\n\nReturn ONLY valid JSON:\n{"chapters":[{"title":"Chapter Title","summary":"2-3 sentence overview"}],"description":"Overall description 2-3 sentences"}' }
-        ];
-
-        var raw = await aiChat(prompt, 0.5);
-        var m = raw.match(/\{[\s\S]*\}/);
+        var raw  = await aiChat(msgs, 0.5);
+        var m    = raw.match(/\{[\s\S]*\}/);
         var data = m ? JSON.parse(m[0]) : null;
-
         if (data && data.chapters && data.chapters.length) {
-            S.source      = type === 'image' ? 'img' : 'upload';
+            S.source      = type;
             S.description = data.description || '';
             S.chapters    = data.chapters.map(function (c, i) { return { title: c.title, index: i, summary: c.summary }; });
             S.cache       = {};
-            saveHist({ query: name, title: S.title, type: type === 'image' ? 'img' : 'upload', chapters: S.chapters.map(function(c){ return c.title; }) });
+            saveHist({ query: name, title: S.title, type: type, chapters: S.chapters.map(function (c) { return c.title; }) });
             renderStudy();
             selectChapter(0);
         } else {
-            /* Fallback: single chapter */
-            S.source      = 'upload';
-            S.description = 'Uploaded document: ' + name;
-            S.chapters    = [{ title: 'Full Document', index: 0 }];
-            S.cache       = { 0: S.uploadedContent || '' };
-            renderStudy();
-            selectChapter(0);
+            S.source = type; S.description = 'Uploaded: ' + name;
+            S.chapters = [{ title: 'Full Document', index: 0 }];
+            S.cache = { 0: S.uploadedContent || '' };
+            renderStudy(); selectChapter(0);
         }
     } catch (e) {
         showErr('Could not analyse document: ' + e.message);
@@ -265,8 +218,8 @@ async function doSearch(q) {
     setView('loading');
     setLoadMsg('🔍 Searching for "' + esc(q) + '"…');
     var results = await Promise.allSettled([wikiSearch(q), bookSearch(q)]);
-    var wiki  = results[0].status === 'fulfilled' ? results[0].value : [];
-    var books = results[1].status === 'fulfilled' ? results[1].value : [];
+    var wiki    = results[0].status === 'fulfilled' ? results[0].value : [];
+    var books   = results[1].status === 'fulfilled' ? results[1].value : [];
     if (!wiki.length && !books.length) { await loadAI(q); } else { showResults(wiki, books, q); }
 }
 
@@ -285,14 +238,7 @@ async function bookSearch(q) {
     var d = await r.json();
     return (d.items || []).map(function (b) {
         var v = b.volumeInfo || {};
-        return {
-            id: b.id, title: v.title || 'Unknown Title',
-            authors: (v.authors || []).join(', '),
-            desc: (v.description || '').slice(0, 300),
-            thumb: v.imageLinks ? v.imageLinks.thumbnail : null,
-            year: (v.publishedDate || '').slice(0, 4),
-            type: 'book'
-        };
+        return { id: b.id, title: v.title || 'Unknown', authors: (v.authors || []).join(', '), desc: (v.description || '').slice(0, 300), thumb: v.imageLinks ? v.imageLinks.thumbnail : null, year: (v.publishedDate || '').slice(0, 4), type: 'book' };
     });
 }
 
@@ -306,15 +252,14 @@ function showResults(wiki, books, q) {
         html += '</div></div>';
     }
     if (books.length) {
-        html += '<div class="std-res-sec"><div class="std-res-sec-lbl">📚 Textbooks &amp; Books</div><div class="std-res-grid">';
+        html += '<div class="std-res-sec"><div class="std-res-sec-lbl">📚 Books &amp; Textbooks</div><div class="std-res-grid">';
         books.forEach(function (b) {
             var img = b.thumb ? '<img src="' + b.thumb + '" class="std-res-thumb" alt="" loading="lazy">' : '<div class="std-res-thumb-ph">📚</div>';
             html += '<div class="std-res-card" data-type="book" data-bookid="' + esc(b.id) + '" data-title="' + esc(b.title) + '" data-desc="' + esc(b.desc) + '">' + img + '<div class="std-res-info"><div class="std-res-title">' + esc(b.title) + '</div><div class="std-res-meta">' + (b.authors ? 'by ' + esc(b.authors) : '') + (b.year ? ' · ' + b.year : '') + '</div><div class="std-res-desc">' + esc(b.desc) + '</div></div></div>';
         });
         html += '</div></div>';
     }
-    html += '<div class="std-res-sec"><div class="std-res-sec-lbl">🤖 AI-Generated Study Guide</div><div class="std-res-grid"><div class="std-res-card std-res-ai" data-type="ai" data-title="' + esc(q) + '"><div class="std-res-icon">🤖</div><div class="std-res-info"><div class="std-res-title">AI Study Guide: ' + esc(q) + '</div><div class="std-res-desc">Full study guide with chapters, KaTeX math rendering, summaries, practice tests, and voice AI.</div></div></div></div></div>';
-
+    html += '<div class="std-res-sec"><div class="std-res-sec-lbl">🤖 AI-Generated Study Guide</div><div class="std-res-grid"><div class="std-res-card std-res-ai" data-type="ai" data-title="' + esc(q) + '"><div class="std-res-icon">🤖</div><div class="std-res-info"><div class="std-res-title">AI Study Guide: ' + esc(q) + '</div><div class="std-res-desc">Full guide with chapters, KaTeX math, summaries &amp; practice tests — powered by Groq AI.</div></div></div></div></div>';
     var c = document.getElementById('std-results-container');
     if (c) {
         c.innerHTML = html;
@@ -341,14 +286,14 @@ async function loadWiki(title) {
         ]);
         var sum = await sumRes.json();
         var sec = await secRes.json();
-        var rawSecs = (sec.parse && sec.parse.sections) ? sec.parse.sections : [];
+        var rawSecs  = (sec.parse && sec.parse.sections) ? sec.parse.sections : [];
         var chapters = [{ title: 'Introduction', index: 0, level: 1 }];
         rawSecs.filter(function (s) { return parseInt(s.toclevel) <= 2 && s.line; }).slice(0, 20)
             .forEach(function (s) { chapters.push({ title: s.line.replace(/<[^>]*>/g, ''), index: parseInt(s.index), level: parseInt(s.toclevel) }); });
         S.source = 'wiki'; S.title = title; S.wikiTitle = title;
         S.description = sum.extract || sum.description || '';
         S.chapters = chapters; S.cache = {}; S.cache[0] = S.description;
-        saveHist({ query: S.query, title: title, type: 'wiki', chapters: chapters.map(function(c){return c.title;}) });
+        saveHist({ query: S.query, title: title, type: 'wiki', chapters: chapters.map(function (c) { return c.title; }) });
         renderStudy(); selectChapter(0);
     } catch (e) { await loadAI(title); }
 }
@@ -358,23 +303,18 @@ async function loadBook(bookId, title, desc) {
     setView('loading');
     setLoadMsg('🤖 Generating chapters for "' + esc(title) + '"…');
     try {
-        var chapters = await genBookChapters(title, desc);
+        var raw = await aiChat([
+            { role: 'system', content: 'You are an expert curriculum designer. Return ONLY valid JSON, no markdown.' },
+            { role: 'user', content: 'Create a comprehensive chapter structure for the textbook "' + title + '".\n' + (desc ? 'Description: ' + desc + '\n' : '') + 'Return ONLY JSON array:\n[{"title":"Chapter Name","level":1}]  — 10-14 chapters.' }
+        ], 0.4);
+        var m   = raw.match(/\[[\s\S]*\]/);
+        if (!m) throw new Error('No chapters');
+        var chapters = JSON.parse(m[0]).map(function (c, i) { return { title: c.title, index: i, level: c.level || 1 }; });
         S.source = 'book'; S.title = title; S.description = desc;
         S.chapters = chapters; S.cache = {};
-        saveHist({ query: S.query, title: title, type: 'book', chapters: chapters.map(function(c){return c.title;}) });
+        saveHist({ query: S.query, title: title, type: 'book', chapters: chapters.map(function (c) { return c.title; }) });
         renderStudy(); selectChapter(0);
     } catch (e) { await loadAI(title); }
-}
-
-async function genBookChapters(title, desc) {
-    var raw = await aiChat([
-        { role: 'system', content: 'You are an expert academic curriculum designer. Return ONLY valid JSON, no markdown.' },
-        { role: 'user', content: 'Create a comprehensive chapter structure for the textbook "' + title + '".\n' + (desc ? 'Description: ' + desc + '\n' : '') + 'Return ONLY JSON:\n[{"title":"Chapter Name","level":1},...]  — 10-14 chapters, mix of main and sub-chapters (level 1 or 2).' }
-    ], 0.4);
-    var m = raw.match(/\[[\s\S]*\]/);
-    if (!m) throw new Error('No chapters');
-    var parsed = JSON.parse(m[0]);
-    return parsed.map(function (c, i) { return { title: c.title, index: i, level: c.level || 1 }; });
 }
 
 /* ── LOAD AI ────────────────────────────────────────────────── */
@@ -383,19 +323,19 @@ async function loadAI(q) {
     setLoadMsg('🤖 Generating AI study guide for "' + esc(q) + '"…');
     try {
         var raw = await aiChat([
-            { role: 'system', content: 'You are an expert academic content creator. Return ONLY valid JSON, no markdown, no extra text.' },
-            { role: 'user', content: 'Create a comprehensive study guide for: "' + q + '"\n\nReturn ONLY this JSON:\n{"description":"2-3 sentence overview","chapters":[{"title":"Chapter Name","summary":"2-3 sentence chapter preview"}]}\n\nRules:\n- 10-14 chapters\n- Chapters should progress logically (introduction → core concepts → advanced topics → applications)\n- Include a Glossary chapter at the end\n- If the topic involves math, science, or engineering, note that in the description' }
+            { role: 'system', content: 'You are an expert academic content creator. Return ONLY valid JSON, no markdown.' },
+            { role: 'user', content: 'Create a comprehensive study guide for: "' + q + '"\n\nReturn ONLY this JSON:\n{"description":"2-3 sentence overview","chapters":[{"title":"Chapter Name","summary":"2-3 sentence preview"}]}\n\nRules:\n- 10-14 chapters\n- Logical progression: intro → core → advanced → applications\n- Include Glossary at the end\n- Note if topic involves math/science/engineering' }
         ], 0.5);
-        var m = raw.match(/\{[\s\S]*\}/);
+        var m    = raw.match(/\{[\s\S]*\}/);
         var data = m ? JSON.parse(m[0]) : null;
         if (!data || !data.chapters) throw new Error('Parse failed');
         S.source = 'ai'; S.title = q; S.description = data.description || '';
         S.chapters = data.chapters.map(function (c, i) { return { title: c.title, index: i, summary: c.summary }; });
-        S.cache = {};
-        saveHist({ query: q, title: q, type: 'ai', chapters: S.chapters.map(function(c){return c.title;}) });
+        S.cache    = {};
+        saveHist({ query: q, title: q, type: 'ai', chapters: S.chapters.map(function (c) { return c.title; }) });
         renderStudy(); selectChapter(0);
     } catch (e) {
-        showErr('AI study guide generation failed: ' + e.message);
+        showErr('Could not generate guide: ' + e.message);
         setView('home');
     }
 }
@@ -407,10 +347,8 @@ function renderStudy() {
     if (titleEl) titleEl.textContent = S.title;
     if (chList) {
         chList.innerHTML = S.chapters.map(function (c, i) {
-            var indent = (c.level === 2) ? ' std-ch-sub' : '';
-            return '<div class="std-ch-item' + indent + '" data-idx="' + i + '">' +
-                   '<span class="std-ch-num">' + (i + 1) + '</span>' +
-                   '<span class="std-ch-label">' + esc(c.title) + '</span></div>';
+            var cls = 'std-ch-item' + (c.level === 2 ? ' std-ch-sub' : '');
+            return '<div class="' + cls + '" data-idx="' + i + '"><span class="std-ch-num">' + (i + 1) + '</span><span class="std-ch-label">' + esc(c.title) + '</span></div>';
         }).join('');
         chList.querySelectorAll('.std-ch-item').forEach(function (el) {
             el.addEventListener('click', function () { selectChapter(parseInt(el.dataset.idx)); });
@@ -421,8 +359,7 @@ function renderStudy() {
 
 function selectChapter(idx) {
     S.activeIdx = idx;
-    var items = document.querySelectorAll('.std-ch-item');
-    items.forEach(function (el, i) { el.classList.toggle('active', i === idx); });
+    document.querySelectorAll('.std-ch-item').forEach(function (el, i) { el.classList.toggle('active', i === idx); });
     hideAIPanel();
     loadChapterContent(idx);
     var panel = document.querySelector('.std-chapters-panel');
@@ -430,47 +367,40 @@ function selectChapter(idx) {
 }
 
 async function loadChapterContent(idx) {
-    var ch = S.chapters[idx];
-    if (!ch) return;
+    var ch = S.chapters[idx]; if (!ch) return;
     var contentArea = document.getElementById('std-chapter-content');
     var titleEl     = document.getElementById('std-content-title');
     if (titleEl) titleEl.textContent = ch.title;
-    if (contentArea) contentArea.innerHTML = '<div class="std-content-loading"><div class="std-spinner"></div><p>Loading…</p></div>';
-
-    if (S.cache[idx]) {
-        showContent(idx, S.cache[idx]);
-        return;
-    }
-
+    if (contentArea) contentArea.innerHTML = '<div class="std-content-loading"><div class="std-spinner"></div><p>Loading content…</p></div>';
+    if (S.cache[idx]) { showContent(idx, S.cache[idx]); return; }
     try {
         var text = '';
         if (S.source === 'wiki') {
             text = await fetchWikiSection(S.wikiTitle, ch.index);
-        } else if (S.source === 'upload' && S.uploadedContent) {
-            /* For uploaded text: ask AI to explain the relevant portion */
-            var portion = S.uploadedContent.slice(0, 12000);
+        } else if (S.source === 'text' && S.uploadedContent) {
             text = await aiChat([
-                { role: 'system', content: 'You are an expert tutor. Generate clear educational content. If relevant, use $...$ for inline math and $$...$$ for display math.' },
-                { role: 'user', content: 'Based on this document content, write a detailed educational explanation of the section "' + ch.title + '" from "' + S.title + '".\n\nDocument:\n' + portion + '\n\nWrite 400-700 words with clear explanations, examples, and key points. Use LaTeX math notation where relevant ($...$ inline, $$...$$ display).' }
+                { role: 'system', content: 'You are an expert tutor. Use $...$ for inline math and $$...$$ for display math.' },
+                { role: 'user', content: 'Based on this document, write a detailed educational explanation of the section "' + ch.title + '" from "' + S.title + '".\n\nDocument:\n' + S.uploadedContent.slice(0, 10000) + '\n\nWrite 400-700 words with clear explanations, examples, and key points. Include LaTeX math where relevant.' }
             ], 0.6);
         } else if (S.source === 'img' && S.uploadedBase64) {
+            /* For image uploads use aiChatVision via Pollinations */
             text = await aiChatVision([
                 { role: 'system', content: 'You are an expert tutor. Write clear educational content with LaTeX math where relevant.' },
                 { role: 'user', content: [
-                    { type: 'text', text: 'Write a detailed educational explanation of "' + ch.title + '" based on this image/document. 400-700 words. Use $...$ for inline math and $$...$$ for display math.' },
+                    { type: 'text', text: 'Write a detailed educational explanation of "' + ch.title + '" based on this image. 400-700 words. Use $...$ inline math and $$...$$ display math where relevant.' },
                     { type: 'image_url', image_url: { url: S.uploadedBase64 } }
                 ]}
             ], 0.6);
         } else {
             text = await aiChat([
-                { role: 'system', content: 'You are an expert academic author. Write detailed, engaging educational content. Use $...$ for inline math and $$...$$ for block/display math when relevant. Use clear headings and structured paragraphs.' },
-                { role: 'user', content: 'Write a comprehensive educational chapter on "' + ch.title + '" from the textbook/study guide "' + S.title + '".' + (ch.summary ? '\nChapter overview: ' + ch.summary : '') + '\n\nRequirements:\n- 500-800 words\n- Start with a clear introduction\n- Cover key concepts, definitions, examples\n- Use LaTeX math notation where applicable ($...$ inline, $$...$$ display)\n- End with key takeaways\n- Write as a high-quality textbook chapter' }
+                { role: 'system', content: 'You are an expert academic author. Write detailed, engaging educational content. Use $...$ for inline math and $$...$$ for block/display math. Use clear structure.' },
+                { role: 'user', content: 'Write a comprehensive educational chapter on "' + ch.title + '" from the study guide "' + S.title + '".' + (ch.summary ? '\nChapter overview: ' + ch.summary : '') + '\n\nRequirements:\n- 500-800 words\n- Clear introduction, core concepts, examples\n- Use LaTeX math notation where applicable\n- Key takeaways at end\n- Write as a high-quality textbook chapter' }
             ], 0.65);
         }
         S.cache[idx] = text;
         showContent(idx, text);
     } catch (e) {
-        if (contentArea) contentArea.innerHTML = '<div class="std-content-empty"><p>⚠️ Could not load content: ' + esc(e.message) + '</p></div>';
+        if (contentArea) contentArea.innerHTML = '<div class="std-content-empty"><p>⚠️ Could not load content: ' + esc(e.message) + '</p><button class="std-btn std-btn-primary" onclick="loadChapterContent(' + idx + ')">🔄 Retry</button></div>';
     }
 }
 
@@ -482,44 +412,40 @@ async function fetchWikiSection(title, sectionIdx) {
     }
     var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', { signal: AbortSignal.timeout(10000) });
     var d2 = await r2.json();
-    var wikitext = (d2.parse && d2.parse.wikitext && d2.parse.wikitext['*']) || '';
-    /* Strip wiki markup for clean text */
-    return wikitext.replace(/\{\{[^}]*\}\}/g, '').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, '$2').replace(/'{2,3}/g, '').replace(/==+[^=]+=+/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 3500);
+    var wt = (d2.parse && d2.parse.wikitext && d2.parse.wikitext['*']) || '';
+    return wt.replace(/\{\{[^}]*\}\}/g, '').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g, '$2').replace(/'{2,3}/g, '').replace(/==+[^=]+=+/g, '').replace(/\n{3,}/g, '\n\n').trim().slice(0, 4000);
 }
 
 function showContent(idx, text) {
     var contentArea = document.getElementById('std-chapter-content');
     if (!contentArea) return;
     contentArea.innerHTML = '<div class="std-content-body">' + renderParagraphs(text) + '</div>';
-    /* Render math after inserting HTML */
     var body = contentArea.querySelector('.std-content-body');
-    if (body) renderMath(body);
+    if (body) setTimeout(function () { renderMath(body); }, 100);
 }
 
-/* ── AI PANEL (Explain / Summarise) ────────────────────────── */
+/* ── STUDY FEATURES ─────────────────────────────────────────── */
 async function doSummarise() {
-    if (S.activeIdx < 0) { showErr('Please select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx];
-    var content = S.cache[S.activeIdx] || '';
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
     showAIPanel('📝 Summary', 'Generating summary…', null);
     try {
         var res = await aiChat([
-            { role: 'system', content: 'You are an expert tutor. Create clear, concise summaries. Use $...$ for inline math and $$...$$ for block math.' },
-            { role: 'user', content: 'Summarise "' + ch.title + '" from "' + S.title + '"' + (content ? ' using this content:\n' + content.slice(0, 3000) : '') + '\n\nProvide:\n1. Key concepts (3-5 bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions if applicable\n\nUse LaTeX math where relevant.' }
+            { role: 'system', content: 'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $$...$$ for block math.' },
+            { role: 'user', content: 'Summarise "' + ch.title + '" from "' + S.title + '"' + (content ? ' using:\n' + content.slice(0, 3000) : '') + '\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.' }
         ], 0.6);
         showAIPanel('📝 Summary — ' + ch.title, null, res);
     } catch (e) { showAIPanel('📝 Summary', null, '⚠️ Error: ' + e.message); }
 }
 
 async function doExplain() {
-    if (S.activeIdx < 0) { showErr('Please select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx];
-    var content = S.cache[S.activeIdx] || '';
-    showAIPanel('💡 Deep Explanation', 'Generating explanation…', null);
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
+    showAIPanel('💡 Explanation', 'Generating explanation…', null);
     try {
         var res = await aiChat([
-            { role: 'system', content: 'You are an expert tutor. Write detailed, clear explanations. Use $...$ for inline math and $$...$$ for block/display math.' },
-            { role: 'user', content: 'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content ? 'Reference content:\n' + content.slice(0, 2500) + '\n\n' : '') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions addressed\n5. All relevant math with LaTeX notation\n\nWrite 400-600 words. Be thorough and educational.' }
+            { role: 'system', content: 'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $$...$$ for display math.' },
+            { role: 'user', content: 'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content ? 'Reference:\n' + content.slice(0, 2500) + '\n\n' : '') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.' }
         ], 0.7);
         showAIPanel('💡 Explanation — ' + ch.title, null, res);
     } catch (e) { showAIPanel('💡 Explanation', null, '⚠️ Error: ' + e.message); }
@@ -537,7 +463,7 @@ function showAIPanel(title, loading, content) {
             bE.innerHTML = '<div class="std-ai-loading"><div class="std-spinner"></div><span>' + esc(loading) + '</span></div>';
         } else if (content) {
             bE.innerHTML = renderParagraphs(content);
-            renderMath(bE);
+            setTimeout(function () { renderMath(bE); }, 100);
         }
     }
     setTimeout(function () { if (p.scrollIntoView) p.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 80);
@@ -550,29 +476,30 @@ function hideAIPanel() {
 
 /* ── PRACTICE TEST ──────────────────────────────────────────── */
 async function openTest() {
-    if (S.activeIdx < 0) { showErr('Please select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx];
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+    var ch      = S.chapters[S.activeIdx];
     var content = S.cache[S.activeIdx] || '';
-    var modal = document.getElementById('std-test-modal');
+    var modal   = document.getElementById('std-test-modal');
     if (!modal) return;
     modal.style.display = 'flex';
-    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating 20 Practice Questions</h3><p>Creating questions for:<br><strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub" id="std-test-status-msg">This may take about 20 seconds…</div></div></div>';
+    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating 20 Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
 
     var PROMPT = [
-        { role: 'system', content: 'You are an expert educator. Create comprehensive practice questions. Return ONLY valid JSON.' },
-        { role: 'user', content: 'Generate exactly 20 multiple-choice questions for:\nTopic: "' + S.title + '"\nSection: "' + ch.title + '"\n' + (content ? 'Material:\n' + content.slice(0, 3500) + '\n\n' : '') + 'Return ONLY this JSON array:\n[{"q":"question","opts":["A","B","C","D"],"ans":0,"exp":"Thorough explanation, minimum 10 lines. Explain why correct answer is right and wrong answers are wrong."}]\n\nRules: Exactly 20 questions. Mix difficulty. Include math where relevant (use LaTeX in questions/explanations).' }
+        { role: 'system', content: 'You are an expert educator. Return ONLY valid JSON, no markdown, no extra text.' },
+        { role: 'user', content: 'Generate exactly 20 multiple-choice questions for:\nTopic: "' + S.title + '"\nSection: "' + ch.title + '"\n' + (content ? 'Material:\n' + content.slice(0, 3500) + '\n\n' : '') + 'Return ONLY this JSON array:\n[{"q":"question","opts":["A","B","C","D"],"ans":0,"exp":"Thorough explanation minimum 10 lines."}]\n\nRules: Exactly 20. Mix difficulty. Include math in LaTeX where relevant.' }
     ];
 
     var qStr;
-    try { qStr = await aiChat(PROMPT, 0.35); } catch (e) {
+    try { qStr = await aiChat(PROMPT, 0.35); }
+    catch (e) {
         modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
         return;
     }
 
     var qs = [];
     try {
-        var jsonMatch = qStr.match(/\[[\s\S]*\]/);
-        if (jsonMatch) qs = JSON.parse(jsonMatch[0]);
+        var m = qStr.match(/\[[\s\S]*\]/);
+        if (m) qs = JSON.parse(m[0]);
     } catch (e) {
         try { var c2 = qStr.replace(/```json\n?/g,'').replace(/```\n?/g,''); var m2 = c2.match(/\[[\s\S]*\]/); if (m2) qs = JSON.parse(m2[0]); } catch(e2){}
     }
@@ -583,7 +510,7 @@ async function openTest() {
     }
 
     qs = qs.slice(0, 20);
-    S.testQ = qs; S.testAns = new Array(qs.length).fill(-1); S.testIdx = 0;
+    S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
     renderTestQ(0);
 }
 
@@ -598,9 +525,7 @@ function renderTestQ(idx) {
     modal.querySelectorAll('.std-test-opt').forEach(function (btn) {
         btn.addEventListener('click', function () { handleAnswer(idx, parseInt(btn.dataset.i)); });
     });
-    /* Render math in question */
-    var q_el = modal.querySelector('.std-test-q');
-    if (q_el) renderMath(q_el);
+    setTimeout(function () { var q_el = modal.querySelector('.std-test-q'); if (q_el) renderMath(q_el); }, 80);
 }
 
 function handleAnswer(qIdx, sel) {
@@ -617,7 +542,7 @@ function handleAnswer(qIdx, sel) {
         var fb = document.createElement('div');
         fb.className = 'std-test-fb ' + (ok ? 'correct' : 'wrong');
         fb.innerHTML = (ok ? '✅ Correct!' : '❌ Wrong. Correct: <strong>' + ['A','B','C','D'][q.ans] + '</strong>') +
-            '<div class="std-test-exp-prev">' + esc((q.exp||'').slice(0,300)) + ((q.exp||'').length>300?'…':'') + '</div>';
+            '<div class="std-test-exp-prev">' + esc((q.exp||'').slice(0,320)) + ((q.exp||'').length>320?'…':'') + '</div>';
         body.appendChild(fb);
         renderMath(fb);
     }
@@ -633,16 +558,15 @@ function handleAnswer(qIdx, sel) {
 function showTestResults() {
     var qs = S.testQ, ans = S.testAns; if (!qs) return;
     var correct = ans.filter(function (a, i) { return a === qs[i].ans; }).length;
-    var pct = Math.round(correct / qs.length * 100);
+    var pct     = Math.round(correct / qs.length * 100);
     var emoji, msg, col;
-    if (pct >= 90)      { emoji='🏆'; msg='Outstanding! Mastered!';         col='#10b981'; }
-    else if (pct >= 70) { emoji='🌟'; msg='Great job! Solid understanding!'; col='#7c3aed'; }
-    else if (pct >= 50) { emoji='👍'; msg='Good effort! Keep reviewing!';    col='#f59e0b'; }
-    else if (pct >= 30) { emoji='💪'; msg='Keep going! Practice makes perfect!'; col='#f59e0b'; }
-    else                { emoji='📚'; msg='Review the chapters carefully.';  col='#ef4444'; }
-
+    if (pct >= 90)      { emoji='🏆'; msg='Outstanding! You\'ve mastered this!';    col='#10b981'; }
+    else if (pct >= 70) { emoji='🌟'; msg='Great job! Solid understanding!';         col='#7c3aed'; }
+    else if (pct >= 50) { emoji='👍'; msg='Good effort! Keep reviewing!';            col='#f59e0b'; }
+    else if (pct >= 30) { emoji='💪'; msg='Keep going! Practice makes perfect!';     col='#f59e0b'; }
+    else                { emoji='📚'; msg='Review the chapters carefully, then retry.'; col='#ef4444'; }
     var modal = document.getElementById('std-test-modal'); if (!modal) return;
-    var html = '<div class="std-test-inner" style="overflow-y:auto;max-height:90vh"><div class="std-test-res-head"><div class="std-test-score-circle" style="border-color:' + col + '"><div class="std-test-score-pct">' + pct + '%</div><div class="std-test-score-sub">' + correct + '/' + qs.length + '</div></div><div style="font-size:2.6rem">' + emoji + '</div><p style="color:' + col + ';font-weight:700;font-size:1rem;margin:0;max-width:320px;text-align:center">' + esc(msg) + '</p></div><div class="std-test-res-actions"><button class="std-btn std-btn-primary" id="std-retry-btn">🔄 Retry</button><button class="std-btn std-btn-ghost" onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'">✕ Close</button></div><div class="std-test-res-list"><h3>Full Results &amp; Explanations</h3>';
+    var html = '<div class="std-test-inner" style="overflow-y:auto;max-height:90vh"><div class="std-test-res-head"><div class="std-test-score-circle" style="border-color:' + col + '"><div class="std-test-score-pct">' + pct + '%</div><div class="std-test-score-sub">' + correct + '/' + qs.length + '</div></div><div style="font-size:2.6rem">' + emoji + '</div><p style="color:' + col + ';font-weight:700;font-size:1rem;margin:0;max-width:320px;text-align:center">' + esc(msg) + '</p></div><div class="std-test-res-actions"><button class="std-btn std-btn-primary" id="std-retry-btn">🔄 Retry</button><button class="std-btn std-btn-ghost" onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'">✕ Close</button></div><div class="std-test-res-list"><h3>Results &amp; Explanations</h3>';
     qs.forEach(function (q, i) {
         var ua = ans[i], ok = ua === q.ans;
         html += '<div class="std-res-item ' + (ok?'correct':'wrong') + '"><div class="std-res-item-head"><span class="std-res-num">' + (i+1) + '</span><span>' + (ok?'✅':'❌') + '</span><div class="std-res-q">' + esc(q.q) + '</div></div><div class="std-res-ans"><span style="color:#10b981">Correct: </span><strong>' + ['A','B','C','D'][q.ans] + '. ' + esc(((q.opts||[])[q.ans])||'') + '</strong>' + (ua>=0&&!ok?'<br><span style="color:#ef4444">Your answer: </span>' + ['A','B','C','D'][ua] + '. ' + esc(((q.opts||[])[ua])||''):'') + '</div><div class="std-res-exp"><strong>Explanation:</strong>' + renderParagraphs(q.exp||'No explanation.') + '</div></div>';
@@ -651,539 +575,112 @@ function showTestResults() {
     modal.innerHTML = html;
     var rb = document.getElementById('std-retry-btn');
     if (rb) rb.addEventListener('click', function () { S.testQ = null; openTest(); });
-    /* Render math in results */
-    setTimeout(function () { if (modal.querySelector) renderMath(modal); }, 100);
+    setTimeout(function () { renderMath(modal); }, 150);
 }
 
 /* ── AI HELPERS ─────────────────────────────────────────────── */
+/* Sleeps for ms milliseconds */
+function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+/* Primary: Groq (if key configured). Fallback: Pollinations.
+   Retries up to 3 times on 429 with increasing delay.         */
 async function aiChat(messages, temp) {
-    var r = await fetch(POLL_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 })
-    });
-    if (!r.ok) throw new Error('AI error ' + r.status);
-    var d = await r.json();
-    if (!d.choices || !d.choices[0]) throw new Error('No AI response');
-    return d.choices[0].message.content || '';
+    /* ── Groq ── */
+    if (GROQ_KEY) {
+        for (var attempt = 0; attempt < 3; attempt++) {
+            try {
+                var rg = await fetch(GROQ_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
+                    body: JSON.stringify({ model: GROQ_MODEL, messages: messages, temperature: temp || 0.7, max_tokens: 3000 }),
+                    signal: AbortSignal.timeout(60000)
+                });
+                if (rg.status === 429) {
+                    /* Rate limited — back off and retry */
+                    var wait = (attempt + 1) * 2000;
+                    await sleep(wait);
+                    continue;
+                }
+                if (!rg.ok) {
+                    var errTxt = '';
+                    try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e){}
+                    throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
+                }
+                var dg = await rg.json();
+                if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
+                return dg.choices[0].message.content || '';
+            } catch (e) {
+                if (attempt < 2 && (e.name === 'AbortError' || (e.message && e.message.includes('429')))) {
+                    await sleep((attempt + 1) * 1500);
+                    continue;
+                }
+                /* Last attempt or non-retryable — fall through to Pollinations */
+                break;
+            }
+        }
+    }
+
+    /* ── Pollinations fallback ── */
+    for (var pa = 0; pa < 2; pa++) {
+        try {
+            var rp = await fetch(POLL_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
+                signal: AbortSignal.timeout(60000)
+            });
+            if (rp.status === 429) { await sleep((pa + 1) * 3000); continue; }
+            if (!rp.ok) throw new Error('AI error ' + rp.status);
+            var dp = await rp.json();
+            if (!dp.choices || !dp.choices[0]) throw new Error('No AI response');
+            return dp.choices[0].message.content || '';
+        } catch (e) {
+            if (pa === 0 && (rp && rp.status === 429)) { await sleep(3000); continue; }
+            throw e;
+        }
+    }
+    throw new Error('AI unavailable. Please try again in a moment.');
 }
 
+/* Vision — uses Pollinations (supports image_url content type) */
 async function aiChatVision(messages, temp) {
-    /* Same endpoint, vision supported via image_url content type */
     var r = await fetch(POLL_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
+        signal: AbortSignal.timeout(60000)
     });
     if (!r.ok) throw new Error('Vision AI error ' + r.status);
     var d = await r.json();
-    if (!d.choices || !d.choices[0]) throw new Error('No response');
+    if (!d.choices || !d.choices[0]) throw new Error('No vision response');
     return d.choices[0].message.content || '';
 }
 
-/* Stream AI response — calls onChunk with each text delta, returns full text */
-async function streamChat(messages, temp, onChunk) {
-    var r = await fetch(POLL_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'openai', messages: messages, stream: true, temperature: temp || 0.8 })
-    });
-    if (!r.ok) throw new Error('Stream error ' + r.status);
-
-    var reader  = r.body.getReader();
-    var decoder = new TextDecoder();
-    var full    = '';
-
-    while (true) {
-        var chunk = await reader.read();
-        if (chunk.done) break;
-        var text  = decoder.decode(chunk.value, { stream: true });
-        var lines = text.split('\n');
-        for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
-            if (!line || line === 'data: [DONE]') continue;
-            if (line.startsWith('data: ')) {
-                try {
-                    var json  = JSON.parse(line.slice(6));
-                    var delta = json.choices && json.choices[0] && json.choices[0].delta;
-                    if (delta && delta.content) { full += delta.content; onChunk(delta.content); }
-                } catch (e) {}
-            }
-        }
-    }
-    /* If streaming didn't deliver content, fall back */
-    if (!full) { full = await aiChat(messages, temp); onChunk(full); }
-    return full;
-}
-
 function checkAI() {
-    fetch(POLL_URL, {
-        method: 'POST', headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ model:'openai', messages:[{role:'user',content:'hi'}], max_tokens:5 })
-    }).then(function (r) {
-        var ok = r.ok;
-        var badge = document.querySelector('.std-groq-badge');
-        if (badge) { badge.className = 'std-groq-badge ' + (ok?'ok':'warn'); badge.textContent = ok ? '✓ AI Ready' : '⚠ AI Unavailable'; }
-    }).catch(function () {
-        var badge = document.querySelector('.std-groq-badge');
-        if (badge) { badge.className = 'std-groq-badge warn'; badge.textContent = '⚠ Offline'; }
-    });
-}
-
-/* ── VOICE ORB ──────────────────────────────────────────────── */
-var ORB_HTML =
-'<div id="std-orb-overlay" aria-label="AI Voice Assistant" role="dialog">' +
-  '<div class="std-orb-inner">' +
-    '<div class="std-orb-sphere-wrap">' +
-      '<div class="std-orb-core"></div>' +
-      '<div class="std-orb-ring r1"></div>' +
-      '<div class="std-orb-ring r2"></div>' +
-      '<div class="std-orb-ring r3"></div>' +
-    '</div>' +
-    '<div class="std-orb-status-lbl" id="std-orb-status">Initialising…</div>' +
-    '<div class="std-orb-transcript-wrap">' +
-      '<div class="std-orb-transcript" id="std-orb-transcript"></div>' +
-    '</div>' +
-    '<div class="std-orb-footer">' +
-      '<button class="std-orb-pill danger" id="std-orb-end-btn">✕ End</button>' +
-      '<button class="std-orb-pill" id="std-orb-mute-btn">🔇 Pause</button>' +
-      '<button class="std-orb-pill" id="std-orb-hist-btn">📜 History</button>' +
-    '</div>' +
-  '</div>' +
-'</div>';
-
-function injectOrbHTML() {
-    if (document.getElementById('std-orb-overlay')) return;
-    var div = document.createElement('div');
-    div.innerHTML = ORB_HTML;
-    document.body.appendChild(div.firstElementChild);
-
-    /* Floating trigger button — always visible on study pages */
-    if (!document.getElementById('std-orb-float')) {
-        var fb = document.createElement('button');
-        fb.id        = 'std-orb-float';
-        fb.className = 'std-orb-float-btn';
-        fb.title     = 'Open AI Voice Tutor';
-        fb.innerHTML = '🤖';
-        fb.addEventListener('click', function () { openOrb(true); });
-        document.body.appendChild(fb);
-    }
-}
-
-function setupVoiceOrb() {
-    var endBtn  = document.getElementById('std-orb-end-btn');
-    var muteBtn = document.getElementById('std-orb-mute-btn');
-    var histBtn = document.getElementById('std-orb-hist-btn');
-    if (endBtn)  endBtn.addEventListener('click', closeOrb);
-    if (muteBtn) muteBtn.addEventListener('click', toggleMute);
-    if (histBtn) histBtn.addEventListener('click', showOrbHistory);
-
-    /* Wire any [data-std-voice] triggers and the study view voice button */
-    document.querySelectorAll('[data-std-voice], #std-voice-btn').forEach(function (el) {
-        el.addEventListener('click', function () { openOrb(true); });
-    });
-
-    /* Hide old panel — orb replaces it */
-    var old = document.getElementById('std-voice-panel');
-    if (old) old.style.display = 'none';
-
-    initRecog();
-}
-
-function initRecog() {
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) return;
-    S.recog = new SR();
-    S.recog.continuous     = true;
-    S.recog.interimResults = true;
-    S.recog.lang           = 'en-US';
-    S.recog.maxAlternatives = 1;
-
-    S.recog.onresult = onSpeechResult;
-
-    S.recog.onerror = function (e) {
-        if (e.error === 'not-allowed') {
-            setOrbStatus('⚠ Microphone access denied');
-            closeOrb();
-        } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
-            setOrbStatus('⚠ Mic error: ' + e.error);
-        }
-    };
-
-    S.recog.onend = function () {
-        /* Auto-restart unless closed or responding/speaking */
-        if (S.orbState !== 'closed' && S.orbState !== 'thinking' && S.orbState !== 'speaking') {
-            restartRecog();
-        }
-    };
-}
-
-function onSpeechResult(e) {
-    if (S.orbState === 'closed') return;
-
-    var interim = '', finalText = '';
-    for (var i = e.resultIndex; i < e.results.length; i++) {
-        if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-        else                      interim   += e.results[i][0].transcript;
-    }
-
-    /* STANDBY — only check for wake word */
-    if (S.orbState === 'standby') {
-        var combined = (finalText || interim).toLowerCase();
-        if (checkWakeWord(combined)) {
-            setOrbState('listening');
-            setOrbStatus('Listening — speak now');
-        }
-        return;
-    }
-
-    /* SPEAKING — user started talking, interrupt AI */
-    if (S.orbState === 'speaking') {
-        var words = (finalText || interim).trim();
-        if (words.length > 2) {
-            stopSpeak();
-            setOrbState('listening');
-            setOrbStatus('Listening — speak now');
-        }
-        return;
-    }
-
-    if (S.orbState !== 'listening') return;
-
-    /* Show interim text in transcript */
-    if (interim) updateInterim(interim);
-
-    if (finalText) {
-        var t = finalText.trim();
-        removeInterim();
-        addOrbMsg('user', t);
-        S.pendingText = (S.pendingText + ' ' + t).trim();
-        resetSilenceTimer();
-    }
-}
-
-function resetSilenceTimer() {
-    if (S.silenceTimer) clearTimeout(S.silenceTimer);
-    S.silenceTimer = setTimeout(onSilenceDetected, SILENCE_MS);
-}
-
-function onSilenceDetected() {
-    var text = S.pendingText.trim();
-    S.pendingText  = '';
-    S.silenceTimer = null;
-    if (!text || S.isResponding) return;
-    stopRecog();
-    askOrb(text);
-}
-
-async function askOrb(text) {
-    if (S.isResponding) return;
-    S.isResponding = true;
-    setOrbState('thinking');
-    setOrbStatus('AI is thinking…');
-
-    /* Build conversation history */
-    S.voiceHist.push({ role:'user', content:text });
-    var msgs = [{ role:'system', content: buildOrbSystem() }].concat(S.voiceHist.slice(-24));
-
-    /* Create streaming transcript element */
-    var streamNode = createStreamNode();
-
-    try {
-        var full = await streamChat(msgs, 0.82, function (chunk) {
-            if (streamNode) {
-                streamNode.textContent += chunk;
-                scrollOrbTranscript();
-            }
-        });
-        if (streamNode) streamNode.classList.remove('std-orb-cursor');
-        S.voiceHist.push({ role:'assistant', content:full });
-        saveOrbSession();
-        setOrbState('speaking');
-        speakOrb(full);
-    } catch (e) {
-        if (streamNode) { streamNode.textContent = 'Sorry, I had trouble connecting. Please try again.'; streamNode.classList.remove('std-orb-cursor'); }
-        S.isResponding = false;
-        setOrbState('listening');
-        setOrbStatus('Listening — speak now');
-        restartRecog();
-    }
-}
-
-function buildOrbSystem() {
-    var ctx = 'You are a brilliant, warm AI study tutor. Respond conversationally — clear, friendly, and concise (2-4 sentences unless more detail is needed). You speak in a natural flowing way.';
-    if (S.title) ctx += ' The student is studying: "' + S.title + '".';
-    if (S.uploadedFileName) ctx += ' They uploaded: "' + S.uploadedFileName + '".';
-    if (S.uploadedContent)  ctx += ' Document excerpt: ' + S.uploadedContent.slice(0, 2000);
-    return ctx;
-}
-
-function speakOrb(text) {
-    if (!S.synth) {
-        afterSpeak();
-        return;
-    }
-    S.synth.cancel();
-
-    /* Split into sentences for faster start */
-    var parts = text.match(/[^.!?]+[.!?]+(?:\s|$)|[^.!?]+$/g) || [text];
-    var idx   = 0;
-
-    setOrbStatus('Speaking…  say something to interrupt');
-
-    function next() {
-        if (idx >= parts.length || S.orbState !== 'speaking') { afterSpeak(); return; }
-        var u = new SpeechSynthesisUtterance(parts[idx++].trim());
-        u.rate = 1.0; u.pitch = 1; u.volume = 1;
-        var voices = S.synth.getVoices();
-        var voice  = voices.find(function(v){ return v.lang==='en-US' && v.localService; }) ||
-                     voices.find(function(v){ return /^en/i.test(v.lang); });
-        if (voice) u.voice = voice;
-        u.onend   = next;
-        u.onerror = afterSpeak;
-        S.synth.speak(u);
-    }
-
-    function afterSpeak() {
-        S.isResponding = false;
-        if (S.orbState !== 'closed') {
-            setOrbState('listening');
-            setOrbStatus('Listening — speak now');
-            S.pendingText = '';
-            setTimeout(restartRecog, 350);
+    var badge = document.querySelector('.std-groq-badge');
+    if (badge) {
+        if (GROQ_KEY) {
+            badge.className = 'std-groq-badge ok';
+            badge.textContent = '✓ Groq Ready';
+        } else {
+            badge.className = 'std-groq-badge warn';
+            badge.textContent = '⚠ No Groq Key (using fallback)';
         }
     }
-
-    if (S.synth.getVoices().length > 0) { next(); }
-    else { S.synth.onvoiceschanged = function() { S.synth.onvoiceschanged = null; next(); }; }
-}
-
-function stopSpeak() {
-    if (S.synth) S.synth.cancel();
-}
-
-function openOrb(autoListen) {
-    if (!isLoggedIn()) { showLoginPrompt(); return; }
-    if (S.silenceTimer) clearTimeout(S.silenceTimer);
-    S.voiceHist   = [];
-    S.pendingText = '';
-    S.isResponding = false;
-
-    var transcript = document.getElementById('std-orb-transcript');
-    if (transcript) transcript.innerHTML = '';
-
-    var overlay = document.getElementById('std-orb-overlay');
-    if (overlay) overlay.classList.add('active');
-
-    if (autoListen) {
-        setOrbState('listening');
-        setOrbStatus('Listening — speak now');
-        /* Welcome spoken first */
-        var welcome = S.title ?
-            'Hello! I\'m ready to help you study ' + S.title + '. What would you like to know?' :
-            'Hello! I\'m your AI study tutor. What would you like to discuss?';
-        S.voiceHist.push({ role:'assistant', content: welcome });
-        addOrbMsg('ai', welcome);
-        S.isResponding = true;
-        setOrbState('speaking');
-        speakOrb(welcome);
-    } else {
-        setOrbState('standby');
-        setOrbStatus('Say "AI assist" to start');
-        setTimeout(restartRecog, 200);
-    }
-}
-
-function closeOrb() {
-    if (S.silenceTimer) clearTimeout(S.silenceTimer);
-    S.silenceTimer  = null;
-    S.isResponding  = false;
-    S.pendingText   = '';
-    stopSpeak();
-    stopRecog();
-    S.orbState = 'closed';
-    var overlay = document.getElementById('std-orb-overlay');
-    if (overlay) { overlay.classList.remove('active','standby','listening','thinking','speaking'); }
-}
-
-function setOrbState(state) {
-    S.orbState = state;
-    var overlay = document.getElementById('std-orb-overlay');
-    if (!overlay) return;
-    overlay.className = 'active ' + state;
-}
-
-function setOrbStatus(text) {
-    var el = document.getElementById('std-orb-status');
-    if (el) el.textContent = text;
-}
-
-function startListening() {
-    if (!S.recog) { setOrbStatus('⚠ Voice recognition not supported in this browser'); return; }
-    setOrbState('listening');
-    setOrbStatus('Listening — speak now');
-    restartRecog();
-}
-
-function stopRecog() {
-    try { if (S.recog) S.recog.stop(); } catch(e) {}
-}
-
-function restartRecog() {
-    if (!S.recog || S.orbState === 'closed') return;
-    try { S.recog.start(); } catch(e) { /* already running */ }
-}
-
-var S_muted = false;
-function toggleMute() {
-    S_muted = !S_muted;
-    var btn = document.getElementById('std-orb-mute-btn');
-    if (btn) btn.textContent = S_muted ? '🎤 Resume' : '🔇 Pause';
-    if (S_muted) {
-        stopRecog();
-        setOrbStatus('Paused — tap Resume to continue');
-    } else {
-        restartRecog();
-        setOrbStatus('Listening — speak now');
-    }
-}
-
-/* Transcript helpers */
-function addOrbMsg(role, text) {
-    var transcript = document.getElementById('std-orb-transcript');
-    if (!transcript) return;
-    var isAI = (role === 'ai' || role === 'assistant');
-    var d = document.createElement('div');
-    d.className = 'std-orb-msg ' + (isAI ? 'ai' : 'user');
-    d.innerHTML = '<span class="std-orb-msg-who">' + (isAI ? 'AI' : 'You') + '</span>' +
-                  '<span class="std-orb-msg-text">' + esc(text) + '</span>';
-    transcript.appendChild(d);
-    scrollOrbTranscript();
-}
-
-function createStreamNode() {
-    var transcript = document.getElementById('std-orb-transcript');
-    if (!transcript) return null;
-    var d = document.createElement('div');
-    d.className = 'std-orb-msg ai';
-    var who  = document.createElement('span'); who.className = 'std-orb-msg-who'; who.textContent = 'AI';
-    var text = document.createElement('span'); text.className = 'std-orb-msg-text std-orb-cursor';
-    d.appendChild(who);
-    d.appendChild(text);
-    transcript.appendChild(d);
-    scrollOrbTranscript();
-    return text;
-}
-
-function updateInterim(text) {
-    var el = document.getElementById('std-orb-interim');
-    if (!el) {
-        var t = document.getElementById('std-orb-transcript');
-        if (!t) return;
-        el = document.createElement('div');
-        el.id = 'std-orb-interim';
-        el.className = 'std-orb-interim';
-        t.appendChild(el);
-    }
-    el.textContent = text;
-    scrollOrbTranscript();
-}
-
-function removeInterim() {
-    var el = document.getElementById('std-orb-interim');
-    if (el) el.remove();
-}
-
-function scrollOrbTranscript() {
-    var t = document.getElementById('std-orb-transcript');
-    if (t) t.scrollTop = t.scrollHeight;
-}
-
-function checkWakeWord(text) {
-    for (var i = 0; i < WAKE_WORDS.length; i++) {
-        if (text.indexOf(WAKE_WORDS[i]) !== -1) return true;
-    }
-    return false;
-}
-
-function isLoggedIn() {
-    /* Check common auth signals — adapt to your auth system */
-    return !!localStorage.getItem('aqs_user') ||
-           !!sessionStorage.getItem('aqs_user') ||
-           !!document.cookie.match(/user_session|logged_in|auth_token|user_id/);
-}
-
-function showLoginPrompt() {
-    var existing = document.getElementById('std-login-prompt');
-    if (existing) existing.remove();
-    var p = document.createElement('div');
-    p.id = 'std-login-prompt';
-    p.className = 'std-login-prompt';
-    p.innerHTML = '<div class="std-login-prompt-box">' +
-        '<span style="font-size:2.4rem">🔒</span>' +
-        '<h3>Login Required</h3>' +
-        '<p>Please log in to use the AI Voice Tutor.</p>' +
-        '<button class="std-btn std-btn-primary" onclick="document.getElementById(\'std-login-prompt\').remove()">Got it</button>' +
-        '</div>';
-    document.body.appendChild(p);
-    setTimeout(function () { if (p.parentNode) p.remove(); }, 5000);
-}
-
-function saveOrbSession() {
-    try {
-        var sessions = JSON.parse(localStorage.getItem(ORB_HIST_KEY) || '[]');
-        sessions.unshift({ id: Date.now(), topic: S.title || 'General', messages: S.voiceHist.slice() });
-        if (sessions.length > 10) sessions = sessions.slice(0, 10);
-        localStorage.setItem(ORB_HIST_KEY, JSON.stringify(sessions));
-    } catch(e) {}
-}
-
-function showOrbHistory() {
-    try {
-        var sessions = JSON.parse(localStorage.getItem(ORB_HIST_KEY) || '[]');
-        if (!sessions.length) { setOrbStatus('No conversation history yet.'); return; }
-        var transcript = document.getElementById('std-orb-transcript');
-        if (!transcript) return;
-        transcript.innerHTML = '';
-        var header = document.createElement('div');
-        header.className = 'std-orb-hist-header';
-        header.textContent = '📜 Past Sessions';
-        transcript.appendChild(header);
-        sessions.forEach(function (s, i) {
-            var d = document.createElement('div');
-            d.className = 'std-orb-hist-item';
-            var date = new Date(s.id).toLocaleDateString(undefined, { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit' });
-            d.innerHTML = '<span class="std-orb-hist-topic">' + esc(s.topic) + '</span><span class="std-orb-hist-date">' + date + '</span>';
-            d.addEventListener('click', function () { loadOrbSession(s); });
-            transcript.appendChild(d);
-        });
-    } catch(e) {}
-}
-
-function loadOrbSession(session) {
-    S.voiceHist = session.messages ? session.messages.slice() : [];
-    var transcript = document.getElementById('std-orb-transcript');
-    if (!transcript) return;
-    transcript.innerHTML = '';
-    S.voiceHist.forEach(function (m) {
-        if (m.role !== 'system') addOrbMsg(m.role === 'assistant' ? 'ai' : 'user', m.content);
-    });
-    setOrbStatus('Session loaded — speak to continue');
 }
 
 /* ── EVENTS ─────────────────────────────────────────────────── */
 function setupEvents() {
     var $ = function (id) { return document.getElementById(id); };
 
-    /* Back buttons */
-    $('std-back-btn') && $('std-back-btn').addEventListener('click', function () { setView('home'); });
+    /* Navigation */
+    $('std-back-btn')     && $('std-back-btn').addEventListener('click', function () { setView('home'); });
     $('std-results-back') && $('std-results-back').addEventListener('click', function () { setView('home'); });
 
-    /* Study view buttons */
+    /* Study action buttons */
     $('std-summarise-btn') && $('std-summarise-btn').addEventListener('click', doSummarise);
     $('std-explain-btn')   && $('std-explain-btn').addEventListener('click', doExplain);
     $('std-test-btn')      && $('std-test-btn').addEventListener('click', openTest);
-    $('std-voice-btn')     && $('std-voice-btn').addEventListener('click', function () { openOrb(true); });
 
     /* AI panel close */
     $('std-ai-panel-close') && $('std-ai-panel-close').addEventListener('click', hideAIPanel);
@@ -1193,15 +690,14 @@ function setupEvents() {
         var m = $('std-test-modal'); if (m) m.style.display = 'none';
     });
 
-    /* Action bar (in chapter view) */
+    /* Action bar data attributes */
     document.addEventListener('click', function (e) {
         var btn = e.target.closest('[data-std-action]');
         if (!btn) return;
-        var action = btn.dataset.stdAction;
-        if (action === 'summarise') doSummarise();
-        else if (action === 'explain') doExplain();
-        else if (action === 'test') openTest();
-        else if (action === 'voice') openOrb(true);
+        var a = btn.dataset.stdAction;
+        if (a === 'summarise') doSummarise();
+        else if (a === 'explain') doExplain();
+        else if (a === 'test') openTest();
     });
 
     /* Mobile chapter toggle */
@@ -1217,11 +713,9 @@ function setupEvents() {
         if (del) { e.stopPropagation(); deleteHist(parseInt(del.dataset.id)); }
     });
 
-    /* Test modal backdrop close */
-    var testModal = $('std-test-modal');
-    if (testModal) testModal.addEventListener('click', function (e) {
-        if (e.target === testModal) testModal.style.display = 'none';
-    });
+    /* Test modal backdrop */
+    var tm = $('std-test-modal');
+    if (tm) tm.addEventListener('click', function (e) { if (e.target === tm) tm.style.display = 'none'; });
 }
 
 /* ── HISTORY ────────────────────────────────────────────────── */
@@ -1245,13 +739,9 @@ function renderHistory() {
             c.innerHTML = '<div class="std-hist-empty">No recent topics yet. Search above or upload a file to get started!</div>';
             return;
         }
-        var icons = { wiki:'📖', book:'📚', ai:'🤖', upload:'📄', img:'🖼' };
+        var icons = { wiki:'📖', book:'📚', ai:'🤖', text:'📄', img:'🖼' };
         c.innerHTML = h.map(function (x) {
-            return '<div class="std-hist-item" data-q="' + esc(x.query || x.title) + '">' +
-                   '<span class="std-hist-icon">' + (icons[x.type] || '📝') + '</span>' +
-                   '<div class="std-hist-info"><div class="std-hist-title">' + esc(x.title) + '</div>' +
-                   '<div class="std-hist-meta">' + (x.chapters ? x.chapters.length + ' chapters · ' : '') + new Date(x.id).toLocaleDateString() + '</div></div>' +
-                   '<button class="std-hist-del" data-id="' + x.id + '" title="Remove">✕</button></div>';
+            return '<div class="std-hist-item" data-q="' + esc(x.query || x.title) + '"><span class="std-hist-icon">' + (icons[x.type]||'📝') + '</span><div class="std-hist-info"><div class="std-hist-title">' + esc(x.title) + '</div><div class="std-hist-meta">' + (x.chapters ? x.chapters.length + ' chapters · ' : '') + new Date(x.id).toLocaleDateString() + '</div></div><button class="std-hist-del" data-id="' + x.id + '" title="Remove">✕</button></div>';
         }).join('');
         c.querySelectorAll('.std-hist-item').forEach(function (el) {
             el.addEventListener('click', function (e) {
@@ -1292,12 +782,11 @@ function showErr(msg) {
     if (!el) return;
     el.textContent = msg;
     el.style.display = 'block';
-    setTimeout(function () { el.style.display = 'none'; }, 4500);
+    setTimeout(function () { el.style.display = 'none'; }, 5000);
 }
 
 function renderParagraphs(text) {
     if (!text) return '';
-    /* Preserve line breaks and create proper paragraphs */
     return '<p>' + esc(text).replace(/\n{2,}/g, '</p><p>').replace(/\n/g, '<br>') + '</p>';
 }
 
