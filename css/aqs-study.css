@@ -79,7 +79,7 @@
 .std-res-ai { background:rgba(99,102,241,.06); border-color:rgba(99,102,241,.25); }
 
 /* ── STUDY VIEW ── */
-#std-study-view { display:flex !important; flex-direction:column; height:100vh; overflow:hidden; }
+#std-study-view { display:flex !important; flex-direction:column; height:100dvh; height:100vh; overflow:hidden; }
 .std-study-header { padding:13px 20px; border-bottom:1px solid var(--std-border); display:flex; align-items:center; gap:12px; flex-shrink:0; background:rgba(0,0,0,.2); backdrop-filter:blur(10px); }
 .std-back-btn { background:var(--std-surface); border:1px solid var(--std-border); color:var(--std-text); padding:7px 14px; border-radius:var(--std-radius-sm); cursor:pointer; font-size:.82rem; font-weight:600; transition:background .15s; flex-shrink:0; font-family:inherit; }
 .std-back-btn:hover { background:var(--std-surface2); }
@@ -100,7 +100,7 @@
 .std-ch-item.active .std-ch-num { background:var(--std-accent); border-color:var(--std-accent); color:#fff; }
 
 /* ── CONTENT AREA ── */
-.std-content-area { flex:1; overflow-y:auto; padding:24px; min-width:0; display:flex; flex-direction:column; gap:18px; }
+.std-content-area { flex:1; overflow-y:auto; padding:24px; min-width:0; display:flex; flex-direction:column; gap:18px; min-height:0; }
 .std-ch-heading { font-size:1.25rem; font-weight:700; color:var(--std-text); margin:0 0 14px; padding-bottom:12px; border-bottom:1px solid var(--std-border); }
 .std-ch-body { font-size:.92rem; color:rgba(241,245,249,.85); line-height:1.76; }
 .std-ch-body p { margin:0 0 13px; }
