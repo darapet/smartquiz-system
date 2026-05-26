@@ -51,6 +51,7 @@
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
+<script src="js/aqs-groq-key.js"></script>
 </head>
 <body class="dts-body aqs-full-page-body">
 
@@ -224,7 +225,6 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
     if(pwaBtn){pwaBtn.addEventListener('click',function(e){e.preventDefault();if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{alert('To install this app:\n• Chrome/Edge: click ⋮ menu → "Install app"\n• Safari (iPhone): tap Share → "Add to Home Screen"');}});}
 })();
 </script>
-<script src="js/aqs-groq-key.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
 </body>
