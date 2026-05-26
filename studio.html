@@ -51,7 +51,6 @@
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
-<script src="js/aqs-groq-key.js"></script>
 </head>
 <body class="dts-body aqs-full-page-body">
 
@@ -90,6 +89,8 @@
         <a href="docs-gen.html" class="aqs-sidebar-link">
             <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/></svg></span>
             Docs Generator
+        </a>
+        
     </nav>
 
     <div class="aqs-sidebar-nav-label" style="margin-top:14px;">QUIZ</div>
@@ -194,7 +195,7 @@ var DTS_CONFIG = {
     is_logged_in:true,is_host:true,user_name:'User',plugin_url:'./',
     studio_url:'studio.html',imagegen_url:'image-gen.html',
     imageedit_url:'image-editor.html',docsgen_url:'docs-gen.html',
-    tts_url:'study.html',create_url:'create-quiz.html',challenge_url:'challenge.html'
+    tts_url:'studio.html',create_url:'create-quiz.html',challenge_url:'challenge.html'
 };
 var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'Powered by Darapet Technology',logo_url:'',color_primary:'#6366f1',color_bg:'',color_text:'',duration:'3',sound:'0',music_url:'audio/quiz-background.mp3'};
 </script>
@@ -223,6 +224,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
     if(pwaBtn){pwaBtn.addEventListener('click',function(e){e.preventDefault();if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.then(function(){deferredPrompt=null;});}else{alert('To install this app:\n• Chrome/Edge: click ⋮ menu → "Install app"\n• Safari (iPhone): tap Share → "Add to Home Screen"');}});}
 })();
 </script>
+<script src="js/aqs-groq-key.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
 </body>
