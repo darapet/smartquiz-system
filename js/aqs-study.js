@@ -14,7 +14,6 @@ var POLL_URL  = 'https://text.pollinations.ai/openai';
 var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
 var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
 var HIST_KEY  = 'aqs_study_hist';
-var CONV_KEY  = 'aqs_voice_conv';   /* saved voice transcriptions */
 var MAX_HIST  = 15;
 
 /* ── STATE ──────────────────────────────────────────────────── */
@@ -483,15 +482,7 @@ function hideAIPanel() {
 
 /* ── PRACTICE TEST ──────────────────────────────────────────── */
 async function openTest() {
-    /* Auto-select first chapter if none is active */
-    if (S.activeIdx < 0) {
-        if (S.chapters && S.chapters.length > 0) {
-            selectChapter(0);
-        } else {
-            showErr('Search a topic first, then open a chapter before taking a test.');
-            return;
-        }
-    }
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
     var ch      = S.chapters[S.activeIdx];
     var content = S.cache[S.activeIdx] || '';
     var modal   = document.getElementById('std-test-modal');
@@ -877,21 +868,6 @@ function injectSummonStyles() {
         '#std-summon-text::placeholder{color:#8c84b8}',
         '#std-summon-send{background:#7c3aed;border:none;border-radius:50%;color:#fff;font-size:1rem;width:42px;height:42px;cursor:pointer;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}',
         '#std-summon-send:hover{background:#6d28d9}',
-        /* History button */
-        '#std-summon-hist-btn{position:absolute;top:18px;left:18px;background:rgba(255,255,255,.07);border:1.5px solid rgba(139,92,246,.35);border-radius:20px;color:#c8c2f0;font-size:.82rem;font-weight:600;padding:6px 14px;cursor:pointer;letter-spacing:.02em;z-index:2}',
-        '#std-summon-hist-btn:hover{background:rgba(139,92,246,.2)}',
-        '#std-summon-hist-badge{background:#7c3aed;color:#fff;border-radius:50%;font-size:.68rem;padding:1px 5px;margin-left:4px;vertical-align:middle}',
-
-        /* History panel */
-        '#std-summon-hist-panel{position:absolute;top:58px;left:12px;right:12px;max-height:55vh;overflow-y:auto;background:rgba(14,12,32,.96);border:1px solid rgba(99,102,241,.35);border-radius:14px;padding:12px;z-index:10;backdrop-filter:blur(12px)}',
-        '#std-summon-hist-panel::-webkit-scrollbar{width:5px}',
-        '#std-summon-hist-panel::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:4px}',
-        '.sconv-session{margin-bottom:14px}',
-        '.sconv-session-head{font-size:.78rem;font-weight:700;color:#7c3aed;padding:4px 0;border-bottom:1px solid rgba(99,102,241,.2);margin-bottom:6px}',
-        '.sconv-turn{margin:6px 0;padding:6px 8px;background:rgba(255,255,255,.04);border-radius:8px}',
-        '.sconv-u{font-size:.82rem;color:#06b6d4;margin-bottom:3px}',
-        '.sconv-a{font-size:.82rem;color:#c8c2f0;line-height:1.45}',
-
         '@media(max-width:480px){#std-summon-fab{bottom:14px;right:14px}#std-summon-big-orb{width:100px;height:100px;font-size:2.3rem}#std-summon-ai-text,#std-summon-transcript{font-size:.92rem}}',
     ].join('');
     document.head.appendChild(s);
@@ -914,11 +890,6 @@ function injectSummonUI() {
     overlay.setAttribute('data-state', 'idle');
     overlay.innerHTML = [
         '<button id="std-summon-close">&#x2715;</button>',
-        '<button id="std-summon-hist-btn" title="Conversation history">',
-          '🕐 <span id="std-summon-hist-badge"></span>',
-        '</button>',
-        /* Scrollable history panel */
-        '<div id="std-summon-hist-panel" style="display:none"></div>',
         '<div id="std-summon-big-orb">',
           '<div class="sorb-ring r1"></div>',
           '<div class="sorb-ring r2"></div>',
@@ -926,7 +897,6 @@ function injectSummonUI() {
           '<span>✦</span>',
         '</div>',
         '<div id="std-summon-state-txt">XZILY AI</div>',
-        /* Live transcript — shows every word as you say it */
         '<div id="std-summon-transcript"></div>',
         '<div id="std-summon-ai-text"></div>',
         '<div id="std-summon-input-row">',
@@ -937,12 +907,10 @@ function injectSummonUI() {
     document.body.appendChild(overlay);
 
     document.getElementById('std-summon-close').addEventListener('click', summonHide);
-    document.getElementById('std-summon-hist-btn').addEventListener('click', summonShowHistory);
     document.getElementById('std-summon-send').addEventListener('click', summonSendText);
     document.getElementById('std-summon-text').addEventListener('keydown', function(e) {
         if (e.key === 'Enter') summonSendText();
     });
-    summonUpdateHistBadge();
 }
 
 function summonSetState(state) {
@@ -1007,71 +975,71 @@ function summonStartListening() {
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) { summonSetAiText('⚠ Voice not supported in this browser. Use the text box below.'); return; }
 
-    VS.listening       = true;
-    VS.transcript      = '';
-    VS._interimBuf     = '';   /* accumulates interim text shown live */
-    VS._fired          = false;
+    VS.listening = true;
+    VS.transcript = '';
+    VS._interimSnapshot = '';
+    VS._speechFired = false;
 
     var rec = new SR();
-    rec.lang           = 'en-US';
-    rec.continuous     = true;        /* ← MUST be true for live word-by-word typing */
-    rec.interimResults = true;        /* ← fires every few words as you speak        */
+    rec.lang        = 'en-US';
+    rec.continuous  = false;       /* false = fires result the MOMENT you stop — much faster */
+    rec.interimResults = true;
     rec.maxAlternatives = 1;
-    VS.recognition     = rec;
+    VS.recognition  = rec;
 
-    rec.onstart = function() { summonSetState('listening'); };
+    rec.onstart = function() {
+        summonSetState('listening');
+    };
 
     rec.onresult = function(e) {
-        /* Kill AI speech the instant user speaks */
-        if (VS.speakingQueue) summonStopQueue();
-
-        var interim = '';
-        var finalChunk = '';
+        var interim = '', final = '';
         for (var i = e.resultIndex; i < e.results.length; i++) {
-            if (e.results[i].isFinal) finalChunk += e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += e.results[i][0].transcript;
             else interim += e.results[i][0].transcript;
         }
 
-        /* Append any confirmed final words to buffer */
-        if (finalChunk) VS._interimBuf += finalChunk;
+        /* ANY sound → kill AI speech instantly */
+        if ((interim || final) && VS.speakingQueue) summonStopQueue();
 
-        /* Show live: confirmed words + current interim */
-        var display = (VS._interimBuf + ' ' + interim).trim();
-        summonShowInterim(display);
+        /* Show live interim (what user is saying right now) */
+        if (interim) {
+            VS._interimSnapshot = interim;
+            summonShowInterim(interim);
+        }
 
-        /* Reset the 1.2 s silence trigger on every new word */
-        summonResetSilence();
+        /* Final arrived → fire query immediately, no waiting */
+        if (final.trim()) {
+            VS._speechFired = true;
+            clearTimeout(VS.silenceTimer);
+            VS.transcript = final.trim();
+            summonShowInterim('');
+            summonHandleQuery(VS.transcript);
+            VS.transcript = '';
+        }
     };
 
-    /* onspeechend fires the INSTANT the user stops talking */
+    /* onspeechend fires the MOMENT user stops talking — use it as fast trigger */
     rec.onspeechend = function() {
-        if (!VS._fired) {
-            VS._fired = true;
-            clearTimeout(VS.silenceTimer);
-            var q = VS._interimBuf.trim();
-            if (!q) return;
-            VS._interimBuf = '';
-            VS.transcript  = '';
-            summonShowInterim('');
-            try { rec.stop(); } catch(ex) {}
-            summonHandleQuery(q);
+        /* If we have interim but final hasn't come yet, stop rec → forces final result */
+        if (!VS._speechFired && VS._interimSnapshot.trim()) {
+            try { rec.stop(); } catch(e) {}
         }
     };
 
     rec.onend = function() {
         VS.listening = false;
-        /* Leftover buffer if onspeechend didn't fire */
-        if (!VS._fired && VS._interimBuf.trim()) {
+        /* If no final result came but we have interim, use it */
+        if (!VS._speechFired && VS._interimSnapshot.trim()) {
             clearTimeout(VS.silenceTimer);
-            var q2 = VS._interimBuf.trim();
-            VS._interimBuf = '';
+            var q = VS._interimSnapshot.trim();
+            VS._interimSnapshot = '';
             summonShowInterim('');
-            summonHandleQuery(q2);
+            summonHandleQuery(q);
             return;
         }
-        /* Restart for the next turn */
-        if (VS.active && !VS.speakingQueue && !VS._fired) {
-            setTimeout(function() { if (VS.active) summonStartListening(); }, 100);
+        /* Restart for next round of listening */
+        if (VS.active && !VS.speakingQueue && !VS._speechFired) {
+            setTimeout(function() { if (VS.active) summonStartListening(); }, 120);
         }
     };
 
@@ -1083,6 +1051,9 @@ function summonStartListening() {
     };
 
     try { rec.start(); } catch(err) { VS.listening = false; }
+
+    /* Fallback silence timer — 1.5s only, much shorter */
+    summonResetSilence();
 }
 
 function summonStopListening() {
@@ -1094,19 +1065,15 @@ function summonStopListening() {
     }
 }
 
-/* 1.2 s silence → fire whatever was captured */
 function summonResetSilence() {
     clearTimeout(VS.silenceTimer);
     VS.silenceTimer = setTimeout(function() {
-        if (VS._fired) return;
-        var q = VS._interimBuf.trim();
-        if (!q) return;
-        VS._fired      = true;
-        VS._interimBuf = '';
+        var q = (VS.transcript || VS._interimSnapshot || '').trim();
+        VS.transcript = '';
+        VS._interimSnapshot = '';
         summonShowInterim('');
-        try { if (VS.recognition) VS.recognition.stop(); } catch(ex) {}
-        summonHandleQuery(q);
-    }, 1200);
+        if (q && !VS._speechFired) summonHandleQuery(q);
+    }, 1500); /* 1.5s fallback only */
 }
 
 function summonShowInterim(text) {
@@ -1130,56 +1097,6 @@ function summonSendText() {
 function summonIsYes(q) { return /\b(yes|yeah|yep|yea|sure|ok|okay|correct|right|go on|continue|i get|i got|understood|alright)\b/i.test(q); }
 function summonIsNo(q)  { return /\b(no|nope|nah|don'?t|not really|i don'?t|confused|again|repeat|explain|what|huh)\b/i.test(q); }
 
-/* ── TRANSCRIPTION SAVE ─────────────────────────────────────── */
-function convSave(userText, aiText) {
-    try {
-        var convs = JSON.parse(localStorage.getItem(CONV_KEY) || '[]');
-        var today = new Date().toLocaleDateString();
-        /* Find today's session or create new */
-        var session = convs.find(function(s) { return s.date === today && s.topic === (S.title||'General'); });
-        if (!session) {
-            session = { date: today, topic: S.title||'General', turns: [], id: Date.now() };
-            convs.unshift(session);
-            if (convs.length > 30) convs = convs.slice(0, 30);
-        }
-        session.turns.push({ u: userText, a: aiText, t: Date.now() });
-        localStorage.setItem(CONV_KEY, JSON.stringify(convs));
-        summonUpdateHistBadge();
-    } catch(e) {}
-}
-
-function summonUpdateHistBadge() {
-    try {
-        var convs = JSON.parse(localStorage.getItem(CONV_KEY) || '[]');
-        var total = convs.reduce(function(n, s) { return n + s.turns.length; }, 0);
-        var badge = document.getElementById('std-summon-hist-badge');
-        if (badge) badge.textContent = total > 0 ? total : '';
-    } catch(e) {}
-}
-
-function summonShowHistory() {
-    try {
-        var convs = JSON.parse(localStorage.getItem(CONV_KEY) || '[]');
-        var histPanel = document.getElementById('std-summon-hist-panel');
-        if (!histPanel) return;
-        if (histPanel.style.display !== 'none') {
-            histPanel.style.display = 'none';
-            return;
-        }
-        if (!convs.length) {
-            histPanel.innerHTML = '<div style="color:#8c84b8;text-align:center;padding:20px">No saved conversations yet.</div>';
-        } else {
-            histPanel.innerHTML = convs.map(function(s) {
-                return '<div class="sconv-session"><div class="sconv-session-head">📅 ' + s.date + ' — ' + esc(s.topic) + ' <span style="opacity:.5;font-size:.75rem">(' + s.turns.length + ' turns)</span></div>' +
-                    s.turns.map(function(t) {
-                        return '<div class="sconv-turn"><div class="sconv-u">🙂 ' + esc(t.u) + '</div><div class="sconv-a">✦ ' + esc(t.a) + '</div></div>';
-                    }).join('') + '</div>';
-            }).join('');
-        }
-        histPanel.style.display = 'block';
-    } catch(e) {}
-}
-
 async function summonHandleQuery(q) {
     /* Handle checkpoint yes/no */
     if (VS.waitingCheckpnt) {
@@ -1188,13 +1105,11 @@ async function summonHandleQuery(q) {
             summonSetTranscript(q);
             var reExp = 'Let me explain that again differently. ' + (VS.lastExplanation || 'Sure, let me break it down once more.');
             summonSetAiText(reExp);
-            convSave(q, reExp);
             return summonSpeakStream(reExp, true);
         } else if (summonIsYes(q)) {
             summonSetTranscript(q);
             var cont = 'Great! Let\'s keep going. What would you like to know next?';
             summonSetAiText(cont);
-            convSave(q, cont);
             return summonSpeakStream(cont, false);
         }
     }
@@ -1229,8 +1144,6 @@ async function summonHandleQuery(q) {
         VS.history.push({ role: 'assistant', content: fullText });
         if (VS.history.length > 14) VS.history = VS.history.slice(-14);
         if (addCheckpoint) VS.waitingCheckpnt = true;
-        /* Save turn to localStorage */
-        convSave(q, fullText);
     } catch(e) {
         summonSetAiText('⚠ ' + e.message);
         summonSetState('listening');
