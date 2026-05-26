@@ -795,86 +795,100 @@ function injectSummonStyles() {
     var s = document.createElement('style');
     s.id = 'std-summon-css';
     s.textContent = [
-        '#std-summon-root{position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;align-items:flex-end;gap:10px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
-        '#std-summon-orb{width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:transform .2s;box-shadow:0 0 18px 4px rgba(139,92,246,.45);animation:summon-idle 3s ease-in-out infinite;flex-shrink:0}',
-        '#std-summon-orb:hover{transform:scale(1.09)}',
-        '#std-summon-orb-icon{color:#fff;font-size:1.55rem;user-select:none;pointer-events:none}',
-        '.summon-ring{position:absolute;border-radius:50%;border:2px solid rgba(139,92,246,.3);top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none}',
-        '.summon-ring.r1{width:76px;height:76px}',
-        '.summon-ring.r2{width:96px;height:96px}',
-        '.summon-ring.r3{width:118px;height:118px}',
-        '@keyframes summon-idle{0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.35)}50%{box-shadow:0 0 30px 10px rgba(139,92,246,.6)}}',
-        '#std-summon-root[data-state=listening] #std-summon-orb{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490);box-shadow:0 0 24px 8px rgba(6,182,212,.6);animation:summon-listen 1.4s ease-in-out infinite}',
-        '@keyframes summon-listen{0%,100%{box-shadow:0 0 20px 5px rgba(6,182,212,.4)}50%{box-shadow:0 0 38px 14px rgba(6,182,212,.75)}}',
-        '#std-summon-root[data-state=listening] .summon-ring{animation:summon-ring-out 2s ease-out infinite;border-color:rgba(6,182,212,.4);opacity:1}',
-        '#std-summon-root[data-state=listening] .r1{animation-delay:0s}',
-        '#std-summon-root[data-state=listening] .r2{animation-delay:.5s}',
-        '#std-summon-root[data-state=listening] .r3{animation-delay:1s}',
-        '@keyframes summon-ring-out{0%{transform:translate(-50%,-50%) scale(.85);opacity:.6}100%{transform:translate(-50%,-50%) scale(1.35);opacity:0}}',
-        '#std-summon-root[data-state=thinking] #std-summon-orb{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309);box-shadow:0 0 22px 7px rgba(245,158,11,.55);animation:summon-think .9s ease-in-out infinite alternate}',
-        '@keyframes summon-think{0%{transform:scale(1)}100%{transform:scale(1.06)}}',
-        '#std-summon-root[data-state=speaking] #std-summon-orb{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46);box-shadow:0 0 22px 7px rgba(16,185,129,.55);animation:summon-speak .55s ease-in-out infinite alternate}',
-        '@keyframes summon-speak{0%{transform:scale(1);box-shadow:0 0 18px 4px rgba(16,185,129,.4)}100%{transform:scale(1.1);box-shadow:0 0 38px 14px rgba(16,185,129,.7)}}',
-        '#std-summon-root[data-state=speaking] .summon-ring{animation:summon-ring-out .85s ease-in-out infinite alternate;border-color:rgba(16,185,129,.5);opacity:1}',
-        '#std-summon-panel{display:none;flex-direction:column;width:310px;max-height:440px;background:#0e0c20;border:1.5px solid #342d62;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.65);animation:summon-panel-in .2s ease-out}',
-        '#std-summon-root.open #std-summon-panel{display:flex}',
-        '@keyframes summon-panel-in{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}',
-        '#std-summon-panel-hdr{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#141128;border-bottom:1px solid #252048;flex-shrink:0}',
-        '#std-summon-dot{width:8px;height:8px;border-radius:50%;background:#8b5cf6;flex-shrink:0;transition:background .3s}',
-        '#std-summon-root[data-state=listening] #std-summon-dot{background:#06b6d4;animation:summon-dot .9s ease-in-out infinite}',
-        '#std-summon-root[data-state=thinking]  #std-summon-dot{background:#f59e0b;animation:summon-dot .45s ease-in-out infinite}',
-        '#std-summon-root[data-state=speaking]  #std-summon-dot{background:#10b981;animation:summon-dot .55s ease-in-out infinite alternate}',
-        '@keyframes summon-dot{0%,100%{opacity:1}50%{opacity:.25}}',
-        '#std-summon-state-txt{flex:1;font-size:.78rem;font-weight:700;color:#eeeaff;letter-spacing:.02em}',
-        '#std-summon-close{background:none;border:none;color:#8c84b8;cursor:pointer;font-size:.88rem;padding:2px 5px;border-radius:4px;transition:color .15s,background .15s}',
-        '#std-summon-close:hover{color:#eeeaff;background:#1c1837}',
-        '#std-summon-msgs{flex:1;overflow-y:auto;padding:11px 12px;display:flex;flex-direction:column;gap:7px;min-height:100px}',
-        '#std-summon-msgs::-webkit-scrollbar{width:3px}',
-        '#std-summon-msgs::-webkit-scrollbar-thumb{background:#342d62;border-radius:2px}',
-        '.summon-msg{max-width:88%;padding:7px 11px;border-radius:11px;font-size:.81rem;line-height:1.55;word-break:break-word}',
-        '.summon-msg-user{align-self:flex-end;background:#3b1f8c;color:#ede9fe;border-bottom-right-radius:3px}',
-        '.summon-msg-ai{align-self:flex-start;background:#141128;color:#c8c2f0;border:1px solid #252048;border-bottom-left-radius:3px}',
-        '.summon-msg-sys{align-self:center;background:none;color:#8c84b8;font-size:.71rem;font-style:italic}',
-        '#std-summon-interim{align-self:flex-end;font-size:.73rem;color:#06b6d4;font-style:italic;padding:2px 6px;min-height:16px}',
-        '#std-summon-input-row{display:flex;gap:6px;padding:8px 11px;border-top:1px solid #252048;background:#141128;flex-shrink:0}',
-        '#std-summon-text{flex:1;background:#0e0c20;border:1.5px solid #342d62;border-radius:7px;color:#eeeaff;font-size:.8rem;padding:6px 10px;outline:none;font-family:inherit;transition:border-color .2s}',
+        /* ── Floating trigger orb ── */
+        '#std-summon-fab{position:fixed;bottom:24px;right:24px;z-index:99998;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 18px 4px rgba(139,92,246,.5);animation:sfab-pulse 3s ease-in-out infinite;transition:transform .18s;font-size:1.5rem;color:#fff;user-select:none;font-family:sans-serif}',
+        '#std-summon-fab:hover{transform:scale(1.1)}',
+        '@keyframes sfab-pulse{0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.4)}50%{box-shadow:0 0 32px 12px rgba(139,92,246,.65)}}',
+
+        /* ── Full-page overlay ── */
+        '#std-summon-overlay{position:fixed;inset:0;z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,4,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}',
+        '#std-summon-overlay.open{display:flex;animation:sovl-in .28s ease-out}',
+        '@keyframes sovl-in{from{opacity:0}to{opacity:1}}',
+
+        /* Close button */
+        '#std-summon-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.08);border:none;color:#c8c2f0;font-size:1.2rem;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}',
+        '#std-summon-close:hover{background:rgba(255,255,255,.15)}',
+
+        /* Centre orb */
+        '#std-summon-big-orb{position:relative;width:130px;height:130px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:3rem;color:#fff;box-shadow:0 0 40px 10px rgba(139,92,246,.5);transition:background .4s,box-shadow .4s;animation:sorb-idle 3s ease-in-out infinite;flex-shrink:0}',
+        '@keyframes sorb-idle{0%,100%{box-shadow:0 0 30px 8px rgba(139,92,246,.4)}50%{box-shadow:0 0 60px 20px rgba(139,92,246,.65)}}',
+
+        /* Rings around big orb */
+        '.sorb-ring{position:absolute;border-radius:50%;border:2px solid rgba(139,92,246,.25);top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none}',
+        '.sorb-ring.r1{width:170px;height:170px}',
+        '.sorb-ring.r2{width:210px;height:210px}',
+        '.sorb-ring.r3{width:255px;height:255px}',
+
+        /* State variants */
+        '#std-summon-overlay[data-state=listening] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490);animation:sorb-listen 1.3s ease-in-out infinite}',
+        '@keyframes sorb-listen{0%,100%{box-shadow:0 0 40px 10px rgba(6,182,212,.45)}50%{box-shadow:0 0 80px 28px rgba(6,182,212,.8)}}',
+        '#std-summon-overlay[data-state=listening] .sorb-ring{animation:sorb-ring-out 1.8s ease-out infinite;border-color:rgba(6,182,212,.35);opacity:1}',
+        '#std-summon-overlay[data-state=listening] .r1{animation-delay:0s}',
+        '#std-summon-overlay[data-state=listening] .r2{animation-delay:.5s}',
+        '#std-summon-overlay[data-state=listening] .r3{animation-delay:1s}',
+        '@keyframes sorb-ring-out{0%{transform:translate(-50%,-50%) scale(.8);opacity:.6}100%{transform:translate(-50%,-50%) scale(1.4);opacity:0}}',
+
+        '#std-summon-overlay[data-state=thinking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309);animation:sorb-think .8s ease-in-out infinite alternate}',
+        '@keyframes sorb-think{0%{box-shadow:0 0 30px 8px rgba(245,158,11,.4);transform:scale(1)}100%{box-shadow:0 0 70px 22px rgba(245,158,11,.7);transform:scale(1.05)}}',
+
+        '#std-summon-overlay[data-state=speaking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46);animation:sorb-speak .5s ease-in-out infinite alternate}',
+        '@keyframes sorb-speak{0%{box-shadow:0 0 30px 8px rgba(16,185,129,.4);transform:scale(1)}100%{box-shadow:0 0 80px 28px rgba(16,185,129,.75);transform:scale(1.08)}}',
+        '#std-summon-overlay[data-state=speaking] .sorb-ring{animation:sorb-ring-out .8s ease-in-out infinite alternate;border-color:rgba(16,185,129,.4);opacity:1}',
+
+        /* Status label */
+        '#std-summon-state-txt{margin-top:28px;font-size:1rem;font-weight:700;color:#eeeaff;letter-spacing:.06em;text-transform:uppercase;opacity:.85;min-height:24px;text-align:center}',
+
+        /* Live transcript (what user says) */
+        '#std-summon-transcript{margin-top:16px;font-size:1.05rem;color:#06b6d4;font-style:italic;text-align:center;min-height:28px;max-width:600px;line-height:1.5;word-break:break-word}',
+
+        /* AI response text */
+        '#std-summon-ai-text{margin-top:12px;font-size:1.05rem;color:#c8c2f0;text-align:center;max-width:600px;min-height:32px;line-height:1.6;word-break:break-word;transition:opacity .3s}',
+
+        /* Type input row at bottom */
+        '#std-summon-input-row{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;width:min(480px,90vw)}',
+        '#std-summon-text{flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(139,92,246,.4);border-radius:24px;color:#eeeaff;font-size:.9rem;padding:10px 18px;outline:none;font-family:inherit;transition:border-color .2s;backdrop-filter:blur(6px)}',
         '#std-summon-text:focus{border-color:#8b5cf6}',
         '#std-summon-text::placeholder{color:#8c84b8}',
-        '#std-summon-send{background:#7c3aed;border:none;border-radius:7px;color:#fff;font-size:.95rem;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}',
+        '#std-summon-send{background:#7c3aed;border:none;border-radius:50%;color:#fff;font-size:1rem;width:42px;height:42px;cursor:pointer;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}',
         '#std-summon-send:hover{background:#6d28d9}',
-        '@media(max-width:480px){#std-summon-root{bottom:14px;right:10px}#std-summon-panel{width:calc(100vw - 20px)}}',
+        '@media(max-width:480px){#std-summon-fab{bottom:14px;right:14px}#std-summon-big-orb{width:100px;height:100px;font-size:2.3rem}#std-summon-ai-text,#std-summon-transcript{font-size:.92rem}}',
     ].join('');
     document.head.appendChild(s);
 }
 
 function injectSummonUI() {
-    if (document.getElementById('std-summon-root')) return;
-    var wrap = document.createElement('div');
-    wrap.id = 'std-summon-root';
-    wrap.setAttribute('data-state', 'idle');
-    wrap.innerHTML = [
-        '<div id="std-summon-panel">',
-          '<div id="std-summon-panel-hdr">',
-            '<span id="std-summon-dot"></span>',
-            '<span id="std-summon-state-txt">XZILY AI</span>',
-            '<button id="std-summon-close">&#x2715;</button>',
-          '</div>',
-          '<div id="std-summon-msgs"><div id="std-summon-interim"></div></div>',
-          '<div id="std-summon-input-row">',
-            '<input id="std-summon-text" type="text" placeholder="Or type here…" autocomplete="off">',
-            '<button id="std-summon-send">&#x27A4;</button>',
-          '</div>',
+    if (document.getElementById('std-summon-fab')) return;
+
+    /* Floating trigger button */
+    var fab = document.createElement('div');
+    fab.id = 'std-summon-fab';
+    fab.title = 'XZILY AI Voice';
+    fab.textContent = '✦';
+    document.body.appendChild(fab);
+    fab.addEventListener('click', summonToggle);
+
+    /* Full-page overlay */
+    var overlay = document.createElement('div');
+    overlay.id = 'std-summon-overlay';
+    overlay.setAttribute('data-state', 'idle');
+    overlay.innerHTML = [
+        '<button id="std-summon-close">&#x2715;</button>',
+        '<div id="std-summon-big-orb">',
+          '<div class="sorb-ring r1"></div>',
+          '<div class="sorb-ring r2"></div>',
+          '<div class="sorb-ring r3"></div>',
+          '<span>✦</span>',
         '</div>',
-        '<div id="std-summon-orb">',
-          '<div class="summon-ring r1"></div>',
-          '<div class="summon-ring r2"></div>',
-          '<div class="summon-ring r3"></div>',
-          '<span id="std-summon-orb-icon">&#x2726;</span>',
+        '<div id="std-summon-state-txt">XZILY AI</div>',
+        '<div id="std-summon-transcript"></div>',
+        '<div id="std-summon-ai-text"></div>',
+        '<div id="std-summon-input-row">',
+          '<input id="std-summon-text" type="text" placeholder="Or type here…" autocomplete="off">',
+          '<button id="std-summon-send">&#x27A4;</button>',
         '</div>',
     ].join('');
-    document.body.appendChild(wrap);
+    document.body.appendChild(overlay);
 
-    document.getElementById('std-summon-orb').addEventListener('click', summonToggle);
     document.getElementById('std-summon-close').addEventListener('click', summonHide);
     document.getElementById('std-summon-send').addEventListener('click', summonSendText);
     document.getElementById('std-summon-text').addEventListener('keydown', function(e) {
@@ -883,10 +897,10 @@ function injectSummonUI() {
 }
 
 function summonSetState(state) {
-    var root = document.getElementById('std-summon-root');
-    var txt  = document.getElementById('std-summon-state-txt');
-    if (!root) return;
-    root.setAttribute('data-state', state);
+    var overlay = document.getElementById('std-summon-overlay');
+    var txt = document.getElementById('std-summon-state-txt');
+    if (!overlay) return;
+    overlay.setAttribute('data-state', state);
     var labels = { idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…' };
     if (txt) txt.textContent = labels[state] || 'XZILY AI';
 }
@@ -897,24 +911,38 @@ function summonToggle() {
 
 function summonShow() {
     VS.active = true;
-    var root = document.getElementById('std-summon-root');
-    if (root) root.classList.add('open');
+    var overlay = document.getElementById('std-summon-overlay');
+    if (overlay) overlay.classList.add('open');
     summonSetState('speaking');
+    summonSetAiText('');
+    summonSetTranscript('');
     var greeting = S.title
         ? 'Hello! I am XZILY AI. You are studying ' + S.title + '. Ask me anything!'
         : 'Hello! I am XZILY AI. How can I help you study today?';
+    summonSetAiText(greeting);
     summonSpeak(greeting, function() {
+        summonSetAiText('');
         summonSetState('listening');
         summonStartListening();
     });
 }
 
+function summonSetTranscript(text) {
+    var el = document.getElementById('std-summon-transcript');
+    if (el) el.textContent = text ? '🎙 ' + text : '';
+}
+
+function summonSetAiText(text) {
+    var el = document.getElementById('std-summon-ai-text');
+    if (el) el.textContent = text;
+}
+
 function summonHide() {
     VS.active = false;
     summonStopListening();
-    summonStopSpeaking();
-    var root = document.getElementById('std-summon-root');
-    if (root) root.classList.remove('open');
+    summonStopQueue();
+    var overlay = document.getElementById('std-summon-overlay');
+    if (overlay) overlay.classList.remove('open');
     summonSetState('idle');
 }
 
@@ -991,8 +1019,7 @@ function summonResetSilence() {
 }
 
 function summonShowInterim(text) {
-    var el = document.getElementById('std-summon-interim');
-    if (el) el.textContent = text ? '🎙 ' + text : '';
+    summonSetTranscript(text);
 }
 
 function summonSendText() {
@@ -1017,19 +1044,20 @@ async function summonHandleQuery(q) {
     if (VS.waitingCheckpnt) {
         VS.waitingCheckpnt = false;
         if (summonIsNo(q)) {
-            summonAddMsg('user', q);
+            summonSetTranscript(q);
             var reExp = 'Let me explain that again differently. ' + (VS.lastExplanation || 'Sure, let me break it down once more.');
-            summonAddMsg('ai', reExp);
+            summonSetAiText(reExp);
             return summonSpeakStream(reExp, true);
         } else if (summonIsYes(q)) {
-            summonAddMsg('user', q);
+            summonSetTranscript(q);
             var cont = 'Great! Let\'s keep going. What would you like to know next?';
-            summonAddMsg('ai', cont);
+            summonSetAiText(cont);
             return summonSpeakStream(cont, false);
         }
     }
 
-    summonAddMsg('user', q);
+    summonSetTranscript(q);
+    summonSetAiText('…');
     summonSetState('thinking');
     summonStopListening();
     summonStopQueue();
@@ -1052,31 +1080,28 @@ async function summonHandleQuery(q) {
 
     var messages = [{ role: 'system', content: sysPrompt }].concat(VS.history);
 
-    /* Create streaming AI message bubble */
-    var bubble = summonAddStreamBubble();
-
     try {
-        var fullText = await summonStreamResponse(messages, bubble);
+        var fullText = await summonStreamResponse(messages);
         VS.lastExplanation = fullText;
         VS.history.push({ role: 'assistant', content: fullText });
         if (VS.history.length > 14) VS.history = VS.history.slice(-14);
         if (addCheckpoint) VS.waitingCheckpnt = true;
     } catch(e) {
-        bubble.textContent = '⚠ ' + e.message;
+        summonSetAiText('⚠ ' + e.message);
         summonSetState('listening');
         summonStartListening();
     }
 }
 
 /* ── STREAMING FETCH + SENTENCE-BY-SENTENCE SPEECH ─────────── */
-async function summonStreamResponse(messages, bubble) {
+async function summonStreamResponse(messages) {
     var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
     var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
 
-    /* If no Groq key available, fall back to non-streaming */
+    /* No key — fall back to non-streaming */
     if (!key) {
         var text = await aiChat(messages, 0.7);
-        bubble.textContent = text;
+        summonSetAiText(text);
         summonSpeakStream(text, VS.waitingCheckpnt);
         return text;
     }
@@ -1089,9 +1114,8 @@ async function summonStreamResponse(messages, bubble) {
     });
 
     if (!res.ok) {
-        /* fallback */
         var text2 = await aiChat(messages, 0.7);
-        bubble.textContent = text2;
+        summonSetAiText(text2);
         summonSpeakStream(text2, VS.waitingCheckpnt);
         return text2;
     }
@@ -1117,11 +1141,9 @@ async function summonStreamResponse(messages, bubble) {
                     var token = (delta.choices[0].delta.content) || '';
                     full += token;
                     sentenceBuf += token;
-                    bubble.textContent = full;
-                    var wrap = document.getElementById('std-summon-msgs');
-                    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+                    summonSetAiText(full); /* live update on screen */
 
-                    /* Speak sentence as soon as it ends */
+                    /* Speak each sentence as soon as it ends */
                     var sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
                     while (sentenceEnd !== -1) {
                         var sentence = sentenceBuf.slice(0, sentenceEnd + 1).trim();
@@ -1129,12 +1151,11 @@ async function summonStreamResponse(messages, bubble) {
                         if (sentence) summonQueueSentence(sentence);
                         sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
                     }
-                } catch(e) {}
+                } catch(ex) {}
             }
         }
     }
 
-    /* Speak any remaining text */
     if (sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
     summonFlushQueue(function() {
         VS.speakingQueue = false;
@@ -1242,27 +1263,9 @@ function summonSpeak(text, onDone) {
 }
 
 function summonAddMsg(role, text) {
-    var wrap = document.getElementById('std-summon-msgs');
-    var interim = document.getElementById('std-summon-interim');
-    if (!wrap) return;
-    var div = document.createElement('div');
-    div.className = 'summon-msg summon-msg-' + (role === 'sys' ? 'sys' : role);
-    div.textContent = text;
-    wrap.insertBefore(div, interim);
-    wrap.scrollTop = wrap.scrollHeight;
-    return div;
-}
-
-function summonAddStreamBubble() {
-    var wrap = document.getElementById('std-summon-msgs');
-    var interim = document.getElementById('std-summon-interim');
-    if (!wrap) return { textContent: '' };
-    var div = document.createElement('div');
-    div.className = 'summon-msg summon-msg-ai';
-    div.textContent = '…';
-    wrap.insertBefore(div, interim);
-    wrap.scrollTop = wrap.scrollHeight;
-    return div;
+    /* Shows text in the overlay display area */
+    if (role === 'user') summonSetTranscript(text);
+    else summonSetAiText(text);
 }
 
 })();
