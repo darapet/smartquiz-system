@@ -40,18 +40,29 @@ var VS = {
 };
 
 /* ── INIT ───────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', function () {
+/* ROOT-CAUSE FIX: scripts at end of <body> run AFTER the DOM is built.
+   On some browsers DOMContentLoaded has already fired by then, so a plain
+   addEventListener('DOMContentLoaded') listener is never called.
+   The readyState check handles both cases safely. */
+function _stdInit() {
     injectKaTeX();
     setupSearch();
     setupFileUpload();
     setupEvents();
     renderHistory();
-    /* FIX: delay checkAI so aqs-groq-key.js has time to async-load the key from Firebase */
-    setTimeout(checkAI, 2500);
     injectSummonStyles();
     injectSummonUI();
     initSummonVoices();
-});
+    /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
+    setTimeout(checkAI, 500);
+    setTimeout(checkAI, 2000);
+    setTimeout(checkAI, 5000);
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', _stdInit);
+} else {
+    _stdInit(); /* DOM already ready — run immediately */
+}
 
 /* ── KATEX ──────────────────────────────────────────────────── */
 function injectKaTeX() {
@@ -210,10 +221,19 @@ async function loadUploadedDoc(name, type) {
 function setupSearch() {
     var form = document.getElementById('std-search-form');
     var inp  = document.getElementById('std-search-input');
-    if (form) form.addEventListener('submit', function (e) {
-        e.preventDefault();
+    var btn  = form ? form.querySelector('button[type="submit"]') : null;
+    function _doSearch() {
         var q = (inp ? inp.value : '').trim();
         if (q) doSearch(q);
+    }
+    if (form) form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        _doSearch();
+    });
+    /* Backup: direct click on button in case form submit is swallowed */
+    if (btn) btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        _doSearch();
     });
 }
 
