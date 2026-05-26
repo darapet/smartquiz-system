@@ -669,17 +669,29 @@ function setupEvents() {
     $('std-back-btn')     && $('std-back-btn').addEventListener('click', function () { setView('home'); });
     $('std-results-back') && $('std-results-back').addEventListener('click', function () { setView('home'); });
 
-    /* Study action buttons */
-    $('std-summarise-btn') && $('std-summarise-btn').addEventListener('click', doSummarise);
+    /* Study action buttons — match actual HTML IDs */
+    $('std-summary-btn')   && $('std-summary-btn').addEventListener('click', doSummarise);
+    $('std-summarise-btn') && $('std-summarise-btn').addEventListener('click', doSummarise); /* fallback */
     $('std-explain-btn')   && $('std-explain-btn').addEventListener('click', doExplain);
     $('std-test-btn')      && $('std-test-btn').addEventListener('click', openTest);
+    $('std-test-hdr-btn')  && $('std-test-hdr-btn').addEventListener('click', openTest);
 
-    /* AI panel close */
+    /* Voice buttons → open full-page summon overlay */
+    $('std-voice-btn')     && $('std-voice-btn').addEventListener('click', summonToggle);
+    $('std-voice-hdr-btn') && $('std-voice-hdr-btn').addEventListener('click', summonToggle);
+
+    /* AI panel close — match actual HTML ID */
+    $('std-close-ai-btn')   && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
     $('std-ai-panel-close') && $('std-ai-panel-close').addEventListener('click', hideAIPanel);
 
     /* Test modal close */
     $('std-test-close-btn') && $('std-test-close-btn').addEventListener('click', function () {
         var m = $('std-test-modal'); if (m) m.style.display = 'none';
+    });
+
+    /* Old voice panel close — hide it since we use the new overlay */
+    $('std-voice-close-btn') && $('std-voice-close-btn').addEventListener('click', function () {
+        var vp = $('std-voice-panel'); if (vp) vp.style.display = 'none';
     });
 
     /* Action bar data attributes */
@@ -690,11 +702,16 @@ function setupEvents() {
         if (a === 'summarise') doSummarise();
         else if (a === 'explain') doExplain();
         else if (a === 'test') openTest();
+        else if (a === 'voice') summonToggle();
     });
 
-    /* Mobile chapter toggle */
+    /* Mobile chapters panel toggle — match actual HTML ID */
+    $('std-chapters-toggle') && $('std-chapters-toggle').addEventListener('click', function () {
+        var p = document.getElementById('std-chapters-panel');
+        if (p) p.classList.toggle('open');
+    });
     $('std-ch-toggle') && $('std-ch-toggle').addEventListener('click', function () {
-        var p = document.querySelector('.std-chapters-panel');
+        var p = document.getElementById('std-chapters-panel');
         if (p) p.classList.toggle('open');
     });
 
@@ -956,14 +973,23 @@ function summonHide() {
 function summonStartListening() {
     if (VS.listening) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { summonAddMsg('sys', '⚠ Voice not supported. Use the text box below.'); return; }
-    var rec = new SR();
-    rec.lang = 'en-US';
-    rec.continuous = true;
-    rec.interimResults = true;
-    VS.recognition = rec;
+    if (!SR) { summonSetAiText('⚠ Voice not supported in this browser. Use the text box below.'); return; }
+
     VS.listening = true;
     VS.transcript = '';
+    VS._interimSnapshot = '';
+    VS._speechFired = false;
+
+    var rec = new SR();
+    rec.lang        = 'en-US';
+    rec.continuous  = false;       /* false = fires result the MOMENT you stop — much faster */
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    VS.recognition  = rec;
+
+    rec.onstart = function() {
+        summonSetState('listening');
+    };
 
     rec.onresult = function(e) {
         var interim = '', final = '';
@@ -971,51 +997,83 @@ function summonStartListening() {
             if (e.results[i].isFinal) final += e.results[i][0].transcript;
             else interim += e.results[i][0].transcript;
         }
-        /* ANY speech → instantly stop AI speaking */
-        if ((interim.trim() || final.trim()) && VS.speakingQueue) {
-            summonStopQueue();
-        }
-        if (final) {
-            VS.transcript += ' ' + final;
-            summonShowInterim('');
-        } else {
+
+        /* ANY sound → kill AI speech instantly */
+        if ((interim || final) && VS.speakingQueue) summonStopQueue();
+
+        /* Show live interim (what user is saying right now) */
+        if (interim) {
+            VS._interimSnapshot = interim;
             summonShowInterim(interim);
         }
-        summonResetSilence();
+
+        /* Final arrived → fire query immediately, no waiting */
+        if (final.trim()) {
+            VS._speechFired = true;
+            clearTimeout(VS.silenceTimer);
+            VS.transcript = final.trim();
+            summonShowInterim('');
+            summonHandleQuery(VS.transcript);
+            VS.transcript = '';
+        }
+    };
+
+    /* onspeechend fires the MOMENT user stops talking — use it as fast trigger */
+    rec.onspeechend = function() {
+        /* If we have interim but final hasn't come yet, stop rec → forces final result */
+        if (!VS._speechFired && VS._interimSnapshot.trim()) {
+            try { rec.stop(); } catch(e) {}
+        }
     };
 
     rec.onend = function() {
         VS.listening = false;
-        if (VS.active && !VS.speakingQueue) {
-            setTimeout(function() { if (VS.active) summonStartListening(); }, 250);
+        /* If no final result came but we have interim, use it */
+        if (!VS._speechFired && VS._interimSnapshot.trim()) {
+            clearTimeout(VS.silenceTimer);
+            var q = VS._interimSnapshot.trim();
+            VS._interimSnapshot = '';
+            summonShowInterim('');
+            summonHandleQuery(q);
+            return;
+        }
+        /* Restart for next round of listening */
+        if (VS.active && !VS.speakingQueue && !VS._speechFired) {
+            setTimeout(function() { if (VS.active) summonStartListening(); }, 120);
         }
     };
 
     rec.onerror = function(e) {
         VS.listening = false;
-        if ((e.error === 'no-speech' || e.error === 'audio-capture') && VS.active) {
-            setTimeout(function() { summonStartListening(); }, 400);
+        if (e.error !== 'aborted' && VS.active && !VS.speakingQueue) {
+            setTimeout(function() { if (VS.active) summonStartListening(); }, 200);
         }
     };
 
     try { rec.start(); } catch(err) { VS.listening = false; }
+
+    /* Fallback silence timer — 1.5s only, much shorter */
     summonResetSilence();
 }
 
 function summonStopListening() {
     clearTimeout(VS.silenceTimer);
     VS.listening = false;
-    if (VS.recognition) { try { VS.recognition.stop(); } catch(e) {} VS.recognition = null; }
+    if (VS.recognition) {
+        try { VS.recognition.abort(); } catch(e) {}
+        VS.recognition = null;
+    }
 }
 
 function summonResetSilence() {
     clearTimeout(VS.silenceTimer);
     VS.silenceTimer = setTimeout(function() {
-        var q = VS.transcript.trim();
+        var q = (VS.transcript || VS._interimSnapshot || '').trim();
         VS.transcript = '';
+        VS._interimSnapshot = '';
         summonShowInterim('');
-        if (q) summonHandleQuery(q);
-    }, 8000); /* 8s silence → fire */
+        if (q && !VS._speechFired) summonHandleQuery(q);
+    }, 1500); /* 1.5s fallback only */
 }
 
 function summonShowInterim(text) {
