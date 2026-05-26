@@ -444,30 +444,83 @@ function showContent(idx, text) {
 }
 
 /* ── STUDY FEATURES ─────────────────────────────────────────── */
+
+/* Streams a Groq response word-by-word directly into the AI panel */
+async function streamToPanel(panelTitle, messages, temp) {
+    showAIPanel(panelTitle, 'Generating…', null);
+    var bE = document.getElementById('std-ai-panel-body');
+    if (!bE) return;
+
+    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+
+    if (key) {
+        try {
+            var res = await fetch(GROQ_STREAM_URL, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
+                body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
+                signal: AbortSignal.timeout(60000)
+            });
+            if (res.ok) {
+                var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
+                bE.innerHTML = '<div class="std-stream-body"></div>';
+                var bodyDiv = bE.querySelector('.std-stream-body');
+                while (true) {
+                    var chunk = await reader.read();
+                    if (chunk.done) break;
+                    var lines = decoder.decode(chunk.value, {stream:true}).split('\n');
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (!line || line === 'data: [DONE]') continue;
+                        if (line.startsWith('data: ')) {
+                            try {
+                                var delta = JSON.parse(line.slice(6));
+                                var token = (delta.choices[0].delta.content) || '';
+                                full += token;
+                                if (bodyDiv) bodyDiv.innerHTML = renderParagraphs(full) + '<span class="std-stream-cursor">▍</span>';
+                            } catch(ex) {}
+                        }
+                    }
+                }
+                bE.innerHTML = renderParagraphs(full);
+                setTimeout(function () { renderMath(bE); }, 80);
+                var p = document.getElementById('std-ai-panel');
+                if (p && p.scrollIntoView) p.scrollIntoView({behavior:'smooth', block:'start'});
+                return;
+            }
+        } catch(e) { /* fall through */ }
+    }
+
+    /* non-streaming fallback */
+    try {
+        var txt = await aiChat(messages, temp);
+        var bE2 = document.getElementById('std-ai-panel-body');
+        if (bE2) { bE2.innerHTML = renderParagraphs(txt); setTimeout(function () { renderMath(bE2); }, 80); }
+        var p2 = document.getElementById('std-ai-panel');
+        if (p2 && p2.scrollIntoView) p2.scrollIntoView({behavior:'smooth', block:'start'});
+    } catch(e) {
+        var bE3 = document.getElementById('std-ai-panel-body');
+        if (bE3) bE3.textContent = '⚠️ Error: ' + e.message;
+    }
+}
+
 async function doSummarise() {
     if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
     var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-    showAIPanel('📝 Summary', 'Generating summary…', null);
-    try {
-        var res = await aiChat([
-            {role:'system', content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $$...$$ for block math.'},
-            {role:'user', content:'Summarise "' + ch.title + '" from "' + S.title + '"' + (content?' using:\n'+content.slice(0,3000):'') + '\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.'}
-        ], 0.6);
-        showAIPanel('📝 Summary — ' + ch.title, null, res);
-    } catch(e) { showAIPanel('📝 Summary', null, '⚠️ Error: ' + e.message); }
+    streamToPanel('📝 Summary — ' + ch.title, [
+        {role:'system', content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $...$ for block math.'},
+        {role:'user', content:'Summarise "' + ch.title + '" from "' + S.title + '"' + (content?' using:\n'+content.slice(0,3000):'') + '\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.'}
+    ], 0.6);
 }
 
 async function doExplain() {
     if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
     var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-    showAIPanel('💡 Explanation', 'Generating explanation…', null);
-    try {
-        var res = await aiChat([
-            {role:'system', content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $$...$$ for display math.'},
-            {role:'user', content:'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content?'Reference:\n'+content.slice(0,2500)+'\n\n':'') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.'}
-        ], 0.7);
-        showAIPanel('💡 Explanation — ' + ch.title, null, res);
-    } catch(e) { showAIPanel('💡 Explanation', null, '⚠️ Error: ' + e.message); }
+    streamToPanel('💡 Explanation — ' + ch.title, [
+        {role:'system', content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $...$ for display math.'},
+        {role:'user', content:'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content?'Reference:\n'+content.slice(0,2500)+'\n\n':'') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.'}
+    ], 0.7);
 }
 
 function showAIPanel(title, loading, content) {
@@ -505,43 +558,65 @@ async function openTest() {
     var modal   = document.getElementById('std-test-modal');
     if (!modal) return;
     modal.style.display = 'flex';
-    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating 20 Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
+    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
 
-    var PROMPT = [
-        {role:'system', content:'You are an expert educator. Return ONLY valid JSON, no markdown, no extra text.'},
-        {role:'user', content:'Generate exactly 20 multiple-choice questions for:\nTopic: "' + S.title + '"\nSection: "' + ch.title + '"\n' + (content?'Material:\n'+content.slice(0,3500)+'\n\n':'') + 'Return ONLY this JSON array:\n[{"q":"question","opts":["A","B","C","D"],"ans":0,"exp":"Thorough explanation minimum 10 lines."}]\n\nRules: Exactly 20. Mix difficulty. Include math in LaTeX where relevant.'}
-    ];
+    /* Robust JSON extraction — handles fenced blocks, stray text before/after array */
+    function extractQs(raw) {
+        if (!raw) return null;
+        var s = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+        var start = s.indexOf('[');
+        var end   = s.lastIndexOf(']');
+        if (start === -1 || end === -1 || end <= start) return null;
+        try {
+            var arr = JSON.parse(s.slice(start, end + 1));
+            if (!Array.isArray(arr) || arr.length < 2) return null;
+            return arr.filter(function (q) {
+                return q && q.q && Array.isArray(q.opts) && q.opts.length >= 2;
+            }).map(function (q) {
+                return {
+                    q:    String(q.q),
+                    opts: q.opts.slice(0, 4).map(String),
+                    ans:  Math.max(0, Math.min(parseInt(q.ans) || 0, q.opts.length - 1)),
+                    exp:  String(q.exp || '')
+                };
+            });
+        } catch(e2) { return null; }
+    }
+
+    /* 10 questions — reliable token budget, clean JSON-only prompt */
+    var snippet = content ? content.slice(0, 3000) : '';
+    var sysMsg  = 'You are an exam question generator. Output ONLY a raw JSON array — no markdown fences, no explanation, no text before or after the array.';
+    var userMsg = 'Generate 10 multiple-choice questions about "' + ch.title + '" from the subject "' + S.title + '".' +
+        (snippet ? '\nUse this material:\n' + snippet : '') +
+        '\n\nOutput ONLY a JSON array in this exact format:\n' +
+        '[{"q":"Full question","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Short explanation"}]' +
+        '\n\nRules: ans is the 0-based index of the correct option. Mix easy and hard. Use LaTeX ($...$) for any maths.';
 
     var qStr;
-    try { qStr = await aiChat(PROMPT, 0.35); }
+    try { qStr = await aiChat([{role:'system',content:sysMsg},{role:'user',content:userMsg}], 0.3); }
     catch(e) {
         modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
         return;
     }
 
-    var qs = [];
-    try {
-        var cleaned = qStr.replace(/```json\s*/gi,'').replace(/```\s*/gi,'').trim();
-        var m = cleaned.match(/\[[\s\S]*\]/);
-        if (m) qs = JSON.parse(m[0]);
-    } catch(e) {
+    var qs = extractQs(qStr);
+
+    /* single retry with simpler prompt if first attempt returned unparseable output */
+    if (!qs) {
         try {
-            var retry = [
-                {role:'system', content:'Output ONLY a JSON array. Nothing else before or after.'},
-                {role:'user', content:'Generate 20 multiple-choice questions about "' + ch.title + '" from "' + S.title + '". Return ONLY:\n[{"q":"...","opts":["A. ...","B. ...","C. ...","D. ..."],"ans":0,"exp":"..."}]'}
-            ];
-            var qStr2 = await aiChat(retry, 0.3);
-            var m2 = qStr2.replace(/```json\s*/gi,'').replace(/```\s*/gi,'').match(/\[[\s\S]*\]/);
-            if (m2) qs = JSON.parse(m2[0]);
+            var r2str = await aiChat([
+                {role:'system', content:'Output ONLY a JSON array, no markdown.'},
+                {role:'user',   content:'5 multiple-choice questions about "' + ch.title + '" from "' + S.title + '".\n[{"q":"...","opts":["A","B","C","D"],"ans":0,"exp":"..."}]'}
+            ], 0.2);
+            qs = extractQs(r2str);
         } catch(e2) {}
     }
 
-    if (!qs || qs.length < 4) {
-        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Parse Questions</h3><p>Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
+    if (!qs || !qs.length) {
+        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>The AI returned an unexpected format. Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
         return;
     }
 
-    qs = qs.slice(0, 20);
     S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
     renderTestQ(0);
 }
@@ -557,7 +632,10 @@ function renderTestQ(idx) {
     modal.querySelectorAll('.std-test-opt').forEach(function (btn) {
         btn.addEventListener('click', function () { handleAnswer(idx, parseInt(btn.dataset.i)); });
     });
-    setTimeout(function () { var q_el = modal.querySelector('.std-test-q'); if (q_el) renderMath(q_el); }, 80);
+    setTimeout(function () {
+        var inner = modal.querySelector('.std-test-inner');
+        if (inner) renderMath(inner);
+    }, 80);
 }
 
 function handleAnswer(qIdx, sel) {
@@ -574,7 +652,7 @@ function handleAnswer(qIdx, sel) {
         var fb = document.createElement('div');
         fb.className = 'std-test-fb ' + (ok ? 'correct' : 'wrong');
         fb.innerHTML = (ok ? '✅ Correct!' : '❌ Wrong. Correct: <strong>' + ['A','B','C','D'][q.ans] + '</strong>') +
-            '<div class="std-test-exp-prev">' + esc((q.exp||'').slice(0,320)) + ((q.exp||'').length>320?'…':'') + '</div>';
+            '<div class="std-test-exp-prev">' + esc(q.exp||'') + '</div>';
         body.appendChild(fb);
         renderMath(fb);
     }
@@ -948,7 +1026,7 @@ function _doStartRecognition() {
             else interim += e.results[i][0].transcript;
         }
         VS._interimSnapshot = interim;
-        if (interim) summonShowInterim(interim);
+        if (interim) { summonShowInterim(interim); summonResetSilence(); }
         if (final) {
             VS.transcript += ' ' + final;
             VS._interimSnapshot = '';
@@ -998,7 +1076,7 @@ function summonResetSilence() {
         VS.transcript = ''; VS._interimSnapshot = '';
         summonShowInterim('');
         if (q) summonHandleQuery(q);
-    }, 1500);
+    }, 600);
 }
 
 function summonShowInterim(text) { summonSetTranscript(text); }
@@ -1040,6 +1118,7 @@ async function summonHandleQuery(q) {
         }
     }
 
+    vhAdd('user', q);
     summonSetTranscript(q); summonSetAiText('...'); summonSetState('thinking');
     summonStopListening(); summonStopQueue();
 
@@ -1075,6 +1154,7 @@ async function summonHandleQuery(q) {
         var fullText = await summonStreamResponse(messages);
         VS.lastExplanation = fullText;
         var historyText = fullText.replace(CHECKPOINT_PHRASE, '').trim();
+        vhAdd('ai', historyText);
         VS.history.push({role:'assistant', content:historyText});
         if (VS.history.length > 14) VS.history = VS.history.slice(-14);
         if (addCheckpoint) VS.waitingCheckpnt = true;
@@ -1090,10 +1170,13 @@ async function summonStreamResponse(messages) {
     var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
 
     if (!key) {
+        summonStopListening();
         var text = await aiChat(messages, 0.7);
         summonSetAiText(text); summonSpeakStream(text, VS.waitingCheckpnt); return text;
     }
 
+    // Stop user mic before streaming (prevents AI speech being picked up)
+    summonStopListening();
     var res = await fetch(GROQ_STREAM_URL, {
         method:'POST',
         headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + key},
@@ -1109,7 +1192,6 @@ async function summonStreamResponse(messages) {
     var reader = res.body.getReader(), decoder = new TextDecoder();
     var full = '', sentenceBuf = '';
     summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];
-    summonStartPassiveDetect();
 
     while (true) {
         var chunk = await reader.read();
@@ -1138,8 +1220,9 @@ async function summonStreamResponse(messages) {
 
     if (sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
     summonFlushQueue(function () {
-        VS.speakingQueue = false; _pvd.paused = false; VS._pausedQueue = [];
-        summonSetState('listening'); summonStartListening();
+        VS.speakingQueue = false;
+        summonSetState('listening');
+        setTimeout(function () { summonStartListening(); }, 400);
     });
     return full;
 }
@@ -1191,11 +1274,12 @@ function summonSpeakStream(text, isCheckpoint) {
     var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
     VS.speakingQueue = true;
     VS.sentenceQueue = sentences.map(function (s) { return s.trim(); }).filter(Boolean);
-    summonStartPassiveDetect(); summonRunQueue();
+    summonRunQueue();
     summonFlushQueue(function () {
         VS.speakingQueue = false;
         if (isCheckpoint) VS.waitingCheckpnt = true;
-        summonSetState('listening'); summonStartListening();
+        summonSetState('listening');
+        setTimeout(function () { summonStartListening(); }, 400);
     });
 }
 
@@ -1253,6 +1337,20 @@ function injectSummonStyles() {
         '#std-summon-send{background:#7c3aed;border:none;border-radius:50%;color:#fff;font-size:1rem;width:42px;height:42px;cursor:pointer;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}',
         '#std-summon-send:hover{background:#6d28d9}',
         '@media(max-width:480px){#std-summon-fab{bottom:14px!important;right:14px!important}#std-summon-big-orb{width:100px;height:100px;font-size:2.3rem}#std-summon-ai-text,#std-summon-transcript{font-size:.92rem}}',
+        '#std-vh-btn{position:absolute;top:18px;left:18px;background:rgba(255,255,255,.08);border:none;color:#c8c2f0;font-size:1.2rem;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;z-index:3}',
+        '#std-vh-btn:hover{background:rgba(255,255,255,.15)}',
+        '#std-vh-btn.active{background:rgba(139,92,246,.4);color:#fff}',
+        '#std-vh-panel{position:absolute;top:64px;left:18px;width:min(340px,88vw);max-height:54vh;overflow-y:auto;background:rgba(8,6,24,.97);border:1px solid rgba(139,92,246,.35);border-radius:14px;padding:10px 10px 14px;z-index:4;box-shadow:0 8px 40px rgba(0,0,0,.65);backdrop-filter:blur(14px)}',
+        '#std-vh-panel::-webkit-scrollbar{width:4px}#std-vh-panel::-webkit-scrollbar-track{background:transparent}#std-vh-panel::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:2px}',
+        '.std-vh-msg{margin-bottom:8px;padding:7px 10px;border-radius:9px;font-size:.81rem;line-height:1.5}',
+        '.std-vh-user{background:rgba(99,102,241,.14);border-left:2px solid #6366f1}',
+        '.std-vh-ai{background:rgba(139,92,246,.1);border-left:2px solid #8b5cf6}',
+        '.std-vh-meta{font-size:.66rem;font-weight:700;color:#7c79b0;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em}',
+        '.std-vh-user .std-vh-meta{color:#818cf8}',
+        '.std-vh-txt{color:#d8d4f5;word-break:break-word}',
+        '.std-vh-empty{color:#6b6a8c;font-size:.8rem;text-align:center;padding:18px 0}',
+        '.std-stream-cursor{display:inline-block;animation:std-blink .65s step-end infinite;color:#6366f1;font-weight:900;margin-left:1px}',
+        '@keyframes std-blink{0%,100%{opacity:1}50%{opacity:0}}',
     ].join('');
     document.head.appendChild(s);
 }
@@ -1270,6 +1368,8 @@ function injectSummonUI() {
     overlay.setAttribute('data-state', 'idle');
     overlay.innerHTML = [
         '<button id="std-summon-close">&#x2715;</button>',
+        '<button id="std-vh-btn" title="Conversation history">&#9776;</button>',
+        '<div id="std-vh-panel" style="display:none"></div>',
         '<div id="std-summon-big-orb">',
           '<div class="sorb-ring r1"></div>',
           '<div class="sorb-ring r2"></div>',
@@ -1286,6 +1386,7 @@ function injectSummonUI() {
     ].join('');
     document.body.appendChild(overlay);
     document.getElementById('std-summon-close').addEventListener('click', summonHide);
+    document.getElementById('std-vh-btn').addEventListener('click', vhToggle);
     document.getElementById('std-summon-send').addEventListener('click', summonSendText);
     document.getElementById('std-summon-text').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') summonSendText();
@@ -1342,6 +1443,37 @@ function summonHide() {
     var overlay = document.getElementById('std-summon-overlay');
     if (overlay) overlay.classList.remove('open');
     summonSetState('idle');
+}
+
+/* ── VOICE CONVERSATION HISTORY ─────────────────────────────── */
+var VH = { log: [] };
+
+function vhAdd(role, text) {
+    VH.log.push({ role: role, text: text, time: new Date() });
+    if (VH.log.length > 60) VH.log = VH.log.slice(-60);
+    vhRenderDropdown();
+}
+
+function vhRenderDropdown() {
+    var panel = document.getElementById('std-vh-panel');
+    if (!panel || panel.style.display === 'none') return;
+    panel.innerHTML = VH.log.length ? VH.log.map(function (m) {
+        var t = m.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        var cls = m.role === 'user' ? 'std-vh-user' : 'std-vh-ai';
+        var lbl = m.role === 'user' ? '🎙 You' : '✶ AI';
+        return '<div class="std-vh-msg ' + cls + '"><div class="std-vh-meta">' + lbl + ' · ' + t + '</div><div class="std-vh-txt">' + esc(m.text) + '</div></div>';
+    }).join('') : '<div class="std-vh-empty">No conversation yet — start talking!</div>';
+    panel.scrollTop = panel.scrollHeight;
+}
+
+function vhToggle() {
+    var panel = document.getElementById('std-vh-panel');
+    var btn   = document.getElementById('std-vh-btn');
+    if (!panel) return;
+    var open = panel.style.display !== 'none';
+    panel.style.display = open ? 'none' : 'block';
+    if (btn) btn.classList.toggle('active', !open);
+    if (!open) vhRenderDropdown();
 }
 
 /* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
