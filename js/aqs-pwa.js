@@ -7,15 +7,10 @@
     var isInStandalone = ('standalone' in navigator && navigator.standalone) ||
                          window.matchMedia('(display-mode: standalone)').matches;
 
-    /* ── Register service worker ── */
+    /* ── Service worker removed — unregister any old SW so visitors get fresh pages ── */
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', function () {
-            var cfg     = window.DTS_CONFIG || {};
-            var swUrl   = (cfg.sw_url   && cfg.sw_url.length)   ? cfg.sw_url   : '/aqs-sw.js';
-            var swScope = (cfg.sw_scope && cfg.sw_scope.length) ? cfg.sw_scope : '/';
-            navigator.serviceWorker.register(swUrl, { scope: swScope })
-                .then(function (reg) { console.log('[XZILY PWA] SW registered:', reg.scope); })
-                .catch(function (err) { console.warn('[XZILY PWA] SW error:', err); });
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister(); });
         });
     }
 
