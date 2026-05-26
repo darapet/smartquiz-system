@@ -787,7 +787,7 @@ function esc(s) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FLOATING VOICE AI SUMMON — built into study page
+   FLOATING VOICE AI SUMMON v3 — streaming · instant interrupt · interactive
    ══════════════════════════════════════════════════════════════ */
 
 function injectSummonStyles() {
@@ -918,10 +918,17 @@ function summonHide() {
     summonSetState('idle');
 }
 
+/* ── EXTENDED STATE ─────────────────────────────────────────── */
+/* VS.responseCount   — how many AI turns done (for checkpoints)  */
+/* VS.waitingCheckpnt — true when AI just asked "are you getting it?" */
+/* VS.lastExplanation — last AI response text (for re-explaining) */
+/* VS.sentenceQueue   — sentences waiting to be spoken            */
+/* VS.speakingQueue   — true while sentence queue is running      */
+
 function summonStartListening() {
     if (VS.listening) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SR) { summonAddMsg('sys', '⚠ Voice not supported. Use the text box.'); return; }
+    if (!SR) { summonAddMsg('sys', '⚠ Voice not supported. Use the text box below.'); return; }
     var rec = new SR();
     rec.lang = 'en-US';
     rec.continuous = true;
@@ -936,10 +943,13 @@ function summonStartListening() {
             if (e.results[i].isFinal) final += e.results[i][0].transcript;
             else interim += e.results[i][0].transcript;
         }
+        /* ANY speech → instantly stop AI speaking */
+        if ((interim.trim() || final.trim()) && VS.speakingQueue) {
+            summonStopQueue();
+        }
         if (final) {
             VS.transcript += ' ' + final;
             summonShowInterim('');
-            if (VS.speaking) summonStopSpeaking();
         } else {
             summonShowInterim(interim);
         }
@@ -948,13 +958,15 @@ function summonStartListening() {
 
     rec.onend = function() {
         VS.listening = false;
-        if (VS.active && !VS.speaking) setTimeout(function() { if (VS.active) summonStartListening(); }, 300);
+        if (VS.active && !VS.speakingQueue) {
+            setTimeout(function() { if (VS.active) summonStartListening(); }, 250);
+        }
     };
 
     rec.onerror = function(e) {
         VS.listening = false;
         if ((e.error === 'no-speech' || e.error === 'audio-capture') && VS.active) {
-            setTimeout(function() { summonStartListening(); }, 500);
+            setTimeout(function() { summonStartListening(); }, 400);
         }
     };
 
@@ -975,7 +987,7 @@ function summonResetSilence() {
         VS.transcript = '';
         summonShowInterim('');
         if (q) summonHandleQuery(q);
-    }, 10000);
+    }, 8000); /* 8s silence → fire */
 }
 
 function summonShowInterim(text) {
@@ -996,37 +1008,205 @@ function summonSendText() {
     summonHandleQuery(q);
 }
 
+/* ── CHECKPOINT: yes/no detection ───────────────────────────── */
+function summonIsYes(q) { return /\b(yes|yeah|yep|yea|sure|ok|okay|correct|right|go on|continue|i get|i got|understood|alright)\b/i.test(q); }
+function summonIsNo(q)  { return /\b(no|nope|nah|don'?t|not really|i don'?t|confused|again|repeat|explain|what|huh)\b/i.test(q); }
+
 async function summonHandleQuery(q) {
+    /* Handle checkpoint yes/no */
+    if (VS.waitingCheckpnt) {
+        VS.waitingCheckpnt = false;
+        if (summonIsNo(q)) {
+            summonAddMsg('user', q);
+            var reExp = 'Let me explain that again differently. ' + (VS.lastExplanation || 'Sure, let me break it down once more.');
+            summonAddMsg('ai', reExp);
+            return summonSpeakStream(reExp, true);
+        } else if (summonIsYes(q)) {
+            summonAddMsg('user', q);
+            var cont = 'Great! Let\'s keep going. What would you like to know next?';
+            summonAddMsg('ai', cont);
+            return summonSpeakStream(cont, false);
+        }
+    }
+
     summonAddMsg('user', q);
     summonSetState('thinking');
     summonStopListening();
+    summonStopQueue();
 
     var context = '';
-    if (S.title) context += 'The user is currently studying: "' + S.title + '". ';
-    if (S.chapters[S.activeIdx]) context += 'Current chapter: "' + S.chapters[S.activeIdx].title + '". ';
-    if (S.activeIdx >= 0 && S.cache[S.activeIdx]) context += 'Chapter content excerpt: ' + S.cache[S.activeIdx].slice(0, 800) + ' ';
+    if (S.title) context += 'The user is studying: "' + S.title + '". ';
+    if (S.chapters && S.chapters[S.activeIdx]) context += 'Current chapter: "' + S.chapters[S.activeIdx].title + '". ';
+    if (S.activeIdx >= 0 && S.cache && S.cache[S.activeIdx]) context += 'Excerpt: ' + S.cache[S.activeIdx].slice(0, 600) + ' ';
 
     VS.history.push({ role: 'user', content: q });
-    if (VS.history.length > 16) VS.history = VS.history.slice(-16);
+    if (VS.history.length > 14) VS.history = VS.history.slice(-14);
 
-    var messages = [
-        { role: 'system', content: 'You are XZILY AI, a helpful, friendly voice study assistant. ' + context + 'Give clear, natural spoken answers. Keep responses under 100 words unless the user asks for detail. Use plain conversational sentences — no markdown, no bullet symbols.' }
-    ].concat(VS.history);
+    VS.responseCount = (VS.responseCount || 0) + 1;
+    var addCheckpoint = (VS.responseCount % 3 === 0);
+
+    var sysPrompt = 'You are XZILY AI, a friendly voice tutor. ' + context +
+        'Speak naturally — no markdown, no bullet symbols, no asterisks. Plain sentences only. ' +
+        'Keep answers under 120 words unless asked for detail. ' +
+        (addCheckpoint ? 'At the very end of your response add exactly: "Does that make sense? Say yes to continue or no if you want me to explain again."' : '');
+
+    var messages = [{ role: 'system', content: sysPrompt }].concat(VS.history);
+
+    /* Create streaming AI message bubble */
+    var bubble = summonAddStreamBubble();
 
     try {
-        var text = await aiChat(messages, 0.7);
-        VS.history.push({ role: 'assistant', content: text });
-        if (VS.history.length > 16) VS.history = VS.history.slice(-16);
-        summonAddMsg('ai', text);
-        summonSpeak(text, function() {
-            summonSetState('listening');
-            summonStartListening();
-        });
+        var fullText = await summonStreamResponse(messages, bubble);
+        VS.lastExplanation = fullText;
+        VS.history.push({ role: 'assistant', content: fullText });
+        if (VS.history.length > 14) VS.history = VS.history.slice(-14);
+        if (addCheckpoint) VS.waitingCheckpnt = true;
     } catch(e) {
-        summonAddMsg('sys', '⚠ ' + e.message);
+        bubble.textContent = '⚠ ' + e.message;
         summonSetState('listening');
         summonStartListening();
     }
+}
+
+/* ── STREAMING FETCH + SENTENCE-BY-SENTENCE SPEECH ─────────── */
+async function summonStreamResponse(messages, bubble) {
+    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+
+    /* If no Groq key available, fall back to non-streaming */
+    if (!key) {
+        var text = await aiChat(messages, 0.7);
+        bubble.textContent = text;
+        summonSpeakStream(text, VS.waitingCheckpnt);
+        return text;
+    }
+
+    var res = await fetch(GROQ_STREAM_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+        body: JSON.stringify({ model: GROQ_MODEL, messages: messages, temperature: 0.7, max_tokens: 400, stream: true }),
+        signal: AbortSignal.timeout(30000)
+    });
+
+    if (!res.ok) {
+        /* fallback */
+        var text2 = await aiChat(messages, 0.7);
+        bubble.textContent = text2;
+        summonSpeakStream(text2, VS.waitingCheckpnt);
+        return text2;
+    }
+
+    var reader = res.body.getReader();
+    var decoder = new TextDecoder();
+    var full = '';
+    var sentenceBuf = '';
+    summonSetState('speaking');
+    VS.speakingQueue = true;
+    VS.sentenceQueue = [];
+
+    while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        var lines = decoder.decode(chunk.value, { stream: true }).split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line || line === 'data: [DONE]') continue;
+            if (line.startsWith('data: ')) {
+                try {
+                    var delta = JSON.parse(line.slice(6));
+                    var token = (delta.choices[0].delta.content) || '';
+                    full += token;
+                    sentenceBuf += token;
+                    bubble.textContent = full;
+                    var wrap = document.getElementById('std-summon-msgs');
+                    if (wrap) wrap.scrollTop = wrap.scrollHeight;
+
+                    /* Speak sentence as soon as it ends */
+                    var sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                    while (sentenceEnd !== -1) {
+                        var sentence = sentenceBuf.slice(0, sentenceEnd + 1).trim();
+                        sentenceBuf = sentenceBuf.slice(sentenceEnd + 1);
+                        if (sentence) summonQueueSentence(sentence);
+                        sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                    }
+                } catch(e) {}
+            }
+        }
+    }
+
+    /* Speak any remaining text */
+    if (sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
+    summonFlushQueue(function() {
+        VS.speakingQueue = false;
+        summonSetState('listening');
+        summonStartListening();
+    });
+
+    return full;
+}
+
+/* ── SENTENCE QUEUE ─────────────────────────────────────────── */
+function summonQueueSentence(text) {
+    VS.sentenceQueue = VS.sentenceQueue || [];
+    VS.sentenceQueue.push(text);
+    if (!VS._queueRunning) summonRunQueue();
+}
+
+function summonRunQueue() {
+    if (!VS.sentenceQueue || !VS.sentenceQueue.length) {
+        VS._queueRunning = false;
+        return;
+    }
+    VS._queueRunning = true;
+    var sentence = VS.sentenceQueue.shift();
+    summonSpeakOne(sentence, function() {
+        if (VS.speakingQueue) summonRunQueue();
+        else VS._queueRunning = false;
+    });
+}
+
+function summonFlushQueue(onAllDone) {
+    var check = setInterval(function() {
+        if (!VS._queueRunning && (!VS.sentenceQueue || !VS.sentenceQueue.length)) {
+            clearInterval(check);
+            if (onAllDone) onAllDone();
+        }
+    }, 150);
+}
+
+function summonStopQueue() {
+    VS.speakingQueue = false;
+    VS._queueRunning = false;
+    VS.sentenceQueue = [];
+    VS.speaking = false;
+    if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
+}
+
+/* ── SPEAK ONE SENTENCE ─────────────────────────────────────── */
+function summonSpeakOne(text, onDone) {
+    if (!VS.synth || !text) { if (onDone) onDone(); return; }
+    summonPickVoice();
+    VS.speaking = true;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.08; u.pitch = 1.0; u.volume = 1.0;
+    if (VS.voice) u.voice = VS.voice;
+    u.onend = function() { VS.speaking = false; if (onDone) onDone(); };
+    u.onerror = function() { VS.speaking = false; if (onDone) onDone(); };
+    VS.synth.speak(u);
+}
+
+/* ── SPEAK FULL TEXT (non-streaming fallback) ───────────────── */
+function summonSpeakStream(text, isCheckpoint) {
+    var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+    VS.speakingQueue = true;
+    VS.sentenceQueue = sentences.map(function(s) { return s.trim(); }).filter(Boolean);
+    summonRunQueue();
+    summonFlushQueue(function() {
+        VS.speakingQueue = false;
+        if (isCheckpoint) VS.waitingCheckpnt = true;
+        summonSetState('listening');
+        summonStartListening();
+    });
 }
 
 function initSummonVoices() {
@@ -1038,18 +1218,19 @@ function initSummonVoices() {
 function summonPickVoice() {
     if (VS.voice) return;
     var voices = VS.synth ? VS.synth.getVoices() : [];
-    var preferred = ['Google US English', 'Microsoft Guy Online (Natural) - English (United States)', 'Samantha', 'Google UK English Male', 'Daniel'];
+    var preferred = ['Google US English','Microsoft Guy Online (Natural) - English (United States)','Samantha','Google UK English Male','Daniel'];
     for (var i = 0; i < preferred.length; i++) {
-        var v = voices.find(function(vv) { return vv.name === preferred[i]; });
-        if (v) { VS.voice = v; return; }
+        var found = voices.find(function(vv) { return vv.name === preferred[i]; });
+        if (found) { VS.voice = found; return; }
     }
     var en = voices.find(function(vv) { return vv.lang && vv.lang.startsWith('en'); });
     if (en) VS.voice = en;
 }
 
 function summonSpeak(text, onDone) {
+    /* Used only for the welcome greeting */
     if (!VS.synth) { if (onDone) onDone(); return; }
-    summonStopSpeaking();
+    if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
     summonPickVoice();
     summonSetState('speaking');
     VS.speaking = true;
@@ -1060,20 +1241,28 @@ function summonSpeak(text, onDone) {
     VS.synth.speak(u);
 }
 
-function summonStopSpeaking() {
-    VS.speaking = false;
-    if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
-}
-
 function summonAddMsg(role, text) {
     var wrap = document.getElementById('std-summon-msgs');
     var interim = document.getElementById('std-summon-interim');
     if (!wrap) return;
     var div = document.createElement('div');
-    div.className = 'summon-msg summon-msg-' + role;
+    div.className = 'summon-msg summon-msg-' + (role === 'sys' ? 'sys' : role);
     div.textContent = text;
     wrap.insertBefore(div, interim);
     wrap.scrollTop = wrap.scrollHeight;
+    return div;
+}
+
+function summonAddStreamBubble() {
+    var wrap = document.getElementById('std-summon-msgs');
+    var interim = document.getElementById('std-summon-interim');
+    if (!wrap) return { textContent: '' };
+    var div = document.createElement('div');
+    div.className = 'summon-msg summon-msg-ai';
+    div.textContent = '…';
+    wrap.insertBefore(div, interim);
+    wrap.scrollTop = wrap.scrollHeight;
+    return div;
 }
 
 })();
