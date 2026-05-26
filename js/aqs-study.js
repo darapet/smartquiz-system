@@ -1,18 +1,15 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload
    ─────────────────────────────────────────────────────────
-   CONFIG: Before loading this script, set your Groq key in HTML:
-     <script>window.AQS_CONFIG = { groqKey: 'gsk_...' };</script>
+   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
    ─────────────────────────────────────────────────────────── */
 (function () {
 'use strict';
 
-/* ── CONFIG (set via window.AQS_CONFIG in your HTML) ────────── */
-var CFG      = window.AQS_CONFIG || {};
-var GROQ_KEY = CFG.groqKey || '';
+/* ── CONFIG ─────────────────────────────────────────────────── */
+var CFG        = window.AQS_CONFIG || {};
 var GROQ_MODEL = CFG.groqModel || 'llama-3.3-70b-versatile';
 
 /* ── CONSTANTS ─────────────────────────────────────────────── */
-var GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions';
 var POLL_URL  = 'https://text.pollinations.ai/openai';
 var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
 var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
@@ -29,6 +26,13 @@ var S = {
     aiReady: false,
 };
 
+/* ── SUMMON STATE ───────────────────────────────────────────── */
+var VS = {
+    active: false, listening: false, speaking: false,
+    recognition: null, synth: window.speechSynthesis || null,
+    silenceTimer: null, transcript: '', history: [], voice: null,
+};
+
 /* ── INIT ───────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', function () {
     injectKaTeX();
@@ -37,6 +41,9 @@ document.addEventListener('DOMContentLoaded', function () {
     setupEvents();
     renderHistory();
     checkAI();
+    injectSummonStyles();
+    injectSummonUI();
+    initSummonVoices();
 });
 
 /* ── KATEX ──────────────────────────────────────────────────── */
@@ -383,7 +390,6 @@ async function loadChapterContent(idx) {
                 { role: 'user', content: 'Based on this document, write a detailed educational explanation of the section "' + ch.title + '" from "' + S.title + '".\n\nDocument:\n' + S.uploadedContent.slice(0, 10000) + '\n\nWrite 400-700 words with clear explanations, examples, and key points. Include LaTeX math where relevant.' }
             ], 0.6);
         } else if (S.source === 'img' && S.uploadedBase64) {
-            /* For image uploads use aiChatVision via Pollinations */
             text = await aiChatVision([
                 { role: 'system', content: 'You are an expert tutor. Write clear educational content with LaTeX math where relevant.' },
                 { role: 'user', content: [
@@ -579,51 +585,36 @@ function showTestResults() {
 }
 
 /* ── AI HELPERS ─────────────────────────────────────────────── */
-/* Sleeps for ms milliseconds */
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-/* Primary: Groq (if key configured). Fallback: Pollinations.
-   Retries up to 3 times on 429 with increasing delay.         */
+/* Primary: window.groqFetch() — uses keys from Firebase admin (aqs-groq-key.js).
+   Fallback: Pollinations (free, no key needed).                               */
 async function aiChat(messages, temp) {
-    /* ── Groq ── */
-    if (GROQ_KEY) {
-        for (var attempt = 0; attempt < 3; attempt++) {
-            try {
-                var rg = await fetch(GROQ_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + GROQ_KEY },
-                    body: JSON.stringify({ model: GROQ_MODEL, messages: messages, temperature: temp || 0.7, max_tokens: 3000 }),
-                    signal: AbortSignal.timeout(60000)
-                });
-                if (rg.status === 429) {
-                    /* Rate limited — back off and retry */
-                    var wait = (attempt + 1) * 2000;
-                    await sleep(wait);
-                    continue;
-                }
-                if (!rg.ok) {
-                    var errTxt = '';
-                    try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e){}
-                    throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
-                }
-                var dg = await rg.json();
-                if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
-                return dg.choices[0].message.content || '';
-            } catch (e) {
-                if (attempt < 2 && (e.name === 'AbortError' || (e.message && e.message.includes('429')))) {
-                    await sleep((attempt + 1) * 1500);
-                    continue;
-                }
-                /* Last attempt or non-retryable — fall through to Pollinations */
-                break;
+    /* ── Groq via shared key manager (aqs-groq-key.js) ── */
+    if (typeof window.groqFetch === 'function') {
+        try {
+            var rg = await window.groqFetch(
+                { model: GROQ_MODEL, messages: messages, temperature: temp || 0.7, max_tokens: 3000 },
+                { signal: AbortSignal.timeout(60000) }
+            );
+            if (!rg.ok) {
+                var errTxt = '';
+                try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e){}
+                throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
             }
+            var dg = await rg.json();
+            if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
+            return dg.choices[0].message.content || '';
+        } catch (e) {
+            /* Fall through to Pollinations fallback */
+            console.warn('[aqs-study] Groq failed, using fallback:', e.message);
         }
     }
 
     /* ── Pollinations fallback ── */
     for (var pa = 0; pa < 2; pa++) {
         try {
-            var rp = await fetch(POLL_URL, {
+            var rp = await fetch('https://text.pollinations.ai/openai', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
@@ -635,7 +626,7 @@ async function aiChat(messages, temp) {
             if (!dp.choices || !dp.choices[0]) throw new Error('No AI response');
             return dp.choices[0].message.content || '';
         } catch (e) {
-            if (pa === 0 && (rp && rp.status === 429)) { await sleep(3000); continue; }
+            if (pa < 1) { await sleep(3000); continue; }
             throw e;
         }
     }
@@ -644,7 +635,7 @@ async function aiChat(messages, temp) {
 
 /* Vision — uses Pollinations (supports image_url content type) */
 async function aiChatVision(messages, temp) {
-    var r = await fetch(POLL_URL, {
+    var r = await fetch('https://text.pollinations.ai/openai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ model: 'openai', messages: messages, temperature: temp || 0.7, max_tokens: 2000 }),
@@ -659,7 +650,8 @@ async function aiChatVision(messages, temp) {
 function checkAI() {
     var badge = document.querySelector('.std-groq-badge');
     if (badge) {
-        if (GROQ_KEY) {
+        var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
+        if (hasKey) {
             badge.className = 'std-groq-badge ok';
             badge.textContent = '✓ Groq Ready';
         } else {
@@ -792,6 +784,296 @@ function renderParagraphs(text) {
 
 function esc(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FLOATING VOICE AI SUMMON — built into study page
+   ══════════════════════════════════════════════════════════════ */
+
+function injectSummonStyles() {
+    if (document.getElementById('std-summon-css')) return;
+    var s = document.createElement('style');
+    s.id = 'std-summon-css';
+    s.textContent = [
+        '#std-summon-root{position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;align-items:flex-end;gap:10px;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}',
+        '#std-summon-orb{width:58px;height:58px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:transform .2s;box-shadow:0 0 18px 4px rgba(139,92,246,.45);animation:summon-idle 3s ease-in-out infinite;flex-shrink:0}',
+        '#std-summon-orb:hover{transform:scale(1.09)}',
+        '#std-summon-orb-icon{color:#fff;font-size:1.55rem;user-select:none;pointer-events:none}',
+        '.summon-ring{position:absolute;border-radius:50%;border:2px solid rgba(139,92,246,.3);top:50%;left:50%;transform:translate(-50%,-50%);opacity:0;pointer-events:none}',
+        '.summon-ring.r1{width:76px;height:76px}',
+        '.summon-ring.r2{width:96px;height:96px}',
+        '.summon-ring.r3{width:118px;height:118px}',
+        '@keyframes summon-idle{0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.35)}50%{box-shadow:0 0 30px 10px rgba(139,92,246,.6)}}',
+        '#std-summon-root[data-state=listening] #std-summon-orb{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490);box-shadow:0 0 24px 8px rgba(6,182,212,.6);animation:summon-listen 1.4s ease-in-out infinite}',
+        '@keyframes summon-listen{0%,100%{box-shadow:0 0 20px 5px rgba(6,182,212,.4)}50%{box-shadow:0 0 38px 14px rgba(6,182,212,.75)}}',
+        '#std-summon-root[data-state=listening] .summon-ring{animation:summon-ring-out 2s ease-out infinite;border-color:rgba(6,182,212,.4);opacity:1}',
+        '#std-summon-root[data-state=listening] .r1{animation-delay:0s}',
+        '#std-summon-root[data-state=listening] .r2{animation-delay:.5s}',
+        '#std-summon-root[data-state=listening] .r3{animation-delay:1s}',
+        '@keyframes summon-ring-out{0%{transform:translate(-50%,-50%) scale(.85);opacity:.6}100%{transform:translate(-50%,-50%) scale(1.35);opacity:0}}',
+        '#std-summon-root[data-state=thinking] #std-summon-orb{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309);box-shadow:0 0 22px 7px rgba(245,158,11,.55);animation:summon-think .9s ease-in-out infinite alternate}',
+        '@keyframes summon-think{0%{transform:scale(1)}100%{transform:scale(1.06)}}',
+        '#std-summon-root[data-state=speaking] #std-summon-orb{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46);box-shadow:0 0 22px 7px rgba(16,185,129,.55);animation:summon-speak .55s ease-in-out infinite alternate}',
+        '@keyframes summon-speak{0%{transform:scale(1);box-shadow:0 0 18px 4px rgba(16,185,129,.4)}100%{transform:scale(1.1);box-shadow:0 0 38px 14px rgba(16,185,129,.7)}}',
+        '#std-summon-root[data-state=speaking] .summon-ring{animation:summon-ring-out .85s ease-in-out infinite alternate;border-color:rgba(16,185,129,.5);opacity:1}',
+        '#std-summon-panel{display:none;flex-direction:column;width:310px;max-height:440px;background:#0e0c20;border:1.5px solid #342d62;border-radius:16px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.65);animation:summon-panel-in .2s ease-out}',
+        '#std-summon-root.open #std-summon-panel{display:flex}',
+        '@keyframes summon-panel-in{from{opacity:0;transform:translateY(8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}',
+        '#std-summon-panel-hdr{display:flex;align-items:center;gap:8px;padding:10px 13px;background:#141128;border-bottom:1px solid #252048;flex-shrink:0}',
+        '#std-summon-dot{width:8px;height:8px;border-radius:50%;background:#8b5cf6;flex-shrink:0;transition:background .3s}',
+        '#std-summon-root[data-state=listening] #std-summon-dot{background:#06b6d4;animation:summon-dot .9s ease-in-out infinite}',
+        '#std-summon-root[data-state=thinking]  #std-summon-dot{background:#f59e0b;animation:summon-dot .45s ease-in-out infinite}',
+        '#std-summon-root[data-state=speaking]  #std-summon-dot{background:#10b981;animation:summon-dot .55s ease-in-out infinite alternate}',
+        '@keyframes summon-dot{0%,100%{opacity:1}50%{opacity:.25}}',
+        '#std-summon-state-txt{flex:1;font-size:.78rem;font-weight:700;color:#eeeaff;letter-spacing:.02em}',
+        '#std-summon-close{background:none;border:none;color:#8c84b8;cursor:pointer;font-size:.88rem;padding:2px 5px;border-radius:4px;transition:color .15s,background .15s}',
+        '#std-summon-close:hover{color:#eeeaff;background:#1c1837}',
+        '#std-summon-msgs{flex:1;overflow-y:auto;padding:11px 12px;display:flex;flex-direction:column;gap:7px;min-height:100px}',
+        '#std-summon-msgs::-webkit-scrollbar{width:3px}',
+        '#std-summon-msgs::-webkit-scrollbar-thumb{background:#342d62;border-radius:2px}',
+        '.summon-msg{max-width:88%;padding:7px 11px;border-radius:11px;font-size:.81rem;line-height:1.55;word-break:break-word}',
+        '.summon-msg-user{align-self:flex-end;background:#3b1f8c;color:#ede9fe;border-bottom-right-radius:3px}',
+        '.summon-msg-ai{align-self:flex-start;background:#141128;color:#c8c2f0;border:1px solid #252048;border-bottom-left-radius:3px}',
+        '.summon-msg-sys{align-self:center;background:none;color:#8c84b8;font-size:.71rem;font-style:italic}',
+        '#std-summon-interim{align-self:flex-end;font-size:.73rem;color:#06b6d4;font-style:italic;padding:2px 6px;min-height:16px}',
+        '#std-summon-input-row{display:flex;gap:6px;padding:8px 11px;border-top:1px solid #252048;background:#141128;flex-shrink:0}',
+        '#std-summon-text{flex:1;background:#0e0c20;border:1.5px solid #342d62;border-radius:7px;color:#eeeaff;font-size:.8rem;padding:6px 10px;outline:none;font-family:inherit;transition:border-color .2s}',
+        '#std-summon-text:focus{border-color:#8b5cf6}',
+        '#std-summon-text::placeholder{color:#8c84b8}',
+        '#std-summon-send{background:#7c3aed;border:none;border-radius:7px;color:#fff;font-size:.95rem;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}',
+        '#std-summon-send:hover{background:#6d28d9}',
+        '@media(max-width:480px){#std-summon-root{bottom:14px;right:10px}#std-summon-panel{width:calc(100vw - 20px)}}',
+    ].join('');
+    document.head.appendChild(s);
+}
+
+function injectSummonUI() {
+    if (document.getElementById('std-summon-root')) return;
+    var wrap = document.createElement('div');
+    wrap.id = 'std-summon-root';
+    wrap.setAttribute('data-state', 'idle');
+    wrap.innerHTML = [
+        '<div id="std-summon-panel">',
+          '<div id="std-summon-panel-hdr">',
+            '<span id="std-summon-dot"></span>',
+            '<span id="std-summon-state-txt">XZILY AI</span>',
+            '<button id="std-summon-close">&#x2715;</button>',
+          '</div>',
+          '<div id="std-summon-msgs"><div id="std-summon-interim"></div></div>',
+          '<div id="std-summon-input-row">',
+            '<input id="std-summon-text" type="text" placeholder="Or type here…" autocomplete="off">',
+            '<button id="std-summon-send">&#x27A4;</button>',
+          '</div>',
+        '</div>',
+        '<div id="std-summon-orb">',
+          '<div class="summon-ring r1"></div>',
+          '<div class="summon-ring r2"></div>',
+          '<div class="summon-ring r3"></div>',
+          '<span id="std-summon-orb-icon">&#x2726;</span>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(wrap);
+
+    document.getElementById('std-summon-orb').addEventListener('click', summonToggle);
+    document.getElementById('std-summon-close').addEventListener('click', summonHide);
+    document.getElementById('std-summon-send').addEventListener('click', summonSendText);
+    document.getElementById('std-summon-text').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') summonSendText();
+    });
+}
+
+function summonSetState(state) {
+    var root = document.getElementById('std-summon-root');
+    var txt  = document.getElementById('std-summon-state-txt');
+    if (!root) return;
+    root.setAttribute('data-state', state);
+    var labels = { idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…' };
+    if (txt) txt.textContent = labels[state] || 'XZILY AI';
+}
+
+function summonToggle() {
+    if (VS.active) summonHide(); else summonShow();
+}
+
+function summonShow() {
+    VS.active = true;
+    var root = document.getElementById('std-summon-root');
+    if (root) root.classList.add('open');
+    summonSetState('speaking');
+    var greeting = S.title
+        ? 'Hello! I am XZILY AI. You are studying ' + S.title + '. Ask me anything!'
+        : 'Hello! I am XZILY AI. How can I help you study today?';
+    summonSpeak(greeting, function() {
+        summonSetState('listening');
+        summonStartListening();
+    });
+}
+
+function summonHide() {
+    VS.active = false;
+    summonStopListening();
+    summonStopSpeaking();
+    var root = document.getElementById('std-summon-root');
+    if (root) root.classList.remove('open');
+    summonSetState('idle');
+}
+
+function summonStartListening() {
+    if (VS.listening) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { summonAddMsg('sys', '⚠ Voice not supported. Use the text box.'); return; }
+    var rec = new SR();
+    rec.lang = 'en-US';
+    rec.continuous = true;
+    rec.interimResults = true;
+    VS.recognition = rec;
+    VS.listening = true;
+    VS.transcript = '';
+
+    rec.onresult = function(e) {
+        var interim = '', final = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) final += e.results[i][0].transcript;
+            else interim += e.results[i][0].transcript;
+        }
+        if (final) {
+            VS.transcript += ' ' + final;
+            summonShowInterim('');
+            if (VS.speaking) summonStopSpeaking();
+        } else {
+            summonShowInterim(interim);
+        }
+        summonResetSilence();
+    };
+
+    rec.onend = function() {
+        VS.listening = false;
+        if (VS.active && !VS.speaking) setTimeout(function() { if (VS.active) summonStartListening(); }, 300);
+    };
+
+    rec.onerror = function(e) {
+        VS.listening = false;
+        if ((e.error === 'no-speech' || e.error === 'audio-capture') && VS.active) {
+            setTimeout(function() { summonStartListening(); }, 500);
+        }
+    };
+
+    try { rec.start(); } catch(err) { VS.listening = false; }
+    summonResetSilence();
+}
+
+function summonStopListening() {
+    clearTimeout(VS.silenceTimer);
+    VS.listening = false;
+    if (VS.recognition) { try { VS.recognition.stop(); } catch(e) {} VS.recognition = null; }
+}
+
+function summonResetSilence() {
+    clearTimeout(VS.silenceTimer);
+    VS.silenceTimer = setTimeout(function() {
+        var q = VS.transcript.trim();
+        VS.transcript = '';
+        summonShowInterim('');
+        if (q) summonHandleQuery(q);
+    }, 10000);
+}
+
+function summonShowInterim(text) {
+    var el = document.getElementById('std-summon-interim');
+    if (el) el.textContent = text ? '🎙 ' + text : '';
+}
+
+function summonSendText() {
+    var inp = document.getElementById('std-summon-text');
+    var q = (inp ? inp.value : '').trim();
+    if (!q) return;
+    if (inp) inp.value = '';
+    if (!VS.active) {
+        VS.active = true;
+        var root = document.getElementById('std-summon-root');
+        if (root) root.classList.add('open');
+    }
+    summonHandleQuery(q);
+}
+
+async function summonHandleQuery(q) {
+    summonAddMsg('user', q);
+    summonSetState('thinking');
+    summonStopListening();
+
+    var context = '';
+    if (S.title) context += 'The user is currently studying: "' + S.title + '". ';
+    if (S.chapters[S.activeIdx]) context += 'Current chapter: "' + S.chapters[S.activeIdx].title + '". ';
+    if (S.activeIdx >= 0 && S.cache[S.activeIdx]) context += 'Chapter content excerpt: ' + S.cache[S.activeIdx].slice(0, 800) + ' ';
+
+    VS.history.push({ role: 'user', content: q });
+    if (VS.history.length > 16) VS.history = VS.history.slice(-16);
+
+    var messages = [
+        { role: 'system', content: 'You are XZILY AI, a helpful, friendly voice study assistant. ' + context + 'Give clear, natural spoken answers. Keep responses under 100 words unless the user asks for detail. Use plain conversational sentences — no markdown, no bullet symbols.' }
+    ].concat(VS.history);
+
+    try {
+        var text = await aiChat(messages, 0.7);
+        VS.history.push({ role: 'assistant', content: text });
+        if (VS.history.length > 16) VS.history = VS.history.slice(-16);
+        summonAddMsg('ai', text);
+        summonSpeak(text, function() {
+            summonSetState('listening');
+            summonStartListening();
+        });
+    } catch(e) {
+        summonAddMsg('sys', '⚠ ' + e.message);
+        summonSetState('listening');
+        summonStartListening();
+    }
+}
+
+function initSummonVoices() {
+    if (!VS.synth) return;
+    VS.synth.getVoices();
+    if (VS.synth.onvoiceschanged !== undefined) VS.synth.onvoiceschanged = summonPickVoice;
+}
+
+function summonPickVoice() {
+    if (VS.voice) return;
+    var voices = VS.synth ? VS.synth.getVoices() : [];
+    var preferred = ['Google US English', 'Microsoft Guy Online (Natural) - English (United States)', 'Samantha', 'Google UK English Male', 'Daniel'];
+    for (var i = 0; i < preferred.length; i++) {
+        var v = voices.find(function(vv) { return vv.name === preferred[i]; });
+        if (v) { VS.voice = v; return; }
+    }
+    var en = voices.find(function(vv) { return vv.lang && vv.lang.startsWith('en'); });
+    if (en) VS.voice = en;
+}
+
+function summonSpeak(text, onDone) {
+    if (!VS.synth) { if (onDone) onDone(); return; }
+    summonStopSpeaking();
+    summonPickVoice();
+    summonSetState('speaking');
+    VS.speaking = true;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+    if (VS.voice) u.voice = VS.voice;
+    u.onend = u.onerror = function() { VS.speaking = false; if (onDone) onDone(); };
+    VS.synth.speak(u);
+}
+
+function summonStopSpeaking() {
+    VS.speaking = false;
+    if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
+}
+
+function summonAddMsg(role, text) {
+    var wrap = document.getElementById('std-summon-msgs');
+    var interim = document.getElementById('std-summon-interim');
+    if (!wrap) return;
+    var div = document.createElement('div');
+    div.className = 'summon-msg summon-msg-' + role;
+    div.textContent = text;
+    wrap.insertBefore(div, interim);
+    wrap.scrollTop = wrap.scrollHeight;
 }
 
 })();
