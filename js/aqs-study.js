@@ -46,7 +46,8 @@ document.addEventListener('DOMContentLoaded', function () {
     setupFileUpload();
     setupEvents();
     renderHistory();
-    checkAI();
+    /* FIX: delay checkAI so aqs-groq-key.js has time to async-load the key from Firebase */
+    setTimeout(checkAI, 2500);
     injectSummonStyles();
     injectSummonUI();
     initSummonVoices();
@@ -397,7 +398,8 @@ async function loadChapterContent(idx) {
         S.cache[idx] = text;
         showContent(idx, text);
     } catch(e) {
-        if (contentArea) contentArea.innerHTML = '<div class="std-content-empty"><p>⚠️ Could not load content: ' + esc(e.message) + '</p><button class="std-btn std-btn-primary" onclick="loadChapterContent(' + idx + ')">🔄 Retry</button></div>';
+        /* FIX: use window._stdRetry instead of bare loadChapterContent (which is not global) */
+        if (contentArea) contentArea.innerHTML = '<div class="std-content-empty"><p>⚠️ Could not load content: ' + esc(e.message) + '</p><button class="std-btn std-btn-primary" onclick="window._stdRetry(' + idx + ')">🔄 Retry</button></div>';
     }
 }
 
@@ -606,7 +608,7 @@ async function aiChat(messages, temp) {
             var dg = await rg.json();
             if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
             return dg.choices[0].message.content || '';
-        } catch(e) { /* fall through */ }
+        } catch(e) { /* fall through to free fallback */ }
     }
     for (var pa = 0; pa < 2; pa++) {
         try {
@@ -639,12 +641,21 @@ async function aiChatVision(messages, temp) {
     return d.choices[0].message.content || '';
 }
 
+/* FIX: checkAI now re-checks itself until the key is confirmed ready */
 function checkAI() {
     var badge = document.querySelector('.std-groq-badge');
-    if (badge) {
-        var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
-        if (hasKey) { badge.className = 'std-groq-badge ok'; badge.textContent = '✓ Groq Ready'; }
-        else { badge.className = 'std-groq-badge warn'; badge.textContent = '⚠ No Groq Key (using fallback)'; }
+    if (!badge) return;
+    var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
+    if (hasKey) {
+        badge.className = 'std-groq-badge ok';
+        badge.textContent = '✓ Groq AI Ready';
+        S.aiReady = true;
+    } else {
+        badge.className = 'std-groq-badge warn';
+        badge.textContent = '⚠ Using free AI (no Groq key)';
+        S.aiReady = false;
+        /* Re-check after 3 s — key may still be loading from Firebase */
+        setTimeout(checkAI, 3000);
     }
 }
 
@@ -850,154 +861,94 @@ function summonHandleSetup(q) {
 }
 
 /* ── PASSIVE VOICE DETECTOR (auto-pause AI while user speaks) ── */
-var _pvd = {
-    ctx:null, analyser:null, source:null, stream:null,
-    raf:null, silenceTimer:null, active:false, paused:false,
-    THRESHOLD:18, VOICE_MS:250
-};
-var _pvdVoiceStart = 0;
+var _pvd = { active:false, rec:null, paused:false, silenceTimer:null };
 
 function summonStartPassiveDetect() {
-    if (_pvd.active) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-    navigator.mediaDevices.getUserMedia({audio:true, video:false})
-        .then(function (stream) {
-            _pvd.stream   = stream;
-            _pvd.ctx      = new (window.AudioContext || window.webkitAudioContext)();
-            _pvd.analyser = _pvd.ctx.createAnalyser();
-            _pvd.analyser.fftSize = 256;
-            _pvd.source   = _pvd.ctx.createMediaStreamSource(stream);
-            _pvd.source.connect(_pvd.analyser);
-            _pvd.active   = true; _pvdVoiceStart = 0; _pvdLoop();
-        }).catch(function () {});
+    if (_pvd.active || !window.SpeechRecognition && !window.webkitSpeechRecognition) return;
+    _pvd.active = true;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    _pvd.rec = new SR();
+    _pvd.rec.continuous = true; _pvd.rec.interimResults = true;
+    _pvd.rec.onresult = function () {
+        if (!_pvd.paused) {
+            _pvd.paused = true;
+            if (VS.synth) { try { VS.synth.pause(); } catch(e) {} }
+            VS._pausedQueue = VS.sentenceQueue.slice();
+        }
+        clearTimeout(_pvd.silenceTimer);
+        _pvd.silenceTimer = setTimeout(function () {
+            _pvd.paused = false;
+            if (VS.synth) { try { VS.synth.resume(); } catch(e) {} }
+            if (!VS._queueRunning && VS._pausedQueue.length) {
+                VS.sentenceQueue = VS._pausedQueue.concat(VS.sentenceQueue);
+                VS._pausedQueue = [];
+                summonRunQueue();
+            }
+        }, 900);
+    };
+    try { _pvd.rec.start(); } catch(e) {}
 }
 
 function summonStopPassiveDetect() {
-    _pvd.active = false;
-    if (_pvd.raf)    { cancelAnimationFrame(_pvd.raf); _pvd.raf = null; }
+    _pvd.active = false; _pvd.paused = false;
     clearTimeout(_pvd.silenceTimer); _pvd.silenceTimer = null;
-    if (_pvd.source) { try { _pvd.source.disconnect(); } catch(e) {} _pvd.source = null; }
-    if (_pvd.ctx)    { try { _pvd.ctx.close(); }          catch(e) {} _pvd.ctx = null; }
-    if (_pvd.stream) { _pvd.stream.getTracks().forEach(function (t) { t.stop(); }); _pvd.stream = null; }
-    _pvd.paused = false;
+    if (_pvd.rec) { try { _pvd.rec.abort(); } catch(e) {} _pvd.rec = null; }
 }
 
-function _pvdLoop() {
-    if (!_pvd.active) return;
-    _pvd.raf = requestAnimationFrame(_pvdLoop);
-    if (!VS.speakingQueue) { _pvdVoiceStart = 0; if (_pvd.paused) { _pvd.paused = false; clearTimeout(_pvd.silenceTimer); } return; }
-    var data = new Uint8Array(_pvd.analyser.frequencyBinCount);
-    _pvd.analyser.getByteTimeDomainData(data);
-    var sum = 0;
-    for (var i = 0; i < data.length; i++) { var diff = data[i]-128; sum += diff*diff; }
-    var rms = Math.sqrt(sum / data.length);
-    if (rms > _pvd.THRESHOLD) {
-        if (!_pvd.paused) {
-            if (_pvdVoiceStart === 0) { _pvdVoiceStart = Date.now(); }
-            else if (Date.now() - _pvdVoiceStart > _pvd.VOICE_MS) { _pvdPauseAI(); }
-        } else {
-            clearTimeout(_pvd.silenceTimer);
-            _pvd.silenceTimer = setTimeout(_pvdResumeAI, 4000);
+/* ── RECOGNITION ─────────────────────────────────────────────── */
+var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0;
+
+function _doStartRecognition() {
+    if (_recDisabled) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    VS.recognition = new SR();
+    VS.recognition.continuous = true;
+    VS.recognition.interimResults = true;
+    VS.recognition.lang = 'en-US';
+
+    VS.recognition.onstart = function () { VS.listening = true; _recLastEvent = Date.now(); };
+    VS.recognition.onend = function () {
+        VS.listening = false; _recStopWatchdog();
+        if (!_recDisabled && !VS.speakingQueue) {
+            _recRetryTimer = setTimeout(_doStartRecognition, 400);
         }
-    } else {
-        _pvdVoiceStart = 0;
-        if (_pvd.paused && !_pvd.silenceTimer) _pvd.silenceTimer = setTimeout(_pvdResumeAI, 4000);
-    }
-}
+    };
+    VS.recognition.onerror = function (e) {
+        _recLastEvent = Date.now();
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { _recDisabled = true; return; }
+        VS.listening = false; _recStopWatchdog();
+        if (!_recDisabled) _recRetryTimer = setTimeout(_doStartRecognition, 800);
+    };
+    VS.recognition.onresult = function (e) {
+        _recLastEvent = Date.now();
+        var interim = '', final = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) final += e.results[i][0].transcript;
+            else interim += e.results[i][0].transcript;
+        }
+        VS._interimSnapshot = interim;
+        if (interim) summonShowInterim(interim);
+        if (final) {
+            VS.transcript += ' ' + final;
+            VS._interimSnapshot = '';
+            summonResetSilence();
+        }
+    };
 
-function _pvdPauseAI() {
-    if (_pvd.paused) return;
-    _pvd.paused = true; _pvdVoiceStart = 0;
-    VS._pausedQueue  = (VS.sentenceQueue || []).slice();
-    VS.speakingQueue = false; VS._queueRunning = false; VS.sentenceQueue = [];
-    if (VS.synth) { try { VS.synth.pause(); } catch(e) { try { VS.synth.cancel(); } catch(e2) {} } }
-    summonSetState('listening');
-    clearTimeout(_pvd.silenceTimer);
-    _pvd.silenceTimer = setTimeout(_pvdResumeAI, 4000);
+    try { VS.recognition.start(); _recStartWatchdog(); } catch(e) {}
 }
-
-function _pvdResumeAI() {
-    clearTimeout(_pvd.silenceTimer); _pvd.silenceTimer = null;
-    _pvd.paused = false; _pvdVoiceStart = 0;
-    var remaining = VS._pausedQueue || []; VS._pausedQueue = [];
-    if (!remaining.length) { summonSetState('listening'); summonStartListening(); return; }
-    summonSetState('speaking');
-    VS.speakingQueue = true; VS.sentenceQueue = remaining;
-    if (VS.synth) { try { VS.synth.resume(); } catch(e) {} }
-    summonRunQueue();
-    summonFlushQueue(function () {
-        VS.speakingQueue = false;
-        summonSetState('listening'); summonStartListening();
-    });
-}
-
-/* ── ROBUST SPEECH RECOGNITION (backoff + watchdog) ─────────── */
-var _recRetryDelay = 300;
-var _recRetryTimer = null;
-var _recWatchdog   = null;
-var _recLastEvent  = 0;
-var _recDisabled   = false;
 
 function summonStartListening() {
-    if (VS.speakingQueue || _pvd.paused) return;
-    if (VS.listening) return;
-    if (!VS.active) return;
-    clearTimeout(_recRetryTimer);
     _recDisabled = false;
+    clearTimeout(_recRetryTimer); _recStopWatchdog();
+    VS.transcript = ''; VS._interimSnapshot = '';
+    summonStopPassiveDetect();
     _doStartRecognition();
 }
 
-function _doStartRecognition() {
-    if (_recDisabled || VS.speakingQueue || _pvd.paused) return;
-    if (VS.listening) return;
-    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) return;
-    VS.listening = true; VS.transcript = ''; _recLastEvent = Date.now();
-    var rec = new SpeechRecognition();
-    rec.continuous = true; rec.interimResults = true; rec.lang = 'en-US'; rec.maxAlternatives = 1;
-    VS.recognition = rec;
-
-    rec.onstart = function () { _recRetryDelay = 300; _recLastEvent = Date.now(); _recStartWatchdog(); };
-
-    rec.onresult = function (e) {
-        _recLastEvent = Date.now();
-        if (VS.speakingQueue || _pvd.paused) return;
-        var interim = '', final = '';
-        for (var i = e.resultIndex; i < e.results.length; i++) {
-            var t = e.results[i][0].transcript;
-            if (e.results[i].isFinal) final += t; else interim += t;
-        }
-        if ((interim.trim() || final.trim()) && VS.speakingQueue) summonStopQueue();
-        if (interim) { VS._interimSnapshot = interim; summonShowInterim(interim); summonResetSilence(); }
-        if (final)   { VS.transcript += final; VS._interimSnapshot = ''; summonShowInterim(VS.transcript); summonResetSilence(); }
-    };
-
-    rec.onspeechend = function () { _recLastEvent = Date.now(); };
-
-    rec.onend = function () {
-        VS.listening = false; VS.recognition = null; _recStopWatchdog();
-        if (_recDisabled || VS.speakingQueue || _pvd.paused || !VS.active) return;
-        _recRetryTimer = setTimeout(_doStartRecognition, _recRetryDelay);
-    };
-
-    rec.onerror = function (e) {
-        _recLastEvent = Date.now(); VS.listening = false; VS.recognition = null; _recStopWatchdog();
-        var err = e.error || '';
-        if (err === 'not-allowed' || err === 'service-not-allowed') { VS.active = false; return; }
-        if (_recDisabled || VS.speakingQueue || _pvd.paused || !VS.active) return;
-        _recRetryDelay = Math.min(_recRetryDelay * 2, 5000);
-        _recRetryTimer = setTimeout(_doStartRecognition, _recRetryDelay);
-    };
-
-    try { rec.start(); } catch(e) {
-        VS.listening = false; VS.recognition = null;
-        _recRetryDelay = Math.min(_recRetryDelay * 2, 5000);
-        _recRetryTimer = setTimeout(_doStartRecognition, _recRetryDelay);
-    }
-}
-
 function _recStartWatchdog() {
-    _recStopWatchdog();
+    _recLastEvent = Date.now();
     _recWatchdog = setInterval(function () {
         if (!VS.listening || VS.speakingQueue || _pvd.paused) { _recStopWatchdog(); return; }
         if (Date.now() - _recLastEvent > 12000) {
@@ -1244,12 +1195,13 @@ function injectSummonStyles() {
     if (document.getElementById('std-summon-css')) return;
     var s = document.createElement('style');
     s.id = 'std-summon-css';
+    /* FIX: added !important to position/display/z-index on FAB so page CSS cannot override it */
     s.textContent = [
-        '#std-summon-fab{position:fixed;bottom:24px;right:24px;z-index:99998;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 18px 4px rgba(139,92,246,.5);animation:sfab-pulse 3s ease-in-out infinite;transition:transform .18s;font-size:1.5rem;color:#fff;user-select:none}',
+        '#std-summon-fab{position:fixed!important;bottom:24px!important;right:24px!important;z-index:99998!important;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex!important;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 18px 4px rgba(139,92,246,.5);animation:sfab-pulse 3s ease-in-out infinite;transition:transform .18s;font-size:1.5rem;color:#fff;user-select:none}',
         '#std-summon-fab:hover{transform:scale(1.1)}',
         '@keyframes sfab-pulse{0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.4)}50%{box-shadow:0 0 32px 12px rgba(139,92,246,.65)}}',
-        '#std-summon-overlay{position:fixed;inset:0;z-index:99999;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,4,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}',
-        '#std-summon-overlay.open{display:flex;animation:sovl-in .28s ease-out}',
+        '#std-summon-overlay{position:fixed!important;inset:0;z-index:99999!important;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(5,4,18,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:24px;box-sizing:border-box}',
+        '#std-summon-overlay.open{display:flex!important;animation:sovl-in .28s ease-out}',
         '@keyframes sovl-in{from{opacity:0}to{opacity:1}}',
         '#std-summon-close{position:absolute;top:18px;right:18px;background:rgba(255,255,255,.08);border:none;color:#c8c2f0;font-size:1.2rem;width:38px;height:38px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s}',
         '#std-summon-close:hover{background:rgba(255,255,255,.15)}',
@@ -1280,7 +1232,7 @@ function injectSummonStyles() {
         '#std-summon-text::placeholder{color:#8c84b8}',
         '#std-summon-send{background:#7c3aed;border:none;border-radius:50%;color:#fff;font-size:1rem;width:42px;height:42px;cursor:pointer;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}',
         '#std-summon-send:hover{background:#6d28d9}',
-        '@media(max-width:480px){#std-summon-fab{bottom:14px;right:14px}#std-summon-big-orb{width:100px;height:100px;font-size:2.3rem}#std-summon-ai-text,#std-summon-transcript{font-size:.92rem}}',
+        '@media(max-width:480px){#std-summon-fab{bottom:14px!important;right:14px!important}#std-summon-big-orb{width:100px;height:100px;font-size:2.3rem}#std-summon-ai-text,#std-summon-transcript{font-size:.92rem}}',
     ].join('');
     document.head.appendChild(s);
 }
@@ -1371,5 +1323,9 @@ function summonHide() {
     if (overlay) overlay.classList.remove('open');
     summonSetState('idle');
 }
+
+/* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
+/* FIX: functions inside an IIFE are not global — expose only what onclick HTML needs */
+window._stdRetry = loadChapterContent;
 
 })();
