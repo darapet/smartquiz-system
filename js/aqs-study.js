@@ -1370,15 +1370,26 @@ function injectSummonStyles() {
         '#std-summon-send:hover{background:#6d28d9}',
 
         /* ── HISTORY DROPDOWN ── */
-        '#std-vh-panel{position:absolute;top:62px;left:0;right:0;max-height:55vh;overflow-y:auto;background:rgba(8,6,24,.98);border-bottom:1px solid rgba(139,92,246,.3);padding:10px 12px 14px;z-index:4}',
+        '#std-vh-panel{position:absolute;top:62px;left:0;right:0;max-height:70vh;overflow-y:auto;background:rgba(8,6,24,.99);border-bottom:1px solid rgba(139,92,246,.3);z-index:4;display:flex;flex-direction:column}',
         '#std-vh-panel::-webkit-scrollbar{width:4px}#std-vh-panel::-webkit-scrollbar-track{background:transparent}#std-vh-panel::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:2px}',
-        '.std-vh-msg{margin-bottom:8px;padding:7px 10px;border-radius:9px;font-size:.8rem;line-height:1.5}',
-        '.std-vh-user{background:rgba(99,102,241,.14);border-left:2px solid #6366f1}',
-        '.std-vh-ai{background:rgba(139,92,246,.1);border-left:2px solid #8b5cf6}',
-        '.std-vh-meta{font-size:.65rem;font-weight:700;color:#7c79b0;margin-bottom:3px;text-transform:uppercase;letter-spacing:.05em}',
-        '.std-vh-user .std-vh-meta{color:#818cf8}',
-        '.std-vh-txt{color:#d8d4f5;word-break:break-word}',
-        '.std-vh-empty{color:#6b6a8c;font-size:.8rem;text-align:center;padding:18px 0}',
+        /* toolbar: title + save btn */
+        '.std-vh-toolbar{display:flex;align-items:center;padding:10px 12px 8px;border-bottom:1px solid rgba(139,92,246,.2);flex-shrink:0;gap:8px}',
+        '.std-vh-toolbar-title{flex:1;font-size:.78rem;font-weight:700;color:#a89ee8;text-transform:uppercase;letter-spacing:.06em}',
+        '.std-vh-save-btn,.std-vh-back-btn{background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);color:#c8c2f0;font-size:.75rem;padding:4px 10px;border-radius:20px;cursor:pointer;transition:background .15s;white-space:nowrap}',
+        '.std-vh-save-btn:hover,.std-vh-back-btn:hover{background:rgba(139,92,246,.35)}',
+        /* list of Q&A pairs */
+        '.std-vh-pairs-list{overflow-y:auto;flex:1;padding:8px 10px 12px}',
+        '.std-vh-pair{padding:8px 10px;border-radius:9px;margin-bottom:8px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);cursor:pointer;transition:background .15s}',
+        '.std-vh-pair:hover{background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.45)}',
+        '.std-vh-pair-q{font-size:.78rem;color:#818cf8;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        '.std-vh-pair-a{font-size:.76rem;color:#9d98c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        /* detail view */
+        '.std-vh-detail{padding:12px 12px 16px;overflow-y:auto;flex:1}',
+        '.std-vh-detail-q{font-size:.8rem;color:#818cf8;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(139,92,246,.2)}',
+        '.std-vh-detail-a{font-size:.85rem;color:#d4cfee;line-height:1.7;word-break:break-word}',
+        '.std-vh-detail-a p{margin:0 0 8px}',
+        '.std-vh-detail-a .katex-display{overflow-x:auto;padding:4px 0}',
+        '.std-vh-empty{color:#6b6a8c;font-size:.8rem;text-align:center;padding:24px 0}',
 
         /* ── STREAMING CURSOR ── */
         '.std-stream-cursor{display:inline-block;animation:std-blink .65s step-end infinite;color:#8b5cf6;font-weight:900;margin-left:1px}',
@@ -1506,7 +1517,7 @@ function summonHide() {
 }
 
 /* ── VOICE CONVERSATION HISTORY ─────────────────────────────── */
-var VH = { log: [] };
+var VH = { log: [], detailIdx: -1 };
 
 function vhAdd(role, text) {
     VH.log.push({ role: role, text: text, time: new Date() });
@@ -1514,16 +1525,109 @@ function vhAdd(role, text) {
     vhRenderDropdown();
 }
 
+/* Group the flat log into Q&A pairs */
+function vhGetPairs() {
+    var pairs = [], i = 0;
+    while (i < VH.log.length) {
+        if (VH.log[i].role === 'user') {
+            var pair = { user: VH.log[i], ai: null };
+            if (i + 1 < VH.log.length && VH.log[i + 1].role === 'ai') {
+                pair.ai = VH.log[i + 1]; i += 2;
+            } else { i++; }
+            pairs.push(pair);
+        } else { i++; }
+    }
+    return pairs;
+}
+
 function vhRenderDropdown() {
     var panel = document.getElementById('std-vh-panel');
     if (!panel || panel.style.display === 'none') return;
-    panel.innerHTML = VH.log.length ? VH.log.map(function (m) {
-        var t = m.time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        var cls = m.role === 'user' ? 'std-vh-user' : 'std-vh-ai';
-        var lbl = m.role === 'user' ? '🎙 You' : '✶ AI';
-        return '<div class="std-vh-msg ' + cls + '"><div class="std-vh-meta">' + lbl + ' · ' + t + '</div><div class="std-vh-txt">' + esc(m.text) + '</div></div>';
+    if (VH.detailIdx >= 0) { vhRenderDetail(VH.detailIdx); return; }
+
+    var pairs = vhGetPairs();
+    var rows = pairs.length ? pairs.map(function (p, idx) {
+        var qShort = esc(p.user.text.slice(0, 70));
+        var aShort = p.ai ? esc(p.ai.text.slice(0, 80)) : '…';
+        return '<div class="std-vh-pair" data-idx="' + idx + '">' +
+               '<div class="std-vh-pair-q">🎙 ' + qShort + '</div>' +
+               '<div class="std-vh-pair-a">✦ ' + aShort + '</div>' +
+               '</div>';
     }).join('') : '<div class="std-vh-empty">No conversation yet — start talking!</div>';
-    panel.scrollTop = panel.scrollHeight;
+
+    panel.innerHTML =
+        '<div class="std-vh-toolbar">' +
+          '<span class="std-vh-toolbar-title">📚 History</span>' +
+          '<button class="std-vh-save-btn" id="std-vh-save">⬇ Save</button>' +
+        '</div>' +
+        '<div class="std-vh-pairs-list">' + rows + '</div>';
+
+    var saveBtn = document.getElementById('std-vh-save');
+    if (saveBtn) saveBtn.addEventListener('click', vhSaveHistory);
+
+    panel.querySelectorAll('.std-vh-pair').forEach(function (el) {
+        el.addEventListener('click', function () {
+            VH.detailIdx = parseInt(el.getAttribute('data-idx'), 10);
+            vhRenderDetail(VH.detailIdx);
+        });
+    });
+}
+
+function vhRenderDetail(idx) {
+    var panel = document.getElementById('std-vh-panel');
+    if (!panel) return;
+    var pairs = vhGetPairs();
+    var pair  = pairs[idx];
+    if (!pair) { VH.detailIdx = -1; vhRenderDropdown(); return; }
+
+    var aiHtml = '';
+    if (pair.ai) {
+        var html = pair.ai.text
+            .split(/\n\n+/)
+            .map(function (p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; })
+            .join('');
+        aiHtml = '<div class="std-vh-detail-a" id="std-vh-detail-body">' + html + '</div>';
+    }
+
+    panel.innerHTML =
+        '<div class="std-vh-toolbar">' +
+          '<button class="std-vh-back-btn" id="std-vh-back">← Back</button>' +
+          '<span class="std-vh-toolbar-title">Full Response</span>' +
+        '</div>' +
+        '<div class="std-vh-detail">' +
+          '<div class="std-vh-detail-q">🎙 You: ' + esc(pair.user.text) + '</div>' +
+          aiHtml +
+        '</div>';
+
+    var backBtn = document.getElementById('std-vh-back');
+    if (backBtn) backBtn.addEventListener('click', function () { VH.detailIdx = -1; vhRenderDropdown(); });
+
+    /* Render KaTeX math in the detail view */
+    var body = document.getElementById('std-vh-detail-body');
+    if (body && typeof renderMathInElement === 'function') {
+        try {
+            renderMathInElement(body, {
+                delimiters: [
+                    {left:'$$', right:'$$', display:true},
+                    {left:'$',  right:'$',  display:false}
+                ],
+                throwOnError: false
+            });
+        } catch(e) {}
+    }
+}
+
+function vhSaveHistory() {
+    var pairs = vhGetPairs();
+    if (!pairs.length) return;
+    var lines = pairs.map(function (p, i) {
+        return 'Q' + (i + 1) + ': ' + p.user.text + '\n\nAI: ' + (p.ai ? p.ai.text : '(no response)') + '\n\n---\n';
+    });
+    var blob = new Blob(['XZILY AI — Study Conversation\n\n' + lines.join('\n')], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'xzily-study-history.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 function vhToggle() {
@@ -1531,9 +1635,14 @@ function vhToggle() {
     var btn   = document.getElementById('std-vh-btn');
     if (!panel) return;
     var open = panel.style.display !== 'none';
-    panel.style.display = open ? 'none' : 'block';
+    if (open) {
+        panel.style.display = 'none';
+        VH.detailIdx = -1;
+    } else {
+        panel.style.display = 'flex';
+        vhRenderDropdown();
+    }
     if (btn) btn.classList.toggle('active', !open);
-    if (!open) vhRenderDropdown();
 }
 
 /* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
