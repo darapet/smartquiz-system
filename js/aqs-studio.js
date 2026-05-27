@@ -1112,17 +1112,39 @@
         document.head.appendChild(s);
     }
 
+    /* ── Unlock mobile audio context — call inside a user-gesture handler ── */
+    var _audioUnlocked = false;
+    function unlockAudio() {
+        if (_audioUnlocked) return;
+        try {
+            /* Silent AudioContext node — unlocks subsequent Audio.play() on iOS/Android */
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.1), ctx.sampleRate);
+            var src = ctx.createBufferSource();
+            src.buffer = buf;
+            src.connect(ctx.destination);
+            src.start(0);
+            ctx.resume().then(function() { _audioUnlocked = true; }).catch(function(){});
+            /* Also unlock the HTML5 Audio pathway */
+            var sil = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
+            sil.volume = 0.001;
+            sil.play().then(function(){ _audioUnlocked = true; }).catch(function(){});
+        } catch(e) {}
+    }
+
     function openVoiceMode() {
         var overlay = document.getElementById('dts-voice-overlay');
         if (!overlay) return;
         injectVoiceOrbStyles();
+        /* Unlock audio IMMEDIATELY while still inside the user-gesture context */
+        unlockAudio();
         voiceActive   = true;
         voiceMessages = [];   // fresh history each time voice opens
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         setVoiceState('idle');
         /* Mobile needs extra time for mic hardware to initialise cleanly */
-        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        var micDelay = (navigator.maxTouchPoints > 0) ? 900 : 500;
         setTimeout(startVoiceListening, micDelay);
     }
 
@@ -1538,10 +1560,16 @@
                         fallbackRemaining();
                     });
 
+                    /* On mobile: retry play() once after 300ms if first call is rejected */
                     audio.play().catch(function() {
-                        cleanup();
-                        /* play() rejected (autoplay policy) — browser TTS for rest */
-                        fallbackRemaining();
+                        setTimeout(function() {
+                            if (!voiceAiTalking) { cleanup(); finish(); return; }
+                            audio.play().catch(function() {
+                                cleanup();
+                                /* Truly rejected by autoplay policy — browser TTS fallback */
+                                fallbackRemaining();
+                            });
+                        }, 300);
                     });
                 })
                 .catch(function() {
