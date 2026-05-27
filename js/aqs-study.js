@@ -1265,21 +1265,38 @@ function summonFlushQueue(onAllDone) {
 }
 
 function summonStopQueue() {
-    VS.speakingQueue = false; VS._queueRunning = false;
-    VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
-    if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
-}
+      VS.speakingQueue = false; VS._queueRunning = false;
+      VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
+      /* Do NOT call synth.cancel() immediately — cutting speech mid-word causes
+         a pop/click on Chrome. Each sentence is already short so it finishes
+         in < 1 s. Use a delayed cancel only as a safety fallback.            */
+      if (VS.synth) {
+          var _stopFallback = setTimeout(function () {
+              if (VS.synth && VS.synth.speaking && !VS.speakingQueue) {
+                  try { VS.synth.cancel(); } catch(e) {}
+              }
+          }, 900);
+      }
+  }
 
 function summonSpeakOne(text, onDone) {
-    if (!VS.synth || !text) { if (onDone) onDone(); return; }
-    summonPickVoice(); VS.speaking = true;
-    var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
-    if (VS.voice) u.voice = VS.voice;
-    u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
-    u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
-    VS.synth.speak(u);
-}
+      if (!VS.synth || !text) { if (onDone) onDone(); return; }
+      summonPickVoice(); VS.speaking = true;
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+      if (VS.voice) u.voice = VS.voice;
+      /* Chrome keep-alive: Chrome silently pauses SpeechSynthesis after ~15 s
+         which causes a pop/stutter when the next sentence tries to resume.
+         Reading synth.pending every 5 s keeps it awake — safe, no pause/resume
+         calls which themselves cause an audible pop every ~10 s.             */
+      var _ka = setInterval(function () {
+          if (!VS.synth || !VS.synth.speaking) { clearInterval(_ka); return; }
+          var _p = VS.synth.pending; /* intentional no-op read to keep Chrome awake */
+      }, 5000);
+      u.onend  = function () { clearInterval(_ka); VS.speaking = false; if (onDone) onDone(); };
+      u.onerror = function () { clearInterval(_ka); VS.speaking = false; if (onDone) onDone(); };
+      VS.synth.speak(u);
+  }
 
 function summonSpeakStream(text, isCheckpoint) {
     var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
