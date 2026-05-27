@@ -482,9 +482,8 @@
                           cardEl.className = 'aqs-ig-card error';
                           cardEl.innerHTML =
                               '<div class="aqs-ig-card-err">' +
-                                  '⚠️ Image failed to load.<br>' +
+                                  '&#9888;&#65039; Image failed to load.<br>' +
                                   '<small>Server may be busy. Please try again.</small>' +
-                                  '<button class="aqs-btn aqs-btn-sm" style="margin-top:10px" onclick="this.closest('.aqs-ig-card\').dispatchEvent(new Event(\'retry\'))">Retry</button>' +
                               '</div>';
                       }
 
