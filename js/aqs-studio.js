@@ -1372,7 +1372,7 @@
             .replace(/[-_]{2,}/g,             '')
             .replace(/\n{2,}/g,               ' ')
             .trim()
-            .substring(0, 600);
+            .substring(0, 1500);
     }
 
     /* Browser TTS fallback — used only if Pollinations fails */
@@ -1392,7 +1392,7 @@
             voiceKeepAlive = setInterval(function() {
                 if (!window.speechSynthesis.speaking) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
                 else { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
-            }, 10000);
+            }, 5000);
             utter.onend = utter.onerror = function() {
                 if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
                 voiceAiTalking = false; if (onDone) onDone();
@@ -1408,69 +1408,101 @@
         } else { setTimeout(doSpeak, 120); }
     }
 
+    /* ── Split cleaned text into sentence-aware chunks for sequential TTS ── */
+    function splitSpeechChunks(text, maxLen) {
+        if (text.length <= maxLen) return [text];
+        var chunks    = [];
+        var sentences = text.match(/[^.!?]+[.!?]+s*/g) || [text];
+        var current   = '';
+        sentences.forEach(function(s) {
+            if ((current + s).length > maxLen) {
+                if (current) chunks.push(current.trim());
+                while (s.length > maxLen) { chunks.push(s.slice(0, maxLen).trim()); s = s.slice(maxLen); }
+                current = s;
+            } else { current += s; }
+        });
+        if (current.trim()) chunks.push(current.trim());
+        return chunks.filter(function(c) { return c.length > 0; });
+    }
+
     function speakVoiceResponse(text, onDone) {
         var spoken = cleanForSpeech(text);
 
-        /* Stop any ongoing speech (Pollinations audio or browser TTS) */
+        /* Stop any ongoing speech */
         if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
         if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
         if (window.speechSynthesis) window.speechSynthesis.cancel();
 
         voiceAiTalking = true;
 
-        /* ── Try Pollinations neural TTS first (sounds natural/human) ─────────
-           Uses OpenAI TTS voices: shimmer = warm female, onyx = deep male.
-           Pick shimmer as default — friendly, clear assistant voice.         */
-        var encodedText  = encodeURIComponent(spoken);
-        var ttsUrl       = 'https://audio.pollinations.ai/' + encodedText +
-                           '?model=openai-audio&voice=shimmer&nologo=true';
+        /* Split into ≤250-char sentence chunks so each Pollinations request
+           stays well within URL limits and streams in quickly per chunk.     */
+        var chunks = splitSpeechChunks(spoken, 250);
+        var idx    = 0;
+        var audioCtx = null;
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) {}
 
-        var audio        = new Audio(ttsUrl);
-        audio.volume     = 1.0;   /* max HTML5 volume */
-        currentStudioAudio = audio;
+        function playNext() {
+            /* Stop condition — all chunks done or speaking was interrupted */
+            if (!voiceAiTalking || idx >= chunks.length) {
+                currentStudioAudio = null;
+                voiceAiTalking     = false;
+                if (onDone) onDone();
+                return;
+            }
 
-        /* Boost volume via Web Audio API GainNode — allows amplification
-           beyond the default 1.0 cap of the HTML5 Audio element */
-        try {
-            var _actx  = new (window.AudioContext || window.webkitAudioContext)();
-            var _src   = _actx.createMediaElementSource(audio);
-            var _gain  = _actx.createGain();
-            _gain.gain.value = 2.0;   /* 2× louder */
-            _src.connect(_gain);
-            _gain.connect(_actx.destination);
-        } catch (_gainErr) { /* fallback: plain audio.volume already set to 1.0 */ }
+            var chunk      = chunks[idx++];
+            var ttsUrl     = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+                             '?model=openai-audio&voice=shimmer&nologo=true&v=' + idx;
+            var audio      = new Audio(ttsUrl);
+            audio.volume   = 1.0;
+            currentStudioAudio = audio;
 
-        /* Timeout — if Pollinations hasn't started within 7 s, fall back */
-        var fallbackTimer = setTimeout(function() {
-            if (!audio.paused) return; /* already playing — no fallback needed */
-            audio.src = '';
-            currentStudioAudio = null;
-            speakWithBrowserFallback(spoken, onDone);
-        }, 7000);
+            /* Volume boost via Web Audio GainNode (2× amp) */
+            if (audioCtx) {
+                try {
+                    var _src  = audioCtx.createMediaElementSource(audio);
+                    var _gain = audioCtx.createGain();
+                    _gain.gain.value = 2.0;
+                    _src.connect(_gain);
+                    _gain.connect(audioCtx.destination);
+                } catch(_) {}
+            }
 
-        audio.addEventListener('playing', function() {
-            clearTimeout(fallbackTimer);
-        });
+            /* If Pollinations hasn't started within 8 s, fall back to browser TTS
+               for the remainder of the text (all remaining chunks joined).     */
+            var fallbackTimer = setTimeout(function() {
+                if (!audio.paused) return;
+                audio.src = '';
+                currentStudioAudio = null;
+                var remaining = chunks.slice(idx - 1).join(' ');
+                speakWithBrowserFallback(remaining, onDone);
+            }, 8000);
 
-        audio.addEventListener('ended', function() {
-            clearTimeout(fallbackTimer);
-            currentStudioAudio = null;
-            voiceAiTalking     = false;
-            if (onDone) onDone();
-        });
+            audio.addEventListener('playing', function() { clearTimeout(fallbackTimer); });
 
-        audio.addEventListener('error', function() {
-            clearTimeout(fallbackTimer);
-            currentStudioAudio = null;
-            /* Pollinations failed — use browser TTS as backup */
-            speakWithBrowserFallback(spoken, onDone);
-        });
+            audio.addEventListener('ended', function() {
+                clearTimeout(fallbackTimer);
+                currentStudioAudio = null;
+                playNext();    /* ← chain the next chunk */
+            });
 
-        audio.play().catch(function() {
-            clearTimeout(fallbackTimer);
-            currentStudioAudio = null;
-            speakWithBrowserFallback(spoken, onDone);
-        });
+            audio.addEventListener('error', function() {
+                clearTimeout(fallbackTimer);
+                currentStudioAudio = null;
+                var remaining = chunks.slice(idx - 1).join(' ');
+                speakWithBrowserFallback(remaining, onDone);
+            });
+
+            audio.play().catch(function() {
+                clearTimeout(fallbackTimer);
+                currentStudioAudio = null;
+                var remaining = chunks.slice(idx - 1).join(' ');
+                speakWithBrowserFallback(remaining, onDone);
+            });
+        }
+
+        playNext();
     }
 
     /* ── UI state helpers ── */
