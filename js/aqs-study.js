@@ -1,6 +1,6 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload · Voice AI
    ─────────────────────────────────────────────────────────────────────
-   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
+   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed
    ─────────────────────────────────────────────────────────────────────── */
 (function () {
 'use strict';
