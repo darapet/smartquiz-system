@@ -1,1 +1,228 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><meta http-equiv="refresh" content="0;url=studio.html"></head><body><script>window.location.replace("studio.html");</script></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Text-to-Speech — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-tts.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ SIDEBAR TOGGLE ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
+    <div class="aqs-sidebar-nav-label">NAVIGATE</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio Home</a>
+        <a href="image-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
+        <a href="docs-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
+        <a href="study.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study</a>
+        <a href="tts.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech</a>
+    </nav>
+    <div class="aqs-sidebar-nav-label" style="margin-top:14px;">QUIZ</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
+        <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge</a>
+    </nav>
+    <div class="aqs-sidebar-footer"><div class="aqs-sidebar-user"><div class="aqs-sidebar-avatar">U</div><div class="aqs-sidebar-user-name">User</div></div></div>
+</nav>
+
+<div class="aqs-sidebar-body">
+<main class="aqs-page-main" style="padding:0!important;background:transparent!important">
+<div class="tts-main">
+
+    <!-- ══ HERO ══ -->
+    <div class="tts-hero">
+        <div class="tts-hero-icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        </div>
+        <div>
+            <h1 class="tts-hero-title">AI Text to Speech</h1>
+            <p class="tts-hero-sub">Type any text, pick from 82 professional voices across 16 languages. The AI translates your text then speaks it naturally. Download the audio in one click.</p>
+        </div>
+    </div>
+
+    <!-- ══ GLOBAL ERROR ══ -->
+    <div id="tts-error" class="tts-error"></div>
+
+    <!-- ══ MAIN GRID ══ -->
+    <div class="tts-grid">
+
+        <!-- LEFT: Text input + player -->
+        <div class="tts-left">
+
+            <!-- Text Input Card -->
+            <div class="tts-card">
+                <div class="tts-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    Your Text
+                </div>
+                <textarea id="tts-text" class="tts-textarea" maxlength="5000"
+                    placeholder="Type or paste your text here… Press Ctrl+Enter to generate.&#10;&#10;The AI will translate it to your chosen language before speaking."></textarea>
+                <div class="tts-char-count" id="tts-char-count">0 / 5,000 characters</div>
+
+                <!-- Translation note -->
+                <div class="tts-translate-note" id="tts-translate-note" style="display:none">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+                    <span id="tts-translate-note-text">Will translate to English before speaking</span>
+                </div>
+
+                <div class="tts-actions">
+                    <button id="tts-generate-btn" class="tts-btn tts-btn-primary">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                        Generate Speech
+                    </button>
+                    <button id="tts-clear-btn" class="tts-btn tts-btn-ghost">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                        Clear
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div id="tts-status" class="tts-status">
+                <div class="tts-spinner-sm"></div>
+                <span id="tts-status-text">Generating…</span>
+            </div>
+
+            <!-- Player Card -->
+            <div id="tts-player" class="tts-player">
+                <div class="tts-player-label">
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                    NOW PLAYING
+                </div>
+                <div id="tts-player-voice-row" class="tts-player-voice-row"></div>
+                <audio id="tts-audio" controls style="width:100%;display:block;margin-top:8px"></audio>
+                <div id="tts-browser-player" class="tts-browser-player" style="display:none">
+                    <button id="tts-browser-play-btn" class="tts-btn tts-btn-primary" style="padding:8px 16px">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Play
+                    </button>
+                    <button id="tts-browser-stop-btn" class="tts-btn tts-btn-ghost" style="padding:8px 16px">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg> Stop
+                    </button>
+                </div>
+                <div class="tts-player-actions">
+                    <button id="tts-download-btn" class="tts-btn tts-btn-green" style="display:none">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Download Audio
+                    </button>
+                    <button id="tts-regen-btn" class="tts-btn tts-btn-ghost">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Regenerate
+                    </button>
+                </div>
+                <div class="tts-player-info" id="tts-player-info"></div>
+            </div>
+
+            <!-- History -->
+            <div id="tts-history-wrap" class="tts-history" style="display:none">
+                <div class="tts-history-header">
+                    <h3>Recent Audio</h3>
+                    <button id="tts-clear-history-btn" class="tts-btn tts-btn-ghost" style="padding:5px 12px;font-size:.78rem">Clear</button>
+                </div>
+                <div id="tts-history-list" class="tts-history-list"></div>
+            </div>
+        </div>
+
+        <!-- RIGHT: Voice Settings -->
+        <div class="tts-right">
+            <div class="tts-card">
+                <div class="tts-card-title">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    Voice & Language
+                </div>
+
+                <!-- Selected voice badge -->
+                <div id="tts-voice-badge" class="tts-voice-badge">Select a voice below →</div>
+
+                <!-- Language filter -->
+                <label class="tts-label" style="margin-top:14px">Filter by Language</label>
+                <select id="tts-lang-filter" class="tts-lang-filter">
+                    <option value="">All Languages (82 voices)</option>
+                    <option value="en">🇬🇧 English (20 voices)</option>
+                    <option value="es">🇪🇸 Spanish (8 voices)</option>
+                    <option value="fr">🇫🇷 French (6 voices)</option>
+                    <option value="de">🇩🇪 German (6 voices)</option>
+                    <option value="pt">🇵🇹 Portuguese (6 voices)</option>
+                    <option value="it">🇮🇹 Italian (4 voices)</option>
+                    <option value="ja">🇯🇵 Japanese (4 voices)</option>
+                    <option value="ar">🇸🇦 Arabic (4 voices)</option>
+                    <option value="zh">🇨🇳 Chinese (4 voices)</option>
+                    <option value="ru">🇷🇺 Russian (4 voices)</option>
+                    <option value="hi">🇮🇳 Hindi (4 voices)</option>
+                    <option value="nl">🇳🇱 Dutch (4 voices)</option>
+                    <option value="ko">🇰🇷 Korean (2 voices)</option>
+                    <option value="sv">🇸🇪 Swedish (2 voices)</option>
+                    <option value="tr">🇹🇷 Turkish (2 voices)</option>
+                    <option value="pl">🇵🇱 Polish (2 voices)</option>
+                </select>
+
+                <!-- Gender filter -->
+                <label class="tts-label">Filter by Gender</label>
+                <div class="tts-gender-filter" id="tts-gender-filter">
+                    <button class="tts-gender-btn active" data-gender="">All</button>
+                    <button class="tts-gender-btn" data-gender="male">♂ Male</button>
+                    <button class="tts-gender-btn" data-gender="female">♀ Female</button>
+                </div>
+
+                <!-- Voice grid -->
+                <div id="tts-voice-grid" class="tts-voice-grid"></div>
+
+                <!-- Speed control -->
+                <label class="tts-label">Playback Speed</label>
+                <div class="tts-speed-row">
+                    <input type="range" id="tts-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+                    <span class="tts-speed-val" id="tts-speed-val">1.0×</span>
+                </div>
+
+                <!-- Translation toggle -->
+                <div class="tts-translate-toggle-row">
+                    <label class="tts-toggle-label">
+                        <input type="checkbox" id="tts-translate-toggle" checked>
+                        <span class="tts-toggle-switch"></span>
+                        <span id="tts-translate-label">Auto-translate to voice language</span>
+                    </label>
+                    <div class="tts-translate-help">When on, the AI translates your text to match the voice's language before speaking.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /.tts-main -->
+</main>
+</div>
+
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-tts.js"></script>
+<script>
+(function(){
+    var t=document.getElementById('aqs-sidebar-toggle'),
+        s=document.getElementById('aqs-sidebar'),
+        o=document.getElementById('aqs-sidebar-overlay');
+    if(t&&s&&o){
+        t.addEventListener('click',function(){s.classList.add('open');o.classList.add('open');});
+        o.addEventListener('click',function(){s.classList.remove('open');o.classList.remove('open');});
+    }
+})();
+</script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>
