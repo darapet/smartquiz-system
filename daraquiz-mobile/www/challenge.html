@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0a18">
+<title>xzily AI — Challenge Mode</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<style>
+.katex-display{overflow-x:auto;overflow-y:hidden;margin:4px 0}
+.aqs-ch-katex-block{overflow-x:auto;padding:4px 0}
+.aqs-ch-source-tab{padding:7px 14px;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:transparent;color:#64748b;font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;user-select:none;min-height:40px}
+.aqs-ch-source-tab:hover{border-color:rgba(99,102,241,.4);color:#a5b4fc}
+.aqs-ch-source-tab.active{background:rgba(99,102,241,.25);border-color:rgba(99,102,241,.5);color:#a5b4fc}
+#aqs-ch-q-list::-webkit-scrollbar{width:4px}
+#aqs-ch-q-list::-webkit-scrollbar-track{background:rgba(255,255,255,.05)}
+#aqs-ch-q-list::-webkit-scrollbar-thumb{background:rgba(99,102,241,.4);border-radius:2px}
+/* Screens */
+.aqs-ch-screen{display:none}
+.aqs-ch-screen.active{display:block}
+/* Tab buttons */
+.aqs-ch-tab-btn{padding:10px 28px;border:1px solid rgba(255,255,255,.12);border-radius:10px;background:transparent;color:#64748b;font-size:.95rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;touch-action:manipulation;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;min-height:44px}
+.aqs-ch-tab-btn:hover{border-color:rgba(99,102,241,.4);color:#a5b4fc}
+.aqs-ch-tab-btn.active{background:rgba(99,102,241,.25);border-color:rgba(99,102,241,.6);color:#a5b4fc}
+/* Cards */
+.aqs-ch-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:20px}
+/* Game layout */
+#aqs-ch-screen-game .aqs-ch-game-wrap{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start}
+@media(max-width:680px){#aqs-ch-screen-game .aqs-ch-game-wrap{grid-template-columns:1fr}}
+/* Scoreboard */
+.aqs-ch-score-player{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:6px;transition:all .3s}
+.aqs-ch-score-player.active-turn{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.12)}
+/* Round dots */
+.aqs-ch-round-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.12);display:inline-block;margin:2px}
+.aqs-ch-round-dot.done{background:#6366f1}
+.aqs-ch-round-dot.current{background:#a5b4fc;box-shadow:0 0 6px rgba(165,180,252,.6)}
+/* Chat */
+#aqs-ch-chat-msgs{height:120px;overflow-y:auto;font-size:.8rem;padding:8px;background:rgba(0,0,0,.2);border-radius:8px;margin-bottom:8px}
+.aqs-ch-chat-msg{margin-bottom:4px;line-height:1.4}
+.aqs-ch-chat-msg-name{font-weight:700;color:#a5b4fc}
+/* Podium */
+.aqs-ch-podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:24px 0}
+.aqs-ch-podium-step{text-align:center;min-width:80px}
+.aqs-ch-podium-block{border-radius:6px 6px 0 0}
+.rank-1 .aqs-ch-podium-block{background:linear-gradient(135deg,#f59e0b,#fbbf24)}
+.rank-2 .aqs-ch-podium-block{background:linear-gradient(135deg,#94a3b8,#cbd5e1)}
+.rank-3 .aqs-ch-podium-block{background:linear-gradient(135deg,#b45309,#d97706)}
+.aqs-ch-podium-name{font-size:.82rem;color:#e2e8f0;font-weight:600;margin:4px 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aqs-ch-podium-pts{font-size:.75rem;color:#94a3b8}
+.aqs-ch-podium-crown{font-size:1.4rem;margin-bottom:2px}
+/* Results table */
+.aqs-ch-results-table{width:100%;border-collapse:collapse;font-size:.9rem}
+.aqs-ch-results-table th{text-align:left;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.1);color:#64748b;font-size:.8rem;text-transform:uppercase;letter-spacing:.06em}
+.aqs-ch-results-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.06)}
+/* Celebration overlay */
+#aqs-ch-celebration{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:24px}
+#aqs-ch-celebration.show{display:flex}
+/* Gen progress */
+#aqs-ch-gen-progress{display:none;margin-top:12px}
+.aqs-ch-gen-bar-wrap{height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden;margin:8px 0}
+#aqs-ch-gen-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;width:0%;transition:width .3s}
+/* Upload zone */
+.aqs-ch-upload-zone{border:2px dashed rgba(99,102,241,.35);border-radius:12px;padding:28px 20px;text-align:center;color:#64748b;cursor:pointer;transition:all .2s;margin-bottom:10px}
+.aqs-ch-upload-zone:hover,.aqs-ch-upload-zone.dragover{border-color:rgba(99,102,241,.7);background:rgba(99,102,241,.07);color:#a5b4fc}
+/* Q list item */
+.aqs-ch-q-item{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:6px;font-size:.83rem;line-height:1.45}
+.aqs-ch-q-item .aqs-ch-q-num{color:#6366f1;font-weight:700;min-width:24px;padding-top:1px}
+.aqs-ch-q-item .aqs-ch-q-del{margin-left:auto;background:none;border:none;color:#ef4444;cursor:pointer;padding:0 2px;font-size:.9rem;opacity:.6;line-height:1}
+.aqs-ch-q-item .aqs-ch-q-del:hover{opacity:1}
+/* Waiting dot */
+.aqs-ch-waiting-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#6366f1;margin-right:6px;animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+/* Player slot */
+.aqs-ch-player-slot{text-align:center;padding:12px 8px}
+.aqs-ch-player-name{font-size:.82rem;font-weight:600;margin-top:6px;color:#e2e8f0}
+.aqs-ch-player-badge{font-size:.72rem;color:#64748b;margin-top:2px}
+.aqs-ch-players-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:10px;margin:16px 0}
+/* Invite box */
+.aqs-ch-invite-row{display:flex;gap:8px;align-items:center;margin-top:8px}
+.aqs-ch-invite-row input{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:#e2e8f0;font-size:.82rem;font-family:monospace}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="stylesheet" href="css/aqs-challenge.css">
+<link rel="stylesheet" href="css/aqs-avatars.css">
+<link rel="stylesheet" href="css/aqs-skills.css">
+<script>
+/* Restore host name from localStorage */
+var _aqsHostName = localStorage.getItem('aqs_host_name') || 'Host';
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    public_nonce: '',
+    auth_nonce: '',
+    current_user_name: _aqsHostName,
+    is_logged_in: true
+};
+window.AQS_HOME_URL = 'index.html';
+window.AQS_LOGIN_URL = 'login.html';
+window.AQS_REGISTER_URL = 'register.html';
+window.AQS_CH_MUSIC_URL = 'audio/quiz-background.mp3';
+window.AQS_CHALLENGE = { primary_score: 10, steal_score: 5 };
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="js/aqs-avatars.js"></script>
+<script src="js/aqs-skills.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-ch-body">
+
+<!-- ══ TOP HEADER ══ -->
+<header class="aqs-site-header" style="position:relative;z-index:200;">
+    <div class="aqs-site-header-inner">
+        <a href="index.html" class="aqs-site-logo">
+            <svg width="32" height="32" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity="0.15"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
+            <div class="aqs-site-logo-text">
+                <span class="aqs-site-logo-name">AI Quiz</span>
+                <span class="aqs-site-logo-sub">System</span>
+            </div>
+        </a>
+        <nav class="aqs-site-nav" id="aqs-site-nav">
+            <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Create Quiz
+            </a>
+            <a href="studio.html" class="aqs-site-nav-link" style="color:#7c3aed;">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                AI Studio
+            </a>
+            <a href="image-gen.html" class="aqs-site-nav-link" style="color:#db2777;">🎨 Image AI</a>
+            <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
+            <a href="study.html" class="aqs-site-nav-link" style="color:#059669;">📚 AI Study</a>
+            <a href="tts.html" class="aqs-site-nav-link" style="color:#9333ea;">🔊 Text to Speech</a>
+            <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
+            <div class="aqs-site-nav-mobile-auth">
+                <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">Get Started</a>
+            </div>
+        </nav>
+        <div class="aqs-site-header-auth">
+            <a href="create-quiz.html" class="aqs-site-header-btn aqs-site-header-btn-primary">Get Started</a>
+        </div>
+        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</header>
+<script>
+(function(){
+    var btn=document.getElementById('aqs-site-nav-toggle');
+    var nav=document.getElementById('aqs-site-nav');
+    if(btn&&nav){btn.addEventListener('click',function(){nav.classList.toggle('aqs-site-nav-open');btn.classList.toggle('aqs-site-nav-toggle-open');});}
+})();
+</script>
+
+<div class="aqs-ch-bg" aria-hidden="true">
+    <div class="aqs-ch-grid"></div>
+    <div class="aqs-ch-bg-orb aqs-ch-bg-orb-1"></div>
+    <div class="aqs-ch-bg-orb aqs-ch-bg-orb-2"></div>
+    <div class="aqs-ch-bg-orb aqs-ch-bg-orb-3"></div>
+    <div class="aqs-ch-stars" id="aqs-ch-stars"></div>
+    <div class="aqs-ch-particles" id="aqs-ch-particles"></div>
+</div>
+
+<audio id="aqs-ch-bg-music" loop preload="none" style="display:none">
+    <source src="audio/quiz-background.mp3" type="audio/mpeg">
+</audio>
+
+<div id="aqs-ch-page" class="aqs-ch-page">
+<div class="aqs-ch-content">
+
+<header class="aqs-ch-topbar">
+    <div class="aqs-ch-logo">
+        <span class="aqs-ch-logo-icon">⚡</span>
+        <span>Challenge Mode</span>
+    </div>
+    <a href="index.html" style="color:rgba(255,255,255,.6);font-size:.8rem;text-decoration:none;margin-left:auto;padding:6px 12px;border:1px solid rgba(255,255,255,.15);border-radius:8px;">← Home</a>
+    <div id="aqs-ch-topbar-code" class="aqs-ch-topbar-code" style="display:none"></div>
+    <div class="aqs-ch-topbar-right">
+        <span id="aqs-ch-round-badge-top" class="aqs-ch-round-badge-top" style="display:none"></span>
+        <button id="aqs-ch-music-btn" class="aqs-ch-music-btn" title="Toggle background music">🎵 Music</button>
+        <button id="aqs-ch-mic-btn" class="aqs-ch-mic-btn" title="Toggle live voice chat" style="display:none">🎤 Voice</button>
+        <a href="index.html" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">← Exit</a>
+    </div>
+</header>
+
+<div id="aqs-ch-alerts" style="padding:0 16px"></div>
+
+<main class="aqs-ch-main">
+
+<!-- ═══════════════════════════ HOME SCREEN ═══════════════════════════ -->
+<div id="aqs-ch-screen-home" class="aqs-ch-screen active">
+    <div style="max-width:760px;margin:0 auto;padding:20px 16px">
+
+        <!-- Tab switcher -->
+        <div style="display:flex;gap:10px;margin-bottom:24px">
+            <button class="aqs-ch-tab-btn active" id="aqs-ch-tab-join" data-tab="join">🎮 Join Challenge</button>
+            <button class="aqs-ch-tab-btn" id="aqs-ch-tab-host" data-tab="host">👑 Host a Challenge</button>
+        </div>
+
+        <!-- JOIN PANE -->
+        <div id="aqs-ch-pane-join" class="aqs-ch-tab-pane">
+            <div class="aqs-ch-card">
+                <p class="aqs-ch-card-title" style="margin:0 0 18px;font-size:1.05rem;font-weight:700;color:#e2e8f0">Enter your challenge code</p>
+                <div style="display:flex;flex-direction:column;gap:12px;max-width:380px">
+                    <input id="aqs-ch-join-code" type="text" class="aqs-ch-input" placeholder="e.g. ABC123"
+                        style="text-transform:uppercase;letter-spacing:.12em;font-size:1.1rem;text-align:center;font-weight:700"
+                        maxlength="8" autocomplete="off" spellcheck="false">
+                    <input id="aqs-ch-join-name" type="text" class="aqs-ch-input" placeholder="Your name"
+                        maxlength="30" autocomplete="off">
+                    <div id="aqs-ch-char-picker-home" class="aqs-ch-char-picker-wrap"></div>
+                    <button id="aqs-ch-join-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="width:100%">🚀 Join Challenge</button>
+                </div>
+            </div>
+            <div class="aqs-ch-card" style="background:rgba(99,102,241,.06);border-color:rgba(99,102,241,.2)">
+                <p style="margin:0;color:#94a3b8;font-size:.88rem;line-height:1.6">
+                    💡 Get the challenge code from your host. Everyone joins the same room and competes in real time. 
+                    The host decides when to start.
+                </p>
+            </div>
+        </div>
+
+        <!-- HOST PANE -->
+        <div id="aqs-ch-pane-host" class="aqs-ch-tab-pane" style="display:none">
+
+            <!-- Host name + character field -->
+            <div class="aqs-ch-card" style="margin-bottom:16px;padding:16px 20px">
+                <label style="font-size:.82rem;color:#94a3b8;font-weight:600;display:block;margin-bottom:6px">YOUR HOST NAME</label>
+                <input id="aqs-ch-host-name-inp" type="text" class="aqs-ch-input" placeholder="Host name" maxlength="30"
+                    value="" style="max-width:280px;margin-bottom:14px"
+                    oninput="window.AQS.current_user_name=this.value||'Host';localStorage.setItem('aqs_host_name',this.value||'Host')">
+                <label style="font-size:.82rem;color:#94a3b8;font-weight:600;display:block;margin-bottom:8px">YOUR CHARACTER</label>
+                <div id="aqs-ch-char-picker-host" class="aqs-ch-char-picker-wrap"></div>
+            </div>
+
+            <!-- Question source tabs -->
+            <div class="aqs-ch-card">
+                <p class="aqs-ch-card-title" style="margin:0 0 14px;font-size:1rem;font-weight:700;color:#e2e8f0">📚 Question Source</p>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
+                    <button class="aqs-ch-source-tab active" data-src="topic">💡 Topic / AI</button>
+                    <button class="aqs-ch-source-tab" data-src="upload">📄 Upload File</button>
+                    <button class="aqs-ch-source-tab" data-src="paste">📋 Paste Text</button>
+                    <button class="aqs-ch-source-tab" data-src="readdoc">🔍 Read Doc</button>
+                    <button class="aqs-ch-source-tab" data-src="manual">✏️ Manual</button>
+                </div>
+
+                <!-- TOPIC SOURCE -->
+                <div id="aqs-ch-src-topic">
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end">
+                        <div style="flex:1;min-width:180px">
+                            <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">TOPIC</label>
+                            <input id="aqs-ch-topic" type="text" class="aqs-ch-input" placeholder="e.g. World History, Python, Biology…" maxlength="120">
+                        </div>
+                        <div>
+                            <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">DIFFICULTY</label>
+                            <select id="aqs-ch-difficulty" class="aqs-ch-input" style="padding:9px 12px">
+                                <option value="easy">Easy</option>
+                                <option value="medium" selected>Medium</option>
+                                <option value="hard">Hard</option>
+                                <option value="expert">Expert</option>
+                            </select>
+                        </div>
+                        <button id="aqs-ch-generate-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="white-space:nowrap">✨ Generate Questions</button>
+                    </div>
+                </div>
+
+                <!-- UPLOAD SOURCE -->
+                <div id="aqs-ch-src-upload" style="display:none">
+                    <div id="aqs-ch-upload-zone" class="aqs-ch-upload-zone">
+                        <div style="font-size:1.6rem;margin-bottom:8px">📄</div>
+                        <div style="font-weight:600;color:#94a3b8;margin-bottom:4px">Drop a file here or <span style="color:#a5b4fc;cursor:pointer" id="aqs-ch-browse-btn">browse</span></div>
+                        <div style="font-size:.78rem;color:#475569">PDF, Word, or plain text — MCQ format or AI extraction</div>
+                        <input id="aqs-ch-file-input" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none">
+                    </div>
+                    <div id="aqs-ch-file-info" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;margin-bottom:10px">
+                        <span style="font-size:1.2rem">📎</span>
+                        <span id="aqs-ch-file-name" style="color:#a5b4fc;font-size:.88rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                        <button id="aqs-ch-remove-file" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0">✕</button>
+                    </div>
+                    <div id="aqs-ch-upload-mode-choice" style="display:none;margin-bottom:10px">
+                        <p style="font-size:.82rem;color:#94a3b8;margin:0 0 8px">How should this file be processed?</p>
+                        <div style="display:flex;gap:8px">
+                            <button id="aqs-ch-mode-mcq" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">📋 Parse MCQ Format</button>
+                            <button id="aqs-ch-mode-ai" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">🤖 AI Extract Questions</button>
+                        </div>
+                    </div>
+                    <div id="aqs-ch-upload-ai-settings" style="display:none;margin-bottom:10px">
+                        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:4px">AI TOPIC HINT (optional)</label>
+                        <input id="aqs-ch-upload-ai-topic" type="text" class="aqs-ch-input" placeholder="e.g. Biology chapter 3" maxlength="80">
+                    </div>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap">
+                        <button id="aqs-ch-parse-btn" class="aqs-ch-btn aqs-ch-btn-secondary" style="display:none">📋 Parse File</button>
+                        <button id="aqs-ch-gen-from-doc-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="display:none">🤖 Extract with AI</button>
+                    </div>
+                </div>
+
+                <!-- PASTE SOURCE -->
+                <div id="aqs-ch-src-paste" style="display:none">
+                    <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">PASTE YOUR TEXT OR MCQ QUESTIONS</label>
+                    <textarea id="aqs-ch-paste-text" class="aqs-ch-input" rows="7"
+                        style="width:100%;resize:vertical;font-family:monospace;font-size:.82rem"
+                        placeholder="Paste multiple-choice questions or any text here. AI will extract or generate questions from it.&#10;&#10;MCQ format:&#10;1. Question here?&#10;A) Option A&#10;B) Option B&#10;C) Option C&#10;D) Option D&#10;Answer: A"></textarea>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+                        <span style="font-size:.78rem;color:#475569"><span id="aqs-ch-paste-char-count">0</span> characters</span>
+                        <button id="aqs-ch-gen-from-paste-btn" class="aqs-ch-btn aqs-ch-btn-primary aqs-ch-btn-sm">🤖 Extract/Generate Questions</button>
+                    </div>
+                </div>
+
+                <!-- READDOC SOURCE -->
+                <div id="aqs-ch-src-readdoc" style="display:none">
+                    <p style="font-size:.85rem;color:#94a3b8;margin:0 0 10px">Upload a document and AI will read it and generate quiz questions automatically.</p>
+                    <div id="aqs-ch-readdoc-upload-zone" class="aqs-ch-upload-zone">
+                        <div style="font-size:1.6rem;margin-bottom:8px">🔍</div>
+                        <div style="font-weight:600;color:#94a3b8;margin-bottom:4px">Drop document or <span style="color:#a5b4fc;cursor:pointer" id="aqs-ch-readdoc-browse-btn">browse</span></div>
+                        <div style="font-size:.78rem;color:#475569">PDF, Word, or text files</div>
+                        <input id="aqs-ch-readdoc-file-input" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none">
+                    </div>
+                    <div id="aqs-ch-readdoc-file-info" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;margin-bottom:10px">
+                        <span style="font-size:1.2rem">📎</span>
+                        <span id="aqs-ch-readdoc-file-name" style="color:#a5b4fc;font-size:.88rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                        <button id="aqs-ch-readdoc-remove-file" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0">✕</button>
+                    </div>
+                    <button id="aqs-ch-gen-from-readdoc-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="display:none">🤖 Read &amp; Generate Questions</button>
+                </div>
+
+                <!-- MANUAL SOURCE -->
+                <div id="aqs-ch-src-manual" style="display:none">
+                    <p style="font-size:.85rem;color:#94a3b8;margin:0 0 10px">Add questions one by one manually.</p>
+                    <button id="aqs-ch-manual-start-btn" class="aqs-ch-btn aqs-ch-btn-secondary">✏️ Add a Question</button>
+                </div>
+
+                <!-- Generation progress -->
+                <div id="aqs-ch-gen-spinner" style="display:none;margin-top:14px">
+                    <div style="display:flex;align-items:center;gap:8px;color:#a5b4fc;font-size:.88rem">
+                        <span class="aqs-ch-waiting-dot"></span> Generating questions…
+                    </div>
+                </div>
+                <div id="aqs-ch-gen-progress">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+                        <span id="aqs-ch-gen-status" style="font-size:.82rem;color:#94a3b8"></span>
+                        <span id="aqs-ch-gen-count" style="font-size:.78rem;color:#64748b"></span>
+                    </div>
+                    <div class="aqs-ch-gen-bar-wrap"><div id="aqs-ch-gen-bar"></div></div>
+                    <button id="aqs-ch-retry-btn" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm" style="display:none;margin-top:6px">🔄 Retry</button>
+                </div>
+            </div>
+
+            <!-- Question list -->
+            <div class="aqs-ch-card" style="display:none" id="aqs-ch-q-list-card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+                    <p class="aqs-ch-card-title" style="margin:0;font-size:.95rem;font-weight:700;color:#e2e8f0">📋 Questions Ready</p>
+                    <div style="display:flex;gap:8px">
+                        <button id="aqs-ch-shuffle-btn" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">🔀 Shuffle</button>
+                        <button id="aqs-ch-add-q-btn" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">＋ Add</button>
+                    </div>
+                </div>
+                <div id="aqs-ch-q-list" style="max-height:260px;overflow-y:auto"></div>
+            </div>
+
+            <!-- Game settings -->
+            <div class="aqs-ch-card">
+                <p class="aqs-ch-card-title" style="margin:0 0 16px;font-size:1rem;font-weight:700;color:#e2e8f0">⚙️ Challenge Settings</p>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:14px">
+                    <div>
+                        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">PLAYERS</label>
+                        <select id="aqs-ch-players" class="aqs-ch-input">
+                            <option value="2">2 Players</option>
+                            <option value="3">3 Players</option>
+                            <option value="4">4 Players</option>
+                            <option value="5">5 Players</option>
+                            <option value="6">6 Players</option>
+                            <option value="7">7 Players</option>
+                            <option value="8">8 Players</option>
+                            <option value="9">9 Players</option>
+                            <option value="10">10 Players</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">QUESTIONS/ROUND</label>
+                        <select id="aqs-ch-qpr" class="aqs-ch-input">
+                            <option value="5" selected>5</option>
+                            <option value="6">6</option>
+                            <option value="8">8</option>
+                            <option value="10">10</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">ROUNDS</label>
+                        <select id="aqs-ch-rounds" class="aqs-ch-input">
+                            <option value="1" selected>1 Round</option>
+                            <option value="2">2 Rounds</option>
+                            <option value="3">3 Rounds</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">TIME / QUESTION</label>
+                        <select id="aqs-ch-timelimit" class="aqs-ch-input">
+                            <option value="15">15 sec</option>
+                            <option value="20">20 sec</option>
+                            <option value="30" selected>30 sec</option>
+                            <option value="45">45 sec</option>
+                            <option value="60">60 sec</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="margin-bottom:12px">
+                    <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">CHALLENGE TITLE (optional)</label>
+                    <input id="aqs-ch-title" type="text" class="aqs-ch-input" placeholder="e.g. Friday Night Quiz" maxlength="80">
+                </div>
+                <!-- League Mode toggle -->
+                <div style="display:flex;align-items:center;gap:12px;padding:12px 14px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:10px;margin-bottom:14px">
+                    <label class="aqs-ch-league-switch" style="position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0">
+                        <input type="checkbox" id="aqs-ch-league-toggle" style="opacity:0;width:0;height:0">
+                        <span style="position:absolute;cursor:pointer;inset:0;background:#1e2035;border-radius:24px;transition:.25s;border:1px solid rgba(99,102,241,.4)"></span>
+                    </label>
+                    <div>
+                        <div style="font-size:.88rem;font-weight:700;color:#a5b4fc">⚔️ League Mode</div>
+                        <div style="font-size:.76rem;color:#64748b;margin-top:2px">Players are eliminated each round — last one standing wins!</div>
+                    </div>
+                </div>
+                <div id="aqs-ch-league-info" style="display:none;font-size:.8rem;color:#c4b5fd;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.25);border-radius:8px;padding:8px 12px;margin-bottom:10px;text-align:center;font-weight:600"></div>
+                <div id="aqs-ch-rounds-preview" style="font-size:.82rem;color:#94a3b8;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:16px"></div>
+<style>
+#aqs-ch-league-toggle:checked + span { background: rgba(99,102,241,.6); border-color: #6366f1; }
+#aqs-ch-league-toggle:checked + span::before { transform: translateX(18px); }
+#aqs-ch-league-toggle + span::before { content:''; position:absolute; height:16px; width:16px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.25s; }
+</style>
+                <button id="aqs-ch-create-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="width:100%;font-size:1rem;padding:12px" disabled>🚀 Host Challenge with These Questions</button>
+                <p id="aqs-ch-host-hint" style="display:none;font-size:.8rem;color:#f87171;margin:8px 0 0;text-align:center">Generate or add questions first.</p>
+            </div>
+        </div><!-- /pane-host -->
+    </div>
+</div><!-- /screen-home -->
+
+<!-- ════════════════════════ WAITING ROOM SCREEN ════════════════════════ -->
+<div id="aqs-ch-screen-waiting" class="aqs-ch-screen">
+    <div style="max-width:700px;margin:0 auto;padding:20px 16px">
+        <div class="aqs-ch-card" style="text-align:center;padding:28px 20px;margin-bottom:16px">
+            <h2 id="aqs-ch-lobby-title" style="margin:0 0 6px;font-size:1.4rem;color:#e2e8f0;font-weight:800"></h2>
+            <p id="aqs-ch-lobby-host" style="margin:0 0 16px;color:#94a3b8;font-size:.88rem"></p>
+            <div style="display:inline-flex;flex-direction:column;align-items:center;gap:6px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4);border-radius:14px;padding:16px 28px;margin-bottom:16px">
+                <div style="font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.1em;font-weight:600">Challenge Code</div>
+                <div id="aqs-ch-code-value" style="font-size:2.2rem;font-weight:900;color:#a5b4fc;letter-spacing:.18em;font-family:monospace"></div>
+            </div>
+            <div class="aqs-ch-invite-row" style="max-width:420px;margin:0 auto">
+                <input id="aqs-ch-invite-link-input" type="text" readonly style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;color:#94a3b8;font-size:.78rem;font-family:monospace;flex:1;outline:none">
+                <button id="aqs-ch-copy-link" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">📋 Copy</button>
+            </div>
+        </div>
+
+        <div class="aqs-ch-card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+                <p class="aqs-ch-card-title" style="margin:0;font-size:.95rem;font-weight:700;color:#e2e8f0">Players</p>
+                <div id="aqs-ch-lobby-wait" style="font-size:.85rem;color:#94a3b8"></div>
+            </div>
+            <div id="aqs-ch-players-grid" class="aqs-ch-players-grid"></div>
+        </div>
+
+        <!-- Host controls -->
+        <div id="aqs-ch-host-controls" style="display:none">
+            <div class="aqs-ch-card" style="text-align:center">
+                <button id="aqs-ch-start-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="font-size:1rem;padding:12px 32px;width:100%;margin-bottom:10px" disabled>▶ Need more players</button>
+                <button id="aqs-ch-toggle-settings-btn" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">⚙️ Edit Settings</button>
+                <div id="aqs-ch-edit-settings" style="display:none;text-align:left;margin-top:14px;border-top:1px solid rgba(255,255,255,.08);padding-top:14px">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+                        <div>
+                            <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:4px">TITLE</label>
+                            <input id="aqs-ch-edit-title" type="text" class="aqs-ch-input" maxlength="80">
+                        </div>
+                        <div>
+                            <label style="font-size:.78rem;color:#94a3b8;display:block;margin-bottom:4px">SECONDS / QUESTION</label>
+                            <input id="aqs-ch-edit-time" type="number" class="aqs-ch-input" min="5" max="120" value="30">
+                        </div>
+                    </div>
+                    <div style="display:flex;gap:8px">
+                        <button id="aqs-ch-save-settings-btn" class="aqs-ch-btn aqs-ch-btn-primary aqs-ch-btn-sm">💾 Save</button>
+                        <button id="aqs-ch-cancel-settings-btn" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div><!-- /screen-waiting -->
+
+<!-- ══════════════════════════ GAME SCREEN ═══════════════════════════════ -->
+<div id="aqs-ch-screen-game" class="aqs-ch-screen">
+    <div style="max-width:960px;margin:0 auto;padding:16px">
+        <div class="aqs-ch-game-wrap">
+            <!-- Sidebar: scoreboard + round dots + chat -->
+            <div>
+                <div class="aqs-ch-card" style="padding:14px;margin-bottom:12px">
+                    <div style="font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:10px">🏆 Standings</div>
+                    <div id="aqs-ch-scoreboard"></div>
+                </div>
+                <div class="aqs-ch-card" style="padding:14px;margin-bottom:12px">
+                    <div style="font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px">Progress</div>
+                    <div id="aqs-ch-round-dots" style="line-height:1.8"></div>
+                </div>
+                <div class="aqs-ch-card" style="padding:14px">
+                    <div style="font-size:.75rem;color:#64748b;text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:8px">💬 Chat</div>
+                    <div id="aqs-ch-chat-msgs"></div>
+                    <div style="display:flex;gap:6px">
+                        <input id="aqs-ch-chat-input" type="text" class="aqs-ch-input" placeholder="Say something…" maxlength="120" style="flex:1;padding:7px 10px;font-size:.82rem">
+                        <button id="aqs-ch-chat-send" class="aqs-ch-btn aqs-ch-btn-primary aqs-ch-btn-sm">Send</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Main: question area -->
+            <div>
+                <div class="aqs-ch-card" style="min-height:360px">
+                    <div id="aqs-ch-question-area" style="min-height:300px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div><!-- /screen-game -->
+
+<!-- ═══════════════════════════ RESULTS SCREEN ══════════════════════════ -->
+<div id="aqs-ch-screen-results" class="aqs-ch-screen">
+    <div style="max-width:680px;margin:0 auto;padding:20px 16px">
+        <div class="aqs-ch-card" style="text-align:center;padding:28px 20px;margin-bottom:16px">
+            <div style="font-size:2.5rem;margin-bottom:8px">🏆</div>
+            <h2 style="margin:0 0 4px;font-size:1.5rem;color:#f59e0b;font-weight:900">Challenge Complete!</h2>
+            <p style="margin:0 0 6px;color:#94a3b8;font-size:.9rem">Winner</p>
+            <div id="aqs-ch-win-name" style="font-size:1.6rem;font-weight:800;color:#e2e8f0"></div>
+            <div id="aqs-ch-win-score" style="font-size:1rem;color:#f59e0b;margin-top:2px"></div>
+        </div>
+
+        <div id="aqs-ch-podium" class="aqs-ch-podium"></div>
+
+        <div class="aqs-ch-card" style="margin-bottom:16px">
+            <p class="aqs-ch-card-title" style="margin:0 0 14px;font-size:.95rem;font-weight:700;color:#e2e8f0">Final Standings</p>
+            <table id="aqs-ch-results-table" class="aqs-ch-results-table">
+                <thead>
+                    <tr>
+                        <th style="width:36px">#</th>
+                        <th>Player</th>
+                        <th style="text-align:center">Score</th>
+                        <th style="text-align:center">Rounds</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="aqs-ch-cert-wrap" class="aqs-ch-card" style="margin-bottom:16px"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button id="aqs-ch-print-cert" class="aqs-ch-btn aqs-ch-btn-ghost">🖨️ Print Certificate</button>
+            <button id="aqs-ch-print-all" class="aqs-ch-btn aqs-ch-btn-ghost">📄 Print Results</button>
+            <a href="challenge.html" class="aqs-ch-btn aqs-ch-btn-primary">🔄 New Challenge</a>
+        </div>
+    </div>
+</div><!-- /screen-results -->
+
+</main>
+</div>
+</div>
+
+<!-- Celebration overlay -->
+<div id="aqs-ch-celebration">
+    <div style="font-size:3rem;margin-bottom:12px">🎉</div>
+    <h2 style="margin:0 0 8px;font-size:2rem;font-weight:900;color:#f59e0b">🏆 Winner!</h2>
+    <div id="aqs-ch-cel-winner" style="font-size:1.4rem;color:#e2e8f0;margin-bottom:4px"></div>
+    <div id="aqs-ch-cel-score" style="font-size:1rem;color:#94a3b8;margin-bottom:24px"></div>
+    <button id="aqs-ch-cel-close" class="aqs-ch-btn aqs-ch-btn-primary" style="font-size:1rem;padding:12px 32px">🏆 See Results</button>
+</div>
+
+<script>
+/* Set host name input from localStorage */
+document.addEventListener('DOMContentLoaded', function(){
+    var inp = document.getElementById('aqs-ch-host-name-inp');
+    if(inp) inp.value = localStorage.getItem('aqs_host_name') || '';
+});
+</script>
+<script src="js/aqs-challenge.js"></script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+  <script src="capacitor-bridge.js"></script>
+</body>
+</html>

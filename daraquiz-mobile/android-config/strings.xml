@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DaraQuiz AI — Android string resources
+  This file goes into: android/app/src/main/res/values/strings.xml
+  Capacitor generates this automatically; this is a reference copy.
+-->
+<resources>
+    <string name="app_name">DaraQuiz AI</string>
+    <string name="title_activity_main">DaraQuiz AI</string>
+    <string name="package_name">com.darapet.smartquiz</string>
+    <string name="custom_url_scheme">com.darapet.smartquiz</string>
+</resources>

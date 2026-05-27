@@ -1,0 +1,33 @@
+node_modules/
+dist/
+.DS_Store
+*.local
+
+# Android
+android/
+# Uncomment below to track android folder in git (needed for GitHub Actions build)
+# !android/
+
+# iOS
+ios/
+# Uncomment below to track ios folder in git
+# !ios/
+
+# Keystore (NEVER commit real keystores)
+*.keystore
+*.jks
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.local
+.env.*.local

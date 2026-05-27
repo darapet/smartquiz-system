@@ -1,0 +1,36 @@
+{
+  "name": "daraquiz-ai",
+  "version": "1.0.0",
+  "description": "DaraQuiz AI - Smart Quiz App by Darapet Technology",
+  "main": "index.js",
+  "scripts": {
+    "build": "echo 'Static web app - no build step needed'",
+    "cap:sync": "npx cap sync",
+    "cap:open:android": "npx cap open android",
+    "cap:open:ios": "npx cap open ios",
+    "cap:run:android": "npx cap run android",
+    "cap:run:ios": "npx cap run ios",
+    "android:release": "cd android && ./gradlew assembleRelease",
+    "android:debug": "cd android && ./gradlew assembleDebug",
+    "icons": "npx capacitor-assets generate"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.0",
+    "@capacitor/android": "^6.1.0",
+    "@capacitor/ios": "^6.1.0",
+    "@capacitor/app": "^6.0.0",
+    "@capacitor/haptics": "^6.0.0",
+    "@capacitor/keyboard": "^6.0.0",
+    "@capacitor/status-bar": "^6.0.0",
+    "@capacitor/splash-screen": "^6.0.0",
+    "@capacitor/network": "^6.0.0",
+    "@capacitor/browser": "^6.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.0",
+    "capacitor-assets": "^3.0.5"
+  },
+  "keywords": ["capacitor", "android", "ios", "quiz", "firebase"],
+  "author": "Darapet Technology",
+  "license": "MIT"
+}
