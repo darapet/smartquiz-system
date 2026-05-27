@@ -86,6 +86,7 @@
           'print-ready 300 DPI output',
           'clean structured layout with clear visual hierarchy',
           'bold impactful typographic treatment',
+          'crisp sharp legible text, perfectly readable typography, all words clear and correct',
           'vibrant perfectly harmonised color palette',
           'sharp vector-quality crisp edges and elements',
           'premium high-resolution commercial finish',
@@ -98,50 +99,50 @@
       /* ── Per design-type specialist suffix — 30+ types covered ── */
       var DESIGN_TYPE_SUFFIX = {
           /* ── Promotional ── */
-          flyer:        'professional A5 promotional flyer design, bold headline at top, strong visual hierarchy, vivid accent colors, clear body text zones, print-ready, no real photography',
-          banner:       'wide-format professional banner design, bold high-contrast text, powerful imagery, strong brand presence, horizontal layout, print-quality finish',
-          poster:       'dramatic large-format A2 poster design, cinematic full-bleed background, powerful display typeface, strong visual focal point, gallery-quality',
-          billboard:    'large-format billboard design, ultra-bold minimal text, instant visual impact, high contrast, readable at distance, premium outdoor advertising quality',
-          signage:      'professional indoor signage design, clear bold typography, brand-consistent colors, clean layout, excellent legibility',
+          flyer:        'professional A5 promotional flyer design, bold headline at top, strong visual hierarchy, vivid accent colors, clear body text zones, all text crisp and legible, print-ready, no real photography',
+          banner:       'wide-format professional banner design, bold high-contrast text, crisp sharp legible headline, all words perfectly readable, powerful imagery, strong brand presence, horizontal layout, print-quality finish',
+          poster:       'dramatic large-format A2 poster design, cinematic full-bleed background, powerful display typeface, sharp readable title text, strong visual focal point, all text clear and legible, gallery-quality',
+          billboard:    'large-format billboard design, ultra-bold minimal text, instant visual impact, high contrast, all text sharp and readable at distance, premium outdoor advertising quality',
+          signage:      'professional indoor signage design, clear bold typography, all text perfectly legible, brand-consistent colors, clean layout, excellent legibility',
 
           /* ── Events ── */
-          invitation:   'luxury event invitation design, elegant decorative border, refined script and serif typography combination, premium textured card feel, sophisticated color palette',
-          announcement: 'eye-catching announcement design, bold headline, clean supporting text, celebratory color accents, professional layout',
-          'event.graphic': 'vibrant event graphic design, high energy composition, bold date and title treatment, striking visual identity',
+          invitation:   'luxury event invitation design, elegant decorative border, refined script and serif typography combination, all text crisp and readable, premium textured card feel, sophisticated color palette',
+          announcement: 'eye-catching announcement design, bold headline, clean sharp readable supporting text, celebratory color accents, all text legible and clear, professional layout',
+          'event.graphic': 'vibrant event graphic design, high energy composition, bold sharp date and title treatment, all text clearly readable, striking visual identity',
 
           /* ── Memorial ── */
-          obituary:     'dignified obituary memorial design, soft warm muted tones, classical elegant serif typography, gentle floral or dove motif, respectful solemn layout, tasteful ornate border',
-          memorial:     'dignified memorial tribute design, soft muted elegant tones, classical serif typography, gentle symbolic motifs, respectful layout, tasteful ornate border',
-          tribute:      'heartfelt tribute design, warm golden and cream tones, elegant calligraphic typography, emotive composition, premium paper texture feel',
-          funeral:      'dignified funeral program design, dark muted respectful tones, formal serif typography, understated decorative border, solemn professional layout',
+          obituary:     'dignified obituary memorial design, soft warm muted tones, classical elegant serif typography, all text perfectly readable, gentle floral or dove motif, respectful solemn layout, tasteful ornate border',
+          memorial:     'dignified memorial tribute design, soft muted elegant tones, classical serif typography, all text crisp and legible, gentle symbolic motifs, respectful layout, tasteful ornate border',
+          tribute:      'heartfelt tribute design, warm golden and cream tones, elegant calligraphic typography, all text readable and clear, emotive composition, premium paper texture feel',
+          funeral:      'dignified funeral program design, dark muted respectful tones, formal serif typography, all text sharp and legible, understated decorative border, solemn professional layout',
 
           /* ── Identity ── */
           logo:          'clean professional logo design, bold geometric or lettermark concept, vector-crisp sharp edges, strong scalable brand mark, solid color background, no photography',
           brand:         'comprehensive brand identity design concept, cohesive logo and typography system, professional color palette, clean presentation layout',
-          'business.card': 'professional business card design, elegant layout, clear name and contact hierarchy, brand color accents, premium finish, both sides shown',
+          'business.card': 'professional business card design, elegant layout, clear name and contact hierarchy, all text crisp and perfectly readable, brand color accents, premium finish, both sides shown',
 
           /* ── Social media ── */
-          thumbnail:    'high-impact YouTube thumbnail design, bold oversized readable text overlay, vivid contrasting colors, strong emotion-driven composition, optimised for small-screen visibility',
-          instagram:    'professional Instagram post design, square format, bold visual content, strong typography, on-brand color palette, eye-catching composition',
-          facebook:     'professional Facebook post or cover design, clear headline text, engaging visual, brand colors, optimised for feed visibility',
-          tiktok:       'vertical TikTok graphic design, bold center text, high contrast, vibrant gradient, designed for mobile screen, eye-catching',
+          thumbnail:    'high-impact YouTube thumbnail design, bold oversized sharp readable text overlay, all words clearly legible, vivid contrasting colors, strong emotion-driven composition, optimised for small-screen visibility',
+          instagram:    'professional Instagram post design, square format, bold visual content, strong sharp typography, all text readable, on-brand color palette, eye-catching composition',
+          facebook:     'professional Facebook post or cover design, clear sharp headline text, all words legible, engaging visual, brand colors, optimised for feed visibility',
+          tiktok:       'vertical TikTok graphic design, bold center text, all text sharp and readable, high contrast, vibrant gradient, designed for mobile screen, eye-catching',
 
           /* ── Print & document ── */
-          certificate:  'formal official certificate design, ornate classical border, embossed seal area, authoritative serif typography, gold accent elements, premium parchment-style background',
-          brochure:     'professional tri-fold brochure design, organised information sections, clean professional typography, strong cover visual, balanced color use, print-ready',
-          menu:         'upscale restaurant menu design, elegant typography hierarchy, organised food categories, premium feel, tasteful decorative accents, fine dining aesthetic',
-          newsletter:   'professional newsletter layout design, clear masthead, organised column structure, strong typographic hierarchy, branded color accents',
-          'report.cover': 'professional corporate report cover design, bold title treatment, strong geometric or abstract background, authoritative feel, premium finish',
-          'album.cover': 'striking music album cover design, bold artistic visual concept, strong typographic identity, mood-appropriate color palette, square format',
-          'book.cover':  'professional book cover design, compelling visual concept, strong title treatment, back cover layout, spine, premium publishing quality',
-          magazine:     'high-end magazine cover design, bold masthead, striking cover image concept, compelling headline hierarchy, newsstand-quality',
-          label:        'professional product label design, clear brand name, elegant or bold typography, product information layout, premium finish',
-          packaging:    'professional product packaging design, brand-consistent visuals, clear information hierarchy, premium material feel, 3D mockup perspective',
+          certificate:  'formal official certificate design, ornate classical border, embossed seal area, authoritative serif typography, all text crisp and perfectly readable, gold accent elements, premium parchment-style background',
+          brochure:     'professional tri-fold brochure design, organised information sections, clean professional typography, all text sharp and perfectly legible, strong cover visual, balanced color use, print-ready',
+          menu:         'upscale restaurant menu design, elegant typography hierarchy, organised food categories, all text crisp and perfectly readable, premium feel, tasteful decorative accents, fine dining aesthetic',
+          newsletter:   'professional newsletter layout design, clear masthead, organised column structure, strong typographic hierarchy, all text sharp and legible, branded color accents',
+          'report.cover': 'professional corporate report cover design, bold sharp title treatment, all text readable, strong geometric or abstract background, authoritative feel, premium finish',
+          'album.cover': 'striking music album cover design, bold artistic visual concept, strong typographic identity, all text crisp, mood-appropriate color palette, square format',
+          'book.cover':  'professional book cover design, compelling visual concept, strong sharp title treatment, all text readable, back cover layout, spine, premium publishing quality',
+          magazine:     'high-end magazine cover design, bold masthead, striking cover image concept, compelling sharp headline hierarchy, all text legible, newsstand-quality',
+          label:        'professional product label design, clear brand name, elegant or bold typography, all text perfectly legible, product information layout, premium finish',
+          packaging:    'professional product packaging design, brand-consistent visuals, clear information hierarchy, all text readable, premium material feel, 3D mockup perspective',
 
           /* ── Digital & app ── */
-          'app.screen':  'professional mobile app UI screen design, clean modern interface, clear navigation, on-brand color system, crisp icons, pixel-perfect layout',
-          'landing.page': 'professional website landing page design, clear headline and CTA hierarchy, clean sections, professional imagery placeholders, conversion-focused layout',
-          infographic:  'professional infographic design, clear data visualisation, icon-supported sections, logical flow, vibrant color-coded elements, clean typography',
+          'app.screen':  'professional mobile app UI screen design, clean modern interface, clear navigation, on-brand color system, crisp icons, all text sharp and readable, pixel-perfect layout',
+          'landing.page': 'professional website landing page design, clear headline and CTA hierarchy, clean sections, professional imagery placeholders, all text legible, conversion-focused layout',
+          infographic:  'professional infographic design, clear data visualisation, icon-supported sections, logical flow, vibrant color-coded elements, all text crisp and readable, clean typography',
 
           /* ── Apparel & merchandise ── */
           't.shirt':    'professional t-shirt graphic design, bold centered artwork, strong typographic or illustrative element, works on light and dark fabric, print-ready vector style',
@@ -149,12 +150,12 @@
           'mug.design': 'professional mug wrap design, bold graphic centered, clear readable text, vibrant colors, 360-degree printable layout',
 
           /* ── Cards ── */
-          card:         'professional card design, clean elegant layout, crisp typography, balanced whitespace, premium finish',
-          'greeting.card': 'beautiful greeting card design, warm welcoming visual, elegant typography, inside and outside panel layout, premium card feel',
-          'birthday.card': 'vibrant celebratory birthday card design, festive color palette, joyful typography, decorative elements, premium quality',
+          card:         'professional card design, clean elegant layout, crisp sharp typography, all text perfectly readable, balanced whitespace, premium finish',
+          'greeting.card': 'beautiful greeting card design, warm welcoming visual, elegant sharp typography, all text legible, inside and outside panel layout, premium card feel',
+          'birthday.card': 'vibrant celebratory birthday card design, festive color palette, joyful sharp typography, all text readable, decorative elements, premium quality',
 
           /* ── ID & profile ── */
-          'id.card':    'professional ID or membership card design, clear photo zone, bold name and ID field layout, security pattern background, brand colors, premium laminated finish',
+          'id.card':    'professional ID or membership card design, clear photo zone, bold sharp name and ID field layout, all text perfectly legible, security pattern background, brand colors, premium laminated finish',
           dp:           'professional social media profile picture design, circular crop-safe composition, bold initials or icon, strong brand colors, clean background'
       };
 
@@ -211,12 +212,16 @@
           ];
 
           if (isDesign) {
-              /* For graphic design: block photorealistic camera artifacts */
+              /* For graphic design: block photorealistic camera artifacts AND bad text rendering */
               baseNeg = baseNeg.concat([
                   'photograph', 'photo', 'camera', 'lens flare', 'bokeh',
                   'depth of field', 'DSLR', 'RAW photo', 'realistic skin',
                   'real person', 'candid shot', 'studio photo',
-                  'harsh shadows', 'overlit', 'underlit'
+                  'harsh shadows', 'overlit', 'underlit',
+                  'blurry text', 'illegible text', 'unreadable text',
+                  'distorted letters', 'warped typography', 'misspelled words',
+                  'garbled text', 'scrambled letters', 'wrong spelling',
+                  'fuzzy text', 'smeared text', 'broken letters'
               ]);
           } else if (!isArt) {
               /* For photorealistic: block art/illustration styles */
@@ -605,4 +610,3 @@
       }
 
   })();
-  
