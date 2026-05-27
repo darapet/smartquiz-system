@@ -1402,9 +1402,8 @@
         if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
         window.speechSynthesis.cancel();
 
-        /* Safety timeout — iOS often never fires onend for long texts.
-           Estimate: ~13 chars/second of speaking, +5s buffer.             */
-        var safetyMs = Math.max(8000, (spoken.length / 13) * 1000 + 5000);
+        /* Safety timeout — flat 1-hour ceiling, not based on text length. */
+        var safetyMs = 60 * 60 * 1000; /* 1 hour — never calculated from text length */
         var safetyTimer = setTimeout(function() {
             window.speechSynthesis.cancel();
             voiceAiTalking = false;
@@ -1446,8 +1445,8 @@
                 if (pick) utter.voice = pick;
                 utter.onend = function() { speakPart(); };
                 utter.onerror = function() { speakPart(); /* skip bad chunk, continue */ };
-                /* Per-chunk stall guard: if onend never fires within chunk duration + 4s */
-                var partMs = Math.max(3000, (parts[pidx-1].length / 13) * 1000 + 4000);
+                /* Per-chunk safety ceiling — flat 1 hour, not derived from text length */
+                var partMs = 60 * 60 * 1000; /* 1 hour per chunk — never cut off by length */
                 var partTimer = setTimeout(function() { speakPart(); }, partMs);
                 var origOnEnd = utter.onend;
                 utter.onend = function() { clearTimeout(partTimer); origOnEnd(); };
@@ -1521,8 +1520,8 @@
 
         voiceAiTalking = true;
 
-        /* Global safety timeout — ensures orb never stays stuck green forever.
-           Max allowed speaking time: ~13 chars/sec + generous 20s buffer.    */
+        /* Global safety timeout — flat 1-hour ceiling.
+           Never calculated from text length — let the audio finish naturally. */
         var _globalSpeakTimer = setTimeout(function() {
             if (voiceAiTalking) {
                 if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src=''; } catch(_){} currentStudioAudio = null; }
@@ -1530,7 +1529,7 @@
                 voiceAiTalking = false;
                 if (onDone) onDone();
             }
-        }, Math.max(15000, (spoken.length / 13) * 1000 + 20000));
+        }, 60 * 60 * 1000); /* 1 hour — never cut off early */
 
         /* Wrap original onDone to clear the global safety timer too */
         var _origOnDone = onDone;
@@ -1624,19 +1623,18 @@
 
                     /* ── Android-safe stall watchdog ──────────────────────────
                        audio.duration is UNRELIABLE on Android Chrome for blob
-                       URLs — often returns Infinity or NaN, causing the old
-                       duration-based guard to cut off after only 8 s.
+                       URLs — often returns Infinity or NaN.
 
-                       New approach: watch currentTime advance via timeupdate.
+                       Instead: watch currentTime advance via timeupdate.
                        If currentTime stops moving for 4 s and audio hasn't
-                       ended → stall → skip to next chunk.
+                       ended → genuine stall → skip to next chunk.
 
-                       Hard cap = blob.size / 3000 + 6 s  (≈128 kbps gives
-                       ~16 KB/s; dividing by 3000 gives a generous ceiling).
+                       Hard cap is a flat 1-hour ceiling — never calculated
+                       from blob size or text length.
                     ──────────────────────────────────────────────────────────── */
                     var hardCap = setTimeout(function() {
                         if (!cleaned) { cleanup(); playNext(); }
-                    }, Math.max(14000, (blob.size / 3000) * 1000 + 6000));
+                    }, 60 * 60 * 1000); /* 1 hour — never calculated from blob size */
 
                     function armStallTimer() {
                         clearTimeout(stallTimer);
