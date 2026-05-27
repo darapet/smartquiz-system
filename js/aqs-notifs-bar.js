@@ -6,7 +6,7 @@
    Include this script on every page AFTER aqs-firebase.js.
 
    Layout:
-   - Countdown : position:fixed; TOP of page (banner)
+   - Countdown : position:fixed; top:0  (very top of page)
    - Ticker    : position:fixed; BOTTOM of page (scrolling text footer)
    ============================================================ */
 (function () {
@@ -16,7 +16,7 @@
     var style = document.createElement('style');
     style.id = 'aqs-notifs-bar-css';
     style.textContent = [
-        /* ── COUNTDOWN — top banner ── */
+        /* ── COUNTDOWN — fixed at very top ── */
         '#aqs-countdown-bar{display:none;text-align:center;padding:8px 20px;font-size:.88rem;position:fixed;top:0;left:0;right:0;z-index:9990;border-bottom:1px solid rgba(255,255,255,.15);}',
         '#aqs-countdown-bar .aqs-cd-label{font-weight:700;margin-right:12px;opacity:.9;}',
         '#aqs-countdown-digits{display:inline-flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums;}',
@@ -31,10 +31,6 @@
         '#aqs-ticker-track:hover{animation-play-state:paused;}',
         '@keyframes aqsTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-100%)}}',
 
-        /* ── Hamburger-aware countdown placement ── */
-        /* Sidebar pages use aqs-full-page-body — hamburger is fixed at top:8px,height:40px */
-        '@media(max-width:768px){body.aqs-full-page-body #aqs-countdown-bar{top:56px !important;}}',
-
         /* ── Responsive ── */
         '@media(max-width:480px){#aqs-news-ticker-bar{height:30px;line-height:30px;font-size:.75rem;}#aqs-news-ticker-bar .aqs-ticker-label{font-size:.7rem;padding:0 10px;}#aqs-countdown-bar{font-size:.8rem;padding:6px 10px;}.aqs-cd-block{font-size:.82rem;padding:2px 7px;min-width:32px;}}'
     ].join('');
@@ -42,7 +38,7 @@
 
     /* ── Build HTML elements ─────────────────────────────────── */
     function buildBars() {
-        /* Countdown bar — top fixed banner */
+        /* Countdown bar — fixed at very top */
         var cdBar = document.createElement('div');
         cdBar.id = 'aqs-countdown-bar';
         cdBar.innerHTML =
@@ -64,33 +60,54 @@
             '<span class="aqs-ticker-label" id="aqs-ticker-label">📢 NEWS</span>' +
             '<div id="aqs-ticker-scroll-wrap"><span id="aqs-ticker-track"></span></div>';
 
-        /* Countdown goes at body top, ticker at body bottom */
         document.body.insertBefore(cdBar, document.body.firstChild);
         document.body.appendChild(tickerBar);
     }
 
-    /* ── Add body padding so content isn't hidden behind fixed bars ── */
-    function _updateBodyPadding() {
+    /* ── Push site header + page body below the fixed bars ───── */
+    /* Uses margin-top on the header (not body.paddingTop) so the
+       header sits flush against the bottom edge of the countdown
+       bar with zero gap. Also sets the sticky top threshold to
+       match so the header stays below the bar while scrolling.   */
+    function _applyOffsets() {
         var ticker = document.getElementById('aqs-news-ticker-bar');
         var cd     = document.getElementById('aqs-countdown-bar');
 
+        /* ── Ticker: pad body bottom so content isn't hidden ── */
         if (ticker && ticker.style.display !== 'none') {
-            var exB = parseInt(window.getComputedStyle(document.body).paddingBottom) || 0;
-            document.body.style.paddingBottom = Math.max(exB, 42) + 'px';
+            document.body.style.paddingBottom = '42px';
         }
-        if (cd && cd.style.display !== 'none') {
-            /* Use actual bar height for accurate offset */
-            var cdH = (cd.offsetHeight || 42) + 4;
-            var exT = parseInt(window.getComputedStyle(document.body).paddingTop) || 0;
-            document.body.style.paddingTop = Math.max(exT, cdH) + 'px';
 
-            /* Shift any sticky site-header so it sits BELOW the countdown bar
-               (this keeps the hamburger inside the header fully visible) */
-            document.querySelectorAll('.aqs-site-header').forEach(function(h) {
-                if (!h._aqsOrigTop) h._aqsOrigTop = h.style.top || '';
-                h.style.top = cdH + 'px';
+        /* ── Countdown: shift site header down by exact bar height ── */
+        if (cd && cd.style.display !== 'none') {
+            /* Measure after paint so offsetHeight is accurate */
+            requestAnimationFrame(function () {
+                var cdH = cd.getBoundingClientRect().height || cd.offsetHeight || 40;
+
+                /* Move every .aqs-site-header down so it sits directly
+                   below the countdown bar — no gap, no overlap */
+                document.querySelectorAll('.aqs-site-header').forEach(function (h) {
+                    h.style.marginTop = cdH + 'px';
+                    h.style.top       = cdH + 'px'; /* sticky threshold */
+                });
+
+                /* Also push sidebar hamburger toggles on mobile pages */
+                document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
+                    btn.style.top = (cdH + 8) + 'px';
+                });
             });
         }
+    }
+
+    /* ── Reset offsets when countdown bar hides ──────────────── */
+    function _resetOffsets() {
+        document.querySelectorAll('.aqs-site-header').forEach(function (h) {
+            h.style.marginTop = '';
+            h.style.top       = '';
+        });
+        document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
+            btn.style.top = '';
+        });
     }
 
     /* ── Ticker logic — scrolling text ───────────────────────── */
@@ -100,7 +117,6 @@
         var lbl   = document.getElementById('aqs-ticker-label');
         if (!bar || !track || !text) return;
 
-        /* Apply admin colours */
         bar.style.background = bg    || '#1e1b4b';
         bar.style.color      = color || '#e0e7ff';
         if (lbl) {
@@ -110,15 +126,11 @@
             lbl.textContent      = label || '📢 NEWS';
         }
 
-        /* Build scrolling text — repeat 3× so it loops seamlessly */
         var msgs = text.split('·').map(function(s){ return s.trim(); }).filter(Boolean);
         if (!msgs.length) msgs = [text];
         var fullText = msgs.join('   ·   ') + '          ';
         track.textContent = fullText + fullText + fullText;
 
-        /* Speed: admin setting (words per minute-ish) → animation duration.
-           Multiplier 35 (was 20) + 90s minimum ensures a very readable, slow scroll
-           even at high admin speed values. Max raised to 700s for very long texts. */
         var spd = parseInt(speed) || 40;
         var dur = Math.round(track.textContent.length * 35 / spd);
         dur = Math.max(90, Math.min(700, dur));
@@ -126,7 +138,7 @@
 
         bar.style.display = 'flex';
         bar.style.alignItems = 'center';
-        _updateBodyPadding();
+        _applyOffsets();
     }
 
     /* ── Countdown logic ─────────────────────────────────────── */
@@ -138,7 +150,6 @@
         var targetDate = new Date(target);
         if (isNaN(targetDate.getTime()) || targetDate <= new Date()) return;
 
-        /* Apply admin colours */
         bar.style.background = bg    || 'linear-gradient(90deg,#7c3aed,#4f46e5)';
         bar.style.color      = color || '#ffffff';
 
@@ -146,13 +157,18 @@
         if (lbl) lbl.textContent = label || 'Upcoming Event';
 
         bar.style.display = 'block';
-        _updateBodyPadding();
+        _applyOffsets();
         if (_cdInterval) clearInterval(_cdInterval);
 
         function pad2(n) { return String(n).padStart(2,'0'); }
         function tick() {
             var diff = targetDate - new Date();
-            if (diff <= 0) { clearInterval(_cdInterval); bar.style.display = 'none'; return; }
+            if (diff <= 0) {
+                clearInterval(_cdInterval);
+                bar.style.display = 'none';
+                _resetOffsets();
+                return;
+            }
             var d = Math.floor(diff / 86400000);
             var h = Math.floor((diff % 86400000) / 3600000);
             var m = Math.floor((diff % 3600000) / 60000);
@@ -178,12 +194,9 @@
 
     /* ── Load settings from Firebase ─────────────────────────── */
     function loadNotifSettings() {
-        /* Use the Firestore REST API for public reads — this works for ALL
-           visitors (logged-in or not) without requiring aqsAjax to be ready. */
         _fetchViaRestApi();
     }
 
-    /* ── Firestore REST helper: parses typed field values ── */
     function _parseField(f) {
         if (!f) return undefined;
         if (f.stringValue  !== undefined) return f.stringValue;
@@ -219,7 +232,6 @@
                 }
             })
             .catch(function() {
-                /* Fallback: if REST API fails try aqsAjax (requires Firebase SDK) */
                 if (typeof window.aqsAjax === 'function') {
                     _fetchViaAjax();
                 } else {
@@ -248,8 +260,6 @@
     /* ── Bootstrap ───────────────────────────────────────────── */
     function init() {
         buildBars();
-        /* Use REST API directly — no need to wait for Firebase SDK to be ready.
-           This ensures the ticker appears for ALL visitors, including logged-out ones. */
         loadNotifSettings();
     }
 
