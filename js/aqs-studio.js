@@ -1086,9 +1086,36 @@
         });
     }
 
+    /* ── Inject glowing orb CSS once ── */
+    function injectVoiceOrbStyles() {
+        if (document.getElementById('dts-voice-orb-css')) return;
+        var s = document.createElement('style');
+        s.id = 'dts-voice-orb-css';
+        s.textContent = [
+            /* Base orb — purple idle glow */
+            '#dts-voice-orb{transition:background .4s,box-shadow .4s}',
+            '#dts-voice-orb[data-state=idle]{animation:dts-orb-idle 3s ease-in-out infinite}',
+            '@keyframes dts-orb-idle{0%,100%{box-shadow:0 0 18px 4px rgba(139,92,246,.45)}50%{box-shadow:0 0 40px 14px rgba(139,92,246,.8)}}',
+            /* Listening — cyan */
+            '#dts-voice-orb[data-state=listening]{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490)!important;animation:dts-orb-listen 1.1s ease-in-out infinite}',
+            '@keyframes dts-orb-listen{0%,100%{box-shadow:0 0 20px 5px rgba(6,182,212,.55)}50%{box-shadow:0 0 55px 20px rgba(6,182,212,.95)}}',
+            /* Thinking — amber */
+            '#dts-voice-orb[data-state=thinking]{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309)!important;animation:dts-orb-think .85s ease-in-out infinite alternate}',
+            '@keyframes dts-orb-think{0%{box-shadow:0 0 16px 4px rgba(245,158,11,.4)}100%{box-shadow:0 0 50px 18px rgba(245,158,11,.85)}}',
+            /* Speaking — green */
+            '#dts-voice-orb[data-state=speaking]{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46)!important;animation:dts-orb-speak .5s ease-in-out infinite alternate}',
+            '@keyframes dts-orb-speak{0%{box-shadow:0 0 16px 4px rgba(16,185,129,.45)}100%{box-shadow:0 0 60px 22px rgba(16,185,129,.9)}}',
+            /* Error — red */
+            '#dts-voice-orb[data-state=error]{background:radial-gradient(circle at 35% 35%,#fca5a5,#ef4444 60%,#991b1b)!important;animation:dts-orb-err 1s ease-in-out infinite alternate}',
+            '@keyframes dts-orb-err{0%{box-shadow:0 0 14px 3px rgba(239,68,68,.4)}100%{box-shadow:0 0 38px 12px rgba(239,68,68,.75)}}',
+        ].join('');
+        document.head.appendChild(s);
+    }
+
     function openVoiceMode() {
         var overlay = document.getElementById('dts-voice-overlay');
         if (!overlay) return;
+        injectVoiceOrbStyles();
         voiceActive   = true;
         voiceMessages = [];   // fresh history each time voice opens
         overlay.style.display = 'flex';
@@ -1220,19 +1247,77 @@
         voiceAiTalking = false;
     }
 
+    /* ── Web search / page fetch ── */
+    /* Detects phrases like "search for X", "look up X", "go to X.com", "visit X website"
+       Fetches via r.jina.ai (free reader API) for URLs, or DuckDuckGo instant answers for queries */
+    async function voiceFetchWebContext(text) {
+        /* 1. Detect a bare URL in the speech */
+        var urlMatch = text.match(/\b(https?:\/\/\S+|[\w-]+\.(com|org|net|io|gov|edu|co\.uk)[\S]*)/i);
+        if (urlMatch) {
+            var url = urlMatch[0];
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            try {
+                var r = await fetch('https://r.jina.ai/' + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
+                if (r.ok) {
+                    var body = await r.text();
+                    return '[Web page content from ' + url + ']\n' + body.slice(0, 2500);
+                }
+            } catch(_) {}
+            return null;
+        }
+
+        /* 2. Detect search/lookup intent */
+        var searchMatch = text.match(/(?:search(?:\s+for)?|look\s+up|find\s+(?:out\s+)?(?:about)?|google|check\s+online)\s+(.+)/i);
+        if (searchMatch) {
+            var query = searchMatch[1].trim();
+            try {
+                var ddg = await fetch(
+                    'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) + '&format=json&no_html=1&skip_disambig=1',
+                    { signal: AbortSignal.timeout(6000) }
+                );
+                if (ddg.ok) {
+                    var data = await ddg.json();
+                    var result = data.AbstractText || data.Answer || '';
+                    if (result) return '[Web search result for "' + query + '"]\n' + result;
+                    /* Fall back to Jina search */
+                    var jr = await fetch('https://r.jina.ai/https://www.google.com/search?q=' + encodeURIComponent(query), { signal: AbortSignal.timeout(8000) });
+                    if (jr.ok) return '[Web search for "' + query + '"]\n' + (await jr.text()).slice(0, 2000);
+                }
+            } catch(_) {}
+        }
+
+        /* 3. Detect "visit website X" or "go to website X" */
+        var visitMatch = text.match(/(?:visit|go\s+to|open|browse)(?:\s+(?:the|a|website|site|page))?\s+([\w\-]+(?:\.[\w\-]+)+)/i);
+        if (visitMatch) {
+            var visitUrl = 'https://' + visitMatch[1];
+            try {
+                var vr = await fetch('https://r.jina.ai/' + encodeURIComponent(visitUrl), { signal: AbortSignal.timeout(8000) });
+                if (vr.ok) return '[Content from ' + visitUrl + ']\n' + (await vr.text()).slice(0, 2500);
+            } catch(_) {}
+        }
+
+        return null; // no web context needed
+    }
+
     /* ── Send voice utterance to AI ── */
-    /* Voice is fully independent: it maintains its own private conversation
-       history (voiceMessages) and never reads from or writes to the chat.    */
+    /* Voice now writes its Q&A to the chat page so the user can see
+       the conversation text while the voice AI keeps talking.           */
     async function sendVoiceMessage(text) {
         if (!voiceActive) return;
         setVoiceState('thinking');
         setVoiceTranscript('"' + text + '"');
 
-        /* Add to VOICE-ONLY history — chat is untouched */
         voiceMessages.push({ role: 'user', content: text });
 
-        /* Build API payload with voice-optimised system prompt */
-        var apiMessages = [{ role: 'system', content: VOICE_SYSTEM }].concat(
+        /* Try to fetch web context before sending to AI */
+        var webCtx = null;
+        try { webCtx = await voiceFetchWebContext(text); } catch(_) {}
+
+        var sysContent = VOICE_SYSTEM +
+            (webCtx ? '\n\nWEB CONTEXT (use this to answer):\n' + webCtx : '');
+
+        /* Build API payload */
+        var apiMessages = [{ role: 'system', content: sysContent }].concat(
             voiceMessages.map(function (m) { return { role: m.role, content: m.content }; })
         );
 
@@ -1242,19 +1327,26 @@
 
         if (response) {
             voiceMessages.push({ role: 'assistant', content: response });
-            /* Speak the reply directly — no chat writing at all */
+
+            /* ── Sync Q&A to the main Studio chat page ── */
+            appendMessage('user', text);
+            appendMessage('ai', response);
+            /* Also keep main messages in sync so chat history is aware */
+            messages.push({ role: 'user', content: text });
+            messages.push({ role: 'assistant', content: response });
+            if (messages.length > 40) messages = messages.slice(-40);
+            saveCurrentChat();
+
+            /* Speak the reply */
             setVoiceState('speaking');
             setVoiceTranscript('');
             speakVoiceResponse(response, function () {
                 if (voiceActive) {
-                    /* After AI speaks, mobile speakers need longer to go silent
-                       before the mic opens — prevents popping on first user word */
                     var micDelay = (navigator.maxTouchPoints > 0) ? 950 : 650;
                     voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
                 }
             });
         } else {
-            /* AI failed — tell user and keep listening */
             setVoiceState('listening');
             setVoiceTranscript('Sorry, I could not get a response. Please try again.');
             voiceRestartTimer = setTimeout(function () {
