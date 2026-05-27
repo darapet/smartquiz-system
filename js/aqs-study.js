@@ -1,6 +1,6 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload · Voice AI
    ─────────────────────────────────────────────────────────────────────
-   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed
+   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
    ─────────────────────────────────────────────────────────────────────── */
 (function () {
 'use strict';
@@ -53,7 +53,6 @@ function _stdInit() {
     injectSummonStyles();
     injectSummonUI();
     initSummonVoices();
-    setupVoicePanel();
     /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
     setTimeout(checkAI, 500);
     setTimeout(checkAI, 2000);
@@ -448,122 +447,82 @@ function showContent(idx, text) {
 
 /* Streams a Groq response word-by-word directly into the AI panel */
 async function streamToPanel(panelTitle, messages, temp) {
-      showAIPanel(panelTitle, 'Generating…', null);
-      var bE = document.getElementById('std-ai-panel-body');
-      if (!bE) return;
+    showAIPanel(panelTitle, 'Generating…', null);
+    var bE = document.getElementById('std-ai-panel-body');
+    if (!bE) return;
 
-      function showPanelError(msg, retryFn) {
-          var bErr = document.getElementById('std-ai-panel-body');
-          if (!bErr) return;
-          bErr.innerHTML =
-              '<div style="text-align:center;padding:24px 16px">' +
-              '<div style="font-size:2rem;margin-bottom:8px">⚠️</div>' +
-              '<p style="color:#ef4444;font-weight:600;margin:0 0 14px">' + msg + '</p>' +
-              '<button id="std-panel-retry-btn" class="std-btn std-btn-primary" style="font-size:.85rem">🔄 Try Again</button>' +
-              '</div>';
-          var rb = document.getElementById('std-panel-retry-btn');
-          if (rb && retryFn) rb.addEventListener('click', retryFn);
-      }
+    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
 
-      var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
-      var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+    if (key) {
+        try {
+            var res = await fetch(GROQ_STREAM_URL, {
+                method: 'POST',
+                headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
+                body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
+                signal: AbortSignal.timeout(60000)
+            });
+            if (res.ok) {
+                var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
+                bE.innerHTML = '<div class="std-stream-body"></div>';
+                var bodyDiv = bE.querySelector('.std-stream-body');
+                while (true) {
+                    var chunk = await reader.read();
+                    if (chunk.done) break;
+                    var lines = decoder.decode(chunk.value, {stream:true}).split('\n');
+                    for (var i = 0; i < lines.length; i++) {
+                        var line = lines[i].trim();
+                        if (!line || line === 'data: [DONE]') continue;
+                        if (line.startsWith('data: ')) {
+                            try {
+                                var delta = JSON.parse(line.slice(6));
+                                var token = (delta.choices[0].delta.content) || '';
+                                full += token;
+                                if (bodyDiv) bodyDiv.innerHTML = renderParagraphs(full) + '<span class="std-stream-cursor">▍</span>';
+                            } catch(ex) {}
+                        }
+                    }
+                }
+                bE.innerHTML = renderParagraphs(full);
+                setTimeout(function () { renderMath(bE); }, 80);
+                var p = document.getElementById('std-ai-panel');
+                if (p && p.scrollIntoView) p.scrollIntoView({behavior:'smooth', block:'start'});
+                return;
+            }
+        } catch(e) { /* fall through */ }
+    }
 
-      if (key) {
-          try {
-              var res = await fetch(GROQ_STREAM_URL, {
-                  method: 'POST',
-                  headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
-                  body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
-                  signal: AbortSignal.timeout(30000)
-              });
-              if (res.ok) {
-                  var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
-                  bE.innerHTML = '<div class="std-stream-body"></div>';
-                  var bodyDiv = bE.querySelector('.std-stream-body');
-                  while (true) {
-                      var chunk = await reader.read();
-                      if (chunk.done) break;
-                      var lines = decoder.decode(chunk.value, {stream:true}).split('
-');
-                      for (var i = 0; i < lines.length; i++) {
-                          var line = lines[i].trim();
-                          if (!line || line === 'data: [DONE]') continue;
-                          if (line.startsWith('data: ')) {
-                              try {
-                                  var delta = JSON.parse(line.slice(6));
-                                  var token = (delta.choices[0].delta.content) || '';
-                                  full += token;
-                                  if (bodyDiv) bodyDiv.innerHTML = renderParagraphs(full) + '<span class="std-stream-cursor">▍</span>';
-                              } catch(ex) {}
-                          }
-                      }
-                  }
-                  bE.innerHTML = renderParagraphs(full);
-                  setTimeout(function () { renderMath(bE); }, 80);
-                  var p = document.getElementById('std-ai-panel');
-                  if (p && p.scrollIntoView) p.scrollIntoView({behavior:'smooth', block:'start'});
-                  return;
-              }
-          } catch(e) { /* fall through to non-streaming */ }
-      }
+    /* non-streaming fallback */
+    try {
+        var txt = await aiChat(messages, temp);
+        var bE2 = document.getElementById('std-ai-panel-body');
+        if (bE2) { bE2.innerHTML = renderParagraphs(txt); setTimeout(function () { renderMath(bE2); }, 80); }
+        var p2 = document.getElementById('std-ai-panel');
+        if (p2 && p2.scrollIntoView) p2.scrollIntoView({behavior:'smooth', block:'start'});
+    } catch(e) {
+        var bE3 = document.getElementById('std-ai-panel-body');
+        if (bE3) bE3.textContent = '⚠️ Error: ' + e.message;
+    }
+}
 
-      /* non-streaming fallback */
-      try {
-          var txt = await aiChat(messages, temp);
-          var bE2 = document.getElementById('std-ai-panel-body');
-          if (bE2) { bE2.innerHTML = renderParagraphs(txt); setTimeout(function () { renderMath(bE2); }, 80); }
-          var p2 = document.getElementById('std-ai-panel');
-          if (p2 && p2.scrollIntoView) p2.scrollIntoView({behavior:'smooth', block:'start'});
-      } catch(e) {
-          var _retryMsg = messages, _retryTemp = temp, _retryTitle = panelTitle;
-          showPanelError(
-              'Could not load — check your internet connection.',
-              function () { streamToPanel(_retryTitle, _retryMsg, _retryTemp); }
-          );
-      }
-  }
-
-  
 async function doSummarise() {
-      if (!S.title)       { showErr('Search a topic first.'); return; }
-      if (S.activeIdx < 0){ showErr('Select a chapter first.'); return; }
-      var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-      streamToPanel('📝 Summary — ' + ch.title, [
-          {role:'system', content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $...$ for block math.'},
-          {role:'user', content:'Summarise "' + ch.title + '" from "' + S.title + '"' + (content?' using:
-'+content.slice(0,3000):'') + '
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
+    streamToPanel('📝 Summary — ' + ch.title, [
+        {role:'system', content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $...$ for block math.'},
+        {role:'user', content:'Summarise "' + ch.title + '" from "' + S.title + '"' + (content?' using:\n'+content.slice(0,3000):'') + '\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.'}
+    ], 0.6);
+}
 
-1. Key concepts (bullet points)
-2. Main takeaways (2-3 sentences)
-3. Important formulas or definitions
-
-Use LaTeX math where relevant.'}
-      ], 0.6);
-  }
-
-  
 async function doExplain() {
-      if (!S.title)       { showErr('Search a topic first.'); return; }
-      if (S.activeIdx < 0){ showErr('Select a chapter first.'); return; }
-      var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-      streamToPanel('💡 Explanation — ' + ch.title, [
-          {role:'system', content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $...$ for display math.'},
-          {role:'user', content:'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".
-' + (content?'Reference:
-'+content.slice(0,2500)+'
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
+    streamToPanel('💡 Explanation — ' + ch.title, [
+        {role:'system', content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $...$ for display math.'},
+        {role:'user', content:'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content?'Reference:\n'+content.slice(0,2500)+'\n\n':'') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.'}
+    ], 0.7);
+}
 
-':'') + 'Include:
-1. Clear breakdown of complex ideas
-2. Real-world analogies and examples
-3. Why and how, not just what
-4. Common misconceptions
-5. All relevant math with LaTeX
-
-Write 400-600 words.'}
-      ], 0.7);
-  }
-
-  
 function showAIPanel(title, loading, content) {
     var p  = document.getElementById('std-ai-panel');
     var tE = document.getElementById('std-ai-panel-title');
@@ -588,236 +547,97 @@ function hideAIPanel() {
 }
 
 /* ── PRACTICE TEST ──────────────────────────────────────────── */
+async function openTest() {
+    if (S.activeIdx < 0) {
+        if (S.chapters && S.chapters.length > 0) { selectChapter(0); }
+        else { showErr('Search a topic first, then open a chapter before taking a test.'); return; }
+    }
+    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+    var ch      = S.chapters[S.activeIdx];
+    var content = (S.cache && S.cache[S.activeIdx]) ? S.cache[S.activeIdx] : '';
+    var modal   = document.getElementById('std-test-modal');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
 
-  /* Timer state — lives outside openTest so renderTestQ + handleAnswer can reach it */
-  var _testTimer = null, _testSecondsLeft = 0, _testTotalSecs = 0;
+    /* Robust JSON extraction — handles fenced blocks, stray text before/after array */
+    function extractQs(raw) {
+        if (!raw) return null;
+        var s = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+        var start = s.indexOf('[');
+        var end   = s.lastIndexOf(']');
+        if (start === -1 || end === -1 || end <= start) return null;
+        try {
+            var arr = JSON.parse(s.slice(start, end + 1));
+            if (!Array.isArray(arr) || arr.length < 2) return null;
+            return arr.filter(function (q) {
+                return q && q.q && Array.isArray(q.opts) && q.opts.length >= 2;
+            }).map(function (q) {
+                return {
+                    q:    String(q.q),
+                    opts: q.opts.slice(0, 4).map(String),
+                    ans:  Math.max(0, Math.min(parseInt(q.ans) || 0, q.opts.length - 1)),
+                    exp:  String(q.exp || '')
+                };
+            });
+        } catch(e2) { return null; }
+    }
 
-  function _clearTestTimer() {
-      if (_testTimer) { clearInterval(_testTimer); _testTimer = null; }
-  }
+    /* 10 questions — reliable token budget, clean JSON-only prompt */
+    var snippet = content ? content.slice(0, 3000) : '';
+    var sysMsg  = 'You are an exam question generator. Output ONLY a raw JSON array — no markdown fences, no explanation, no text before or after the array.';
+    var userMsg = 'Generate 10 multiple-choice questions about "' + ch.title + '" from the subject "' + S.title + '".' +
+        (snippet ? '\nUse this material:\n' + snippet : '') +
+        '\n\nOutput ONLY a JSON array in this exact format:\n' +
+        '[{"q":"Full question","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Short explanation"}]' +
+        '\n\nRules: ans is the 0-based index of the correct option. Mix easy and hard. Use LaTeX ($...$) for any maths.';
 
-  function _updateTimerDisplay() {
-      var el = document.getElementById('std-test-timer');
-      if (!el) { _clearTestTimer(); return; }
-      var m = Math.floor(_testSecondsLeft / 60);
-      var s = _testSecondsLeft % 60;
-      el.textContent = '⏱ ' + m + ':' + (s < 10 ? '0' : '') + s;
-      /* Turn red when < 30 s remain */
-      el.style.color = _testSecondsLeft < 30 ? '#ef4444' : '';
-      el.style.fontWeight = _testSecondsLeft < 30 ? '700' : '';
-  }
+    var qStr;
+    try { qStr = await aiChat([{role:'system',content:sysMsg},{role:'user',content:userMsg}], 0.3); }
+    catch(e) {
+        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
+        return;
+    }
 
-  async function openTest() {
-      if (S.activeIdx < 0) {
-          if (S.chapters && S.chapters.length > 0) { selectChapter(0); }
-          else { showErr('Search a topic first, then open a chapter before taking a test.'); return; }
-      }
-      if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-      var ch      = S.chapters[S.activeIdx];
-      var content = (S.cache && S.cache[S.activeIdx]) ? S.cache[S.activeIdx] : '';
-      var modal   = document.getElementById('std-test-modal');
-      if (!modal) return;
-      _clearTestTimer();
+    var qs = extractQs(qStr);
 
-      /* ── Step 1: Show setup dialog ── */
-      modal.style.display = 'flex';
-      modal.innerHTML =
-          '<div class="std-test-inner" style="overflow-y:auto;max-height:90vh;padding:28px 20px">' +
-          '<h2 style="margin:0 0 4px;font-size:1.2rem;font-weight:700">🎯 Practice Test Setup</h2>' +
-          '<p style="margin:0 0 22px;font-size:.85rem;color:#6b7280">Chapter: <strong>' + esc(ch.title) + '</strong></p>' +
+    /* single retry with simpler prompt if first attempt returned unparseable output */
+    if (!qs) {
+        try {
+            var r2str = await aiChat([
+                {role:'system', content:'Output ONLY a JSON array, no markdown.'},
+                {role:'user',   content:'5 multiple-choice questions about "' + ch.title + '" from "' + S.title + '".\n[{"q":"...","opts":["A","B","C","D"],"ans":0,"exp":"..."}]'}
+            ], 0.2);
+            qs = extractQs(r2str);
+        } catch(e2) {}
+    }
 
-          '<div style="margin-bottom:20px">' +
-          '<label style="display:block;font-weight:600;margin-bottom:8px;font-size:.9rem">Number of questions</label>' +
-          '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-          ['5','10','15','20'].map(function(n) {
-              return '<button class="std-test-setup-btn" data-numq="' + n + '" style="flex:1;min-width:56px;padding:10px 0;border-radius:8px;border:2px solid #e5e7eb;background:#fff;font-weight:600;cursor:pointer;font-size:1rem">' + n + '</button>';
-          }).join('') +
-          '</div></div>' +
+    if (!qs || !qs.length) {
+        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>The AI returned an unexpected format. Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
+        return;
+    }
 
-          '<div style="margin-bottom:28px">' +
-          '<label style="display:block;font-weight:600;margin-bottom:8px;font-size:.9rem">Time limit</label>' +
-          '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
-          [['No limit','0'],['5 min','300'],['10 min','600'],['15 min','900'],['30 min','1800']].map(function(t) {
-              return '<button class="std-test-setup-btn" data-secs="' + t[1] + '" style="flex:1;min-width:70px;padding:10px 0;border-radius:8px;border:2px solid #e5e7eb;background:#fff;font-weight:600;cursor:pointer;font-size:.85rem">' + t[0] + '</button>';
-          }).join('') +
-          '</div></div>' +
+    S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
+    renderTestQ(0);
+}
 
-          '<div style="display:flex;gap:10px">' +
-          '<button id="std-test-start-btn" class="std-btn std-btn-primary" style="flex:1;opacity:.5;pointer-events:none" disabled>Start Test →</button>' +
-          '<button class="std-btn std-btn-ghost" onclick="document.getElementById('std-test-modal').style.display='none'">Cancel</button>' +
-          '</div></div>';
-
-      /* Selection state */
-      var selNumQ = 0, selSecs = -1;
-
-      function refreshStart() {
-          var btn = document.getElementById('std-test-start-btn');
-          if (!btn) return;
-          var ready = selNumQ > 0 && selSecs >= 0;
-          btn.disabled = !ready;
-          btn.style.opacity = ready ? '1' : '.5';
-          btn.style.pointerEvents = ready ? '' : 'none';
-      }
-
-      modal.querySelectorAll('.std-test-setup-btn[data-numq]').forEach(function(b) {
-          b.addEventListener('click', function() {
-              modal.querySelectorAll('.std-test-setup-btn[data-numq]').forEach(function(x) {
-                  x.style.borderColor = '#e5e7eb'; x.style.background = '#fff'; x.style.color = '';
-              });
-              b.style.borderColor = '#7c3aed'; b.style.background = '#7c3aed'; b.style.color = '#fff';
-              selNumQ = parseInt(b.dataset.numq);
-              refreshStart();
-          });
-      });
-
-      modal.querySelectorAll('.std-test-setup-btn[data-secs]').forEach(function(b) {
-          b.addEventListener('click', function() {
-              modal.querySelectorAll('.std-test-setup-btn[data-secs]').forEach(function(x) {
-                  x.style.borderColor = '#e5e7eb'; x.style.background = '#fff'; x.style.color = '';
-              });
-              b.style.borderColor = '#7c3aed'; b.style.background = '#7c3aed'; b.style.color = '#fff';
-              selSecs = parseInt(b.dataset.secs);
-              refreshStart();
-          });
-      });
-
-      document.getElementById('std-test-start-btn').addEventListener('click', function() {
-          _generateTest(ch, content, selNumQ, selSecs);
-      });
-  }
-
-  async function _generateTest(ch, content, numQ, timeSecs) {
-      var modal = document.getElementById('std-test-modal');
-      if (!modal) return;
-      modal.innerHTML =
-          '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div>' +
-          '<h3>🤖 Generating ' + numQ + ' Practice Questions</h3>' +
-          '<p>Chapter: <strong>' + esc(ch.title) + '</strong></p>' +
-          '<div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
-
-      /* Robust JSON extraction */
-      function extractQs(raw) {
-          if (!raw) return null;
-          var s = raw.replace(/```jsons*/gi, '').replace(/```s*/gi, '').trim();
-          var start = s.indexOf('['), end = s.lastIndexOf(']');
-          if (start === -1 || end === -1 || end <= start) return null;
-          try {
-              var arr = JSON.parse(s.slice(start, end + 1));
-              if (!Array.isArray(arr) || arr.length < 2) return null;
-              return arr.filter(function(q) {
-                  return q && q.q && Array.isArray(q.opts) && q.opts.length >= 2;
-              }).map(function(q) {
-                  return {
-                      q: String(q.q),
-                      opts: q.opts.slice(0, 4).map(String),
-                      ans: Math.max(0, Math.min(parseInt(q.ans) || 0, q.opts.length - 1)),
-                      exp: String(q.exp || '')
-                  };
-              });
-          } catch(e) { return null; }
-      }
-
-      var snippet = content ? content.slice(0, 3000) : '';
-      var sysMsg  = 'You are an exam question generator. Output ONLY a raw JSON array — no markdown fences, no explanation, no text before or after the array.';
-      var userMsg = 'Generate ' + numQ + ' multiple-choice questions about "' + ch.title + '" from the subject "' + (S.title||ch.title) + '".' +
-          (snippet ? '
-Use this material:
-' + snippet : '') +
-          '
-
-Output ONLY a JSON array in this exact format:
-' +
-          '[{"q":"Full question","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Short explanation"}]' +
-          '
-
-Rules: ans is the 0-based index of the correct option. Mix easy and hard. Use LaTeX ($...$) for any maths.';
-
-      var qStr;
-      try { qStr = await aiChat([{role:'system',content:sysMsg},{role:'user',content:userMsg}], 0.3); }
-      catch(e) {
-          if (!modal) return;
-          modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="openTest()" class="std-btn std-btn-primary" style="margin-right:8px">← Back</button><button onclick="document.getElementById('std-test-modal').style.display='none'" class="std-btn std-btn-ghost">Close</button></div></div>';
-          return;
-      }
-
-      var qs = extractQs(qStr);
-
-      /* single retry with simpler prompt */
-      if (!qs) {
-          try {
-              var r2 = await aiChat([
-                  {role:'system', content:'Output ONLY a JSON array, no markdown.'},
-                  {role:'user',   content:numQ + ' multiple-choice questions about "' + ch.title + '".
-[{"q":"...","opts":["A","B","C","D"],"ans":0,"exp":"..."}]'}
-              ], 0.2);
-              qs = extractQs(r2);
-          } catch(e2) {}
-      }
-
-      if (!qs || !qs.length) {
-          modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>The AI returned an unexpected format. Please try again.</p><button onclick="openTest()" class="std-btn std-btn-primary" style="margin-right:8px">← Back</button><button onclick="document.getElementById('std-test-modal').style.display='none'" class="std-btn std-btn-ghost">Close</button></div></div>';
-          return;
-      }
-
-      S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
-
-      /* Start timer if user selected one */
-      _clearTestTimer();
-      if (timeSecs > 0) {
-          _testSecondsLeft = timeSecs;
-          _testTotalSecs   = timeSecs;
-          _testTimer = setInterval(function() {
-              _testSecondsLeft--;
-              _updateTimerDisplay();
-              if (_testSecondsLeft <= 0) {
-                  _clearTestTimer();
-                  showTestResults();
-              }
-          }, 1000);
-      } else {
-          _testSecondsLeft = 0;
-          _testTotalSecs   = 0;
-      }
-
-      renderTestQ(0);
-  }
-
-  
 function renderTestQ(idx) {
-      var q = S.testQ[idx]; if (!q) { showTestResults(); return; }
-      var modal = document.getElementById('std-test-modal'); if (!modal) return;
-      var prog = Math.round((idx / S.testQ.length) * 100);
-      var timerHtml = (_testTotalSecs > 0)
-          ? '<div id="std-test-timer" style="font-size:.85rem;padding:3px 10px;background:#f3f4f6;border-radius:20px;white-space:nowrap">⏱ Loading…</div>'
-          : '';
-      modal.innerHTML =
-          '<div class="std-test-inner">' +
-          '<div class="std-test-header" style="display:flex;align-items:center;gap:10px">' +
-          '<div style="flex:1"><div class="std-test-prog-bar"><div class="std-test-prog-fill" style="width:' + prog + '%"></div></div>' +
-          '<div class="std-test-meta">Question ' + (idx+1) + ' of ' + S.testQ.length + '</div></div>' +
-          timerHtml +
-          '</div>' +
-          '<div class="std-test-body"><div class="std-test-q">' + esc(q.q) + '</div>' +
-          '<div class="std-test-opts">' +
-          (q.opts || []).map(function(o, oi) {
-              return '<button class="std-test-opt" data-i="' + oi + '"><span class="std-test-opt-ltr">' + ['A','B','C','D'][oi] + '</span><span class="std-test-opt-txt">' + esc(o) + '</span></button>';
-          }).join('') +
-          '</div></div>' +
-          '<div class="std-test-footer"><span class="std-test-ch-tag">' + esc((S.chapters[S.activeIdx]||{}).title||'') + '</span></div>' +
-          '</div>';
+    var q = S.testQ[idx]; if (!q) { showTestResults(); return; }
+    var modal = document.getElementById('std-test-modal'); if (!modal) return;
+    var prog = Math.round((idx / S.testQ.length) * 100);
+    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-header"><div class="std-test-prog-bar"><div class="std-test-prog-fill" style="width:' + prog + '%"></div></div><div class="std-test-meta">Question ' + (idx+1) + ' of ' + S.testQ.length + '</div></div><div class="std-test-body"><div class="std-test-q">' + esc(q.q) + '</div><div class="std-test-opts">' +
+        (q.opts || []).map(function (o, oi) {
+            return '<button class="std-test-opt" data-i="' + oi + '"><span class="std-test-opt-ltr">' + ['A','B','C','D'][oi] + '</span><span class="std-test-opt-txt">' + esc(o) + '</span></button>';
+        }).join('') + '</div></div><div class="std-test-footer"><span class="std-test-ch-tag">' + esc((S.chapters[S.activeIdx]||{}).title||'') + '</span></div></div>';
+    modal.querySelectorAll('.std-test-opt').forEach(function (btn) {
+        btn.addEventListener('click', function () { handleAnswer(idx, parseInt(btn.dataset.i)); });
+    });
+    setTimeout(function () {
+        var inner = modal.querySelector('.std-test-inner');
+        if (inner) renderMath(inner);
+    }, 80);
+}
 
-      modal.querySelectorAll('.std-test-opt').forEach(function(btn) {
-          btn.addEventListener('click', function() { handleAnswer(idx, parseInt(btn.dataset.i)); });
-      });
-      setTimeout(function() {
-          var inner = modal.querySelector('.std-test-inner');
-          if (inner) renderMath(inner);
-          /* Sync timer display immediately after render */
-          if (_testTotalSecs > 0) _updateTimerDisplay();
-      }, 80);
-  }
-
-  
 function handleAnswer(qIdx, sel) {
     var q = S.testQ[qIdx]; S.testAns[qIdx] = sel;
     var ok = sel === q.ans;
@@ -846,7 +666,6 @@ function handleAnswer(qIdx, sel) {
 }
 
 function showTestResults() {
-    _clearTestTimer();
     var qs = S.testQ, ans = S.testAns; if (!qs) return;
     var correct = ans.filter(function (a, i) { return a === qs[i].ans; }).length;
     var pct = Math.round(correct / qs.length * 100);
@@ -872,279 +691,962 @@ function showTestResults() {
 /* ── AI HELPERS ─────────────────────────────────────────────── */
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-  async function aiChat(messages, temp) {
-      /* Groq-only — no Pollinations fallback */
-      if (typeof window.groqFetch === 'function') {
-          try {
-              var rg = await window.groqFetch(
-                  {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
-                  {signal:AbortSignal.timeout(45000)}
-              );
-              if (!rg.ok) {
-                  var errTxt = '';
-                  try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e) {}
-                  throw new Error('Groq error ' + rg.status + (errTxt ? ': ' + errTxt : ''));
-              }
-              var dg = await rg.json();
-              if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
-              return dg.choices[0].message.content || '';
-          } catch(e) {
-              /* Re-throw with a friendly message if it's a key/config issue */
-              if (e.message && (e.message.includes('No Groq API keys') || e.message.includes('rate-limited'))) {
-                  throw e;
-              }
-              throw new Error('AI request failed: ' + e.message);
-          }
-      }
-      /* groqFetch not ready yet — likely still loading */
-      throw new Error('Groq is not ready yet. Please wait a moment and try again.');
-  }
-
-/* ═══════════════════════════════════════════════════════════════
-   VOICE CHAT PANEL  (#std-voice-panel)
-   Full AI conversation with text + optional speech recognition.
-   Works on both desktop (370 px sidebar) and mobile (bottom sheet).
-   ═══════════════════════════════════════════════════════════════ */
-
-var VCP = {
-    open       : false,
-    history    : [],          /* [{role, content}]  conversation context */
-    speaking   : false,       /* TTS playing        */
-    recognizing: false,       /* STT active         */
-    recognition: null,        /* SpeechRecognition  */
-    synth      : window.speechSynthesis || null,
-    uttr       : null,
-};
-
-function setupVoicePanel() {
-    var panel   = document.getElementById('std-voice-panel');
-    var msgs    = document.getElementById('std-voice-msgs');
-    var closeBtn= document.getElementById('std-voice-close-btn');
-    var stopBtn = document.getElementById('std-voice-stop-btn');
-    var sendBtn = document.getElementById('std-voice-send-btn');
-    var micBtn  = document.getElementById('std-voice-mic-btn');
-    var txtIn   = document.getElementById('std-voice-text-input');
-    if (!panel || !msgs) return;
-
-    /* ── helpers ── */
-    function openPanel() {
-        panel.style.display = 'flex';
-        VCP.open = true;
-        if (!msgs.children.length) {
-            vcpAddMsg('ai',
-                'Hi! I\'m your AI Tutor. Ask me anything about ' +
-                (S.title || 'this topic') + ' — I\'m here to help.'
+async function aiChat(messages, temp) {
+    if (typeof window.groqFetch === 'function') {
+        try {
+            var rg = await window.groqFetch(
+                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
+                {signal:AbortSignal.timeout(60000)}
             );
-        }
-        if (txtIn) { txtIn.value = ''; txtIn.focus(); }
+            if (!rg.ok) {
+                var errTxt = '';
+                try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e) {}
+                throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
+            }
+            var dg = await rg.json();
+            if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
+            return dg.choices[0].message.content || '';
+        } catch(e) { /* fall through to free fallback */ }
     }
-
-    function closePanel() {
-        panel.style.display = 'none';
-        VCP.open = false;
-        vcpStopSpeaking();
-        vcpStopMic();
+    for (var pa = 0; pa < 2; pa++) {
+        try {
+            var rp = await fetch('https://text.pollinations.ai/openai', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body:JSON.stringify({model:'openai', messages:messages, temperature:temp||0.7, max_tokens:2000}),
+                signal:AbortSignal.timeout(60000)
+            });
+            if (rp.status === 429) { await sleep((pa+1)*3000); continue; }
+            if (!rp.ok) throw new Error('AI error ' + rp.status);
+            var dp = await rp.json();
+            if (!dp.choices || !dp.choices[0]) throw new Error('No AI response');
+            return dp.choices[0].message.content || '';
+        } catch(e) { if (pa < 1) { await sleep(3000); continue; } throw e; }
     }
+    throw new Error('AI unavailable. Please try again in a moment.');
+}
 
-    /* ── open triggers ── */
-    ['std-voice-btn', 'std-voice-hdr-btn'].forEach(function (id) {
-        var b = document.getElementById(id);
-        if (b) b.addEventListener('click', openPanel);
+async function aiChatVision(messages, temp) {
+    var r = await fetch('https://text.pollinations.ai/openai', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'openai', messages:messages, temperature:temp||0.7, max_tokens:2000}),
+        signal:AbortSignal.timeout(60000)
+    });
+    if (!r.ok) throw new Error('Vision AI error ' + r.status);
+    var d = await r.json();
+    if (!d.choices || !d.choices[0]) throw new Error('No vision response');
+    return d.choices[0].message.content || '';
+}
+
+/* FIX: checkAI now re-checks itself until the key is confirmed ready */
+function checkAI() {
+    var badge = document.querySelector('.std-groq-badge');
+    if (!badge) return;
+    var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
+    if (hasKey) {
+        badge.className = 'std-groq-badge ok';
+        badge.textContent = '✓ Groq AI Ready';
+        S.aiReady = true;
+    } else {
+        badge.className = 'std-groq-badge warn';
+        badge.textContent = '⚠ Using free AI (no Groq key)';
+        S.aiReady = false;
+        /* Re-check after 3 s — key may still be loading from Firebase */
+        setTimeout(checkAI, 3000);
+    }
+}
+
+/* ── EVENTS ─────────────────────────────────────────────────── */
+function setupEvents() {
+    var $ = function (id) { return document.getElementById(id); };
+
+    $('std-back-btn')     && $('std-back-btn').addEventListener('click', function () { setView('home'); });
+    $('std-results-back') && $('std-results-back').addEventListener('click', function () { setView('home'); });
+
+    $('std-summary-btn')  && $('std-summary-btn').addEventListener('click', doSummarise);
+    $('std-explain-btn')  && $('std-explain-btn').addEventListener('click', doExplain);
+    $('std-test-btn')     && $('std-test-btn').addEventListener('click', openTest);
+    $('std-test-hdr-btn') && $('std-test-hdr-btn').addEventListener('click', openTest);
+    $('std-voice-btn')    && $('std-voice-btn').addEventListener('click', summonToggle);
+    $('std-voice-hdr-btn')&& $('std-voice-hdr-btn').addEventListener('click', summonToggle);
+
+    $('std-close-ai-btn') && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
+
+    $('std-test-close-btn') && $('std-test-close-btn').addEventListener('click', function () {
+        var m = $('std-test-modal'); if (m) m.style.display = 'none';
     });
 
-    if (closeBtn) closeBtn.addEventListener('click', closePanel);
-
-    if (stopBtn) stopBtn.addEventListener('click', function () {
-        vcpStopSpeaking();
-        vcpStopMic();
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest('[data-std-action]');
+        if (!btn) return;
+        var a = btn.dataset.stdAction;
+        if (a === 'summarise') doSummarise();
+        else if (a === 'explain') doExplain();
+        else if (a === 'test') openTest();
+        else if (a === 'voice') summonToggle();
     });
 
-    /* ── send text ── */
-    function sendText() {
-        if (!txtIn) return;
-        var text = txtIn.value.trim();
-        if (!text) return;
-        txtIn.value = '';
-        autoResizeVcpInput(txtIn);
-        vcpSend(text);
-    }
-
-    if (sendBtn) sendBtn.addEventListener('click', sendText);
-
-    if (txtIn) {
-        txtIn.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
-        });
-        txtIn.addEventListener('input', function () { autoResizeVcpInput(txtIn); });
-    }
-
-    /* ── mic button ── */
-    if (micBtn) micBtn.addEventListener('click', function () {
-        if (VCP.recognizing) vcpStopMic();
-        else vcpStartMic();
+    var histList = $('std-history-list');
+    if (histList) histList.addEventListener('click', function (e) {
+        var del = e.target.closest('.std-hist-del');
+        if (del) { e.stopPropagation(); deleteHist(parseInt(del.dataset.id)); }
     });
+
+    var tm = $('std-test-modal');
+    if (tm) tm.addEventListener('click', function (e) { if (e.target === tm) tm.style.display = 'none'; });
 }
 
-function autoResizeVcpInput(el) {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-}
-
-/* Add a message bubble to the voice panel */
-function vcpAddMsg(role, text) {
-    var msgs = document.getElementById('std-voice-msgs');
-    if (!msgs) return;
-    var wrap = document.createElement('div');
-    wrap.className = 'std-vmsg std-vmsg-' + (role === 'user' ? 'user' : 'ai');
-    var bubble = document.createElement('div');
-    bubble.className = 'std-vbubble';
-    bubble.textContent = text;
-    wrap.appendChild(bubble);
-    msgs.appendChild(wrap);
-    msgs.scrollTop = msgs.scrollHeight;
-    return bubble;
-}
-
-/* Add a typing indicator and return a handle to update/remove it */
-function vcpTypingIndicator() {
-    var msgs = document.getElementById('std-voice-msgs');
-    if (!msgs) return { remove: function(){}, setText: function(){} };
-    var wrap = document.createElement('div');
-    wrap.className = 'std-vmsg std-vmsg-ai';
-    var bubble = document.createElement('div');
-    bubble.className = 'std-vbubble std-vtyping';
-    bubble.textContent = '● ● ●';
-    wrap.appendChild(bubble);
-    msgs.appendChild(wrap);
-    msgs.scrollTop = msgs.scrollHeight;
-    return {
-        remove : function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); },
-        setText: function (t) {
-            bubble.classList.remove('std-vtyping');
-            bubble.textContent = t;
-            msgs.scrollTop = msgs.scrollHeight;
-        }
-    };
-}
-
-/* Send user text → AI → speak response */
-async function vcpSend(text) {
-    vcpAddMsg('user', text);
-    VCP.history.push({ role: 'user', content: text });
-
-    /* build system prompt using current chapter context */
-    var topic = S.title || 'this topic';
-    var chText = '';
-    if (S.chapters && S.activeIdx >= 0 && S.chapters[S.activeIdx]) {
-        var ch = S.chapters[S.activeIdx];
-        chText = 'Current chapter: ' + ch.title + '.\n' + (ch.content || '').slice(0, 1200);
-    }
-    var sysMsg = {
-        role   : 'system',
-        content: 'You are a friendly AI tutor helping a student study "' + topic + '". ' +
-                 'Give clear, concise, encouraging answers. Keep responses under 120 words unless asked to elaborate. ' +
-                 (chText ? 'Context:\n' + chText : '')
-    };
-
-    /* keep last 10 turns to save tokens */
-    var history = VCP.history.slice(-10);
-    var messages = [sysMsg].concat(history);
-
-    var indicator = vcpTypingIndicator();
-    var stopBtn = document.getElementById('std-voice-stop-btn');
-    if (stopBtn) stopBtn.style.display = '';
-
+/* ── HISTORY ────────────────────────────────────────────────── */
+function saveHist(item) {
     try {
-        var reply = await aiChat(messages, 0.7);
-        VCP.history.push({ role: 'assistant', content: reply });
-        indicator.remove();
-        vcpAddMsg('ai', reply);
-        vcpSpeak(reply);
-    } catch (e) {
-        indicator.remove();
-        vcpAddMsg('ai', '⚠️ ' + (e.message || 'Something went wrong. Please try again.'));
-    } finally {
-        if (stopBtn) stopBtn.style.display = 'none';
+        var h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+        h = h.filter(function (x) { return x.title !== item.title; });
+        h.unshift(Object.assign({id:Date.now()}, item));
+        if (h.length > MAX_HIST) h = h.slice(0, MAX_HIST);
+        localStorage.setItem(HIST_KEY, JSON.stringify(h));
+        renderHistory();
+    } catch(e) {}
+}
+
+function renderHistory() {
+    var c = document.getElementById('std-history-list');
+    if (!c) return;
+    try {
+        var h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+        if (!h.length) {
+            c.innerHTML = '<div class="std-hist-empty">No recent topics yet. Search above or upload a file to get started!</div>';
+            return;
+        }
+        var icons = {wiki:'📖', book:'📚', ai:'🤖', text:'📄', img:'🖼'};
+        c.innerHTML = h.map(function (x) {
+            return '<div class="std-hist-item" data-q="' + esc(x.query||x.title) + '"><span class="std-hist-icon">' + (icons[x.type]||'📝') + '</span><div class="std-hist-info"><div class="std-hist-title">' + esc(x.title) + '</div><div class="std-hist-meta">' + (x.chapters?x.chapters.length+' chapters · ':'') + new Date(x.id).toLocaleDateString() + '</div></div><button class="std-hist-del" data-id="' + x.id + '" title="Remove">✕</button></div>';
+        }).join('');
+        c.querySelectorAll('.std-hist-item').forEach(function (el) {
+            el.addEventListener('click', function (e) {
+                if (!e.target.classList.contains('std-hist-del')) doSearch(el.dataset.q);
+            });
+        });
+    } catch(e) { c.innerHTML = ''; }
+}
+
+function deleteHist(id) {
+    try {
+        var h = JSON.parse(localStorage.getItem(HIST_KEY) || '[]');
+        localStorage.setItem(HIST_KEY, JSON.stringify(h.filter(function (x) { return x.id !== id; })));
+        renderHistory();
+    } catch(e) {}
+}
+
+/* ── UTILS ──────────────────────────────────────────────────── */
+function setView(v) {
+    var views = {
+        home:    document.getElementById('std-home'),
+        loading: document.getElementById('std-loading-view'),
+        results: document.getElementById('std-results-view'),
+        study:   document.getElementById('std-study-view')
+    };
+    Object.keys(views).forEach(function (k) {
+        if (views[k]) views[k].style.display = (k === v) ? '' : 'none';
+    });
+}
+
+function setLoadMsg(msg) {
+    var el = document.getElementById('std-loading-msg');
+    if (el) el.textContent = msg;
+}
+
+function showErr(msg) {
+    var el = document.getElementById('std-global-error');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+    setTimeout(function () { el.style.display = 'none'; }, 5000);
+}
+
+function renderParagraphs(text) {
+    if (!text) return '';
+    return '<p>' + esc(text).replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>') + '</p>';
+}
+
+function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   VOICE AI — XZILY SUMMON
+   ══════════════════════════════════════════════════════════════ */
+
+/* ── SETTINGS (saved to localStorage) ───────────────────────── */
+function summonLoadSettings() {
+    VS.aiName     = localStorage.getItem(SUMMON_KEY_NAME)  || null;
+    VS.voiceIndex = parseInt(localStorage.getItem(SUMMON_KEY_VOICE) || '-1', 10);
+    VS.voice      = null;
+    VS._setupDone = !!(VS.aiName && VS.voiceIndex >= 0);
+}
+
+function summonSaveSettings() {
+    if (VS.aiName)          localStorage.setItem(SUMMON_KEY_NAME,  VS.aiName);
+    if (VS.voiceIndex >= 0) localStorage.setItem(SUMMON_KEY_VOICE, String(VS.voiceIndex));
+}
+
+function summonGetEnglishVoices() {
+    var voices = VS.synth ? VS.synth.getVoices() : [];
+    return voices.filter(function (v) { return v.lang && v.lang.startsWith('en'); }).slice(0, 10);
+}
+
+function summonPickVoice() {
+    var voices = summonGetEnglishVoices();
+    if (VS.voiceIndex >= 0 && voices[VS.voiceIndex]) { VS.voice = voices[VS.voiceIndex]; return; }
+    var all = VS.synth ? VS.synth.getVoices() : [];
+    var preferred = ['Google US English','Microsoft Guy Online (Natural) - English (United States)','Samantha','Google UK English Male','Daniel'];
+    for (var i = 0; i < preferred.length; i++) {
+        var found = all.find(function (v) { return v.name === preferred[i]; });
+        if (found) { VS.voice = found; return; }
+    }
+    var en = all.find(function (v) { return v.lang && v.lang.startsWith('en'); });
+    if (en) VS.voice = en;
+}
+
+function initSummonVoices() {
+    if (!VS.synth) return;
+    VS.synth.getVoices();
+    if (VS.synth.onvoiceschanged !== undefined) VS.synth.onvoiceschanged = function () { summonPickVoice(); };
+    summonLoadSettings();
+    summonPickVoice();
+}
+
+/* ── FIRST-RUN SETUP (voice picker + name) ──────────────────── */
+function summonStartSetup() {
+    VS._inSetup = true; VS._setupStep = 1; VS._setupDone = false;
+    var voices = summonGetEnglishVoices();
+    if (!voices.length) { setTimeout(summonStartSetup, 800); return; }
+    var list  = voices.map(function (v, i) { return (i+1) + ', ' + v.name; }).join('. ');
+    var intro = 'Hello! Before we begin let me personalise your experience. ' +
+                'I have ' + voices.length + ' voice options available. ' + list + '. ' +
+                'Please say the number of the voice you would like me to use.';
+    summonSetAiText(intro);
+    summonSpeak(intro, function () { summonSetState('listening'); summonStartListening(); });
+}
+
+function summonHandleSetup(q) {
+    var voices = summonGetEnglishVoices();
+    if (VS._setupStep === 1) {
+        var num = parseInt(q.replace(/[^0-9]/g,''), 10);
+        if (!num || num < 1 || num > voices.length) {
+            var retry = 'I did not catch a valid number. Please say a number between 1 and ' + voices.length + '.';
+            summonSetAiText(retry);
+            return summonSpeak(retry, function () { summonSetState('listening'); summonStartListening(); });
+        }
+        VS.voiceIndex = num - 1; VS.voice = voices[VS.voiceIndex]; VS._setupStep = 2;
+        var nameQ = 'Great choice! Now, what would you like to name me? You can call me anything you like.';
+        summonSetAiText(nameQ);
+        return summonSpeak(nameQ, function () { summonSetState('listening'); summonStartListening(); });
+    }
+    if (VS._setupStep === 2) {
+        var name = q.trim().replace(/[^a-zA-Z0-9\s\-_']/g,'').trim();
+        if (!name) {
+            var retryName = 'I did not catch a name. Please say what you would like to call me.';
+            summonSetAiText(retryName);
+            return summonSpeak(retryName, function () { summonSetState('listening'); summonStartListening(); });
+        }
+        VS.aiName = name.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+        summonSaveSettings(); VS._inSetup = false; VS._setupDone = true;
+        var done = 'Perfect. From now on my name is ' + VS.aiName + '. I am ready to help you learn. What would you like to explore today?';
+        summonSetAiText(done);
+        return summonSpeak(done, function () { summonSetState('listening'); summonStartListening(); });
     }
 }
 
-/* TTS speak */
-function vcpSpeak(text) {
-    if (!VCP.synth) return;
-    vcpStopSpeaking();
-    var utt = new SpeechSynthesisUtterance(text);
-    utt.lang  = 'en-US';
-    utt.rate  = 1.05;
-    utt.pitch = 1;
-    var voices = VCP.synth.getVoices();
-    var pref   = voices.find(function (v) {
-        return v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha'));
-    }) || voices.find(function (v) { return v.lang.startsWith('en'); });
-    if (pref) utt.voice = pref;
-    utt.onend = function () { VCP.speaking = false; };
-    VCP.uttr  = utt;
-    VCP.speaking = true;
-    VCP.synth.speak(utt);
-}
+/* ── PASSIVE VOICE DETECTOR REMOVED ─────────────────────────── */
+/* Running a second hidden mic while the AI speaks causes popping/
+   feedback on mobile. Removed entirely. The mic is disabled while
+   the AI speaks (speakingQueue flag) and re-enabled with a delay. */
 
-function vcpStopSpeaking() {
-    if (VCP.synth) {
-        /* Fade-like stop: cancel after brief pause to avoid hard pop */
-        try { VCP.synth.cancel(); } catch(e) {}
-    }
-    VCP.speaking = false;
-}
+/* ── RECOGNITION ─────────────────────────────────────────────── */
+var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0;
 
-/* Speech recognition (mic) */
-function vcpStartMic() {
-    var SpeechRecog = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecog) {
-        vcpAddMsg('ai', '⚠️ Your browser does not support speech recognition. Please type your question instead.');
-        return;
-    }
-    var micBtn = document.getElementById('std-voice-mic-btn');
-    var txtIn  = document.getElementById('std-voice-text-input');
-    if (VCP.recognition) { try { VCP.recognition.abort(); } catch(e) {} }
-    var rec = new SpeechRecog();
-    rec.lang          = 'en-US';
-    rec.interimResults = true;
-    rec.maxAlternatives = 1;
-    VCP.recognition = rec;
-    VCP.recognizing = true;
-    if (micBtn) { micBtn.textContent = '🔴 Listening…'; micBtn.classList.add('active'); }
+function _doStartRecognition() {
+    if (_recDisabled) return;
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return;
+    VS.recognition = new SR();
+    VS.recognition.continuous = true;
+    VS.recognition.interimResults = true;
+    VS.recognition.lang = 'en-US';
 
-    rec.onresult = function (e) {
+    VS.recognition.onstart = function () { VS.listening = true; _recLastEvent = Date.now(); };
+    VS.recognition.onend = function () {
+        VS.listening = false; _recStopWatchdog();
+        if (!_recDisabled && !VS.speakingQueue) {
+            _recRetryTimer = setTimeout(_doStartRecognition, 400);
+        }
+    };
+    VS.recognition.onerror = function (e) {
+        _recLastEvent = Date.now();
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { _recDisabled = true; return; }
+        VS.listening = false; _recStopWatchdog();
+        if (!_recDisabled) _recRetryTimer = setTimeout(_doStartRecognition, 800);
+    };
+    VS.recognition.onresult = function (e) {
+        _recLastEvent = Date.now();
         var interim = '', final = '';
         for (var i = e.resultIndex; i < e.results.length; i++) {
-            if (e.results[i].isFinal) final  += e.results[i][0].transcript;
-            else                       interim += e.results[i][0].transcript;
+            if (e.results[i].isFinal) final += e.results[i][0].transcript;
+            else interim += e.results[i][0].transcript;
         }
-        if (txtIn) txtIn.value = final || interim;
-        if (final) vcpStopMic(true);
+        VS._interimSnapshot = interim;
+        if (interim) { summonShowInterim(interim); summonResetSilence(); }
+        if (final) {
+            VS.transcript += ' ' + final;
+            VS._interimSnapshot = '';
+            summonResetSilence();
+        }
     };
 
-    rec.onerror = function () { vcpStopMic(false); };
-    rec.onend   = function () {
-        VCP.recognizing = false;
-        if (micBtn) { micBtn.textContent = '🎤 Speak'; micBtn.classList.remove('active'); }
-    };
-
-    try { rec.start(); } catch(e) { VCP.recognizing = false; }
+    try { VS.recognition.start(); _recStartWatchdog(); } catch(e) {}
 }
 
-function vcpStopMic(sendAfter) {
-    VCP.recognizing = false;
-    if (VCP.recognition) { try { VCP.recognition.stop(); } catch(e) {} VCP.recognition = null; }
-    var micBtn = document.getElementById('std-voice-mic-btn');
-    if (micBtn) { micBtn.textContent = '🎤 Speak'; micBtn.classList.remove('active'); }
-    if (sendAfter) {
-        var txtIn = document.getElementById('std-voice-text-input');
-        if (txtIn && txtIn.value.trim()) {
-            var text = txtIn.value.trim();
-            txtIn.value = '';
-            vcpSend(text);
+function summonStartListening() {
+    _recDisabled = false;
+    clearTimeout(_recRetryTimer); _recStopWatchdog();
+    VS.transcript = ''; VS._interimSnapshot = '';
+    _doStartRecognition();
+}
+
+function _recStartWatchdog() {
+    _recLastEvent = Date.now();
+    _recWatchdog = setInterval(function () {
+        if (!VS.listening || VS.speakingQueue) { _recStopWatchdog(); return; }
+        if (Date.now() - _recLastEvent > 12000) {
+            if (VS.recognition) { try { VS.recognition.abort(); } catch(e) {} VS.recognition = null; }
+            VS.listening = false; _recStopWatchdog();
+            _recRetryTimer = setTimeout(_doStartRecognition, 400);
         }
+    }, 4000);
+}
+
+function _recStopWatchdog() {
+    if (_recWatchdog) { clearInterval(_recWatchdog); _recWatchdog = null; }
+}
+
+function summonStopListening() {
+    _recDisabled = true;
+    clearTimeout(_recRetryTimer); clearTimeout(VS.silenceTimer); _recStopWatchdog();
+    VS.listening = false;
+    if (VS.recognition) { try { VS.recognition.abort(); } catch(e) {} VS.recognition = null; }
+}
+
+/* ── SILENCE TIMER ───────────────────────────────────────────── */
+function summonResetSilence() {
+    clearTimeout(VS.silenceTimer);
+    VS.silenceTimer = setTimeout(function () {
+        var q = (VS.transcript || VS._interimSnapshot || '').trim();
+        VS.transcript = ''; VS._interimSnapshot = '';
+        summonShowInterim('');
+        if (q) summonHandleQuery(q);
+    }, 600);
+}
+
+function summonShowInterim(text) { summonSetTranscript(text); }
+
+/* ── TEXT SEND ───────────────────────────────────────────────── */
+function summonSendText() {
+    var inp = document.getElementById('std-summon-text');
+    var q   = (inp ? inp.value : '').trim();
+    if (!q) return;
+    if (inp) inp.value = '';
+    if (!VS.active) { VS.active = true; }
+    summonHandleQuery(q);
+}
+
+/* ── CHECKPOINT DETECTION ────────────────────────────────────── */
+function summonIsYes(q) { return /\b(yes|yeah|yep|yea|sure|ok|okay|correct|right|go on|continue|i get|i got|understood|alright)\b/i.test(q); }
+function summonIsNo(q)  { return /\b(no|nope|nah|don'?t|not really|i don'?t|confused|again|repeat|explain|what|huh)\b/i.test(q); }
+
+/* ── MAIN QUERY HANDLER ──────────────────────────────────────── */
+async function summonHandleQuery(q) {
+    if (!VS._setupDone || VS._inSetup) {
+        if (!VS._inSetup) summonStartSetup(); else summonHandleSetup(q);
+        return;
+    }
+    if (/\b(change voice|switch voice|new voice|rename (you|yourself|ai)|change (your )?name)\b/i.test(q)) {
+        summonStopListening(); summonStopQueue();
+        VS._setupDone = false; summonStartSetup(); return;
+    }
+    if (VS.waitingCheckpnt) {
+        VS.waitingCheckpnt = false;
+        if (summonIsNo(q)) {
+            summonSetTranscript(q);
+            var reExp = 'Of course. Let me approach that from a different angle. ' + (VS.lastExplanation || '');
+            summonSetAiText(reExp); return summonSpeakStream(reExp, true);
+        } else if (summonIsYes(q)) {
+            summonSetTranscript(q);
+            var cont = 'Excellent. Let us continue. What would you like to explore next?';
+            summonSetAiText(cont); return summonSpeakStream(cont, false);
+        }
+    }
+
+    vhAdd('user', q);
+    summonSetTranscript(q); summonSetAiText('...'); summonSetState('thinking');
+    summonStopListening(); summonStopQueue();
+
+    var context = '';
+    if (S.title) context += 'The student is currently studying: "' + S.title + '". ';
+    if (S.chapters && S.chapters[S.activeIdx]) context += 'Active chapter: "' + S.chapters[S.activeIdx].title + '". ';
+    if (S.activeIdx >= 0 && S.cache && S.cache[S.activeIdx]) context += 'Relevant excerpt: ' + S.cache[S.activeIdx].slice(0, 600) + ' ';
+
+    VS.history.push({role:'user', content:q});
+    if (VS.history.length > 14) VS.history = VS.history.slice(-14);
+
+    VS.responseCount = (VS.responseCount || 0) + 1;
+    var addCheckpoint = (VS.responseCount % 3 === 0);
+    var aiDisplayName = VS.aiName || 'XZILY AI';
+
+    var sysPrompt =
+        'You are ' + aiDisplayName + ', a professional and thorough voice-based academic tutor. ' +
+        context +
+        'For ALL mathematics, physics, chemistry, or calculation questions you MUST use this exact two-part format:\n' +
+        '1. Write a complete plain-English spoken explanation — natural sentences, no symbols, no LaTeX, no markdown. ' +
+        'Say "square root of twenty-seven" not "sqrt(27)". Say "three times the square root of three" not "3√3". ' +
+        'Work step by step, stating each formula in words before applying it.\n' +
+        '[DISPLAY]\n' +
+        '2. Write the SAME explanation again, this time using proper LaTeX notation: ' +
+        '$...$ for inline math (e.g. $\\sqrt{27}$, $3\\sqrt{3}$) and $$...$$ for displayed equations. ' +
+        'Include every step and its explanation. Use clear paragraphs.\n' +
+        'For non-math topics: respond normally without the [DISPLAY] section — just clear spoken sentences. ' +
+        'Never truncate or rush an answer. Maintain a professional, warm, and patient tone throughout. ' +
+        (addCheckpoint ? 'At the very end of your response (after [DISPLAY] if present) add exactly: "' + CHECKPOINT_PHRASE + '"' : '');
+
+    var messages = [{role:'system', content:sysPrompt}].concat(VS.history);
+
+    try {
+        var fullText = await summonStreamResponse(messages);
+        VS.lastExplanation = fullText;
+        /* Strip [DISPLAY] section from history — keep spoken plain-English only */
+        var dSplit = fullText.indexOf('[DISPLAY]');
+        var historyText = (dSplit !== -1 ? fullText.slice(0, dSplit) : fullText)
+            .replace(CHECKPOINT_PHRASE, '').replace(/^\[SPEAK\]\s*/i, '').trim();
+        vhAdd('ai', historyText);
+        VS.history.push({role:'assistant', content:historyText});
+        if (VS.history.length > 14) VS.history = VS.history.slice(-14);
+        if (addCheckpoint) VS.waitingCheckpnt = true;
+    } catch(e) {
+        summonSetAiText('There was a connection error. Please try again.');
+        summonSetState('listening'); summonStartListening();
     }
 }
 
+/* ── STREAMING FETCH ─────────────────────────────────────────── */
+async function summonStreamResponse(messages) {
+    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
 
+    if (!key) {
+        summonStopListening();
+        var text = await aiChat(messages, 0.7);
+        /* Split speak / display sections for the fallback path too */
+        var fIdx = text.indexOf('[DISPLAY]');
+        if (fIdx !== -1) {
+            var speakPart = text.slice(0, fIdx).replace(/^\[SPEAK\]\s*/i, '').trim();
+            var dispPart  = text.slice(fIdx + '[DISPLAY]'.length).trim();
+            summonSetAiText(dispPart);
+            summonSpeakStream(speakPart, VS.waitingCheckpnt);
+        } else {
+            summonSetAiText(text);
+            summonSpeakStream(text, VS.waitingCheckpnt);
+        }
+        return text;
+    }
+
+    // Stop user mic before streaming (prevents AI speech being picked up)
+    summonStopListening();
+    var res = await fetch(GROQ_STREAM_URL, {
+        method:'POST',
+        headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + key},
+        body:JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:0.7, max_tokens:1200, stream:true}),
+        signal:AbortSignal.timeout(45000)
+    });
+
+    if (!res.ok) {
+        var text2 = await aiChat(messages, 0.7);
+        summonSetAiText(text2); summonSpeakStream(text2, VS.waitingCheckpnt); return text2;
+    }
+
+    var reader = res.body.getReader(), decoder = new TextDecoder();
+    var full = '', sentenceBuf = '', seenDisplay = false, displayStart = -1;
+    summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];
+
+    while (true) {
+        var chunk = await reader.read();
+        if (chunk.done) break;
+        var lines = decoder.decode(chunk.value, {stream:true}).split('\n');
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (!line || line === 'data: [DONE]') continue;
+            if (line.startsWith('data: ')) {
+                try {
+                    var delta = JSON.parse(line.slice(6));
+                    var token = (delta.choices[0].delta.content) || '';
+                    full += token;
+
+                    if (!seenDisplay) {
+                        /* Check if the [DISPLAY] marker has arrived yet */
+                        var dIdx = full.indexOf('[DISPLAY]');
+                        if (dIdx !== -1) {
+                            /* Marker just found — switch to display mode */
+                            seenDisplay = true;
+                            displayStart = dIdx + '[DISPLAY]'.length;
+                            /* Stop buffering speak sentences */
+                            sentenceBuf = '';
+                            /* Show display portion accumulated so far */
+                            var dispSoFar = full.slice(displayStart).replace(/^\s+/, '');
+                            if (dispSoFar) summonSetAiText(dispSoFar);
+                        } else {
+                            /* Still in the spoken section — feed to TTS sentence queue */
+                            /* Strip any leading [SPEAK] tag the model might output */
+                            var tok = token.replace(/^\[SPEAK\]\s*/i, '');
+                            sentenceBuf += tok;
+                            var sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                            while (sentenceEnd !== -1) {
+                                var sentence = sentenceBuf.slice(0, sentenceEnd + 1).trim();
+                                sentenceBuf = sentenceBuf.slice(sentenceEnd + 1);
+                                if (sentence) summonQueueSentence(sentence);
+                                sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                            }
+                        }
+                    } else {
+                        /* Past [DISPLAY] — stream LaTeX text into the scrollable panel */
+                        var displayText = full.slice(displayStart).replace(/^\s+/, '');
+                        summonSetAiText(displayText);
+                    }
+                } catch(ex) {}
+            }
+        }
+    }
+
+    /* Flush any remaining spoken sentence fragment */
+    if (!seenDisplay && sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
+    /* If the AI skipped [DISPLAY] (non-math topic), show full text in panel */
+    if (!seenDisplay) summonSetAiText(full);
+    summonFlushQueue(function () {
+        VS.speakingQueue = false;
+        summonSetState('listening');
+        /* Mobile needs longer to clear speaker audio before mic opens —
+           prevents the popping/clicking sound on first word. */
+        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        setTimeout(function () { summonStartListening(); }, micDelay);
+    });
+    return full;
+}
+
+/* ── SENTENCE QUEUE ──────────────────────────────────────────── */
+function summonQueueSentence(text) {
+    VS.sentenceQueue = VS.sentenceQueue || [];
+    VS.sentenceQueue.push(text);
+    if (!VS._queueRunning) summonRunQueue();
+}
+
+function summonRunQueue() {
+    if (!VS.sentenceQueue || !VS.sentenceQueue.length) { VS._queueRunning = false; return; }
+    VS._queueRunning = true;
+    var sentence = VS.sentenceQueue.shift();
+    summonSpeakOne(sentence, function () {
+        if (VS.speakingQueue) summonRunQueue(); else VS._queueRunning = false;
+    });
+}
+
+function summonFlushQueue(onAllDone) {
+    var check = setInterval(function () {
+        if (!VS._queueRunning && (!VS.sentenceQueue || !VS.sentenceQueue.length)) {
+            clearInterval(check); if (onAllDone) onAllDone();
+        }
+    }, 150);
+}
+
+function summonStopQueue() {
+    VS.speakingQueue = false; VS._queueRunning = false;
+    VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
+    if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
+}
+
+function summonSpeakOne(text, onDone) {
+    if (!VS.synth || !text) { if (onDone) onDone(); return; }
+    summonPickVoice(); VS.speaking = true;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+    if (VS.voice) u.voice = VS.voice;
+    u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
+    u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+    VS.synth.speak(u);
+}
+
+function summonSpeakStream(text, isCheckpoint) {
+    var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+    VS.speakingQueue = true;
+    VS.sentenceQueue = sentences.map(function (s) { return s.trim(); }).filter(Boolean);
+    summonRunQueue();
+    summonFlushQueue(function () {
+        VS.speakingQueue = false;
+        if (isCheckpoint) VS.waitingCheckpnt = true;
+        summonSetState('listening');
+        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        setTimeout(function () { summonStartListening(); }, micDelay);
+    });
+}
+
+function summonSpeak(text, onDone) {
+    if (!VS.synth) { if (onDone) onDone(); return; }
+    try { VS.synth.cancel(); } catch(e) {}
+    summonPickVoice(); summonSetState('speaking'); VS.speaking = true;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+    if (VS.voice) u.voice = VS.voice;
+    u.onend = u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+    VS.synth.speak(u);
+}
+
+/* ── INJECT STYLES ───────────────────────────────────────────── */
+function injectSummonStyles() {
+    if (document.getElementById('std-summon-css')) return;
+    var s = document.createElement('style');
+    s.id = 'std-summon-css';
+    /* FIX: added !important to position/display/z-index on FAB so page CSS cannot override it */
+    s.textContent = [
+        /* ── FAB button ── */
+        '#std-summon-fab{position:fixed!important;bottom:24px!important;right:24px!important;z-index:99998!important;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex!important;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 18px 4px rgba(139,92,246,.5);animation:sfab-pulse 3s ease-in-out infinite;transition:transform .18s;font-size:1.5rem;color:#fff;user-select:none}',
+        '#std-summon-fab:hover{transform:scale(1.1)}',
+        '@keyframes sfab-pulse{0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.4)}50%{box-shadow:0 0 32px 12px rgba(139,92,246,.65)}}',
+
+        /* ── RIGHT-SIDE PANEL (replaces full-screen overlay) ── */
+        '#std-summon-overlay{position:fixed!important;top:0!important;right:0!important;bottom:0!important;left:auto!important;width:min(420px,100vw)!important;z-index:99999!important;display:none;flex-direction:column;background:#0c0a1e;border-left:2px solid rgba(139,92,246,.35);box-shadow:-8px 0 48px rgba(0,0,0,.65);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;box-sizing:border-box}',
+        '#std-summon-overlay.open{display:flex!important;animation:sovl-slide .28s cubic-bezier(.4,0,.2,1)}',
+        '@keyframes sovl-slide{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}',
+
+        /* ── HEADER BAR ── */
+        '#std-summon-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid rgba(139,92,246,.25);flex-shrink:0;background:#110e28}',
+        '#std-vh-btn{background:rgba(255,255,255,.08);border:none;color:#c8c2f0;font-size:1rem;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}',
+        '#std-vh-btn:hover{background:rgba(255,255,255,.15)}',
+        '#std-vh-btn.active{background:rgba(139,92,246,.4);color:#fff}',
+
+        /* ── SMALL ORB ── */
+        '#std-summon-big-orb{position:relative;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;flex-shrink:0;transition:background .4s;animation:sorb-idle 3s ease-in-out infinite}',
+        '.sorb-ring{display:none}',
+        '@keyframes sorb-idle{0%,100%{box-shadow:0 0 8px 2px rgba(139,92,246,.5)}50%{box-shadow:0 0 18px 6px rgba(139,92,246,.8)}}',
+        '#std-summon-overlay[data-state=listening] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490);animation:sorb-listen 1s ease-in-out infinite}',
+        '@keyframes sorb-listen{0%,100%{box-shadow:0 0 8px 2px rgba(6,182,212,.5)}50%{box-shadow:0 0 22px 8px rgba(6,182,212,.9)}}',
+        '#std-summon-overlay[data-state=thinking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309);animation:sorb-think .8s ease-in-out infinite alternate}',
+        '@keyframes sorb-think{0%{box-shadow:0 0 8px 2px rgba(245,158,11,.4)}100%{box-shadow:0 0 20px 7px rgba(245,158,11,.8)}}',
+        '#std-summon-overlay[data-state=speaking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46);animation:sorb-speak .5s ease-in-out infinite alternate}',
+        '@keyframes sorb-speak{0%{box-shadow:0 0 8px 2px rgba(16,185,129,.4)}100%{box-shadow:0 0 22px 8px rgba(16,185,129,.85)}}',
+
+        /* ── STATE LABEL & CLOSE ── */
+        '#std-summon-state-txt{flex:1;font-size:.82rem;font-weight:700;color:#eeeaff;letter-spacing:.06em;text-transform:uppercase;opacity:.85}',
+        '#std-summon-close{background:rgba(255,255,255,.08);border:none;color:#c8c2f0;font-size:1rem;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}',
+        '#std-summon-close:hover{background:rgba(255,255,255,.18)}',
+
+        /* ── SCROLLABLE AI TEXT AREA ── */
+        '#std-summon-ai-text{flex:1;overflow-y:auto;padding:16px 18px;font-size:.97rem;color:#d4cfee;line-height:1.75;word-break:break-word;text-align:left;-webkit-overflow-scrolling:touch}',
+        '#std-summon-ai-text::-webkit-scrollbar{width:4px}',
+        '#std-summon-ai-text::-webkit-scrollbar-track{background:transparent}',
+        '#std-summon-ai-text::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:2px}',
+        /* math inside AI text */
+        '#std-summon-ai-text .katex-display{overflow-x:auto;padding:4px 0}',
+        '#std-summon-ai-text p{margin:0 0 10px}',
+        '#std-summon-ai-text p:last-child{margin-bottom:0}',
+        '#std-summon-ai-text ul,#std-summon-ai-text ol{margin:0 0 10px 18px}',
+        '#std-summon-ai-text li{margin-bottom:4px}',
+        '#std-summon-ai-text strong{color:#fff}',
+
+        /* ── "YOU SAID" TRANSCRIPT STRIP ── */
+        '#std-summon-transcript{padding:7px 18px;font-size:.78rem;color:#06b6d4;font-style:italic;border-top:1px solid rgba(139,92,246,.15);min-height:28px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex-shrink:0;background:#0e0b22}',
+
+        /* ── INPUT ROW ── */
+        '#std-summon-input-row{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(139,92,246,.2);flex-shrink:0;background:#110e28}',
+        '#std-summon-text{flex:1;background:rgba(255,255,255,.07);border:1.5px solid rgba(139,92,246,.4);border-radius:22px;color:#eeeaff;font-size:.88rem;padding:9px 16px;outline:none;font-family:inherit;transition:border-color .2s}',
+        '#std-summon-text:focus{border-color:#8b5cf6}',
+        '#std-summon-text::placeholder{color:#8c84b8}',
+        '#std-summon-send{background:#7c3aed;border:none;border-radius:50%;color:#fff;font-size:1rem;width:40px;height:40px;cursor:pointer;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}',
+        '#std-summon-send:hover{background:#6d28d9}',
+
+        /* ── HISTORY DROPDOWN ── */
+        '#std-vh-panel{position:absolute;top:62px;left:0;right:0;max-height:70vh;overflow-y:auto;background:rgba(8,6,24,.99);border-bottom:1px solid rgba(139,92,246,.3);z-index:4;display:flex;flex-direction:column}',
+        '#std-vh-panel::-webkit-scrollbar{width:4px}#std-vh-panel::-webkit-scrollbar-track{background:transparent}#std-vh-panel::-webkit-scrollbar-thumb{background:rgba(139,92,246,.4);border-radius:2px}',
+        /* toolbar: title + save btn */
+        '.std-vh-toolbar{display:flex;align-items:center;padding:10px 12px 8px;border-bottom:1px solid rgba(139,92,246,.2);flex-shrink:0;gap:8px}',
+        '.std-vh-toolbar-title{flex:1;font-size:.78rem;font-weight:700;color:#a89ee8;text-transform:uppercase;letter-spacing:.06em}',
+        '.std-vh-save-btn,.std-vh-back-btn{background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);color:#c8c2f0;font-size:.75rem;padding:4px 10px;border-radius:20px;cursor:pointer;transition:background .15s;white-space:nowrap}',
+        '.std-vh-save-btn:hover,.std-vh-back-btn:hover{background:rgba(139,92,246,.35)}',
+        /* list of Q&A pairs */
+        '.std-vh-pairs-list{overflow-y:auto;flex:1;padding:8px 10px 12px}',
+        '.std-vh-pair{padding:8px 10px;border-radius:9px;margin-bottom:8px;background:rgba(139,92,246,.07);border:1px solid rgba(139,92,246,.18);cursor:pointer;transition:background .15s}',
+        '.std-vh-pair:hover{background:rgba(139,92,246,.18);border-color:rgba(139,92,246,.45)}',
+        '.std-vh-pair-q{font-size:.78rem;color:#818cf8;font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        '.std-vh-pair-a{font-size:.76rem;color:#9d98c0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+        /* detail view */
+        '.std-vh-detail{padding:12px 12px 16px;overflow-y:auto;flex:1}',
+        '.std-vh-detail-q{font-size:.8rem;color:#818cf8;font-weight:600;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid rgba(139,92,246,.2)}',
+        '.std-vh-detail-a{font-size:.85rem;color:#d4cfee;line-height:1.7;word-break:break-word}',
+        '.std-vh-detail-a p{margin:0 0 8px}',
+        '.std-vh-detail-a .katex-display{overflow-x:auto;padding:4px 0}',
+        '.std-vh-empty{color:#6b6a8c;font-size:.8rem;text-align:center;padding:24px 0}',
+
+        /* ── STREAMING CURSOR ── */
+        '.std-stream-cursor{display:inline-block;animation:std-blink .65s step-end infinite;color:#8b5cf6;font-weight:900;margin-left:1px}',
+        '@keyframes std-blink{0%,100%{opacity:1}50%{opacity:0}}',
+
+        /* ── MOBILE: full-width ── */
+        '@media(max-width:480px){#std-summon-overlay{width:100vw!important}#std-summon-fab{bottom:14px!important;right:14px!important}}',
+    ].join('');
+    document.head.appendChild(s);
+}
+
+/* ── INJECT UI ───────────────────────────────────────────────── */
+function injectSummonUI() {
+    if (document.getElementById('std-summon-fab')) return;
+    var fab = document.createElement('div');
+    fab.id = 'std-summon-fab'; fab.title = 'XZILY AI Voice'; fab.textContent = '✦';
+    document.body.appendChild(fab);
+    fab.addEventListener('click', summonToggle);
+
+    var overlay = document.createElement('div');
+    overlay.id = 'std-summon-overlay';
+    overlay.setAttribute('data-state', 'idle');
+    overlay.innerHTML = [
+        /* Header bar: history btn · orb · state label · close */
+        '<div id="std-summon-header">',
+          '<button id="std-vh-btn" title="Conversation history">&#9776;</button>',
+          '<div id="std-summon-big-orb"><span>✦</span></div>',
+          '<div id="std-summon-state-txt">XZILY AI</div>',
+          '<button id="std-summon-close">&#x2715;</button>',
+        '</div>',
+        /* History dropdown (full-width, sits below header) */
+        '<div id="std-vh-panel" style="display:none"></div>',
+        /* Scrollable AI response area */
+        '<div id="std-summon-ai-text"></div>',
+        /* "You said" strip */
+        '<div id="std-summon-transcript"></div>',
+        /* Type input row */
+        '<div id="std-summon-input-row">',
+          '<input id="std-summon-text" type="text" placeholder="Or type here…" autocomplete="off">',
+          '<button id="std-summon-send">&#x27A4;</button>',
+        '</div>',
+    ].join('');
+    document.body.appendChild(overlay);
+    document.getElementById('std-summon-close').addEventListener('click', summonHide);
+    document.getElementById('std-vh-btn').addEventListener('click', vhToggle);
+    document.getElementById('std-summon-send').addEventListener('click', summonSendText);
+    document.getElementById('std-summon-text').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') summonSendText();
+    });
+}
+
+/* ── OVERLAY CONTROLS ────────────────────────────────────────── */
+function summonSetState(state) {
+    var overlay = document.getElementById('std-summon-overlay');
+    var txt     = document.getElementById('std-summon-state-txt');
+    if (!overlay) return;
+    overlay.setAttribute('data-state', state);
+    var labels = {idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
+    if (txt) txt.textContent = labels[state] || 'XZILY AI';
+}
+
+function summonToggle() { if (VS.active) summonHide(); else summonShow(); }
+
+function summonShow() {
+    VS.active = true;
+    var overlay = document.getElementById('std-summon-overlay');
+    if (overlay) overlay.classList.add('open');
+    summonSetState('speaking');
+    summonSetAiText(''); summonSetTranscript('');
+    if (!VS._setupDone) {
+        setTimeout(function () {
+            if (!VS._inSetup) summonStartSetup();
+        }, 300);
+        return;
+    }
+    var name = VS.aiName || 'XZILY AI';
+    var greeting = S.title
+        ? 'Hello! I am ' + name + '. You are studying ' + S.title + '. Ask me anything!'
+        : 'Hello! I am ' + name + '. How can I help you study today?';
+    summonSetAiText(greeting);
+    summonSpeak(greeting, function () {
+        summonSetAiText(''); summonSetState('listening'); summonStartListening();
+    });
+}
+
+function summonSetTranscript(text) {
+    /* Shows what the user just said as a small "You said:" strip */
+    var el = document.getElementById('std-summon-transcript');
+    if (el) el.textContent = text ? '🎙 You: ' + text : '';
+}
+
+function summonSetAiText(text) {
+    /* Renders AI text with paragraph formatting + KaTeX math */
+    var el = document.getElementById('std-summon-ai-text');
+    if (!el) return;
+    if (!text) { el.innerHTML = ''; return; }
+    /* Convert line breaks to paragraphs */
+    var html = text
+        .split(/\n\n+/)
+        .map(function (p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; })
+        .join('');
+    el.innerHTML = html;
+    /* Render KaTeX math if available */
+    if (typeof renderMathInElement === 'function') {
+        try {
+            renderMathInElement(el, {
+                delimiters: [
+                    {left:'$$', right:'$$', display:true},
+                    {left:'$',  right:'$',  display:false}
+                ],
+                throwOnError: false
+            });
+        } catch(e) {}
+    }
+    /* Auto-scroll to bottom so latest text is visible */
+    el.scrollTop = el.scrollHeight;
+}
+
+function summonHide() {
+    VS.active = false;
+    summonStopListening(); summonStopQueue();
+    var overlay = document.getElementById('std-summon-overlay');
+    if (overlay) overlay.classList.remove('open');
+    summonSetState('idle');
+}
+
+/* ── VOICE CONVERSATION HISTORY ─────────────────────────────── */
+var VH = { log: [], detailIdx: -1 };
+
+function vhAdd(role, text) {
+    VH.log.push({ role: role, text: text, time: new Date() });
+    if (VH.log.length > 60) VH.log = VH.log.slice(-60);
+    vhRenderDropdown();
+}
+
+/* Group the flat log into Q&A pairs */
+function vhGetPairs() {
+    var pairs = [], i = 0;
+    while (i < VH.log.length) {
+        if (VH.log[i].role === 'user') {
+            var pair = { user: VH.log[i], ai: null };
+            if (i + 1 < VH.log.length && VH.log[i + 1].role === 'ai') {
+                pair.ai = VH.log[i + 1]; i += 2;
+            } else { i++; }
+            pairs.push(pair);
+        } else { i++; }
+    }
+    return pairs;
+}
+
+function vhRenderDropdown() {
+    var panel = document.getElementById('std-vh-panel');
+    if (!panel || panel.style.display === 'none') return;
+    if (VH.detailIdx >= 0) { vhRenderDetail(VH.detailIdx); return; }
+
+    var pairs = vhGetPairs();
+    var rows = pairs.length ? pairs.map(function (p, idx) {
+        var qShort = esc(p.user.text.slice(0, 70));
+        var aShort = p.ai ? esc(p.ai.text.slice(0, 80)) : '…';
+        return '<div class="std-vh-pair" data-idx="' + idx + '">' +
+               '<div class="std-vh-pair-q">🎙 ' + qShort + '</div>' +
+               '<div class="std-vh-pair-a">✦ ' + aShort + '</div>' +
+               '</div>';
+    }).join('') : '<div class="std-vh-empty">No conversation yet — start talking!</div>';
+
+    panel.innerHTML =
+        '<div class="std-vh-toolbar">' +
+          '<span class="std-vh-toolbar-title">📚 History</span>' +
+          '<button class="std-vh-save-btn" id="std-vh-save">⬇ Save</button>' +
+        '</div>' +
+        '<div class="std-vh-pairs-list">' + rows + '</div>';
+
+    var saveBtn = document.getElementById('std-vh-save');
+    if (saveBtn) saveBtn.addEventListener('click', vhSaveHistory);
+
+    panel.querySelectorAll('.std-vh-pair').forEach(function (el) {
+        el.addEventListener('click', function () {
+            VH.detailIdx = parseInt(el.getAttribute('data-idx'), 10);
+            vhRenderDetail(VH.detailIdx);
+        });
+    });
+}
+
+function vhRenderDetail(idx) {
+    var panel = document.getElementById('std-vh-panel');
+    if (!panel) return;
+    var pairs = vhGetPairs();
+    var pair  = pairs[idx];
+    if (!pair) { VH.detailIdx = -1; vhRenderDropdown(); return; }
+
+    var aiHtml = '';
+    if (pair.ai) {
+        var html = pair.ai.text
+            .split(/\n\n+/)
+            .map(function (p) { return '<p>' + p.replace(/\n/g, '<br>') + '</p>'; })
+            .join('');
+        aiHtml = '<div class="std-vh-detail-a" id="std-vh-detail-body">' + html + '</div>';
+    }
+
+    panel.innerHTML =
+        '<div class="std-vh-toolbar">' +
+          '<button class="std-vh-back-btn" id="std-vh-back">← Back</button>' +
+          '<span class="std-vh-toolbar-title">Full Response</span>' +
+        '</div>' +
+        '<div class="std-vh-detail">' +
+          '<div class="std-vh-detail-q">🎙 You: ' + esc(pair.user.text) + '</div>' +
+          aiHtml +
+        '</div>';
+
+    var backBtn = document.getElementById('std-vh-back');
+    if (backBtn) backBtn.addEventListener('click', function () { VH.detailIdx = -1; vhRenderDropdown(); });
+
+    /* Render KaTeX math in the detail view */
+    var body = document.getElementById('std-vh-detail-body');
+    if (body && typeof renderMathInElement === 'function') {
+        try {
+            renderMathInElement(body, {
+                delimiters: [
+                    {left:'$$', right:'$$', display:true},
+                    {left:'$',  right:'$',  display:false}
+                ],
+                throwOnError: false
+            });
+        } catch(e) {}
+    }
+}
+
+function vhSaveHistory() {
+    var pairs = vhGetPairs();
+    if (!pairs.length) return;
+    var lines = pairs.map(function (p, i) {
+        return 'Q' + (i + 1) + ': ' + p.user.text + '\n\nAI: ' + (p.ai ? p.ai.text : '(no response)') + '\n\n---\n';
+    });
+    var blob = new Blob(['XZILY AI — Study Conversation\n\n' + lines.join('\n')], { type: 'text/plain' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'xzily-study-history.txt';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function vhToggle() {
+    var panel = document.getElementById('std-vh-panel');
+    var btn   = document.getElementById('std-vh-btn');
+    if (!panel) return;
+    var open = panel.style.display !== 'none';
+    if (open) {
+        panel.style.display = 'none';
+        VH.detailIdx = -1;
+    } else {
+        panel.style.display = 'flex';
+        vhRenderDropdown();
+    }
+    if (btn) btn.classList.toggle('active', !open);
+}
+
+/* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
+/* FIX: functions inside an IIFE are not global — expose only what onclick HTML needs */
+window._stdRetry = loadChapterContent;
+
+})();
