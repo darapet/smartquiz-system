@@ -65,18 +65,60 @@
     }
 
     /* ── Push site header + page body below the fixed bars ───── */
-    /* Uses margin-top on the header (not body.paddingTop) so the
-       header sits flush against the bottom edge of the countdown
-       bar with zero gap. Also sets the sticky top threshold to
-       match so the header stays below the bar while scrolling.   */
-    function _applyOffsets() {
-        var ticker = document.getElementById('aqs-news-ticker-bar');
-        var cd     = document.getElementById('aqs-countdown-bar');
+      /* Uses margin-top on the header (not body.paddingTop) so the
+         header sits flush against the bottom edge of the countdown
+         bar with zero gap. Also sets the sticky top threshold to
+         match so the header stays below the bar while scrolling.   */
+      function _applyOffsets() {
+          var ticker = document.getElementById('aqs-news-ticker-bar');
+          var cd     = document.getElementById('aqs-countdown-bar');
 
-        /* ── Ticker: pad body bottom so content isn't hidden ── */
-        if (ticker && ticker.style.display !== 'none') {
-            document.body.style.paddingBottom = '42px';
-        }
+          /* ── Ticker: pad body bottom so content isn't hidden ── */
+          if (ticker && ticker.style.display !== 'none') {
+              document.body.style.paddingBottom = '42px';
+          }
+
+          /* ── Countdown: shift everything below it ── */
+          if (cd && cd.style.display !== 'none') {
+              /* Double-rAF + 80ms so layout is fully stable before we measure */
+              requestAnimationFrame(function () {
+                  requestAnimationFrame(function () {
+                      setTimeout(function () {
+                          var cdH = cd.getBoundingClientRect().height || cd.offsetHeight || 40;
+
+                          /* Publish as CSS variable so rules can react */
+                          document.documentElement.style.setProperty('--aqs-cd-bar-h', cdH + 'px');
+
+                          /* Move site headers (index.html / home-style pages) */
+                          document.querySelectorAll('.aqs-site-header').forEach(function (h) {
+                              h.style.marginTop = cdH + 'px';
+                              h.style.top       = cdH + 'px';
+                          });
+
+                          /* Move hamburger toggle — use setProperty+important to beat
+                             the `top:8px !important` that may exist in sidebar CSS */
+                          document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
+                              btn.style.setProperty('top', (cdH + 8) + 'px', 'important');
+                          });
+
+                          /* On mobile, push sidebar body content down so it clears
+                             the countdown bar. Desktop sidebar is full-height fixed
+                             so it does not need this treatment.                    */
+                          if (window.innerWidth <= 768) {
+                              document.querySelectorAll('.aqs-sidebar-body').forEach(function (body) {
+                                  /* Add to existing baseline padding-top (60px set by CSS) */
+                                  body.style.setProperty('padding-top', (cdH + 60) + 'px', 'important');
+                              });
+                              /* Shrink std-main so 100vh still fits inside the offset body */
+                              document.querySelectorAll('.std-main').forEach(function (el) {
+                                  el.style.height = 'calc(100dvh - ' + (cdH + 60) + 'px)';
+                              });
+                          }
+                      }, 80);
+                  });
+              });
+          }
+      }
 
         /* ── Countdown: shift site header down by exact bar height ── */
         if (cd && cd.style.display !== 'none') {
@@ -100,11 +142,22 @@
     }
 
     /* ── Reset offsets when countdown bar hides ──────────────── */
-    function _resetOffsets() {
-        document.querySelectorAll('.aqs-site-header').forEach(function (h) {
-            h.style.marginTop = '';
-            h.style.top       = '';
-        });
+      function _resetOffsets() {
+          document.documentElement.style.removeProperty('--aqs-cd-bar-h');
+          document.querySelectorAll('.aqs-site-header').forEach(function (h) {
+              h.style.marginTop = '';
+              h.style.top       = '';
+          });
+          document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
+              btn.style.removeProperty('top');
+          });
+          document.querySelectorAll('.aqs-sidebar-body').forEach(function (body) {
+              body.style.removeProperty('padding-top');
+          });
+          document.querySelectorAll('.std-main').forEach(function (el) {
+              el.style.height = '';
+          });
+      });
         document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
             btn.style.top = '';
         });
