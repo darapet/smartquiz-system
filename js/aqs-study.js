@@ -560,37 +560,62 @@ async function openTest() {
     modal.style.display = 'flex';
     modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
 
-    /* Robust JSON extraction — handles fenced blocks, stray text before/after array */
+    /* Robust JSON extraction — handles fenced blocks, stray text, multiple schemas */
     function extractQs(raw) {
         if (!raw) return null;
-        var s = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-        var start = s.indexOf('[');
-        var end   = s.lastIndexOf(']');
-        if (start === -1 || end === -1 || end <= start) return null;
-        try {
-            var arr = JSON.parse(s.slice(start, end + 1));
-            if (!Array.isArray(arr) || arr.length < 2) return null;
-            return arr.filter(function (q) {
-                return q && q.q && Array.isArray(q.opts) && q.opts.length >= 2;
-            }).map(function (q) {
-                return {
-                    q:    String(q.q),
-                    opts: q.opts.slice(0, 4).map(String),
-                    ans:  Math.max(0, Math.min(parseInt(q.ans) || 0, q.opts.length - 1)),
-                    exp:  String(q.exp || '')
-                };
-            });
-        } catch(e2) { return null; }
+        /* Strip markdown fences */
+        var s = raw.replace(/```json[\s\S]*?```/gi, function(m){ return m.replace(/```json\s*/i,'').replace(/\s*```$/,''); })
+                   .replace(/```[\s\S]*?```/gi, function(m){ return m.replace(/```\w*\s*/,'').replace(/\s*```$/,''); })
+                   .trim();
+        /* Scan all '[' positions to extract JSON array even with surrounding text */
+        var candidates = [];
+        var pos = 0;
+        while (pos < s.length) {
+            var si = s.indexOf('[', pos);
+            if (si === -1) break;
+            var depth = 0, ei = -1;
+            for (var ci = si; ci < s.length; ci++) {
+                if (s[ci] === '[') depth++;
+                else if (s[ci] === ']') { depth--; if (depth === 0) { ei = ci; break; } }
+            }
+            if (ei !== -1) candidates.push(s.slice(si, ei + 1));
+            pos = si + 1;
+        }
+        /* Try each candidate — return first that parses into valid questions */
+        for (var k = 0; k < candidates.length; k++) {
+            try {
+                var arr = JSON.parse(candidates[k]);
+                if (!Array.isArray(arr) || arr.length < 1) continue;
+                var qs = arr.filter(function (q) {
+                    return q && (q.q || q.question) &&
+                           (Array.isArray(q.opts) || Array.isArray(q.options)) &&
+                           (q.opts || q.options || []).length >= 2;
+                }).map(function (q) {
+                    var opts = q.opts || q.options || [];
+                    var ans  = q.ans !== undefined ? q.ans :
+                               q.answer !== undefined ? q.answer :
+                               q.correct !== undefined ? q.correct : 0;
+                    return {
+                        q:    String(q.q || q.question),
+                        opts: opts.slice(0, 4).map(String),
+                        ans:  Math.max(0, Math.min(parseInt(ans) || 0, opts.length - 1)),
+                        exp:  String(q.exp || q.explanation || q.reason || '')
+                    };
+                });
+                if (qs.length >= 1) return qs;
+            } catch(e2) { continue; }
+        }
+        return null;
     }
 
-    /* 10 questions — reliable token budget, clean JSON-only prompt */
+    /* 10 questions — stricter JSON-only prompt with 3-attempt retry ladder */
     var snippet = content ? content.slice(0, 3000) : '';
-    var sysMsg  = 'You are an exam question generator. Output ONLY a raw JSON array — no markdown fences, no explanation, no text before or after the array.';
-    var userMsg = 'Generate 10 multiple-choice questions about "' + ch.title + '" from the subject "' + S.title + '".' +
-        (snippet ? '\nUse this material:\n' + snippet : '') +
-        '\n\nOutput ONLY a JSON array in this exact format:\n' +
-        '[{"q":"Full question","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Short explanation"}]' +
-        '\n\nRules: ans is the 0-based index of the correct option. Mix easy and hard. Use LaTeX ($...$) for any maths.';
+    var sysMsg  = 'You are an exam question generator. Your ENTIRE response must be a valid JSON array. Start with [ and end with ]. No other text, no markdown, no explanation outside the array.';
+    var userMsg = 'Generate 10 multiple-choice practice questions about "' + ch.title + '" from the subject "' + S.title + '".' +
+        (snippet ? '\nBase questions on this content:\n' + snippet : '') +
+        '\n\nYour ENTIRE response = this JSON array only (no other text):\n' +
+        '[{"q":"Full question text","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Why this answer is correct"}]' +
+        '\n\nRules: ans = 0-based correct-answer index. Mix easy/medium/hard. Use $...$ for math.';
 
     var qStr;
     try { qStr = await aiChat([{role:'system',content:sysMsg},{role:'user',content:userMsg}], 0.3); }
@@ -601,19 +626,30 @@ async function openTest() {
 
     var qs = extractQs(qStr);
 
-    /* single retry with simpler prompt if first attempt returned unparseable output */
+    /* Retry 2 — simpler 5-question prompt */
     if (!qs) {
         try {
             var r2str = await aiChat([
-                {role:'system', content:'Output ONLY a JSON array, no markdown.'},
-                {role:'user',   content:'5 multiple-choice questions about "' + ch.title + '" from "' + S.title + '".\n[{"q":"...","opts":["A","B","C","D"],"ans":0,"exp":"..."}]'}
+                {role:'system', content:'Respond with ONLY a JSON array. No other text. Start with ['},
+                {role:'user',   content:'5 quiz questions on "' + ch.title + '" (' + S.title + '). Format exactly: [{"q":"?","opts":["A","B","C","D"],"ans":0,"exp":"why"}]'}
             ], 0.2);
             qs = extractQs(r2str);
         } catch(e2) {}
     }
 
+    /* Retry 3 — absolute minimal prompt, temperature 0 */
+    if (!qs) {
+        try {
+            var r3str = await aiChat([
+                {role:'system', content:'Output ONLY raw JSON. Nothing else.'},
+                {role:'user',   content:'3 quiz questions about ' + ch.title + '. Array: [{"q":"?","opts":["A","B","C","D"],"ans":0,"exp":""}]'}
+            ], 0.1);
+            qs = extractQs(r3str);
+        } catch(e3) {}
+    }
+
     if (!qs || !qs.length) {
-        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>The AI returned an unexpected format. Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
+        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>AI is temporarily busy. Please wait a moment and try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
         return;
     }
 
