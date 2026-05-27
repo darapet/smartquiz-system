@@ -1037,18 +1037,14 @@
          6. AI response read aloud via SpeechSynthesis
          7. Loop back to step 2 automatically
     ========================================================= */
-    var voiceActive        = false;   // voice overlay is open
-    var voiceListening     = false;   // recognition is running
-    var voiceAiTalking     = false;   // synthesis is playing
-    var voiceRecog         = null;    // SpeechRecognition instance
-    var voiceSilenceTimer  = null;    // max-15 s cutoff timer
-    var voiceRestartTimer  = null;    // debounce for auto-restart
-    var VOICE_MAX_MS       = 15000;   // 15 s max per utterance
-    var voiceMessages      = [];      // private voice conversation history (never shared with chat)
-    var voiceBargeStream   = null;    // MediaStream used for barge-in level detection
-    var voiceBargeAnalyser = null;    // AnalyserNode watching mic while AI speaks
-    var voiceBargeRAF      = null;    // requestAnimationFrame handle for barge-in loop
-    var voiceBargeActx     = null;    // AudioContext for barge-in — closed on cleanup
+    var voiceActive       = false;   // voice overlay is open
+    var voiceListening    = false;   // recognition is running
+    var voiceAiTalking    = false;   // synthesis is playing
+    var voiceRecog        = null;    // SpeechRecognition instance
+    var voiceSilenceTimer = null;    // max-15 s cutoff timer
+    var voiceRestartTimer = null;    // debounce for auto-restart
+    var VOICE_MAX_MS      = 15000;   // 15 s max per utterance
+    var voiceMessages     = [];      // private voice conversation history (never shared with chat)
 
     /* Short system prompt variant for voice — keeps replies concise */
     var VOICE_SYSTEM = SYSTEM +
@@ -1158,12 +1154,9 @@
     /* ── Start listening (one utterance, max 15 s) ── */
     function startVoiceListening() {
         if (!voiceActive) return;
-        /* Never start mic while AI is speaking — mic stays off until AI finishes */
-        if (voiceAiTalking) return;
         var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec || voiceListening) return;
 
-        stopBargeDetection();   /* clean up any barge-in monitor before opening mic */
         stopVoiceSpeaking();
         setVoiceState('listening');
         setVoiceTranscript('');
@@ -1179,15 +1172,6 @@
         var finalText   = '';
         var hasSpoken   = false;
 
-        /* On mobile, ignore any results that arrive in the first 600 ms.
-           Phone speakers linger after audio stops and SpeechRecognition
-           can pick up that residual echo before the user has even spoken.
-           Desktop does not need this because speaker/mic separation is
-           greater and barge-in already guards the timing there.           */
-        var deafUntil = (navigator.maxTouchPoints > 0)
-                        ? Date.now() + 600
-                        : 0;
-
         /* 15-second hard cutoff */
         voiceSilenceTimer = setTimeout(function () {
             if (voiceListening && voiceRecog) {
@@ -1196,8 +1180,6 @@
         }, VOICE_MAX_MS);
 
         recog.onresult = function (e) {
-            /* Drop any results that arrive during the deaf window */
-            if (Date.now() < deafUntil) return;
             hasSpoken = true;
             finalText = '';
             var interim = '';
@@ -1215,14 +1197,12 @@
             var spoken = finalText.trim();
             if (spoken && voiceActive) {
                 sendVoiceMessage(spoken);
-            } else if (voiceActive && !hasSpoken && !voiceAiTalking) {
-                /* No speech detected and AI is not talking — restart silently */
+            } else if (voiceActive && !hasSpoken) {
+                /* No speech detected — restart silently */
                 voiceRestartTimer = setTimeout(startVoiceListening, 600);
-            } else if (voiceActive && !voiceAiTalking) {
+            } else if (voiceActive) {
                 setVoiceState('idle');
             }
-            /* If voiceAiTalking is true here, barge-in detection will re-open
-               the mic once the user next speaks — nothing to do now */
         };
 
         recog.onerror = function (e) {
@@ -1234,13 +1214,11 @@
                 setVoiceState('error');
                 setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
             } else if (e.error === 'no-speech') {
-                /* Only restart if AI is not currently speaking */
-                if (!voiceAiTalking) {
-                    var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
-                    voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
-                }
+                /* Mobile mic recovers slower — give it extra time */
+                var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+                voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
             } else {
-                if (!voiceAiTalking) voiceRestartTimer = setTimeout(startVoiceListening, 1000);
+                voiceRestartTimer = setTimeout(startVoiceListening, 1000);
             }
         };
 
@@ -1249,7 +1227,7 @@
         } catch (err) {
             voiceListening = false;
             voiceRecog     = null;
-            if (!voiceAiTalking) voiceRestartTimer = setTimeout(startVoiceListening, 1200);
+            voiceRestartTimer = setTimeout(startVoiceListening, 1200);
         }
     }
 
@@ -1263,137 +1241,27 @@
     }
 
     function stopVoiceSpeaking() {
-          stopBargeDetection();   /* always kill barge-in monitor when AI stops */
-          if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-          /* Fade out audio before pausing — prevents click/pop when AI is
-             interrupted by barge-in, overlay close, or a new reply starting */
-          if (currentStudioAudio) {
-              var _dying = currentStudioAudio;
-              currentStudioAudio = null;
-              try {
-                  var _t0 = Date.now(), _v0 = _dying.volume;
-                  (function _fo() {
-                      var p = Math.max(0, _v0 * (1 - (Date.now() - _t0) / 80));
-                      try { _dying.volume = p; } catch(_e) {}
-                      if (p > 0) { requestAnimationFrame(_fo); }
-                      else { try { _dying.pause(); _dying.src = ''; } catch(_e) {} }
-                  })();
-              } catch(_e) { try { _dying.pause(); _dying.src = ''; } catch(_e2) {} }
-          }
-          if (window.speechSynthesis) window.speechSynthesis.cancel();
-          voiceAiTalking = false;
-      }
-
-    /* ── Barge-in detection ────────────────────────────────────
-       While the AI is speaking, watch mic volume via AudioContext.
-       When the user speaks (sustained audio above threshold for
-       ~5 frames ≈ 80 ms), stop the AI and start listening.
-       Uses a separate MediaStream so SpeechRecognition stays off
-       and cannot accidentally transcribe the AI's TTS audio.     */
-    function startBargeDetection() {
-        if (!voiceActive || !voiceAiTalking) return;
-        if (voiceBargeAnalyser) return; /* already running */
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
-
-        /* On mobile the speaker is millimetres from the mic — the AI's own
-           TTS audio easily exceeds any reasonable amplitude threshold, so
-           barge-in via AudioContext is unreliable and causes the mic to pick
-           up the AI's speech and resend it as a user message.
-           On mobile the user should tap the "Interrupt" button instead.       */
-        if (navigator.maxTouchPoints > 0) return;
-
-        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(function (stream) {
-                /* Bail if AI finished speaking before we got the stream */
-                if (!voiceAiTalking || !voiceActive) {
-                    stream.getTracks().forEach(function (t) { t.stop(); });
-                    return;
-                }
-                voiceBargeStream = stream;
-                var actx     = new (window.AudioContext || window.webkitAudioContext)();
-                voiceBargeActx = actx;          /* stored so stopBargeDetection can close it */
-                var src      = actx.createMediaStreamSource(stream);
-                var analyser = actx.createAnalyser();
-                analyser.fftSize = 256;
-                src.connect(analyser);
-                voiceBargeAnalyser = analyser;
-
-                var data          = new Uint8Array(analyser.frequencyBinCount);
-                var highFrames    = 0;
-                /* Higher threshold + more frames = ignores speaker bleed and
-                   ambient noise, only fires on sustained human speech           */
-                var THRESHOLD     = 32;   /* 0-255 average amplitude */
-                var FRAMES_NEEDED = 10;   /* ~160 ms of sustained speech at 60fps */
-
-                /* Give the AI audio a moment to stabilise before we start
-                   listening — prevents an immediate false positive at startup */
-                setTimeout(function () {
-                    if (!voiceAiTalking || !voiceActive || !voiceBargeAnalyser) return;
-
-                    (function checkLevel() {
-                        if (!voiceAiTalking || !voiceActive) { stopBargeDetection(); return; }
-                        analyser.getByteFrequencyData(data);
-                        var avg = 0;
-                        for (var i = 0; i < data.length; i++) avg += data[i];
-                        avg /= data.length;
-
-                        if (avg > THRESHOLD) {
-                            highFrames++;
-                            if (highFrames >= FRAMES_NEEDED) {
-                                /* User is speaking — stop AI, wait for mic release, then listen */
-                                stopBargeDetection();
-                                stopVoiceSpeaking();
-                                /* Small delay so the browser can fully release the barge stream
-                                   before we request a new SpeechRecognition mic session           */
-                                setTimeout(startVoiceListening, 280);
-                                return;
-                            }
-                        } else {
-                            highFrames = 0;
-                        }
-                        voiceBargeRAF = requestAnimationFrame(checkLevel);
-                    })();
-                }, 600);  /* 600 ms settling time after audio starts playing */
-            })
-            .catch(function () { /* barge-in unavailable — no fallback needed */ });
+        if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+        if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        voiceAiTalking = false;
     }
 
-    function stopBargeDetection() {
-        if (voiceBargeRAF) { cancelAnimationFrame(voiceBargeRAF); voiceBargeRAF = null; }
-        voiceBargeAnalyser = null;
-        if (voiceBargeStream) {
-            voiceBargeStream.getTracks().forEach(function (t) { t.stop(); });
-            voiceBargeStream = null;
-        }
-          /* Close AudioContext to fully release mic hardware and avoid
-             dangling contexts that accumulate across barge-in sessions    */
-          if (voiceBargeActx) {
-              try { voiceBargeActx.close(); } catch(_e) {}
-              voiceBargeActx = null;
-          }
-      }
-
     /* ── Web search / page fetch ── */
-    /* Only runs when the user clearly asks for a URL, search, or web lookup.
-       Returns null immediately for normal questions — this is the main reason
-       voice responses were slow (previously awaited with 8 s timeouts on every
-       single message even with no web intent).                                  */
+    /* Detects phrases like "search for X", "look up X", "go to X.com", "visit X website"
+       Fetches via r.jina.ai (free reader API) for URLs, or DuckDuckGo instant answers for queries */
     async function voiceFetchWebContext(text) {
-        var hasUrl    = /\b(https?:\/\/\S+|[\w-]+\.(com|org|net|io|gov|edu|co\.uk)[\S]*)/i.test(text);
-        var hasSearch = /\b(search|look\s+up|find\s+out|google|check\s+online|look\s+for)\b/i.test(text);
-        var hasVisit  = /\b(visit|go\s+to|open|browse)\b.*\.\w+/i.test(text);
-
-        /* Quick bail-out — no web intent → return immediately, zero latency */
-        if (!hasUrl && !hasSearch && !hasVisit) return null;
-
         /* 1. Detect a bare URL in the speech */
         var urlMatch = text.match(/\b(https?:\/\/\S+|[\w-]+\.(com|org|net|io|gov|edu|co\.uk)[\S]*)/i);
         if (urlMatch) {
             var url = urlMatch[0];
             if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
             try {
-                var r = await fetch('https://r.jina.ai/' + encodeURIComponent(url), { signal: AbortSignal.timeout(4000) });
-                if (r.ok) return '[Web page content from ' + url + ']\n' + (await r.text()).slice(0, 2000);
+                var r = await fetch('https://r.jina.ai/' + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
+                if (r.ok) {
+                    var body = await r.text();
+                    return '[Web page content from ' + url + ']\n' + body.slice(0, 2500);
+                }
             } catch(_) {}
             return null;
         }
@@ -1405,15 +1273,17 @@
             try {
                 var ddg = await fetch(
                     'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) + '&format=json&no_html=1&skip_disambig=1',
-                    { signal: AbortSignal.timeout(3500) }
+                    { signal: AbortSignal.timeout(6000) }
                 );
                 if (ddg.ok) {
                     var data = await ddg.json();
                     var result = data.AbstractText || data.Answer || '';
                     if (result) return '[Web search result for "' + query + '"]\n' + result;
+                    /* Fall back to Jina search */
+                    var jr = await fetch('https://r.jina.ai/https://www.google.com/search?q=' + encodeURIComponent(query), { signal: AbortSignal.timeout(8000) });
+                    if (jr.ok) return '[Web search for "' + query + '"]\n' + (await jr.text()).slice(0, 2000);
                 }
             } catch(_) {}
-            return null;
         }
 
         /* 3. Detect "visit website X" or "go to website X" */
@@ -1421,12 +1291,12 @@
         if (visitMatch) {
             var visitUrl = 'https://' + visitMatch[1];
             try {
-                var vr = await fetch('https://r.jina.ai/' + encodeURIComponent(visitUrl), { signal: AbortSignal.timeout(4000) });
-                if (vr.ok) return '[Content from ' + visitUrl + ']\n' + (await vr.text()).slice(0, 2000);
+                var vr = await fetch('https://r.jina.ai/' + encodeURIComponent(visitUrl), { signal: AbortSignal.timeout(8000) });
+                if (vr.ok) return '[Content from ' + visitUrl + ']\n' + (await vr.text()).slice(0, 2500);
             } catch(_) {}
         }
 
-        return null;
+        return null; // no web context needed
     }
 
     /* ── Send voice utterance to AI ── */
@@ -1472,10 +1342,7 @@
             setVoiceTranscript('');
             speakVoiceResponse(response, function () {
                 if (voiceActive) {
-                    /* Mobile needs a longer pause after AI finishes — the phone
-                       speaker keeps vibrating/echoing for ~1 s after audio stops
-                       and SpeechRecognition would otherwise pick up that echo   */
-                    var micDelay = (navigator.maxTouchPoints > 0) ? 1600 : 700;
+                    var micDelay = (navigator.maxTouchPoints > 0) ? 950 : 650;
                     voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
                 }
             });
@@ -1493,7 +1360,7 @@
 
     /* Clean text for speaking — strip markdown, math, code blocks */
     function cleanForSpeech(text) {
-        var cleaned = text
+        return text
             .replace(/```[\s\S]*?```/g,       'code block.')
             .replace(/`([^`]+)`/g,            '$1')
             .replace(/\$\$[\s\S]+?\$\$/g,     'math expression.')
@@ -1504,14 +1371,8 @@
             .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
             .replace(/[-_]{2,}/g,             '')
             .replace(/\n{2,}/g,               ' ')
-            .trim();
-
-        /* Truncate at a sentence boundary so speech never cuts off mid-word.
-           Try to end at the last sentence-ending punctuation within 550 chars.  */
-        if (cleaned.length <= 550) return cleaned;
-        var cut = cleaned.substring(0, 550);
-        var sentEnd = Math.max(cut.lastIndexOf('. '), cut.lastIndexOf('! '), cut.lastIndexOf('? '));
-        return sentEnd > 250 ? cut.substring(0, sentEnd + 1) : cut;
+            .trim()
+            .substring(0, 600);
     }
 
     /* Browser TTS fallback — used only if Pollinations fails */
@@ -1528,14 +1389,10 @@
                || voices.find(function(v) { return v.lang.startsWith('en'); });
             if (pick) utter.voice = pick;
             voiceAiTalking = true;
-            startBargeDetection();
-            /* Keep Chrome from pausing on long utterances — use a longer interval
-               and avoid pause/resume which causes a pop sound every 10 s         */
             voiceKeepAlive = setInterval(function() {
-                if (!window.speechSynthesis.speaking) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; return; }
-                /* Touch speechSynthesis without pause/resume to keep Chrome alive */
-                var _ = window.speechSynthesis.pending;
-            }, 5000);
+                if (!window.speechSynthesis.speaking) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+                else { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
+            }, 10000);
             utter.onend = utter.onerror = function() {
                 if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
                 voiceAiTalking = false; if (onDone) onDone();
@@ -1569,30 +1426,30 @@
                            '?model=openai-audio&voice=shimmer&nologo=true';
 
         var audio        = new Audio(ttsUrl);
-        audio.volume     = 0;   /* start silent — fade in to prevent cold-start pop */
+        audio.volume     = 1.0;   /* max HTML5 volume */
         currentStudioAudio = audio;
 
-        /* Timeout — if Pollinations hasn't started within 5 s, fall back */
+        /* Boost volume via Web Audio API GainNode — allows amplification
+           beyond the default 1.0 cap of the HTML5 Audio element */
+        try {
+            var _actx  = new (window.AudioContext || window.webkitAudioContext)();
+            var _src   = _actx.createMediaElementSource(audio);
+            var _gain  = _actx.createGain();
+            _gain.gain.value = 2.0;   /* 2× louder */
+            _src.connect(_gain);
+            _gain.connect(_actx.destination);
+        } catch (_gainErr) { /* fallback: plain audio.volume already set to 1.0 */ }
+
+        /* Timeout — if Pollinations hasn't started within 7 s, fall back */
         var fallbackTimer = setTimeout(function() {
-            if (currentStudioAudio !== audio) return; /* already replaced */
             if (!audio.paused) return; /* already playing — no fallback needed */
             audio.src = '';
             currentStudioAudio = null;
             speakWithBrowserFallback(spoken, onDone);
-        }, 5000);
+        }, 7000);
 
         audio.addEventListener('playing', function() {
             clearTimeout(fallbackTimer);
-            /* Fade volume from 0 → 1.0 over 180 ms to prevent the cold-start
-               pop/click that occurs when audio begins at full volume abruptly */
-            var fadeStart = Date.now();
-            (function fadeIn() {
-                if (currentStudioAudio !== audio) return; /* already replaced */
-                var p = Math.min(1, (Date.now() - fadeStart) / 180);
-                audio.volume = p;
-                if (p < 1) requestAnimationFrame(fadeIn);
-            })();
-            startBargeDetection();
         });
 
         audio.addEventListener('ended', function() {
@@ -1602,18 +1459,10 @@
             if (onDone) onDone();
         });
 
-        /* Handle audio stalling mid-playback — fall back to browser TTS */
-        audio.addEventListener('stalled', function() {
-            clearTimeout(fallbackTimer);
-            if (currentStudioAudio !== audio) return;
-            currentStudioAudio = null;
-            voiceAiTalking = false;
-            speakWithBrowserFallback(spoken, onDone);
-        });
-
         audio.addEventListener('error', function() {
             clearTimeout(fallbackTimer);
             currentStudioAudio = null;
+            /* Pollinations failed — use browser TTS as backup */
             speakWithBrowserFallback(spoken, onDone);
         });
 
