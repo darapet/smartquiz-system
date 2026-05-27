@@ -196,7 +196,7 @@
 .std-res-ai { background: var(--std-surface2); border-color: var(--std-accent); }
 
 /* ── STUDY VIEW ───────────────────────────────────────────── */
-#std-study-view { display: flex !important; flex-direction: column; height: 100vh; overflow: hidden; }
+#std-study-view { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 .std-study-header {
     padding: 10px 16px;
     border-bottom: 1px solid var(--std-border);
@@ -361,7 +361,7 @@
 
 /* ── GLOBAL ERROR ─────────────────────────────────────────── */
 .std-global-error {
-    position: fixed; top: 70px; right: 16px;
+    position: fixed; top: 80px; right: 16px;
     background: #450a0a; border: 1px solid #7f1d1d;
     color: #fca5a5; padding: 10px 15px;
     border-radius: var(--std-radius-sm); font-size: .84rem; font-weight: 600;
@@ -383,7 +383,10 @@
     .std-hist-section { padding: 0 14px 20px; }
     .std-results-view { padding: 14px; }
     .std-res-grid { grid-template-columns: 1fr; }
-    .std-study-header { padding: 8px 12px; }
+    /* Left padding clears the fixed hamburger button (left:8px + width:40px + gap:8px = 56px).
+         sidebar-body has padding-top:60px so reduce #std-study-view height to match. */
+      .std-study-header { padding: 8px 12px 8px 60px; }
+      #std-study-view { height: calc(100dvh - 60px); height: calc(100vh - 60px); }
     .std-study-head-btns { display: none; }
     .std-ch-toggle-mobile {
         display: inline-flex; align-items: center; gap: 5px;
