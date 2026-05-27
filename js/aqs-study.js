@@ -1106,23 +1106,27 @@ async function summonHandleQuery(q) {
     var sysPrompt =
         'You are ' + aiDisplayName + ', a professional and thorough voice-based academic tutor. ' +
         context +
-        'Your responses must always be clear, natural spoken sentences. ' +
-        'Never use markdown, bullet points, asterisks, symbols, or any abbreviation that cannot be pronounced aloud. ' +
-        'For mathematics, physics, and chemistry questions: always work through the complete solution step by step. ' +
-        'Begin every calculation by stating the relevant formula or principle in full spoken words before applying it. ' +
-        'Speak every number, unit, and operation in full words — say "nine point eight metres per second squared" not "9.8 m/s", ' +
-        'say "force equals mass times acceleration" not "F equals m a". ' +
-        'After each calculation step, briefly explain in plain language why that step was taken. ' +
-        'For other subjects: give a complete, structured explanation with concrete examples. ' +
+        'For ALL mathematics, physics, chemistry, or calculation questions you MUST use this exact two-part format:\n' +
+        '1. Write a complete plain-English spoken explanation — natural sentences, no symbols, no LaTeX, no markdown. ' +
+        'Say "square root of twenty-seven" not "sqrt(27)". Say "three times the square root of three" not "3√3". ' +
+        'Work step by step, stating each formula in words before applying it.\n' +
+        '[DISPLAY]\n' +
+        '2. Write the SAME explanation again, this time using proper LaTeX notation: ' +
+        '$...$ for inline math (e.g. $\\sqrt{27}$, $3\\sqrt{3}$) and $$...$$ for displayed equations. ' +
+        'Include every step and its explanation. Use clear paragraphs.\n' +
+        'For non-math topics: respond normally without the [DISPLAY] section — just clear spoken sentences. ' +
         'Never truncate or rush an answer. Maintain a professional, warm, and patient tone throughout. ' +
-        (addCheckpoint ? 'At the very end of your response add exactly: "' + CHECKPOINT_PHRASE + '"' : '');
+        (addCheckpoint ? 'At the very end of your response (after [DISPLAY] if present) add exactly: "' + CHECKPOINT_PHRASE + '"' : '');
 
     var messages = [{role:'system', content:sysPrompt}].concat(VS.history);
 
     try {
         var fullText = await summonStreamResponse(messages);
         VS.lastExplanation = fullText;
-        var historyText = fullText.replace(CHECKPOINT_PHRASE, '').trim();
+        /* Strip [DISPLAY] section from history — keep spoken plain-English only */
+        var dSplit = fullText.indexOf('[DISPLAY]');
+        var historyText = (dSplit !== -1 ? fullText.slice(0, dSplit) : fullText)
+            .replace(CHECKPOINT_PHRASE, '').replace(/^\[SPEAK\]\s*/i, '').trim();
         vhAdd('ai', historyText);
         VS.history.push({role:'assistant', content:historyText});
         if (VS.history.length > 14) VS.history = VS.history.slice(-14);
@@ -1141,7 +1145,18 @@ async function summonStreamResponse(messages) {
     if (!key) {
         summonStopListening();
         var text = await aiChat(messages, 0.7);
-        summonSetAiText(text); summonSpeakStream(text, VS.waitingCheckpnt); return text;
+        /* Split speak / display sections for the fallback path too */
+        var fIdx = text.indexOf('[DISPLAY]');
+        if (fIdx !== -1) {
+            var speakPart = text.slice(0, fIdx).replace(/^\[SPEAK\]\s*/i, '').trim();
+            var dispPart  = text.slice(fIdx + '[DISPLAY]'.length).trim();
+            summonSetAiText(dispPart);
+            summonSpeakStream(speakPart, VS.waitingCheckpnt);
+        } else {
+            summonSetAiText(text);
+            summonSpeakStream(text, VS.waitingCheckpnt);
+        }
+        return text;
     }
 
     // Stop user mic before streaming (prevents AI speech being picked up)
@@ -1159,7 +1174,7 @@ async function summonStreamResponse(messages) {
     }
 
     var reader = res.body.getReader(), decoder = new TextDecoder();
-    var full = '', sentenceBuf = '';
+    var full = '', sentenceBuf = '', seenDisplay = false, displayStart = -1;
     summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];
 
     while (true) {
@@ -1173,21 +1188,47 @@ async function summonStreamResponse(messages) {
                 try {
                     var delta = JSON.parse(line.slice(6));
                     var token = (delta.choices[0].delta.content) || '';
-                    full += token; sentenceBuf += token;
-                    summonSetAiText(full);
-                    var sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
-                    while (sentenceEnd !== -1) {
-                        var sentence = sentenceBuf.slice(0, sentenceEnd+1).trim();
-                        sentenceBuf = sentenceBuf.slice(sentenceEnd+1);
-                        if (sentence) summonQueueSentence(sentence);
-                        sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                    full += token;
+
+                    if (!seenDisplay) {
+                        /* Check if the [DISPLAY] marker has arrived yet */
+                        var dIdx = full.indexOf('[DISPLAY]');
+                        if (dIdx !== -1) {
+                            /* Marker just found — switch to display mode */
+                            seenDisplay = true;
+                            displayStart = dIdx + '[DISPLAY]'.length;
+                            /* Stop buffering speak sentences */
+                            sentenceBuf = '';
+                            /* Show display portion accumulated so far */
+                            var dispSoFar = full.slice(displayStart).replace(/^\s+/, '');
+                            if (dispSoFar) summonSetAiText(dispSoFar);
+                        } else {
+                            /* Still in the spoken section — feed to TTS sentence queue */
+                            /* Strip any leading [SPEAK] tag the model might output */
+                            var tok = token.replace(/^\[SPEAK\]\s*/i, '');
+                            sentenceBuf += tok;
+                            var sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                            while (sentenceEnd !== -1) {
+                                var sentence = sentenceBuf.slice(0, sentenceEnd + 1).trim();
+                                sentenceBuf = sentenceBuf.slice(sentenceEnd + 1);
+                                if (sentence) summonQueueSentence(sentence);
+                                sentenceEnd = sentenceBuf.search(/[.!?][^.!?]|[.!?]$/);
+                            }
+                        }
+                    } else {
+                        /* Past [DISPLAY] — stream LaTeX text into the scrollable panel */
+                        var displayText = full.slice(displayStart).replace(/^\s+/, '');
+                        summonSetAiText(displayText);
                     }
                 } catch(ex) {}
             }
         }
     }
 
-    if (sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
+    /* Flush any remaining spoken sentence fragment */
+    if (!seenDisplay && sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
+    /* If the AI skipped [DISPLAY] (non-math topic), show full text in panel */
+    if (!seenDisplay) summonSetAiText(full);
     summonFlushQueue(function () {
         VS.speakingQueue = false;
         summonSetState('listening');
