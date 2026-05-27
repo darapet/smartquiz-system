@@ -807,6 +807,11 @@ function setupEvents() {
     $('std-voice-btn')    && $('std-voice-btn').addEventListener('click', summonToggle);
     $('std-voice-hdr-btn')&& $('std-voice-hdr-btn').addEventListener('click', summonToggle);
 
+    $('std-chapters-toggle') && $('std-chapters-toggle').addEventListener('click', function () {
+        var panel = document.getElementById('std-chapters-panel');
+        if (panel) panel.classList.toggle('open');
+    });
+
     $('std-close-ai-btn') && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
 
     $('std-test-close-btn') && $('std-test-close-btn').addEventListener('click', function () {
