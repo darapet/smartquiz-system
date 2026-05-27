@@ -53,6 +53,7 @@ function _stdInit() {
     injectSummonStyles();
     injectSummonUI();
     initSummonVoices();
+    setupVoicePanel();
     /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
     setTimeout(checkAI, 500);
     setTimeout(checkAI, 2000);
@@ -899,4 +900,251 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
       throw new Error('Groq is not ready yet. Please wait a moment and try again.');
   }
 
-  
+/* ═══════════════════════════════════════════════════════════════
+   VOICE CHAT PANEL  (#std-voice-panel)
+   Full AI conversation with text + optional speech recognition.
+   Works on both desktop (370 px sidebar) and mobile (bottom sheet).
+   ═══════════════════════════════════════════════════════════════ */
+
+var VCP = {
+    open       : false,
+    history    : [],          /* [{role, content}]  conversation context */
+    speaking   : false,       /* TTS playing        */
+    recognizing: false,       /* STT active         */
+    recognition: null,        /* SpeechRecognition  */
+    synth      : window.speechSynthesis || null,
+    uttr       : null,
+};
+
+function setupVoicePanel() {
+    var panel   = document.getElementById('std-voice-panel');
+    var msgs    = document.getElementById('std-voice-msgs');
+    var closeBtn= document.getElementById('std-voice-close-btn');
+    var stopBtn = document.getElementById('std-voice-stop-btn');
+    var sendBtn = document.getElementById('std-voice-send-btn');
+    var micBtn  = document.getElementById('std-voice-mic-btn');
+    var txtIn   = document.getElementById('std-voice-text-input');
+    if (!panel || !msgs) return;
+
+    /* ── helpers ── */
+    function openPanel() {
+        panel.style.display = 'flex';
+        VCP.open = true;
+        if (!msgs.children.length) {
+            vcpAddMsg('ai',
+                'Hi! I\'m your AI Tutor. Ask me anything about ' +
+                (S.title || 'this topic') + ' — I\'m here to help.'
+            );
+        }
+        if (txtIn) { txtIn.value = ''; txtIn.focus(); }
+    }
+
+    function closePanel() {
+        panel.style.display = 'none';
+        VCP.open = false;
+        vcpStopSpeaking();
+        vcpStopMic();
+    }
+
+    /* ── open triggers ── */
+    ['std-voice-btn', 'std-voice-hdr-btn'].forEach(function (id) {
+        var b = document.getElementById(id);
+        if (b) b.addEventListener('click', openPanel);
+    });
+
+    if (closeBtn) closeBtn.addEventListener('click', closePanel);
+
+    if (stopBtn) stopBtn.addEventListener('click', function () {
+        vcpStopSpeaking();
+        vcpStopMic();
+    });
+
+    /* ── send text ── */
+    function sendText() {
+        if (!txtIn) return;
+        var text = txtIn.value.trim();
+        if (!text) return;
+        txtIn.value = '';
+        autoResizeVcpInput(txtIn);
+        vcpSend(text);
+    }
+
+    if (sendBtn) sendBtn.addEventListener('click', sendText);
+
+    if (txtIn) {
+        txtIn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendText(); }
+        });
+        txtIn.addEventListener('input', function () { autoResizeVcpInput(txtIn); });
+    }
+
+    /* ── mic button ── */
+    if (micBtn) micBtn.addEventListener('click', function () {
+        if (VCP.recognizing) vcpStopMic();
+        else vcpStartMic();
+    });
+}
+
+function autoResizeVcpInput(el) {
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+/* Add a message bubble to the voice panel */
+function vcpAddMsg(role, text) {
+    var msgs = document.getElementById('std-voice-msgs');
+    if (!msgs) return;
+    var wrap = document.createElement('div');
+    wrap.className = 'std-vmsg std-vmsg-' + (role === 'user' ? 'user' : 'ai');
+    var bubble = document.createElement('div');
+    bubble.className = 'std-vbubble';
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+    return bubble;
+}
+
+/* Add a typing indicator and return a handle to update/remove it */
+function vcpTypingIndicator() {
+    var msgs = document.getElementById('std-voice-msgs');
+    if (!msgs) return { remove: function(){}, setText: function(){} };
+    var wrap = document.createElement('div');
+    wrap.className = 'std-vmsg std-vmsg-ai';
+    var bubble = document.createElement('div');
+    bubble.className = 'std-vbubble std-vtyping';
+    bubble.textContent = '● ● ●';
+    wrap.appendChild(bubble);
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+    return {
+        remove : function () { if (wrap.parentNode) wrap.parentNode.removeChild(wrap); },
+        setText: function (t) {
+            bubble.classList.remove('std-vtyping');
+            bubble.textContent = t;
+            msgs.scrollTop = msgs.scrollHeight;
+        }
+    };
+}
+
+/* Send user text → AI → speak response */
+async function vcpSend(text) {
+    vcpAddMsg('user', text);
+    VCP.history.push({ role: 'user', content: text });
+
+    /* build system prompt using current chapter context */
+    var topic = S.title || 'this topic';
+    var chText = '';
+    if (S.chapters && S.activeIdx >= 0 && S.chapters[S.activeIdx]) {
+        var ch = S.chapters[S.activeIdx];
+        chText = 'Current chapter: ' + ch.title + '.\n' + (ch.content || '').slice(0, 1200);
+    }
+    var sysMsg = {
+        role   : 'system',
+        content: 'You are a friendly AI tutor helping a student study "' + topic + '". ' +
+                 'Give clear, concise, encouraging answers. Keep responses under 120 words unless asked to elaborate. ' +
+                 (chText ? 'Context:\n' + chText : '')
+    };
+
+    /* keep last 10 turns to save tokens */
+    var history = VCP.history.slice(-10);
+    var messages = [sysMsg].concat(history);
+
+    var indicator = vcpTypingIndicator();
+    var stopBtn = document.getElementById('std-voice-stop-btn');
+    if (stopBtn) stopBtn.style.display = '';
+
+    try {
+        var reply = await aiChat(messages, 0.7);
+        VCP.history.push({ role: 'assistant', content: reply });
+        indicator.remove();
+        vcpAddMsg('ai', reply);
+        vcpSpeak(reply);
+    } catch (e) {
+        indicator.remove();
+        vcpAddMsg('ai', '⚠️ ' + (e.message || 'Something went wrong. Please try again.'));
+    } finally {
+        if (stopBtn) stopBtn.style.display = 'none';
+    }
+}
+
+/* TTS speak */
+function vcpSpeak(text) {
+    if (!VCP.synth) return;
+    vcpStopSpeaking();
+    var utt = new SpeechSynthesisUtterance(text);
+    utt.lang  = 'en-US';
+    utt.rate  = 1.05;
+    utt.pitch = 1;
+    var voices = VCP.synth.getVoices();
+    var pref   = voices.find(function (v) {
+        return v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha'));
+    }) || voices.find(function (v) { return v.lang.startsWith('en'); });
+    if (pref) utt.voice = pref;
+    utt.onend = function () { VCP.speaking = false; };
+    VCP.uttr  = utt;
+    VCP.speaking = true;
+    VCP.synth.speak(utt);
+}
+
+function vcpStopSpeaking() {
+    if (VCP.synth) {
+        /* Fade-like stop: cancel after brief pause to avoid hard pop */
+        try { VCP.synth.cancel(); } catch(e) {}
+    }
+    VCP.speaking = false;
+}
+
+/* Speech recognition (mic) */
+function vcpStartMic() {
+    var SpeechRecog = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecog) {
+        vcpAddMsg('ai', '⚠️ Your browser does not support speech recognition. Please type your question instead.');
+        return;
+    }
+    var micBtn = document.getElementById('std-voice-mic-btn');
+    var txtIn  = document.getElementById('std-voice-text-input');
+    if (VCP.recognition) { try { VCP.recognition.abort(); } catch(e) {} }
+    var rec = new SpeechRecog();
+    rec.lang          = 'en-US';
+    rec.interimResults = true;
+    rec.maxAlternatives = 1;
+    VCP.recognition = rec;
+    VCP.recognizing = true;
+    if (micBtn) { micBtn.textContent = '🔴 Listening…'; micBtn.classList.add('active'); }
+
+    rec.onresult = function (e) {
+        var interim = '', final = '';
+        for (var i = e.resultIndex; i < e.results.length; i++) {
+            if (e.results[i].isFinal) final  += e.results[i][0].transcript;
+            else                       interim += e.results[i][0].transcript;
+        }
+        if (txtIn) txtIn.value = final || interim;
+        if (final) vcpStopMic(true);
+    };
+
+    rec.onerror = function () { vcpStopMic(false); };
+    rec.onend   = function () {
+        VCP.recognizing = false;
+        if (micBtn) { micBtn.textContent = '🎤 Speak'; micBtn.classList.remove('active'); }
+    };
+
+    try { rec.start(); } catch(e) { VCP.recognizing = false; }
+}
+
+function vcpStopMic(sendAfter) {
+    VCP.recognizing = false;
+    if (VCP.recognition) { try { VCP.recognition.stop(); } catch(e) {} VCP.recognition = null; }
+    var micBtn = document.getElementById('std-voice-mic-btn');
+    if (micBtn) { micBtn.textContent = '🎤 Speak'; micBtn.classList.remove('active'); }
+    if (sendAfter) {
+        var txtIn = document.getElementById('std-voice-text-input');
+        if (txtIn && txtIn.value.trim()) {
+            var text = txtIn.value.trim();
+            txtIn.value = '';
+            vcpSend(text);
+        }
+    }
+}
+
+
