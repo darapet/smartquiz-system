@@ -1818,6 +1818,28 @@
             ['qwen-coder', 'deepseek', 'command-r'],    /* Group 3 — last resort             */
         ];
 
+
+        /* ── Groq direct call — fastest/best quality (uses master keys from Firebase) ── */
+        async function _groqCall(prompt) {
+            if (typeof window.groqFetch !== 'function') throw new Error('groqFetch not available');
+            var isMath = isMathSubject('', prompt);
+            var groqModel = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+            var ctrl = new AbortController();
+            var tid  = setTimeout(function() { ctrl.abort(); }, 25000);
+            var res  = await window.groqFetch({
+                model:       groqModel,
+                messages:    [{ role: 'system', content: _DIRECT_SYS }, { role: 'user', content: prompt }],
+                temperature: 0.35,
+                max_tokens:  4096
+            }, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (!res.ok) throw new Error('Groq HTTP ' + res.status);
+            var d = await res.json();
+            var t = (((d.choices || [])[0] || {}).message || {}).content || '';
+            if (t.trim().length > 20) return t.trim();
+            throw new Error('empty Groq response');
+        }
+
         /* Single server-proxy call (25 s timeout) */
         function _proxyCall(prompt, model) {
             return new Promise(function (resolve, reject) {
@@ -1960,6 +1982,36 @@
             });
         }
 
+        async function callAI(prompt, statusFn) {
+            statusFn = statusFn || setStatus;
+
+            /* 1. Try Groq first — fast, high quality, uses Firebase master keys */
+            try {
+                statusFn('Generating with Groq AI…');
+                const groqText = await _groqCall(prompt);
+                if (groqText) return groqText;
+            } catch (ge) {
+                console.warn('[AQS] Groq failed, falling back to Pollinations:', ge.message);
+            }
+
+            /* 2. Fallback — race Pollinations model groups */
+            for (let gi = 0; gi < RACE_GROUPS.length; gi++) {
+                const models = RACE_GROUPS[gi];
+                statusFn('Generating' + (gi > 0 ? ' (backup models)' : '') +
+                         '… racing ' + (models.length + 1) + ' AI connections simultaneously…');
+                try {
+                    const text = await _raceGroup(prompt, models);
+                    if (text) return text;
+                } catch (e) {
+                    console.warn('[AQS] Race group ' + (gi + 1) + ' failed:', e.message);
+                    if (gi < RACE_GROUPS.length - 1) {
+                        statusFn('Switching to backup models…');
+                        await new Promise(function (r) { setTimeout(r, 1500); });
+                    }
+                }
+            }
+            throw new Error('AI generation failed. Please check your connection and try again.');
+        }
         async function callAI(prompt, statusFn) {
             statusFn = statusFn || setStatus;
             for (let gi = 0; gi < RACE_GROUPS.length; gi++) {
