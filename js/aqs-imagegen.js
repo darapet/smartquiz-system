@@ -63,13 +63,16 @@
          the right quality tokens, and never mixes conflicting modifiers.
       ═══════════════════════════════════════════════════════════════ */
 
-      var DESIGN_RE = /\b(flyer|flier|banner|poster|obituar|memorial|tribute|funeral|invitation|invite|card|thumbnail|logo|certificate|brochure|menu|social.?media|instagram|facebook|print|leaflet|handout|signage|billboard|coupon|voucher|\bad\b|advert|promotional|event.?graphic|cover.?page|announcement|pamphlet|booklet)\b/i;
-      var ART_RE    = /\b(watercolor|watercolour|painting|illustration|anime|cartoon|sketch|drawing|comic|oil.?paint|acrylic|pastel|charcoal|ink|3d.?render|digital.?art|concept.?art|neon|cyberpunk)\b/i;
+      /* ── Design keyword detector — catches any graphic/print design request ── */
+      var DESIGN_RE = /\b(flyer|flier|banner|poster|obituar|memorial|tribute|funeral|invitation|invite|greeting.?card|birthday.?card|card|thumbnail|youtube|logo|certificate|brochure|menu|social.?media|instagram|facebook|twitter|tiktok|print|leaflet|handout|signage|billboard|coupon|voucher|\bad\b|advert|promotional|event.?graphic|cover.?page|announcement|pamphlet|booklet|backdrop|background.?design|infographic|timeline|chart.?design|report.?cover|album.?cover|book.?cover|magazine|newsletter|label|sticker|packaging|business.?card|id.?card|name.?card|profile.?picture|display.?picture|dp|graphic|design|template|mockup|layout|typograph|t.?shirt|hoodie|merch|apparel|jersey|uniform|mug.?design|cap.?design|bag.?design|icon.?set|ui.?design|app.?screen|website.?design|landing.?page|brand|identity)\b/i;
 
-      /* Quality suffix for realistic photography */
+      /* ── Art / illustration style detector ── */
+      var ART_RE = /\b(watercolor|watercolour|painting|illustration|anime|cartoon|sketch|drawing|comic|oil.?paint|acrylic|pastel|charcoal|ink|3d.?render|digital.?art|concept.?art|neon|cyberpunk|pixel.?art|mosaic|stained.?glass|graffiti|street.?art|pop.?art|abstract)\b/i;
+
+      /* ── Quality suffix for realistic photography ── */
       var PHOTO_SUFFIX = [
           'ultra-realistic professional photography',
-          'shot on Sony A7R V with 85mm f\/1.4 prime lens',
+          'shot on Sony A7R V with 85mm f/1.4 prime lens',
           'natural cinematic lighting with perfect exposure',
           'razor-sharp focus, tack-sharp fine detail',
           '8K RAW photo, HDR tone-mapped',
@@ -77,60 +80,109 @@
           'masterclass composition following rule of thirds'
       ].join(', ');
 
-      /* Quality suffix for graphic design work */
+      /* ── Quality suffix for graphic design work ── */
       var DESIGN_SUFFIX = [
-          'professional graphic design',
-          'print-ready 300 DPI quality',
-          'clean crisp layout with intentional whitespace',
-          'bold impactful typography hierarchy',
-          'vibrant perfectly balanced color palette',
-          'sharp vector-quality crisp edges',
-          'premium high-resolution commercial output'
+          'professional commercial graphic design',
+          'print-ready 300 DPI output',
+          'clean structured layout with clear visual hierarchy',
+          'bold impactful typographic treatment',
+          'vibrant perfectly harmonised color palette',
+          'sharp vector-quality crisp edges and elements',
+          'premium high-resolution commercial finish',
+          'no photographic elements, pure graphic design'
       ].join(', ');
 
-      /* Quality suffix for HD quality selector */
-      var HD_SUFFIX = 'ultra-high-definition, intricate fine details, maximum resolution, no artifacts, pristine quality';
+      /* ── HD quality suffix ── */
+      var HD_SUFFIX = 'ultra-high-definition, intricate fine details, maximum resolution, zero artifacts, pristine commercial quality';
 
-      /* Per design-type specialist suffix */
+      /* ── Per design-type specialist suffix — 30+ types covered ── */
       var DESIGN_TYPE_SUFFIX = {
-          flyer:       'eye-catching promotional flyer, bold headline hierarchy, vivid colors, clear call-to-action layout, print-quality',
-          banner:      'professional banner design, bold high-contrast imagery, strong text legibility, wide-format print layout, premium finish',
-          poster:      'dramatic large-format poster, cinematic composition, powerful typography, high visual impact, gallery-quality print',
-          obituary:    'dignified memorial design, soft muted elegant tones, classical serif typography, respectful solemn layout, tasteful ornate border',
-          memorial:    'dignified memorial design, soft muted elegant tones, classical serif typography, respectful solemn layout, tasteful ornate border',
-          tribute:     'heartfelt tribute design, warm golden tones, elegant script typography, emotive composition, premium paper texture',
-          funeral:     'formal funeral program design, dark muted tones, dignified serif font, respectful solemn layout, tasteful understated border',
-          invitation:  'elegant invitation design, decorative flourishes, refined calligraphy typography, premium card texture, luxury finish',
-          card:        'professional greeting card design, clean balanced layout, crisp typography, generous whitespace, premium finish',
-          thumbnail:   'high-impact YouTube thumbnail design, bold readable text, vivid eye-catching colors, strong contrast, designed for digital screens',
-          logo:        'clean professional logo design, vector-style crisp geometric forms, scalable mark, strong memorable brand identity, solid background',
-          certificate: 'formal official certificate design, ornate decorative border, authoritative typography, embossed seal, premium aged parchment texture',
-          brochure:    'tri-fold brochure layout, organised content sections, clean professional typography, high-quality print design, rich color photos',
-          menu:        'upscale restaurant menu design, appetising food photography layout, premium serif typography, elegant elegant styling, fine dining aesthetic'
+          /* ── Promotional ── */
+          flyer:        'professional A5 promotional flyer design, bold headline at top, strong visual hierarchy, vivid accent colors, clear body text zones, print-ready, no real photography',
+          banner:       'wide-format professional banner design, bold high-contrast text, powerful imagery, strong brand presence, horizontal layout, print-quality finish',
+          poster:       'dramatic large-format A2 poster design, cinematic full-bleed background, powerful display typeface, strong visual focal point, gallery-quality',
+          billboard:    'large-format billboard design, ultra-bold minimal text, instant visual impact, high contrast, readable at distance, premium outdoor advertising quality',
+          signage:      'professional indoor signage design, clear bold typography, brand-consistent colors, clean layout, excellent legibility',
+
+          /* ── Events ── */
+          invitation:   'luxury event invitation design, elegant decorative border, refined script and serif typography combination, premium textured card feel, sophisticated color palette',
+          announcement: 'eye-catching announcement design, bold headline, clean supporting text, celebratory color accents, professional layout',
+          'event.graphic': 'vibrant event graphic design, high energy composition, bold date and title treatment, striking visual identity',
+
+          /* ── Memorial ── */
+          obituary:     'dignified obituary memorial design, soft warm muted tones, classical elegant serif typography, gentle floral or dove motif, respectful solemn layout, tasteful ornate border',
+          memorial:     'dignified memorial tribute design, soft muted elegant tones, classical serif typography, gentle symbolic motifs, respectful layout, tasteful ornate border',
+          tribute:      'heartfelt tribute design, warm golden and cream tones, elegant calligraphic typography, emotive composition, premium paper texture feel',
+          funeral:      'dignified funeral program design, dark muted respectful tones, formal serif typography, understated decorative border, solemn professional layout',
+
+          /* ── Identity ── */
+          logo:          'clean professional logo design, bold geometric or lettermark concept, vector-crisp sharp edges, strong scalable brand mark, solid color background, no photography',
+          brand:         'comprehensive brand identity design concept, cohesive logo and typography system, professional color palette, clean presentation layout',
+          'business.card': 'professional business card design, elegant layout, clear name and contact hierarchy, brand color accents, premium finish, both sides shown',
+
+          /* ── Social media ── */
+          thumbnail:    'high-impact YouTube thumbnail design, bold oversized readable text overlay, vivid contrasting colors, strong emotion-driven composition, optimised for small-screen visibility',
+          instagram:    'professional Instagram post design, square format, bold visual content, strong typography, on-brand color palette, eye-catching composition',
+          facebook:     'professional Facebook post or cover design, clear headline text, engaging visual, brand colors, optimised for feed visibility',
+          tiktok:       'vertical TikTok graphic design, bold center text, high contrast, vibrant gradient, designed for mobile screen, eye-catching',
+
+          /* ── Print & document ── */
+          certificate:  'formal official certificate design, ornate classical border, embossed seal area, authoritative serif typography, gold accent elements, premium parchment-style background',
+          brochure:     'professional tri-fold brochure design, organised information sections, clean professional typography, strong cover visual, balanced color use, print-ready',
+          menu:         'upscale restaurant menu design, elegant typography hierarchy, organised food categories, premium feel, tasteful decorative accents, fine dining aesthetic',
+          newsletter:   'professional newsletter layout design, clear masthead, organised column structure, strong typographic hierarchy, branded color accents',
+          'report.cover': 'professional corporate report cover design, bold title treatment, strong geometric or abstract background, authoritative feel, premium finish',
+          'album.cover': 'striking music album cover design, bold artistic visual concept, strong typographic identity, mood-appropriate color palette, square format',
+          'book.cover':  'professional book cover design, compelling visual concept, strong title treatment, back cover layout, spine, premium publishing quality',
+          magazine:     'high-end magazine cover design, bold masthead, striking cover image concept, compelling headline hierarchy, newsstand-quality',
+          label:        'professional product label design, clear brand name, elegant or bold typography, product information layout, premium finish',
+          packaging:    'professional product packaging design, brand-consistent visuals, clear information hierarchy, premium material feel, 3D mockup perspective',
+
+          /* ── Digital & app ── */
+          'app.screen':  'professional mobile app UI screen design, clean modern interface, clear navigation, on-brand color system, crisp icons, pixel-perfect layout',
+          'landing.page': 'professional website landing page design, clear headline and CTA hierarchy, clean sections, professional imagery placeholders, conversion-focused layout',
+          infographic:  'professional infographic design, clear data visualisation, icon-supported sections, logical flow, vibrant color-coded elements, clean typography',
+
+          /* ── Apparel & merchandise ── */
+          't.shirt':    'professional t-shirt graphic design, bold centered artwork, strong typographic or illustrative element, works on light and dark fabric, print-ready vector style',
+          jersey:       'professional sports jersey design, bold team name and number, strong color blocking, athletic aesthetic, print-ready',
+          'mug.design': 'professional mug wrap design, bold graphic centered, clear readable text, vibrant colors, 360-degree printable layout',
+
+          /* ── Cards ── */
+          card:         'professional card design, clean elegant layout, crisp typography, balanced whitespace, premium finish',
+          'greeting.card': 'beautiful greeting card design, warm welcoming visual, elegant typography, inside and outside panel layout, premium card feel',
+          'birthday.card': 'vibrant celebratory birthday card design, festive color palette, joyful typography, decorative elements, premium quality',
+
+          /* ── ID & profile ── */
+          'id.card':    'professional ID or membership card design, clear photo zone, bold name and ID field layout, security pattern background, brand colors, premium laminated finish',
+          dp:           'professional social media profile picture design, circular crop-safe composition, bold initials or icon, strong brand colors, clean background'
       };
 
       function buildPrompt(raw, isHD) {
           var p = raw.trim();
           if (selectedStyle) p = p + ', ' + selectedStyle;
 
-          var isDesign = DESIGN_RE.test(raw);
-          var isArt    = ART_RE.test(raw) || ART_RE.test(selectedStyle);
+          var isDesign = DESIGN_RE.test(raw) || DESIGN_RE.test(selectedStyle);
+          var isArt    = ART_RE.test(raw)    || ART_RE.test(selectedStyle);
 
+          /* Design takes priority over art detection */
           if (isDesign) {
+              /* Find the most specific design-type suffix */
               var specificSuffix = '';
               for (var dtype in DESIGN_TYPE_SUFFIX) {
-                  if (new RegExp('\\b' + dtype + '\\b', 'i').test(raw)) {
+                  var dtRx = new RegExp('\\b' + dtype.replace('.', '.?') + '\\b', 'i');
+                  if (dtRx.test(raw) || dtRx.test(selectedStyle)) {
                       specificSuffix = DESIGN_TYPE_SUFFIX[dtype];
                       break;
                   }
               }
               p += ', ' + (specificSuffix || DESIGN_SUFFIX);
-          } else if (!isArt) {
-              /* Pure photorealistic — add full photography suffix */
-              p += ', ' + PHOTO_SUFFIX;
-          } else {
-              /* Art / illustration style — just add resolution quality, not camera terms */
+          } else if (isArt) {
+              /* Art / illustration style — resolution quality only, no camera terms */
               p += ', highly detailed, professional quality, vibrant rich colors, sharp crisp lines, award-winning artwork, 8K resolution';
+          } else {
+              /* Default: realistic photograph */
+              p += ', ' + PHOTO_SUFFIX;
           }
 
           if (isHD) p += ', ' + HD_SUFFIX;
@@ -138,34 +190,44 @@
           return p;
       }
 
-      /* ── Dynamic negative prompt — excludes art-style terms only for photorealistic ── */
+      /* ── Dynamic negative prompt — style-aware ── */
       function buildNegative(raw) {
-          var isArt = ART_RE.test(raw) || ART_RE.test(selectedStyle);
+          var isDesign = DESIGN_RE.test(raw) || DESIGN_RE.test(selectedStyle);
+          var isArt    = ART_RE.test(raw)    || ART_RE.test(selectedStyle);
 
+          /* Universal quality negatives — always apply */
           var baseNeg = [
               'blurry', 'blur', 'out of focus', 'motion blur',
               'noise', 'grainy', 'film grain', 'jpeg artifacts',
-              'low quality', 'bad quality', 'poor quality', 'draft quality',
-              'distorted', 'deformed', 'warped', 'morphed',
-              'watermark', 'signature', 'copyright text', 'logo overlay',
-              'overexposed', 'underexposed', 'blown highlights',
-              'bad anatomy', 'extra limbs', 'missing limbs', 'fused fingers',
+              'low quality', 'bad quality', 'poor quality', 'draft',
+              'distorted', 'deformed', 'warped',
+              'watermark', 'copyright text',
+              'overexposed', 'underexposed',
               'mutated', 'disfigured', 'malformed', 'ugly',
-              'duplicate', 'tiling', 'repeating pattern',
+              'duplicate', 'tiling',
               'poorly drawn', 'amateur', 'amateurish',
               'cropped', 'cut off', 'incomplete',
-              'pixelated', 'low resolution', 'low res',
-              'flat lighting', 'harsh shadows', 'dark'
+              'pixelated', 'low resolution', 'low res'
           ];
 
-          /* Only block art styles if the user is NOT asking for art */
-          if (!isArt) {
+          if (isDesign) {
+              /* For graphic design: block photorealistic camera artifacts */
+              baseNeg = baseNeg.concat([
+                  'photograph', 'photo', 'camera', 'lens flare', 'bokeh',
+                  'depth of field', 'DSLR', 'RAW photo', 'realistic skin',
+                  'real person', 'candid shot', 'studio photo',
+                  'harsh shadows', 'overlit', 'underlit'
+              ]);
+          } else if (!isArt) {
+              /* For photorealistic: block art/illustration styles */
               baseNeg = baseNeg.concat([
                   'cartoon', 'anime', 'manga', 'illustration',
                   'painting', 'drawing', 'sketch', 'digital art',
-                  'plastic', 'artificial looking', 'fake', 'unrealistic skin'
+                  'plastic', 'artificial', 'fake', 'unrealistic skin',
+                  'flat lighting', 'harsh shadows'
               ]);
           }
+          /* For art styles: no extra negatives — let the AI be creative */
 
           return encodeURIComponent(baseNeg.join(', '));
       }
@@ -279,24 +341,39 @@
           $enhBtn.disabled = true;
           $enhBtn.textContent = '✦ Enhancing…';
 
-          var isDesign = DESIGN_RE.test(raw);
-          var isArt    = ART_RE.test(raw) || ART_RE.test(selectedStyle);
+          var isDesign = DESIGN_RE.test(raw) || DESIGN_RE.test(selectedStyle);
+          var isArt    = ART_RE.test(raw)    || ART_RE.test(selectedStyle);
 
           var styleHint;
           if (isDesign) {
-              styleHint = 'The user wants a GRAPHIC DESIGN (flyer, banner, poster, etc.). Enhance the prompt to produce a stunning, high-quality graphic design. Include details about typography style, color scheme, layout, mood, and intended audience. DO NOT add any camera, lens, or photography terms.';
+              styleHint = [
+                  'The user wants a GRAPHIC DESIGN or PRINT DESIGN piece.',
+                  'Enhance the prompt to describe a stunning, commercially professional graphic design.',
+                  'Include: design type (flyer/poster/logo/etc), color palette (name specific colors), typography style (bold sans-serif, elegant serif, script, etc), layout structure, key visual elements, mood/tone, and target audience.',
+                  'STRICTLY FORBIDDEN in the output: any camera, lens, aperture, bokeh, photograph, DSLR, or realistic photography terms.',
+                  'The output must read like a graphic designer brief, not a photography brief.'
+              ].join(' ');
           } else if (isArt) {
-              styleHint = 'The user wants ARTISTIC or ILLUSTRATED content. Enhance the prompt with rich artistic details: brushwork style, color palette, lighting mood, artistic influences, texture. DO NOT add camera/photography terms.';
+              styleHint = [
+                  'The user wants ARTISTIC or ILLUSTRATED content.',
+                  'Enhance with rich artistic details: specific art medium, brushwork texture, color palette mood, artistic style influences (name specific artists or movements if relevant), lighting quality, composition, and emotional atmosphere.',
+                  'FORBIDDEN: camera, lens, photograph, or DSLR terms.'
+              ].join(' ');
           } else {
-              styleHint = 'The user wants a REALISTIC PHOTOGRAPH. Enhance the prompt with professional photography details: subject description, lighting setup, camera angle, background, mood, color temperature, depth of field. Be vivid and specific.';
+              styleHint = [
+                  'The user wants a REALISTIC PHOTOGRAPH.',
+                  'Enhance with professional photography details: precise subject description, lighting setup (golden hour, studio softbox, etc), camera angle and framing, background environment, mood and color temperature, depth of field, any people and their expressions.',
+                  'Be cinematic, specific, and vivid.'
+              ].join(' ');
           }
 
           var messages = [
               {
                   role: 'system',
-                  content: 'You are an elite AI image prompt engineer for XZILY AI Studio. ' + styleHint +
-                           ' Transform the user\'s rough idea into a richly detailed, professional-grade image generation prompt that will produce stunning commercial-quality results. ' +
-                           'Be specific, evocative, and precise. Output ONLY the enhanced prompt — no intro, no explanation, no quotes. Maximum 180 words.'
+                  content: 'You are an elite commercial AI image prompt engineer for XZILY AI Studio. ' +
+                           styleHint +
+                           ' Transform the user\'s rough idea into a richly detailed, professionally crafted image generation prompt that will produce stunning commercial-quality output. ' +
+                           'Be specific, evocative, and precise. Output ONLY the enhanced prompt text — no preamble, no explanation, no quotes, no markdown. Maximum 200 words.'
               },
               { role: 'user', content: raw }
           ];
