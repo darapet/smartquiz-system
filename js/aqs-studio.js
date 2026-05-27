@@ -1094,8 +1094,9 @@
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         setVoiceState('idle');
-        /* Auto-start listening immediately */
-        setTimeout(startVoiceListening, 400);
+        /* Mobile needs extra time for mic hardware to initialise cleanly */
+        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        setTimeout(startVoiceListening, micDelay);
     }
 
     function closeVoiceMode() {
@@ -1186,7 +1187,9 @@
                 setVoiceState('error');
                 setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
             } else if (e.error === 'no-speech') {
-                voiceRestartTimer = setTimeout(startVoiceListening, 400);
+                /* Mobile mic recovers slower — give it extra time */
+                var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+                voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
             } else {
                 voiceRestartTimer = setTimeout(startVoiceListening, 1000);
             }
@@ -1244,7 +1247,10 @@
             setVoiceTranscript('');
             speakVoiceResponse(response, function () {
                 if (voiceActive) {
-                    voiceRestartTimer = setTimeout(startVoiceListening, 700);
+                    /* After AI speaks, mobile speakers need longer to go silent
+                       before the mic opens — prevents popping on first user word */
+                    var micDelay = (navigator.maxTouchPoints > 0) ? 950 : 650;
+                    voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
                 }
             });
         } else {
