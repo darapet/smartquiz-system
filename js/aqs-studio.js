@@ -1435,15 +1435,11 @@
 
         voiceAiTalking = true;
 
-        /* Split into ≤250-char sentence chunks so each Pollinations request
-           stays well within URL limits and streams in quickly per chunk.     */
+        /* Split into ≤250-char sentence chunks */
         var chunks = splitSpeechChunks(spoken, 250);
         var idx    = 0;
-        var audioCtx = null;
-        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(_) {}
 
         function playNext() {
-            /* Stop condition — all chunks done or speaking was interrupted */
             if (!voiceAiTalking || idx >= chunks.length) {
                 currentStudioAudio = null;
                 voiceAiTalking     = false;
@@ -1451,55 +1447,73 @@
                 return;
             }
 
-            var chunk      = chunks[idx++];
-            var ttsUrl     = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
-                             '?model=openai-audio&voice=shimmer&nologo=true&v=' + idx;
-            var audio      = new Audio(ttsUrl);
-            audio.volume   = 1.0;
-            currentStudioAudio = audio;
+            var chunk     = chunks[idx++];
+            /* Unique cache buster per chunk — voice + timestamp + random
+               prevents Pollinations from serving a stale cached response   */
+            var cacheBust = 'shimmer_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+            var ttsUrl    = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+                            '?model=openai-audio&voice=shimmer&nologo=true&v=' + cacheBust;
 
-            /* Volume boost via Web Audio GainNode (2× amp) */
-            if (audioCtx) {
-                try {
-                    var _src  = audioCtx.createMediaElementSource(audio);
-                    var _gain = audioCtx.createGain();
-                    _gain.gain.value = 2.0;
-                    _src.connect(_gain);
-                    _gain.connect(audioCtx.destination);
-                } catch(_) {}
-            }
+            /* Fetch as ArrayBuffer first, then play via blob URL.
+               This is far more reliable than streaming via new Audio(url):
+               the 'ended' event fires correctly on blob URLs every time,
+               whereas streaming URLs cause Chrome/Safari to drop 'ended'
+               mid-sequence which is what was causing the speech to stop. */
+            fetch(ttsUrl, { cache: 'no-store' })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.blob();
+                })
+                .then(function(blob) {
+                    if (!voiceAiTalking) return;   /* interrupted while fetching */
 
-            /* If Pollinations hasn't started within 8 s, fall back to browser TTS
-               for the remainder of the text (all remaining chunks joined).     */
-            var fallbackTimer = setTimeout(function() {
-                if (!audio.paused) return;
-                audio.src = '';
-                currentStudioAudio = null;
-                var remaining = chunks.slice(idx - 1).join(' ');
-                speakWithBrowserFallback(remaining, onDone);
-            }, 8000);
+                    var blobUrl = URL.createObjectURL(blob);
+                    var audio   = new Audio(blobUrl);
+                    audio.volume = 1.0;
+                    currentStudioAudio = audio;
 
-            audio.addEventListener('playing', function() { clearTimeout(fallbackTimer); });
+                    /* Stall watchdog — if audio gets stuck for 6 s after starting,
+                       skip to next chunk rather than hanging forever              */
+                    var stallTimer = null;
+                    audio.addEventListener('playing', function() {
+                        stallTimer = setTimeout(function() {
+                            if (audio.currentTime > 0 && !audio.ended && !audio.paused) return;
+                            /* Audio appears stalled */
+                            URL.revokeObjectURL(blobUrl);
+                            currentStudioAudio = null;
+                            playNext();
+                        }, (audio.duration * 1000 || 10000) + 3000);
+                    });
 
-            audio.addEventListener('ended', function() {
-                clearTimeout(fallbackTimer);
-                currentStudioAudio = null;
-                playNext();    /* ← chain the next chunk */
-            });
+                    audio.addEventListener('ended', function() {
+                        clearTimeout(stallTimer);
+                        URL.revokeObjectURL(blobUrl);
+                        currentStudioAudio = null;
+                        playNext();
+                    });
 
-            audio.addEventListener('error', function() {
-                clearTimeout(fallbackTimer);
-                currentStudioAudio = null;
-                var remaining = chunks.slice(idx - 1).join(' ');
-                speakWithBrowserFallback(remaining, onDone);
-            });
+                    audio.addEventListener('error', function() {
+                        clearTimeout(stallTimer);
+                        URL.revokeObjectURL(blobUrl);
+                        currentStudioAudio = null;
+                        var remaining = chunks.slice(idx - 1).join(' ');
+                        speakWithBrowserFallback(remaining, onDone);
+                    });
 
-            audio.play().catch(function() {
-                clearTimeout(fallbackTimer);
-                currentStudioAudio = null;
-                var remaining = chunks.slice(idx - 1).join(' ');
-                speakWithBrowserFallback(remaining, onDone);
-            });
+                    audio.play().catch(function() {
+                        clearTimeout(stallTimer);
+                        URL.revokeObjectURL(blobUrl);
+                        currentStudioAudio = null;
+                        var remaining = chunks.slice(idx - 1).join(' ');
+                        speakWithBrowserFallback(remaining, onDone);
+                    });
+                })
+                .catch(function() {
+                    if (!voiceAiTalking) return;
+                    /* Fetch failed — browser TTS for rest of chunks */
+                    var remaining = chunks.slice(idx - 1).join(' ');
+                    speakWithBrowserFallback(remaining, onDone);
+                });
         }
 
         playNext();
