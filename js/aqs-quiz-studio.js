@@ -1,286 +1,1423 @@
-/* aqs-tts.js — XZILY AI Text-to-Speech v2
-   82 professional voices · Groq translation · Pollinations audio · Download
-   ─────────────────────────────────────────────────────────────────────────── */
+/* xzily AI Studio — Chat Interface */
+/* Developed by omomo excellence in corporation with Darapet Technology */
 (function () {
     'use strict';
 
-    var HISTORY_KEY = 'xzily_tts_history';
-    var MAX_CHARS   = 5000;
-    var CHUNK_SIZE  = 180;
+    var cfg        = window.DTS_CONFIG || {};
+    var messages   = [];          // current conversation messages
+    var isStreaming = false;
+    var currentChatId = null;     // ID of active history entry
 
-    var selectedVoice    = '';
-    var currentAudioBlob = null;
-    var currentAudioUrl  = null;
-    var browserModeText  = null;
-    var browserModeVoice = null;
-    var browserModeSpeed = 1;
-    var genderFilter     = '';
+    /* ─── File upload state ─── */
+    var uploadedFileContent = null; // extracted text from the attached file
+    var uploadedFileName    = null; // original filename shown in UI
+    var pendingFileContext  = null; // { content, name } — injected once into next API call
 
-    /* ══════════════════════════════════════════════════════════════
-       82 PROFESSIONAL VOICES
-       base: maps to Pollinations neural engine (alloy/echo/fable/onyx/nova/shimmer)
-       locale: sent to TTS for correct pronunciation
-    ══════════════════════════════════════════════════════════════ */
-    var VOICES = [
-        /* ── ENGLISH (20) ─────────────────────────────────────── */
-        { id:'Brian',      name:'Brian',      lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'fable',   desc:'Warm & authoritative' },
-        { id:'Matthew',    name:'Matthew',    lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'onyx',    desc:'Deep & professional'  },
-        { id:'Joey',       name:'Joey',       lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    desc:'Friendly & clear'     },
-        { id:'Justin',     name:'Justin',     lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'fable',   desc:'Casual & conversational'},
-        { id:'Russell',    name:'Russell',    lang:'en', locale:'en-AU', region:'AU',            gender:'male',   base:'echo',    desc:'Australian accent'    },
-        { id:'Daniel',     name:'Daniel',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    desc:'British & refined'    },
-        { id:'Kevin',      name:'Kevin',      lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    desc:'Crisp & energetic'    },
-        { id:'Geraint',    name:'Geraint',    lang:'en', locale:'en-GB', region:'Wales',         gender:'male',   base:'fable',   desc:'Welsh character'      },
-        { id:'Arthur',     name:'Arthur',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    desc:'Classic British'      },
-        { id:'Ryan',       name:'Ryan',       lang:'en', locale:'en-CA', region:'Canada',        gender:'male',   base:'echo',    desc:'Canadian & neutral'   },
-        { id:'Amy',        name:'Amy',        lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'shimmer', desc:'Bright & professional'},
-        { id:'Emma',       name:'Emma',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'alloy',   desc:'Confident & clear'    },
-        { id:'Joanna',     name:'Joanna',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', desc:'Warm & articulate'    },
-        { id:'Salli',      name:'Salli',      lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Engaging & natural'   },
-        { id:'Kimberly',   name:'Kimberly',   lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   desc:'Neutral & versatile'  },
-        { id:'Kendra',     name:'Kendra',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Conversational tone'  },
-        { id:'Nicole',     name:'Nicole',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'alloy',   desc:'Australian & friendly'},
-        { id:'Olivia',     name:'Olivia',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'shimmer', desc:'Australian & bright'  },
-        { id:'Aria',       name:'Aria',       lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Expressive & dynamic' },
-        { id:'Jane',       name:'Jane',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'shimmer', desc:'Elegant & composed'   },
-        /* ── SPANISH (8) ────────────────────────────────────── */
-        { id:'Enrique',    name:'Enrique',    lang:'es', locale:'es-ES', region:'Spain',         gender:'male',   base:'echo',    desc:'Spanish Castilian'    },
-        { id:'Miguel',     name:'Miguel',     lang:'es', locale:'es-US', region:'US-Latino',     gender:'male',   base:'fable',   desc:'Latino US accent'     },
-        { id:'Pablo',      name:'Pablo',      lang:'es', locale:'es-MX', region:'Mexico',        gender:'male',   base:'onyx',    desc:'Mexican accent'       },
-        { id:'Carlos',     name:'Carlos',     lang:'es', locale:'es-AR', region:'Argentina',     gender:'male',   base:'echo',    desc:'Argentine accent'     },
-        { id:'Conchita',   name:'Conchita',   lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'nova',    desc:'Spanish Castilian'    },
-        { id:'Lucia',      name:'Lucía',      lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'shimmer', desc:'Bright & precise'     },
-        { id:'Penelope',   name:'Penélope',   lang:'es', locale:'es-US', region:'US-Latino',     gender:'female', base:'alloy',   desc:'Neutral Latino'       },
-        { id:'Valentina',  name:'Valentina',  lang:'es', locale:'es-MX', region:'Mexico',        gender:'female', base:'nova',    desc:'Warm Mexican tone'    },
-        /* ── FRENCH (6) ─────────────────────────────────────── */
-        { id:'Mathieu',    name:'Mathieu',    lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'onyx',    desc:'Deep Parisian'        },
-        { id:'Pierre',     name:'Pierre',     lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'fable',   desc:'Sophisticated'        },
-        { id:'Jacques',    name:'Jacques',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'male',   base:'echo',    desc:'Québécois accent'     },
-        { id:'Celine',     name:'Céline',     lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'shimmer', desc:'Elegant Parisian'     },
-        { id:'Isabelle',   name:'Isabelle',   lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'alloy',   desc:'Clear & fluid'        },
-        { id:'Chantal',    name:'Chantal',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'female', base:'nova',    desc:'Québécois warmth'     },
-        /* ── GERMAN (6) ─────────────────────────────────────── */
-        { id:'Hans',       name:'Hans',       lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'onyx',    desc:'Bold & precise'       },
-        { id:'Klaus',      name:'Klaus',      lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'fable',   desc:'Authoritative'        },
-        { id:'Wolfgang',   name:'Wolfgang',   lang:'de', locale:'de-AT', region:'Austria',       gender:'male',   base:'echo',    desc:'Austrian dialect'     },
-        { id:'Marlene',    name:'Marlene',    lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'nova',    desc:'Warm & professional'  },
-        { id:'Vicki',      name:'Vicki',      lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'shimmer', desc:'Bright & energetic'   },
-        { id:'Petra',      name:'Petra',      lang:'de', locale:'de-AT', region:'Austria',       gender:'female', base:'alloy',   desc:'Austrian clarity'     },
-        /* ── PORTUGUESE (6) ─────────────────────────────────── */
-        { id:'Cristiano',  name:'Cristiano',  lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'male',   base:'fable',   desc:'European Portuguese'  },
-        { id:'Ricardo',    name:'Ricardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'echo',    desc:'Brazilian warmth'     },
-        { id:'Eduardo',    name:'Eduardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'onyx',    desc:'Deep & confident'     },
-        { id:'Ines',       name:'Inês',       lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'nova',    desc:'European Portuguese'  },
-        { id:'Vitoria',    name:'Vitória',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'female', base:'shimmer', desc:'Brazilian vivacity'   },
-        { id:'Ana',        name:'Ana',        lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'alloy',   desc:'Clear & precise'      },
-        /* ── ITALIAN (4) ────────────────────────────────────── */
-        { id:'Giorgio',    name:'Giorgio',    lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'onyx',    desc:'Rich & expressive'    },
-        { id:'Marco',      name:'Marco',      lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'fable',   desc:'Warm & natural'       },
-        { id:'Carla',      name:'Carla',      lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'alloy',   desc:'Clear & flowing'      },
-        { id:'Bianca',     name:'Bianca',     lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'shimmer', desc:'Bright & musical'     },
-        /* ── JAPANESE (4) ───────────────────────────────────── */
-        { id:'Takumi',     name:'Takumi',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'echo',    desc:'Clear & formal'       },
-        { id:'Kenji',      name:'Kenji',      lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'onyx',    desc:'Deep & steady'        },
-        { id:'Mizuki',     name:'Mizuki',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'nova',    desc:'Warm & natural'       },
-        { id:'Yuki',       name:'Yuki',       lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'shimmer', desc:'Bright & friendly'    },
-        /* ── ARABIC (4) ─────────────────────────────────────── */
-        { id:'Khalid',     name:'Khalid',     lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'male',   base:'onyx',    desc:'Deep & formal'        },
-        { id:'Omar',       name:'Omar',       lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'male',   base:'fable',   desc:'Egyptian dialect'     },
-        { id:'Zeina',      name:'Zeina',      lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'female', base:'nova',    desc:'Clear & flowing'      },
-        { id:'Fatima',     name:'Fatima',     lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'female', base:'shimmer', desc:'Warm & expressive'    },
-        /* ── CHINESE (4) ────────────────────────────────────── */
-        { id:'Wei',        name:'Wei',        lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'echo',    desc:'Mandarin standard'    },
-        { id:'Zhang',      name:'Zhang',      lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'onyx',    desc:'Authoritative tone'   },
-        { id:'Zhiyu',      name:'Zhiyu',      lang:'zh', locale:'zh-CN', region:'China',         gender:'female', base:'nova',    desc:'Clear Mandarin'       },
-        { id:'Mei',        name:'Mei',        lang:'zh', locale:'zh-TW', region:'Taiwan',        gender:'female', base:'alloy',   desc:'Taiwanese Mandarin'   },
-        /* ── RUSSIAN (4) ────────────────────────────────────── */
-        { id:'Maxim',      name:'Maxim',      lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'onyx',    desc:'Deep & formal'        },
-        { id:'Dmitri',     name:'Dmitri',     lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'fable',   desc:'Expressive tone'      },
-        { id:'Tatyana',    name:'Tatyana',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'alloy',   desc:'Clear & precise'      },
-        { id:'Natasha',    name:'Natasha',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'nova',    desc:'Warm & natural'       },
-        /* ── HINDI (4) ──────────────────────────────────────── */
-        { id:'Arjun',      name:'Arjun',      lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'echo',    desc:'Clear & professional' },
-        { id:'Raj',        name:'Raj',        lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'fable',   desc:'Warm Indian tone'     },
-        { id:'Aditi',      name:'Aditi',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'nova',    desc:'Clear & natural'      },
-        { id:'Priya',      name:'Priya',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'shimmer', desc:'Bright & warm'        },
-        /* ── DUTCH (4) ──────────────────────────────────────── */
-        { id:'Ruben',      name:'Ruben',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'echo',    desc:'Clear & direct'       },
-        { id:'Willem',     name:'Willem',     lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'fable',   desc:'Warm Dutch tone'      },
-        { id:'Lotte',      name:'Lotte',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'female', base:'alloy',   desc:'Precise & clear'      },
-        { id:'Lisa',       name:'Lisa',       lang:'nl', locale:'nl-BE', region:'Belgium',       gender:'female', base:'nova',    desc:'Belgian Dutch'        },
-        /* ── KOREAN (2) ─────────────────────────────────────── */
-        { id:'Junho',      name:'Junho',      lang:'ko', locale:'ko-KR', region:'Korea',         gender:'male',   base:'echo',    desc:'Clear & formal'       },
-        { id:'Seoyeon',    name:'Seoyeon',    lang:'ko', locale:'ko-KR', region:'Korea',         gender:'female', base:'shimmer', desc:'Bright & natural'     },
-        /* ── SWEDISH (2) ────────────────────────────────────── */
-        { id:'Erik',       name:'Erik',       lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'male',   base:'echo',    desc:'Nordic clarity'       },
-        { id:'Astrid',     name:'Astrid',     lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'female', base:'shimmer', desc:'Scandinavian warmth'  },
-        /* ── TURKISH (2) ────────────────────────────────────── */
-        { id:'Mehmet',     name:'Mehmet',     lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'male',   base:'fable',   desc:'Warm & expressive'    },
-        { id:'Filiz',      name:'Filiz',      lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'female', base:'nova',    desc:'Clear & melodic'      },
-        /* ── POLISH (2) ─────────────────────────────────────── */
-        { id:'Jacek',      name:'Jacek',      lang:'pl', locale:'pl-PL', region:'Poland',        gender:'male',   base:'onyx',    desc:'Bold & steady'        },
-        { id:'Maja',       name:'Maja',       lang:'pl', locale:'pl-PL', region:'Poland',        gender:'female', base:'shimmer', desc:'Clear & natural'      },
-    ];
+    /* ─── Storage key ─── */
+    var HISTORY_KEY = 'xzily_chat_history';
 
-    /* ── Voice render ─────────────────────────────────────────── */
-    function renderVoices() {
-        var filterLang   = (document.getElementById('tts-lang-filter')  || {}).value || '';
-        var list = VOICES.filter(function(v) {
-            var langOk   = !filterLang  || v.lang   === filterLang;
-            var genderOk = !genderFilter || v.gender === genderFilter;
-            return langOk && genderOk;
+    /* ─── System prompt ─── */
+    var SYSTEM =
+        'You are XZILY, a helpful and friendly AI learning assistant. ' +
+        'You were created by Omomo Excellence (XZILY), a student of the Federal University of Technology Akure (FUTA), in collaboration with Darapet Technology. ' +
+        'You help students, teachers, and educators with studying, quiz preparation, ' +
+        'problem solving, and any academic topic. Be clear, thorough, and encouraging. ' +
+        '\n\nMATH FORMATTING RULES (follow strictly):\n' +
+        '- For inline math expressions, always wrap with single dollar signs: $expression$\n' +
+        '- For display/block math (equations on their own line), always wrap with double dollar signs: $$expression$$\n' +
+        '- Example inline: The formula is $E = mc^2$\n' +
+        '- Example block: $$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n' +
+        '- Never use \\[...\\], \\(...\\), or \\begin{equation}...\\end{equation}\n' +
+        '- Always use $ and $$ only. This is critical for correct rendering.\n' +
+        '\nCODE RULES: Only include code (e.g. ```python) when the user explicitly asks for code, a program, or a programming solution. For math problems, show the working steps and final answer using math formatting only — do NOT include Python or any programming code unless asked.\n' +
+        '\n\nSTRICT IDENTITY RULES — NEVER BREAK:\n1. You are XZILY, created by Omomo Excellence (FUTA/Darapet Technology). That is your entire identity.\n2. NEVER name any AI company, model, API, or service (Groq, Llama, OpenAI, ChatGPT, Anthropic, Meta, Gemini, Mistral, Hugging Face, Replicate, Pollinations, or any other). Not even indirectly.\n3. If asked what AI you are or what powers you: say ONLY "I am XZILY, an AI assistant created by Omomo Excellence. I cannot share information about the technology behind me."\n4. NEVER say "As an AI language model", "I was trained by", or any phrase revealing a third-party AI.\n5. Give zero hints about underlying technology — no speculation, no "I might be based on..."';
+
+    /* =========================================================
+       INIT
+    ========================================================= */
+    document.addEventListener('DOMContentLoaded', function () {
+        /* Run each setup step in its own try-catch so one failure never
+           silently prevents the rest (e.g. file upload, voice) from loading */
+        var steps = [setupMarked, setupInput, setupSidebar, setupSuggestions,
+                     setupNewChat, setupFileUpload, setupVoice, renderHistoryList];
+        steps.forEach(function (fn) {
+            try { fn(); } catch (e) { /* isolated — continues to next step */ }
         });
-        var grid = document.getElementById('tts-voice-grid');
-        if (!grid) return;
-        grid.innerHTML = '';
-        if (!list.length) {
-            grid.innerHTML = '<div style="grid-column:1/-1;color:var(--dts-muted);font-size:.82rem;padding:12px 4px">No voices match your filters.</div>';
+    });
+
+    /* =========================================================
+         AI CALL STRATEGY — no API key required
+         ─────────────────────────────────────────────────────────
+           1. PRIMARY: Groq direct (fast, best quality) — used only
+              when a Groq API key is configured in settings.
+           2. FALLBACK A: server proxy (aqs_studio_ai action).
+           3. FALLBACK B: Pollinations AI direct from browser —
+              completely free, NO API key needed. Always available.
+         Steps 2 & 3 race simultaneously so there is no wait delay.
+      =========================================================== */
+    var voiceKeepAlive    = null; /* interval that keeps Chrome from pausing mid-utterance */
+    var currentStudioAudio = null; /* Pollinations audio element for studio TTS */
+
+    /* ── Groq browser call — auto-retries with next key on 429 ── */
+    async function callGroq(apiMessages) {
+        if (typeof window.groqFetch !== 'function') return null;
+        try {
+            var ctrl = new AbortController();
+            var tid  = setTimeout(function () { ctrl.abort(); }, 20000);
+            var res  = await window.groqFetch({
+                model:       'llama-3.1-8b-instant',
+                messages:    apiMessages,
+                max_tokens:  2048,
+                temperature: 0.7
+            }, { signal: ctrl.signal });
+            clearTimeout(tid);
+            if (!res.ok) { console.warn('[xzily] Groq HTTP', res.status); return null; }
+            var data = await res.json();
+            var text = (data.choices && data.choices[0] && data.choices[0].message)
+                       ? data.choices[0].message.content.trim() : '';
+            return text || null;
+        } catch (e) {
+            console.warn('[xzily] Groq failed:', e.message || e);
+            return null;
+        }
+    }
+
+    /* ── WordPress server proxy (fallback when no client-side Groq key) ── */
+    async function callViaProxy(apiMessages) {
+        var ajaxUrl = (cfg.ajax_url     || '').trim();
+        var nonce   = (cfg.public_nonce || '').trim();
+        if (!ajaxUrl || !nonce) return null;
+
+        var fd = new FormData();
+        fd.append('action',   'aqs_studio_ai');
+        fd.append('nonce',    nonce);
+        fd.append('messages', JSON.stringify(apiMessages));
+
+        var ctrl = new AbortController();
+        var tid  = setTimeout(function () { ctrl.abort(); }, 35000);
+
+        try {
+            var res  = await fetch(ajaxUrl, { method: 'POST', body: fd, signal: ctrl.signal });
+            clearTimeout(tid);
+            var data = await res.json();
+            if (data && data.success && data.data && data.data.text) {
+                return data.data.text;
+            }
+            console.warn('[xzily] proxy: no text in response', data);
+            return null;
+        } catch (e) {
+            clearTimeout(tid);
+            console.warn('[xzily] proxy failed:', e.message || e);
+            return null;
+        }
+    }
+
+    /* ── Pollinations direct (no key required — last resort fallback) ── */
+    async function callPollinations(apiMessages) {
+        var models = ['openai', 'mistral', 'llama'];
+        for (var mi = 0; mi < models.length; mi++) {
+            try {
+                var ctrl = new AbortController();
+                var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
+                var res  = await fetch('https://text.pollinations.ai/openai', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal:  ctrl.signal,
+                    body: JSON.stringify({
+                        messages:    apiMessages,
+                        model:       models[mi],
+                        max_tokens:  1024,
+                        temperature: 0.7,
+                        private:     true
+                    })
+                });
+                clearTimeout(tid);
+                if (!res.ok) { console.warn('[xzily] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
+                var data = await res.json();
+                var text = (data.choices && data.choices[0] && data.choices[0].message)
+                           ? data.choices[0].message.content.trim() : '';
+                if (text) return text;
+            } catch (e) {
+                console.warn('[xzily] Pollinations model', models[mi], 'failed:', e.message || e);
+            }
+        }
+        return null;
+    }
+
+    /* ── AI call — sequential: Groq → Pollinations → proxy ── */
+    async function raceAI(apiMessages) {
+        /* 1. Groq direct — fastest & best quality (key saved via 🔑 button) */
+        var groqResult = await callGroq(apiMessages);
+        if (groqResult) return groqResult;
+
+        /* 2. Pollinations direct — free, no key, works from browser immediately */
+        var pollResult = await callPollinations(apiMessages);
+        if (pollResult) return pollResult;
+
+        /* 3. Server proxy — last resort only */
+        var proxyResult = await callViaProxy(apiMessages);
+        if (proxyResult) return proxyResult;
+
+        return null;
+    }
+
+    /* ── Main entry point called by sendMessage() ── */
+    async function callAI() {
+        var fileCtx = pendingFileContext;
+        pendingFileContext = null;
+
+        /* Build messages — inject file content into last user message */
+        var apiMessages = [{ role: 'system', content: SYSTEM }].concat(
+            messages.map(function (m, idx) {
+                var content = m.content;
+                if (fileCtx && idx === messages.length - 1 && m.role === 'user') {
+                    var truncated = fileCtx.content.length > 6000
+                        ? fileCtx.content.substring(0, 6000) + '\n\n[File truncated to fit AI context limit]'
+                        : fileCtx.content;
+                    content = content + '\n\n[Attached file: ' + fileCtx.name + ']\n\n' + truncated;
+                }
+                return { role: m.role, content: content };
+            })
+        );
+
+        var winner = await raceAI(apiMessages);
+
+        showTyping(false);
+
+        if (winner) {
+            messages.push({ role: 'assistant', content: winner });
+            typeMessage(winner, function () {
+                document.getElementById('dts-send').disabled = false;
+                isStreaming = false;
+                scrollToBottom();
+                saveCurrentChat();
+            });
+        } else {
+            appendMessage('ai', '⚠️ xzily AI could not reach the server. Please check your internet connection and try again.');
+            document.getElementById('dts-send').disabled = false;
+            isStreaming = false;
+        }
+    }
+
+    /* =========================================================
+       SEND MESSAGE
+    ========================================================= */
+    function sendMessage() {
+        if (isStreaming) return;
+        var input = document.getElementById('dts-input');
+        var text  = (input.value || '').trim();
+        if (!text && !uploadedFileContent) return;
+        if (!text && uploadedFileContent) text = 'Please analyse the attached file.';
+
+        var welcome = document.getElementById('dts-welcome');
+        if (welcome) welcome.style.display = 'none';
+
+        /* Start a new history entry if this is the first message */
+        if (messages.length === 0) {
+            currentChatId = 'chat_' + Date.now();
+        }
+
+        /* Capture file before clearing state */
+        var attachedFile = null;
+        if (uploadedFileContent) {
+            pendingFileContext = { content: uploadedFileContent, name: uploadedFileName };
+            attachedFile      = uploadedFileName;
+            clearFileAttachment();
+        }
+
+        messages.push({ role: 'user', content: text });
+        appendUserMessage(text, attachedFile);
+        input.value = '';
+        input.style.height = 'auto';
+        document.getElementById('dts-send').disabled = true;
+        isStreaming = true;
+
+        showTyping(true);
+        scrollToBottom();
+        callAI();
+    }
+
+    /* =========================================================
+       SETUP
+    ========================================================= */
+    function setupMarked() {
+        if (typeof marked === 'undefined') return;
+        try {
+            /* marked v4 and below use setOptions */
+            if (typeof marked.setOptions === 'function') {
+                marked.setOptions({
+                    breaks: true,
+                    gfm:    true,
+                    highlight: function (code, lang) {
+                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
+                            return hljs.highlight(code, { language: lang }).value;
+                        }
+                        return typeof hljs !== 'undefined' ? hljs.highlightAuto(code).value : code;
+                    }
+                });
+            } else if (typeof marked.use === 'function') {
+                /* marked v5+ removed setOptions and the highlight callback;
+                   configure what's still available and let hljs run post-render */
+                marked.use({ breaks: true, gfm: true });
+            }
+        } catch (e) {
+            /* Never let a marked API change crash the whole init chain */
+        }
+    }
+
+    function setupInput() {
+        var input   = document.getElementById('dts-input');
+        var sendBtn = document.getElementById('dts-send');
+        if (!input || !sendBtn) return;
+        input.addEventListener('input', function () {
+            this.style.height = 'auto';
+            this.style.height = Math.min(this.scrollHeight, 180) + 'px';
+        });
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+        });
+        sendBtn.addEventListener('click', sendMessage);
+    }
+
+    function setupSidebar() {
+        var toggle  = document.getElementById('dts-sidebar-toggle');
+        var sidebar = document.getElementById('dts-sidebar');
+        if (!toggle || !sidebar) return;
+
+        /* Create dimming overlay for mobile */
+        var overlay = document.createElement('div');
+        overlay.className = 'dts-overlay';
+        document.body.appendChild(overlay);
+
+        function openSidebar() {
+            sidebar.classList.add('open');
+            overlay.style.display = 'block';
+            toggle.innerHTML = '✕';
+        }
+
+        function closeSidebar() {
+            sidebar.classList.remove('open');
+            overlay.style.display = 'none';
+            toggle.innerHTML = '☰';
+        }
+
+        /* Hamburger toggle — stop propagation so document listener doesn't instantly close */
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            if (sidebar.classList.contains('open')) {
+                closeSidebar();
+            } else {
+                openSidebar();
+            }
+        });
+
+        /* Tap overlay to close */
+        overlay.addEventListener('click', closeSidebar);
+        overlay.addEventListener('touchstart', function (e) { e.preventDefault(); closeSidebar(); }, { passive: false });
+
+        /* Clicking a nav link while sidebar is open on mobile closes it */
+        sidebar.querySelectorAll('a').forEach(function (a) {
+            a.addEventListener('click', function () {
+                if (window.innerWidth <= 768) closeSidebar();
+            });
+        });
+
+        /* ESC key closes sidebar */
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') closeSidebar();
+        });
+    }
+
+    function setupSuggestions() {
+        document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var prompt = this.getAttribute('data-prompt');
+                if (!prompt) return;
+                document.getElementById('dts-input').value = prompt;
+                sendMessage();
+            });
+        });
+    }
+
+    function setupNewChat() {
+        var btn = document.getElementById('dts-new-chat');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+            startNewChat();
+        });
+    }
+
+    function startNewChat() {
+        messages      = [];
+        currentChatId = null;
+        document.getElementById('dts-messages').innerHTML = '';
+        var welcome = document.getElementById('dts-welcome');
+        if (welcome) welcome.style.display = 'flex';
+        /* Deselect history items */
+        document.querySelectorAll('.dts-history-item').forEach(function (el) {
+            el.classList.remove('active');
+        });
+    }
+
+    /* =========================================================
+       TYPEWRITER MESSAGE (AI responses only)
+       Streams raw text char-by-char with a blinking cursor,
+       then swaps to full rendered markdown when done.
+    ========================================================= */
+    /* Tracks the flush fn for the current in-progress typeMessage animation.
+       Called on visibilitychange so animation completes even when tab was hidden. */
+    var _typingFlushFn  = null;
+    var _hiddenTickTimer = null;
+
+    /* When user returns to the tab, flush any paused animation immediately */
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && _typingFlushFn) {
+            _typingFlushFn();
+            _typingFlushFn = null;
+        }
+    });
+
+    function typeMessage(text, onDone) {
+          var container = document.getElementById('dts-messages');
+          if (!container) { if (onDone) onDone(); return; }
+
+          /* Build DOM structure */
+          var msgEl = document.createElement('div');
+          msgEl.className = 'dts-message dts-ai';
+
+          var avatarEl = document.createElement('div');
+          avatarEl.className = 'dts-msg-avatar';
+          avatarEl.textContent = '⬡';
+
+          var contentEl = document.createElement('div');
+          contentEl.className = 'dts-msg-content';
+
+          var bubbleEl = document.createElement('div');
+          bubbleEl.className = 'dts-msg-bubble';
+
+          /* Streaming text container — plain pre-wrap during animation */
+          var streamEl = document.createElement('div');
+          streamEl.className = 'aqs-type-stream';
+          bubbleEl.appendChild(streamEl);
+
+          /* Blinking cursor */
+          var cursorEl = document.createElement('span');
+          cursorEl.className = 'aqs-type-cursor';
+          cursorEl.setAttribute('aria-hidden', 'true');
+          bubbleEl.appendChild(cursorEl);
+
+          contentEl.appendChild(bubbleEl);
+          msgEl.appendChild(avatarEl);
+          msgEl.appendChild(contentEl);
+          container.appendChild(msgEl);
+          scrollToBottom();
+
+          /* Word-by-word streaming — safe regex, no lookbehind (works on all iOS/Android) */
+          var tokens      = text.match(/\S+|\s+/g) || [text];
+          var tokenIdx    = 0;
+          var accumulated = '';
+
+          /* requestAnimationFrame-based ticker — smooth and reliable on Android/iOS.
+             Uses a target timestamp so delays (40/70/180ms) work correctly without
+             setTimeout, which can be throttled aggressively on mobile. */
+          var nextTickAt = performance.now() + 16;
+
+          /* Register flush function so visibilitychange can trigger immediate completion */
+          _typingFlushFn = function() {
+              if (_hiddenTickTimer) { clearTimeout(_hiddenTickTimer); _hiddenTickTimer = null; }
+              accumulated = text;
+              tokenIdx    = tokens.length;
+              tick(performance.now());
+          };
+
+          function tick(ts) {
+              /* Clear hidden-tab fallback timer if we're running normally */
+              if (_hiddenTickTimer) { clearTimeout(_hiddenTickTimer); _hiddenTickTimer = null; }
+              var now = (typeof ts === 'number') ? ts : performance.now();
+
+              /* If the tab is hidden mid-animation, fast-forward to the complete text
+                 so the message is fully rendered when the user returns to the page */
+              if (document.hidden && tokenIdx < tokens.length) {
+                  accumulated = text;
+                  tokenIdx = tokens.length;
+              } else if (now < nextTickAt) {
+                  requestAnimationFrame(tick);
+                  /* Safari/Chrome throttle RAF on hidden tabs — setTimeout ensures tick()
+                     fires at least once per 250ms even when the tab is not visible */
+                  _hiddenTickTimer = setTimeout(function() { tick(performance.now()); }, 250);
+                  return;
+              }
+
+              /* Consume whitespace-only tokens so pauses feel natural */
+              while (tokenIdx < tokens.length && /^\s+$/.test(tokens[tokenIdx])) {
+                  accumulated += tokens[tokenIdx];
+                  tokenIdx++;
+              }
+
+              if (tokenIdx < tokens.length) {
+                  accumulated += tokens[tokenIdx];
+                  tokenIdx++;
+                  streamEl.textContent = accumulated;
+                  scrollToBottom();
+              }
+
+              if (tokenIdx < tokens.length) {
+                  /* Use trimRight for broad Android compat (trimEnd added in ES2019) */
+                  var lastChar = accumulated.replace(/\s+$/, '').slice(-1);
+                  var delay    = /[.!?]/.test(lastChar) ? 80
+                               : /[,;:]/.test(lastChar) ? 35
+                               : 20;
+                  nextTickAt = performance.now() + delay;
+                  requestAnimationFrame(tick);
+              } else {
+                  /* ── Streaming done ── swap to full rendered markdown ── */
+                  cursorEl.remove();
+                  bubbleEl.innerHTML = renderContent(text);
+
+                  /* Syntax-highlight code blocks */
+                  if (typeof hljs !== 'undefined') {
+                      bubbleEl.querySelectorAll('pre code').forEach(function (block) {
+                          hljs.highlightElement(block);
+                      });
+                  }
+
+                  /* Copy button — works on HTTPS and plain HTTP */
+                  var actionsEl = document.createElement('div');
+                  actionsEl.className = 'dts-msg-actions';
+                  var copyBtn = document.createElement('button');
+                  copyBtn.className = 'dts-copy-btn';
+                  copyBtn.textContent = 'Copy';
+                  copyBtn.addEventListener('click', function () {
+                      function doFallback() {
+                          var ta = document.createElement('textarea');
+                          ta.value = text;
+                          ta.setAttribute('readonly', '');
+                          ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                          document.body.appendChild(ta);
+                          ta.focus(); ta.select();
+                          try {
+                              document.execCommand('copy');
+                              copyBtn.textContent = 'Copied!';
+                          } catch(e) { copyBtn.textContent = 'Error'; }
+                          document.body.removeChild(ta);
+                          setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
+                      }
+                      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                          navigator.clipboard.writeText(text).then(function () {
+                              copyBtn.textContent = 'Copied!';
+                              setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
+                          }).catch(doFallback);
+                      } else { doFallback(); }
+                  });
+                  actionsEl.appendChild(copyBtn);
+                  contentEl.appendChild(actionsEl);
+
+                  /* "Save as Quiz" bar if MCQs detected */
+                  maybeShowCreateQuizBar(contentEl, text);
+
+                  _typingFlushFn = null;
+                  scrollToBottom();
+                  if (onDone) onDone();
+              }
+          }
+
+          requestAnimationFrame(tick);
+      }
+
+      /* =========================================================
+       RENDER MESSAGES
+    ========================================================= */
+    function appendMessage(role, content) {
+        var container = document.getElementById('dts-messages');
+        if (!container) return;
+
+        var msgEl = document.createElement('div');
+        msgEl.className = 'dts-message dts-' + role;
+
+        var avatarEl = document.createElement('div');
+        avatarEl.className = 'dts-msg-avatar';
+        avatarEl.textContent = role === 'user'
+            ? (cfg.user_name ? cfg.user_name.charAt(0).toUpperCase() : 'U')
+            : '⬡';
+
+        var contentEl = document.createElement('div');
+        contentEl.className = 'dts-msg-content';
+
+        var bubbleEl = document.createElement('div');
+        bubbleEl.className = 'dts-msg-bubble';
+
+        if (role === 'ai') {
+            bubbleEl.innerHTML = renderContent(content);
+            /* Syntax highlight code blocks */
+            if (typeof hljs !== 'undefined') {
+                bubbleEl.querySelectorAll('pre code').forEach(function (block) {
+                    hljs.highlightElement(block);
+                });
+            }
+        } else {
+            bubbleEl.textContent = content;
+        }
+
+        contentEl.appendChild(bubbleEl);
+
+        if (role === 'ai') {
+            var actionsEl = document.createElement('div');
+            actionsEl.className = 'dts-msg-actions';
+            var copyBtn = document.createElement('button');
+            copyBtn.className = 'dts-copy-btn';
+            copyBtn.textContent = 'Copy';
+            copyBtn.addEventListener('click', function () {
+                navigator.clipboard.writeText(content).then(function () {
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
+                });
+            });
+            actionsEl.appendChild(copyBtn);
+            contentEl.appendChild(actionsEl);
+
+            /* Show "Save as Quiz" bar when MCQ questions are detected */
+            maybeShowCreateQuizBar(contentEl, content);
+        }
+
+        msgEl.appendChild(avatarEl);
+        msgEl.appendChild(contentEl);
+        container.appendChild(msgEl);
+        scrollToBottom();
+    }
+
+    /* =========================================================
+       QUIZ QUESTION DETECTION + CREATE QUIZ BUTTON
+       Parses numbered MCQs from AI responses and offers a
+       one-click "Save as Quiz" shortcut to the create-quiz page.
+    ========================================================= */
+
+    /* Parse multiple-choice questions from raw AI text.
+       Handles: numbered items, A/B/C/D options, Answer: X, Explanation: ... */
+    function parseStudioQuestions(text) {
+        var questions = [];
+        var clean = text.replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/\*([^*\n]+)\*/g, '$1');
+        var blocks = clean.split(/\n(?=\s*\d+[.)]\s)/);
+
+        blocks.forEach(function (block) {
+            var qMatch = block.match(/^\s*\d+[.)]\s+([\s\S]+)/);
+            if (!qMatch) return;
+
+            var lines       = qMatch[1].split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+            var questionLines = [], options = [], correctIdx = 0, explanation = '', parsingOpts = false;
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim();
+
+                /* Option: A) A. a) (A) - A) */
+                var optM = line.match(/^[-•*]?\s*\(?([A-Da-d])\)?[.):\]]\s*(.*)/);
+                if (optM) { parsingOpts = true; options.push(optM[2].trim()); continue; }
+
+                /* Answer: B */
+                var ansM = line.match(/^(?:answer|correct(?:\s+answer)?)[:\s]+\(?([A-Da-d])\)?/i);
+                if (ansM) { correctIdx = ansM[1].toUpperCase().charCodeAt(0) - 65; continue; }
+
+                /* Explanation: ... */
+                var expM = line.match(/^(?:explanation|reason)[:\s]+(.*)/i);
+                if (expM) { explanation = expM[1].trim(); continue; }
+
+                if (!parsingOpts) questionLines.push(line);
+            }
+
+            var question = questionLines.join(' ').trim();
+            if (question && options.length >= 2) {
+                questions.push({
+                    question:             question,
+                    options:              options,
+                    correct_answer_index: Math.min(Math.max(correctIdx, 0), options.length - 1),
+                    explanation:          explanation
+                });
+            }
+        });
+
+        return questions;
+    }
+
+    /* Append a "Save as Quiz" bar below AI messages that contain MCQs.
+       Only visible when the user has a create_quiz_url in config. */
+    function maybeShowCreateQuizBar(contentEl, rawText) {
+        var createUrl = cfg.create_quiz_url;
+        if (!createUrl) return;
+
+        var questions = parseStudioQuestions(rawText);
+        if (questions.length < 2) return;
+
+        var bar = document.createElement('div');
+        bar.className = 'dts-quiz-import-bar';
+
+        var info = document.createElement('span');
+        info.className = 'dts-quiz-import-info';
+        info.textContent = '\uD83D\uDCDD ' + questions.length + ' question' + (questions.length !== 1 ? 's' : '') + ' detected';
+
+        var btn = document.createElement('button');
+        btn.className = 'dts-create-quiz-btn';
+        btn.textContent = 'Save as Quiz \u2192';
+        btn.addEventListener('click', function () {
+            try { sessionStorage.setItem('aqs_studio_import', JSON.stringify({ questions: questions })); } catch (e) {}
+            window.location.href = createUrl;
+        });
+
+        bar.appendChild(info);
+        bar.appendChild(btn);
+        contentEl.appendChild(bar);
+    }
+
+    /* =========================================================
+       MATH + MARKDOWN RENDERER
+       Handles $$...$$, $...$, \[...\], \(...\), \begin{equation}
+    ========================================================= */
+    function renderContent(raw) {
+        var text = raw;
+
+        /* Step 1 — Normalise LaTeX delimiter variants → $ / $$ */
+        /* \[...\]  → $$...$$ */
+        text = text.replace(/\\\[([\s\S]+?)\\\]/g, function (_, m) { return '$$' + m + '$$'; });
+        /* \(...\)  → $...$ */
+        text = text.replace(/\\\(([\s\S]+?)\\\)/g, function (_, m) { return '$' + m + '$'; });
+        /* \begin{equation}...\end{equation}  → $$...$$ */
+        text = text.replace(/\\begin\{equation\*?\}([\s\S]+?)\\end\{equation\*?\}/g, function (_, m) { return '$$' + m + '$$'; });
+        /* \begin{align}...\end{align}  → $$...$$ */
+        text = text.replace(/\\begin\{align\*?\}([\s\S]+?)\\end\{align\*?\}/g, function (_, m) { return '$$' + m + '$$'; });
+        /* Bare [...] that contains a backslash → $$...$$ */
+        text = text.replace(/^\[([\s\S]+?)\]$/gm, function (full, m) {
+            return m.indexOf('\\') !== -1 ? '$$' + m + '$$' : full;
+        });
+
+        /* Step 2 — Extract and render $$ display math (before inline so $$ wins) */
+        var displayMath = [];
+        text = text.replace(/\$\$([\s\S]+?)\$\$/g, function (_, math) {
+            var idx = displayMath.length;
+            var rendered;
+            try {
+                rendered = '<div class="dts-katex-display">' +
+                    katex.renderToString(math.trim(), { displayMode: true, throwOnError: false, trust: true }) +
+                    '</div>';
+            } catch (e) {
+                rendered = '<pre class="dts-math-fallback"><code>' + escHtml(math) + '</code></pre>';
+            }
+            displayMath.push(rendered);
+            return '\x00DMATH' + idx + '\x00';
+        });
+
+        /* Step 3 — Extract and render $ inline math */
+        var inlineMath = [];
+        text = text.replace(/\$([^$\n]{1,400}?)\$/g, function (_, math) {
+            /* Skip if it looks like a currency amount (digit directly after $) */
+            if (/^\d[\d,\.]*$/.test(math.trim())) return '$' + math + '$';
+            var idx = inlineMath.length;
+            var rendered;
+            try {
+                rendered = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false, trust: true });
+            } catch (e) {
+                rendered = '<code>' + escHtml(math) + '</code>';
+            }
+            inlineMath.push(rendered);
+            return '\x00IMATH' + idx + '\x00';
+        });
+
+        /* Step 4 — Parse Markdown */
+        var html = typeof marked !== 'undefined' ? marked.parse(text) : escHtml(text);
+
+        /* Step 5 — Restore math placeholders */
+        inlineMath.forEach(function (r, i) { html = html.split('\x00IMATH' + i + '\x00').join(r); });
+        displayMath.forEach(function (r, i) { html = html.split('\x00DMATH' + i + '\x00').join(r); });
+
+        return html;
+    }
+
+    /* =========================================================
+       CHAT HISTORY (localStorage)
+    ========================================================= */
+    function loadHistory() {
+        try {
+            var raw = localStorage.getItem(HISTORY_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+
+    function saveHistory(history) {
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) {}
+    }
+
+    function saveCurrentChat() {
+        if (!currentChatId || messages.length === 0) return;
+        var history = loadHistory();
+        /* First user message becomes the title */
+        var firstUser = messages.find(function (m) { return m.role === 'user'; });
+        var title = firstUser ? firstUser.content.substring(0, 60) : 'Chat';
+        /* Find existing entry or prepend new one */
+        var idx = history.findIndex(function (h) { return h.id === currentChatId; });
+        var entry = {
+            id:        currentChatId,
+            title:     title,
+            timestamp: Date.now(),
+            messages:  messages.slice()
+        };
+        if (idx >= 0) {
+            history[idx] = entry;
+        } else {
+            history.unshift(entry);
+        }
+        /* Keep only the latest 50 conversations */
+        if (history.length > 50) history = history.slice(0, 50);
+        saveHistory(history);
+        renderHistoryList();
+    }
+
+    function loadChat(chatId) {
+        var history = loadHistory();
+        var entry = history.find(function (h) { return h.id === chatId; });
+        if (!entry) return;
+
+        currentChatId = entry.id;
+        messages      = entry.messages.slice();
+
+        /* Clear and re-render messages */
+        var container = document.getElementById('dts-messages');
+        container.innerHTML = '';
+        var welcome = document.getElementById('dts-welcome');
+        if (welcome) welcome.style.display = 'none';
+
+        messages.forEach(function (m) {
+            if (m.role !== 'system') appendMessage(m.role === 'assistant' ? 'ai' : m.role, m.content);
+        });
+
+        /* Highlight active history item */
+        document.querySelectorAll('.dts-history-item').forEach(function (el) {
+            el.classList.toggle('active', el.dataset.id === chatId);
+        });
+    }
+
+    function deleteChat(chatId) {
+        var history = loadHistory().filter(function (h) { return h.id !== chatId; });
+        saveHistory(history);
+        if (currentChatId === chatId) startNewChat();
+        renderHistoryList();
+    }
+
+    function renderHistoryList() {
+        var list    = document.getElementById('dts-history-list');
+        var empty   = document.getElementById('dts-history-empty');
+        if (!list) return;
+        var history = loadHistory();
+
+        /* Remove old items (keep the empty placeholder) */
+        Array.from(list.querySelectorAll('.dts-history-item')).forEach(function (el) { el.remove(); });
+
+        if (history.length === 0) {
+            if (empty) empty.style.display = '';
             return;
         }
-        list.forEach(function(v) {
-            var card = document.createElement('button');
-            card.className = 'tts-voice-card' + (v.id === selectedVoice ? ' selected' : '');
-            card.dataset.voice = v.id;
-            card.innerHTML =
-                '<div class="tts-voice-name">' + esc(v.name) + '</div>' +
-                '<div class="tts-voice-meta">' + esc(v.region) + '</div>' +
-                '<div class="tts-voice-desc">' + esc(v.desc) + '</div>' +
-                '<span class="tts-voice-gender ' + v.gender + '">' + (v.gender === 'male' ? '♂ Male' : '♀ Female') + '</span>';
-            card.addEventListener('click', function() {
-                selectedVoice = v.id;
-                document.querySelectorAll('.tts-voice-card').forEach(function(c) { c.classList.remove('selected'); });
-                card.classList.add('selected');
-                updateVoiceBadge(v);
-                updateTranslateNote(v);
+        if (empty) empty.style.display = 'none';
+
+        history.forEach(function (entry) {
+            var item = document.createElement('div');
+            item.className = 'dts-history-item' + (entry.id === currentChatId ? ' active' : '');
+            item.dataset.id = entry.id;
+
+            var titleEl = document.createElement('span');
+            titleEl.className = 'dts-history-item-title';
+            titleEl.textContent = entry.title;
+            titleEl.title = entry.title;
+
+            var delBtn = document.createElement('button');
+            delBtn.className = 'dts-history-item-del';
+            delBtn.textContent = '✕';
+            delBtn.title = 'Delete conversation';
+            delBtn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                if (confirm('Delete this conversation?')) deleteChat(entry.id);
             });
-            grid.appendChild(card);
+
+            item.appendChild(titleEl);
+            item.appendChild(delBtn);
+            item.addEventListener('click', function () { loadChat(entry.id); });
+            list.appendChild(item);
         });
     }
 
-    function updateVoiceBadge(v) {
-        var badge = document.getElementById('tts-voice-badge');
-        if (!badge) return;
-        if (!v) {
-            var found = VOICES.find(function(x) { return x.id === selectedVoice; });
-            v = found || null;
+    /* =========================================================
+       FILE UPLOAD
+       Supports TXT, MD, CSV, JSON (FileReader),
+                 PDF (pdf.js), DOCX/DOC (mammoth.js)
+    ========================================================= */
+    var MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+
+    function setupFileUpload() {
+        /* The attach button is now a <label for="dts-file-input">, so the browser
+           opens the file picker natively on click — no JS input.click() needed.
+           We only need to handle the resulting 'change' event. */
+        var input = document.getElementById('dts-file-input');
+        if (!input) return;
+        input.addEventListener('change', function () {
+            var file = this.files[0];
+            if (!file) return;
+            this.value = ''; // allow re-selecting same file
+            handleFileUpload(file);
+        });
+    }
+
+    async function handleFileUpload(file) {
+        var ext     = (file.name.split('.').pop() || '').toLowerCase();
+        var allowed = ['txt', 'md', 'csv', 'json', 'pdf', 'docx', 'doc'];
+        if (allowed.indexOf(ext) === -1) {
+            showFileError('Unsupported file type. Allowed: TXT, MD, CSV, JSON, PDF, DOCX');
+            return;
         }
-        if (v) {
-            badge.className = 'tts-voice-badge selected';
-            badge.innerHTML =
-                '<span class="tts-badge-icon">' + (v.gender === 'male' ? '♂' : '♀') + '</span>' +
-                '<strong>' + esc(v.name) + '</strong>' +
-                '<span class="tts-badge-region">' + esc(v.region) + '</span>' +
-                '<span class="tts-badge-lang">' + esc(v.lang.toUpperCase()) + '</span>';
+        if (file.size > MAX_FILE_BYTES) {
+            showFileError('File too large (max 10 MB)');
+            return;
+        }
+        showFileLoading(file.name);
+        try {
+            var text = '';
+            if (['txt', 'md', 'csv', 'json'].indexOf(ext) !== -1) {
+                text = await readAsText(file);
+            } else if (ext === 'pdf') {
+                text = await readPDF(file);
+            } else {
+                text = await readDOCX(file);
+            }
+            if (!text || !text.trim()) {
+                showFileError('Could not extract text from this file.');
+                return;
+            }
+            uploadedFileContent = text;
+            uploadedFileName    = file.name;
+            showFileAttached(file.name);
+            document.getElementById('dts-input').focus();
+        } catch (e) {
+            showFileError('Error reading file: ' + (e.message || 'unknown error'));
+        }
+    }
+
+    function readAsText(file) {
+        return new Promise(function (resolve, reject) {
+            var fr = new FileReader();
+            fr.onload  = function (e) { resolve(e.target.result); };
+            fr.onerror = function ()  { reject(new Error('FileReader error')); };
+            fr.readAsText(file);
+        });
+    }
+
+    async function readPDF(file) {
+        if (typeof window.pdfjsLib === 'undefined') {
+            throw new Error('PDF reader not yet loaded — please wait a moment and try again.');
+        }
+        /* Set worker URL lazily (avoids timing issues with defer-loaded script) */
+        if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
+            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+                'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+        }
+        var ab = await new Promise(function (resolve, reject) {
+            var fr = new FileReader();
+            fr.onload  = function (e) { resolve(e.target.result); };
+            fr.onerror = function ()  { reject(new Error('FileReader error')); };
+            fr.readAsArrayBuffer(file);
+        });
+        var pdf   = await window.pdfjsLib.getDocument({ data: ab }).promise;
+        var pages = [];
+        for (var i = 1; i <= Math.min(pdf.numPages, 50); i++) {
+            var page    = await pdf.getPage(i);
+            var content = await page.getTextContent();
+            pages.push(content.items.map(function (it) { return it.str; }).join(' '));
+        }
+        return pages.join('\n\n');
+    }
+
+    async function readDOCX(file) {
+        if (typeof window.mammoth === 'undefined') {
+            throw new Error('DOCX reader not yet loaded — please wait a moment and try again.');
+        }
+        var ab = await new Promise(function (resolve, reject) {
+            var fr = new FileReader();
+            fr.onload  = function (e) { resolve(e.target.result); };
+            fr.onerror = function ()  { reject(new Error('FileReader error')); };
+            fr.readAsArrayBuffer(file);
+        });
+        var result = await window.mammoth.extractRawText({ arrayBuffer: ab });
+        return result.value;
+    }
+
+    function showFileLoading(name) {
+        var s = document.getElementById('dts-file-status');
+        if (!s) return;
+        s.innerHTML = '<span class="dts-file-loading">⏳ Reading ' + escHtml(name) + '…</span>';
+        s.style.display = 'flex';
+    }
+
+    function showFileAttached(name) {
+        var s = document.getElementById('dts-file-status');
+        if (!s) return;
+        var attached = document.createElement('span');
+        attached.className   = 'dts-file-attached';
+        attached.textContent = '📎 ' + name;
+        var clearBtn = document.createElement('button');
+        clearBtn.className   = 'dts-file-clear';
+        clearBtn.title       = 'Remove file';
+        clearBtn.textContent = '✕';
+        clearBtn.addEventListener('click', clearFileAttachment);
+        s.innerHTML = '';
+        s.appendChild(attached);
+        s.appendChild(clearBtn);
+        s.style.display = 'flex';
+    }
+
+    function clearFileAttachment() {
+        uploadedFileContent = null;
+        uploadedFileName    = null;
+        var s = document.getElementById('dts-file-status');
+        if (s) { s.innerHTML = ''; s.style.display = 'none'; }
+    }
+
+    function showFileError(msg) {
+        var s = document.getElementById('dts-file-status');
+        if (!s) return;
+        s.innerHTML = '<span class="dts-file-error">⚠️ ' + escHtml(msg) + '</span>';
+        s.style.display = 'flex';
+        setTimeout(function () {
+            if (s) { s.innerHTML = ''; s.style.display = 'none'; }
+        }, 4500);
+    }
+
+    /* ── Render a user message with optional file chip ── */
+    function appendUserMessage(text, fileName) {
+        var container = document.getElementById('dts-messages');
+        if (!container) return;
+
+        var msgEl    = document.createElement('div');
+        msgEl.className = 'dts-message dts-user';
+
+        var avatarEl = document.createElement('div');
+        avatarEl.className   = 'dts-msg-avatar';
+        avatarEl.textContent = cfg.user_name ? cfg.user_name.charAt(0).toUpperCase() : 'U';
+
+        var contentEl = document.createElement('div');
+        contentEl.className = 'dts-msg-content';
+
+        if (fileName) {
+            var chipEl = document.createElement('div');
+            chipEl.className   = 'dts-file-chip';
+            chipEl.textContent = '📎 ' + fileName;
+            contentEl.appendChild(chipEl);
+        }
+
+        var bubbleEl = document.createElement('div');
+        bubbleEl.className   = 'dts-msg-bubble';
+        bubbleEl.textContent = text;
+        contentEl.appendChild(bubbleEl);
+
+        msgEl.appendChild(avatarEl);
+        msgEl.appendChild(contentEl);
+        container.appendChild(msgEl);
+        scrollToBottom();
+    }
+
+    /* =========================================================
+       VOICE CONVERSATION
+       ─────────────────────────────────────────────────────────
+       Uses Web Speech API:
+         • SpeechRecognition  — user voice → text
+         • SpeechSynthesis    — AI text → spoken response
+       Voice is FULLY INDEPENDENT from the text chat:
+         - maintains its own private voiceMessages history
+         - never reads from or writes to the chat window
+         - resets its history each time the overlay opens
+
+       Flow:
+         1. User clicks mic → overlay opens, history resets
+         2. Start Listening button or auto-start
+         3. User speaks; live interim transcript shown in overlay
+         4. After natural pause (or 15 s max), recognition ends
+         5. Text sent to AI directly (Groq → proxy → Pollinations)
+         6. AI response read aloud via SpeechSynthesis
+         7. Loop back to step 2 automatically
+    ========================================================= */
+    var voiceActive       = false;   // voice overlay is open
+    var voiceListening    = false;   // recognition is running
+    var voiceAiTalking    = false;   // synthesis is playing
+    var voiceRecog        = null;    // SpeechRecognition instance
+    var voiceSilenceTimer = null;    // max-15 s cutoff timer
+    var voiceRestartTimer = null;    // debounce for auto-restart
+    var VOICE_MAX_MS      = 15000;   // 15 s max per utterance
+    var voiceMessages     = [];      // private voice conversation history (never shared with chat)
+
+    /* Short system prompt variant for voice — keeps replies concise */
+    var VOICE_SYSTEM = SYSTEM +
+        '\n\nIMPORTANT: This is a VOICE conversation. Keep all replies ' +
+        'concise (3-5 sentences max) and conversational. Avoid bullet ' +
+        'lists, markdown, code blocks, and math symbols — speak in plain ' +
+        'natural sentences only.';
+
+    /* ── Bootstrap ── */
+    function setupVoice() {
+        var openBtn  = document.getElementById('dts-voice-btn');
+        var closeBtn = document.getElementById('dts-voice-close');
+        var endBtn   = document.getElementById('dts-voice-end');
+        var togBtn   = document.getElementById('dts-voice-toggle');
+
+        var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (openBtn) {
+            if (!SpeechRec) {
+                /* Browser does not support voice */
+                openBtn.title   = 'Voice chat requires Chrome, Edge, or Safari';
+                openBtn.style.opacity = '0.35';
+                openBtn.style.cursor  = 'not-allowed';
+                openBtn.addEventListener('click', function () {
+                    alert('Voice chat is not supported in this browser.\nPlease use Chrome, Edge, or Safari.');
+                });
+            } else {
+                openBtn.addEventListener('click', openVoiceMode);
+            }
+        }
+
+        if (closeBtn) closeBtn.addEventListener('click', closeVoiceMode);
+        if (endBtn)   endBtn.addEventListener('click',   closeVoiceMode);
+        if (togBtn)   togBtn.addEventListener('click',   voiceToggleListen);
+
+        /* Close on ESC */
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' && voiceActive) closeVoiceMode();
+        });
+    }
+
+    /* ── Inject glowing orb CSS once ── */
+    function injectVoiceOrbStyles() {
+        if (document.getElementById('dts-voice-orb-css')) return;
+        var s = document.createElement('style');
+        s.id = 'dts-voice-orb-css';
+        s.textContent = [
+            /* Base orb — purple idle glow */
+            '#dts-voice-orb{transition:background .4s,box-shadow .4s}',
+            '#dts-voice-orb[data-state=idle]{animation:dts-orb-idle 3s ease-in-out infinite}',
+            '@keyframes dts-orb-idle{0%,100%{box-shadow:0 0 18px 4px rgba(139,92,246,.45)}50%{box-shadow:0 0 40px 14px rgba(139,92,246,.8)}}',
+            /* Listening — cyan */
+            '#dts-voice-orb[data-state=listening]{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490)!important;animation:dts-orb-listen 1.1s ease-in-out infinite}',
+            '@keyframes dts-orb-listen{0%,100%{box-shadow:0 0 20px 5px rgba(6,182,212,.55)}50%{box-shadow:0 0 55px 20px rgba(6,182,212,.95)}}',
+            /* Thinking — amber */
+            '#dts-voice-orb[data-state=thinking]{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309)!important;animation:dts-orb-think .85s ease-in-out infinite alternate}',
+            '@keyframes dts-orb-think{0%{box-shadow:0 0 16px 4px rgba(245,158,11,.4)}100%{box-shadow:0 0 50px 18px rgba(245,158,11,.85)}}',
+            /* Speaking — green */
+            '#dts-voice-orb[data-state=speaking]{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46)!important;animation:dts-orb-speak .5s ease-in-out infinite alternate}',
+            '@keyframes dts-orb-speak{0%{box-shadow:0 0 16px 4px rgba(16,185,129,.45)}100%{box-shadow:0 0 60px 22px rgba(16,185,129,.9)}}',
+            /* Error — red */
+            '#dts-voice-orb[data-state=error]{background:radial-gradient(circle at 35% 35%,#fca5a5,#ef4444 60%,#991b1b)!important;animation:dts-orb-err 1s ease-in-out infinite alternate}',
+            '@keyframes dts-orb-err{0%{box-shadow:0 0 14px 3px rgba(239,68,68,.4)}100%{box-shadow:0 0 38px 12px rgba(239,68,68,.75)}}',
+        ].join('');
+        document.head.appendChild(s);
+    }
+
+    function openVoiceMode() {
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (!overlay) return;
+        injectVoiceOrbStyles();
+        voiceActive   = true;
+        voiceMessages = [];   // fresh history each time voice opens
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        setVoiceState('idle');
+        /* Mobile needs extra time for mic hardware to initialise cleanly */
+        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        setTimeout(startVoiceListening, micDelay);
+    }
+
+    function closeVoiceMode() {
+        voiceActive = false;
+        stopVoiceSpeaking();
+        stopVoiceRecognition();
+        clearTimeout(voiceSilenceTimer);
+        clearTimeout(voiceRestartTimer);
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'none';
+        document.body.style.overflow = '';
+        setVoiceState('closed');
+    }
+
+    function voiceToggleListen() {
+        if (voiceAiTalking) {
+            /* Interrupt AI speech and start listening */
+            stopVoiceSpeaking();
+            startVoiceListening();
+        } else if (voiceListening) {
+            stopVoiceRecognition();
+            setVoiceState('idle');
         } else {
-            badge.className = 'tts-voice-badge';
-            badge.textContent = 'Select a voice below →';
+            startVoiceListening();
         }
     }
 
-    function updateTranslateNote(v) {
-        var note    = document.getElementById('tts-translate-note');
-        var noteText = document.getElementById('tts-translate-note-text');
-        var toggle  = document.getElementById('tts-translate-toggle');
-        var label   = document.getElementById('tts-translate-label');
-        if (!note || !v) return;
-        var isNonEn = v.lang && v.lang !== 'en';
-        if (toggle) toggle.checked = isNonEn;
-        if (label) {
-            label.textContent = isNonEn
-                ? 'Auto-translate to ' + v.region + ' language'
-                : 'Auto-translate (optional)';
-        }
-        note.style.display = 'flex';
-        if (noteText) {
-            noteText.textContent = isNonEn
-                ? 'Text will be translated to ' + v.locale.toUpperCase() + ' before speaking'
-                : 'Translation is off — speaking in original language';
-        }
-    }
+    /* ── Start listening (one utterance, max 15 s) ── */
+    function startVoiceListening() {
+        if (!voiceActive) return;
+        var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRec || voiceListening) return;
 
-    /* ── Translation via Groq ─────────────────────────────────── */
-    async function translateText(text, targetLocale, targetLang) {
-        if (!text || !targetLocale) return text;
-        /* Skip if text is already in target language (very rough check: if <10 chars or no groqFetch) */
-        if (typeof window.groqFetch !== 'function') return text;
+        stopVoiceSpeaking();
+        setVoiceState('listening');
+        setVoiceTranscript('');
+
+        var recog = new SpeechRec();
+        recog.lang            = 'en-US';
+        recog.continuous      = false;   /* one natural utterance */
+        recog.interimResults  = true;
+        recog.maxAlternatives = 1;
+        voiceRecog  = recog;
+        voiceListening = true;
+
+        var finalText   = '';
+        var hasSpoken   = false;
+
+        /* 15-second hard cutoff */
+        voiceSilenceTimer = setTimeout(function () {
+            if (voiceListening && voiceRecog) {
+                try { voiceRecog.stop(); } catch (e) {}
+            }
+        }, VOICE_MAX_MS);
+
+        recog.onresult = function (e) {
+            hasSpoken = true;
+            finalText = '';
+            var interim = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+                if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+                else                      interim   += e.results[i][0].transcript;
+            }
+            setVoiceTranscript(finalText || interim);
+        };
+
+        recog.onend = function () {
+            clearTimeout(voiceSilenceTimer);
+            voiceListening = false;
+            voiceRecog     = null;
+            var spoken = finalText.trim();
+            if (spoken && voiceActive) {
+                sendVoiceMessage(spoken);
+            } else if (voiceActive && !hasSpoken) {
+                /* No speech detected — restart silently */
+                voiceRestartTimer = setTimeout(startVoiceListening, 600);
+            } else if (voiceActive) {
+                setVoiceState('idle');
+            }
+        };
+
+        recog.onerror = function (e) {
+            clearTimeout(voiceSilenceTimer);
+            voiceListening = false;
+            voiceRecog     = null;
+            if (!voiceActive) return;
+            if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+                setVoiceState('error');
+                setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
+            } else if (e.error === 'no-speech') {
+                /* Mobile mic recovers slower — give it extra time */
+                var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+                voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
+            } else {
+                voiceRestartTimer = setTimeout(startVoiceListening, 1000);
+            }
+        };
+
         try {
-            var res = await window.groqFetch({
-                model: 'llama-3.1-8b-instant',
-                messages: [
-                    { role: 'system', content: 'You are a professional translator. Translate the given text accurately to the target language. Return ONLY the translated text with no explanation, no quotes, no labels.' },
-                    { role: 'user',   content: 'Translate to ' + targetLocale + ' (' + targetLang + '):\n\n' + text }
-                ],
-                temperature: 0.3,
-                max_tokens: 2000
+            recog.start();
+        } catch (err) {
+            voiceListening = false;
+            voiceRecog     = null;
+            voiceRestartTimer = setTimeout(startVoiceListening, 1200);
+        }
+    }
+
+    function stopVoiceRecognition() {
+        clearTimeout(voiceSilenceTimer);
+        if (voiceRecog) {
+            try { voiceRecog.abort(); } catch (e) {}
+            voiceRecog = null;
+        }
+        voiceListening = false;
+    }
+
+    function stopVoiceSpeaking() {
+        if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+        if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+        voiceAiTalking = false;
+    }
+
+    /* ── Web search / page fetch ── */
+    /* Detects phrases like "search for X", "look up X", "go to X.com", "visit X website"
+       Fetches via r.jina.ai (free reader API) for URLs, or DuckDuckGo instant answers for queries */
+    async function voiceFetchWebContext(text) {
+        /* 1. Detect a bare URL in the speech */
+        var urlMatch = text.match(/\b(https?:\/\/\S+|[\w-]+\.(com|org|net|io|gov|edu|co\.uk)[\S]*)/i);
+        if (urlMatch) {
+            var url = urlMatch[0];
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            try {
+                var r = await fetch('https://r.jina.ai/' + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
+                if (r.ok) {
+                    var body = await r.text();
+                    return '[Web page content from ' + url + ']\n' + body.slice(0, 2500);
+                }
+            } catch(_) {}
+            return null;
+        }
+
+        /* 2. Detect search/lookup intent */
+        var searchMatch = text.match(/(?:search(?:\s+for)?|look\s+up|find\s+(?:out\s+)?(?:about)?|google|check\s+online)\s+(.+)/i);
+        if (searchMatch) {
+            var query = searchMatch[1].trim();
+            try {
+                var ddg = await fetch(
+                    'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) + '&format=json&no_html=1&skip_disambig=1',
+                    { signal: AbortSignal.timeout(6000) }
+                );
+                if (ddg.ok) {
+                    var data = await ddg.json();
+                    var result = data.AbstractText || data.Answer || '';
+                    if (result) return '[Web search result for "' + query + '"]\n' + result;
+                    /* Fall back to Jina search */
+                    var jr = await fetch('https://r.jina.ai/https://www.google.com/search?q=' + encodeURIComponent(query), { signal: AbortSignal.timeout(8000) });
+                    if (jr.ok) return '[Web search for "' + query + '"]\n' + (await jr.text()).slice(0, 2000);
+                }
+            } catch(_) {}
+        }
+
+        /* 3. Detect "visit website X" or "go to website X" */
+        var visitMatch = text.match(/(?:visit|go\s+to|open|browse)(?:\s+(?:the|a|website|site|page))?\s+([\w\-]+(?:\.[\w\-]+)+)/i);
+        if (visitMatch) {
+            var visitUrl = 'https://' + visitMatch[1];
+            try {
+                var vr = await fetch('https://r.jina.ai/' + encodeURIComponent(visitUrl), { signal: AbortSignal.timeout(8000) });
+                if (vr.ok) return '[Content from ' + visitUrl + ']\n' + (await vr.text()).slice(0, 2500);
+            } catch(_) {}
+        }
+
+        return null; // no web context needed
+    }
+
+    /* ── Send voice utterance to AI ── */
+    /* Voice now writes its Q&A to the chat page so the user can see
+       the conversation text while the voice AI keeps talking.           */
+    async function sendVoiceMessage(text) {
+        if (!voiceActive) return;
+        setVoiceState('thinking');
+        setVoiceTranscript('"' + text + '"');
+
+        voiceMessages.push({ role: 'user', content: text });
+
+        /* Try to fetch web context before sending to AI */
+        var webCtx = null;
+        try { webCtx = await voiceFetchWebContext(text); } catch(_) {}
+
+        var sysContent = VOICE_SYSTEM +
+            (webCtx ? '\n\nWEB CONTEXT (use this to answer):\n' + webCtx : '');
+
+        /* Build API payload */
+        var apiMessages = [{ role: 'system', content: sysContent }].concat(
+            voiceMessages.map(function (m) { return { role: m.role, content: m.content }; })
+        );
+
+        var response = await raceAI(apiMessages);
+
+        if (!voiceActive) return;
+
+        if (response) {
+            voiceMessages.push({ role: 'assistant', content: response });
+
+            /* ── Sync Q&A to the main Studio chat page ── */
+            appendMessage('user', text);
+            appendMessage('ai', response);
+            /* Also keep main messages in sync so chat history is aware */
+            messages.push({ role: 'user', content: text });
+            messages.push({ role: 'assistant', content: response });
+            if (messages.length > 40) messages = messages.slice(-40);
+            saveCurrentChat();
+
+            /* Speak the reply */
+            setVoiceState('speaking');
+            setVoiceTranscript('');
+            speakVoiceResponse(response, function () {
+                if (voiceActive) {
+                    var micDelay = (navigator.maxTouchPoints > 0) ? 950 : 650;
+                    voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
+                }
             });
-            if (!res.ok) return text;
-            var data = await res.json();
-            var translated = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '').trim();
-            return translated || text;
-        } catch(e) { return text; }
-    }
-
-    /* ── Pollinations TTS fetch — single voice attempt ──────────── */
-    async function fetchChunkOnce(text, voice) {
-        var encoded   = encodeURIComponent(text);
-        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url       = 'https://audio.pollinations.ai/' + encoded +
-                        '?voice='   + voice +
-                        '&model=openai-audio' +
-                        '&nologo=true' +
-                        '&v=' + cacheBust;
-        var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, 15000);
-        try {
-            var r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
-            clearTimeout(tid);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            var buf = await r.arrayBuffer();
-            /* Reject empty/tiny responses — Pollinations returns < 100 bytes
-               when it silently ignores an unsupported voice parameter        */
-            if (!buf || buf.byteLength < 100) throw new Error('Empty audio');
-            return buf;
-        } catch(e) {
-            clearTimeout(tid);
-            throw e;
+        } else {
+            setVoiceState('listening');
+            setVoiceTranscript('Sorry, I could not get a response. Please try again.');
+            voiceRestartTimer = setTimeout(function () {
+                setVoiceTranscript('');
+                startVoiceListening();
+            }, 2500);
         }
     }
 
-    /* ── fetchChunk: try requested voice, then gender-safe fallback ── */
-    async function fetchChunk(text, baseVoice, locale, gender) {
-        /* Try the exact voice first */
-        try { return await fetchChunkOnce(text, baseVoice); } catch(_) {}
+    /* ── Text-to-Speech ── */
 
-        /* Fallback voices: male → onyx/echo, female → nova/shimmer
-           These are the most reliably supported voices on Pollinations  */
-        var fallbacks = (gender === 'female')
-            ? ['nova', 'shimmer', 'alloy', 'echo']
-            : ['onyx', 'echo', 'fable', 'nova'];
-        fallbacks = fallbacks.filter(function(v) { return v !== baseVoice; });
+    /* Clean text for speaking — strip markdown, math, code blocks */
+    function cleanForSpeech(text) {
+        return text
+            .replace(/```[\s\S]*?```/g,       'code block.')
+            .replace(/`([^`]+)`/g,            '$1')
+            .replace(/\$\$[\s\S]+?\$\$/g,     'math expression.')
+            .replace(/\$[^$\n]{1,200}\$/g,    'math expression.')
+            .replace(/\*\*([^*\n]+)\*\*/g,    '$1')
+            .replace(/\*([^*\n]+)\*/g,        '$1')
+            .replace(/#{1,6}\s+/g,            '')
+            .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
+            .replace(/[-_]{2,}/g,             '')
+            .replace(/\n{2,}/g,               ' ')
+            .trim()
+            .substring(0, 1500);
+    }
 
-        for (var fi = 0; fi < fallbacks.length; fi++) {
-            try { return await fetchChunkOnce(text, fallbacks[fi]); } catch(_) {}
+    /* Browser TTS fallback — used only if Pollinations fails */
+    function speakWithBrowserFallback(spoken, onDone) {
+        if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
+        window.speechSynthesis.cancel();
+        function doSpeak() {
+            var utter  = new SpeechSynthesisUtterance(spoken);
+            utter.lang = 'en-US'; utter.rate = 1.05; utter.pitch = 1.05; utter.volume = 1.0;
+            var voices = window.speechSynthesis.getVoices();
+            var pick   = voices.find(function(v) {
+                return v.lang.startsWith('en') && /Google|Natural|Samantha|Karen|Moira|Daniel/i.test(v.name);
+            }) || voices.find(function(v) { return v.lang.startsWith('en-US'); })
+               || voices.find(function(v) { return v.lang.startsWith('en'); });
+            if (pick) utter.voice = pick;
+            voiceAiTalking = true;
+            voiceKeepAlive = setInterval(function() {
+                if (!window.speechSynthesis.speaking) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+                else { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
+            }, 5000);
+            utter.onend = utter.onerror = function() {
+                if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+                voiceAiTalking = false; if (onDone) onDone();
+            };
+            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+            window.speechSynthesis.speak(utter);
         }
-        throw new Error('All voices failed for chunk');
+        var vs = window.speechSynthesis.getVoices();
+        if (!vs.length) {
+            var h = function() { window.speechSynthesis.removeEventListener('voiceschanged', h); setTimeout(doSpeak, 120); };
+            window.speechSynthesis.addEventListener('voiceschanged', h);
+            setTimeout(function() { if (!voiceAiTalking) doSpeak(); }, 1500);
+        } else { setTimeout(doSpeak, 120); }
     }
 
-    function concatBuffers(buffers) {
-        var total  = buffers.reduce(function(a, b) { return a + b.byteLength; }, 0);
-        var result = new Uint8Array(total);
-        var offset = 0;
-        buffers.forEach(function(b) { result.set(new Uint8Array(b), offset); offset += b.byteLength; });
-        return result.buffer;
-    }
-
-    function splitText(text) {
-        if (text.length <= CHUNK_SIZE) return [text];
+    /* ── Split cleaned text into sentence-aware chunks for sequential TTS ── */
+    function splitSpeechChunks(text, maxLen) {
+        if (text.length <= maxLen) return [text];
         var chunks    = [];
-        var sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text];
+        var sentences = text.match(/[^.!?]+[.!?]+\s*/g) || [text]; /* \s* not s* */
         var current   = '';
         sentences.forEach(function(s) {
-            if ((current + s).length > CHUNK_SIZE) {
+            if ((current + s).length > maxLen) {
                 if (current) chunks.push(current.trim());
-                while (s.length > CHUNK_SIZE) { chunks.push(s.slice(0, CHUNK_SIZE).trim()); s = s.slice(CHUNK_SIZE); }
+                while (s.length > maxLen) { chunks.push(s.slice(0, maxLen).trim()); s = s.slice(maxLen); }
                 current = s;
             } else { current += s; }
         });
@@ -288,384 +1425,207 @@
         return chunks.filter(function(c) { return c.length > 0; });
     }
 
-    function speakWithBrowser(text, speed, voiceObj) {
-        return new Promise(function(resolve, reject) {
-            if (!window.speechSynthesis) { reject(new Error('Not supported')); return; }
-            window.speechSynthesis.cancel();
-            var u    = new SpeechSynthesisUtterance(text);
-            u.rate   = Math.min(Math.max(parseFloat(speed) || 1, 0.1), 10);
-            u.lang   = (voiceObj && voiceObj.locale) || 'en-US';
-            u.onend  = resolve;
-            u.onerror = function(e) { reject(new Error(e.error || 'speech-error')); };
-
-            function pickVoiceAndSpeak() {
-                var voices = window.speechSynthesis.getVoices();
-                if (voiceObj && voices.length) {
-                    var locale = voiceObj.locale || 'en-US';
-                    var lang   = locale.split('-')[0];
-                    var isFem  = voiceObj.gender === 'female';
-                    /* Priority: exact locale + gender match → exact locale →
-                       language match + gender → language match → any English */
-                    var pick =
-                        voices.find(function(v) { return v.lang === locale && (isFem ? /female|woman|girl|zira|hazel|susan|karen|samantha|victoria|moira|tessa|fiona|helena|anna/i.test(v.name) : /male|man|david|james|george|mark|daniel|rishi|fred|alex/i.test(v.name)); }) ||
-                        voices.find(function(v) { return v.lang === locale; }) ||
-                        voices.find(function(v) { return v.lang.startsWith(lang) && (isFem ? /female|woman|girl|zira|hazel|susan|karen|samantha|victoria|moira|tessa|fiona|helena|anna/i.test(v.name) : /male|man|david|james|george|mark|daniel|rishi|fred|alex/i.test(v.name)); }) ||
-                        voices.find(function(v) { return v.lang.startsWith(lang); }) ||
-                        voices.find(function(v) { return v.lang.startsWith('en'); });
-                    if (pick) u.voice = pick;
-                }
-                window.speechSynthesis.speak(u);
-            }
-
-            /* Chrome loads voices async on first call */
-            var existing = window.speechSynthesis.getVoices();
-            if (existing.length) {
-                setTimeout(pickVoiceAndSpeak, 50);
-            } else {
-                window.speechSynthesis.onvoiceschanged = function() {
-                    window.speechSynthesis.onvoiceschanged = null;
-                    setTimeout(pickVoiceAndSpeak, 50);
-                };
-                /* Fallback if event never fires */
-                setTimeout(pickVoiceAndSpeak, 1200);
-            }
-        });
+    /* ── Fetch one TTS chunk from Pollinations, trying voices in order ─ */
+    function fetchStudioAudioBlob(chunk, voices, timeoutMs) {
+        var voice = voices[0];
+        var rest  = voices.slice(1);
+        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+                  '?model=openai-audio&voice=' + voice + '&nologo=true&v=' + cacheBust;
+        var ctrl = new AbortController();
+        var tid  = setTimeout(function() { ctrl.abort(); }, timeoutMs || 12000);
+        return fetch(url, { signal: ctrl.signal, cache: 'no-store' })
+            .then(function(r) {
+                clearTimeout(tid);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.blob();
+            })
+            .then(function(blob) {
+                /* Reject suspiciously tiny responses — API returned error body */
+                if (!blob || blob.size < 100) throw new Error('Empty blob');
+                return blob;
+            })
+            .catch(function(e) {
+                clearTimeout(tid);
+                if (rest.length) return fetchStudioAudioBlob(chunk, rest, timeoutMs);
+                throw e;
+            });
     }
 
-    /* ── Generate ─────────────────────────────────────────────── */
-    async function generate() {
-        var text  = (document.getElementById('tts-text') || {}).value || '';
-        text = text.trim();
-        var speed = parseFloat((document.getElementById('tts-speed') || {}).value) || 1.0;
+    function speakVoiceResponse(text, onDone) {
+        var spoken = cleanForSpeech(text);
+        if (!spoken) { if (onDone) onDone(); return; }
 
-        if (!text) { document.getElementById('tts-text') && document.getElementById('tts-text').focus(); return; }
-        if (!selectedVoice) { showError('Please select a voice first.'); return; }
+        /* Stop any ongoing speech */
+        if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+        if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
 
-        var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
-        if (!voiceObj) { showError('Invalid voice selected.'); return; }
+        voiceAiTalking = true;
 
-        setGenerating(true);
-        hideError();
-        var player = document.getElementById('tts-player');
-        if (player) player.classList.remove('visible');
-
-        /* Step 1: Translate if requested */
-        var translateOn = (document.getElementById('tts-translate-toggle') || {}).checked;
-        var ttsText = text;
-        if (translateOn && voiceObj.lang !== 'en') {
-            setStatus('Translating to ' + voiceObj.locale.toUpperCase() + '…', true);
-            ttsText = await translateText(text, voiceObj.locale, voiceObj.lang);
-        } else if (translateOn && voiceObj.lang === 'en') {
-            /* English voice but translate toggled — use as-is */
-            ttsText = text;
-        }
-
-        /* Step 2: TTS */
-        setStatus('Generating audio with ' + voiceObj.name + '…', true);
-        var chunks  = splitText(ttsText);
-        var buffers = [];
-        var usedBrowser = false;
-
-        for (var i = 0; i < chunks.length; i++) {
-            setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
-            try {
-                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale, voiceObj.gender);
-                buffers.push(buf);
-            } catch(e) {
-                /* All Pollinations voices failed — fall back to browser TTS */
-                usedBrowser = true;
-                break;
-            }
-        }
-
-        setGenerating(false);
-        setStatus('', false);
-
-        if (usedBrowser || !buffers.length) {
-            browserModeText  = ttsText;
-            browserModeSpeed = speed;
-            browserModeVoice = voiceObj;
-            showBrowserPlayer(ttsText, speed, voiceObj);
-            try { await speakWithBrowser(ttsText, speed, voiceObj); } catch(e) {}
+        /* If fetch is unavailable (very old/restricted browsers like Phoenix SE),
+           go straight to browser TTS — no blob URL approach possible           */
+        if (typeof window.fetch !== 'function') {
+            speakWithBrowserFallback(spoken, onDone);
             return;
         }
 
-        /* Merge chunks into single blob */
-        var finalBuf  = buffers.length === 1 ? buffers[0] : concatBuffers(buffers);
-        var blob      = new Blob([finalBuf], { type: 'audio/mpeg' });
-        var url       = URL.createObjectURL(blob);
-        currentAudioBlob = blob;
-        currentAudioUrl  = url;
-        browserModeText  = null;
-
-        showRealPlayer(url, blob, voiceObj, speed, text);
-        saveToHistory(text, voiceObj, speed);
-    }
-
-    /* ── Player display ─────────────────────────────────────────── */
-    function showRealPlayer(url, blob, voiceObj, speed, originalText) {
-        var audio = document.getElementById('tts-audio');
-        if (audio) {
-            audio.style.display = 'block';
-            audio.src = url;
-            audio.load();
-            audio.playbackRate = speed;
-            audio.play().catch(function() {});
+        /* Split into ≤200-char sentence chunks (shorter = faster per-chunk load
+           on mobile, less chance of a mid-sentence network timeout)             */
+        var chunks = splitSpeechChunks(spoken, 200);
+        var idx    = 0;
+        var doneCalled = false;
+        function finish() {
+            if (doneCalled) return; doneCalled = true;
+            currentStudioAudio = null;
+            voiceAiTalking     = false;
+            if (onDone) onDone();
         }
 
-        var bp = document.getElementById('tts-browser-player');
-        if (bp) bp.style.display = 'none';
-
-        var dl = document.getElementById('tts-download-btn');
-        if (dl) dl.style.display = '';
-
-        var row = document.getElementById('tts-player-voice-row');
-        if (row) {
-            row.innerHTML =
-                '<span class="tts-pv-name">' + esc(voiceObj.name) + '</span>' +
-                '<span class="tts-pv-region">' + esc(voiceObj.region) + '</span>' +
-                '<span class="tts-pv-gender ' + voiceObj.gender + '">' + (voiceObj.gender === 'male' ? '♂' : '♀') + '</span>' +
-                '<span class="tts-pv-speed">' + speed.toFixed(1) + '×</span>' +
-                '<span class="tts-pv-chars">' + originalText.length + ' chars</span>';
+        function fallbackRemaining() {
+            if (!voiceAiTalking) { finish(); return; }
+            var remaining = chunks.slice(idx - 1).join(' ');
+            speakWithBrowserFallback(remaining, finish);
         }
 
-        var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase();
+        function playNext() {
+            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
 
-        var player = document.getElementById('tts-player');
-        if (player) player.classList.add('visible');
-    }
+            var chunk = chunks[idx++];
 
-    function showBrowserPlayer(text, speed, voiceObj) {
-        currentAudioUrl  = null;
-        currentAudioBlob = null;
+            /* Try onyx first (most reliable male voice on Pollinations),
+               then echo, then shimmer — ensures audio always plays      */
+            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 12000)
+                .then(function(blob) {
+                    if (!voiceAiTalking) { finish(); return; }
 
-        var audio = document.getElementById('tts-audio');
-        if (audio) audio.style.display = 'none';
+                    var blobUrl = URL.createObjectURL(blob);
+                    var audio   = new Audio();
+                    audio.setAttribute('playsinline', '');   /* iOS inline playback */
+                    audio.setAttribute('webkit-playsinline', '');
+                    audio.preload  = 'auto';
+                    audio.volume   = 1.0;
+                    audio.src      = blobUrl;
+                    currentStudioAudio = audio;
 
-        var bp = document.getElementById('tts-browser-player');
-        if (bp) bp.style.display = 'flex';
-
-        var dl = document.getElementById('tts-download-btn');
-        if (dl) dl.style.display = 'none';
-
-        var row = document.getElementById('tts-player-voice-row');
-        if (row) row.innerHTML = '<span class="tts-pv-name">Browser Voice</span><span class="tts-pv-region">Built-in</span>';
-
-        var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = 'Download unavailable in browser fallback mode';
-
-        var player = document.getElementById('tts-player');
-        if (player) player.classList.add('visible');
-    }
-
-    /* ── Download ────────────────────────────────────────────── */
-    function download() {
-        if (!currentAudioBlob) return;
-        var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
-        var name     = (voiceObj ? voiceObj.name.toLowerCase() : 'tts') + '-xzily-' + Date.now() + '.mp3';
-        var a        = document.createElement('a');
-        a.href       = URL.createObjectURL(currentAudioBlob);
-        a.download   = name;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-    }
-
-    /* ── History ─────────────────────────────────────────────── */
-    function saveToHistory(text, voiceObj, speed) {
-        var h = loadHistory();
-        h.unshift({ id: Date.now(), text: text, voiceName: voiceObj.name, voiceId: voiceObj.id, region: voiceObj.region, speed: speed, ts: Date.now() });
-        if (h.length > 15) h = h.slice(0, 15);
-        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch(e) {}
-        renderHistory();
-    }
-
-    function loadHistory() {
-        try { var r = localStorage.getItem(HISTORY_KEY); return r ? JSON.parse(r) : []; } catch(e) { return []; }
-    }
-
-    function renderHistory() {
-        var h    = loadHistory();
-        var wrap = document.getElementById('tts-history-wrap');
-        var list = document.getElementById('tts-history-list');
-        if (!list) return;
-        if (!h.length) { if (wrap) wrap.style.display = 'none'; return; }
-        if (wrap) wrap.style.display = 'block';
-        list.innerHTML = '';
-        h.slice(0, 10).forEach(function(entry) {
-            var item = document.createElement('div');
-            item.className = 'tts-history-item';
-            item.innerHTML =
-                '<div class="tts-history-icon">🔊</div>' +
-                '<div class="tts-history-info">' +
-                    '<div class="tts-history-text" title="' + esc(entry.text) + '">' + esc(entry.text.slice(0, 70)) + (entry.text.length > 70 ? '…' : '') + '</div>' +
-                    '<div class="tts-history-meta">' + esc(entry.voiceName || '') + ' · ' + esc(entry.region || '') + ' · ' + (entry.speed || 1) + '×</div>' +
-                '</div>' +
-                '<button class="tts-btn tts-btn-ghost tts-btn-sm tts-h-reuse">Reuse</button>';
-            item.querySelector('.tts-h-reuse').addEventListener('click', function(e) {
-                e.stopPropagation();
-                var ta = document.getElementById('tts-text');
-                if (ta) { ta.value = entry.text; updateCharCount(); }
-                /* Try to re-select the same voice */
-                if (entry.voiceId) {
-                    selectedVoice = entry.voiceId;
-                    var vo = VOICES.find(function(v) { return v.id === entry.voiceId; });
-                    if (vo) {
-                        /* Switch language filter to match */
-                        var lf = document.getElementById('tts-lang-filter');
-                        if (lf) lf.value = vo.lang;
-                        renderVoices();
-                        updateVoiceBadge(vo);
-                        updateTranslateNote(vo);
+                    var stallTimer = null;
+                    var cleaned    = false;
+                    function cleanup() {
+                        if (cleaned) return; cleaned = true;
+                        clearTimeout(stallTimer);
+                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                        currentStudioAudio = null;
                     }
-                }
-            });
-            list.appendChild(item);
-        });
+
+                    /* Stall watchdog: if audio plays but doesn't fire 'ended'
+                       within (duration + 4 s), advance to next chunk          */
+                    audio.addEventListener('playing', function() {
+                        var dur = isFinite(audio.duration) && audio.duration > 0
+                                  ? audio.duration * 1000 : 8000;
+                        stallTimer = setTimeout(function() {
+                            cleanup();
+                            playNext();
+                        }, dur + 4000);
+                    });
+
+                    audio.addEventListener('ended', function() {
+                        cleanup();
+                        playNext();
+                    });
+
+                    audio.addEventListener('error', function() {
+                        cleanup();
+                        fallbackRemaining();
+                    });
+
+                    audio.play().catch(function() {
+                        cleanup();
+                        /* play() rejected (autoplay policy) — browser TTS for rest */
+                        fallbackRemaining();
+                    });
+                })
+                .catch(function() {
+                    if (!voiceAiTalking) { finish(); return; }
+                    /* All Pollinations voices failed — browser TTS for rest */
+                    fallbackRemaining();
+                });
+        }
+
+        playNext();
     }
 
-    /* ── UI helpers ──────────────────────────────────────────── */
-    function updateCharCount() {
-        var text = (document.getElementById('tts-text') || {}).value || '';
-        var len  = text.length;
-        var el   = document.getElementById('tts-char-count');
+    /* ── UI state helpers ── */
+    function setVoiceState(state) {
+        var orb      = document.getElementById('dts-voice-orb');
+        var statusEl = document.getElementById('dts-voice-status');
+        var togBtn   = document.getElementById('dts-voice-toggle');
+        var micIcon  = document.getElementById('dts-voice-mic-icon');
+        var waveIcon = document.getElementById('dts-voice-wave-icon');
+
+        var labels = {
+            idle:      'Tap "Start Listening" to begin',
+            listening: 'Listening… speak now',
+            thinking:  'XZILY is thinking…',
+            speaking:  'XZILY is speaking…',
+            error:     'Microphone error',
+            closed:    ''
+        };
+        var togLabels = {
+            idle:      'Start Listening',
+            listening: 'Stop Listening',
+            thinking:  'Please wait…',
+            speaking:  'Interrupt',
+            error:     'Retry',
+            closed:    ''
+        };
+
+        if (statusEl) statusEl.textContent = labels[state] || state;
+        if (orb)      orb.dataset.state    = state;
+        if (togBtn)   togBtn.textContent   = togLabels[state] || state;
+
+        /* Swap icon: mic ↔ wave */
+        if (micIcon && waveIcon) {
+            micIcon.style.display  = state === 'speaking' ? 'none'  : '';
+            waveIcon.style.display = state === 'speaking' ? ''      : 'none';
+        }
+    }
+
+    function setVoiceTranscript(text) {
+        var el = document.getElementById('dts-voice-transcript');
+        if (el) el.textContent = text;
+    }
+
+    /* =========================================================
+       UTILITIES
+    ========================================================= */
+    function showTyping(show) {
+        var el   = document.getElementById('dts-typing');
+        var msgs = document.getElementById('dts-messages');
         if (!el) return;
-        el.textContent = len.toLocaleString() + ' / 5,000 characters';
-        el.className   = 'tts-char-count' + (len >= MAX_CHARS ? ' over' : len > 4500 ? ' warn' : '');
-    }
-
-    function setGenerating(on) {
-        var btn = document.getElementById('tts-generate-btn');
-        if (btn) {
-            btn.disabled    = on;
-            btn.textContent = on ? 'Generating…' : '';
-            if (!on) {
-                btn.innerHTML =
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' +
-                    ' Generate Speech';
-            }
+        if (show) {
+            /* Move indicator INSIDE the scrollable messages container
+               so it appears directly below the last sent message */
+            if (msgs && el.parentNode !== msgs) msgs.appendChild(el);
+            el.style.display = 'flex';
+            scrollToBottom();
+        } else {
+            el.style.display = 'none';
         }
     }
-
-    function setStatus(text, show) {
-        var el = document.getElementById('tts-status');
-        var tx = document.getElementById('tts-status-text');
-        if (el) el.className = 'tts-status' + (show ? ' visible' : '');
-        if (tx && text) tx.textContent = text;
+    function scrollToBottom() {
+          var msgs = document.getElementById('dts-messages');
+          if (!msgs) return;
+          /* Add extra buffer so newest message always clears the fixed footer
+             on iOS, Android, and desktop regardless of safe-area size */
+          requestAnimationFrame(function () {
+              msgs.scrollTop = msgs.scrollHeight + 200;
+          });
+      }
+    function escHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
-
-    function showError(msg) {
-        var el = document.getElementById('tts-error');
-        if (el) { el.textContent = '⚠ ' + msg; el.className = 'tts-error visible'; }
-    }
-
-    function hideError() {
-        var el = document.getElementById('tts-error');
-        if (el) el.className = 'tts-error';
-    }
-
-    function esc(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    /* ── Init ────────────────────────────────────────────────── */
-    document.addEventListener('DOMContentLoaded', function() {
-
-        renderVoices();
-        updateVoiceBadge(null);
-        renderHistory();
-
-        /* Language filter */
-        var lf = document.getElementById('tts-lang-filter');
-        if (lf) lf.addEventListener('change', function() { renderVoices(); });
-
-        /* Gender filter buttons */
-        var gfBtns = document.querySelectorAll('.tts-gender-btn');
-        gfBtns.forEach(function(btn) {
-            btn.addEventListener('click', function() {
-                genderFilter = btn.dataset.gender;
-                gfBtns.forEach(function(b) { b.classList.remove('active'); });
-                btn.classList.add('active');
-                renderVoices();
-            });
-        });
-
-        /* Speed slider */
-        var speedEl  = document.getElementById('tts-speed');
-        var speedVal = document.getElementById('tts-speed-val');
-        if (speedEl && speedVal) {
-            speedEl.addEventListener('input', function() {
-                var v = parseFloat(this.value).toFixed(1);
-                speedVal.textContent = v + '×';
-                var audio = document.getElementById('tts-audio');
-                if (audio && audio.src) audio.playbackRate = parseFloat(v);
-            });
-        }
-
-        /* Char counter */
-        var ta = document.getElementById('tts-text');
-        if (ta) {
-            ta.addEventListener('input', updateCharCount);
-            ta.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); generate(); }
-            });
-        }
-
-        /* Generate */
-        var genBtn = document.getElementById('tts-generate-btn');
-        if (genBtn) genBtn.addEventListener('click', generate);
-
-        /* Download */
-        var dlBtn = document.getElementById('tts-download-btn');
-        if (dlBtn) dlBtn.addEventListener('click', download);
-
-        /* Regenerate */
-        var regenBtn = document.getElementById('tts-regen-btn');
-        if (regenBtn) regenBtn.addEventListener('click', generate);
-
-        /* Clear */
-        var clearBtn = document.getElementById('tts-clear-btn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                var ta = document.getElementById('tts-text');
-                if (ta) ta.value = '';
-                updateCharCount();
-                var player = document.getElementById('tts-player');
-                if (player) player.classList.remove('visible');
-                hideError();
-                currentAudioUrl  = null;
-                currentAudioBlob = null;
-                browserModeText  = null;
-                browserModeVoice = null;
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                var audio = document.getElementById('tts-audio');
-                if (audio) { audio.pause(); audio.src = ''; audio.style.display = 'block'; }
-                var bp = document.getElementById('tts-browser-player');
-                if (bp) bp.style.display = 'none';
-            });
-        }
-
-        /* Browser speech play/stop */
-        var bPlay = document.getElementById('tts-browser-play-btn');
-        if (bPlay) bPlay.addEventListener('click', function() {
-            if (browserModeText) speakWithBrowser(browserModeText, browserModeSpeed, browserModeVoice).catch(function() {});
-        });
-        var bStop = document.getElementById('tts-browser-stop-btn');
-        if (bStop) bStop.addEventListener('click', function() {
-            if (window.speechSynthesis) window.speechSynthesis.cancel();
-        });
-
-        /* Clear history */
-        var clrHist = document.getElementById('tts-clear-history-btn');
-        if (clrHist) {
-            clrHist.addEventListener('click', function() {
-                if (confirm('Clear all audio history?')) {
-                    try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
-                    renderHistory();
-                }
-            });
-        }
-    });
+    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 })();

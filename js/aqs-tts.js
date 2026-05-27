@@ -12,6 +12,7 @@
     var currentAudioBlob = null;
     var currentAudioUrl  = null;
     var browserModeText  = null;
+    var browserModeVoice = null;
     var browserModeSpeed = 1;
     var genderFilter     = '';
 
@@ -219,29 +220,48 @@
         } catch(e) { return text; }
     }
 
-    /* ── Pollinations TTS fetch ────────────────────────────────── */
-    async function fetchChunk(text, baseVoice, locale) {
-        var encoded  = encodeURIComponent(text);
-        /* Cache buster must include voice + timestamp so Pollinations never
-           serves a cached response from a different voice selection.
-           The &language param is not supported by Pollinations and is omitted. */
-        var cacheBust = baseVoice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url      = 'https://audio.pollinations.ai/' + encoded +
-                       '?voice='   + encodeURIComponent(baseVoice) +
-                       '&model=openai-audio' +
-                       '&nologo=true' +
-                       '&v=' + cacheBust;
+    /* ── Pollinations TTS fetch — single voice attempt ──────────── */
+    async function fetchChunkOnce(text, voice) {
+        var encoded   = encodeURIComponent(text);
+        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+        var url       = 'https://audio.pollinations.ai/' + encoded +
+                        '?voice='   + voice +
+                        '&model=openai-audio' +
+                        '&nologo=true' +
+                        '&v=' + cacheBust;
         var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, 50000);
+        var tid  = setTimeout(function() { ctrl.abort(); }, 15000);
         try {
             var r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
             clearTimeout(tid);
-            if (r.ok) return await r.arrayBuffer();
-            throw new Error('HTTP ' + r.status);
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            var buf = await r.arrayBuffer();
+            /* Reject empty/tiny responses — Pollinations returns < 100 bytes
+               when it silently ignores an unsupported voice parameter        */
+            if (!buf || buf.byteLength < 100) throw new Error('Empty audio');
+            return buf;
         } catch(e) {
             clearTimeout(tid);
             throw e;
         }
+    }
+
+    /* ── fetchChunk: try requested voice, then gender-safe fallback ── */
+    async function fetchChunk(text, baseVoice, locale, gender) {
+        /* Try the exact voice first */
+        try { return await fetchChunkOnce(text, baseVoice); } catch(_) {}
+
+        /* Fallback voices: male → onyx/echo, female → nova/shimmer
+           These are the most reliably supported voices on Pollinations  */
+        var fallbacks = (gender === 'female')
+            ? ['nova', 'shimmer', 'alloy', 'echo']
+            : ['onyx', 'echo', 'fable', 'nova'];
+        fallbacks = fallbacks.filter(function(v) { return v !== baseVoice; });
+
+        for (var fi = 0; fi < fallbacks.length; fi++) {
+            try { return await fetchChunkOnce(text, fallbacks[fi]); } catch(_) {}
+        }
+        throw new Error('All voices failed for chunk');
     }
 
     function concatBuffers(buffers) {
@@ -268,15 +288,47 @@
         return chunks.filter(function(c) { return c.length > 0; });
     }
 
-    function speakWithBrowser(text, speed) {
+    function speakWithBrowser(text, speed, voiceObj) {
         return new Promise(function(resolve, reject) {
             if (!window.speechSynthesis) { reject(new Error('Not supported')); return; }
             window.speechSynthesis.cancel();
-            var u = new SpeechSynthesisUtterance(text);
-            u.rate = Math.min(Math.max(parseFloat(speed) || 1, 0.1), 10);
-            u.onend = resolve;
-            u.onerror = function(e) { reject(new Error('Speech error: ' + (e.error || 'unknown'))); };
-            window.speechSynthesis.speak(u);
+            var u    = new SpeechSynthesisUtterance(text);
+            u.rate   = Math.min(Math.max(parseFloat(speed) || 1, 0.1), 10);
+            u.lang   = (voiceObj && voiceObj.locale) || 'en-US';
+            u.onend  = resolve;
+            u.onerror = function(e) { reject(new Error(e.error || 'speech-error')); };
+
+            function pickVoiceAndSpeak() {
+                var voices = window.speechSynthesis.getVoices();
+                if (voiceObj && voices.length) {
+                    var locale = voiceObj.locale || 'en-US';
+                    var lang   = locale.split('-')[0];
+                    var isFem  = voiceObj.gender === 'female';
+                    /* Priority: exact locale + gender match → exact locale →
+                       language match + gender → language match → any English */
+                    var pick =
+                        voices.find(function(v) { return v.lang === locale && (isFem ? /female|woman|girl|zira|hazel|susan|karen|samantha|victoria|moira|tessa|fiona|helena|anna/i.test(v.name) : /male|man|david|james|george|mark|daniel|rishi|fred|alex/i.test(v.name)); }) ||
+                        voices.find(function(v) { return v.lang === locale; }) ||
+                        voices.find(function(v) { return v.lang.startsWith(lang) && (isFem ? /female|woman|girl|zira|hazel|susan|karen|samantha|victoria|moira|tessa|fiona|helena|anna/i.test(v.name) : /male|man|david|james|george|mark|daniel|rishi|fred|alex/i.test(v.name)); }) ||
+                        voices.find(function(v) { return v.lang.startsWith(lang); }) ||
+                        voices.find(function(v) { return v.lang.startsWith('en'); });
+                    if (pick) u.voice = pick;
+                }
+                window.speechSynthesis.speak(u);
+            }
+
+            /* Chrome loads voices async on first call */
+            var existing = window.speechSynthesis.getVoices();
+            if (existing.length) {
+                setTimeout(pickVoiceAndSpeak, 50);
+            } else {
+                window.speechSynthesis.onvoiceschanged = function() {
+                    window.speechSynthesis.onvoiceschanged = null;
+                    setTimeout(pickVoiceAndSpeak, 50);
+                };
+                /* Fallback if event never fires */
+                setTimeout(pickVoiceAndSpeak, 1200);
+            }
         });
     }
 
@@ -317,10 +369,10 @@
         for (var i = 0; i < chunks.length; i++) {
             setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
             try {
-                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale);
+                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale, voiceObj.gender);
                 buffers.push(buf);
             } catch(e) {
-                /* Fallback to browser speech */
+                /* All Pollinations voices failed — fall back to browser TTS */
                 usedBrowser = true;
                 break;
             }
@@ -332,8 +384,9 @@
         if (usedBrowser || !buffers.length) {
             browserModeText  = ttsText;
             browserModeSpeed = speed;
+            browserModeVoice = voiceObj;
             showBrowserPlayer(ttsText, speed, voiceObj);
-            try { await speakWithBrowser(ttsText, speed); } catch(e) {}
+            try { await speakWithBrowser(ttsText, speed, voiceObj); } catch(e) {}
             return;
         }
 
@@ -584,6 +637,7 @@
                 currentAudioUrl  = null;
                 currentAudioBlob = null;
                 browserModeText  = null;
+                browserModeVoice = null;
                 if (window.speechSynthesis) window.speechSynthesis.cancel();
                 var audio = document.getElementById('tts-audio');
                 if (audio) { audio.pause(); audio.src = ''; audio.style.display = 'block'; }
@@ -595,7 +649,7 @@
         /* Browser speech play/stop */
         var bPlay = document.getElementById('tts-browser-play-btn');
         if (bPlay) bPlay.addEventListener('click', function() {
-            if (browserModeText) speakWithBrowser(browserModeText, browserModeSpeed).catch(function() {});
+            if (browserModeText) speakWithBrowser(browserModeText, browserModeSpeed, browserModeVoice).catch(function() {});
         });
         var bStop = document.getElementById('tts-browser-stop-btn');
         if (bStop) bStop.addEventListener('click', function() {
