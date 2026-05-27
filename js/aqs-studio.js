@@ -1178,6 +1178,15 @@
         var finalText   = '';
         var hasSpoken   = false;
 
+        /* On mobile, ignore any results that arrive in the first 600 ms.
+           Phone speakers linger after audio stops and SpeechRecognition
+           can pick up that residual echo before the user has even spoken.
+           Desktop does not need this because speaker/mic separation is
+           greater and barge-in already guards the timing there.           */
+        var deafUntil = (navigator.maxTouchPoints > 0)
+                        ? Date.now() + 600
+                        : 0;
+
         /* 15-second hard cutoff */
         voiceSilenceTimer = setTimeout(function () {
             if (voiceListening && voiceRecog) {
@@ -1186,6 +1195,8 @@
         }, VOICE_MAX_MS);
 
         recog.onresult = function (e) {
+            /* Drop any results that arrive during the deaf window */
+            if (Date.now() < deafUntil) return;
             hasSpoken = true;
             finalText = '';
             var interim = '';
@@ -1268,6 +1279,13 @@
         if (!voiceActive || !voiceAiTalking) return;
         if (voiceBargeAnalyser) return; /* already running */
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+
+        /* On mobile the speaker is millimetres from the mic — the AI's own
+           TTS audio easily exceeds any reasonable amplitude threshold, so
+           barge-in via AudioContext is unreliable and causes the mic to pick
+           up the AI's speech and resend it as a user message.
+           On mobile the user should tap the "Interrupt" button instead.       */
+        if (navigator.maxTouchPoints > 0) return;
 
         navigator.mediaDevices.getUserMedia({ audio: true, video: false })
             .then(function (stream) {
@@ -1432,7 +1450,10 @@
             setVoiceTranscript('');
             speakVoiceResponse(response, function () {
                 if (voiceActive) {
-                    var micDelay = (navigator.maxTouchPoints > 0) ? 950 : 650;
+                    /* Mobile needs a longer pause after AI finishes — the phone
+                       speaker keeps vibrating/echoing for ~1 s after audio stops
+                       and SpeechRecognition would otherwise pick up that echo   */
+                    var micDelay = (navigator.maxTouchPoints > 0) ? 1600 : 700;
                     voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
                 }
             });
@@ -1526,13 +1547,8 @@
                            '?model=openai-audio&voice=shimmer&nologo=true';
 
         var audio        = new Audio(ttsUrl);
-        audio.volume     = 1.0;
+        audio.volume     = 0;   /* start silent — fade in to prevent cold-start pop */
         currentStudioAudio = audio;
-
-        /* NOTE: The old GainNode (2× amplification) was removed — it caused
-           an audible pop/click every time audio started because creating a new
-           AudioContext and routing through a GainNode triggers a graph-connect
-           transient. The audio is already at full volume (1.0) without it.    */
 
         /* Timeout — if Pollinations hasn't started within 5 s, fall back */
         var fallbackTimer = setTimeout(function() {
@@ -1545,7 +1561,16 @@
 
         audio.addEventListener('playing', function() {
             clearTimeout(fallbackTimer);
-            startBargeDetection();   /* begin watching mic so user can interrupt */
+            /* Fade volume from 0 → 1.0 over 180 ms to prevent the cold-start
+               pop/click that occurs when audio begins at full volume abruptly */
+            var fadeStart = Date.now();
+            (function fadeIn() {
+                if (currentStudioAudio !== audio) return; /* already replaced */
+                var p = Math.min(1, (Date.now() - fadeStart) / 180);
+                audio.volume = p;
+                if (p < 1) requestAnimationFrame(fadeIn);
+            })();
+            startBargeDetection();
         });
 
         audio.addEventListener('ended', function() {
