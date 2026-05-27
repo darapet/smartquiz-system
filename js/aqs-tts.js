@@ -1,531 +1,427 @@
-/* xzily AI — Text to Speech */
-/* Developed by Omomo Excellence in corporation with Darapet Technology */
+/* aqs-tts.js — XZILY AI Text-to-Speech v2
+   82 professional voices · Groq translation · Pollinations audio · Download
+   ─────────────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-    var cfg = window.AQS_TTS_CONFIG || {};
     var HISTORY_KEY = 'xzily_tts_history';
-    var PREF_KEY    = 'xzily_tts_pref';
     var MAX_CHARS   = 5000;
-    var CHUNK_SIZE  = 200;
+    var CHUNK_SIZE  = 180;
 
-    var selectedVoice    = '';        /* empty — user must pick a voice each session */
-    var currentAudioUrl  = null;
+    var selectedVoice    = '';
     var currentAudioBlob = null;
-    var browserModeText  = null;   /* stored text for browser-speech replay */
+    var currentAudioUrl  = null;
+    var browserModeText  = null;
     var browserModeSpeed = 1;
+    var genderFilter     = '';
 
-    /* ── Voice list ── */
+    /* ══════════════════════════════════════════════════════════════
+       82 PROFESSIONAL VOICES
+       base: maps to Pollinations neural engine (alloy/echo/fable/onyx/nova/shimmer)
+       locale: sent to TTS for correct pronunciation
+    ══════════════════════════════════════════════════════════════ */
     var VOICES = [
-        /* English */
-        { id:'Brian',    name:'Brian',    lang:'en', region:'UK',       gender:'male'   },
-        { id:'Amy',      name:'Amy',      lang:'en', region:'UK',       gender:'female' },
-        { id:'Emma',     name:'Emma',     lang:'en', region:'UK',       gender:'female' },
-        { id:'Geraint',  name:'Geraint',  lang:'en', region:'Welsh',    gender:'male'   },
-        { id:'Ivy',      name:'Ivy',      lang:'en', region:'US',       gender:'female' },
-        { id:'Joanna',   name:'Joanna',   lang:'en', region:'US',       gender:'female' },
-        { id:'Joey',     name:'Joey',     lang:'en', region:'US',       gender:'male'   },
-        { id:'Justin',   name:'Justin',   lang:'en', region:'US',       gender:'male'   },
-        { id:'Kendra',   name:'Kendra',   lang:'en', region:'US',       gender:'female' },
-        { id:'Kimberly', name:'Kimberly', lang:'en', region:'US',       gender:'female' },
-        { id:'Matthew',  name:'Matthew',  lang:'en', region:'US',       gender:'male'   },
-        { id:'Salli',    name:'Salli',    lang:'en', region:'US',       gender:'female' },
-        { id:'Nicole',   name:'Nicole',   lang:'en', region:'AU',       gender:'female' },
-        { id:'Russell',  name:'Russell',  lang:'en', region:'AU',       gender:'male'   },
-        { id:'Aditi',    name:'Aditi',    lang:'hi', region:'IN/EN',    gender:'female' },
-        { id:'Raveena',  name:'Raveena',  lang:'hi', region:'IN',       gender:'female' },
-        /* French */
-        { id:'Celine',   name:'Céline',   lang:'fr', region:'FR',       gender:'female' },
-        { id:'Mathieu',  name:'Mathieu',  lang:'fr', region:'FR',       gender:'male'   },
-        { id:'Chantal',  name:'Chantal',  lang:'fr', region:'CA',       gender:'female' },
-        /* German */
-        { id:'Hans',     name:'Hans',     lang:'de', region:'DE',       gender:'male'   },
-        { id:'Marlene',  name:'Marlene',  lang:'de', region:'DE',       gender:'female' },
-        { id:'Vicki',    name:'Vicki',    lang:'de', region:'DE',       gender:'female' },
-        /* Spanish */
-        { id:'Conchita', name:'Conchita', lang:'es', region:'ES',       gender:'female' },
-        { id:'Enrique',  name:'Enrique',  lang:'es', region:'ES',       gender:'male'   },
-        { id:'Lucia',    name:'Lucia',    lang:'es', region:'ES',       gender:'female' },
-        { id:'Miguel',   name:'Miguel',   lang:'es', region:'US',       gender:'male'   },
-        { id:'Penelope', name:'Penélope', lang:'es', region:'US',       gender:'female' },
-        /* Italian */
-        { id:'Carla',    name:'Carla',    lang:'it', region:'IT',       gender:'female' },
-        { id:'Giorgio',  name:'Giorgio',  lang:'it', region:'IT',       gender:'male'   },
-        /* Portuguese */
-        { id:'Cristiano',name:'Cristiano',lang:'pt', region:'PT',       gender:'male'   },
-        { id:'Ines',     name:'Inês',     lang:'pt', region:'PT',       gender:'female' },
-        { id:'Vitoria',  name:'Vitória',  lang:'pt', region:'BR',       gender:'female' },
-        /* Japanese */
-        { id:'Mizuki',   name:'Mizuki',   lang:'ja', region:'JP',       gender:'female' },
-        { id:'Takumi',   name:'Takumi',   lang:'ja', region:'JP',       gender:'male'   },
-        /* Korean */
-        { id:'Seoyeon',  name:'Seoyeon',  lang:'ko', region:'KR',       gender:'female' },
-        /* Chinese */
-        { id:'Zhiyu',    name:'Zhiyu',    lang:'zh', region:'CN',       gender:'female' },
-        /* Dutch */
-        { id:'Lotte',    name:'Lotte',    lang:'nl', region:'NL',       gender:'female' },
-        { id:'Ruben',    name:'Ruben',    lang:'nl', region:'NL',       gender:'male'   },
-        /* Polish */
-        { id:'Ewa',      name:'Ewa',      lang:'pl', region:'PL',       gender:'female' },
-        { id:'Jacek',    name:'Jacek',    lang:'pl', region:'PL',       gender:'male'   },
-        { id:'Maja',     name:'Maja',     lang:'pl', region:'PL',       gender:'female' },
-        /* Russian */
-        { id:'Maxim',    name:'Maxim',    lang:'ru', region:'RU',       gender:'male'   },
-        { id:'Tatyana',  name:'Tatyana',  lang:'ru', region:'RU',       gender:'female' },
-        /* Turkish */
-        { id:'Filiz',    name:'Filiz',    lang:'tr', region:'TR',       gender:'female' },
-        /* Swedish */
-        { id:'Astrid',   name:'Astrid',   lang:'sv', region:'SE',       gender:'female' },
-        /* Danish */
-        { id:'Naja',     name:'Naja',     lang:'da', region:'DK',       gender:'female' },
-        { id:'Mads',     name:'Mads',     lang:'da', region:'DK',       gender:'male'   },
-        /* Norwegian */
-        { id:'Liv',      name:'Liv',      lang:'nb', region:'NO',       gender:'female' },
-        /* Romanian */
-        { id:'Carmen',   name:'Carmen',   lang:'ro', region:'RO',       gender:'female' },
-        /* Welsh */
-        { id:'Gwyneth',  name:'Gwyneth',  lang:'cy', region:'UK',       gender:'female' },
-        /* Arabic */
-        { id:'Zeina',    name:'Zeina',    lang:'ar', region:'AR',       gender:'female' },
+        /* ── ENGLISH (20) ─────────────────────────────────────── */
+        { id:'Brian',      name:'Brian',      lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'fable',   desc:'Warm & authoritative' },
+        { id:'Matthew',    name:'Matthew',    lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'onyx',    desc:'Deep & professional'  },
+        { id:'Joey',       name:'Joey',       lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    desc:'Friendly & clear'     },
+        { id:'Justin',     name:'Justin',     lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'fable',   desc:'Casual & conversational'},
+        { id:'Russell',    name:'Russell',    lang:'en', locale:'en-AU', region:'AU',            gender:'male',   base:'echo',    desc:'Australian accent'    },
+        { id:'Daniel',     name:'Daniel',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    desc:'British & refined'    },
+        { id:'Kevin',      name:'Kevin',      lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    desc:'Crisp & energetic'    },
+        { id:'Geraint',    name:'Geraint',    lang:'en', locale:'en-GB', region:'Wales',         gender:'male',   base:'fable',   desc:'Welsh character'      },
+        { id:'Arthur',     name:'Arthur',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    desc:'Classic British'      },
+        { id:'Ryan',       name:'Ryan',       lang:'en', locale:'en-CA', region:'Canada',        gender:'male',   base:'echo',    desc:'Canadian & neutral'   },
+        { id:'Amy',        name:'Amy',        lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'shimmer', desc:'Bright & professional'},
+        { id:'Emma',       name:'Emma',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'alloy',   desc:'Confident & clear'    },
+        { id:'Joanna',     name:'Joanna',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', desc:'Warm & articulate'    },
+        { id:'Salli',      name:'Salli',      lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Engaging & natural'   },
+        { id:'Kimberly',   name:'Kimberly',   lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   desc:'Neutral & versatile'  },
+        { id:'Kendra',     name:'Kendra',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Conversational tone'  },
+        { id:'Nicole',     name:'Nicole',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'alloy',   desc:'Australian & friendly'},
+        { id:'Olivia',     name:'Olivia',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'shimmer', desc:'Australian & bright'  },
+        { id:'Aria',       name:'Aria',       lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Expressive & dynamic' },
+        { id:'Jane',       name:'Jane',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'shimmer', desc:'Elegant & composed'   },
+        /* ── SPANISH (8) ────────────────────────────────────── */
+        { id:'Enrique',    name:'Enrique',    lang:'es', locale:'es-ES', region:'Spain',         gender:'male',   base:'echo',    desc:'Spanish Castilian'    },
+        { id:'Miguel',     name:'Miguel',     lang:'es', locale:'es-US', region:'US-Latino',     gender:'male',   base:'fable',   desc:'Latino US accent'     },
+        { id:'Pablo',      name:'Pablo',      lang:'es', locale:'es-MX', region:'Mexico',        gender:'male',   base:'onyx',    desc:'Mexican accent'       },
+        { id:'Carlos',     name:'Carlos',     lang:'es', locale:'es-AR', region:'Argentina',     gender:'male',   base:'echo',    desc:'Argentine accent'     },
+        { id:'Conchita',   name:'Conchita',   lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'nova',    desc:'Spanish Castilian'    },
+        { id:'Lucia',      name:'Lucía',      lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'shimmer', desc:'Bright & precise'     },
+        { id:'Penelope',   name:'Penélope',   lang:'es', locale:'es-US', region:'US-Latino',     gender:'female', base:'alloy',   desc:'Neutral Latino'       },
+        { id:'Valentina',  name:'Valentina',  lang:'es', locale:'es-MX', region:'Mexico',        gender:'female', base:'nova',    desc:'Warm Mexican tone'    },
+        /* ── FRENCH (6) ─────────────────────────────────────── */
+        { id:'Mathieu',    name:'Mathieu',    lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'onyx',    desc:'Deep Parisian'        },
+        { id:'Pierre',     name:'Pierre',     lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'fable',   desc:'Sophisticated'        },
+        { id:'Jacques',    name:'Jacques',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'male',   base:'echo',    desc:'Québécois accent'     },
+        { id:'Celine',     name:'Céline',     lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'shimmer', desc:'Elegant Parisian'     },
+        { id:'Isabelle',   name:'Isabelle',   lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'alloy',   desc:'Clear & fluid'        },
+        { id:'Chantal',    name:'Chantal',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'female', base:'nova',    desc:'Québécois warmth'     },
+        /* ── GERMAN (6) ─────────────────────────────────────── */
+        { id:'Hans',       name:'Hans',       lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'onyx',    desc:'Bold & precise'       },
+        { id:'Klaus',      name:'Klaus',      lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'fable',   desc:'Authoritative'        },
+        { id:'Wolfgang',   name:'Wolfgang',   lang:'de', locale:'de-AT', region:'Austria',       gender:'male',   base:'echo',    desc:'Austrian dialect'     },
+        { id:'Marlene',    name:'Marlene',    lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'nova',    desc:'Warm & professional'  },
+        { id:'Vicki',      name:'Vicki',      lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'shimmer', desc:'Bright & energetic'   },
+        { id:'Petra',      name:'Petra',      lang:'de', locale:'de-AT', region:'Austria',       gender:'female', base:'alloy',   desc:'Austrian clarity'     },
+        /* ── PORTUGUESE (6) ─────────────────────────────────── */
+        { id:'Cristiano',  name:'Cristiano',  lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'male',   base:'fable',   desc:'European Portuguese'  },
+        { id:'Ricardo',    name:'Ricardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'echo',    desc:'Brazilian warmth'     },
+        { id:'Eduardo',    name:'Eduardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'onyx',    desc:'Deep & confident'     },
+        { id:'Ines',       name:'Inês',       lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'nova',    desc:'European Portuguese'  },
+        { id:'Vitoria',    name:'Vitória',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'female', base:'shimmer', desc:'Brazilian vivacity'   },
+        { id:'Ana',        name:'Ana',        lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'alloy',   desc:'Clear & precise'      },
+        /* ── ITALIAN (4) ────────────────────────────────────── */
+        { id:'Giorgio',    name:'Giorgio',    lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'onyx',    desc:'Rich & expressive'    },
+        { id:'Marco',      name:'Marco',      lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'fable',   desc:'Warm & natural'       },
+        { id:'Carla',      name:'Carla',      lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'alloy',   desc:'Clear & flowing'      },
+        { id:'Bianca',     name:'Bianca',     lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'shimmer', desc:'Bright & musical'     },
+        /* ── JAPANESE (4) ───────────────────────────────────── */
+        { id:'Takumi',     name:'Takumi',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'echo',    desc:'Clear & formal'       },
+        { id:'Kenji',      name:'Kenji',      lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'onyx',    desc:'Deep & steady'        },
+        { id:'Mizuki',     name:'Mizuki',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'nova',    desc:'Warm & natural'       },
+        { id:'Yuki',       name:'Yuki',       lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'shimmer', desc:'Bright & friendly'    },
+        /* ── ARABIC (4) ─────────────────────────────────────── */
+        { id:'Khalid',     name:'Khalid',     lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'male',   base:'onyx',    desc:'Deep & formal'        },
+        { id:'Omar',       name:'Omar',       lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'male',   base:'fable',   desc:'Egyptian dialect'     },
+        { id:'Zeina',      name:'Zeina',      lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'female', base:'nova',    desc:'Clear & flowing'      },
+        { id:'Fatima',     name:'Fatima',     lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'female', base:'shimmer', desc:'Warm & expressive'    },
+        /* ── CHINESE (4) ────────────────────────────────────── */
+        { id:'Wei',        name:'Wei',        lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'echo',    desc:'Mandarin standard'    },
+        { id:'Zhang',      name:'Zhang',      lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'onyx',    desc:'Authoritative tone'   },
+        { id:'Zhiyu',      name:'Zhiyu',      lang:'zh', locale:'zh-CN', region:'China',         gender:'female', base:'nova',    desc:'Clear Mandarin'       },
+        { id:'Mei',        name:'Mei',        lang:'zh', locale:'zh-TW', region:'Taiwan',        gender:'female', base:'alloy',   desc:'Taiwanese Mandarin'   },
+        /* ── RUSSIAN (4) ────────────────────────────────────── */
+        { id:'Maxim',      name:'Maxim',      lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'onyx',    desc:'Deep & formal'        },
+        { id:'Dmitri',     name:'Dmitri',     lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'fable',   desc:'Expressive tone'      },
+        { id:'Tatyana',    name:'Tatyana',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'alloy',   desc:'Clear & precise'      },
+        { id:'Natasha',    name:'Natasha',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'nova',    desc:'Warm & natural'       },
+        /* ── HINDI (4) ──────────────────────────────────────── */
+        { id:'Arjun',      name:'Arjun',      lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'echo',    desc:'Clear & professional' },
+        { id:'Raj',        name:'Raj',        lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'fable',   desc:'Warm Indian tone'     },
+        { id:'Aditi',      name:'Aditi',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'nova',    desc:'Clear & natural'      },
+        { id:'Priya',      name:'Priya',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'shimmer', desc:'Bright & warm'        },
+        /* ── DUTCH (4) ──────────────────────────────────────── */
+        { id:'Ruben',      name:'Ruben',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'echo',    desc:'Clear & direct'       },
+        { id:'Willem',     name:'Willem',     lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'fable',   desc:'Warm Dutch tone'      },
+        { id:'Lotte',      name:'Lotte',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'female', base:'alloy',   desc:'Precise & clear'      },
+        { id:'Lisa',       name:'Lisa',       lang:'nl', locale:'nl-BE', region:'Belgium',       gender:'female', base:'nova',    desc:'Belgian Dutch'        },
+        /* ── KOREAN (2) ─────────────────────────────────────── */
+        { id:'Junho',      name:'Junho',      lang:'ko', locale:'ko-KR', region:'Korea',         gender:'male',   base:'echo',    desc:'Clear & formal'       },
+        { id:'Seoyeon',    name:'Seoyeon',    lang:'ko', locale:'ko-KR', region:'Korea',         gender:'female', base:'shimmer', desc:'Bright & natural'     },
+        /* ── SWEDISH (2) ────────────────────────────────────── */
+        { id:'Erik',       name:'Erik',       lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'male',   base:'echo',    desc:'Nordic clarity'       },
+        { id:'Astrid',     name:'Astrid',     lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'female', base:'shimmer', desc:'Scandinavian warmth'  },
+        /* ── TURKISH (2) ────────────────────────────────────── */
+        { id:'Mehmet',     name:'Mehmet',     lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'male',   base:'fable',   desc:'Warm & expressive'    },
+        { id:'Filiz',      name:'Filiz',      lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'female', base:'nova',    desc:'Clear & melodic'      },
+        /* ── POLISH (2) ─────────────────────────────────────── */
+        { id:'Jacek',      name:'Jacek',      lang:'pl', locale:'pl-PL', region:'Poland',        gender:'male',   base:'onyx',    desc:'Bold & steady'        },
+        { id:'Maja',       name:'Maja',       lang:'pl', locale:'pl-PL', region:'Poland',        gender:'female', base:'shimmer', desc:'Clear & natural'      },
     ];
 
-    /* ── Render voice grid ── */
-    function renderVoices(filterLang) {
-        var grid    = document.getElementById('tts-voice-grid');
-        var voices  = filterLang ? VOICES.filter(function(v) { return v.lang === filterLang; }) : VOICES;
+    /* ── Voice render ─────────────────────────────────────────── */
+    function renderVoices() {
+        var filterLang   = (document.getElementById('tts-lang-filter')  || {}).value || '';
+        var list = VOICES.filter(function(v) {
+            var langOk   = !filterLang  || v.lang   === filterLang;
+            var genderOk = !genderFilter || v.gender === genderFilter;
+            return langOk && genderOk;
+        });
+        var grid = document.getElementById('tts-voice-grid');
+        if (!grid) return;
         grid.innerHTML = '';
-        voices.forEach(function(v) {
+        if (!list.length) {
+            grid.innerHTML = '<div style="grid-column:1/-1;color:var(--dts-muted);font-size:.82rem;padding:12px 4px">No voices match your filters.</div>';
+            return;
+        }
+        list.forEach(function(v) {
             var card = document.createElement('button');
             card.className = 'tts-voice-card' + (v.id === selectedVoice ? ' selected' : '');
             card.dataset.voice = v.id;
             card.innerHTML =
-                '<div class="tts-voice-name">' + escHtml(v.name) + '</div>' +
-                '<div class="tts-voice-meta">' + escHtml(v.region) + '</div>' +
+                '<div class="tts-voice-name">' + esc(v.name) + '</div>' +
+                '<div class="tts-voice-meta">' + esc(v.region) + '</div>' +
+                '<div class="tts-voice-desc">' + esc(v.desc) + '</div>' +
                 '<span class="tts-voice-gender ' + v.gender + '">' + (v.gender === 'male' ? '♂ Male' : '♀ Female') + '</span>';
             card.addEventListener('click', function() {
                 selectedVoice = v.id;
                 document.querySelectorAll('.tts-voice-card').forEach(function(c) { c.classList.remove('selected'); });
                 card.classList.add('selected');
-                updateVoiceBadge();
-                /* Auto-enable translation for non-English voices so the
-                   voice speaks in its own language naturally */
-                var tt = document.getElementById('tts-translate-toggle');
-                if (tt) tt.checked = (v.lang && v.lang !== 'en');
-                /* Update translate label to hint user */
-                var tLabel = document.getElementById('tts-translate-label');
-                if (tLabel) {
-                    tLabel.textContent = (v.lang && v.lang !== 'en')
-                        ? '🌐 Auto-translate to ' + v.region + ' (recommended — keeps voice natural)'
-                        : '🌐 Translate to another language';
-                }
+                updateVoiceBadge(v);
+                updateTranslateNote(v);
             });
             grid.appendChild(card);
         });
     }
 
-    function updateVoiceBadge() {
+    function updateVoiceBadge(v) {
         var badge = document.getElementById('tts-voice-badge');
         if (!badge) return;
-        var voice = VOICES.find(function(v) { return v.id === selectedVoice; });
-        badge.textContent = voice ? ('🎙 ' + voice.name + ' · ' + voice.region) : 'Select a voice →';
+        if (!v) {
+            var found = VOICES.find(function(x) { return x.id === selectedVoice; });
+            v = found || null;
+        }
+        if (v) {
+            badge.className = 'tts-voice-badge selected';
+            badge.innerHTML =
+                '<span class="tts-badge-icon">' + (v.gender === 'male' ? '♂' : '♀') + '</span>' +
+                '<strong>' + esc(v.name) + '</strong>' +
+                '<span class="tts-badge-region">' + esc(v.region) + '</span>' +
+                '<span class="tts-badge-lang">' + esc(v.lang.toUpperCase()) + '</span>';
+        } else {
+            badge.className = 'tts-voice-badge';
+            badge.textContent = 'Select a voice below →';
+        }
     }
 
-    /* ── Backend endpoint & voice map ── */
+    function updateTranslateNote(v) {
+        var note    = document.getElementById('tts-translate-note');
+        var noteText = document.getElementById('tts-translate-note-text');
+        var toggle  = document.getElementById('tts-translate-toggle');
+        var label   = document.getElementById('tts-translate-label');
+        if (!note || !v) return;
+        var isNonEn = v.lang && v.lang !== 'en';
+        if (toggle) toggle.checked = isNonEn;
+        if (label) {
+            label.textContent = isNonEn
+                ? 'Auto-translate to ' + v.region + ' language'
+                : 'Auto-translate (optional)';
+        }
+        note.style.display = 'flex';
+        if (noteText) {
+            noteText.textContent = isNonEn
+                ? 'Text will be translated to ' + v.locale.toUpperCase() + ' before speaking'
+                : 'Translation is off — speaking in original language';
+        }
+    }
 
-    /* Map named voices → Pollinations TTS engine voices
-       6 distinct neural voices: alloy (neutral F), echo (medium M),
-       fable (warm M), onyx (deep M), nova (warm F), shimmer (bright F)
-       Spread deliberately so adjacent names sound different */
-    var POLLY_TO_POLLINATIONS = {
-        /* English male — 3 distinct male voices */
-        Brian:'fable',   Geraint:'echo',  Joey:'echo',
-        Justin:'fable',  Matthew:'onyx',  Russell:'onyx',
-        /* English female — 3 distinct female voices */
-        Amy:'shimmer',   Emma:'alloy',    Ivy:'nova',
-        Joanna:'shimmer',Kendra:'alloy',  Kimberly:'nova',
-        Salli:'shimmer', Nicole:'alloy',
-        /* Hindi */
-        Aditi:'nova',    Raveena:'shimmer',
-        /* French */
-        Celine:'shimmer',Mathieu:'onyx',  Chantal:'alloy',
-        /* German */
-        Hans:'onyx',     Marlene:'nova',  Vicki:'shimmer',
-        /* Spanish */
-        Conchita:'nova', Enrique:'echo',  Lucia:'shimmer',
-        Miguel:'fable',  Penelope:'alloy',
-        /* Italian */
-        Carla:'alloy',   Giorgio:'onyx',
-        /* Portuguese */
-        Cristiano:'fable',Ines:'nova',    Vitoria:'shimmer',
-        /* Japanese */
-        Mizuki:'nova',   Takumi:'echo',
-        /* Korean */
-        Seoyeon:'shimmer',
-        /* Chinese */
-        Zhiyu:'nova',
-        /* Dutch */
-        Lotte:'alloy',   Ruben:'echo',
-        /* Polish */
-        Ewa:'nova',      Jacek:'onyx',    Maja:'shimmer',
-        /* Russian */
-        Maxim:'onyx',    Tatyana:'alloy',
-        /* Turkish */
-        Filiz:'shimmer',
-        /* Swedish */
-        Astrid:'nova',
-        /* Danish */
-        Naja:'alloy',    Mads:'fable',
-        /* Norwegian */
-        Liv:'nova',
-        /* Romanian */
-        Carmen:'shimmer',
-        /* Welsh */
-        Gwyneth:'alloy',
-        /* Arabic */
-        Zeina:'nova'
-    };
-
-    async function fetchChunk(text, voice, langCode) {
-        var pollinationsVoice = POLLY_TO_POLLINATIONS[voice] || 'alloy';
-
-        /* Pollinations TTS — free, no key, works from any browser.
-           Use only the documented parameters so the API routes correctly.
-           The voice name is embedded in the path as well as a query param so
-           the CDN cache key differs per voice even for identical text. */
-        var encodedText = encodeURIComponent(text);
-        var pollinationsUrl = 'https://audio.pollinations.ai/' + encodedText +
-            '?voice=' + pollinationsVoice +
-            '&model=openai-audio' +
-            (langCode ? '&language=' + encodeURIComponent(langCode) : '');
+    /* ── Translation via Groq ─────────────────────────────────── */
+    async function translateText(text, targetLocale, targetLang) {
+        if (!text || !targetLocale) return text;
+        /* Skip if text is already in target language (very rough check: if <10 chars or no groqFetch) */
+        if (typeof window.groqFetch !== 'function') return text;
         try {
-            var pCtrl = new AbortController();
-            var pTid  = setTimeout(function() { pCtrl.abort(); }, 45000);
-            var audioRes = await fetch(pollinationsUrl, { signal: pCtrl.signal, cache: 'no-store' });
-            clearTimeout(pTid);
-            if (audioRes.ok) return await audioRes.arrayBuffer();
-        } catch (pErr) { /* fall through to browser speech */ }
-
-        throw new Error('TTS service unavailable. Using browser voice instead.');
+            var res = await window.groqFetch({
+                model: 'llama-3.1-8b-instant',
+                messages: [
+                    { role: 'system', content: 'You are a professional translator. Translate the given text accurately to the target language. Return ONLY the translated text with no explanation, no quotes, no labels.' },
+                    { role: 'user',   content: 'Translate to ' + targetLocale + ' (' + targetLang + '):\n\n' + text }
+                ],
+                temperature: 0.3,
+                max_tokens: 2000
+            });
+            if (!res.ok) return text;
+            var data = await res.json();
+            var translated = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '').trim();
+            return translated || text;
+        } catch(e) { return text; }
     }
-      function speakWithBrowser(text,speed){return new Promise(function(resolve,reject){if(!window.speechSynthesis){reject(new Error('Not supported'));return;}window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.rate=Math.min(Math.max(parseFloat(speed)||1,0.1),10);u.onend=resolve;u.onerror=function(e){reject(new Error('Speech error: '+(e.error||'unknown')));};window.speechSynthesis.speak(u);});}
 
-    /* Split text into sentence-aware chunks ≤ CHUNK_SIZE chars */
+    /* ── Pollinations TTS fetch ────────────────────────────────── */
+    async function fetchChunk(text, baseVoice, locale) {
+        var encoded  = encodeURIComponent(text);
+        var url      = 'https://audio.pollinations.ai/' + encoded +
+                       '?voice='   + baseVoice +
+                       '&model=openai-audio' +
+                       (locale ? '&language=' + encodeURIComponent(locale) : '') +
+                       '&v=' + baseVoice;
+        var ctrl = new AbortController();
+        var tid  = setTimeout(function() { ctrl.abort(); }, 50000);
+        try {
+            var r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+            clearTimeout(tid);
+            if (r.ok) return await r.arrayBuffer();
+            throw new Error('HTTP ' + r.status);
+        } catch(e) {
+            clearTimeout(tid);
+            throw e;
+        }
+    }
+
+    function concatBuffers(buffers) {
+        var total  = buffers.reduce(function(a, b) { return a + b.byteLength; }, 0);
+        var result = new Uint8Array(total);
+        var offset = 0;
+        buffers.forEach(function(b) { result.set(new Uint8Array(b), offset); offset += b.byteLength; });
+        return result.buffer;
+    }
+
     function splitText(text) {
         if (text.length <= CHUNK_SIZE) return [text];
-        var chunks = [];
+        var chunks    = [];
         var sentences = text.match(/[^.!?]+[.!?]+[\s]*/g) || [text];
-        var current = '';
+        var current   = '';
         sentences.forEach(function(s) {
             if ((current + s).length > CHUNK_SIZE) {
                 if (current) chunks.push(current.trim());
-                /* Sentence itself may be too long — hard split */
-                while (s.length > CHUNK_SIZE) {
-                    chunks.push(s.substring(0, CHUNK_SIZE).trim());
-                    s = s.substring(CHUNK_SIZE);
-                }
+                while (s.length > CHUNK_SIZE) { chunks.push(s.slice(0, CHUNK_SIZE).trim()); s = s.slice(CHUNK_SIZE); }
                 current = s;
-            } else {
-                current += s;
-            }
+            } else { current += s; }
         });
         if (current.trim()) chunks.push(current.trim());
         return chunks.filter(function(c) { return c.length > 0; });
     }
 
-    /* Concatenate ArrayBuffers (for multi-chunk audio) */
-    function concatBuffers(buffers) {
-        var total = buffers.reduce(function(acc, b) { return acc + b.byteLength; }, 0);
-        var result = new Uint8Array(total);
-        var offset = 0;
-        buffers.forEach(function(b) {
-            result.set(new Uint8Array(b), offset);
-            offset += b.byteLength;
+    function speakWithBrowser(text, speed) {
+        return new Promise(function(resolve, reject) {
+            if (!window.speechSynthesis) { reject(new Error('Not supported')); return; }
+            window.speechSynthesis.cancel();
+            var u = new SpeechSynthesisUtterance(text);
+            u.rate = Math.min(Math.max(parseFloat(speed) || 1, 0.1), 10);
+            u.onend = resolve;
+            u.onerror = function(e) { reject(new Error('Speech error: ' + (e.error || 'unknown'))); };
+            window.speechSynthesis.speak(u);
         });
-        return result.buffer;
     }
 
-    /* ── Switch between real audio player and browser-speech player ── */
-    function showRealPlayer(url, blob, voiceName, speed, text) {
-        currentAudioUrl  = url;
-        currentAudioBlob = blob;
-        browserModeText  = null;
-
-        var audio = document.getElementById('tts-audio');
-        audio.src = url;
-        audio.load();
-        audio.playbackRate = speed;
-        audio.play().catch(function() {});
-
-        document.getElementById('tts-audio').style.display = '';
-        var bp = document.getElementById('tts-browser-player');
-        if (bp) bp.style.display = 'none';
-
-        var dlBtn = document.getElementById('tts-download-btn');
-        if (dlBtn) dlBtn.style.display = '';
-
-        document.getElementById('tts-player-info').textContent =
-            'Voice: ' + voiceName + ' · Speed: ' + speed + '× · ' + text.length + ' characters';
-        document.getElementById('tts-player').classList.add('visible');
-    }
-
-    function showBrowserPlayer(text, speed) {
-        currentAudioUrl  = null;
-        currentAudioBlob = null;
-        browserModeText  = text;
-        browserModeSpeed = speed;
-
-        /* Hide the real <audio> element — it has no src so play would do nothing */
-        document.getElementById('tts-audio').style.display = 'none';
-
-        var bp = document.getElementById('tts-browser-player');
-        if (bp) bp.style.display = 'flex';
-
-        var dlBtn = document.getElementById('tts-download-btn');
-        if (dlBtn) dlBtn.style.display = 'none';
-
-        document.getElementById('tts-player-info').textContent =
-            'Voice: Browser built-in · Speed: ' + speed + '× · ' + text.length + ' characters — (download unavailable in browser mode)';
-        document.getElementById('tts-player').classList.add('visible');
-    }
-
-    /* ── Generate ── */
+    /* ── Generate ─────────────────────────────────────────────── */
     async function generate() {
-        var text  = (document.getElementById('tts-text').value || '').trim();
-        var speed = parseFloat(document.getElementById('tts-speed').value) || 1;
-        if (!text) { document.getElementById('tts-text').focus(); return; }
+        var text  = (document.getElementById('tts-text') || {}).value || '';
+        text = text.trim();
+        var speed = parseFloat((document.getElementById('tts-speed') || {}).value) || 1.0;
 
-        if (!selectedVoice) {
-            showError('Please select a voice first by clicking one of the voice cards on the right.');
-            return;
-        }
+        if (!text) { document.getElementById('tts-text') && document.getElementById('tts-text').focus(); return; }
+        if (!selectedVoice) { showError('Please select a voice first.'); return; }
+
+        var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
+        if (!voiceObj) { showError('Invalid voice selected.'); return; }
 
         setGenerating(true);
         hideError();
-        document.getElementById('tts-player').classList.remove('visible');
+        var player = document.getElementById('tts-player');
+        if (player) player.classList.remove('visible');
 
-        /* Resolve voice FIRST (fix: was referenced before declaration) */
-        var voice = selectedVoice;
-
-        /* Translation step — translate text to the selected voice's language if requested */
-        var translateToggle = document.getElementById('tts-translate-toggle');
-        /* Determine the language to translate into: prefer the voice's own language,
-           fall back to the language filter dropdown */
-        var voiceObj2   = VOICES.find(function(v) { return v.id === voice; });
-        var voiceLang   = voiceObj2 ? voiceObj2.lang : '';
-        var langEl      = document.getElementById('tts-lang-filter');
-        var filterLang  = langEl ? (langEl.value || '') : '';
-        var lang        = voiceLang || filterLang;
-        /* Always translate when the selected voice is non-English — the OpenAI TTS model
-           speaks in whatever language the input text is in, so we must send the
-           translated text to hear speech in that language.
-           The toggle is kept as a user override but non-English voices force translation. */
-        var voiceIsNonEnglish = voiceLang && voiceLang !== 'en';
-        var shouldTranslate = lang && lang !== 'en' && (voiceIsNonEnglish || (translateToggle && translateToggle.checked));
-        var textToSpeak = text;
-
-        if (shouldTranslate) {
-            var _LANG_NAMES2 = {
-                'fr':'French','de':'German','es':'Spanish','it':'Italian','pt':'Portuguese',
-                'ar':'Arabic','hi':'Hindi','ja':'Japanese','ko':'Korean','zh':'Chinese',
-                'ru':'Russian','nl':'Dutch','pl':'Polish','tr':'Turkish','sv':'Swedish',
-                'da':'Danish','nb':'Norwegian','ro':'Romanian','cy':'Welsh'
-            };
-            var langLabel = _LANG_NAMES2[lang] || lang.toUpperCase();
-            setStatus('Translating to ' + langLabel + '…', true);
-            var translated = await translateText(text, lang);
-            /* Only use translation if it actually returned different text */
-            if (translated && translated.trim() && translated.trim() !== text.trim()) {
-                textToSpeak = translated;
-            } else {
-                /* Translation failed — warn user */
-                setStatus('Translation unavailable, generating in English…', true);
-                await new Promise(function(r) { setTimeout(r, 1200); });
-            }
+        /* Step 1: Translate if requested */
+        var translateOn = (document.getElementById('tts-translate-toggle') || {}).checked;
+        var ttsText = text;
+        if (translateOn && voiceObj.lang !== 'en') {
+            setStatus('Translating to ' + voiceObj.locale.toUpperCase() + '…', true);
+            ttsText = await translateText(text, voiceObj.locale, voiceObj.lang);
+        } else if (translateOn && voiceObj.lang === 'en') {
+            /* English voice but translate toggled — use as-is */
+            ttsText = text;
         }
 
-        setStatus('Generating audio…', true);
-        var chunks = splitText(textToSpeak);
+        /* Step 2: TTS */
+        setStatus('Generating audio with ' + voiceObj.name + '…', true);
+        var chunks  = splitText(ttsText);
+        var buffers = [];
+        var usedBrowser = false;
 
-        try {
-            var buffers = [];
-            for (var i = 0; i < chunks.length; i++) {
-                setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
-                buffers.push(await fetchChunk(chunks[i], voice, lang));
-            }
-            var combined = chunks.length > 1 ? concatBuffers(buffers) : buffers[0];
-            var blob = new Blob([combined], { type: 'audio/mpeg' });
-            var url  = URL.createObjectURL(blob);
-
-            var voiceObj  = VOICES.find(function(v) { return v.id === voice; });
-            var voiceName = voiceObj ? (voiceObj.name + ' · ' + voiceObj.region) : voice;
-
-            showRealPlayer(url, blob, voiceName, speed, textToSpeak);
-            setStatus('', false);
-            saveToHistory(textToSpeak, url, voiceName, speed);
-            renderHistory();
-
-        } catch (apiErr) {
-            setStatus('Using browser voice…', true);
+        for (var i = 0; i < chunks.length; i++) {
+            setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
             try {
-                await speakWithBrowser(textToSpeak, speed);
-                showBrowserPlayer(textToSpeak, speed);
-                setStatus('', false);
-            } catch (speechErr) {
-                setStatus('', false);
-                showError('Audio unavailable. Check your internet connection and try again. (' + (apiErr.message || 'Error') + ')');
+                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale);
+                buffers.push(buf);
+            } catch(e) {
+                /* Fallback to browser speech */
+                usedBrowser = true;
+                break;
             }
         }
 
         setGenerating(false);
+        setStatus('', false);
+
+        if (usedBrowser || !buffers.length) {
+            browserModeText  = ttsText;
+            browserModeSpeed = speed;
+            showBrowserPlayer(ttsText, speed, voiceObj);
+            try { await speakWithBrowser(ttsText, speed); } catch(e) {}
+            return;
+        }
+
+        /* Merge chunks into single blob */
+        var finalBuf  = buffers.length === 1 ? buffers[0] : concatBuffers(buffers);
+        var blob      = new Blob([finalBuf], { type: 'audio/mpeg' });
+        var url       = URL.createObjectURL(blob);
+        currentAudioBlob = blob;
+        currentAudioUrl  = url;
+        browserModeText  = null;
+
+        showRealPlayer(url, blob, voiceObj, speed, text);
+        saveToHistory(text, voiceObj, speed);
     }
 
-    /* ── Download ── */
+    /* ── Player display ─────────────────────────────────────────── */
+    function showRealPlayer(url, blob, voiceObj, speed, originalText) {
+        var audio = document.getElementById('tts-audio');
+        if (audio) {
+            audio.style.display = 'block';
+            audio.src = url;
+            audio.load();
+            audio.playbackRate = speed;
+            audio.play().catch(function() {});
+        }
+
+        var bp = document.getElementById('tts-browser-player');
+        if (bp) bp.style.display = 'none';
+
+        var dl = document.getElementById('tts-download-btn');
+        if (dl) dl.style.display = '';
+
+        var row = document.getElementById('tts-player-voice-row');
+        if (row) {
+            row.innerHTML =
+                '<span class="tts-pv-name">' + esc(voiceObj.name) + '</span>' +
+                '<span class="tts-pv-region">' + esc(voiceObj.region) + '</span>' +
+                '<span class="tts-pv-gender ' + voiceObj.gender + '">' + (voiceObj.gender === 'male' ? '♂' : '♀') + '</span>' +
+                '<span class="tts-pv-speed">' + speed.toFixed(1) + '×</span>' +
+                '<span class="tts-pv-chars">' + originalText.length + ' chars</span>';
+        }
+
+        var info = document.getElementById('tts-player-info');
+        if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase();
+
+        var player = document.getElementById('tts-player');
+        if (player) player.classList.add('visible');
+    }
+
+    function showBrowserPlayer(text, speed, voiceObj) {
+        currentAudioUrl  = null;
+        currentAudioBlob = null;
+
+        var audio = document.getElementById('tts-audio');
+        if (audio) audio.style.display = 'none';
+
+        var bp = document.getElementById('tts-browser-player');
+        if (bp) bp.style.display = 'flex';
+
+        var dl = document.getElementById('tts-download-btn');
+        if (dl) dl.style.display = 'none';
+
+        var row = document.getElementById('tts-player-voice-row');
+        if (row) row.innerHTML = '<span class="tts-pv-name">Browser Voice</span><span class="tts-pv-region">Built-in</span>';
+
+        var info = document.getElementById('tts-player-info');
+        if (info) info.textContent = 'Download unavailable in browser fallback mode';
+
+        var player = document.getElementById('tts-player');
+        if (player) player.classList.add('visible');
+    }
+
+    /* ── Download ────────────────────────────────────────────── */
     function download() {
         if (!currentAudioBlob) return;
-        var url = URL.createObjectURL(currentAudioBlob);
-        var a   = document.createElement('a');
-        a.href  = url;
-        a.download = 'xzily-tts-' + Date.now() + '.mp3';
+        var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
+        var name     = (voiceObj ? voiceObj.name.toLowerCase() : 'tts') + '-xzily-' + Date.now() + '.mp3';
+        var a        = document.createElement('a');
+        a.href       = URL.createObjectURL(currentAudioBlob);
+        a.download   = name;
+        document.body.appendChild(a);
         a.click();
-        URL.revokeObjectURL(url);
+        document.body.removeChild(a);
     }
 
-    /* ── Save preferences ── */
-    function savePreferences() {
-        var voice = selectedVoice;
-        var speed = document.getElementById('tts-speed').value;
-        var lang  = document.getElementById('tts-lang-filter').value || 'en';
-
-        /* Always save to localStorage */
-        try {
-            localStorage.setItem(PREF_KEY, JSON.stringify({ voice: voice, speed: speed, lang: lang }));
-        } catch(e) {}
-
-        /* Sync to user meta if logged in */
-        var ajaxUrl = (cfg.ajax_url     || '').trim();
-        var nonce   = (cfg.public_nonce || '').trim();
-        if (cfg.is_logged_in && ajaxUrl && nonce) {
-            var fd = new FormData();
-            fd.append('action', 'aqs_tts_save_pref');
-            fd.append('nonce',  nonce);
-            fd.append('voice',  voice);
-            fd.append('speed',  speed);
-            fd.append('lang',   lang);
-            fetch(ajaxUrl, { method: 'POST', body: fd }).catch(function() {});
-        }
-
-        var saved = document.getElementById('tts-pref-saved');
-        if (saved) {
-            saved.style.display = 'block';
-            setTimeout(function() { saved.style.display = 'none'; }, 3000);
-        }
-    }
-
-    /* ── Load preferences ── */
-    function loadPreferences() {
-        var serverVoice = (cfg.saved_voice || '').trim();
-        var serverSpeed = (cfg.saved_speed || '').trim();
-        var serverLang  = (cfg.saved_lang  || '').trim();
-
-        if (serverVoice) {
-            selectedVoice = serverVoice;
-        }
-        if (serverSpeed) {
-            var speedEl = document.getElementById('tts-speed');
-            if (speedEl) {
-                speedEl.value = serverSpeed;
-                var valEl = document.getElementById('tts-speed-val');
-                if (valEl) valEl.textContent = parseFloat(serverSpeed).toFixed(1) + '×';
-            }
-        }
-        if (serverLang) {
-            var langEl = document.getElementById('tts-lang-filter');
-            if (langEl) { langEl.value = serverLang; langEl.dispatchEvent(new Event('change')); }
-        }
-
-        /* Fallback to localStorage */
-        if (!serverVoice && !serverSpeed && !serverLang) {
-            try {
-                var saved = localStorage.getItem(PREF_KEY);
-                if (saved) {
-                    var p = JSON.parse(saved);
-                    if (p.voice) selectedVoice = p.voice;
-                    if (p.speed) {
-                        var speedEl2 = document.getElementById('tts-speed');
-                        if (speedEl2) {
-                            speedEl2.value = p.speed;
-                            var valEl2 = document.getElementById('tts-speed-val');
-                            if (valEl2) valEl2.textContent = parseFloat(p.speed).toFixed(1) + '×';
-                        }
-                    }
-                    if (p.lang) {
-                        var langEl2 = document.getElementById('tts-lang-filter');
-                        if (langEl2) { langEl2.value = p.lang; langEl2.dispatchEvent(new Event('change')); }
-                    }
-                }
-            } catch(e) {}
-        }
-    }
-
-    /* ── Translate text — backend first, then direct Pollinations ── */
-    async function translateText(text, lang) {
-        var langNames = {
-            'fr':'French','de':'German','es':'Spanish','it':'Italian','pt':'Portuguese',
-            'ar':'Arabic','hi':'Hindi','ja':'Japanese','ko':'Korean','zh':'Chinese',
-            'ru':'Russian','nl':'Dutch','pl':'Polish','tr':'Turkish','sv':'Swedish',
-            'da':'Danish','nb':'Norwegian','ro':'Romanian','cy':'Welsh'
-        };
-        var langName = langNames[lang] || lang;
-        var sysMsg = 'You are a professional translator. Translate the text into ' + langName +
-            '. Output ONLY the translated text — no explanations, no quotes, no extra formatting.';
-
-        /* 1️⃣  Try backend translate proxy (Render server) — only if AQS_LOCAL is defined */
-        try {
-            if (typeof AQS_LOCAL === 'undefined' || !AQS_LOCAL) throw new Error('no local server');
-            var localRes = await fetch(AQS_LOCAL + '/api/translate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text: text, lang: lang, langName: langName })
-            });
-            if (localRes.ok) {
-                var localData = await localRes.json();
-                var t1 = localData.translated || localData.text || localData.result || '';
-                if (t1 && t1.length > 0) return t1;
-            }
-        } catch (localErr) { /* fall through */ }
-
-        /* 2️⃣  Direct Pollinations translate — free, works without backend */
-        try {
-            var pRes = await fetch('https://text.pollinations.ai/openai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: 'openai-fast',
-                    temperature: 0.2,
-                    messages: [
-                        { role: 'system', content: sysMsg },
-                        { role: 'user',   content: text }
-                    ]
-                }),
-                signal: AbortSignal.timeout(25000)
-            });
-            if (pRes.ok) {
-                var pData = await pRes.json();
-                var t2 = ((pData.choices || [])[0] || {}).message && pData.choices[0].message.content || '';
-                t2 = t2.trim();
-                if (t2 && t2.length > 0) return t2;
-            }
-        } catch(pErr) { /* fall through — return original */ }
-
-        return text;
-    }
-
-    /* ── History ── */
-    function saveToHistory(text, url, voiceName, speed) {
+    /* ── History ─────────────────────────────────────────────── */
+    function saveToHistory(text, voiceObj, speed) {
         var h = loadHistory();
-        h.unshift({ id: 'tts_' + Date.now(), text: text, url: url, voice: voiceName, speed: speed, ts: Date.now() });
+        h.unshift({ id: Date.now(), text: text, voiceName: voiceObj.name, voiceId: voiceObj.id, region: voiceObj.region, speed: speed, ts: Date.now() });
         if (h.length > 15) h = h.slice(0, 15);
         try { localStorage.setItem(HISTORY_KEY, JSON.stringify(h)); } catch(e) {}
+        renderHistory();
     }
 
     function loadHistory() {
@@ -537,103 +433,116 @@
         var wrap = document.getElementById('tts-history-wrap');
         var list = document.getElementById('tts-history-list');
         if (!list) return;
-        if (!h.length) { wrap.style.display = 'none'; return; }
-        wrap.style.display = 'block';
+        if (!h.length) { if (wrap) wrap.style.display = 'none'; return; }
+        if (wrap) wrap.style.display = 'block';
         list.innerHTML = '';
-        h.slice(0, 8).forEach(function(entry) {
+        h.slice(0, 10).forEach(function(entry) {
             var item = document.createElement('div');
             item.className = 'tts-history-item';
             item.innerHTML =
                 '<div class="tts-history-icon">🔊</div>' +
                 '<div class="tts-history-info">' +
-                    '<div class="tts-history-text" title="' + escHtml(entry.text) + '">' + escHtml(entry.text.substring(0, 60)) + (entry.text.length > 60 ? '…' : '') + '</div>' +
-                    '<div class="tts-history-meta">' + escHtml(entry.voice) + ' · ' + entry.speed + '× · ' + new Date(entry.ts).toLocaleTimeString() + '</div>' +
+                    '<div class="tts-history-text" title="' + esc(entry.text) + '">' + esc(entry.text.slice(0, 70)) + (entry.text.length > 70 ? '…' : '') + '</div>' +
+                    '<div class="tts-history-meta">' + esc(entry.voiceName || '') + ' · ' + esc(entry.region || '') + ' · ' + (entry.speed || 1) + '×</div>' +
                 '</div>' +
-                '<div class="tts-history-play">' +
-                    '<button class="tts-btn tts-btn-sm tts-play-history" data-url="' + escAttr(entry.url) + '">▶</button>' +
-                '</div>';
-            item.addEventListener('click', function() {
-                if (entry.url) {
-                    document.getElementById('tts-text').value = entry.text;
-                    updateCharCount();
-                    var audio = document.getElementById('tts-audio');
-                    audio.src = entry.url;
-                    audio.load();
-                    audio.play().catch(function() {});
-                    document.getElementById('tts-player').classList.add('visible');
-                    currentAudioUrl  = entry.url;
-                    currentAudioBlob = null;
+                '<button class="tts-btn tts-btn-ghost tts-btn-sm tts-h-reuse">Reuse</button>';
+            item.querySelector('.tts-h-reuse').addEventListener('click', function(e) {
+                e.stopPropagation();
+                var ta = document.getElementById('tts-text');
+                if (ta) { ta.value = entry.text; updateCharCount(); }
+                /* Try to re-select the same voice */
+                if (entry.voiceId) {
+                    selectedVoice = entry.voiceId;
+                    var vo = VOICES.find(function(v) { return v.id === entry.voiceId; });
+                    if (vo) {
+                        /* Switch language filter to match */
+                        var lf = document.getElementById('tts-lang-filter');
+                        if (lf) lf.value = vo.lang;
+                        renderVoices();
+                        updateVoiceBadge(vo);
+                        updateTranslateNote(vo);
+                    }
                 }
             });
             list.appendChild(item);
         });
     }
 
-    /* ── Char counter ── */
+    /* ── UI helpers ──────────────────────────────────────────── */
     function updateCharCount() {
-        var text = document.getElementById('tts-text').value || '';
+        var text = (document.getElementById('tts-text') || {}).value || '';
         var len  = text.length;
         var el   = document.getElementById('tts-char-count');
         if (!el) return;
         el.textContent = len.toLocaleString() + ' / 5,000 characters';
-        el.className   = 'tts-char-count' + (len > 4500 ? (len >= 5000 ? ' over' : ' warn') : '');
+        el.className   = 'tts-char-count' + (len >= MAX_CHARS ? ' over' : len > 4500 ? ' warn' : '');
     }
 
-    /* ── UI helpers ── */
     function setGenerating(on) {
         var btn = document.getElementById('tts-generate-btn');
-        if (btn) btn.disabled = on;
+        if (btn) {
+            btn.disabled    = on;
+            btn.textContent = on ? 'Generating…' : '';
+            if (!on) {
+                btn.innerHTML =
+                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' +
+                    ' Generate Speech';
+            }
+        }
     }
+
     function setStatus(text, show) {
         var el = document.getElementById('tts-status');
         var tx = document.getElementById('tts-status-text');
         if (el) el.className = 'tts-status' + (show ? ' visible' : '');
         if (tx && text) tx.textContent = text;
     }
+
     function showError(msg) {
         var el = document.getElementById('tts-error');
-        if (el) { el.textContent = '⚠️ ' + msg; el.className = 'tts-error visible'; }
+        if (el) { el.textContent = '⚠ ' + msg; el.className = 'tts-error visible'; }
     }
+
     function hideError() {
         var el = document.getElementById('tts-error');
         if (el) el.className = 'tts-error';
     }
-    function escHtml(s) {
+
+    function esc(s) {
         return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
-    function escAttr(s) { return String(s || '').replace(/"/g,'&quot;'); }
 
-    /* ── Init ── */
+    /* ── Init ────────────────────────────────────────────────── */
     document.addEventListener('DOMContentLoaded', function() {
 
-        /* Load saved preferences before rendering voices */
-        loadPreferences();
-
-        /* Render voice grid */
-        renderVoices('');
-        updateVoiceBadge();
+        renderVoices();
+        updateVoiceBadge(null);
+        renderHistory();
 
         /* Language filter */
-        var langFilter = document.getElementById('tts-lang-filter');
-        if (langFilter) {
-            langFilter.addEventListener('change', function() {
-                renderVoices(this.value);
-                /* Re-mark selected */
-                document.querySelectorAll('.tts-voice-card').forEach(function(c) {
-                    if (c.dataset.voice === selectedVoice) c.classList.add('selected');
-                });
+        var lf = document.getElementById('tts-lang-filter');
+        if (lf) lf.addEventListener('change', function() { renderVoices(); });
+
+        /* Gender filter buttons */
+        var gfBtns = document.querySelectorAll('.tts-gender-btn');
+        gfBtns.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                genderFilter = btn.dataset.gender;
+                gfBtns.forEach(function(b) { b.classList.remove('active'); });
+                btn.classList.add('active');
+                renderVoices();
             });
-        }
+        });
 
         /* Speed slider */
-        var speedEl = document.getElementById('tts-speed');
+        var speedEl  = document.getElementById('tts-speed');
         var speedVal = document.getElementById('tts-speed-val');
         if (speedEl && speedVal) {
             speedEl.addEventListener('input', function() {
-                speedVal.textContent = parseFloat(this.value).toFixed(1) + '×';
-                /* Update playback rate live if audio is already loaded */
+                var v = parseFloat(this.value).toFixed(1);
+                speedVal.textContent = v + '×';
                 var audio = document.getElementById('tts-audio');
-                if (audio && audio.src) audio.playbackRate = parseFloat(this.value);
+                if (audio && audio.src) audio.playbackRate = parseFloat(v);
             });
         }
 
@@ -650,41 +559,6 @@
         var genBtn = document.getElementById('tts-generate-btn');
         if (genBtn) genBtn.addEventListener('click', generate);
 
-        /* Browser-speech play / stop buttons */
-        var bPlayBtn = document.getElementById('tts-browser-play-btn');
-        if (bPlayBtn) {
-            bPlayBtn.addEventListener('click', function() {
-                if (browserModeText) {
-                    speakWithBrowser(browserModeText, browserModeSpeed).catch(function() {});
-                }
-            });
-        }
-        var bStopBtn = document.getElementById('tts-browser-stop-btn');
-        if (bStopBtn) {
-            bStopBtn.addEventListener('click', function() {
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-            });
-        }
-
-        /* Clear */
-        var clearBtn = document.getElementById('tts-clear-btn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                document.getElementById('tts-text').value = '';
-                updateCharCount();
-                document.getElementById('tts-player').classList.remove('visible');
-                hideError();
-                currentAudioUrl  = null;
-                currentAudioBlob = null;
-                browserModeText  = null;
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                /* Reset player to default state */
-                document.getElementById('tts-audio').style.display = '';
-                var bp = document.getElementById('tts-browser-player');
-                if (bp) bp.style.display = 'none';
-            });
-        }
-
         /* Download */
         var dlBtn = document.getElementById('tts-download-btn');
         if (dlBtn) dlBtn.addEventListener('click', download);
@@ -693,23 +567,47 @@
         var regenBtn = document.getElementById('tts-regen-btn');
         if (regenBtn) regenBtn.addEventListener('click', generate);
 
-        /* Save preferences */
-        var savePrefBtn = document.getElementById('tts-save-pref-btn');
-        if (savePrefBtn) savePrefBtn.addEventListener('click', savePreferences);
+        /* Clear */
+        var clearBtn = document.getElementById('tts-clear-btn');
+        if (clearBtn) {
+            clearBtn.addEventListener('click', function() {
+                var ta = document.getElementById('tts-text');
+                if (ta) ta.value = '';
+                updateCharCount();
+                var player = document.getElementById('tts-player');
+                if (player) player.classList.remove('visible');
+                hideError();
+                currentAudioUrl  = null;
+                currentAudioBlob = null;
+                browserModeText  = null;
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                var audio = document.getElementById('tts-audio');
+                if (audio) { audio.pause(); audio.src = ''; audio.style.display = 'block'; }
+                var bp = document.getElementById('tts-browser-player');
+                if (bp) bp.style.display = 'none';
+            });
+        }
+
+        /* Browser speech play/stop */
+        var bPlay = document.getElementById('tts-browser-play-btn');
+        if (bPlay) bPlay.addEventListener('click', function() {
+            if (browserModeText) speakWithBrowser(browserModeText, browserModeSpeed).catch(function() {});
+        });
+        var bStop = document.getElementById('tts-browser-stop-btn');
+        if (bStop) bStop.addEventListener('click', function() {
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+        });
 
         /* Clear history */
-        var clrHistBtn = document.getElementById('tts-clear-history-btn');
-        if (clrHistBtn) {
-            clrHistBtn.addEventListener('click', function() {
-                if (confirm('Clear audio history?')) {
+        var clrHist = document.getElementById('tts-clear-history-btn');
+        if (clrHist) {
+            clrHist.addEventListener('click', function() {
+                if (confirm('Clear all audio history?')) {
                     try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
                     renderHistory();
                 }
             });
         }
-
-        /* Load history */
-        renderHistory();
     });
 
 })();
