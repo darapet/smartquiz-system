@@ -447,82 +447,122 @@ function showContent(idx, text) {
 
 /* Streams a Groq response word-by-word directly into the AI panel */
 async function streamToPanel(panelTitle, messages, temp) {
-    showAIPanel(panelTitle, 'Generating…', null);
-    var bE = document.getElementById('std-ai-panel-body');
-    if (!bE) return;
+      showAIPanel(panelTitle, 'Generating…', null);
+      var bE = document.getElementById('std-ai-panel-body');
+      if (!bE) return;
 
-    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+      function showPanelError(msg, retryFn) {
+          var bErr = document.getElementById('std-ai-panel-body');
+          if (!bErr) return;
+          bErr.innerHTML =
+              '<div style="text-align:center;padding:24px 16px">' +
+              '<div style="font-size:2rem;margin-bottom:8px">⚠️</div>' +
+              '<p style="color:#ef4444;font-weight:600;margin:0 0 14px">' + msg + '</p>' +
+              '<button id="std-panel-retry-btn" class="std-btn std-btn-primary" style="font-size:.85rem">🔄 Try Again</button>' +
+              '</div>';
+          var rb = document.getElementById('std-panel-retry-btn');
+          if (rb && retryFn) rb.addEventListener('click', retryFn);
+      }
 
-    if (key) {
-        try {
-            var res = await fetch(GROQ_STREAM_URL, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
-                body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
-                signal: AbortSignal.timeout(60000)
-            });
-            if (res.ok) {
-                var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
-                bE.innerHTML = '<div class="std-stream-body"></div>';
-                var bodyDiv = bE.querySelector('.std-stream-body');
-                while (true) {
-                    var chunk = await reader.read();
-                    if (chunk.done) break;
-                    var lines = decoder.decode(chunk.value, {stream:true}).split('\n');
-                    for (var i = 0; i < lines.length; i++) {
-                        var line = lines[i].trim();
-                        if (!line || line === 'data: [DONE]') continue;
-                        if (line.startsWith('data: ')) {
-                            try {
-                                var delta = JSON.parse(line.slice(6));
-                                var token = (delta.choices[0].delta.content) || '';
-                                full += token;
-                                if (bodyDiv) bodyDiv.innerHTML = renderParagraphs(full) + '<span class="std-stream-cursor">▍</span>';
-                            } catch(ex) {}
-                        }
-                    }
-                }
-                bE.innerHTML = renderParagraphs(full);
-                setTimeout(function () { renderMath(bE); }, 80);
-                var p = document.getElementById('std-ai-panel');
-                if (p && p.scrollIntoView) p.scrollIntoView({behavior:'smooth', block:'start'});
-                return;
-            }
-        } catch(e) { /* fall through */ }
-    }
+      var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
+      var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
 
-    /* non-streaming fallback */
-    try {
-        var txt = await aiChat(messages, temp);
-        var bE2 = document.getElementById('std-ai-panel-body');
-        if (bE2) { bE2.innerHTML = renderParagraphs(txt); setTimeout(function () { renderMath(bE2); }, 80); }
-        var p2 = document.getElementById('std-ai-panel');
-        if (p2 && p2.scrollIntoView) p2.scrollIntoView({behavior:'smooth', block:'start'});
-    } catch(e) {
-        var bE3 = document.getElementById('std-ai-panel-body');
-        if (bE3) bE3.textContent = '⚠️ Error: ' + e.message;
-    }
-}
+      if (key) {
+          try {
+              var res = await fetch(GROQ_STREAM_URL, {
+                  method: 'POST',
+                  headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
+                  body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
+                  signal: AbortSignal.timeout(30000)
+              });
+              if (res.ok) {
+                  var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
+                  bE.innerHTML = '<div class="std-stream-body"></div>';
+                  var bodyDiv = bE.querySelector('.std-stream-body');
+                  while (true) {
+                      var chunk = await reader.read();
+                      if (chunk.done) break;
+                      var lines = decoder.decode(chunk.value, {stream:true}).split('
+');
+                      for (var i = 0; i < lines.length; i++) {
+                          var line = lines[i].trim();
+                          if (!line || line === 'data: [DONE]') continue;
+                          if (line.startsWith('data: ')) {
+                              try {
+                                  var delta = JSON.parse(line.slice(6));
+                                  var token = (delta.choices[0].delta.content) || '';
+                                  full += token;
+                                  if (bodyDiv) bodyDiv.innerHTML = renderParagraphs(full) + '<span class="std-stream-cursor">▍</span>';
+                              } catch(ex) {}
+                          }
+                      }
+                  }
+                  bE.innerHTML = renderParagraphs(full);
+                  setTimeout(function () { renderMath(bE); }, 80);
+                  var p = document.getElementById('std-ai-panel');
+                  if (p && p.scrollIntoView) p.scrollIntoView({behavior:'smooth', block:'start'});
+                  return;
+              }
+          } catch(e) { /* fall through to non-streaming */ }
+      }
 
+      /* non-streaming fallback */
+      try {
+          var txt = await aiChat(messages, temp);
+          var bE2 = document.getElementById('std-ai-panel-body');
+          if (bE2) { bE2.innerHTML = renderParagraphs(txt); setTimeout(function () { renderMath(bE2); }, 80); }
+          var p2 = document.getElementById('std-ai-panel');
+          if (p2 && p2.scrollIntoView) p2.scrollIntoView({behavior:'smooth', block:'start'});
+      } catch(e) {
+          var _retryMsg = messages, _retryTemp = temp, _retryTitle = panelTitle;
+          showPanelError(
+              'Could not load — check your internet connection.',
+              function () { streamToPanel(_retryTitle, _retryMsg, _retryTemp); }
+          );
+      }
+  }
+
+  
 async function doSummarise() {
-    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-    streamToPanel('📝 Summary — ' + ch.title, [
-        {role:'system', content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $...$ for block math.'},
-        {role:'user', content:'Summarise "' + ch.title + '" from "' + S.title + '"' + (content?' using:\n'+content.slice(0,3000):'') + '\n\n1. Key concepts (bullet points)\n2. Main takeaways (2-3 sentences)\n3. Important formulas or definitions\n\nUse LaTeX math where relevant.'}
-    ], 0.6);
-}
+      if (!S.title)       { showErr('Search a topic first.'); return; }
+      if (S.activeIdx < 0){ showErr('Select a chapter first.'); return; }
+      var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
+      streamToPanel('📝 Summary — ' + ch.title, [
+          {role:'system', content:'You are an expert tutor. Create clear summaries. Use $...$ for inline math and $...$ for block math.'},
+          {role:'user', content:'Summarise "' + ch.title + '" from "' + S.title + '"' + (content?' using:
+'+content.slice(0,3000):'') + '
 
+1. Key concepts (bullet points)
+2. Main takeaways (2-3 sentences)
+3. Important formulas or definitions
+
+Use LaTeX math where relevant.'}
+      ], 0.6);
+  }
+
+  
 async function doExplain() {
-    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-    var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
-    streamToPanel('💡 Explanation — ' + ch.title, [
-        {role:'system', content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $...$ for display math.'},
-        {role:'user', content:'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".\n' + (content?'Reference:\n'+content.slice(0,2500)+'\n\n':'') + 'Include:\n1. Clear breakdown of complex ideas\n2. Real-world analogies and examples\n3. Why and how, not just what\n4. Common misconceptions\n5. All relevant math with LaTeX\n\nWrite 400-600 words.'}
-    ], 0.7);
-}
+      if (!S.title)       { showErr('Search a topic first.'); return; }
+      if (S.activeIdx < 0){ showErr('Select a chapter first.'); return; }
+      var ch = S.chapters[S.activeIdx], content = S.cache[S.activeIdx] || '';
+      streamToPanel('💡 Explanation — ' + ch.title, [
+          {role:'system', content:'You are an expert tutor. Write detailed explanations. Use $...$ inline math and $...$ for display math.'},
+          {role:'user', content:'Write a comprehensive explanation of "' + ch.title + '" from "' + S.title + '".
+' + (content?'Reference:
+'+content.slice(0,2500)+'
 
+':'') + 'Include:
+1. Clear breakdown of complex ideas
+2. Real-world analogies and examples
+3. Why and how, not just what
+4. Common misconceptions
+5. All relevant math with LaTeX
+
+Write 400-600 words.'}
+      ], 0.7);
+  }
+
+  
 function showAIPanel(title, loading, content) {
     var p  = document.getElementById('std-ai-panel');
     var tE = document.getElementById('std-ai-panel-title');
@@ -547,97 +587,236 @@ function hideAIPanel() {
 }
 
 /* ── PRACTICE TEST ──────────────────────────────────────────── */
-async function openTest() {
-    if (S.activeIdx < 0) {
-        if (S.chapters && S.chapters.length > 0) { selectChapter(0); }
-        else { showErr('Search a topic first, then open a chapter before taking a test.'); return; }
-    }
-    if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
-    var ch      = S.chapters[S.activeIdx];
-    var content = (S.cache && S.cache[S.activeIdx]) ? S.cache[S.activeIdx] : '';
-    var modal   = document.getElementById('std-test-modal');
-    if (!modal) return;
-    modal.style.display = 'flex';
-    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div><h3>🤖 Generating Practice Questions</h3><p>Chapter: <strong>' + esc(ch.title) + '</strong></p><div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
 
-    /* Robust JSON extraction — handles fenced blocks, stray text before/after array */
-    function extractQs(raw) {
-        if (!raw) return null;
-        var s = raw.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
-        var start = s.indexOf('[');
-        var end   = s.lastIndexOf(']');
-        if (start === -1 || end === -1 || end <= start) return null;
-        try {
-            var arr = JSON.parse(s.slice(start, end + 1));
-            if (!Array.isArray(arr) || arr.length < 2) return null;
-            return arr.filter(function (q) {
-                return q && q.q && Array.isArray(q.opts) && q.opts.length >= 2;
-            }).map(function (q) {
-                return {
-                    q:    String(q.q),
-                    opts: q.opts.slice(0, 4).map(String),
-                    ans:  Math.max(0, Math.min(parseInt(q.ans) || 0, q.opts.length - 1)),
-                    exp:  String(q.exp || '')
-                };
-            });
-        } catch(e2) { return null; }
-    }
+  /* Timer state — lives outside openTest so renderTestQ + handleAnswer can reach it */
+  var _testTimer = null, _testSecondsLeft = 0, _testTotalSecs = 0;
 
-    /* 10 questions — reliable token budget, clean JSON-only prompt */
-    var snippet = content ? content.slice(0, 3000) : '';
-    var sysMsg  = 'You are an exam question generator. Output ONLY a raw JSON array — no markdown fences, no explanation, no text before or after the array.';
-    var userMsg = 'Generate 10 multiple-choice questions about "' + ch.title + '" from the subject "' + S.title + '".' +
-        (snippet ? '\nUse this material:\n' + snippet : '') +
-        '\n\nOutput ONLY a JSON array in this exact format:\n' +
-        '[{"q":"Full question","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Short explanation"}]' +
-        '\n\nRules: ans is the 0-based index of the correct option. Mix easy and hard. Use LaTeX ($...$) for any maths.';
+  function _clearTestTimer() {
+      if (_testTimer) { clearInterval(_testTimer); _testTimer = null; }
+  }
 
-    var qStr;
-    try { qStr = await aiChat([{role:'system',content:sysMsg},{role:'user',content:userMsg}], 0.3); }
-    catch(e) {
-        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
-        return;
-    }
+  function _updateTimerDisplay() {
+      var el = document.getElementById('std-test-timer');
+      if (!el) { _clearTestTimer(); return; }
+      var m = Math.floor(_testSecondsLeft / 60);
+      var s = _testSecondsLeft % 60;
+      el.textContent = '⏱ ' + m + ':' + (s < 10 ? '0' : '') + s;
+      /* Turn red when < 30 s remain */
+      el.style.color = _testSecondsLeft < 30 ? '#ef4444' : '';
+      el.style.fontWeight = _testSecondsLeft < 30 ? '700' : '';
+  }
 
-    var qs = extractQs(qStr);
+  async function openTest() {
+      if (S.activeIdx < 0) {
+          if (S.chapters && S.chapters.length > 0) { selectChapter(0); }
+          else { showErr('Search a topic first, then open a chapter before taking a test.'); return; }
+      }
+      if (S.activeIdx < 0) { showErr('Select a chapter first.'); return; }
+      var ch      = S.chapters[S.activeIdx];
+      var content = (S.cache && S.cache[S.activeIdx]) ? S.cache[S.activeIdx] : '';
+      var modal   = document.getElementById('std-test-modal');
+      if (!modal) return;
+      _clearTestTimer();
 
-    /* single retry with simpler prompt if first attempt returned unparseable output */
-    if (!qs) {
-        try {
-            var r2str = await aiChat([
-                {role:'system', content:'Output ONLY a JSON array, no markdown.'},
-                {role:'user',   content:'5 multiple-choice questions about "' + ch.title + '" from "' + S.title + '".\n[{"q":"...","opts":["A","B","C","D"],"ans":0,"exp":"..."}]'}
-            ], 0.2);
-            qs = extractQs(r2str);
-        } catch(e2) {}
-    }
+      /* ── Step 1: Show setup dialog ── */
+      modal.style.display = 'flex';
+      modal.innerHTML =
+          '<div class="std-test-inner" style="overflow-y:auto;max-height:90vh;padding:28px 20px">' +
+          '<h2 style="margin:0 0 4px;font-size:1.2rem;font-weight:700">🎯 Practice Test Setup</h2>' +
+          '<p style="margin:0 0 22px;font-size:.85rem;color:#6b7280">Chapter: <strong>' + esc(ch.title) + '</strong></p>' +
 
-    if (!qs || !qs.length) {
-        modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>The AI returned an unexpected format. Please try again.</p><button onclick="document.getElementById(\'std-test-modal\').style.display=\'none\'" class="std-btn std-btn-primary">Close</button></div></div>';
-        return;
-    }
+          '<div style="margin-bottom:20px">' +
+          '<label style="display:block;font-weight:600;margin-bottom:8px;font-size:.9rem">Number of questions</label>' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+          ['5','10','15','20'].map(function(n) {
+              return '<button class="std-test-setup-btn" data-numq="' + n + '" style="flex:1;min-width:56px;padding:10px 0;border-radius:8px;border:2px solid #e5e7eb;background:#fff;font-weight:600;cursor:pointer;font-size:1rem">' + n + '</button>';
+          }).join('') +
+          '</div></div>' +
 
-    S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
-    renderTestQ(0);
-}
+          '<div style="margin-bottom:28px">' +
+          '<label style="display:block;font-weight:600;margin-bottom:8px;font-size:.9rem">Time limit</label>' +
+          '<div style="display:flex;gap:10px;flex-wrap:wrap">' +
+          [['No limit','0'],['5 min','300'],['10 min','600'],['15 min','900'],['30 min','1800']].map(function(t) {
+              return '<button class="std-test-setup-btn" data-secs="' + t[1] + '" style="flex:1;min-width:70px;padding:10px 0;border-radius:8px;border:2px solid #e5e7eb;background:#fff;font-weight:600;cursor:pointer;font-size:.85rem">' + t[0] + '</button>';
+          }).join('') +
+          '</div></div>' +
 
+          '<div style="display:flex;gap:10px">' +
+          '<button id="std-test-start-btn" class="std-btn std-btn-primary" style="flex:1;opacity:.5;pointer-events:none" disabled>Start Test →</button>' +
+          '<button class="std-btn std-btn-ghost" onclick="document.getElementById('std-test-modal').style.display='none'">Cancel</button>' +
+          '</div></div>';
+
+      /* Selection state */
+      var selNumQ = 0, selSecs = -1;
+
+      function refreshStart() {
+          var btn = document.getElementById('std-test-start-btn');
+          if (!btn) return;
+          var ready = selNumQ > 0 && selSecs >= 0;
+          btn.disabled = !ready;
+          btn.style.opacity = ready ? '1' : '.5';
+          btn.style.pointerEvents = ready ? '' : 'none';
+      }
+
+      modal.querySelectorAll('.std-test-setup-btn[data-numq]').forEach(function(b) {
+          b.addEventListener('click', function() {
+              modal.querySelectorAll('.std-test-setup-btn[data-numq]').forEach(function(x) {
+                  x.style.borderColor = '#e5e7eb'; x.style.background = '#fff'; x.style.color = '';
+              });
+              b.style.borderColor = '#7c3aed'; b.style.background = '#7c3aed'; b.style.color = '#fff';
+              selNumQ = parseInt(b.dataset.numq);
+              refreshStart();
+          });
+      });
+
+      modal.querySelectorAll('.std-test-setup-btn[data-secs]').forEach(function(b) {
+          b.addEventListener('click', function() {
+              modal.querySelectorAll('.std-test-setup-btn[data-secs]').forEach(function(x) {
+                  x.style.borderColor = '#e5e7eb'; x.style.background = '#fff'; x.style.color = '';
+              });
+              b.style.borderColor = '#7c3aed'; b.style.background = '#7c3aed'; b.style.color = '#fff';
+              selSecs = parseInt(b.dataset.secs);
+              refreshStart();
+          });
+      });
+
+      document.getElementById('std-test-start-btn').addEventListener('click', function() {
+          _generateTest(ch, content, selNumQ, selSecs);
+      });
+  }
+
+  async function _generateTest(ch, content, numQ, timeSecs) {
+      var modal = document.getElementById('std-test-modal');
+      if (!modal) return;
+      modal.innerHTML =
+          '<div class="std-test-inner"><div class="std-test-loading"><div class="std-spinner lg"></div>' +
+          '<h3>🤖 Generating ' + numQ + ' Practice Questions</h3>' +
+          '<p>Chapter: <strong>' + esc(ch.title) + '</strong></p>' +
+          '<div class="std-test-load-sub">Using Groq AI — please wait…</div></div></div>';
+
+      /* Robust JSON extraction */
+      function extractQs(raw) {
+          if (!raw) return null;
+          var s = raw.replace(/```jsons*/gi, '').replace(/```s*/gi, '').trim();
+          var start = s.indexOf('['), end = s.lastIndexOf(']');
+          if (start === -1 || end === -1 || end <= start) return null;
+          try {
+              var arr = JSON.parse(s.slice(start, end + 1));
+              if (!Array.isArray(arr) || arr.length < 2) return null;
+              return arr.filter(function(q) {
+                  return q && q.q && Array.isArray(q.opts) && q.opts.length >= 2;
+              }).map(function(q) {
+                  return {
+                      q: String(q.q),
+                      opts: q.opts.slice(0, 4).map(String),
+                      ans: Math.max(0, Math.min(parseInt(q.ans) || 0, q.opts.length - 1)),
+                      exp: String(q.exp || '')
+                  };
+              });
+          } catch(e) { return null; }
+      }
+
+      var snippet = content ? content.slice(0, 3000) : '';
+      var sysMsg  = 'You are an exam question generator. Output ONLY a raw JSON array — no markdown fences, no explanation, no text before or after the array.';
+      var userMsg = 'Generate ' + numQ + ' multiple-choice questions about "' + ch.title + '" from the subject "' + (S.title||ch.title) + '".' +
+          (snippet ? '
+Use this material:
+' + snippet : '') +
+          '
+
+Output ONLY a JSON array in this exact format:
+' +
+          '[{"q":"Full question","opts":["Option A","Option B","Option C","Option D"],"ans":0,"exp":"Short explanation"}]' +
+          '
+
+Rules: ans is the 0-based index of the correct option. Mix easy and hard. Use LaTeX ($...$) for any maths.';
+
+      var qStr;
+      try { qStr = await aiChat([{role:'system',content:sysMsg},{role:'user',content:userMsg}], 0.3); }
+      catch(e) {
+          if (!modal) return;
+          modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Failed to Generate Questions</h3><p>' + esc(e.message) + '</p><button onclick="openTest()" class="std-btn std-btn-primary" style="margin-right:8px">← Back</button><button onclick="document.getElementById('std-test-modal').style.display='none'" class="std-btn std-btn-ghost">Close</button></div></div>';
+          return;
+      }
+
+      var qs = extractQs(qStr);
+
+      /* single retry with simpler prompt */
+      if (!qs) {
+          try {
+              var r2 = await aiChat([
+                  {role:'system', content:'Output ONLY a JSON array, no markdown.'},
+                  {role:'user',   content:numQ + ' multiple-choice questions about "' + ch.title + '".
+[{"q":"...","opts":["A","B","C","D"],"ans":0,"exp":"..."}]'}
+              ], 0.2);
+              qs = extractQs(r2);
+          } catch(e2) {}
+      }
+
+      if (!qs || !qs.length) {
+          modal.innerHTML = '<div class="std-test-inner"><div class="std-test-error"><div style="font-size:3rem">❌</div><h3>Could Not Generate Questions</h3><p>The AI returned an unexpected format. Please try again.</p><button onclick="openTest()" class="std-btn std-btn-primary" style="margin-right:8px">← Back</button><button onclick="document.getElementById('std-test-modal').style.display='none'" class="std-btn std-btn-ghost">Close</button></div></div>';
+          return;
+      }
+
+      S.testQ = qs; S.testAns = new Array(qs.length).fill(-1);
+
+      /* Start timer if user selected one */
+      _clearTestTimer();
+      if (timeSecs > 0) {
+          _testSecondsLeft = timeSecs;
+          _testTotalSecs   = timeSecs;
+          _testTimer = setInterval(function() {
+              _testSecondsLeft--;
+              _updateTimerDisplay();
+              if (_testSecondsLeft <= 0) {
+                  _clearTestTimer();
+                  showTestResults();
+              }
+          }, 1000);
+      } else {
+          _testSecondsLeft = 0;
+          _testTotalSecs   = 0;
+      }
+
+      renderTestQ(0);
+  }
+
+  
 function renderTestQ(idx) {
-    var q = S.testQ[idx]; if (!q) { showTestResults(); return; }
-    var modal = document.getElementById('std-test-modal'); if (!modal) return;
-    var prog = Math.round((idx / S.testQ.length) * 100);
-    modal.innerHTML = '<div class="std-test-inner"><div class="std-test-header"><div class="std-test-prog-bar"><div class="std-test-prog-fill" style="width:' + prog + '%"></div></div><div class="std-test-meta">Question ' + (idx+1) + ' of ' + S.testQ.length + '</div></div><div class="std-test-body"><div class="std-test-q">' + esc(q.q) + '</div><div class="std-test-opts">' +
-        (q.opts || []).map(function (o, oi) {
-            return '<button class="std-test-opt" data-i="' + oi + '"><span class="std-test-opt-ltr">' + ['A','B','C','D'][oi] + '</span><span class="std-test-opt-txt">' + esc(o) + '</span></button>';
-        }).join('') + '</div></div><div class="std-test-footer"><span class="std-test-ch-tag">' + esc((S.chapters[S.activeIdx]||{}).title||'') + '</span></div></div>';
-    modal.querySelectorAll('.std-test-opt').forEach(function (btn) {
-        btn.addEventListener('click', function () { handleAnswer(idx, parseInt(btn.dataset.i)); });
-    });
-    setTimeout(function () {
-        var inner = modal.querySelector('.std-test-inner');
-        if (inner) renderMath(inner);
-    }, 80);
-}
+      var q = S.testQ[idx]; if (!q) { showTestResults(); return; }
+      var modal = document.getElementById('std-test-modal'); if (!modal) return;
+      var prog = Math.round((idx / S.testQ.length) * 100);
+      var timerHtml = (_testTotalSecs > 0)
+          ? '<div id="std-test-timer" style="font-size:.85rem;padding:3px 10px;background:#f3f4f6;border-radius:20px;white-space:nowrap">⏱ Loading…</div>'
+          : '';
+      modal.innerHTML =
+          '<div class="std-test-inner">' +
+          '<div class="std-test-header" style="display:flex;align-items:center;gap:10px">' +
+          '<div style="flex:1"><div class="std-test-prog-bar"><div class="std-test-prog-fill" style="width:' + prog + '%"></div></div>' +
+          '<div class="std-test-meta">Question ' + (idx+1) + ' of ' + S.testQ.length + '</div></div>' +
+          timerHtml +
+          '</div>' +
+          '<div class="std-test-body"><div class="std-test-q">' + esc(q.q) + '</div>' +
+          '<div class="std-test-opts">' +
+          (q.opts || []).map(function(o, oi) {
+              return '<button class="std-test-opt" data-i="' + oi + '"><span class="std-test-opt-ltr">' + ['A','B','C','D'][oi] + '</span><span class="std-test-opt-txt">' + esc(o) + '</span></button>';
+          }).join('') +
+          '</div></div>' +
+          '<div class="std-test-footer"><span class="std-test-ch-tag">' + esc((S.chapters[S.activeIdx]||{}).title||'') + '</span></div>' +
+          '</div>';
 
+      modal.querySelectorAll('.std-test-opt').forEach(function(btn) {
+          btn.addEventListener('click', function() { handleAnswer(idx, parseInt(btn.dataset.i)); });
+      });
+      setTimeout(function() {
+          var inner = modal.querySelector('.std-test-inner');
+          if (inner) renderMath(inner);
+          /* Sync timer display immediately after render */
+          if (_testTotalSecs > 0) _updateTimerDisplay();
+      }, 80);
+  }
+
+  
 function handleAnswer(qIdx, sel) {
     var q = S.testQ[qIdx]; S.testAns[qIdx] = sel;
     var ok = sel === q.ans;
@@ -666,6 +845,7 @@ function handleAnswer(qIdx, sel) {
 }
 
 function showTestResults() {
+    _clearTestTimer();
     var qs = S.testQ, ans = S.testAns; if (!qs) return;
     var correct = ans.filter(function (a, i) { return a === qs[i].ans; }).length;
     var pct = Math.round(correct / qs.length * 100);
