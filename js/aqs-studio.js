@@ -1401,27 +1401,63 @@
     function speakWithBrowserFallback(spoken, onDone) {
         if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
         window.speechSynthesis.cancel();
+
+        /* Safety timeout — iOS often never fires onend for long texts.
+           Estimate: ~13 chars/second of speaking, +5s buffer.             */
+        var safetyMs = Math.max(8000, (spoken.length / 13) * 1000 + 5000);
+        var safetyTimer = setTimeout(function() {
+            window.speechSynthesis.cancel();
+            voiceAiTalking = false;
+            if (onDone) onDone();
+        }, safetyMs);
+
         function doSpeak() {
-            var utter  = new SpeechSynthesisUtterance(spoken);
-            utter.lang = 'en-US'; utter.rate = 1.05; utter.pitch = 1.05; utter.volume = 1.0;
+            /* Split into ≤220-char chunks — iOS silently drops longer utterances */
+            var CHUNK = 220;
+            var parts = [];
+            var sentences = spoken.match(/[^.!?\n]+[.!?\n]*/g) || [spoken];
+            var cur = '';
+            sentences.forEach(function(s) {
+                if ((cur + s).length > CHUNK) {
+                    if (cur) parts.push(cur.trim());
+                    while (s.length > CHUNK) { parts.push(s.slice(0, CHUNK).trim()); s = s.slice(CHUNK); }
+                    cur = s;
+                } else { cur += s; }
+            });
+            if (cur.trim()) parts.push(cur.trim());
+            if (!parts.length) { clearTimeout(safetyTimer); voiceAiTalking = false; if (onDone) onDone(); return; }
+
+            var pidx = 0;
             var voices = window.speechSynthesis.getVoices();
-            var pick   = voices.find(function(v) {
+            var pick = voices.find(function(v) {
                 return v.lang.startsWith('en') && /Google|Natural|Samantha|Karen|Moira|Daniel/i.test(v.name);
             }) || voices.find(function(v) { return v.lang.startsWith('en-US'); })
                || voices.find(function(v) { return v.lang.startsWith('en'); });
-            if (pick) utter.voice = pick;
-            voiceAiTalking = true;
-            voiceKeepAlive = setInterval(function() {
-                if (!window.speechSynthesis.speaking) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-                else { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
-            }, 5000);
-            utter.onend = utter.onerror = function() {
-                if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-                voiceAiTalking = false; if (onDone) onDone();
-            };
-            if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-            window.speechSynthesis.speak(utter);
+
+            function speakPart() {
+                if (!voiceAiTalking || pidx >= parts.length) {
+                    clearTimeout(safetyTimer);
+                    voiceAiTalking = false;
+                    if (onDone) onDone();
+                    return;
+                }
+                var utter = new SpeechSynthesisUtterance(parts[pidx++]);
+                utter.lang = 'en-US'; utter.rate = 1.0; utter.pitch = 1.0; utter.volume = 1.0;
+                if (pick) utter.voice = pick;
+                utter.onend = function() { speakPart(); };
+                utter.onerror = function() { speakPart(); /* skip bad chunk, continue */ };
+                /* Per-chunk stall guard: if onend never fires within chunk duration + 4s */
+                var partMs = Math.max(3000, (parts[pidx-1].length / 13) * 1000 + 4000);
+                var partTimer = setTimeout(function() { speakPart(); }, partMs);
+                var origOnEnd = utter.onend;
+                utter.onend = function() { clearTimeout(partTimer); origOnEnd(); };
+                utter.onerror = function() { clearTimeout(partTimer); speakPart(); };
+                if (window.speechSynthesis.paused) window.speechSynthesis.resume();
+                window.speechSynthesis.speak(utter);
+            }
+            speakPart();
         }
+
         var vs = window.speechSynthesis.getVoices();
         if (!vs.length) {
             var h = function() { window.speechSynthesis.removeEventListener('voiceschanged', h); setTimeout(doSpeak, 120); };
@@ -1485,6 +1521,21 @@
 
         voiceAiTalking = true;
 
+        /* Global safety timeout — ensures orb never stays stuck green forever.
+           Max allowed speaking time: ~13 chars/sec + generous 20s buffer.    */
+        var _globalSpeakTimer = setTimeout(function() {
+            if (voiceAiTalking) {
+                if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src=''; } catch(_){} currentStudioAudio = null; }
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+                voiceAiTalking = false;
+                if (onDone) onDone();
+            }
+        }, Math.max(15000, (spoken.length / 13) * 1000 + 20000));
+
+        /* Wrap original onDone to clear the global safety timer too */
+        var _origOnDone = onDone;
+        onDone = function() { clearTimeout(_globalSpeakTimer); if (_origOnDone) _origOnDone(); };
+
         /* If fetch is unavailable (very old/restricted browsers like Phoenix SE),
            go straight to browser TTS — no blob URL approach possible           */
         if (typeof window.fetch !== 'function') {
@@ -1506,8 +1557,36 @@
 
         function fallbackRemaining() {
             if (!voiceAiTalking) { finish(); return; }
+            /* Try to continue playing remaining chunks via Pollinations.
+               If a chunk still fails, use browser TTS for just that chunk. */
             var remaining = chunks.slice(idx - 1).join(' ');
-            speakWithBrowserFallback(remaining, finish);
+            if (!remaining.trim()) { finish(); return; }
+            /* For remaining, try Pollinations first, browser TTS as last resort */
+            fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
+                .then(function(blob) {
+                    if (!voiceAiTalking) { finish(); return; }
+                    var blobUrl = URL.createObjectURL(blob);
+                    var audio2  = new Audio();
+                    audio2.setAttribute('playsinline', '');
+                    audio2.src  = blobUrl;
+                    audio2.addEventListener('ended', function() {
+                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                        /* Mark remaining as consumed then finish */
+                        idx = chunks.length;
+                        finish();
+                    });
+                    audio2.addEventListener('error', function() {
+                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                    audio2.play().catch(function() {
+                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                })
+                .catch(function() {
+                    speakWithBrowserFallback(remaining, finish);
+                });
         }
 
         function playNext() {
@@ -1515,66 +1594,101 @@
 
             var chunk = chunks[idx++];
 
-            /* Try onyx first (most reliable male voice on Pollinations),
-               then echo, then shimmer — ensures audio always plays      */
-            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 12000)
+            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
                 .then(function(blob) {
                     if (!voiceAiTalking) { finish(); return; }
 
-                    var blobUrl = URL.createObjectURL(blob);
-                    var audio   = new Audio();
-                    audio.setAttribute('playsinline', '');   /* iOS inline playback */
+                    /* Force audio/mpeg type — Android Chrome sometimes fails to
+                       decode untyped blobs fetched from audio.pollinations.ai    */
+                    var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
+                    var blobUrl   = URL.createObjectURL(typedBlob);
+                    var audio     = new Audio();
+                    audio.setAttribute('playsinline', '');
                     audio.setAttribute('webkit-playsinline', '');
                     audio.preload  = 'auto';
                     audio.volume   = 1.0;
                     audio.src      = blobUrl;
                     currentStudioAudio = audio;
 
-                    var stallTimer = null;
-                    var cleaned    = false;
+                    var stallTimer  = null;
+                    var cleaned     = false;
+                    var lastCurTime = -1;
+
                     function cleanup() {
                         if (cleaned) return; cleaned = true;
                         clearTimeout(stallTimer);
+                        clearTimeout(hardCap);
                         try { URL.revokeObjectURL(blobUrl); } catch(_) {}
                         currentStudioAudio = null;
                     }
 
-                    /* Stall watchdog: if audio plays but doesn't fire 'ended'
-                       within (duration + 4 s), advance to next chunk          */
-                    audio.addEventListener('playing', function() {
-                        var dur = isFinite(audio.duration) && audio.duration > 0
-                                  ? audio.duration * 1000 : 8000;
+                    /* ── Android-safe stall watchdog ──────────────────────────
+                       audio.duration is UNRELIABLE on Android Chrome for blob
+                       URLs — often returns Infinity or NaN, causing the old
+                       duration-based guard to cut off after only 8 s.
+
+                       New approach: watch currentTime advance via timeupdate.
+                       If currentTime stops moving for 4 s and audio hasn't
+                       ended → stall → skip to next chunk.
+
+                       Hard cap = blob.size / 3000 + 6 s  (≈128 kbps gives
+                       ~16 KB/s; dividing by 3000 gives a generous ceiling).
+                    ──────────────────────────────────────────────────────────── */
+                    var hardCap = setTimeout(function() {
+                        if (!cleaned) { cleanup(); playNext(); }
+                    }, Math.max(14000, (blob.size / 3000) * 1000 + 6000));
+
+                    function armStallTimer() {
+                        clearTimeout(stallTimer);
                         stallTimer = setTimeout(function() {
-                            cleanup();
-                            playNext();
-                        }, dur + 4000);
+                            if (cleaned) return;
+                            if (audio.currentTime > lastCurTime) {
+                                lastCurTime = audio.currentTime;
+                                armStallTimer();   /* still progressing — re-arm */
+                            } else {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                playNext();         /* truly stalled — skip chunk */
+                            }
+                        }, 4000);
+                    }
+
+                    audio.addEventListener('timeupdate', function() {
+                        lastCurTime = audio.currentTime;
+                        armStallTimer();   /* reset stall clock on every tick */
+                    });
+
+                    audio.addEventListener('canplay', function() {
+                        if (lastCurTime < 0) armStallTimer();
                     });
 
                     audio.addEventListener('ended', function() {
+                        clearTimeout(hardCap);
                         cleanup();
                         playNext();
                     });
 
                     audio.addEventListener('error', function() {
+                        clearTimeout(hardCap);
                         cleanup();
                         fallbackRemaining();
                     });
 
-                    /* On mobile: retry play() once after 300ms if first call is rejected */
+                    /* On mobile: retry play() once after 400 ms if first call
+                       is rejected by Android autoplay policy                   */
                     audio.play().catch(function() {
                         setTimeout(function() {
-                            if (!voiceAiTalking) { cleanup(); finish(); return; }
+                            if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
                             audio.play().catch(function() {
+                                clearTimeout(hardCap);
                                 cleanup();
-                                /* Truly rejected by autoplay policy — browser TTS fallback */
                                 fallbackRemaining();
                             });
-                        }, 300);
+                        }, 400);
                     });
                 })
                 .catch(function() {
                     if (!voiceAiTalking) { finish(); return; }
-                    /* All Pollinations voices failed — browser TTS for rest */
                     fallbackRemaining();
                 });
         }
