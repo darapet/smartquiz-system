@@ -1048,6 +1048,7 @@
     var voiceBargeStream   = null;    // MediaStream used for barge-in level detection
     var voiceBargeAnalyser = null;    // AnalyserNode watching mic while AI speaks
     var voiceBargeRAF      = null;    // requestAnimationFrame handle for barge-in loop
+    var voiceBargeActx     = null;    // AudioContext for barge-in — closed on cleanup
 
     /* Short system prompt variant for voice — keeps replies concise */
     var VOICE_SYSTEM = SYSTEM +
@@ -1262,12 +1263,26 @@
     }
 
     function stopVoiceSpeaking() {
-        stopBargeDetection();   /* always kill barge-in monitor when AI stops */
-        if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-        if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        voiceAiTalking = false;
-    }
+          stopBargeDetection();   /* always kill barge-in monitor when AI stops */
+          if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
+          /* Fade out audio before pausing — prevents click/pop when AI is
+             interrupted by barge-in, overlay close, or a new reply starting */
+          if (currentStudioAudio) {
+              var _dying = currentStudioAudio;
+              currentStudioAudio = null;
+              try {
+                  var _t0 = Date.now(), _v0 = _dying.volume;
+                  (function _fo() {
+                      var p = Math.max(0, _v0 * (1 - (Date.now() - _t0) / 80));
+                      try { _dying.volume = p; } catch(_e) {}
+                      if (p > 0) { requestAnimationFrame(_fo); }
+                      else { try { _dying.pause(); _dying.src = ''; } catch(_e) {} }
+                  })();
+              } catch(_e) { try { _dying.pause(); _dying.src = ''; } catch(_e2) {} }
+          }
+          if (window.speechSynthesis) window.speechSynthesis.cancel();
+          voiceAiTalking = false;
+      }
 
     /* ── Barge-in detection ────────────────────────────────────
        While the AI is speaking, watch mic volume via AudioContext.
@@ -1296,6 +1311,7 @@
                 }
                 voiceBargeStream = stream;
                 var actx     = new (window.AudioContext || window.webkitAudioContext)();
+                voiceBargeActx = actx;          /* stored so stopBargeDetection can close it */
                 var src      = actx.createMediaStreamSource(stream);
                 var analyser = actx.createAnalyser();
                 analyser.fftSize = 256;
@@ -1349,7 +1365,13 @@
             voiceBargeStream.getTracks().forEach(function (t) { t.stop(); });
             voiceBargeStream = null;
         }
-    }
+          /* Close AudioContext to fully release mic hardware and avoid
+             dangling contexts that accumulate across barge-in sessions    */
+          if (voiceBargeActx) {
+              try { voiceBargeActx.close(); } catch(_e) {}
+              voiceBargeActx = null;
+          }
+      }
 
     /* ── Web search / page fetch ── */
     /* Only runs when the user clearly asks for a URL, search, or web lookup.
