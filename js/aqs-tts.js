@@ -222,11 +222,15 @@
     /* ── Pollinations TTS fetch ────────────────────────────────── */
     async function fetchChunk(text, baseVoice, locale) {
         var encoded  = encodeURIComponent(text);
+        /* Cache buster must include voice + timestamp so Pollinations never
+           serves a cached response from a different voice selection.
+           The &language param is not supported by Pollinations and is omitted. */
+        var cacheBust = baseVoice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
         var url      = 'https://audio.pollinations.ai/' + encoded +
-                       '?voice='   + baseVoice +
+                       '?voice='   + encodeURIComponent(baseVoice) +
                        '&model=openai-audio' +
-                       (locale ? '&language=' + encodeURIComponent(locale) : '') +
-                       '&v=' + baseVoice;
+                       '&nologo=true' +
+                       '&v=' + cacheBust;
         var ctrl = new AbortController();
         var tid  = setTimeout(function() { ctrl.abort(); }, 50000);
         try {
