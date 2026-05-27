@@ -958,40 +958,10 @@ function summonHandleSetup(q) {
     }
 }
 
-/* ── PASSIVE VOICE DETECTOR (auto-pause AI while user speaks) ── */
-var _pvd = { active:false, rec:null, paused:false, silenceTimer:null };
-
-function summonStartPassiveDetect() {
-    if (_pvd.active || !window.SpeechRecognition && !window.webkitSpeechRecognition) return;
-    _pvd.active = true;
-    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    _pvd.rec = new SR();
-    _pvd.rec.continuous = true; _pvd.rec.interimResults = true;
-    _pvd.rec.onresult = function () {
-        if (!_pvd.paused) {
-            _pvd.paused = true;
-            if (VS.synth) { try { VS.synth.pause(); } catch(e) {} }
-            VS._pausedQueue = VS.sentenceQueue.slice();
-        }
-        clearTimeout(_pvd.silenceTimer);
-        _pvd.silenceTimer = setTimeout(function () {
-            _pvd.paused = false;
-            if (VS.synth) { try { VS.synth.resume(); } catch(e) {} }
-            if (!VS._queueRunning && VS._pausedQueue.length) {
-                VS.sentenceQueue = VS._pausedQueue.concat(VS.sentenceQueue);
-                VS._pausedQueue = [];
-                summonRunQueue();
-            }
-        }, 900);
-    };
-    try { _pvd.rec.start(); } catch(e) {}
-}
-
-function summonStopPassiveDetect() {
-    _pvd.active = false; _pvd.paused = false;
-    clearTimeout(_pvd.silenceTimer); _pvd.silenceTimer = null;
-    if (_pvd.rec) { try { _pvd.rec.abort(); } catch(e) {} _pvd.rec = null; }
-}
+/* ── PASSIVE VOICE DETECTOR REMOVED ─────────────────────────── */
+/* Running a second hidden mic while the AI speaks causes popping/
+   feedback on mobile. Removed entirely. The mic is disabled while
+   the AI speaks (speakingQueue flag) and re-enabled with a delay. */
 
 /* ── RECOGNITION ─────────────────────────────────────────────── */
 var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0;
@@ -1048,7 +1018,7 @@ function summonStartListening() {
 function _recStartWatchdog() {
     _recLastEvent = Date.now();
     _recWatchdog = setInterval(function () {
-        if (!VS.listening || VS.speakingQueue || _pvd.paused) { _recStopWatchdog(); return; }
+        if (!VS.listening || VS.speakingQueue) { _recStopWatchdog(); return; }
         if (Date.now() - _recLastEvent > 12000) {
             if (VS.recognition) { try { VS.recognition.abort(); } catch(e) {} VS.recognition = null; }
             VS.listening = false; _recStopWatchdog();
@@ -1222,7 +1192,10 @@ async function summonStreamResponse(messages) {
     summonFlushQueue(function () {
         VS.speakingQueue = false;
         summonSetState('listening');
-        setTimeout(function () { summonStartListening(); }, 400);
+        /* Mobile needs longer to clear speaker audio before mic opens —
+           prevents the popping/clicking sound on first word. */
+        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        setTimeout(function () { summonStartListening(); }, micDelay);
     });
     return full;
 }
@@ -1236,17 +1209,16 @@ function summonQueueSentence(text) {
 
 function summonRunQueue() {
     if (!VS.sentenceQueue || !VS.sentenceQueue.length) { VS._queueRunning = false; return; }
-    if (_pvd.paused) { VS._queueRunning = false; return; }
     VS._queueRunning = true;
     var sentence = VS.sentenceQueue.shift();
     summonSpeakOne(sentence, function () {
-        if (VS.speakingQueue && !_pvd.paused) summonRunQueue(); else VS._queueRunning = false;
+        if (VS.speakingQueue) summonRunQueue(); else VS._queueRunning = false;
     });
 }
 
 function summonFlushQueue(onAllDone) {
     var check = setInterval(function () {
-        if (!VS._queueRunning && (!VS.sentenceQueue || !VS.sentenceQueue.length) && !_pvd.paused) {
+        if (!VS._queueRunning && (!VS.sentenceQueue || !VS.sentenceQueue.length)) {
             clearInterval(check); if (onAllDone) onAllDone();
         }
     }, 150);
@@ -1255,7 +1227,6 @@ function summonFlushQueue(onAllDone) {
 function summonStopQueue() {
     VS.speakingQueue = false; VS._queueRunning = false;
     VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
-    _pvd.paused = false; clearTimeout(_pvd.silenceTimer); _pvd.silenceTimer = null;
     if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
 }
 
@@ -1279,7 +1250,8 @@ function summonSpeakStream(text, isCheckpoint) {
         VS.speakingQueue = false;
         if (isCheckpoint) VS.waitingCheckpnt = true;
         summonSetState('listening');
-        setTimeout(function () { summonStartListening(); }, 400);
+        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        setTimeout(function () { summonStartListening(); }, micDelay);
     });
 }
 
