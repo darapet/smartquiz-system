@@ -1,5 +1,5 @@
-/* DaraQuiz AI Studio — Service Worker */
-var CACHE = 'daraquiz-v1';
+/* XZILY AI Studio — Service Worker */
+var CACHE = 'xzily-v2'; /* BUMPED: forces browser to discard all old cached JS/CSS files */
 var SHELL = [
     '/',
 ];
