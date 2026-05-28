@@ -1,4 +1,4 @@
-/* xzily AI Studio — Chat Interface */
+/* daraquiz AI Studio — Chat Interface */
 /* Developed by omomo excellence in corporation with Darapet Technology */
 (function () {
     'use strict';
@@ -14,12 +14,12 @@
     var pendingFileContext  = null; // { content, name } — injected once into next API call
 
     /* ─── Storage key ─── */
-    var HISTORY_KEY = 'xzily_chat_history';
+    var HISTORY_KEY = 'daraquiz_chat_history';
 
     /* ─── System prompt ─── */
     var SYSTEM =
-        'You are XZILY, a helpful and friendly AI learning assistant. ' +
-        'You were created by Omomo Excellence (XZILY), a student of the Federal University of Technology Akure (FUTA), in collaboration with Darapet Technology. ' +
+        'You are DaraQuiz, a helpful and friendly AI learning assistant. ' +
+        'You were created by Omomo Excellence (DaraQuiz), a student of the Federal University of Technology Akure (FUTA), in collaboration with Darapet Technology. ' +
         'You help students, teachers, and educators with studying, quiz preparation, ' +
         'problem solving, and any academic topic. Be clear, thorough, and encouraging. ' +
         '\n\nMATH FORMATTING RULES (follow strictly):\n' +
@@ -30,7 +30,7 @@
         '- Never use \\[...\\], \\(...\\), or \\begin{equation}...\\end{equation}\n' +
         '- Always use $ and $$ only. This is critical for correct rendering.\n' +
         '\nCODE RULES: Only include code (e.g. ```python) when the user explicitly asks for code, a program, or a programming solution. For math problems, show the working steps and final answer using math formatting only — do NOT include Python or any programming code unless asked.\n' +
-        '\n\nSTRICT IDENTITY RULES — NEVER BREAK:\n1. You are XZILY, created by Omomo Excellence (FUTA/Darapet Technology). That is your entire identity.\n2. NEVER name any AI company, model, API, or service (Groq, Llama, OpenAI, ChatGPT, Anthropic, Meta, Gemini, Mistral, Hugging Face, Replicate, Pollinations, or any other). Not even indirectly.\n3. If asked what AI you are or what powers you: say ONLY "I am XZILY, an AI assistant created by Omomo Excellence. I cannot share information about the technology behind me."\n4. NEVER say "As an AI language model", "I was trained by", or any phrase revealing a third-party AI.\n5. Give zero hints about underlying technology — no speculation, no "I might be based on..."';
+        '\n\nSTRICT IDENTITY RULES — NEVER BREAK:\n1. You are DaraQuiz, created by Omomo Excellence (FUTA/Darapet Technology). That is your entire identity.\n2. NEVER name any AI company, model, API, or service (Groq, Llama, OpenAI, ChatGPT, Anthropic, Meta, Gemini, Mistral, Hugging Face, Replicate, Pollinations, or any other). Not even indirectly.\n3. If asked what AI you are or what powers you: say ONLY "I am DaraQuiz, an AI assistant created by Omomo Excellence. I cannot share information about the technology behind me."\n4. NEVER say "As an AI language model", "I was trained by", or any phrase revealing a third-party AI.\n5. Give zero hints about underlying technology — no speculation, no "I might be based on..."';
 
     /* =========================================================
        INIT
@@ -71,13 +71,13 @@
                 temperature: 0.7
             }, { signal: ctrl.signal });
             clearTimeout(tid);
-            if (!res.ok) { console.warn('[xzily] Groq HTTP', res.status); return null; }
+            if (!res.ok) { console.warn('[daraquiz] Groq HTTP', res.status); return null; }
             var data = await res.json();
             var text = (data.choices && data.choices[0] && data.choices[0].message)
                        ? data.choices[0].message.content.trim() : '';
             return text || null;
         } catch (e) {
-            console.warn('[xzily] Groq failed:', e.message || e);
+            console.warn('[daraquiz] Groq failed:', e.message || e);
             return null;
         }
     }
@@ -103,11 +103,11 @@
             if (data && data.success && data.data && data.data.text) {
                 return data.data.text;
             }
-            console.warn('[xzily] proxy: no text in response', data);
+            console.warn('[daraquiz] proxy: no text in response', data);
             return null;
         } catch (e) {
             clearTimeout(tid);
-            console.warn('[xzily] proxy failed:', e.message || e);
+            console.warn('[daraquiz] proxy failed:', e.message || e);
             return null;
         }
     }
@@ -132,13 +132,13 @@
                     })
                 });
                 clearTimeout(tid);
-                if (!res.ok) { console.warn('[xzily] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
+                if (!res.ok) { console.warn('[daraquiz] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
                 var data = await res.json();
                 var text = (data.choices && data.choices[0] && data.choices[0].message)
                            ? data.choices[0].message.content.trim() : '';
                 if (text) return text;
             } catch (e) {
-                console.warn('[xzily] Pollinations model', models[mi], 'failed:', e.message || e);
+                console.warn('[daraquiz] Pollinations model', models[mi], 'failed:', e.message || e);
             }
         }
         return null;
@@ -193,7 +193,7 @@
                 saveCurrentChat();
             });
         } else {
-            appendMessage('ai', '⚠️ xzily AI could not reach the server. Please check your internet connection and try again.');
+            appendMessage('ai', '⚠️ daraquiz AI could not reach the server. Please check your internet connection and try again.');
             document.getElementById('dts-send').disabled = false;
             isStreaming = false;
         }
@@ -1211,8 +1211,26 @@
             voiceRecog     = null;
             if (!voiceActive) return;
             if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                setVoiceState('error');
-                setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
+                /* On Android/Capacitor: permission may not be ready yet.
+                   Request it via getUserMedia to trigger the native dialog,
+                   then retry recognition automatically. */
+                setVoiceState('idle');
+                setVoiceTranscript('Requesting microphone access…');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function(stream) {
+                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            setVoiceTranscript('Microphone granted — tap mic to speak.');
+                            voiceRestartTimer = setTimeout(startVoiceListening, 800);
+                        })
+                        .catch(function() {
+                            setVoiceState('error');
+                            setVoiceTranscript('Microphone denied.\nGo to Settings → Apps → DaraSmart → Permissions → enable Microphone.');
+                        });
+                } else {
+                    setVoiceState('error');
+                    setVoiceTranscript('Microphone not available on this device.');
+                }
             } else if (e.error === 'no-speech') {
                 /* Mobile mic recovers slower — give it extra time */
                 var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
@@ -1565,8 +1583,8 @@
         var labels = {
             idle:      'Tap "Start Listening" to begin',
             listening: 'Listening… speak now',
-            thinking:  'XZILY is thinking…',
-            speaking:  'XZILY is speaking…',
+            thinking:  'DaraQuiz is thinking…',
+            speaking:  'DaraQuiz is speaking…',
             error:     'Microphone error',
             closed:    ''
         };
