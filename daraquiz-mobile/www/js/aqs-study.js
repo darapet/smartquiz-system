@@ -1142,7 +1142,7 @@ async function summonHandleQuery(q) {
 
     VS.responseCount = (VS.responseCount || 0) + 1;
     var addCheckpoint = (VS.responseCount % 3 === 0);
-    var aiDisplayName = VS.aiName || 'DaraQuiz AI';
+    var aiDisplayName = VS.aiName || 'DaraSmart';
 
     var sysPrompt =
         'You are ' + aiDisplayName + ', a professional and thorough voice-based academic tutor. ' +
@@ -1446,7 +1446,7 @@ function injectSummonStyles() {
 function injectSummonUI() {
     if (document.getElementById('std-summon-fab')) return;
     var fab = document.createElement('div');
-    fab.id = 'std-summon-fab'; fab.title = 'DaraQuiz AI Voice'; fab.textContent = '✦';
+    fab.id = 'std-summon-fab'; fab.title = 'DaraSmart Voice'; fab.textContent = '✦';
     document.body.appendChild(fab);
     fab.addEventListener('click', summonToggle);
 
@@ -1458,7 +1458,7 @@ function injectSummonUI() {
         '<div id="std-summon-header">',
           '<button id="std-vh-btn" title="Conversation history">&#9776;</button>',
           '<div id="std-summon-big-orb"><span>✦</span></div>',
-          '<div id="std-summon-state-txt">DaraQuiz AI</div>',
+          '<div id="std-summon-state-txt">DaraSmart</div>',
           '<button id="std-summon-close">&#x2715;</button>',
         '</div>',
         /* History dropdown (full-width, sits below header) */
@@ -1488,8 +1488,8 @@ function summonSetState(state) {
     var txt     = document.getElementById('std-summon-state-txt');
     if (!overlay) return;
     overlay.setAttribute('data-state', state);
-    var labels = {idle:'DaraQuiz AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
-    if (txt) txt.textContent = labels[state] || 'DaraQuiz AI';
+    var labels = {idle:'DaraSmart', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
+    if (txt) txt.textContent = labels[state] || 'DaraSmart';
 }
 
 function summonToggle() { if (VS.active) summonHide(); else summonShow(); }
@@ -1506,7 +1506,7 @@ function summonShow() {
         }, 300);
         return;
     }
-    var name = VS.aiName || 'DaraQuiz AI';
+    var name = VS.aiName || 'DaraSmart';
     var greeting = S.title
         ? 'Hello! I am ' + name + '. You are studying ' + S.title + '. Ask me anything!'
         : 'Hello! I am ' + name + '. How can I help you study today?';
@@ -1664,7 +1664,7 @@ function vhSaveHistory() {
     var lines = pairs.map(function (p, i) {
         return 'Q' + (i + 1) + ': ' + p.user.text + '\n\nAI: ' + (p.ai ? p.ai.text : '(no response)') + '\n\n---\n';
     });
-    var blob = new Blob(['DaraQuiz AI — Study Conversation\n\n' + lines.join('\n')], { type: 'text/plain' });
+    var blob = new Blob(['DaraSmart — Study Conversation\n\n' + lines.join('\n')], { type: 'text/plain' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'daraquiz-study-history.txt';
