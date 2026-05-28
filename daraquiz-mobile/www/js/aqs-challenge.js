@@ -1055,6 +1055,11 @@
               window.speechSynthesis.cancel();
               var utt = new SpeechSynthesisUtterance(msg);
               utt.rate = 0.92; utt.pitch = 1;
+              /* FIX: Chrome silently pauses speechSynthesis — poll and resume */
+              var _rc = setInterval(function(){
+                  if(window.speechSynthesis.paused){try{window.speechSynthesis.resume();}catch(e2){}}
+              }, 250);
+              utt.onend = utt.onerror = function(){ clearInterval(_rc); };
               window.speechSynthesis.speak(utt);
           }catch(e){}
       }
