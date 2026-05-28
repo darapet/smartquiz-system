@@ -72,13 +72,13 @@ jobs:
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: daraquiz-ai-debug
+          name: darasmart-debug
           path: daraquiz-mobile/android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
       - name: Upload Release APK (unsigned)
         uses: actions/upload-artifact@v4
         with:
-          name: daraquiz-ai-release-unsigned
+          name: darasmart-release-unsigned
           path: daraquiz-mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 30
