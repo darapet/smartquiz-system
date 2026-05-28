@@ -1121,9 +1121,22 @@
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         setVoiceState('idle');
-        /* Mobile needs extra time for mic hardware to initialise cleanly */
+        /* FIX: explicitly request mic permission before recognition.
+           On Android the permission only registers in App Settings after
+           getUserMedia has been called — SpeechRecognition alone does not do it. */
         var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
-        setTimeout(startVoiceListening, micDelay);
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(function (stream) {
+                    stream.getTracks().forEach(function (t) { t.stop(); });
+                    setTimeout(startVoiceListening, micDelay);
+                })
+                .catch(function () {
+                    setTimeout(startVoiceListening, micDelay);
+                });
+        } else {
+            setTimeout(startVoiceListening, micDelay);
+        }
     }
 
     function closeVoiceMode() {
@@ -1407,10 +1420,13 @@
                || voices.find(function(v) { return v.lang.startsWith('en'); });
             if (pick) utter.voice = pick;
             voiceAiTalking = true;
+            /* FIX: original code called pause()+resume() every 5 s which itself
+               caused audio gaps. Replace with a 250ms poll that only resumes
+               when Chrome has silently paused — no forced pause. */
             voiceKeepAlive = setInterval(function() {
                 if (!window.speechSynthesis.speaking) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-                else { window.speechSynthesis.pause(); window.speechSynthesis.resume(); }
-            }, 5000);
+                else if (window.speechSynthesis.paused) { try { window.speechSynthesis.resume(); } catch(e) {} }
+            }, 250);
             utter.onend = utter.onerror = function() {
                 if (voiceKeepAlive) { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
                 voiceAiTalking = false; if (onDone) onDone();
