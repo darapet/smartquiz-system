@@ -217,18 +217,37 @@ window.aqsUploadFile = async function(file, storagePath) {
 })();
 
 function _interceptJqueryCall(settings, data) {
-    var deferred = jQuery.Deferred();
-    handleAction(data).then(function(res) {
-        var result = { success: true, data: res };
-        if (settings.success) settings.success(result);
-        deferred.resolve(result);
-    }).catch(function(e) {
-        var result = { success: false, data: e.message || 'Error' };
-        if (settings.success) settings.success(result);
-        deferred.resolve(result);
-    });
-    return deferred.promise();
-}
+      var deferred = jQuery.Deferred();
+      var timeoutMs = settings.timeout || 20000;
+      var done = false;
+
+      // Timeout guard — honours the jQuery AJAX timeout setting
+      var timer = setTimeout(function () {
+          if (done) return;
+          done = true;
+          var result = { success: false, data: 'The request timed out. Please check your connection and try again.' };
+          if (settings.success) settings.success(result);
+          deferred.resolve(result);
+      }, timeoutMs);
+
+      handleAction(data).then(function(res) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          var result = { success: true, data: res };
+          if (settings.success) settings.success(result);
+          deferred.resolve(result);
+      }).catch(function(e) {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          var result = { success: false, data: e.message || 'Error' };
+          if (settings.success) settings.success(result);
+          deferred.resolve(result);
+      });
+
+      return deferred.promise();
+  }
 
 /* ============================================================
    ACTION HANDLERS
