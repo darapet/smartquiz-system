@@ -1,6 +1,6 @@
-/* AI Quiz System — Image Generator v2 (Professional Edition)
-     Powered by Pollinations AI + Groq Prompt Engine
-     Developed by Omomo Excellence in corporation with Darapet Technology */
+/* DaraSmart — Image Generator v2 (Professional Edition)
+     Powered by Groq Prompt Engine
+     Developed by Darapet Technology */
   (function () {
       'use strict';
 
@@ -315,27 +315,8 @@
               } catch (e) { /* fall through to Pollinations */ }
           }
 
-          /* 2. Pollinations fallback */
-          try {
-              var ctrl2 = new AbortController();
-              var tid2  = setTimeout(function () { ctrl2.abort(); }, 20000);
-              var res2  = await fetch('https://text.pollinations.ai/openai', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  referrerPolicy: 'no-referrer',
-                  signal: ctrl2.signal,
-                  body: JSON.stringify({
-                      messages: messages, model: 'openai',
-                      max_tokens: 400, temperature: 0.85, private: true
-                  })
-              });
-              clearTimeout(tid2);
-              if (!res2.ok) return null;
-              var data2 = await res2.json();
-              var text2 = (data2.choices && data2.choices[0] &&
-                           data2.choices[0].message && data2.choices[0].message.content) || '';
-              return text2.trim() || null;
-          } catch (e) { return null; }
+          /* No Groq key available — return null */
+          return null;
       }
 
       /* ── Enhance Prompt ── */
@@ -375,7 +356,7 @@
           var messages = [
               {
                   role: 'system',
-                  content: 'You are an elite commercial AI image prompt engineer for DaraQuiz AI Studio. ' +
+                  content: 'You are an elite commercial AI image prompt engineer for DaraSmart Studio. ' +
                            styleHint +
                            ' Transform the user\'s rough idea into a richly detailed, professionally crafted image generation prompt that will produce stunning commercial-quality output. ' +
                            'Be specific, evocative, and precise. Output ONLY the enhanced prompt text — no preamble, no explanation, no quotes, no markdown. Maximum 200 words.'
