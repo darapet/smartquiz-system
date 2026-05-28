@@ -293,7 +293,7 @@
         }
 
         window.groqFetch({
-            model:       'llama3-8b-8192',
+            model:       'llama-3.3-70b-versatile',
             messages:    messages,
             max_tokens:  2048,
             temperature: 0.7
@@ -544,7 +544,7 @@
         var messages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(chatHistory);
 
         window.groqFetch({
-            model: 'llama3-8b-8192', messages: messages, max_tokens: 512, temperature: 0.7
+            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 512, temperature: 0.7
         }).then(function (r) { return r.json(); }).then(function (data) {
             showTyping(false);
             if (data.error || !data.choices) {
