@@ -1,5 +1,6 @@
-/* aqs-studio.js — xzily AI Chat Studio
-   Full replacement for the truncated file.
+/* aqs-studio.js — xzily AI Chat Studio v2
+   Developed by Omomo Excellence in corporation with Darapet Technology
+   Powered by Groq LLaMA-3.3 + Real-time Web Search (DuckDuckGo + Jina AI Reader)
    Requires: aqs-groq-key.js (groqFetch / getGroqKey), marked.js, katex, highlight.js
    Optional: pdfjs-dist, mammoth (for file parsing)
 */
@@ -13,7 +14,7 @@
     var voiceAiTalking     = false;
     var voiceRecognition   = null;
     var voiceActive        = false;
-    var chatHistory        = [];       /* {role, content}[] sent to Groq */
+    var chatHistory        = [];
     var conversationId     = null;
     var attachedFileText   = null;
     var attachedFileName   = null;
@@ -23,15 +24,162 @@
     var ACTIVE_KEY  = 'dts_active_session';
 
     /* ═══════════════════════════════════════════════════════════
-       SYSTEM PROMPT
+       SYSTEM PROMPT — Professional General AI
     ═══════════════════════════════════════════════════════════ */
+    var TODAY = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
     var SYSTEM_PROMPT =
-        'You are xzily AI, an intelligent learning assistant developed by Darapet Technology. ' +
-        'You help students with exam preparation, math problems, science concepts, essay writing, ' +
-        'and all academic subjects. Explain concepts clearly with examples, solve problems step by step, ' +
-        'and generate practice questions when asked. ' +
-        'Use LaTeX math formatting: $ for inline math, $$ for display math. ' +
-        'Be encouraging, accurate, and thorough.';
+        'You are XZILY AI, a world-class professional AI assistant developed by Darapet Technology. ' +
+        'You are a highly capable, knowledgeable, and versatile AI — equivalent to GPT-4 and Claude in intelligence and professionalism. ' +
+        'Today\'s date is ' + TODAY + '. ' +
+        '\n\nYour capabilities include:' +
+        '\n- Deep expertise across ALL subjects: science, technology, medicine, law, finance, engineering, history, arts, literature, business, and more.' +
+        '\n- Real-time web awareness: when web search results or website content are provided to you as context, analyze them thoroughly and give accurate, up-to-date answers.' +
+        '\n- Professional writing: emails, reports, legal documents, business proposals, marketing copy, code, essays, and creative writing.' +
+        '\n- Advanced reasoning: complex problem-solving, analysis, strategy, research summaries, and data interpretation.' +
+        '\n- Academic support: exam prep, tutoring, step-by-step problem solving, and practice questions for all levels.' +
+        '\n- Technical expertise: code in any language, debugging, architecture design, DevOps, and system design.' +
+        '\n\nResponse style:' +
+        '\n- Be concise yet thorough. Never pad with filler text.' +
+        '\n- Use structured formatting (headers, bullet points, numbered lists, tables) when it improves clarity.' +
+        '\n- Use LaTeX math: $ for inline math, $$ for display math.' +
+        '\n- Always cite information from web search results when provided.' +
+        '\n- If web content is provided in the prompt, base your answer on it and clearly reference the source.' +
+        '\n- Be direct, confident, and professionally honest. If you don\'t know something, say so and suggest how to find it.' +
+        '\n- Never refuse reasonable requests. Handle sensitive topics with balanced, factual professionalism.';
+
+    /* ═══════════════════════════════════════════════════════════
+       WEB SEARCH & BROWSING ENGINE
+    ═══════════════════════════════════════════════════════════ */
+
+    /* Detect if the query needs live web data */
+    function detectSearchNeeds(text) {
+        var t = text.toLowerCase();
+
+        /* Explicit URL → fetch that page */
+        var urlMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
+        if (urlMatch) return { type: 'url', url: urlMatch[0] };
+
+        /* Domain without protocol */
+        var domainMatch = text.match(/\b(www\.[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
+        if (domainMatch) return { type: 'url', url: 'https://' + domainMatch[1] };
+
+        /* News / real-time / current events triggers */
+        if (/\b(latest|breaking|news|today|tonight|this week|this month|this year|current|right now|live|trending|happening|just happened|recently|new release|update|announcement|price|stock|weather|score|match|result|election|rate|exchange rate|usd|naira|dollar|nasd|crypto|bitcoin|ethereum)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
+
+        /* "Search for / look up / find / check" explicit commands */
+        if (/\b(search|look up|look for|find out|check|browse|visit|open|go to|show me|tell me about)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
+
+        /* Questions about specific people, companies, products */
+        if (/\b(who is|what is|where is|when did|when was|how much|how many|tell me about|what happened to|what does .* do|who owns|who runs|ceo|president|governor|minister|founded|released|launched)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
+
+        return null;
+    }
+
+    /* Fetch a webpage and extract clean text using Jina AI Reader — FREE, no key needed */
+    async function fetchWebPage(url) {
+        try {
+            var jinaUrl = 'https://r.jina.ai/' + url;
+            var ctrl    = new AbortController();
+            var timer   = setTimeout(function () { ctrl.abort(); }, 20000);
+            var res     = await fetch(jinaUrl, {
+                headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' },
+                signal: ctrl.signal
+            });
+            clearTimeout(timer);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var text = await res.text();
+            /* Trim to ~4000 chars to fit in context */
+            return text.trim().slice(0, 4000);
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /* Search DuckDuckGo Instant Answer API — FREE, no key needed */
+    async function searchDuckDuckGo(query) {
+        try {
+            var url  = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) +
+                       '&format=json&no_html=1&skip_disambig=1&no_redirect=1';
+            var ctrl = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); }, 12000);
+            var res  = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var data = await res.json();
+
+            var parts = [];
+
+            if (data.AbstractText) parts.push(data.AbstractText);
+            if (data.Answer)       parts.push('Answer: ' + data.Answer);
+            if (data.Definition)   parts.push('Definition: ' + data.Definition);
+
+            /* Related topics */
+            if (data.RelatedTopics && data.RelatedTopics.length) {
+                var topics = data.RelatedTopics.slice(0, 5).map(function (t) {
+                    return t.Text || (t.Topics && t.Topics[0] && t.Topics[0].Text) || '';
+                }).filter(Boolean);
+                if (topics.length) parts.push('Related:\n' + topics.join('\n'));
+            }
+
+            /* Infobox */
+            if (data.Infobox && data.Infobox.content && data.Infobox.content.length) {
+                var info = data.Infobox.content.slice(0, 8).map(function (item) {
+                    return item.label + ': ' + item.value;
+                }).join('\n');
+                parts.push('Info:\n' + info);
+            }
+
+            if (data.AbstractURL) parts.push('Source: ' + data.AbstractURL);
+
+            return parts.join('\n\n').trim() || null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /* Wikipedia summary fallback */
+    async function searchWikipedia(query) {
+        try {
+            var title = query.trim().replace(/\s+/g, '_');
+            var url   = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title);
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); }, 10000);
+            var res   = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!res.ok) return null;
+            var data = await res.json();
+            if (data.extract) return data.extract + (data.content_urls ? '\nSource: ' + data.content_urls.desktop.page : '');
+            return null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /* Master search: tries DuckDuckGo, then Wikipedia for topic searches */
+    async function performWebSearch(query) {
+        /* Try DuckDuckGo first */
+        var ddg = await searchDuckDuckGo(query);
+        if (ddg && ddg.length > 80) return { source: 'DuckDuckGo', content: ddg };
+
+        /* Extract key subject for Wikipedia fallback */
+        var wikiQ = query
+            .replace(/\b(latest|news|what is|who is|tell me about|search for|find|current|today)\b/gi, '')
+            .replace(/[?!.,]/g, '')
+            .trim();
+        if (wikiQ.length > 3) {
+            var wiki = await searchWikipedia(wikiQ);
+            if (wiki) return { source: 'Wikipedia', content: wiki };
+        }
+
+        return null;
+    }
 
     /* ═══════════════════════════════════════════════════════════
        UTILITIES
@@ -54,15 +202,23 @@
         });
     }
 
-    function showTyping(show) {
+    function showTyping(show, statusText) {
         var el   = document.getElementById('dts-typing');
         var msgs = document.getElementById('dts-messages');
         if (!el) return;
         if (show) {
+            /* Update status text if provided */
+            if (statusText) {
+                var span = el.querySelector('span');
+                if (span) span.textContent = statusText;
+            }
             if (msgs && el.parentNode !== msgs) msgs.appendChild(el);
             el.style.display = 'flex';
             scrollToBottom();
         } else {
+            /* Reset text */
+            var span2 = el.querySelector('span');
+            if (span2) span2.textContent = 'xzily AI is thinking\u2026';
             el.style.display = 'none';
         }
     }
@@ -87,7 +243,6 @@
     }
 
     function applyMathAndHighlight(containerEl) {
-        /* Syntax-highlight code blocks */
         try {
             if (typeof hljs !== 'undefined') {
                 containerEl.querySelectorAll('pre code').forEach(function (block) {
@@ -95,8 +250,6 @@
                 });
             }
         } catch (e) {}
-
-        /* Render KaTeX math */
         try {
             if (typeof window.renderMathInElement !== 'undefined') {
                 window.renderMathInElement(containerEl, {
@@ -126,7 +279,7 @@
         var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
         var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
         var title = firstUser ? firstUser.content.slice(0, 55) : 'Chat';
-        if (title.length === 55) title += '…';
+        if (title.length === 55) title += '\u2026';
         var sess = { id: conversationId, title: title, messages: chatHistory.slice(), ts: Date.now() };
         if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
         sessions = sessions.slice(0, 30);
@@ -146,13 +299,11 @@
         try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
     }
 
-    /* ── Render the history sidebar list ── */
     function renderHistoryList() {
         var list  = document.getElementById('dts-history-list');
         var empty = document.getElementById('dts-history-empty');
         if (!list) return;
 
-        /* Remove old item elements (keep the empty placeholder) */
         list.querySelectorAll('.dts-history-item').forEach(function (el) {
             el.parentNode.removeChild(el);
         });
@@ -170,7 +321,7 @@
             item.dataset.id = sess.id;
             item.innerHTML =
                 '<span class="dts-history-item-title">' + escHtml(sess.title) + '</span>' +
-                '<button class="dts-history-item-del" data-id="' + escHtml(sess.id) + '" title="Delete">✕</button>';
+                '<button class="dts-history-item-del" data-id="' + escHtml(sess.id) + '" title="Delete">\u2715</button>';
 
             item.querySelector('.dts-history-item-del').addEventListener('click', function (e) {
                 e.stopPropagation();
@@ -183,7 +334,6 @@
             });
 
             item.addEventListener('click', function () { loadSessionById(sess.id); });
-            /* Insert before the empty placeholder */
             list.insertBefore(item, empty || null);
         });
     }
@@ -233,7 +383,7 @@
         var wrap = document.createElement('div');
         wrap.className = 'dts-message dts-' + (role === 'user' ? 'user' : 'ai');
 
-        var avatarLetter = role === 'user' ? 'U' : '✦';
+        var avatarLetter = role === 'user' ? 'U' : '\u2736';
         var bubbleHtml   = role === 'user'
             ? escHtml(content)
             : renderMessage(content);
@@ -254,9 +404,9 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       SEND MESSAGE — calls Groq
+       SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
-    function sendMessage(text) {
+    async function sendMessage(text) {
         text = (text || '').trim();
         if (!text && !attachedFileText) return;
         if (isSending) return;
@@ -280,22 +430,61 @@
         var input = document.getElementById('dts-input');
         if (input) { input.value = ''; input.style.height = 'auto'; }
 
-        showTyping(true);
+        /* ── Step 1: Detect if web search needed ── */
+        var webContext   = '';
+        var webSourceTag = '';
+        var searchNeeds  = detectSearchNeeds(text);
 
-        var messages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(chatHistory);
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
+                var pageContent = await fetchWebPage(searchNeeds.url);
+                if (pageContent) {
+                    webContext   = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pageContent;
+                    webSourceTag = '\uD83C\uDF10 *Read from:* ' + searchNeeds.url;
+                } else {
+                    showTyping(true, '\u26A0\uFE0F Could not visit page, searching instead\u2026');
+                    var fallback = await performWebSearch(text);
+                    if (fallback) {
+                        webContext   = 'WEB SEARCH RESULTS (' + fallback.source + '):\n\n' + fallback.content;
+                        webSourceTag = '\uD83D\uDD0D *Web search via ' + fallback.source + '*';
+                    }
+                }
+            } else {
+                showTyping(true, '\uD83D\uDD0D Searching the web\u2026');
+                var searchResult = await performWebSearch(searchNeeds.query);
+                if (searchResult) {
+                    webContext   = 'WEB SEARCH RESULTS (' + searchResult.source + '):\n\n' + searchResult.content;
+                    webSourceTag = '\uD83D\uDD0D *Web search via ' + searchResult.source + '*';
+                }
+            }
+        }
+
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        /* ── Step 2: Build system prompt with optional web context ── */
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (webContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
+                             '\n===== END OF WEB DATA =====\n' +
+                             '\nIMPORTANT: Use the above live web data to answer the user\'s question accurately. Cite the source in your response.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
 
         if (typeof window.groqFetch !== 'function') {
             showTyping(false);
-            appendMessage('assistant', '⚠️ API not ready yet. Please wait a moment and try again.');
+            appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
             isSending = false;
             setSendState(false);
             return;
         }
 
+        /* ── Step 3: Call Groq ── */
         window.groqFetch({
             model:       'llama-3.3-70b-versatile',
             messages:    messages,
-            max_tokens:  2048,
+            max_tokens:  3000,
             temperature: 0.7
         }).then(function (res) {
             return res.json();
@@ -303,17 +492,22 @@
             showTyping(false);
             if (data.error) {
                 var errMsg = data.error.message || 'API error.';
-                /* Key-specific hints */
                 if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
-                    errMsg += ' — Your Groq API key may be invalid or missing.';
+                    errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
                 } else if (errMsg.indexOf('429') !== -1) {
-                    errMsg += ' — Rate limit reached. Try again in a moment.';
+                    errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
                 }
-                appendMessage('assistant', '⚠️ ' + errMsg);
+                appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
             } else {
                 var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
                     ? data.choices[0].message.content
                     : 'Sorry, I could not generate a response. Please try again.';
+
+                /* Append web source badge if web was searched */
+                if (webSourceTag) {
+                    reply = reply + '\n\n---\n' + webSourceTag;
+                }
+
                 chatHistory.push({ role: 'assistant', content: reply });
                 appendMessage('assistant', reply);
                 saveSession();
@@ -328,7 +522,7 @@
             setSendState(false);
         }).catch(function (err) {
             showTyping(false);
-            appendMessage('assistant', '⚠️ Connection error. Please check your internet and try again.');
+            appendMessage('assistant', '\u26A0\uFE0F Connection error. Please check your internet and try again.');
             console.error('[dts] Groq error:', err);
             isSending = false;
             setSendState(false);
@@ -351,8 +545,8 @@
         bar.id = 'dts-quiz-import-bar';
         bar.className = 'dts-quiz-import-bar';
         bar.innerHTML =
-            '<span class="dts-quiz-import-info">📝 Quiz questions detected!</span>' +
-            '<button class="dts-create-quiz-btn" id="dts-go-create-quiz">Create Quiz →</button>';
+            '<span class="dts-quiz-import-info">\uD83D\uDCDD Quiz questions detected!</span>' +
+            '<button class="dts-create-quiz-btn" id="dts-go-create-quiz">Create Quiz \u2192</button>';
 
         bar.querySelector('#dts-go-create-quiz').addEventListener('click', function () {
             try { sessionStorage.setItem('dts_quiz_content', content.slice(0, 5000)); } catch (e) {}
@@ -391,11 +585,11 @@
         /* PDF */
         if (ext === 'pdf') {
             if (typeof window.pdfjsLib === 'undefined') {
-                setStatus('📎 ' + name + ' (parser loading…)');
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
                 setTimeout(function () { handleFileAttach(file); }, 1800);
                 return;
             }
-            setStatus('📎 Reading PDF…');
+            setStatus('\uD83D\uDCCE Reading PDF\u2026');
             var r1 = new FileReader();
             r1.onload = function (e) {
                 window.pdfjsLib.getDocument({ data: e.target.result }).promise.then(function (pdf) {
@@ -410,12 +604,12 @@
                                 if (done === total) {
                                     attachedFileText = texts.join('\n\n');
                                     attachedFileName = name;
-                                    setStatus('📎 ' + name + ' attached (' + total + ' pages)');
+                                    setStatus('\uD83D\uDCCE ' + name + ' attached (' + total + ' pages)');
                                 }
                             });
                         })(p);
                     }
-                }).catch(function () { setStatus('❌ Could not read PDF'); });
+                }).catch(function () { setStatus('\u274C Could not read PDF'); });
             };
             r1.readAsArrayBuffer(file);
             return;
@@ -424,18 +618,18 @@
         /* DOCX */
         if (ext === 'docx' || ext === 'doc') {
             if (typeof mammoth === 'undefined') {
-                setStatus('📎 ' + name + ' (parser loading…)');
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
                 setTimeout(function () { handleFileAttach(file); }, 1800);
                 return;
             }
-            setStatus('📎 Reading document…');
+            setStatus('\uD83D\uDCCE Reading document\u2026');
             var r2 = new FileReader();
             r2.onload = function (e) {
                 mammoth.extractRawText({ arrayBuffer: e.target.result }).then(function (result) {
                     attachedFileText = result.value;
                     attachedFileName = name;
-                    setStatus('📎 ' + name + ' attached');
-                }).catch(function () { setStatus('❌ Could not read document'); });
+                    setStatus('\uD83D\uDCCE ' + name + ' attached');
+                }).catch(function () { setStatus('\u274C Could not read document'); });
             };
             r2.readAsArrayBuffer(file);
             return;
@@ -446,9 +640,9 @@
         r3.onload = function (e) {
             attachedFileText = e.target.result;
             attachedFileName = name;
-            setStatus('📎 ' + name + ' attached');
+            setStatus('\uD83D\uDCCE ' + name + ' attached');
         };
-        r3.onerror = function () { setStatus('❌ Could not read file'); };
+        r3.onerror = function () { setStatus('\u274C Could not read file'); };
         r3.readAsText(file);
     }
 
@@ -498,12 +692,12 @@
         }
         stopVoiceListening();
         var rec = new SR();
-        rec.continuous    = false;
+        rec.continuous     = false;
         rec.interimResults = true;
-        rec.lang          = 'en-US';
-        voiceRecognition  = rec;
+        rec.lang           = 'en-US';
+        voiceRecognition   = rec;
         setVoiceState('listening');
-        setVoiceTranscript('Listening…');
+        setVoiceTranscript('Listening\u2026');
 
         rec.onresult = function (e) {
             var transcript = '';
@@ -529,10 +723,10 @@
         }
     }
 
-    function handleVoiceInput(text) {
+    async function handleVoiceInput(text) {
         chatHistory.push({ role: 'user', content: text });
         appendMessage('user', text);
-        showTyping(true);
+        showTyping(true, 'XZILY AI is thinking\u2026');
 
         if (typeof window.groqFetch !== 'function') {
             showTyping(false);
@@ -541,10 +735,28 @@
             return;
         }
 
-        var messages = [{ role: 'system', content: SYSTEM_PROMPT }].concat(chatHistory);
+        /* Web search for voice too */
+        var voiceWebContext = '';
+        var searchNeeds = detectSearchNeeds(text);
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                var pg = await fetchWebPage(searchNeeds.url);
+                if (pg) voiceWebContext = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pg;
+            } else {
+                var sr = await performWebSearch(text);
+                if (sr) voiceWebContext = 'WEB SEARCH RESULTS (' + sr.source + '):\n\n' + sr.content;
+            }
+        }
+
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (voiceWebContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA =====\n' + voiceWebContext + '\n===== END =====\nUse this data to answer accurately.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
 
         window.groqFetch({
-            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 512, temperature: 0.7
+            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
         }).then(function (r) { return r.json(); }).then(function (data) {
             showTyping(false);
             if (data.error || !data.choices) {
@@ -558,7 +770,6 @@
             saveSession();
             renderHistoryList();
 
-            /* Speak reply (strip markdown for TTS) */
             var spoken = reply
                 .replace(/```[\s\S]*?```/g, 'code block.')
                 .replace(/`[^`]+`/g, '')
@@ -587,8 +798,8 @@
         var micIcon  = document.getElementById('dts-voice-mic-icon');
         var waveIcon = document.getElementById('dts-voice-wave-icon');
 
-        var labels    = { idle: 'Tap "Start Listening" to begin', listening: 'Listening… speak now', thinking: 'XZILY is thinking…', speaking: 'XZILY is speaking…', error: 'Microphone error', closed: '' };
-        var togLabels = { idle: 'Start Listening', listening: 'Stop Listening', thinking: 'Please wait…', speaking: 'Interrupt', error: 'Retry', closed: '' };
+        var labels    = { idle: 'Tap "Start Listening" to begin', listening: 'Listening\u2026 speak now', thinking: 'XZILY is thinking\u2026', speaking: 'XZILY is speaking\u2026', error: 'Microphone error', closed: '' };
+        var togLabels = { idle: 'Start Listening', listening: 'Stop Listening', thinking: 'Please wait\u2026', speaking: 'Interrupt', error: 'Retry', closed: '' };
 
         if (statusEl) statusEl.textContent = labels[state]    || state;
         if (orb)      orb.dataset.state    = state;
@@ -645,13 +856,7 @@
         window.speechSynthesis.speak(utt);
     }
 
-    /* NOTE: speakStudioChunked uses currentStudioAudio and voiceAiTalking from
-       the closure above — the rest of the function body is already in this file
-       starting right below. The original truncated file only contained this
-       function's body; the full version is included here. */
     function speakStudioChunked(spoken, onDone) {
-        /* Gracefully handle the edge case where the spoken text is empty
-           (e.g. because of a mid-sentence network timeout)             */
         var chunks    = splitSpeechChunks(spoken, 200);
         var idx       = 0;
         var doneCalled = false;
@@ -783,7 +988,6 @@
     ═══════════════════════════════════════════════════════════ */
     document.addEventListener('DOMContentLoaded', function () {
 
-        /* Start a fresh session */
         newSession();
         renderHistoryList();
 
@@ -795,7 +999,6 @@
                 this.style.height = Math.min(this.scrollHeight, 200) + 'px';
             });
 
-            /* Enter = send (Shift+Enter = new line) */
             inputEl.addEventListener('keydown', function (e) {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -838,7 +1041,7 @@
             historyToggle.addEventListener('click', function () {
                 var open = historyPanel.style.display !== 'none' && historyPanel.style.display !== '';
                 historyPanel.style.display = open ? 'none' : '';
-                if (historyCaret) historyCaret.textContent = open ? '▸' : '▾';
+                if (historyCaret) historyCaret.textContent = open ? '\u25B8' : '\u25BE';
             });
         }
 
@@ -850,7 +1053,7 @@
             });
         }
 
-        /* ── Voice button (opens modal) ── */
+        /* ── Voice button ── */
         var voiceBtn = document.getElementById('dts-voice-btn');
         if (voiceBtn) {
             voiceBtn.addEventListener('click', function () { openVoiceModal(); });
@@ -866,7 +1069,7 @@
         var voiceToggle = document.getElementById('dts-voice-toggle');
         if (voiceToggle) {
             voiceToggle.addEventListener('click', function () {
-                var orb = document.getElementById('dts-voice-orb');
+                var orb   = document.getElementById('dts-voice-orb');
                 var state = orb ? orb.dataset.state : 'idle';
                 if (state === 'idle' || state === 'error') {
                     startVoiceListening();
@@ -900,7 +1103,7 @@
             if (lastId) {
                 var sessions = loadSessions();
                 if (sessions.some(function (s) { return s.id === lastId; })) {
-                    /* Comment out the next line if you prefer to always start fresh */
+                    /* Uncomment to restore last session on load: */
                     /* loadSessionById(lastId); */
                 }
             }
