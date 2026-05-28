@@ -68,58 +68,77 @@
      getUserMedia() can work. We request it proactively so mic is
      ready when Studio/Study/TTS needs it.                          */
   var micRequested = false;
+  /* ── FIX: Mic permission — getUserMedia triggers Android's native dialog ──
+     Removed failing @capacitor/permissions call (plugin not installed).
+     getUserMedia is the correct way to trigger Android mic permission dialog. */
   function requestMicPermission() {
     if (micRequested) return;
     micRequested = true;
-    if (isCapacitor && platform === 'android') {
-      /* Use native Permissions API if available */
-      if (window.Capacitor.Plugins && window.Capacitor.Plugins.Permissions) {
-        window.Capacitor.Plugins.Permissions.request({ permissions: ['microphone'] })
-          .catch(function () {});
-      }
-    }
-    /* Also request via Web API to ensure browser-level permission */
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
       navigator.mediaDevices.getUserMedia({ audio: true })
         .then(function (stream) {
-          /* Got permission — immediately stop the stream, we just needed the grant */
           stream.getTracks().forEach(function (t) { t.stop(); });
           window._aqsMicPermissionGranted = true;
+          var b = document.getElementById('_aqsMicBanner');
+          if (b) b.remove();
         })
-        .catch(function (err) {
-          console.warn('[DaraQuiz] Mic permission denied:', err.message);
+        .catch(function () {
           window._aqsMicPermissionGranted = false;
+          /* FIX: Show a visible banner when mic is blocked so user can fix it */
+          if (document.getElementById('_aqsMicBanner')) return;
+          var banner = document.createElement('div');
+          banner.id = '_aqsMicBanner';
+          banner.style.cssText = 'position:fixed;bottom:0;left:0;right:0;z-index:99998;background:#c0392b;' +
+            'color:#fff;padding:12px 14px;font-size:13px;font-family:sans-serif;' +
+            'display:flex;align-items:center;justify-content:space-between;box-shadow:0 -2px 8px rgba(0,0,0,.3)';
+          banner.innerHTML = '<span>&#127908; Mic blocked &mdash; go to <b>Settings &rsaquo; Apps &rsaquo; ' +
+            (document.title || 'App') + ' &rsaquo; Permissions</b> and allow Microphone</span>' +
+            '<button id="_aqsMicRetry" style="margin-left:10px;background:#fff;color:#c0392b;' +
+            'border:none;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer">Retry</button>';
+          document.body.appendChild(banner);
+          document.getElementById('_aqsMicRetry').addEventListener('click', function () {
+            micRequested = false; requestMicPermission();
+          });
         });
     }
   }
 
-  /* Request mic when user first touches the screen */
-  document.addEventListener('touchstart', function onFirstTouch() {
-    requestMicPermission();
-    document.removeEventListener('touchstart', onFirstTouch);
-  }, { once: true });
+  /* Request on first touch — triggers the Android permission dialog */
+  document.addEventListener('touchstart', requestMicPermission, { once: true });
 
-  /* Also expose for manual trigger (Studio/Study can call this) */
+  /* Also try early on page load (for pages that auto-start voice) */
+  document.addEventListener('DOMContentLoaded', function () {
+    setTimeout(function () { if (!micRequested) requestMicPermission(); }, 1000);
+  });
+
   window.AQSRequestMicPermission = requestMicPermission;
 
-  /* ── Audio context unlock (Android autoplay policy fix) ──
-     Android blocks audio until after a user gesture. We create
-     and resume an AudioContext on first touch to unlock it.    */
+  /* ── FIX: Unlock ALL audio on first touch ──
+     Must unlock BOTH AudioContext (Web Audio API) AND <audio> element
+     because Android blocks them separately. TTS uses <audio> element.
+     Both unlocks MUST happen inside the touchstart user-gesture context. */
   var audioUnlocked = false;
-  document.addEventListener('touchstart', function unlockAudio() {
+  function _unlockAllAudio() {
     if (audioUnlocked) return;
     audioUnlocked = true;
+    /* Unlock AudioContext */
     try {
       var ctx = new (window.AudioContext || window.webkitAudioContext)();
       var buf = ctx.createBuffer(1, 1, 22050);
       var src = ctx.createBufferSource();
-      src.buffer = buf;
-      src.connect(ctx.destination);
-      src.start(0);
+      src.buffer = buf; src.connect(ctx.destination); src.start(0);
       ctx.resume().catch(function () {});
     } catch (e) {}
-    document.removeEventListener('touchstart', unlockAudio);
-  }, { once: true });
+    /* FIX: Unlock <audio> element playback with a silent audio clip */
+    try {
+      var sil = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+      sil.volume = 0;
+      sil.play().catch(function () {});
+    } catch (e2) {}
+    window._aqsAudioUnlocked = true;
+  }
+  document.addEventListener('touchstart', _unlockAllAudio, { once: true });
+  window.AQSUnlockAudio = _unlockAllAudio;
 
   /* ── Expose platform info globally ── */
   window.AQSPlatform = { isNative: isCapacitor, platform: platform };
