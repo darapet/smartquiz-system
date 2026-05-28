@@ -15,8 +15,8 @@ var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
 var HIST_KEY  = 'aqs_study_hist';
 var MAX_HIST  = 15;
 var CHECKPOINT_PHRASE = 'Does that make sense? Say yes to continue or no if you want me to explain again.';
-var SUMMON_KEY_NAME   = 'daraquiz_ai_name';
-var SUMMON_KEY_VOICE  = 'daraquiz_ai_voice_index';
+var SUMMON_KEY_NAME   = 'xzily_ai_name';
+var SUMMON_KEY_VOICE  = 'xzily_ai_voice_index';
 
 /* ── STUDY STATE ────────────────────────────────────────────── */
 var S = {
@@ -915,7 +915,7 @@ function esc(s) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   VOICE AI — DaraQuiz SUMMON
+   VOICE AI — XZILY SUMMON
    ══════════════════════════════════════════════════════════════ */
 
 /* ── SETTINGS (saved to localStorage) ───────────────────────── */
@@ -1052,7 +1052,17 @@ function summonStartListening() {
     _recDisabled = false;
     clearTimeout(_recRetryTimer); _recStopWatchdog();
     VS.transcript = ''; VS._interimSnapshot = '';
-    _doStartRecognition();
+    /* FIX: explicitly request mic permission so browser shows the prompt */
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(function (stream) {
+                stream.getTracks().forEach(function (t) { t.stop(); });
+                _doStartRecognition();
+            })
+            .catch(function () { _doStartRecognition(); });
+    } else {
+        _doStartRecognition();
+    }
 }
 
 function _recStartWatchdog() {
@@ -1142,7 +1152,7 @@ async function summonHandleQuery(q) {
 
     VS.responseCount = (VS.responseCount || 0) + 1;
     var addCheckpoint = (VS.responseCount % 3 === 0);
-    var aiDisplayName = VS.aiName || 'DaraSmart';
+    var aiDisplayName = VS.aiName || 'XZILY AI';
 
     var sysPrompt =
         'You are ' + aiDisplayName + ', a professional and thorough voice-based academic tutor. ' +
@@ -1314,11 +1324,16 @@ function summonStopQueue() {
 function summonSpeakOne(text, onDone) {
     if (!VS.synth || !text) { if (onDone) onDone(); return; }
     summonPickVoice(); VS.speaking = true;
+    try { VS.synth.cancel(); } catch(e) {}
     var u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
     if (VS.voice) u.voice = VS.voice;
-    u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
-    u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+    /* FIX: Chrome silently pauses speechSynthesis — poll and resume */
+    var _rc = setInterval(function () {
+        if (VS.synth && VS.synth.paused) { try { VS.synth.resume(); } catch(e) {} }
+    }, 250);
+    u.onend  = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
+    u.onerror = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
     VS.synth.speak(u);
 }
 
@@ -1343,7 +1358,11 @@ function summonSpeak(text, onDone) {
     var u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
     if (VS.voice) u.voice = VS.voice;
-    u.onend = u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+    /* FIX: Chrome silently pauses speechSynthesis — poll and resume */
+    var _rc = setInterval(function () {
+        if (VS.synth && VS.synth.paused) { try { VS.synth.resume(); } catch(e) {} }
+    }, 250);
+    u.onend = u.onerror = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
     VS.synth.speak(u);
 }
 
@@ -1446,7 +1465,7 @@ function injectSummonStyles() {
 function injectSummonUI() {
     if (document.getElementById('std-summon-fab')) return;
     var fab = document.createElement('div');
-    fab.id = 'std-summon-fab'; fab.title = 'DaraSmart Voice'; fab.textContent = '✦';
+    fab.id = 'std-summon-fab'; fab.title = 'XZILY AI Voice'; fab.textContent = '✦';
     document.body.appendChild(fab);
     fab.addEventListener('click', summonToggle);
 
@@ -1458,7 +1477,7 @@ function injectSummonUI() {
         '<div id="std-summon-header">',
           '<button id="std-vh-btn" title="Conversation history">&#9776;</button>',
           '<div id="std-summon-big-orb"><span>✦</span></div>',
-          '<div id="std-summon-state-txt">DaraSmart</div>',
+          '<div id="std-summon-state-txt">XZILY AI</div>',
           '<button id="std-summon-close">&#x2715;</button>',
         '</div>',
         /* History dropdown (full-width, sits below header) */
@@ -1488,8 +1507,8 @@ function summonSetState(state) {
     var txt     = document.getElementById('std-summon-state-txt');
     if (!overlay) return;
     overlay.setAttribute('data-state', state);
-    var labels = {idle:'DaraSmart', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
-    if (txt) txt.textContent = labels[state] || 'DaraSmart';
+    var labels = {idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
+    if (txt) txt.textContent = labels[state] || 'XZILY AI';
 }
 
 function summonToggle() { if (VS.active) summonHide(); else summonShow(); }
@@ -1506,7 +1525,7 @@ function summonShow() {
         }, 300);
         return;
     }
-    var name = VS.aiName || 'DaraSmart';
+    var name = VS.aiName || 'XZILY AI';
     var greeting = S.title
         ? 'Hello! I am ' + name + '. You are studying ' + S.title + '. Ask me anything!'
         : 'Hello! I am ' + name + '. How can I help you study today?';
@@ -1664,10 +1683,10 @@ function vhSaveHistory() {
     var lines = pairs.map(function (p, i) {
         return 'Q' + (i + 1) + ': ' + p.user.text + '\n\nAI: ' + (p.ai ? p.ai.text : '(no response)') + '\n\n---\n';
     });
-    var blob = new Blob(['DaraSmart — Study Conversation\n\n' + lines.join('\n')], { type: 'text/plain' });
+    var blob = new Blob(['XZILY AI — Study Conversation\n\n' + lines.join('\n')], { type: 'text/plain' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'daraquiz-study-history.txt';
+    a.download = 'xzily-study-history.txt';
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
