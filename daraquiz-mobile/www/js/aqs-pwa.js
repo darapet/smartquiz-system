@@ -1,4 +1,4 @@
-/* DaraQuiz AI Studio — PWA Install (sidebar button + modal + banner) */
+/* XZILY AI Studio — PWA Install (sidebar button + modal + banner) */
 (function () {
     'use strict';
 
@@ -7,11 +7,20 @@
     var isInStandalone = ('standalone' in navigator && navigator.standalone) ||
                          window.matchMedia('(display-mode: standalone)').matches;
 
-    /* ── Service worker removed — unregister any old SW so visitors get fresh pages ── */
+    /* ── Register service worker for PWA install + offline support ── */
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.getRegistrations().then(function (regs) {
-            regs.forEach(function (reg) { reg.unregister(); });
-        });
+        /* FIX: inject manifest.json link dynamically so every page becomes installable
+           without editing each HTML file individually */
+        if (!document.querySelector('link[rel="manifest"]')) {
+            var _ml = document.createElement('link');
+            _ml.rel  = 'manifest';
+            _ml.href = 'manifest.json';
+            document.head.appendChild(_ml);
+        }
+        /* FIX: register the service worker (was incorrectly unregistering it before,
+           which prevented the app from being installable as a PWA on Android) */
+        navigator.serviceWorker.register('js/aqs-sw.js', { scope: '/' })
+            .catch(function () { /* SW optional — silently ignore */ });
     }
 
     /* ── Build the install modal once ── */
@@ -31,7 +40,7 @@
                 '<div class="aqs-pwa-modal-head">' +
                     '<div class="aqs-pwa-modal-icon">⬡</div>' +
                     '<div>' +
-                        '<div class="aqs-pwa-modal-title">Install DaraQuiz AI</div>' +
+                        '<div class="aqs-pwa-modal-title">Install XZILY AI</div>' +
                         '<div class="aqs-pwa-modal-sub">Add to your home screen — works offline</div>' +
                     '</div>' +
                 '</div>' +
@@ -214,7 +223,7 @@
     /* ── App installed event ── */
     window.addEventListener('appinstalled', function () {
         markInstalled();
-        console.log('[DaraQuiz PWA] App installed!');
+        console.log('[XZILY PWA] App installed!');
     });
 
     /* ── DOM ready setup ── */
