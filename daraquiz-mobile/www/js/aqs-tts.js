@@ -1,4 +1,4 @@
-/* aqs-tts.js — DaraQuiz AI Text-to-Speech v2
+/* aqs-tts.js — DaraSmart Text-to-Speech v2
    82 professional voices · Groq translation · Pollinations audio · Download
    ─────────────────────────────────────────────────────────────────────────── */
 (function () {
@@ -453,7 +453,7 @@
         if (row) row.innerHTML = '<span class="tts-pv-name">Browser Voice</span><span class="tts-pv-region">Built-in</span>';
 
         var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = 'Download unavailable in browser fallback mode';
+        if (info) info.textContent = 'Playing via device voice engine — tap Speak to hear';
 
         var player = document.getElementById('tts-player');
         if (player) player.classList.add('visible');
