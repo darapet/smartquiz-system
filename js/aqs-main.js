@@ -2012,25 +2012,6 @@
             }
             throw new Error('AI generation failed. Please check your connection and try again.');
         }
-        async function callAI(prompt, statusFn) {
-            statusFn = statusFn || setStatus;
-            for (let gi = 0; gi < RACE_GROUPS.length; gi++) {
-                const models = RACE_GROUPS[gi];
-                statusFn('Generating' + (gi > 0 ? ' (backup models)' : '') +
-                         '… racing ' + (models.length + 1) + ' AI connections simultaneously…');
-                try {
-                    const text = await _raceGroup(prompt, models);
-                    if (text) return text;
-                } catch (e) {
-                    console.warn('[AQS] Race group ' + (gi + 1) + ' failed:', e.message);
-                    if (gi < RACE_GROUPS.length - 1) {
-                        statusFn('Switching to backup models…');
-                        await new Promise(function (r) { setTimeout(r, 1500); });
-                    }
-                }
-            }
-            throw new Error('AI generation failed. Please check your connection and try again.');
-        }
 
         /* ─────────────────────────────────────────────────────────
            PROGRESSIVE GENERATION — fires batches of 3 questions
