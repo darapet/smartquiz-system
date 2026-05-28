@@ -3,6 +3,8 @@ name: Build Android APK
 on:
   push:
     branches: [ main, master ]
+    paths:
+      - 'daraquiz-mobile/**'
   workflow_dispatch:
 
 jobs:
@@ -41,17 +43,26 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Copy custom MainActivity (mic + audio fix)
+        run: |
+          mkdir -p android/app/src/main/java/com/darapet/darasmart
+          cp android-config/MainActivity.java android/app/src/main/java/com/darapet/darasmart/MainActivity.java
+
       - name: Copy icons into Android project
         run: |
+          mkdir -p android/app/src/main/res/mipmap-mdpi
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/app/src/main/res/mipmap-xhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p android/app/src/main/res/drawable
           for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-            mkdir -p android/app/src/main/res/mipmap-${density}
             src="resources/android/icon/mipmap-${density}"
             dst="android/app/src/main/res/mipmap-${density}"
             cp "${src}/ic_launcher.png"            "${dst}/" 2>/dev/null || true
             cp "${src}/ic_launcher_round.png"      "${dst}/" 2>/dev/null || true
             cp "${src}/ic_launcher_foreground.png" "${dst}/" 2>/dev/null || true
           done
-          mkdir -p android/app/src/main/res/drawable
           cp resources/android/splash/drawable/splash.png android/app/src/main/res/drawable/ 2>/dev/null || true
 
       - name: Make Gradlew executable
@@ -60,9 +71,19 @@ jobs:
       - name: Build Debug APK
         run: cd android && ./gradlew assembleDebug --stacktrace
 
+      - name: Build Release APK (unsigned)
+        run: cd android && ./gradlew assembleRelease --stacktrace
+
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: daraquiz-ai-debug
+          name: darasmart-debug
           path: daraquiz-mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Upload Release APK (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: darasmart-release-unsigned
+          path: daraquiz-mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
           retention-days: 30
