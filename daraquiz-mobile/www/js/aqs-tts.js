@@ -415,7 +415,37 @@
             audio.src = url;
             audio.load();
             audio.playbackRate = speed;
-            audio.play().catch(function() {});
+            /* FIX: unlock audio then play; if still blocked show a visible tap-overlay */
+              (window._aqsAudioUnlocked ? Promise.resolve() :
+                  new Promise(function(res) {
+                      try {
+                          var s = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
+                          s.volume = 0;
+                          s.play().then(res).catch(res);
+                      } catch(e){ res(); }
+                  })
+              ).then(function() {
+                  return audio.play();
+              }).catch(function () {
+                  /* Android still blocked — show a tap-to-play overlay */
+                  if (document.getElementById('_aqsTapPlay')) return;
+                  var ov = document.createElement('div');
+                  ov.id = '_aqsTapPlay';
+                  ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;' +
+                      'background:rgba(0,0,0,.6);display:flex;align-items:center;' +
+                      'justify-content:center;cursor:pointer;touch-action:manipulation';
+                  ov.innerHTML = '<div style="background:#fff;border-radius:18px;padding:28px 36px;' +
+                      'text-align:center;max-width:300px;box-shadow:0 4px 24px rgba(0,0,0,.3)">' +
+                      '<div style="font-size:2.4rem;margin-bottom:8px">&#128266;</div>' +
+                      '<div style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Tap to play audio</div>' +
+                      '<div style="font-size:.85rem;color:#666">Android requires a tap to enable sound</div></div>';
+                  document.body.appendChild(ov);
+                  ov.addEventListener('click', function () {
+                      ov.remove();
+                      if (typeof window.AQSUnlockAudio === 'function') window.AQSUnlockAudio();
+                      audio.play().catch(function() { /* handled by tap-overlay above */ });
+                  }, { once: true });
+              });
         }
 
         var bp = document.getElementById('tts-browser-player');
