@@ -16,7 +16,8 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithRedirect,
+    getRedirectResult,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
     getFirestore,
@@ -60,6 +61,8 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+/* Kick off redirect result check after module finishes loading */
+setTimeout(function() { handleGoogleRedirectResult && handleGoogleRedirectResult().catch(function(){}); }, 0);
 const db   = getFirestore(app);
 const rtdb = getDatabase(app);
 
@@ -403,68 +406,75 @@ async function actionRegister(data) {
 }
 
 /* ── Google / Social Sign-In ── */
-async function actionSocialLogin(data) {
-    var provider = data.provider || 'google';
-    var authProvider;
-    if (provider === 'google') {
-        authProvider = new GoogleAuthProvider();
-        authProvider.addScope('email');
-        authProvider.addScope('profile');
-    } else {
-        throw new Error('Unsupported social provider: ' + provider);
-    }
+/* ── Google / Social Sign-In ──
+     Uses signInWithRedirect (required for Median WebView / mobile).
+     After Google auth, the page reloads and handleGoogleRedirectResult()
+     (called on startup) completes the sign-in and redirects to dashboard. */
+  async function actionSocialLogin(data) {
+      var provider = data.provider || 'google';
+      if (provider !== 'google') throw new Error('Unsupported social provider: ' + provider);
+      var authProvider = new GoogleAuthProvider();
+      authProvider.addScope('email');
+      authProvider.addScope('profile');
+      /* Store the intended redirect page so we can return there after auth */
+      try { sessionStorage.setItem('aqs_social_redirect_from', window.location.href); } catch(e) {}
+      /* Navigate to Google — page will reload on return, handleGoogleRedirectResult() picks up */
+      await signInWithRedirect(auth, authProvider);
+      /* Never reached — browser navigates away */
+      return { pending_redirect: true };
+  }
 
-    var cred = await signInWithPopup(auth, authProvider);
-    var user = cred.user;
+  /* Called once on startup — handles the return trip from Google sign-in */
+  async function handleGoogleRedirectResult() {
+      try {
+          var result = await getRedirectResult(auth);
+          if (!result) return; /* Normal page load, not a redirect return */
+          var user = result.user;
 
-    /* Check if user doc already exists */
-    var profileRef = doc(db, 'users', user.uid);
-    var profileDoc = await getDoc(profileRef);
-    var profile;
+          /* Check if user doc already exists */
+          var profileRef = doc(db, 'users', user.uid);
+          var profileDoc = await getDoc(profileRef);
+          var profile;
 
-    if (profileDoc.exists()) {
-        /* Returning user — just update last login */
-        profile = profileDoc.data();
-        await updateDoc(profileRef, { last_login: serverTimestamp() });
-    } else {
-        /* New user via Google — auto-create profile */
-        var displayName = user.displayName || '';
-        var emailLocal  = (user.email || '').split('@')[0];
-        /* Generate a unique username from display name or email local part */
-        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-        /* Check for username collision and append random digits if needed */
-        var finalUsername = baseUsername;
-        /* Check collision via public usernames collection */
-        var collision = await getDoc(doc(db, 'usernames', finalUsername));
-        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+          if (profileDoc.exists()) {
+              profile = profileDoc.data();
+              await updateDoc(profileRef, { last_login: serverTimestamp() });
+          } else {
+              var displayName = user.displayName || '';
+              var emailLocal  = (user.email || '').split('@')[0];
+              var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
+              var finalUsername = baseUsername;
+              var collision = await getDoc(doc(db, 'usernames', finalUsername));
+              if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+              profile = {
+                  uid:        user.uid,
+                  name:       displayName,
+                  username:   finalUsername,
+                  email:      user.email,
+                  role:       'student',
+                  avatar:     user.photoURL || '',
+                  provider:   'google',
+                  status:     'active',
+                  created_at: serverTimestamp(),
+                  last_login: serverTimestamp()
+              };
+              await setDoc(profileRef, profile);
+              await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+          }
 
-        profile = {
-            uid:        user.uid,
-            name:       displayName,
-            username:   finalUsername,
-            email:      user.email,
-            role:       'student',
-            avatar:     user.photoURL || '',
-            provider:   provider,
-            status:     'active',
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp()
-        };
-        await setDoc(profileRef, profile);
-        /* Reserve username in public lookup map */
-        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
-    }
+          _updateAqsGlobals(user, profile);
 
-    _updateAqsGlobals(user, profile);
-
-    return {
-        logged_in:    true,
-        redirect:     _dashboardUrl(profile.role),
-        otp_required: false,
-        otp_verified: true,
-        user_name:    profile.name || user.displayName || user.email
-    };
-}
+          /* Fire event so aqs-auth.js can show a success message */
+          document.dispatchEvent(new CustomEvent('aqs:googleSignInDone', {
+              detail: { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email }
+          }));
+      } catch (err) {
+          /* Fire error event */
+          document.dispatchEvent(new CustomEvent('aqs:googleSignInError', {
+              detail: { message: err.message || 'Google sign-in failed. Please try again.' }
+          }));
+      }
+  }
 
 async function actionLogout() {
     await signOut(auth);
