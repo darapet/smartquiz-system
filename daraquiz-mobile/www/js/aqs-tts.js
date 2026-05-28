@@ -1,10 +1,10 @@
-/* aqs-tts.js — DaraSmart Text-to-Speech v2
+/* aqs-tts.js — XZILY AI Text-to-Speech v2
    82 professional voices · Groq translation · Pollinations audio · Download
    ─────────────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-    var HISTORY_KEY = 'daraquiz_tts_history';
+    var HISTORY_KEY = 'xzily_tts_history';
     var MAX_CHARS   = 5000;
     var CHUNK_SIZE  = 180;
 
@@ -295,8 +295,9 @@
             var u    = new SpeechSynthesisUtterance(text);
             u.rate   = Math.min(Math.max(parseFloat(speed) || 1, 0.1), 10);
             u.lang   = (voiceObj && voiceObj.locale) || 'en-US';
-            u.onend  = resolve;
-            u.onerror = function(e) { reject(new Error(e.error || 'speech-error')); };
+            var _rc = null;
+            u.onend  = function() { if (_rc) clearInterval(_rc); resolve(); };
+            u.onerror = function(e) { if (_rc) clearInterval(_rc); reject(new Error(e.error || 'speech-error')); };
 
             function pickVoiceAndSpeak() {
                 var voices = window.speechSynthesis.getVoices();
@@ -314,6 +315,10 @@
                         voices.find(function(v) { return v.lang.startsWith('en'); });
                     if (pick) u.voice = pick;
                 }
+                /* FIX: Chrome pauses speechSynthesis silently — poll and resume */
+                _rc = setInterval(function () {
+                    if (window.speechSynthesis.paused) { try { window.speechSynthesis.resume(); } catch(e2) {} }
+                }, 250);
                 window.speechSynthesis.speak(u);
             }
 
@@ -453,7 +458,7 @@
         if (row) row.innerHTML = '<span class="tts-pv-name">Browser Voice</span><span class="tts-pv-region">Built-in</span>';
 
         var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = 'Playing via device voice engine — tap Speak to hear';
+        if (info) info.textContent = 'Download unavailable in browser fallback mode';
 
         var player = document.getElementById('tts-player');
         if (player) player.classList.add('visible');
@@ -463,7 +468,7 @@
     function download() {
         if (!currentAudioBlob) return;
         var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
-        var name     = (voiceObj ? voiceObj.name.toLowerCase() : 'tts') + '-daraquiz-' + Date.now() + '.mp3';
+        var name     = (voiceObj ? voiceObj.name.toLowerCase() : 'tts') + '-xzily-' + Date.now() + '.mp3';
         var a        = document.createElement('a');
         a.href       = URL.createObjectURL(currentAudioBlob);
         a.download   = name;
