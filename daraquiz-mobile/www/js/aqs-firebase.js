@@ -16,7 +16,9 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithPopup
+    signInWithPopup,
+    signInWithRedirect,
+    getRedirectResult
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
     getFirestore,
@@ -94,9 +96,30 @@ function tsToStr(ts) {
 window._aqsFirebaseUser = null;
 onAuthStateChanged(auth, function(user) {
     window._aqsFirebaseUser = user;
-    /* Dispatch event so pages can react */
     document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
 });
+
+/* ── Capacitor: handle redirect result from Google Sign-In ──
+   After signInWithRedirect completes, Firebase redirects back here.
+   We call getRedirectResult once on every page load to complete the flow. */
+(async function handlePendingRedirect() {
+    try {
+        var result = await getRedirectResult(auth);
+        if (result && result.user) {
+            /* Redirect auth completed — fire a custom event so the page can react */
+            document.dispatchEvent(new CustomEvent('aqs:sociallogincomplete', {
+                detail: { user: result.user }
+            }));
+            /* Redirect to dashboard if we are on login/register page */
+            var path = window.location.pathname;
+            if (path.endsWith('login.html') || path.endsWith('register.html')) {
+                window.location.href = 'user-dashboard.html';
+            }
+        }
+    } catch (e) {
+        console.warn('[AQS] getRedirectResult error:', e.message);
+    }
+})();
 
 function requireAuth() {
     var user = auth.currentUser || window._aqsFirebaseUser;
@@ -395,7 +418,16 @@ async function actionSocialLogin(data) {
         throw new Error('Unsupported social provider: ' + provider);
     }
 
-    var cred = await signInWithPopup(auth, authProvider);
+    /* Capacitor WebView blocks popups — use redirect flow instead */
+    var isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+    var cred;
+    if (isNativeApp) {
+        await signInWithRedirect(auth, authProvider);
+        cred = await getRedirectResult(auth);
+        if (!cred || !cred.user) throw new Error('Sign-in cancelled or redirect failed. Please try again.');
+    } else {
+        cred = await signInWithPopup(auth, authProvider);
+    }
     var user = cred.user;
 
     /* Check if user doc already exists */
