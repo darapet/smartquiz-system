@@ -12,7 +12,7 @@
     "cap:run:ios": "npx cap run ios",
     "android:release": "cd android && ./gradlew assembleRelease",
     "android:debug": "cd android && ./gradlew assembleDebug",
-    "icons": "npx capacitor-assets generate"
+   "icons": "npx @capacitor/assets generate"
   },
   "dependencies": {
     "@capacitor/core": "^6.1.0",
@@ -28,7 +28,7 @@
   },
   "devDependencies": {
     "@capacitor/cli": "^6.1.0",
-    "capacitor-assets": "^3.0.5"
+    "@capacitor/assets": "^3.0.5"
   },
   "keywords": ["capacitor", "android", "ios", "quiz", "firebase"],
   "author": "Darapet Technology",
