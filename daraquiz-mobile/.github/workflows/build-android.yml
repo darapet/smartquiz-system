@@ -43,6 +43,27 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Inject permissions into AndroidManifest.xml
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          # Add RECORD_AUDIO permission if not present
+          if ! grep -q "RECORD_AUDIO" "$MANIFEST"; then
+            sed -i 's|<uses-permission android:name="android.permission.INTERNET" />|<uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.VIBRATE" />|' "$MANIFEST"
+          fi
+          echo "=== Final AndroidManifest.xml permissions ==="
+          grep "uses-permission" "$MANIFEST"
+
+      - name: Copy custom MainActivity (mic + audio fix)
+        run: |
+          mkdir -p android/app/src/main/java/com/darapet/darasmart
+          cp android-config/MainActivity.java android/app/src/main/java/com/darapet/darasmart/MainActivity.java
+
+      - name: Copy resource files (network security + file paths)
+        run: |
+          mkdir -p android/app/src/main/res/xml
+          cp android-config/network_security_config.xml android/app/src/main/res/xml/ 2>/dev/null || true
+          cp android-config/file_paths.xml android/app/src/main/res/xml/ 2>/dev/null || true
+
       - name: Copy icons into Android project
         run: |
           mkdir -p android/app/src/main/res/mipmap-mdpi
