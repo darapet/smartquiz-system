@@ -1211,8 +1211,26 @@
             voiceRecog     = null;
             if (!voiceActive) return;
             if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                setVoiceState('error');
-                setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
+                /* On Android/Capacitor: permission may not be ready yet.
+                   Request it via getUserMedia to trigger the native dialog,
+                   then retry recognition automatically. */
+                setVoiceState('idle');
+                setVoiceTranscript('Requesting microphone access…');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function(stream) {
+                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            setVoiceTranscript('Microphone granted — tap mic to speak.');
+                            voiceRestartTimer = setTimeout(startVoiceListening, 800);
+                        })
+                        .catch(function() {
+                            setVoiceState('error');
+                            setVoiceTranscript('Microphone denied.\nGo to Settings → Apps → DaraSmart → Permissions → enable Microphone.');
+                        });
+                } else {
+                    setVoiceState('error');
+                    setVoiceTranscript('Microphone not available on this device.');
+                }
             } else if (e.error === 'no-speech') {
                 /* Mobile mic recovers slower — give it extra time */
                 var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
