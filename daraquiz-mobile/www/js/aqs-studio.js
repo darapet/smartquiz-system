@@ -56,7 +56,7 @@
          Steps 2 & 3 race simultaneously so there is no wait delay.
       =========================================================== */
     var voiceKeepAlive    = null; /* interval that keeps Chrome from pausing mid-utterance */
-    var currentStudioAudio = null; /* Pollinations audio element for studio TTS */
+    var currentStudioAudio = null; /* audio element for studio TTS */
 
     /* ── Groq browser call — auto-retries with next key on 429 ── */
     async function callGroq(apiMessages) {
@@ -112,49 +112,13 @@
         }
     }
 
-    /* ── Pollinations direct (no key required — last resort fallback) ── */
-    async function callPollinations(apiMessages) {
-        var models = ['openai', 'mistral', 'llama'];
-        for (var mi = 0; mi < models.length; mi++) {
-            try {
-                var ctrl = new AbortController();
-                var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
-                var res  = await fetch('https://text.pollinations.ai/openai', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal:  ctrl.signal,
-                    body: JSON.stringify({
-                        messages:    apiMessages,
-                        model:       models[mi],
-                        max_tokens:  1024,
-                        temperature: 0.7,
-                        private:     true
-                    })
-                });
-                clearTimeout(tid);
-                if (!res.ok) { console.warn('[daraquiz] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
-                var data = await res.json();
-                var text = (data.choices && data.choices[0] && data.choices[0].message)
-                           ? data.choices[0].message.content.trim() : '';
-                if (text) return text;
-            } catch (e) {
-                console.warn('[daraquiz] Pollinations model', models[mi], 'failed:', e.message || e);
-            }
-        }
-        return null;
-    }
-
-    /* ── AI call — sequential: Groq → Pollinations → proxy ── */
+    /* ── AI call — Groq primary → proxy fallback ── */
     async function raceAI(apiMessages) {
         /* 1. Groq direct — fastest & best quality (key saved via 🔑 button) */
         var groqResult = await callGroq(apiMessages);
         if (groqResult) return groqResult;
 
-        /* 2. Pollinations direct — free, no key, works from browser immediately */
-        var pollResult = await callPollinations(apiMessages);
-        if (pollResult) return pollResult;
-
-        /* 3. Server proxy — last resort only */
+        /* 2. Server proxy — fallback */
         var proxyResult = await callViaProxy(apiMessages);
         if (proxyResult) return proxyResult;
 
@@ -1397,7 +1361,7 @@
             .substring(0, 1500);
     }
 
-    /* Browser TTS fallback — used only if Pollinations fails */
+    /* Browser TTS — device built-in voice engine */
     function speakWithBrowserFallback(spoken, onDone) {
         if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
         window.speechSynthesis.cancel();
@@ -1482,33 +1446,7 @@
         return chunks.filter(function(c) { return c.length > 0; });
     }
 
-    /* ── Fetch one TTS chunk from Pollinations, trying voices in order ─ */
-    function fetchStudioAudioBlob(chunk, voices, timeoutMs) {
-        var voice = voices[0];
-        var rest  = voices.slice(1);
-        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
-                  '?model=openai-audio&voice=' + voice + '&nologo=true&v=' + cacheBust;
-        var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, timeoutMs || 12000);
-        return fetch(url, { signal: ctrl.signal, cache: 'no-store' })
-            .then(function(r) {
-                clearTimeout(tid);
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.blob();
-            })
-            .then(function(blob) {
-                /* Reject suspiciously tiny responses — API returned error body */
-                if (!blob || blob.size < 100) throw new Error('Empty blob');
-                return blob;
-            })
-            .catch(function(e) {
-                clearTimeout(tid);
-                if (rest.length) return fetchStudioAudioBlob(chunk, rest, timeoutMs);
-                throw e;
-            });
-    }
-
+    /* ── speakVoiceResponse — uses device built-in TTS engine ── */
     function speakVoiceResponse(text, onDone) {
         var spoken = cleanForSpeech(text);
         if (!spoken) { if (onDone) onDone(); return; }
@@ -1520,178 +1458,19 @@
 
         voiceAiTalking = true;
 
-        /* Global safety timeout — flat 1-hour ceiling.
-           Never calculated from text length — let the audio finish naturally. */
-        var _globalSpeakTimer = setTimeout(function() {
-            if (voiceAiTalking) {
-                if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src=''; } catch(_){} currentStudioAudio = null; }
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                voiceAiTalking = false;
-                if (onDone) onDone();
-            }
-        }, 60 * 60 * 1000); /* 1 hour — never cut off early */
+        var safetyTimer = setTimeout(function() {
+            if (window.speechSynthesis) window.speechSynthesis.cancel();
+            voiceAiTalking = false;
+            if (onDone) onDone();
+        }, 60 * 60 * 1000);
 
-        /* Wrap original onDone to clear the global safety timer too */
-        var _origOnDone = onDone;
-        onDone = function() { clearTimeout(_globalSpeakTimer); if (_origOnDone) _origOnDone(); };
-
-        /* If fetch is unavailable (very old/restricted browsers like Phoenix SE),
-           go straight to browser TTS — no blob URL approach possible           */
-        if (typeof window.fetch !== 'function') {
-            speakWithBrowserFallback(spoken, onDone);
-            return;
-        }
-
-        /* Split into ≤200-char sentence chunks (shorter = faster per-chunk load
-           on mobile, less chance of a mid-sentence network timeout)             */
-        var chunks = splitSpeechChunks(spoken, 200);
-        var idx    = 0;
-        var doneCalled = false;
         function finish() {
-            if (doneCalled) return; doneCalled = true;
-            currentStudioAudio = null;
-            voiceAiTalking     = false;
+            clearTimeout(safetyTimer);
+            voiceAiTalking = false;
             if (onDone) onDone();
         }
 
-        function fallbackRemaining() {
-            if (!voiceAiTalking) { finish(); return; }
-            /* Try to continue playing remaining chunks via Pollinations.
-               If a chunk still fails, use browser TTS for just that chunk. */
-            var remaining = chunks.slice(idx - 1).join(' ');
-            if (!remaining.trim()) { finish(); return; }
-            /* For remaining, try Pollinations first, browser TTS as last resort */
-            fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
-                .then(function(blob) {
-                    if (!voiceAiTalking) { finish(); return; }
-                    var blobUrl = URL.createObjectURL(blob);
-                    var audio2  = new Audio();
-                    audio2.setAttribute('playsinline', '');
-                    audio2.src  = blobUrl;
-                    audio2.addEventListener('ended', function() {
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                        /* Mark remaining as consumed then finish */
-                        idx = chunks.length;
-                        finish();
-                    });
-                    audio2.addEventListener('error', function() {
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                        speakWithBrowserFallback(remaining, finish);
-                    });
-                    audio2.play().catch(function() {
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                        speakWithBrowserFallback(remaining, finish);
-                    });
-                })
-                .catch(function() {
-                    speakWithBrowserFallback(remaining, finish);
-                });
-        }
-
-        function playNext() {
-            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
-
-            var chunk = chunks[idx++];
-
-            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
-                .then(function(blob) {
-                    if (!voiceAiTalking) { finish(); return; }
-
-                    /* Force audio/mpeg type — Android Chrome sometimes fails to
-                       decode untyped blobs fetched from audio.pollinations.ai    */
-                    var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
-                    var blobUrl   = URL.createObjectURL(typedBlob);
-                    var audio     = new Audio();
-                    audio.setAttribute('playsinline', '');
-                    audio.setAttribute('webkit-playsinline', '');
-                    audio.preload  = 'auto';
-                    audio.volume   = 1.0;
-                    audio.src      = blobUrl;
-                    currentStudioAudio = audio;
-
-                    var stallTimer  = null;
-                    var cleaned     = false;
-                    var lastCurTime = -1;
-
-                    function cleanup() {
-                        if (cleaned) return; cleaned = true;
-                        clearTimeout(stallTimer);
-                        clearTimeout(hardCap);
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                        currentStudioAudio = null;
-                    }
-
-                    /* ── Android-safe stall watchdog ──────────────────────────
-                       audio.duration is UNRELIABLE on Android Chrome for blob
-                       URLs — often returns Infinity or NaN.
-
-                       Instead: watch currentTime advance via timeupdate.
-                       If currentTime stops moving for 4 s and audio hasn't
-                       ended → genuine stall → skip to next chunk.
-
-                       Hard cap is a flat 1-hour ceiling — never calculated
-                       from blob size or text length.
-                    ──────────────────────────────────────────────────────────── */
-                    var hardCap = setTimeout(function() {
-                        if (!cleaned) { cleanup(); playNext(); }
-                    }, 60 * 60 * 1000); /* 1 hour — never calculated from blob size */
-
-                    function armStallTimer() {
-                        clearTimeout(stallTimer);
-                        stallTimer = setTimeout(function() {
-                            if (cleaned) return;
-                            if (audio.currentTime > lastCurTime) {
-                                lastCurTime = audio.currentTime;
-                                armStallTimer();   /* still progressing — re-arm */
-                            } else {
-                                clearTimeout(hardCap);
-                                cleanup();
-                                playNext();         /* truly stalled — skip chunk */
-                            }
-                        }, 4000);
-                    }
-
-                    audio.addEventListener('timeupdate', function() {
-                        lastCurTime = audio.currentTime;
-                        armStallTimer();   /* reset stall clock on every tick */
-                    });
-
-                    audio.addEventListener('canplay', function() {
-                        if (lastCurTime < 0) armStallTimer();
-                    });
-
-                    audio.addEventListener('ended', function() {
-                        clearTimeout(hardCap);
-                        cleanup();
-                        playNext();
-                    });
-
-                    audio.addEventListener('error', function() {
-                        clearTimeout(hardCap);
-                        cleanup();
-                        fallbackRemaining();
-                    });
-
-                    /* On mobile: retry play() once after 400 ms if first call
-                       is rejected by Android autoplay policy                   */
-                    audio.play().catch(function() {
-                        setTimeout(function() {
-                            if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
-                            audio.play().catch(function() {
-                                clearTimeout(hardCap);
-                                cleanup();
-                                fallbackRemaining();
-                            });
-                        }, 400);
-                    });
-                })
-                .catch(function() {
-                    if (!voiceAiTalking) { finish(); return; }
-                    fallbackRemaining();
-                });
-        }
-
-        playNext();
+        speakWithBrowserFallback(spoken, finish);
     }
 
     /* ── UI state helpers ── */
