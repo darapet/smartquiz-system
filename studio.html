@@ -21,6 +21,8 @@
         #dts-main{flex:1;overflow:hidden;position:relative;padding-bottom:var(--dts-footer-h,80px)}
         .dts-footer{left:var(--aqs-sidebar-w,260px)!important}
         @media(max-width:768px){.dts-footer{left:0!important}}
+        .dts-history-item.active{background:rgba(99,102,241,0.3);color:white}
+        .dts-history-item:hover .dts-history-item-del{opacity:1}
         .dts-welcome-credit{font-size:0.78rem;color:#9ca3af;margin-top:4px;margin-bottom:20px}
         .dts-katex-display{overflow-x:auto;padding:6px 0}
         .katex-display{overflow-x:auto;overflow-y:hidden}
@@ -48,30 +50,130 @@
         #dts-history-overlay.open{display:block!important}
 
 
-        /* ── History Drawer ── */
-        #dts-hist-topbar{display:flex;align-items:center;gap:10px;padding:10px 16px;background:rgba(255,255,255,0.04);border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;position:relative;z-index:10}
-        #dts-hist-open-btn{display:flex;align-items:center;gap:7px;background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;padding:7px 14px;border-radius:9px;cursor:pointer;font-size:0.83rem;font-weight:600;font-family:inherit;transition:background .15s,border-color .15s;white-space:nowrap}
-        #dts-hist-open-btn:hover{background:rgba(99,102,241,0.25);border-color:rgba(99,102,241,0.5)}
-        #dts-history-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:3000;backdrop-filter:blur(3px)}
+        /* ─── History top bar ─── */
+        #dts-hist-topbar{
+          display:flex;align-items:center;gap:12px;
+          padding:11px 18px;
+          background:linear-gradient(135deg,rgba(99,102,241,.13) 0%,rgba(139,92,246,.08) 100%);
+          border-bottom:1px solid rgba(99,102,241,.22);
+          flex-shrink:0;position:relative;z-index:10
+        }
+        #dts-hist-open-btn{
+          display:inline-flex;align-items:center;gap:8px;
+          background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+          border:none;
+          color:#fff;
+          padding:8px 18px;
+          border-radius:10px;
+          cursor:pointer;
+          font-size:.84rem;font-weight:700;font-family:inherit;
+          letter-spacing:.02em;
+          box-shadow:0 2px 12px rgba(99,102,241,.45),0 1px 3px rgba(0,0,0,.3);
+          transition:transform .13s,box-shadow .13s,filter .13s;
+          white-space:nowrap
+        }
+        #dts-hist-open-btn:hover{
+          transform:translateY(-1px);
+          box-shadow:0 4px 20px rgba(99,102,241,.6),0 2px 6px rgba(0,0,0,.3);
+          filter:brightness(1.08)
+        }
+        #dts-hist-open-btn:active{transform:translateY(0);filter:brightness(.96)}
+
+        /* ─── Overlay & Drawer ─── */
+        #dts-history-overlay{
+          display:none;position:fixed;inset:0;
+          background:rgba(0,0,0,.55);z-index:3000;
+          backdrop-filter:blur(4px)
+        }
         #dts-history-overlay.open{display:block}
-        #dts-history-drawer{display:none;position:fixed;top:0;left:0;height:100dvh;width:300px;max-width:88vw;background:#1a1830;border-right:1px solid rgba(255,255,255,0.1);z-index:3001;flex-direction:column;box-shadow:8px 0 40px rgba(0,0,0,0.6)}
+        #dts-history-drawer{
+          display:none;position:fixed;top:0;left:0;
+          height:100dvh;width:300px;max-width:88vw;
+          background:linear-gradient(170deg,#1c1a35 0%,#14122a 100%);
+          border-right:1px solid rgba(99,102,241,.2);
+          z-index:3001;flex-direction:column;
+          box-shadow:10px 0 50px rgba(0,0,0,.7)
+        }
         #dts-history-drawer.open{display:flex}
-        .dts-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:16px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0}
-        .dts-drawer-title{display:flex;align-items:center;gap:8px;color:#e2e8f0;font-size:0.95rem;font-weight:600}
-        .dts-drawer-close{background:none;border:none;color:#6b7280;cursor:pointer;padding:6px;border-radius:8px;display:flex;align-items:center;justify-content:center;transition:color .15s,background .15s}
-        .dts-drawer-close:hover{color:#e2e8f0;background:rgba(255,255,255,0.08)}
-        .dts-drawer-new{width:calc(100% - 24px);margin:12px;display:flex;align-items:center;justify-content:center;gap:8px;padding:10px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.35);color:#a5b4fc;border-radius:10px;cursor:pointer;font-size:0.85rem;font-weight:600;font-family:inherit;transition:background .15s;flex-shrink:0;box-sizing:border-box}
-        .dts-drawer-new:hover{background:rgba(99,102,241,0.28)}
-        .dts-drawer-list{flex:1;overflow-y:auto;padding:4px 12px 16px}
-        .dts-drawer-empty{color:#6b7280;font-size:0.82rem;padding:24px 8px;text-align:center;font-style:italic}
-        .dts-drawer-item{display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;cursor:pointer;color:#c4c9d4;font-size:0.83rem;transition:background .15s;margin-bottom:2px;border:1px solid transparent}
-        .dts-drawer-item:hover{background:rgba(255,255,255,0.06);border-color:rgba(255,255,255,0.07)}
-        .dts-drawer-item.active{background:rgba(99,102,241,0.2);border-color:rgba(99,102,241,0.4);color:#e2e8f0}
-        .dts-drawer-item svg{flex-shrink:0;opacity:0.45}
+
+        /* ─── Drawer head ─── */
+        .dts-drawer-head{
+          display:flex;align-items:center;justify-content:space-between;
+          padding:18px 16px 14px;
+          border-bottom:1px solid rgba(99,102,241,.15);
+          flex-shrink:0;
+          background:rgba(99,102,241,.06)
+        }
+        .dts-drawer-title{
+          display:flex;align-items:center;gap:9px;
+          color:#e2e8f0;font-size:1rem;font-weight:700;letter-spacing:.01em
+        }
+        .dts-drawer-title svg{opacity:.85}
+        .dts-drawer-close{
+          background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.09);
+          color:#94a3b8;cursor:pointer;padding:7px;border-radius:9px;
+          display:flex;align-items:center;justify-content:center;
+          transition:color .15s,background .15s,border-color .15s
+        }
+        .dts-drawer-close:hover{color:#f1f5f9;background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.3)}
+
+        /* ─── New Chat button — gradient, glowy ─── */
+        .dts-drawer-new{
+          width:calc(100% - 28px);margin:14px;
+          display:flex;align-items:center;justify-content:center;gap:9px;
+          padding:12px 16px;
+          background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%);
+          border:none;
+          color:#fff;
+          border-radius:12px;cursor:pointer;
+          font-size:.88rem;font-weight:700;font-family:inherit;
+          letter-spacing:.02em;
+          box-shadow:0 3px 16px rgba(99,102,241,.5),0 1px 4px rgba(0,0,0,.3);
+          transition:transform .13s,box-shadow .13s,filter .13s;
+          flex-shrink:0;box-sizing:border-box
+        }
+        .dts-drawer-new:hover{
+          transform:translateY(-1px);
+          box-shadow:0 5px 22px rgba(99,102,241,.65),0 2px 6px rgba(0,0,0,.3);
+          filter:brightness(1.08)
+        }
+        .dts-drawer-new:active{transform:translateY(0);filter:brightness(.95)}
+
+        /* ─── History list items ─── */
+        .dts-drawer-list{flex:1;overflow-y:auto;padding:6px 10px 20px}
+        .dts-drawer-empty{
+          color:#4b5563;font-size:.82rem;padding:32px 8px;
+          text-align:center;font-style:italic;
+          background:rgba(255,255,255,.02);border-radius:10px;margin-top:8px
+        }
+        .dts-drawer-item{
+          display:flex;align-items:center;gap:9px;
+          padding:10px 12px;border-radius:11px;cursor:pointer;
+          color:#b0bac7;font-size:.83rem;
+          transition:background .14s,color .14s,border-color .14s;
+          margin-bottom:3px;border:1px solid transparent
+        }
+        .dts-drawer-item:hover{
+          background:rgba(99,102,241,.12);
+          border-color:rgba(99,102,241,.2);
+          color:#e2e8f0
+        }
+        .dts-drawer-item.active{
+          background:rgba(99,102,241,.22);
+          border-color:rgba(99,102,241,.4);
+          color:#e2e8f0;
+          box-shadow:0 0 0 1px rgba(99,102,241,.2) inset
+        }
+        .dts-drawer-item svg{flex-shrink:0;opacity:.4}
         .dts-drawer-item-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-        .dts-drawer-item-del{opacity:0;background:none;border:none;color:#6b7280;cursor:pointer;padding:3px 6px;border-radius:4px;font-size:0.75rem;flex-shrink:0;transition:color .15s,opacity .15s}
+        .dts-drawer-item-del{
+          opacity:0;background:none;border:none;color:#6b7280;
+          cursor:pointer;padding:4px 6px;border-radius:6px;
+          font-size:.72rem;flex-shrink:0;
+          transition:color .14s,opacity .14s,background .14s
+        }
         .dts-drawer-item:hover .dts-drawer-item-del{opacity:1}
-        .dts-drawer-item-del:hover{color:#ef4444}
+        .dts-drawer-item-del:hover{color:#ef4444;background:rgba(239,68,68,.12)}
     </style>
 
 <!-- Firebase SDK -->
@@ -140,7 +242,7 @@
 <div id="dts-app">
     <div id="dts-hist-topbar">
       <button id="dts-hist-open-btn">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         History
       </button>
     </div>
@@ -282,15 +384,15 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <div id="dts-history-drawer">
   <div class="dts-drawer-head">
     <div class="dts-drawer-title">
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       Chat History
     </div>
     <button class="dts-drawer-close" id="dts-history-close" title="Close">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
   <button class="dts-drawer-new" id="dts-new-chat">
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     New Chat
   </button>
   <div class="dts-drawer-list" id="dts-history-list">
