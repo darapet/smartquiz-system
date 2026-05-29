@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>About — Admin — xzily AI</title>
+<title>Edit Developer Profiles — Admin — xzily AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -25,30 +25,22 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 .aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
 .aqs-btn:hover{background:#f8fafc;}
 .aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
-/* About styles */
-.aqs-about-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:28px;margin-top:8px;}
-.aqs-dev-card{background:#fff;border:1px solid #e2e8f0;border-radius:16px;box-shadow:0 4px 24px rgba(79,70,229,.08);overflow:hidden;transition:transform .2s,box-shadow .2s;}
-.aqs-dev-card:hover{transform:translateY(-4px);box-shadow:0 8px 32px rgba(79,70,229,.14);}
-.aqs-dev-card-banner{height:80px;background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);position:relative;}
-.aqs-dev-card-banner.assistant{background:linear-gradient(135deg,#0ea5e9 0%,#6366f1 100%);}
-.aqs-dev-badge{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.22);color:#fff;font-size:.72rem;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.35);}
-.aqs-dev-avatar-wrap{padding:0 28px;margin-top:-44px;margin-bottom:18px;}
-.aqs-dev-avatar{width:90px;height:90px;border-radius:50%;border:4px solid #fff;object-fit:cover;box-shadow:0 4px 14px rgba(0,0,0,.15);display:block;background:#e0e7ff;font-size:2rem;display:flex;align-items:center;justify-content:center;}
-.aqs-dev-body{padding:0 28px 28px;}
-.aqs-dev-name{font-size:1.18rem;font-weight:700;color:#1e293b;margin:0 0 2px;}
-.aqs-dev-title{font-size:.82rem;font-weight:600;color:#4f46e5;margin:0 0 12px;text-transform:uppercase;letter-spacing:.05em;}
-.aqs-dev-bio{font-size:.875rem;color:#475569;line-height:1.7;margin:0 0 18px;}
-.aqs-dev-skills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;}
-.aqs-dev-skill{background:#ede9fe;color:#5b21b6;font-size:.72rem;font-weight:600;padding:4px 10px;border-radius:20px;letter-spacing:.02em;}
-.aqs-dev-links{display:flex;gap:10px;flex-wrap:wrap;}
-.aqs-dev-link{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:8px;font-size:.8rem;font-weight:600;text-decoration:none;transition:opacity .15s;border:1px solid #c7d2fe;color:#4f46e5;background:#f5f3ff;}
-.aqs-dev-link:hover{opacity:.8;color:#4f46e5;}
-.aqs-about-plugin{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border-radius:16px;padding:32px 36px;color:#fff;margin-top:32px;display:flex;align-items:center;gap:28px;flex-wrap:wrap;}
-.aqs-about-plugin-icon{font-size:3rem;flex-shrink:0;}
-.aqs-about-plugin-text h2{color:#fff;font-size:1.2rem;margin:0 0 6px;}
-.aqs-about-plugin-text p{margin:0;opacity:.88;font-size:.9rem;line-height:1.65;}
-.aqs-about-plugin-meta{margin-top:16px;display:flex;gap:20px;flex-wrap:wrap;}
-.aqs-about-plugin-meta span{display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,.15);padding:5px 12px;border-radius:20px;font-size:.8rem;font-weight:600;}
+.aqs-btn-primary:hover{background:#4338ca;}
+/* Section cards */
+.aqs-settings-section{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:28px 32px;margin-top:24px;box-shadow:0 2px 12px rgba(0,0,0,.05);}
+.aqs-settings-section h2{margin:0 0 22px;font-size:1.05rem;color:#1e293b;display:flex;align-items:center;gap:8px;border-bottom:1px solid #f1f5f9;padding-bottom:14px;}
+.aqs-about-field{margin-bottom:18px;}
+.aqs-about-field label{display:block;font-weight:600;font-size:.85rem;color:#374151;margin-bottom:6px;}
+.aqs-about-field input[type=text],.aqs-about-field input[type=email],.aqs-about-field input[type=url],.aqs-about-field textarea{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:.9rem;color:#1e293b;transition:border-color .15s;box-sizing:border-box;}
+.aqs-about-field input:focus,.aqs-about-field textarea:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
+.aqs-about-field textarea{resize:vertical;}
+.aqs-about-field .aqs-field-hint{font-size:.78rem;color:#9ca3af;margin-top:4px;}
+.aqs-image-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.aqs-image-preview{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #e2e8f0;box-shadow:0 2px 8px rgba(0,0,0,.1);flex-shrink:0;background:#e0e7ff;}
+.aqs-image-btns{display:flex;flex-direction:column;gap:8px;}
+.aqs-settings-2col{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.aqs-save-row{margin-top:28px;display:flex;align-items:center;gap:14px;}
+#aqs-about-save-msg{margin:12px 0;padding:10px 16px;border-radius:8px;font-weight:600;font-size:.9rem;display:none;}
 
   /* ── Mobile hamburger ── */
   .aqs-admin-hamburger{display:none;position:fixed;top:12px;left:12px;z-index:1001;background:#1e1b4b;color:#fff;border:none;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:1.3rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.25);}
@@ -59,8 +51,47 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
     .aqs-admin-sidebar.open{display:flex!important;}
     .aqs-admin-overlay.open{display:block;}
     .aqs-admin-content{padding:16px 14px!important;}
-  }
+  }}
 </style>
+<script>
+window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
+
+function _whenFirebaseReady(fn) {
+    if (window._aqsFirebaseReady) { fn(); return; }
+    document.addEventListener('aqs:firebase:ready', fn, { once: true });
+}
+
+/* Load settings from Firestore on page load */
+window.addEventListener('DOMContentLoaded', function(){
+    _whenFirebaseReady(function(){
+        window.aqsAjax({ action: 'aqs_get_about_settings' }, function(res) {
+            var s = (res && res.success && res.data) ? res.data : {};
+            var sv = function(id, val){ var el = document.getElementById(id); if (el && val != null) el.value = val; };
+            sv('aqs_about_plugin_desc', s.about_plugin_desc);
+            sv('aqs_dev_main_name',   s.dev_main_name);
+            sv('aqs_dev_main_title',  s.dev_main_title  ? s.dev_main_title.replace(/&amp;/g,'&')  : '');
+            sv('aqs_dev_main_bio',    s.dev_main_bio);
+            sv('aqs_dev_main_skills', s.dev_main_skills ? s.dev_main_skills.replace(/&amp;/g,'&') : '');
+            sv('aqs_dev_main_email',  s.dev_main_email);
+            sv('aqs_dev_main_github', s.dev_main_github);
+            sv('aqs_dev_asst_name',   s.dev_asst_name);
+            sv('aqs_dev_asst_title',  s.dev_asst_title  ? s.dev_asst_title.replace(/&amp;/g,'&')  : '');
+            sv('aqs_dev_asst_bio',    s.dev_asst_bio);
+            sv('aqs_dev_asst_skills', s.dev_asst_skills ? s.dev_asst_skills.replace(/&amp;/g,'&') : '');
+            sv('aqs_dev_asst_email',  s.dev_asst_email);
+            sv('aqs_dev_asst_github', s.dev_asst_github);
+            if (s.dev_main_image) {
+                document.getElementById('aqs_dev_main_image').value = s.dev_main_image;
+                document.getElementById('aqs-main-img-preview').src = s.dev_main_image;
+            }
+            if (s.dev_asst_image) {
+                document.getElementById('aqs_dev_asst_image').value = s.dev_asst_image;
+                document.getElementById('aqs-asst-img-preview').src = s.dev_asst_image;
+            }
+        });
+    });
+});
+</script>
 
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
@@ -112,143 +143,233 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 </aside>
 
 <div class="aqs-admin-content">
-<div style="max-width:1100px;">
+<div style="max-width:860px;">
     <div class="aqs-admin-header">
-        <h1>👨‍💻 About the Developers</h1>
-        <a href="admin-about-settings.html" class="aqs-btn aqs-btn-primary">✏️ Edit Developer Profiles</a>
+        <h1>✏️ Edit Developer Profiles</h1>
+        <a href="admin-about.html" class="aqs-btn">← Back to About Page</a>
     </div>
 
-    <!-- Plugin info banner -->
-    <div class="aqs-about-plugin">
-        <div class="aqs-about-plugin-icon">⚡</div>
-        <div class="aqs-about-plugin-text" style="flex:1;min-width:220px;">
-            <h2>AI Quiz System — Challenge Mode</h2>
-            <p id="aqs-plugin-desc">A powerful standalone web app that brings AI-generated quizzes and real-time multiplayer challenge battles. Built with passion for education, engagement, and seamless learning experiences.</p>
-            <div class="aqs-about-plugin-meta">
-                <span>📦 Version 2.3.1</span>
-                <span>🧠 AI-Powered</span>
-                <span>⚡ Real-time Multiplayer</span>
-                <span>🇳🇬 Made with ❤️ in Nigeria</span>
+    <div id="aqs-about-save-msg"></div>
+
+    <!-- Plugin Description -->
+    <div class="aqs-settings-section">
+        <h2>⚡ Plugin Description</h2>
+        <div class="aqs-about-field">
+            <label for="aqs_about_plugin_desc">Description text shown on the About page banner</label>
+            <textarea id="aqs_about_plugin_desc" rows="3" placeholder="A powerful AI quiz platform..."></textarea>
+        </div>
+    </div>
+
+    <!-- Lead Developer -->
+    <div class="aqs-settings-section">
+        <h2>🚀 Lead Developer</h2>
+        <div class="aqs-about-field">
+            <label>Profile Photo</label>
+            <div class="aqs-image-row">
+                <img id="aqs-main-img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23e0e7ff'/%3E%3Ctext x='40' y='52' text-anchor='middle' font-size='36' fill='%234f46e5'%3ED%3C/text%3E%3C/svg%3E" class="aqs-image-preview" alt="Lead Developer">
+                <input type="hidden" id="aqs_dev_main_image" value="">
+                <div class="aqs-image-btns">
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <input type="file" id="aqs-main-img-file" accept="image/*" style="font-size:.82rem;max-width:200px;" />
+                        <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-main-img-upload-btn" style="padding:6px 12px;font-size:.8rem;">☁️ Upload</button>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+                        <input type="url" id="aqs-main-img-url-input" placeholder="or paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:200px;" />
+                        <button type="button" class="aqs-btn" id="aqs-main-img-set" style="padding:6px 10px;font-size:.8rem;">Set</button>
+                    </div>
+                    <span id="aqs-main-img-status" style="font-size:.78rem;margin-top:4px;display:block;"></span>
+                </div>
+            </div>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_name">Full Name</label>
+                <input type="text" id="aqs_dev_main_name" value="Daramola Peter Oluwaferanmi" placeholder="e.g. Daramola Peter Oluwaferanmi" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_title">Title / Role</label>
+                <input type="text" id="aqs_dev_main_title" value="Lead Developer & Architect" placeholder="e.g. Lead Developer & Architect" />
+            </div>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_main_bio">Bio</label>
+            <textarea id="aqs_dev_main_bio" rows="5" placeholder="Short biography..."></textarea>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_main_skills">Skills <span style="font-weight:400;color:#9ca3af;">(comma-separated)</span></label>
+            <input type="text" id="aqs_dev_main_skills" placeholder="e.g. PHP / WordPress, JavaScript, AI Integration" />
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_email">Contact Email</label>
+                <input type="email" id="aqs_dev_main_email" placeholder="email@example.com" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_main_github">GitHub URL</label>
+                <input type="url" id="aqs_dev_main_github" placeholder="https://github.com/username" />
             </div>
         </div>
     </div>
 
-    <!-- Developer cards -->
-    <div class="aqs-about-grid" style="margin-top:32px;">
-
-        <div class="aqs-dev-card">
-            <div class="aqs-dev-card-banner">
-                <span class="aqs-dev-badge">🚀 Lead Developer</span>
-            </div>
-            <div class="aqs-dev-avatar-wrap">
-                <div class="aqs-dev-avatar" id="main-avatar-wrap">
-                    <img id="main-avatar-img" src="" alt="Lead Developer" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;" />
-                    <span id="main-avatar-letter" style="font-size:2rem;">D</span>
-                </div>
-            </div>
-            <div class="aqs-dev-body">
-                <p class="aqs-dev-name" id="main-name">Daramola Peter Oluwaferanmi</p>
-                <p class="aqs-dev-title" id="main-title">Lead Developer &amp; Architect</p>
-                <p class="aqs-dev-bio" id="main-bio">A driven developer and science student with a rare passion that bridges the natural world and the digital one. The sole architect behind the AI Quiz System — designing and building the entire platform from the ground up, including the real-time multiplayer challenge engine, the AI question generation pipeline, and the full infrastructure.</p>
-                <div class="aqs-dev-skills" id="main-skills">
-                    <span class="aqs-dev-skill">PHP / WordPress</span><span class="aqs-dev-skill">JavaScript</span>
-                    <span class="aqs-dev-skill">AI Integration</span><span class="aqs-dev-skill">MySQL</span>
-                    <span class="aqs-dev-skill">REST APIs</span><span class="aqs-dev-skill">EdTech</span>
-                    <span class="aqs-dev-skill">Meteorology &amp; Climate Science</span>
-                </div>
-                <div class="aqs-dev-links">
-                    <a href="mailto:support@aiquizsystem.com" class="aqs-dev-link" id="main-email-link">✉️ Contact</a>
-                    <a href="https://github.com" target="_blank" class="aqs-dev-link" id="main-github-link">🐙 GitHub</a>
+    <!-- Assistant Developer -->
+    <div class="aqs-settings-section">
+        <h2>🛠️ Assistant Developer</h2>
+        <div class="aqs-about-field">
+            <label>Profile Photo</label>
+            <div class="aqs-image-row">
+                <img id="aqs-asst-img-preview" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Ccircle cx='40' cy='40' r='40' fill='%23e0f2fe'/%3E%3Ctext x='40' y='52' text-anchor='middle' font-size='36' fill='%230ea5e9'%3EO%3C/text%3E%3C/svg%3E" class="aqs-image-preview" alt="Assistant Developer">
+                <input type="hidden" id="aqs_dev_asst_image" value="">
+                <div class="aqs-image-btns">
+                    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+                        <input type="file" id="aqs-asst-img-file" accept="image/*" style="font-size:.82rem;max-width:200px;" />
+                        <button type="button" class="aqs-btn aqs-btn-primary" id="aqs-asst-img-upload-btn" style="padding:6px 12px;font-size:.8rem;">☁️ Upload</button>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+                        <input type="url" id="aqs-asst-img-url-input" placeholder="or paste image URL…" style="border:1.5px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:.84rem;width:200px;" />
+                        <button type="button" class="aqs-btn" id="aqs-asst-img-set" style="padding:6px 10px;font-size:.8rem;">Set</button>
+                    </div>
+                    <span id="aqs-asst-img-status" style="font-size:.78rem;margin-top:4px;display:block;"></span>
                 </div>
             </div>
         </div>
-
-        <div class="aqs-dev-card">
-            <div class="aqs-dev-card-banner assistant">
-                <span class="aqs-dev-badge">🛠️ Assistant Developer</span>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_name">Full Name</label>
+                <input type="text" id="aqs_dev_asst_name" value="Omomo Excellence" placeholder="e.g. Omomo Excellence" />
             </div>
-            <div class="aqs-dev-avatar-wrap">
-                <div class="aqs-dev-avatar" id="asst-avatar-wrap">
-                    <img id="asst-avatar-img" src="" alt="Assistant Developer" style="width:100%;height:100%;border-radius:50%;object-fit:cover;display:none;" />
-                    <span id="asst-avatar-letter" style="font-size:2rem;">O</span>
-                </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_title">Title / Role</label>
+                <input type="text" id="aqs_dev_asst_title" value="Assistant Developer & UI Engineer" placeholder="e.g. Assistant Developer & UI Engineer" />
             </div>
-            <div class="aqs-dev-body">
-                <p class="aqs-dev-name" id="asst-name">Omomo Excellence</p>
-                <p class="aqs-dev-title" id="asst-title">Assistant Developer &amp; UI Engineer</p>
-                <p class="aqs-dev-bio" id="asst-bio">A creative technologist with an eye for detail and a genuine love for polished user experiences. The talent responsible for bringing the challenge mode interface to life — crafting the sleek animated UI, the responsive design system, and the real-time scoreboard experience.</p>
-                <div class="aqs-dev-skills" id="asst-skills">
-                    <span class="aqs-dev-skill">HTML / CSS</span><span class="aqs-dev-skill">jQuery</span>
-                    <span class="aqs-dev-skill">UI / UX Design</span><span class="aqs-dev-skill">Animations</span>
-                    <span class="aqs-dev-skill">Responsive Design</span><span class="aqs-dev-skill">WordPress</span>
-                    <span class="aqs-dev-skill">Meteorology &amp; Climate Science</span>
-                </div>
-                <div class="aqs-dev-links">
-                    <a href="mailto:support@aiquizsystem.com" class="aqs-dev-link" id="asst-email-link">✉️ Contact</a>
-                    <a href="https://github.com" target="_blank" class="aqs-dev-link" id="asst-github-link">🐙 GitHub</a>
-                </div>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_asst_bio">Bio</label>
+            <textarea id="aqs_dev_asst_bio" rows="5" placeholder="Short biography..."></textarea>
+        </div>
+        <div class="aqs-about-field">
+            <label for="aqs_dev_asst_skills">Skills <span style="font-weight:400;color:#9ca3af;">(comma-separated)</span></label>
+            <input type="text" id="aqs_dev_asst_skills" placeholder="e.g. HTML / CSS, jQuery, UI / UX Design" />
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_email">Contact Email</label>
+                <input type="email" id="aqs_dev_asst_email" placeholder="email@example.com" />
+            </div>
+            <div class="aqs-about-field">
+                <label for="aqs_dev_asst_github">GitHub URL</label>
+                <input type="url" id="aqs_dev_asst_github" placeholder="https://github.com/username" />
             </div>
         </div>
     </div>
 
-    <p style="margin-top:28px;text-align:center;color:#94a3b8;font-size:.82rem;">
-        AI Quiz System &copy; 2026 &mdash; Built for educators, by educators.
-        For support, visit <a href="mailto:support@aiquizsystem.com" style="color:#6366f1;">support@aiquizsystem.com</a>
-    </p>
+    <!-- Save -->
+    <div class="aqs-save-row">
+        <button id="aqs-save-about-btn" class="aqs-btn aqs-btn-primary" style="font-size:14px;padding:10px 24px;">💾 Save Changes</button>
+        <a href="admin-about.html" class="aqs-btn">Preview About Page</a>
+        <span id="aqs-save-about-status" style="font-size:.875rem;"></span>
+    </div>
 </div>
 </div>
 
 <script>
-window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
-(function loadAboutSettings() {
-    function applySettings(s) {
-        if (s.dev_main_name)  document.getElementById('main-name').textContent  = s.dev_main_name;
-        if (s.dev_main_title) document.getElementById('main-title').innerHTML   = s.dev_main_title;
-        if (s.dev_main_bio)   document.getElementById('main-bio').textContent   = s.dev_main_bio;
-        if (s.dev_main_email)  { document.getElementById('main-email-link').href  = 'mailto:' + s.dev_main_email; }
-        if (s.dev_main_github) { document.getElementById('main-github-link').href = s.dev_main_github; }
-        if (s.dev_main_image) {
-            var img = document.getElementById('main-avatar-img');
-            img.src = s.dev_main_image; img.style.display = 'block';
-            document.getElementById('main-avatar-letter').style.display = 'none';
-        }
-        if (s.dev_asst_name)  document.getElementById('asst-name').textContent  = s.dev_asst_name;
-        if (s.dev_asst_title) document.getElementById('asst-title').innerHTML   = s.dev_asst_title;
-        if (s.dev_asst_bio)   document.getElementById('asst-bio').textContent   = s.dev_asst_bio;
-        if (s.dev_asst_email)  { document.getElementById('asst-email-link').href  = 'mailto:' + s.dev_asst_email; }
-        if (s.dev_asst_github) { document.getElementById('asst-github-link').href = s.dev_asst_github; }
-        if (s.dev_asst_image) {
-            var img = document.getElementById('asst-avatar-img');
-            img.src = s.dev_asst_image; img.style.display = 'block';
-            document.getElementById('asst-avatar-letter').style.display = 'none';
-        }
-        if (s.about_plugin_desc) document.getElementById('aqs-plugin-desc').textContent = s.about_plugin_desc;
-        if (s.dev_main_skills && typeof s.dev_main_skills === 'string') {
-            var wrap = document.getElementById('main-skills');
-            if (wrap) {
-                wrap.innerHTML = s.dev_main_skills.split(',').map(function(sk){
-                    return '<span class="aqs-dev-skill">' + sk.trim() + '</span>';
-                }).join('');
-            }
-        }
-        if (s.dev_asst_skills && typeof s.dev_asst_skills === 'string') {
-            var wrap = document.getElementById('asst-skills');
-            if (wrap) {
-                wrap.innerHTML = s.dev_asst_skills.split(',').map(function(sk){
-                    return '<span class="aqs-dev-skill">' + sk.trim() + '</span>';
-                }).join('');
-            }
-        }
+/* ── Image: URL-paste "Set" buttons ── */
+document.getElementById('aqs-main-img-set').addEventListener('click', function(){
+    var url = document.getElementById('aqs-main-img-url-input').value.trim();
+    if (url) {
+        document.getElementById('aqs-main-img-preview').src = url;
+        document.getElementById('aqs_dev_main_image').value = url;
     }
-    function doLoad() {
-        window.aqsAjax({ action: 'aqs_get_about_settings' }, function(res) {
-            var s = (res && res.success && res.data) ? res.data : {};
-            applySettings(s);
+});
+document.getElementById('aqs-asst-img-set').addEventListener('click', function(){
+    var url = document.getElementById('aqs-asst-img-url-input').value.trim();
+    if (url) {
+        document.getElementById('aqs-asst-img-preview').src = url;
+        document.getElementById('aqs_dev_asst_image').value = url;
+    }
+});
+
+/* ── Image: File Upload buttons ── */
+function _aqsUploadDevPhoto(fileInputId, hiddenId, previewId, uploadBtnId, statusId, storagePath) {
+    var fileInput = document.getElementById(fileInputId);
+    var file = fileInput && fileInput.files && fileInput.files[0];
+    if (!file) { document.getElementById(statusId).textContent = '⚠️ Choose a file first.'; return; }
+    var btn = document.getElementById(uploadBtnId);
+    btn.disabled = true; btn.textContent = '⏳ Uploading…';
+    document.getElementById(statusId).textContent = 'Uploading…';
+    function doUpload() {
+        window.aqsUploadFile(file, storagePath + '/' + file.name)
+            .then(function(url) {
+                document.getElementById(hiddenId).value  = url;
+                document.getElementById(previewId).src   = url;
+                btn.disabled = false; btn.textContent = '☁️ Upload';
+                document.getElementById(statusId).style.color = '#065f46';
+                document.getElementById(statusId).textContent = '✓ Uploaded! Remember to Save Changes.';
+            })
+            .catch(function(err) {
+                btn.disabled = false; btn.textContent = '☁️ Upload';
+                document.getElementById(statusId).style.color = '#991b1b';
+                document.getElementById(statusId).textContent = '✗ ' + (err.message || 'Upload failed');
+            });
+    }
+    if (window._aqsFirebaseReady) { doUpload(); }
+    else { document.addEventListener('aqs:firebase:ready', doUpload, { once: true }); }
+}
+
+document.getElementById('aqs-main-img-upload-btn').addEventListener('click', function(){
+    _aqsUploadDevPhoto('aqs-main-img-file','aqs_dev_main_image','aqs-main-img-preview',
+                       'aqs-main-img-upload-btn','aqs-main-img-status','uploads/dev-photos');
+});
+document.getElementById('aqs-asst-img-upload-btn').addEventListener('click', function(){
+    _aqsUploadDevPhoto('aqs-asst-img-file','aqs_dev_asst_image','aqs-asst-img-preview',
+                       'aqs-asst-img-upload-btn','aqs-asst-img-status','uploads/dev-photos');
+});
+
+/* ── Save all about settings via Firebase ── */
+document.getElementById('aqs-save-about-btn').addEventListener('click', function(){
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    var payload = {
+        action:            'aqs_save_about_settings',
+        about_plugin_desc: document.getElementById('aqs_about_plugin_desc').value.trim(),
+        dev_main_name:     document.getElementById('aqs_dev_main_name').value.trim(),
+        dev_main_title:    document.getElementById('aqs_dev_main_title').value.trim(),
+        dev_main_bio:      document.getElementById('aqs_dev_main_bio').value.trim(),
+        dev_main_skills:   document.getElementById('aqs_dev_main_skills').value.trim(),
+        dev_main_email:    document.getElementById('aqs_dev_main_email').value.trim(),
+        dev_main_github:   document.getElementById('aqs_dev_main_github').value.trim(),
+        dev_main_image:    document.getElementById('aqs_dev_main_image').value.trim(),
+        dev_asst_name:     document.getElementById('aqs_dev_asst_name').value.trim(),
+        dev_asst_title:    document.getElementById('aqs_dev_asst_title').value.trim(),
+        dev_asst_bio:      document.getElementById('aqs_dev_asst_bio').value.trim(),
+        dev_asst_skills:   document.getElementById('aqs_dev_asst_skills').value.trim(),
+        dev_asst_email:    document.getElementById('aqs_dev_asst_email').value.trim(),
+        dev_asst_github:   document.getElementById('aqs_dev_asst_github').value.trim(),
+        dev_asst_image:    document.getElementById('aqs_dev_asst_image').value.trim()
+    };
+    function doSave() {
+        window.aqsAjax(payload, function(res) {
+            btn.disabled = false; btn.textContent = '💾 Save Changes';
+            var msg    = document.getElementById('aqs-about-save-msg');
+            var status = document.getElementById('aqs-save-about-status');
+            if (res && res.success) {
+                msg.style.cssText = 'display:block;background:#d1fae5;color:#065f46;';
+                msg.textContent   = '✓ Profile updated successfully!';
+                if (status) { status.style.color = '#065f46'; status.textContent = '✓ Saved!'; }
+            } else {
+                msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
+                msg.textContent   = '✗ Error: ' + ((res && res.data) || 'Failed to save.');
+            }
+            setTimeout(function(){ msg.style.display='none'; if(status) status.textContent=''; }, 5000);
+        }, function(err) {
+            btn.disabled = false; btn.textContent = '💾 Save Changes';
+            var msg = document.getElementById('aqs-about-save-msg');
+            msg.style.cssText = 'display:block;background:#fee2e2;color:#991b1b;';
+            msg.textContent   = '✗ ' + (err.message || 'Save failed. Make sure you are signed in as admin.');
         });
     }
-    if (window._aqsFirebaseReady) { doLoad(); }
-    else { document.addEventListener('aqs:firebase:ready', doLoad, { once: true }); }
-})();
+    if (window._aqsFirebaseReady) { doSave(); }
+    else { document.addEventListener('aqs:firebase:ready', doSave, { once: true }); }
+});
 </script>
 </body>
 </html>
