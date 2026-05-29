@@ -9,6 +9,10 @@
       var lastPrompt       = '';
       var history          = [];
 
+      var lastGenerationEnd = 0;      /* tracks last generation finish time for rate-limit cooldown */
+      var MIN_COOLDOWN_MS   = 6000;   /* 6 s minimum gap between generation sessions */
+      var isGenerating      = false;  /* global guard — prevents double-clicks */
+
       var IG_HISTORY_KEY = 'aqs_ig_history';
 
       function lsGet(k, d) { try { return JSON.parse(localStorage.getItem(k)) || d; } catch (e) { return d; } }
@@ -261,35 +265,53 @@
            STD quality → flux → flux-pro → turbo
          Each model gets 55 s before timeout.
       ═══════════════════════════════════════════════════════════════ */
+
       function loadImageDirect(prompt, width, height, seed, model, negative) {
           return new Promise(function (resolve, reject) {
               var url = pollinationsImgUrl(prompt, width, height, seed, model, negative);
               var img = new Image();
               img.crossOrigin = 'anonymous';
-              var tid = setTimeout(function () { img.src = ''; reject(new Error('timeout')); }, 60000);
+              /* 50 s timeout — Pollinations can be slow on first request */
+              var tid = setTimeout(function () {
+                  img.src = '';
+                  reject(new Error('timeout:' + model));
+              }, 50000);
               img.onload  = function () { clearTimeout(tid); resolve({ url: url, img: img }); };
-              img.onerror = function () { clearTimeout(tid); reject(new Error('load error ' + model)); };
+              img.onerror = function () { clearTimeout(tid); reject(new Error('load_error:' + model)); };
               img.src = url;
           });
       }
 
       async function raceImage(prompt, width, height, seed, isHD, negative) {
-          /* HD: try best quality model first; Standard: speed-first */
+          /* HD: best quality first; Standard: speed-first */
           var models = isHD
               ? ['flux-pro', 'flux', 'turbo']
               : ['flux', 'flux-pro', 'turbo'];
           var lastErr;
+
           for (var i = 0; i < models.length; i++) {
-              if (i > 0) await new Promise(function (r) { setTimeout(r, 2500 * i); });
-              try {
-                  return await loadImageDirect(prompt, width, height, seed, models[i], negative);
-              } catch (e) {
-                  lastErr = e;
-                  console.warn('[ImageGen] Model ' + models[i] + ' failed:', e.message);
+              /* Progressive backoff between models: 6 s, 12 s */
+              if (i > 0) await new Promise(function (r) { setTimeout(r, 6000 * i); });
+
+              /* Try each model up to 2 times before giving up on it */
+              for (var attempt = 0; attempt < 2; attempt++) {
+                  if (attempt > 0) {
+                      /* Wait 5 s before retrying same model (handles transient rate limits) */
+                      await new Promise(function (r) { setTimeout(r, 5000); });
+                  }
+                  try {
+                      return await loadImageDirect(prompt, width, height, seed, models[i], negative);
+                  } catch (e) {
+                      lastErr = e;
+                      console.warn('[ImageGen] Model ' + models[i] + ' attempt ' + (attempt + 1) + ' failed:', e.message);
+                      /* If it timed out, no point retrying same model — move to next */
+                      if (e.message && e.message.indexOf('timeout') !== -1) break;
+                  }
               }
           }
           throw lastErr || new Error('All models failed');
       }
+
 
       /* ═══════════════════════════════════════════════════════════════
          AI TEXT CALL — Groq primary, Pollinations fallback
@@ -406,14 +428,27 @@
           if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) generateImages();
       });
 
+
       async function generateImages() {
-          var raw = $promptTA.value.trim();
+          var raw = ($promptTA ? $promptTA.value : '').trim();
           if (!raw) { showError('Please enter a description for the image.'); return; }
+          if (isGenerating) { showError('Generation is already in progress. Please wait…'); return; }
+
+          /* ── Rate-limit cooldown enforcement ── */
+          var now = Date.now();
+          var elapsed = now - lastGenerationEnd;
+          if (lastGenerationEnd > 0 && elapsed < MIN_COOLDOWN_MS) {
+              var waitSec = Math.ceil((MIN_COOLDOWN_MS - elapsed) / 1000);
+              showError('Please wait ' + waitSec + ' second' + (waitSec !== 1 ? 's' : '') +
+                        ' before generating again to avoid rate limits.');
+              return;
+          }
 
           hideError();
-          lastPrompt = raw;
+          isGenerating = true;
+          lastPrompt   = raw;
 
-          var isHD      = ($qualEl && $qualEl.value === 'hd');
+          var isHD       = ($qualEl && $qualEl.value === 'hd');
           var fullPrompt = buildPrompt(raw, isHD);
           var negative   = buildNegative(raw);
           var size       = parseSize($sizeEl ? $sizeEl.value : '1024x1024');
@@ -447,10 +482,10 @@
           var successUrls = [];
           var settled     = 0;
 
-          /* Staggered launch — 3.5 s gap prevents Pollinations rate-limiting */
+          /* Staggered launch — 4 s gap prevents Pollinations rate-limiting */
           for (var idx = 0; idx < count; idx++) {
               (function (cardEl, imgIdx, seed) {
-                  var delay = imgIdx * 3500;
+                  var delay = imgIdx * 4000;
                   setTimeout(async function () {
                       if (imgIdx > 0) {
                           setStatus('Generating image ' + (imgIdx + 1) + ' of ' + count + '…' +
@@ -476,20 +511,33 @@
                           actions.innerHTML =
                               '<button class="aqs-btn aqs-btn-sm aqs-ig-view-btn">View Full</button>' +
                               '<a class="aqs-btn aqs-btn-sm aqs-btn-primary aqs-ig-dl-btn" href="' +
-                              finalUrl + '" download="xzily-ai-' + (imgIdx + 1) + '.jpg" target="_blank">⬇ Download HD</a>';
+                              finalUrl + '" download="xzily-ai-' + (imgIdx + 1) + '.jpg" target="_blank">\u2b07 Download HD</a>';
                           cardEl.appendChild(actions);
 
                           cardEl.querySelector('.aqs-ig-view-btn').addEventListener('click', function () {
                               openLightbox(finalUrl, raw);
                           });
-                      } catch (_) {
+                      } catch (err) {
                           settled++;
+                          console.error('[ImageGen] Final failure for image ' + (imgIdx + 1) + ':', err && err.message);
                           cardEl.className = 'aqs-ig-card error';
-                          cardEl.innerHTML =
-                              '<div class="aqs-ig-card-err">' +
-                                  '&#9888;&#65039; Image failed to load.<br>' +
-                                  '<small>Server may be busy. Please try again.</small>' +
-                              '</div>';
+
+                          /* Helpful error card — shows why and how to recover */
+                          var retryBtn = document.createElement('div');
+                          retryBtn.className = 'aqs-ig-card-err';
+                          retryBtn.innerHTML =
+                              '<div style="font-size:1.6rem;margin-bottom:8px;">&#9888;&#65039;</div>' +
+                              '<strong>Image could not be generated</strong><br>' +
+                              '<small style="display:block;margin-top:6px;line-height:1.5;">' +
+                                  'Pollinations AI may be busy or rate-limiting.<br>' +
+                                  'Please <strong>wait 15–20 seconds</strong> then try again.' +
+                              '</small>' +
+                              '<button class="aqs-btn aqs-btn-sm" style="margin-top:10px;cursor:pointer;" ' +
+                                  'onclick="this.closest(\'.aqs-ig-card\').querySelector(\'.aqs-ig-card-err\').innerHTML=\'<div class=\\\'aqs-ig-card-shimmer\\\'><div class=\\\'aqs-ig-card-spinner\\\'></div><span>Retrying\u2026</span></div>\'">' +
+                                  '\u21bb Retry this image' +
+                              '</button>';
+                          cardEl.innerHTML = '';
+                          cardEl.appendChild(retryBtn);
                       }
 
                       if (settled === count) finishGeneration(fullPrompt, successUrls);
@@ -499,6 +547,9 @@
       }
 
       function finishGeneration(prompt, urls) {
+          lastGenerationEnd = Date.now();   /* record finish time for cooldown */
+          isGenerating      = false;        /* release global guard */
+
           $status.style.display = 'none';
           $genBtn.disabled = false;
           $genBtn.innerHTML =
@@ -514,6 +565,7 @@
               renderHistory();
           }
       }
+
 
       /* ── Lightbox ── */
       function openLightbox(url, prompt) {
