@@ -18,6 +18,7 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 .aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
 .aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
 .aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
+.aqs-admin-sidebar{transition:top .2s,height .2s;}
 .aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
 .aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
 .aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
@@ -75,8 +76,39 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
         <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
         <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
         <a href="admin-about.html" class="active"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+        <a href="admin.html"><span class="aqs-nav-icon">🛡️</span> Admin Panel</a>
     </nav>
-    <div class="aqs-admin-sidebar-footer"><a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a></div>
+    <div class="aqs-admin-sidebar-footer">
+    <div id="aqs-admin-sb-user" style="display:flex;align-items:center;gap:9px;padding:8px 0 10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px;">
+        <div id="aqs-sb-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:700;color:#fff;flex-shrink:0;">A</div>
+        <div style="flex:1;overflow:hidden;">
+            <div id="aqs-sb-name" style="font-size:.78rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Admin</div>
+            <div id="aqs-sb-email" style="font-size:.68rem;color:#a5b4fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
+    </div>
+    <a href="index.html" style="color:#a5b4fc;text-decoration:none;font-size:.75rem;">← View Site</a>
+    &nbsp;&nbsp;
+    <a href="admin.html" style="color:#6ee7b7;text-decoration:none;font-size:.75rem;">⚙️ Panel</a>
+</div>
+<script>
+(function(){
+    function _w(fn){if(window._aqsFirebaseReady){fn();return;}document.addEventListener('aqs:firebase:ready',fn,{once:true});}
+    _w(function(){
+        if(typeof window.aqsAjax!=='function')return;
+        window.aqsAjax({action:'aqs_get_current_user'},function(res){
+            var u=(res&&res.success&&res.data)?res.data:{};
+            var name=u.displayName||u.name||u.email||'Admin';
+            var email=u.email||'';
+            var av=document.getElementById('aqs-sb-avatar');
+            var nm=document.getElementById('aqs-sb-name');
+            var em=document.getElementById('aqs-sb-email');
+            if(av)av.textContent=name.charAt(0).toUpperCase();
+            if(nm)nm.textContent=name;
+            if(em)em.textContent=email;
+        });
+    });
+})();
+</script>
 </aside>
 
 <div class="aqs-admin-content">
