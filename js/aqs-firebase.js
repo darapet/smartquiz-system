@@ -16,8 +16,7 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithRedirect,
-    getRedirectResult,
+    signInWithCredential,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
     getFirestore,
@@ -61,8 +60,6 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-/* Kick off redirect result check after module finishes loading */
-setTimeout(function() { handleGoogleRedirectResult && handleGoogleRedirectResult().catch(function(){}); }, 0);
 const db   = getFirestore(app);
 const rtdb = getDatabase(app);
 
@@ -405,75 +402,71 @@ async function actionRegister(data) {
     };
 }
 
-/* ── Google / Social Sign-In ── */
 /* ── Google / Social Sign-In ──
-     Uses signInWithRedirect (required for Median WebView / mobile).
-     After Google auth, the page reloads and handleGoogleRedirectResult()
-     (called on startup) completes the sign-in and redirects to dashboard. */
-  async function actionSocialLogin(data) {
+     Uses Google Identity Services (GIS) token client + signInWithCredential.
+     This bypasses Firebase Hosting entirely — no /__/firebase/init.json needed.
+     Works on GitHub Pages, any static host, any domain. */
+  function actionSocialLogin(data) {
       var provider = data.provider || 'google';
-      if (provider !== 'google') throw new Error('Unsupported social provider: ' + provider);
-      var authProvider = new GoogleAuthProvider();
-      authProvider.addScope('email');
-      authProvider.addScope('profile');
-      /* Store the intended redirect page so we can return there after auth */
-      try { sessionStorage.setItem('aqs_social_redirect_from', window.location.href); } catch(e) {}
-      /* Navigate to Google — page will reload on return, handleGoogleRedirectResult() picks up */
-      await signInWithRedirect(auth, authProvider);
-      /* Never reached — browser navigates away */
-      return { pending_redirect: true };
-  }
+      if (provider !== 'google') return Promise.reject(new Error('Unsupported social provider: ' + provider));
 
-  /* Called once on startup — handles the return trip from Google sign-in */
-  async function handleGoogleRedirectResult() {
-      try {
-          var result = await getRedirectResult(auth);
-          if (!result) return; /* Normal page load, not a redirect return */
-          var user = result.user;
-
-          /* Check if user doc already exists */
-          var profileRef = doc(db, 'users', user.uid);
-          var profileDoc = await getDoc(profileRef);
-          var profile;
-
-          if (profileDoc.exists()) {
-              profile = profileDoc.data();
-              await updateDoc(profileRef, { last_login: serverTimestamp() });
-          } else {
-              var displayName = user.displayName || '';
-              var emailLocal  = (user.email || '').split('@')[0];
-              var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-              var finalUsername = baseUsername;
-              var collision = await getDoc(doc(db, 'usernames', finalUsername));
-              if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
-              profile = {
-                  uid:        user.uid,
-                  name:       displayName,
-                  username:   finalUsername,
-                  email:      user.email,
-                  role:       'student',
-                  avatar:     user.photoURL || '',
-                  provider:   'google',
-                  status:     'active',
-                  created_at: serverTimestamp(),
-                  last_login: serverTimestamp()
-              };
-              await setDoc(profileRef, profile);
-              await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+      return new Promise(function(resolve, reject) {
+          if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+              reject(new Error('Google Sign-In is loading — please wait a moment and try again.'));
+              return;
           }
+          var tokenClient = google.accounts.oauth2.initTokenClient({
+              client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
+              scope: 'email profile openid',
+              callback: async function(tokenResponse) {
+                  if (tokenResponse.error) {
+                      reject(new Error(tokenResponse.error_description || tokenResponse.error));
+                      return;
+                  }
+                  try {
+                      var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
+                      var result     = await signInWithCredential(auth, credential);
+                      var user       = result.user;
 
-          _updateAqsGlobals(user, profile);
+                      var profileRef = doc(db, 'users', user.uid);
+                      var profileDoc = await getDoc(profileRef);
+                      var profile;
 
-          /* Fire event so aqs-auth.js can show a success message */
-          document.dispatchEvent(new CustomEvent('aqs:googleSignInDone', {
-              detail: { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email }
-          }));
-      } catch (err) {
-          /* Fire error event */
-          document.dispatchEvent(new CustomEvent('aqs:googleSignInError', {
-              detail: { message: err.message || 'Google sign-in failed. Please try again.' }
-          }));
-      }
+                      if (profileDoc.exists()) {
+                          profile = profileDoc.data();
+                          await updateDoc(profileRef, { last_login: serverTimestamp() });
+                      } else {
+                          var displayName  = user.displayName || '';
+                          var emailLocal   = (user.email || '').split('@')[0];
+                          var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
+                          var finalUsername = baseUsername;
+                          var collision    = await getDoc(doc(db, 'usernames', finalUsername));
+                          if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+                          profile = {
+                              uid:        user.uid,
+                              name:       displayName,
+                              username:   finalUsername,
+                              email:      user.email,
+                              role:       'student',
+                              avatar:     user.photoURL || '',
+                              provider:   'google',
+                              status:     'active',
+                              created_at: serverTimestamp(),
+                              last_login: serverTimestamp()
+                          };
+                          await setDoc(profileRef, profile);
+                          await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+                      }
+
+                      _updateAqsGlobals(user, profile);
+                      resolve({ redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email });
+                  } catch(e) {
+                      reject(e);
+                  }
+              }
+          });
+          tokenClient.requestAccessToken({ prompt: '' });
+      });
   }
 
 async function actionLogout() {
@@ -1953,36 +1946,7 @@ function _updateAqsGlobals(user, profile) {
         });
     }
 
-    /* ── Wire up Google sign-in buttons on login/register pages ── */
-    document.addEventListener('DOMContentLoaded', function() {
-        var googleBtn = document.getElementById('aqs-google-login');
-        if (!googleBtn) return;
 
-        googleBtn.addEventListener('click', async function() {
-            googleBtn.disabled = true;
-            googleBtn.textContent = 'Connecting…';
-            try {
-                var result = await handleAction({ action: 'aqs_social_login', provider: 'google' });
-                if (result && result.redirect) {
-                    window.location.href = result.redirect;
-                }
-            } catch(e) {
-                googleBtn.disabled = false;
-                googleBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.35-8.16 2.35-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg> Continue with Google';
-                /* Show error in alert box if present */
-                var alertBox = document.getElementById('aqs-login-alert') || document.getElementById('aqs-register-alert');
-                if (alertBox) {
-                    alertBox.textContent = e.message || 'Google sign-in failed. Please try again.';
-                    alertBox.style.display = 'block';
-                    alertBox.style.background = 'rgba(239,68,68,0.12)';
-                    alertBox.style.color = '#f87171';
-                    alertBox.style.padding = '10px 14px';
-                    alertBox.style.borderRadius = '8px';
-                    alertBox.style.marginBottom = '12px';
-                }
-            }
-        });
-    });
 })();
 
 /* ============================================================
