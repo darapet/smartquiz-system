@@ -554,6 +554,56 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
+       STREAM REPLY — types AI response word-by-word (ChatGPT style)
+    ═══════════════════════════════════════════════════════════ */
+    function streamReply(content, onDone) {
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        if (!messages) { if (onDone) onDone(); return; }
+        if (welcome) welcome.style.display = 'none';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-ai';
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">✶</div>' +
+            '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
+        messages.appendChild(wrap);
+
+        var bubble = wrap.querySelector('.dts-msg-bubble');
+        var tokens = content.split(/(?=\s)/);
+        if (tokens.length < 4) tokens = content.split('');
+        var idx   = 0;
+        var acc   = '';
+        var CHUNK = 4;
+        var DELAY = 16;
+
+        function tick() {
+            if (idx < tokens.length) {
+                var end = Math.min(idx + CHUNK, tokens.length);
+                for (var i = idx; i < end; i++) acc += tokens[i];
+                idx = end;
+                try {
+                    if (typeof marked !== 'undefined') {
+                        bubble.innerHTML = marked.parse(acc, { breaks: true, gfm: true });
+                    } else {
+                        bubble.innerHTML = escHtml(acc).replace(/\n/g, '<br>');
+                    }
+                } catch (e) {
+                    bubble.innerHTML = escHtml(acc).replace(/\n/g, '<br>');
+                }
+                scrollToBottom();
+                setTimeout(tick, DELAY);
+            } else {
+                applyMathAndHighlight(wrap);
+                scrollToBottom();
+                if (onDone) onDone();
+            }
+        }
+        tick();
+        return wrap;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
        SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
     async function sendMessage(text) {
