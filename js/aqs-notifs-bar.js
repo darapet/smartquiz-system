@@ -68,10 +68,59 @@
         var ticker = document.getElementById('aqs-news-ticker-bar');
         var cd     = document.getElementById('aqs-countdown-bar');
 
-        /* ── Ticker: pad body bottom so content isn't hidden ── */
+        /* Ticker: pad body bottom so content is flush, not hidden */
         if (ticker && ticker.style.display !== 'none') {
-            document.body.style.paddingBottom = '42px';
+            var tkH = ticker.offsetHeight || 36;
+            document.body.style.paddingBottom = (tkH + 4) + 'px';
+            document.querySelectorAll('.aqs-admin-content').forEach(function (c) {
+                c.style.paddingBottom = (tkH + 4) + 'px';
+            });
         }
+
+        /* Countdown: shift everything flush below it — no white gap */
+        if (cd && cd.style.display !== 'none') {
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    setTimeout(function () {
+                        var cdH = cd.getBoundingClientRect().height || cd.offsetHeight || 40;
+
+                        document.documentElement.style.setProperty('--aqs-cd-bar-h', cdH + 'px');
+
+                        /* body paddingTop fills the exact space the fixed bar occupies,
+                           so all content sits flush directly below it — zero white gap. */
+                        document.body.style.paddingTop = cdH + 'px';
+
+                        /* Sticky site headers: just move the snap-point, no marginTop */
+                        document.querySelectorAll('.aqs-site-header').forEach(function (h) {
+                            h.style.marginTop = '0px';
+                            h.style.top       = cdH + 'px';
+                        });
+
+                        /* Admin sticky sidebar: snap below countdown, shrink height */
+                        document.querySelectorAll('.aqs-admin-sidebar').forEach(function (s) {
+                            s.style.top    = cdH + 'px';
+                            s.style.height = 'calc(100vh - ' + cdH + 'px)';
+                        });
+
+                        /* Mobile hamburger toggle */
+                        document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
+                            btn.style.setProperty('top', (cdH + 8) + 'px', 'important');
+                        });
+
+                        /* Mobile sidebar body */
+                        if (window.innerWidth <= 768) {
+                            document.querySelectorAll('.aqs-sidebar-body').forEach(function (b) {
+                                b.style.setProperty('padding-top', (cdH + 60) + 'px', 'important');
+                            });
+                            document.querySelectorAll('.std-main').forEach(function (el) {
+                                el.style.height = 'calc(100dvh - ' + (cdH + 60) + 'px)';
+                            });
+                        }
+                    }, 80);
+                });
+            });
+        }
+    }
 
         /* ── Countdown: shift everything below it ── */
         if (cd && cd.style.display !== 'none') {
@@ -118,15 +167,23 @@
     /* ── Reset offsets when countdown bar hides ──────────────── */
     function _resetOffsets() {
         document.documentElement.style.removeProperty('--aqs-cd-bar-h');
+        document.body.style.paddingTop    = '';
+        document.body.style.paddingBottom = '';
         document.querySelectorAll('.aqs-site-header').forEach(function (h) {
             h.style.marginTop = '';
             h.style.top       = '';
         });
+        document.querySelectorAll('.aqs-admin-sidebar').forEach(function (s) {
+            s.style.top = ''; s.style.height = '';
+        });
+        document.querySelectorAll('.aqs-admin-content').forEach(function (c) {
+            c.style.paddingBottom = '';
+        });
         document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
             btn.style.removeProperty('top');
         });
-        document.querySelectorAll('.aqs-sidebar-body').forEach(function (body) {
-            body.style.removeProperty('padding-top');
+        document.querySelectorAll('.aqs-sidebar-body').forEach(function (b) {
+            b.style.removeProperty('padding-top');
         });
         document.querySelectorAll('.std-main').forEach(function (el) {
             el.style.height = '';
