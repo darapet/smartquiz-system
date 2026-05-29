@@ -155,12 +155,12 @@
             if (!html) return null;
             /* Strip scripts, styles and tags — keep visible text */
             var text = html
-                .replace(/<script[sS]*?</script>/gi, ' ')
-                .replace(/<style[sS]*?</style>/gi, ' ')
+                .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                .replace(/<style[\s\S]*?<\/style>/gi, ' ')
                 .replace(/<[^>]+>/g, ' ')
                 .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
                 .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-                .replace(/s{2,}/g, ' ')
+                .replace(/\s{2,}/g, ' ')
                 .trim();
             if (text.length > 200) return text.slice(0, 5000);
             return null;
@@ -176,11 +176,11 @@
             var html = await res.text();
             if (!html) return null;
             var text = html
-                .replace(/<script[sS]*?</script>/gi, ' ')
-                .replace(/<style[sS]*?</style>/gi, ' ')
+                .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                .replace(/<style[\s\S]*?<\/style>/gi, ' ')
                 .replace(/<[^>]+>/g, ' ')
                 .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
-                .replace(/s{2,}/g, ' ')
+                .replace(/\s{2,}/g, ' ')
                 .trim();
             if (text.length > 200) return text.slice(0, 5000);
             return null;
