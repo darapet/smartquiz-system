@@ -241,8 +241,8 @@
 
           btn.addEventListener('click', function () {
               btn.disabled = true;
-              btn.textContent = 'Taking you to Google…';
-              if (alertId) showAlert(alertId, 'Redirecting to Google Sign-In…', false);
+              btn.textContent = 'Opening Google…';
+              if (alertId) showAlert(alertId, 'Opening Google sign-in…', false);
               if (typeof window.aqsAjax !== 'function') {
                   setTimeout(function () {
                       resetBtn();
@@ -252,24 +252,20 @@
               }
               window.aqsAjax(
                   { action: 'aqs_social_login', provider: 'google' },
-                  function () { /* page navigates away to Google — callback never fires */ },
+                  function (res) {
+                      /* GIS popup returns result directly — handle redirect here */
+                      if (res && res.success && res.data && res.data.redirect) {
+                          if (alertId) showAlert(alertId, '✓ Signed in as ' + (res.data.user_name || 'you') + '! Redirecting…', false);
+                          setTimeout(function() { window.location.href = res.data.redirect; }, 900);
+                      } else {
+                          resetBtn();
+                      }
+                  },
                   function (err) {
                       resetBtn();
                       if (alertId) showAlert(alertId, (err && err.message) || 'Google sign-in failed. Try again.', true);
                   }
               );
-          });
-
-          /* Handle return from Google redirect (fired by handleGoogleRedirectResult in aqs-firebase.js) */
-          document.addEventListener('aqs:googleSignInDone', function (ev) {
-              var d = (ev && ev.detail) || {};
-              if (alertId) showAlert(alertId, '✓ Signed in as ' + (d.user_name || 'you') + '! Redirecting…', false);
-              setTimeout(function () { window.location.href = d.redirect || 'index.html'; }, 900);
-          });
-          document.addEventListener('aqs:googleSignInError', function (ev) {
-              var d = (ev && ev.detail) || {};
-              resetBtn();
-              if (alertId) showAlert(alertId, d.message || 'Google sign-in failed. Try again.', true);
           });
       }
   
