@@ -419,7 +419,7 @@
             item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
             item.dataset.id = sess.id;
             item.innerHTML =
-                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
                 '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
                 '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
 
@@ -504,7 +504,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       STREAM REPLY — types out AI response word-by-word
+       STREAM REPLY — types AI response word-by-word (ChatGPT style)
     ═══════════════════════════════════════════════════════════ */
     function streamReply(content, onDone) {
         var messages = document.getElementById('dts-messages');
@@ -512,7 +512,6 @@
         if (!messages) { if (onDone) onDone(); return; }
         if (welcome) welcome.style.display = 'none';
 
-        /* Build message bubble */
         var wrap = document.createElement('div');
         wrap.className = 'dts-message dts-ai';
         wrap.innerHTML =
@@ -521,13 +520,12 @@
         messages.appendChild(wrap);
 
         var bubble = wrap.querySelector('.dts-msg-bubble');
-        /* Split into word-sized chunks keeping whitespace attached */
         var tokens = content.split(/(?=\s)/);
-        if (tokens.length < 4) tokens = content.split(''); /* char-by-char for very short */
+        if (tokens.length < 4) tokens = content.split('');
         var idx   = 0;
         var acc   = '';
-        var CHUNK = 4;   /* tokens per tick */
-        var DELAY = 16;  /* ms between ticks (lower = faster) */
+        var CHUNK = 4;
+        var DELAY = 16;
 
         function tick() {
             if (idx < tokens.length) {
@@ -546,7 +544,6 @@
                 scrollToBottom();
                 setTimeout(tick, DELAY);
             } else {
-                /* Final pass: full highlight + math */
                 applyMathAndHighlight(wrap);
                 scrollToBottom();
                 if (onDone) onDone();
@@ -665,7 +662,6 @@
                 streamReply(reply, function () {
                     saveSession();
                     renderHistoryList();
-                    /* Detect quiz-like content */
                     if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
                         showQuizImportBar(reply);
                     }
