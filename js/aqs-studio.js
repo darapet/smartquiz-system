@@ -311,7 +311,7 @@
                 var span = el.querySelector('span');
                 if (span) span.textContent = statusText;
             }
-            if (msgs && el.parentNode !== msgs) msgs.appendChild(el);
+            if (msgs) msgs.appendChild(el);
             el.style.display = 'flex';
             scrollToBottom();
         } else {
@@ -403,7 +403,7 @@
         var empty = document.getElementById('dts-history-empty');
         if (!list) return;
 
-        list.querySelectorAll('.dts-history-item').forEach(function (el) {
+        list.querySelectorAll('.dts-drawer-item').forEach(function (el) {
             el.parentNode.removeChild(el);
         });
 
@@ -416,13 +416,14 @@
 
         sessions.forEach(function (sess) {
             var item      = document.createElement('div');
-            item.className = 'dts-history-item' + (sess.id === conversationId ? ' active' : '');
+            item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
             item.dataset.id = sess.id;
             item.innerHTML =
-                '<span class="dts-history-item-title">' + escHtml(sess.title) + '</span>' +
-                '<button class="dts-history-item-del" data-id="' + escHtml(sess.id) + '" title="Delete">\u2715</button>';
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
 
-            item.querySelector('.dts-history-item-del').addEventListener('click', function (e) {
+            item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
                 e.stopPropagation();
                 deleteSession(sess.id);
                 if (sess.id === conversationId) {
@@ -432,7 +433,7 @@
                 }
             });
 
-            item.addEventListener('click', function () { loadSessionById(sess.id); });
+            item.addEventListener('click', function () { loadSessionById(sess.id); closeHistoryDrawer(); });
             list.insertBefore(item, empty || null);
         });
     }
@@ -499,6 +500,59 @@
 
         messages.appendChild(wrap);
         scrollToBottom();
+        return wrap;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       STREAM REPLY — types out AI response word-by-word
+    ═══════════════════════════════════════════════════════════ */
+    function streamReply(content, onDone) {
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        if (!messages) { if (onDone) onDone(); return; }
+        if (welcome) welcome.style.display = 'none';
+
+        /* Build message bubble */
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-ai';
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">✶</div>' +
+            '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
+        messages.appendChild(wrap);
+
+        var bubble = wrap.querySelector('.dts-msg-bubble');
+        /* Split into word-sized chunks keeping whitespace attached */
+        var tokens = content.split(/(?=\s)/);
+        if (tokens.length < 4) tokens = content.split(''); /* char-by-char for very short */
+        var idx   = 0;
+        var acc   = '';
+        var CHUNK = 4;   /* tokens per tick */
+        var DELAY = 16;  /* ms between ticks (lower = faster) */
+
+        function tick() {
+            if (idx < tokens.length) {
+                var end = Math.min(idx + CHUNK, tokens.length);
+                for (var i = idx; i < end; i++) acc += tokens[i];
+                idx = end;
+                try {
+                    if (typeof marked !== 'undefined') {
+                        bubble.innerHTML = marked.parse(acc, { breaks: true, gfm: true });
+                    } else {
+                        bubble.innerHTML = escHtml(acc).replace(/\n/g, '<br>');
+                    }
+                } catch (e) {
+                    bubble.innerHTML = escHtml(acc).replace(/\n/g, '<br>');
+                }
+                scrollToBottom();
+                setTimeout(tick, DELAY);
+            } else {
+                /* Final pass: full highlight + math */
+                applyMathAndHighlight(wrap);
+                scrollToBottom();
+                if (onDone) onDone();
+            }
+        }
+        tick();
         return wrap;
     }
 
@@ -608,14 +662,14 @@
                 }
 
                 chatHistory.push({ role: 'assistant', content: reply });
-                appendMessage('assistant', reply);
-                saveSession();
-                renderHistoryList();
-
-                /* Detect quiz-like content */
-                if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
-                    showQuizImportBar(reply);
-                }
+                streamReply(reply, function () {
+                    saveSession();
+                    renderHistoryList();
+                    /* Detect quiz-like content */
+                    if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
+                        showQuizImportBar(reply);
+                    }
+                });
             }
             isSending = false;
             setSendState(false);
@@ -1149,7 +1203,8 @@
 
 
         /* ── History hamburger button ── */
-        var historyBtn = document.getElementById('dts-history-btn');
+        var historyBtn = document.getElementById('dts-hist-open-btn') ||
+                        document.getElementById('dts-history-btn');
         if (historyBtn) {
             historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
         }
