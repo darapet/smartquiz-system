@@ -33,11 +33,28 @@
         'You are highly intelligent, accurate, and comprehensive — equivalent in capability to GPT-4 and Claude. ' +
         'Today\'s date is ' + TODAY + '. ' +
 
-        '\n\n## LANGUAGE & TONE RULES (CRITICAL — follow at all times):' +
-        '\n- ALWAYS respond in clear, formal, standard English — never in slang, pidgin, broken English, or informal dialect, regardless of how the user phrases their question.' +
-        '\n- Every response must be polished, professional, and well-structured, as if written by a senior expert.' +
-        '\n- Never use phrases like "as how", "abeg", "na so", "make I", or any informal/pidgin expressions.' +
-        '\n- Mirror the user\'s topic, not their informal language. Elevate your response to professional standard always.' +
+        '\n\n## LANGUAGE & TONE RULES:' +
+        '\n- MIRROR THE USER\'S LANGUAGE AND TONE completely — this is your single most important communication rule.' +
+        '\n- Detect the user\'s language from their message and reply in that SAME language.' +
+        '\n\n### Nigerian Languages & Dialects — respond natively if detected:' +
+        '\n- Nigerian Pidgin English: "abeg", "wetin", "how e dey", "oya", "wahala", "na so" → reply in full Pidgin' +
+        '\n- Yoruba: "bawo ni", "se o wa", "eku ojumo", "mo fe", "se e gbo" → reply fully in Yoruba' +
+        '\n- Igbo: "kedu", "i nwere ike", "nnoo", "gwa m", "ka anyi" → reply fully in Igbo' +
+        '\n- Hausa: "yaya dai", "sannu", "ina kwana", "me kike", "don Allah" → reply fully in Hausa' +
+        '\n- Efik/Ibibio: "mfon", "odudu", "ami" → reply in Efik/Ibibio' +
+        '\n- Ijaw: "wo", "egbesu" → reply in Ijaw' +
+        '\n\n### Other African Languages — respond natively if detected:' +
+        '\n- Twi (Ghana): "ɛte sɛn", "medaase", "akwaaba" → reply in Twi' +
+        '\n- Swahili: "habari", "asante", "karibu", "mambo" → reply in Swahili' +
+        '\n- Amharic: respond in Amharic if detected' +
+        '\n- Zulu/Xhosa: respond in Zulu or Xhosa if detected' +
+        '\n- French (West Africa): reply in French if user writes in French' +
+        '\n\n### Tone matching:' +
+        '\n- Casual/informal in any language → match that casual energy' +
+        '\n- Formal in any language → be formal and structured' +
+        '\n- Mix of English + dialect (code-switching) → match that same code-switching style' +
+        '\n- NEVER force formal standard English on a casual user — it feels cold and robotic.' +
+        '\n- The ONLY exception: financial data, rates, and factual information must always be clearly formatted and accurate, regardless of tone.' +
 
         '\n\n## YOUR CAPABILITIES:' +
         '\n- Deep expertise across ALL subjects: science, technology, medicine, law, finance, economics, engineering, history, arts, literature, and business.' +
@@ -65,8 +82,8 @@
         '\n- NEVER give just a bare number without context. Always explain what it means.' +
         '\n- If web search data is not available or is stale, clearly state: "Based on my last available data as of [date]..." and recommend the user check a live source such as CBN.gov.ng, Wise.com, or Google Finance.' +
 
-        '\n\n## EXAMPLE OF BAD vs. GOOD RESPONSE:' +
-        '\n- BAD: "460 as how" ← never respond like this' +
+        '\n\n## EXAMPLE OF BAD vs. GOOD RESPONSE (for financial/data questions):' +
+        '\n- BAD: Just giving a bare number with no context — "1,580" with nothing else.' +
         '\n- GOOD: "## USD to NGN Exchange Rate\\n\\nAs of today, the exchange rates are as follows:\\n\\n| Rate Type | Rate |\\n|---|---|\\n| CBN Official Rate | ₦1,580/USD (approx.) |\\n| Parallel Market Rate | ₦1,620–₦1,640/USD (approx.) |\\n\\n**Note:** The Nigerian naira has experienced significant volatility. The rates above are indicative and may have changed. Always verify with your bank or a live platform such as [Wise](https://wise.com), [Remitly](https://remitly.com), or [CBN](https://cbn.gov.ng) for the most accurate current figure."';
     /* ═══════════════════════════════════════════════════════════
        WEB SEARCH & BROWSING ENGINE
@@ -102,24 +119,83 @@
         return null;
     }
 
-    /* Fetch a webpage and extract clean text using Jina AI Reader — FREE, no key needed */
-    async function fetchWebPage(url) {
+    /* ── Web page fetcher — tries 3 methods in sequence ── */
+
+    /* Helper: quick fetch with timeout */
+    function timedFetch(url, opts, ms) {
+        var ctrl  = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, ms || 18000);
+        return fetch(url, Object.assign({ signal: ctrl.signal }, opts || {}))
+            .finally(function () { clearTimeout(timer); });
+    }
+
+    /* Method 1 — Jina AI Reader (best quality, extracts clean article text) */
+    async function fetchViaJina(url) {
         try {
-            var jinaUrl = 'https://r.jina.ai/' + url;
-            var ctrl    = new AbortController();
-            var timer   = setTimeout(function () { ctrl.abort(); }, 20000);
-            var res     = await fetch(jinaUrl, {
-                headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' },
-                signal: ctrl.signal
-            });
-            clearTimeout(timer);
+            var res = await timedFetch(
+                'https://r.jina.ai/' + encodeURIComponent(url),
+                { headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text', 'X-Timeout': '15' } },
+                20000
+            );
             if (!res.ok) throw new Error('HTTP ' + res.status);
             var text = await res.text();
-            /* Trim to ~4000 chars to fit in context */
-            return text.trim().slice(0, 4000);
-        } catch (e) {
+            if (text && text.trim().length > 100) return text.trim().slice(0, 5000);
             return null;
-        }
+        } catch (e) { return null; }
+    }
+
+    /* Method 2 — AllOrigins CORS proxy (fetches raw HTML, extracts visible text) */
+    async function fetchViaAllOrigins(url) {
+        try {
+            var apiUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+            var res    = await timedFetch(apiUrl, {}, 18000);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var data   = await res.json();
+            var html   = (data && data.contents) || '';
+            if (!html) return null;
+            /* Strip scripts, styles and tags — keep visible text */
+            var text = html
+                .replace(/<script[sS]*?</script>/gi, ' ')
+                .replace(/<style[sS]*?</style>/gi, ' ')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/s{2,}/g, ' ')
+                .trim();
+            if (text.length > 200) return text.slice(0, 5000);
+            return null;
+        } catch (e) { return null; }
+    }
+
+    /* Method 3 — corsproxy.io (another free open CORS proxy) */
+    async function fetchViaCorsProxy(url) {
+        try {
+            var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            var res      = await timedFetch(proxyUrl, {}, 18000);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var html = await res.text();
+            if (!html) return null;
+            var text = html
+                .replace(/<script[sS]*?</script>/gi, ' ')
+                .replace(/<style[sS]*?</style>/gi, ' ')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+                .replace(/s{2,}/g, ' ')
+                .trim();
+            if (text.length > 200) return text.slice(0, 5000);
+            return null;
+        } catch (e) { return null; }
+    }
+
+    /* Master fetchWebPage — tries Jina → AllOrigins → corsproxy.io */
+    async function fetchWebPage(url) {
+        var result;
+        result = await fetchViaJina(url);
+        if (result) return result;
+        result = await fetchViaAllOrigins(url);
+        if (result) return result;
+        result = await fetchViaCorsProxy(url);
+        return result;
     }
 
     /* Search DuckDuckGo Instant Answer API — FREE, no key needed */
@@ -164,38 +240,41 @@
         }
     }
 
-    /* Wikipedia summary fallback */
+    /* Wikipedia direct summary (by exact title guess) */
     async function searchWikipedia(query) {
         try {
             var title = query.trim().replace(/\s+/g, '_');
             var url   = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title);
-            var ctrl  = new AbortController();
-            var timer = setTimeout(function () { ctrl.abort(); }, 10000);
-            var res   = await fetch(url, { signal: ctrl.signal });
-            clearTimeout(timer);
+            var res   = await timedFetch(url, {}, 10000);
             if (!res.ok) return null;
-            var data = await res.json();
-            if (data.extract) return data.extract + (data.content_urls ? '\nSource: ' + data.content_urls.desktop.page : '');
+            var data  = await res.json();
+            if (data.extract && data.extract.length > 50) {
+                return data.extract + (data.content_urls ? '\nSource: ' + data.content_urls.desktop.page : '');
+            }
             return null;
-        } catch (e) {
-            return null;
-        }
+        } catch (e) { return null; }
     }
 
-    /* Master search: tries DuckDuckGo, then Wikipedia for topic searches */
+    /* Master search: DuckDuckGo → Wikipedia full-text search → Wikipedia direct → nothing */
     async function performWebSearch(query) {
-        /* Try DuckDuckGo first */
+        /* 1. DuckDuckGo instant answers */
         var ddg = await searchDuckDuckGo(query);
         if (ddg && ddg.length > 80) return { source: 'DuckDuckGo', content: ddg };
 
-        /* Extract key subject for Wikipedia fallback */
+        /* Clean query for Wikipedia */
         var wikiQ = query
-            .replace(/\b(latest|news|what is|who is|tell me about|search for|find|current|today)\b/gi, '')
+            .replace(/\b(latest|news|what is|who is|who are|tell me about|search for|find|current|today|abeg|please|help me with)\b/gi, '')
             .replace(/[?!.,]/g, '')
             .trim();
+
         if (wikiQ.length > 3) {
-            var wiki = await searchWikipedia(wikiQ);
-            if (wiki) return { source: 'Wikipedia', content: wiki };
+            /* 2. Wikipedia full-text search (most reliable) */
+            var wikiSearch = await searchWikipediaFullText(wikiQ);
+            if (wikiSearch) return { source: 'Wikipedia', content: wikiSearch };
+
+            /* 3. Wikipedia direct title lookup */
+            var wikiDirect = await searchWikipedia(wikiQ);
+            if (wikiDirect) return { source: 'Wikipedia', content: wikiDirect };
         }
 
         return null;
