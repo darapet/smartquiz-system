@@ -1085,6 +1085,27 @@
     /* ═══════════════════════════════════════════════════════════
        DOM INITIALISATION
     ═══════════════════════════════════════════════════════════ */
+
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY DRAWER
+    ═══════════════════════════════════════════════════════════ */
+    function openHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        renderHistoryList();
+        if (drawer)  { drawer.classList.add('open');  }
+        if (overlay) { overlay.classList.add('open'); }
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        if (drawer)  drawer.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
 
         newSession();
@@ -1125,6 +1146,25 @@
                 sendMessage(prompt);
             });
         });
+
+
+        /* ── History hamburger button ── */
+        var historyBtn = document.getElementById('dts-history-btn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
+        }
+
+        /* ── History drawer close button ── */
+        var historyClose = document.getElementById('dts-history-close');
+        if (historyClose) {
+            historyClose.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── History overlay backdrop click ── */
+        var historyOverlay = document.getElementById('dts-history-overlay');
+        if (historyOverlay) {
+            historyOverlay.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
 
         /* ── New chat button ── */
         var newChatBtn = document.getElementById('dts-new-chat');
