@@ -68,7 +68,7 @@
         var ticker = document.getElementById('aqs-news-ticker-bar');
         var cd     = document.getElementById('aqs-countdown-bar');
 
-        /* Ticker: pad body bottom so content is flush, not hidden */
+        /* Ticker: pad body bottom so content sits flush above it */
         if (ticker && ticker.style.display !== 'none') {
             var tkH = ticker.offsetHeight || 36;
             document.body.style.paddingBottom = (tkH + 4) + 'px';
@@ -77,7 +77,7 @@
             });
         }
 
-        /* Countdown: shift everything flush below it — no white gap */
+        /* Countdown: shift all content flush below it — no white gap */
         if (cd && cd.style.display !== 'none') {
             requestAnimationFrame(function () {
                 requestAnimationFrame(function () {
@@ -86,11 +86,11 @@
 
                         document.documentElement.style.setProperty('--aqs-cd-bar-h', cdH + 'px');
 
-                        /* body paddingTop fills the exact space the fixed bar occupies,
-                           so all content sits flush directly below it — zero white gap. */
+                        /* body paddingTop fills the exact space the fixed bar occupies —
+                           content sits directly below it with zero white gap */
                         document.body.style.paddingTop = cdH + 'px';
 
-                        /* Sticky site headers: just move the snap-point, no marginTop */
+                        /* Sticky site headers: update snap-point only, no marginTop */
                         document.querySelectorAll('.aqs-site-header').forEach(function (h) {
                             h.style.marginTop = '0px';
                             h.style.top       = cdH + 'px';
@@ -112,48 +112,6 @@
                             document.querySelectorAll('.aqs-sidebar-body').forEach(function (b) {
                                 b.style.setProperty('padding-top', (cdH + 60) + 'px', 'important');
                             });
-                            document.querySelectorAll('.std-main').forEach(function (el) {
-                                el.style.height = 'calc(100dvh - ' + (cdH + 60) + 'px)';
-                            });
-                        }
-                    }, 80);
-                });
-            });
-        }
-    }
-
-        /* ── Countdown: shift everything below it ── */
-        if (cd && cd.style.display !== 'none') {
-            /* Double-rAF + 80ms so layout is fully stable before we measure */
-            requestAnimationFrame(function () {
-                requestAnimationFrame(function () {
-                    setTimeout(function () {
-                        var cdH = cd.getBoundingClientRect().height || cd.offsetHeight || 40;
-
-                        /* Publish as CSS variable so rules can react */
-                        document.documentElement.style.setProperty('--aqs-cd-bar-h', cdH + 'px');
-
-                        /* Move site headers (index.html / home-style pages) */
-                        document.querySelectorAll('.aqs-site-header').forEach(function (h) {
-                            h.style.marginTop = cdH + 'px';
-                            h.style.top       = cdH + 'px';
-                        });
-
-                        /* Move hamburger toggle — use setProperty+important to beat
-                           the `top:8px !important` that may exist in sidebar CSS */
-                        document.querySelectorAll('.aqs-sidebar-mobile-toggle').forEach(function (btn) {
-                            btn.style.setProperty('top', (cdH + 8) + 'px', 'important');
-                        });
-
-                        /* On mobile, push sidebar body content down so it clears
-                           the countdown bar. Desktop sidebar is full-height fixed
-                           so it does not need this treatment.                    */
-                        if (window.innerWidth <= 768) {
-                            document.querySelectorAll('.aqs-sidebar-body').forEach(function (body) {
-                                /* Add to existing baseline padding-top (60px set by CSS) */
-                                body.style.setProperty('padding-top', (cdH + 60) + 'px', 'important');
-                            });
-                            /* Shrink std-main so 100vh still fits inside the offset body */
                             document.querySelectorAll('.std-main').forEach(function (el) {
                                 el.style.height = 'calc(100dvh - ' + (cdH + 60) + 'px)';
                             });
