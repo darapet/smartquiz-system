@@ -2656,3 +2656,96 @@ body.aqs-full-page-body *::after {
     .aqs-ch-topbar-right { gap: 4px !important; }
     .aqs-ch-btn-sm { font-size: 0.72rem !important; padding: 5px 8px !important; }
 }
+
+
+/* AQS-MOB-PATCH-v8-START */
+
+/* ── MOBILE NAV DROPDOWN: drop from header bottom, not fixed 60px ── */
+@media (max-width: 700px) {
+    .aqs-site-nav {
+        top: 100%;      /* always flush to header bottom regardless of header height */
+    }
+}
+
+/* ── ADMIN PANEL TABS: horizontal scroll on mobile ── */
+@media (max-width: 768px) {
+    /* aqs-style.css admin tabs */
+    .aqs-admin-tabs-bar {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap !important;
+        gap: 2px;
+    }
+    .aqs-admin-tabs-bar::-webkit-scrollbar { display: none; }
+    .aqs-admin-tab {
+        white-space: nowrap !important;
+        flex-shrink: 0;
+    }
+
+    /* admin.html uses adm- prefixed classes */
+    .adm-nav {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap !important;
+        display: flex;
+        gap: 4px;
+        padding-bottom: 2px;
+    }
+    .adm-nav::-webkit-scrollbar { display: none; }
+    .adm-nav-link {
+        white-space: nowrap !important;
+        flex-shrink: 0;
+        font-size: 0.8rem !important;
+        padding: 8px 12px !important;
+    }
+
+    /* admin.html table overflow */
+    .adm-table-wrap,
+    .adm-table { overflow-x: auto !important; -webkit-overflow-scrolling: touch; display: block; }
+
+    /* dashboard.html "My Profile" tab row */
+    .aqs-tabs,
+    .aqs-tab-bar {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        flex-wrap: nowrap !important;
+    }
+    .aqs-tabs::-webkit-scrollbar,
+    .aqs-tab-bar::-webkit-scrollbar { display: none; }
+    .aqs-tab {
+        white-space: nowrap !important;
+        flex-shrink: 0;
+        font-size: 0.8rem !important;
+    }
+
+    /* host-activity table in dashboard */
+    .aqs-activity-table,
+    .aqs-host-table { overflow-x: auto; display: block; -webkit-overflow-scrolling: touch; }
+
+    /* session pill in header on mobile — smaller text */
+    #aqs-session-pill a,
+    #aqs-session-pill button {
+        font-size: 0.76rem !important;
+        padding: 4px 8px !important;
+    }
+
+    /* Sidebar hamburger: ensure it clears the countdown bar
+       (notifs-bar.js also moves it, but in case JS is slow) */
+    .aqs-sidebar-mobile-toggle {
+        top: calc(var(--aqs-cd-bar-h, 0px) + 8px) !important;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Even tighter admin tabs on narrow phones */
+    .adm-nav-link {
+        font-size: 0.72rem !important;
+        padding: 7px 10px !important;
+    }
+    .aqs-admin-tab { font-size: 0.75rem !important; padding: 7px 10px !important; }
+}
+
+/* AQS-MOB-PATCH-v8-END */
