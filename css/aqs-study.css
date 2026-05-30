@@ -39,11 +39,11 @@
 }
 .std-main *, .std-main *::before, .std-main *::after { box-sizing: border-box; }
 
-/* ── HERO (compact) ───────────────────────────────────────── */
+/* ── HERO (compact) ──────���────────────────────────────────── */
 .std-hero {
     display: flex;
     align-items: center;
-    gap: px;
+    gap: 14px;
     padding: 14px 24px;
     border-bottom: 1px solid var(--std-border);
     background: var(--std-surface);
@@ -287,7 +287,7 @@
 .std-spinner.lg { width: 44px; height: 44px; border-width: 3px; }
 @keyframes std-spin { to { transform: rotate(360deg); } }
 
-/* ── BUTTONS ──────────────────────────────────────────────── */
+/* ── BUTTONS ──��───────────────────────────────────────────── */
 .std-btn { padding: 7px 14px; border-radius: var(--std-radius-sm); border: 1px solid var(--std-border); background: var(--std-surface2); color: var(--std-text); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
 .std-btn:hover { background: var(--std-surface3); border-color: var(--std-border2); }
 .std-btn-primary { background: var(--std-accent); border-color: var(--std-accent); color: #fff; }
@@ -550,4 +550,45 @@
           max-height: 200px;
       }
   }
-  
+
+/* AQS-STUDY-MOB-v9-START */
+@media (max-width: 768px) {
+
+    /* ── Pull the study content up — reduces the white gap
+          between the countdown/hamburger row and the hero ── */
+    .std-main {
+        margin-top: -14px;
+    }
+
+    /* ── Hero: tighter padding + left indent to clear the
+          sidebar hamburger (fixed; left:8px; width:40px → 56px total) ── */
+    .std-hero {
+        padding: 6px 14px 6px 56px !important;
+        align-items: flex-start !important;
+    }
+    .std-hero-icon {
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    /* ── Search & history sections: less top breathing-room ── */
+    .std-search-section {
+        padding-top: 8px !important;
+        padding-left: 14px !important;
+        padding-right: 14px !important;
+    }
+    .std-hist-section {
+        padding-top: 6px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    /* Even tighter on narrow phones */
+    .std-hero {
+        padding: 4px 10px 4px 54px !important;
+    }
+    .std-search-section {
+        padding-top: 6px !important;
+    }
+}
+/* AQS-STUDY-MOB-v9-END */
