@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
-.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
 .aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px;}
 .aqs-page-main{padding:32px 20px;max-width:1200px;margin:0 auto;}
 /* Responsive header nav */
@@ -19,7 +19,9 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
-
+@media(max-width:640px){
+  .aqs-hdr-nav{display:none;}
+  .aqs-hdr-hamburger{display:flex;}
   .aqs-page-main{padding:20px 14px;}
   .aqs-header{flex-direction:column;align-items:flex-start;gap:10px;}
   .aqs-header > div{width:100%;display:flex;flex-direction:column;gap:8px;}
@@ -53,12 +55,19 @@ window.AQS = {
 <body>
 <header class="aqs-site-header">
     <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
+    <button class="aqs-hdr-hamburger" id="dash-hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
     <nav class="aqs-hdr-nav" style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">
         <a href="studio.html" class="aqs-btn aqs-btn-sm">⬡ Studio</a>
         <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
         <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
     </nav>
     </header>
+<div class="aqs-hdr-drawer" id="dash-drawer">
+    <a href="studio.html" class="aqs-btn aqs-btn-sm">⬡ Studio</a>
+    <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
+    <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
+</div>
+<script>(function(){var b=document.getElementById('dash-hamburger'),d=document.getElementById('dash-drawer');if(b&&d){b.addEventListener('click',function(){d.classList.toggle('open');b.classList.toggle('open');});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');}});}}());</script>
 
 <main class="aqs-page-main">
 <div class="aqs-wrap">
