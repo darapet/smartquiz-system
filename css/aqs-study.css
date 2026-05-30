@@ -43,7 +43,7 @@
 .std-hero {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: px;
     padding: 14px 24px;
     border-bottom: 1px solid var(--std-border);
     background: var(--std-surface);
