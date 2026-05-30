@@ -110,7 +110,7 @@
                         /* Mobile sidebar body */
                         if (window.innerWidth <= 768) {
                             document.querySelectorAll('.aqs-sidebar-body').forEach(function (b) {
-                                b.style.setProperty('padding-top', (cdH + 60) + 'px', 'important');
+                                b.style.setProperty('padding-top', '60px', 'important'); /* AQS-MOB-FIX-v8: body.paddingTop already accounts for cdH */
                             });
                             document.querySelectorAll('.std-main').forEach(function (el) {
                                 el.style.height = 'calc(100dvh - ' + (cdH + 60) + 'px)';
