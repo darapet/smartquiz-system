@@ -60,9 +60,8 @@
         /* App column stays below the countdown timer */
         #dts-app{
           display:flex;flex-direction:column;overflow:hidden;
-          margin-top:var(--aqs-cd-bar-h,0px);
           height:calc(100dvh - var(--aqs-cd-bar-h,0px));
-          transition:margin-top .2s,height .2s
+          transition:.2s,height .2s
         }
 
         /* Sidebar: shift its top edge below the countdown bar */
@@ -112,6 +111,14 @@
         .dts-drawer-item:hover .dts-drawer-item-del{opacity:1}
         .dts-drawer-item-del:hover{color:#ef4444;background:rgba(239,68,68,.12)}
 
+    
+        /* ── MOBILE: #dts-app fills only the area below the hamburger ── */
+        @media(max-width:768px){
+          #dts-app{
+            height:calc(100dvh - var(--aqs-cd-bar-h,0px) - 60px) !important;
+          }
+        }
+      
     </style>
 
 <!-- Firebase SDK -->
