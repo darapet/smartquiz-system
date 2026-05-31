@@ -321,7 +321,29 @@
    TEMPLATE 8 — Orbit (Spinning rings around logo)
 ============================================================ */
 #aqs-splash.aqs-t8 {
-    background: var(--sp-bg, #0f172a);
+    background: var(--sp-bg, #130a2e);
+}
+/* Logo sits centred inside the orbit rings — constrain its size
+   so it never overflows the ring wrapper and looks like a bg */
+.aqs-t8-logo-inner {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 0 !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.aqs-t8-logo-inner img {
+    width:  64px !important;
+    height: 64px !important;
+    max-width:  64px !important;
+    max-height: 64px !important;
+    object-fit: contain;
+    border-radius: 14px;
+}
+.aqs-t8-logo-inner .aqs-splash-icon-default {
+    position: relative;
+    z-index: 2;
 }
 .aqs-t8-orbit-wrap {
     position: relative;
@@ -499,6 +521,6 @@
 .aqs-thumb-t5  { background: #f8fafc; color: #1e293b; }
 .aqs-thumb-t6  { background: #fff; color: #6366f1; }
 .aqs-thumb-t7  { background: #0a0a0a; color: #39ff14; }
-.aqs-thumb-t8  { background: #0f172a; color: #818cf8; }
+.aqs-thumb-t8  { background: #130a2e; color: #818cf8; }
 .aqs-thumb-t9  { background: #0a0800; color: #ffd700; }
 .aqs-thumb-t10 { background: #0c4a6e; color: #ffffff; }
