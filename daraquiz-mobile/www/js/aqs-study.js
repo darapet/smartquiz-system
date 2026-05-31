@@ -1376,6 +1376,7 @@ function summonSpeak(text, onDone) {
               var aud = new Audio();
               aud.setAttribute('playsinline', '');
               aud.setAttribute('webkit-playsinline', '');
+              aud.volume = 1.0;
               aud.src = blobUrl;
               aud.onended = function () {
                   try { URL.revokeObjectURL(blobUrl); } catch(_) {}
@@ -1385,6 +1386,8 @@ function summonSpeak(text, onDone) {
                   try { URL.revokeObjectURL(blobUrl); } catch(_) {}
                   _summonSpeakSynth(text, onDone);
               };
+              /* Ensure audio context is unlocked before playing (Android fix) */
+              if (typeof window.AQSUnlockAudio === 'function') window.AQSUnlockAudio();
               aud.play().catch(function () { _summonSpeakSynth(text, onDone); });
           })
           .catch(function () { clearTimeout(timer); _summonSpeakSynth(text, onDone); });

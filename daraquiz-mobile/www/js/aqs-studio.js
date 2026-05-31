@@ -776,20 +776,31 @@
         currentChatId = entry.id;
         messages      = entry.messages.slice();
 
-        /* Clear and re-render messages */
+        /* Clear container immediately */
         var container = document.getElementById('dts-messages');
         container.innerHTML = '';
         var welcome = document.getElementById('dts-welcome');
         if (welcome) welcome.style.display = 'none';
 
-        messages.forEach(function (m) {
-            if (m.role !== 'system') appendMessage(m.role === 'assistant' ? 'ai' : m.role, m.content);
-        });
-
-        /* Highlight active history item */
+        /* Highlight active history item right away */
         document.querySelectorAll('.dts-history-item').forEach(function (el) {
             el.classList.toggle('active', el.dataset.id === chatId);
         });
+
+        /* ANDROID ANR FIX: render messages asynchronously one-at-a-time.
+           Rendering all messages synchronously in a forEach blocks the Android
+           WebView main thread (marked + math + hljs rendering is heavy per-message),
+           triggering the "App is not responding" ANR dialog after ~5 seconds.
+           Yielding between each message keeps the UI thread alive.            */
+        var msgList = messages.filter(function (m) { return m.role !== 'system'; });
+        var msgIdx  = 0;
+        function renderNextMessage() {
+            if (msgIdx >= msgList.length) { scrollToBottom(); return; }
+            var m = msgList[msgIdx++];
+            appendMessage(m.role === 'assistant' ? 'ai' : m.role, m.content);
+            setTimeout(renderNextMessage, 0); /* yield to UI thread */
+        }
+        setTimeout(renderNextMessage, 30); /* small delay so sidebar can close first */
     }
 
     function deleteChat(chatId) {
@@ -1045,6 +1056,11 @@
     var voiceRestartTimer = null;    // debounce for auto-restart
     var VOICE_MAX_MS      = 15000;   // 15 s max per utterance
     var voiceMessages     = [];      // private voice conversation history (never shared with chat)
+    /* ANDROID ANR FIX: cap consecutive silent restarts.
+       Without a limit, repeated "no-speech" errors spawn dozens of
+       SpeechRecognition instances per minute → CPU overload → ANR crash. */
+    var voiceSilentRestarts       = 0;
+    var VOICE_MAX_SILENT_RESTARTS = 10;
 
     /* Short system prompt variant for voice — keeps replies concise */
     var VOICE_SYSTEM = SYSTEM +
@@ -1138,8 +1154,9 @@
         injectVoiceOrbStyles();
         /* Unlock audio IMMEDIATELY while still inside the user-gesture context */
         unlockAudio();
-        voiceActive   = true;
-        voiceMessages = [];   // fresh history each time voice opens
+        voiceActive         = true;
+        voiceMessages       = [];   // fresh history each time voice opens
+        voiceSilentRestarts = 0;    // reset ANR-guard counter
         overlay.style.display = 'flex';
         document.body.style.overflow = 'hidden';
         setVoiceState('idle');
@@ -1236,11 +1253,20 @@
             voiceRecog     = null;
             var spoken = finalText.trim();
             if (spoken && voiceActive) {
+                voiceSilentRestarts = 0; // reset counter on successful speech
                 sendVoiceMessage(spoken);
             } else if (voiceActive && !hasSpoken) {
-                /* No speech detected — restart silently */
-                voiceRestartTimer = setTimeout(startVoiceListening, 600);
+                /* No speech — restart, but cap to prevent CPU overload → ANR */
+                voiceSilentRestarts++;
+                if (voiceSilentRestarts >= VOICE_MAX_SILENT_RESTARTS) {
+                    voiceSilentRestarts = 0;
+                    setVoiceState('idle');
+                    setVoiceTranscript('Tap "Start Listening" when ready to speak.');
+                } else {
+                    voiceRestartTimer = setTimeout(startVoiceListening, 600);
+                }
             } else if (voiceActive) {
+                voiceSilentRestarts = 0;
                 setVoiceState('idle');
             }
         };
@@ -1254,9 +1280,16 @@
                 setVoiceState('error');
                 setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
             } else if (e.error === 'no-speech') {
-                /* Mobile mic recovers slower — give it extra time */
-                var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
-                voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
+                /* Mobile mic recovers slower — cap restarts to prevent ANR */
+                voiceSilentRestarts++;
+                if (voiceSilentRestarts >= VOICE_MAX_SILENT_RESTARTS) {
+                    voiceSilentRestarts = 0;
+                    setVoiceState('idle');
+                    setVoiceTranscript('Tap "Start Listening" when ready to speak.');
+                } else {
+                    var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+                    voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
+                }
             } else {
                 voiceRestartTimer = setTimeout(startVoiceListening, 1000);
             }

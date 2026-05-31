@@ -18,6 +18,21 @@
         <domain includeSubdomains="true">groq.com</domain>
         <domain includeSubdomains="true">openai.com</domain>
         <domain includeSubdomains="true">api.groq.com</domain>
+        <!-- FIX: TTS audio was completely silent — Android blocked all requests to
+             pollinations.ai because it was missing from this allowlist.
+             audio.pollinations.ai serves the TTS MP3 blobs; text.pollinations.ai
+             is the text inference endpoint. Both are required for voice to work. -->
+        <domain includeSubdomains="true">pollinations.ai</domain>
+        <domain includeSubdomains="true">audio.pollinations.ai</domain>
+        <domain includeSubdomains="true">text.pollinations.ai</domain>
+        <!-- Search / knowledge APIs -->
+        <domain includeSubdomains="true">duckduckgo.com</domain>
+        <domain includeSubdomains="true">jina.ai</domain>
+        <domain includeSubdomains="true">wikipedia.org</domain>
+        <domain includeSubdomains="true">books.googleapis.com</domain>
+        <!-- CDN assets -->
+        <domain includeSubdomains="true">cdn.jsdelivr.net</domain>
+        <domain includeSubdomains="true">cdnjs.cloudflare.com</domain>
     </domain-config>
     <base-config cleartextTrafficPermitted="false" />
 </network-security-config>

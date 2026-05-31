@@ -419,13 +419,15 @@
               audio.src = url;
               audio.load();
             audio.playbackRate = speed;
-            /* FIX: unlock audio then play; if still blocked show a visible tap-overlay */
+            /* FIX: unlock audio then play; if still blocked show a visible tap-overlay.
+               volume must be 0.001, NOT 0 — Android WebViews skip the autoplay unlock
+               when volume=0, so TTS stays permanently silent on first load. */
               (window._aqsAudioUnlocked ? Promise.resolve() :
                   new Promise(function(res) {
                       try {
                           var s = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
-                          s.volume = 0;
-                          s.play().then(res).catch(res);
+                          s.volume = 0.001;
+                          s.play().then(function(){ s.pause(); s.src=''; res(); }).catch(res);
                       } catch(e){ res(); }
                   })
               ).then(function() {
