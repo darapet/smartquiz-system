@@ -1189,6 +1189,10 @@
 
     /* ── Start listening (one utterance, max 15 s) ── */
     function startVoiceListening() {
+          /* ── REQUEST MIC PERMISSION EXPLICITLY (required for Capacitor/Android) ── */
+          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+              navigator.mediaDevices.getUserMedia({ audio: true }).catch(function () {});
+          }
         if (!voiceActive) return;
         var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SpeechRec || voiceListening) return;
