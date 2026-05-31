@@ -1,23 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  DaraQuiz AI — AndroidManifest.xml REFERENCE
-  Capacitor generates this automatically at: android/app/src/main/AndroidManifest.xml
-  This version is provided for reference — do NOT replace the generated one directly.
-  Instead, use this as a guide for any customizations you want to apply.
+  DaraQuiz AI — AndroidManifest.xml
+  =====================================================================
+  HOW TO APPLY THIS FILE:
+  After running "npx cap add android" (or "npx cap sync"), copy this
+  file to:
+      android/app/src/main/AndroidManifest.xml
+  Then rebuild the APK. All permissions listed here will appear under
+  Settings > Apps > [App] > Permissions.
+  =====================================================================
 -->
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.darapet.smartquiz">
+    package="com.darapet.smart">
 
-    <!-- Permissions required by DaraQuiz AI -->
+    <!-- ── Core network ── -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28"/>
-    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- ── Microphone (Voice Chat / Speech Recognition / Studio) ── -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
-    <!-- For vibration on correct/wrong answers -->
+
+    <!-- ── Camera (image upload / quiz image capture) ── -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- ── Storage — legacy (Android ≤ 12 / API ≤ 32) ── -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="28" />
+
+    <!-- ── Storage — modern (Android 13+ / API 33+) ── -->
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+
+    <!-- ── Notifications (Android 13+) ── -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- ── Vibration (correct / wrong answer feedback) ── -->
     <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
@@ -30,7 +51,7 @@
         android:usesCleartextTraffic="true"
         android:networkSecurityConfig="@xml/network_security_config">
 
-        <!-- Splash Screen Activity -->
+        <!-- Main / Splash activity -->
         <activity
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|smallestScreenSize|screenLayout|uiMode"
             android:name=".MainActivity"
@@ -51,7 +72,7 @@
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version" />
 
-        <!-- File Provider for camera/file uploads -->
+        <!-- File Provider for camera / file uploads -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
