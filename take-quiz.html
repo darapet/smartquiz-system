@@ -11,28 +11,199 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
-.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.1rem;}
-.aqs-page-main{padding:20px;}
-/* Mobile quiz layout */
-@media(max-width:640px){
-  .aqs-page-main{padding:12px 10px;}
-  .aqs-quiz-cover{padding:20px 14px!important;border-radius:14px!important;}
-  .aqs-quiz-cover h1{font-size:1.2rem!important;}
-  .aqs-quiz-meta{flex-direction:column;gap:6px!important;align-items:flex-start!important;}
-  .aqs-option{padding:12px 14px!important;font-size:.9rem!important;}
-  .aqs-question-text{font-size:1rem!important;line-height:1.6!important;}
-  .aqs-options-grid{grid-template-columns:1fr!important;gap:8px!important;}
-  .aqs-quiz-progress-bar{height:6px!important;}
-  .aqs-timer-circle{width:52px!important;height:52px!important;font-size:1.1rem!important;}
-  .aqs-result-header{padding:24px 16px!important;}
-  .aqs-result-stats{grid-template-columns:1fr 1fr!important;gap:8px!important;}
-  .aqs-result-card{padding:14px!important;}
-  .aqs-result-actions{flex-direction:column!important;}
-  .aqs-result-actions a,.aqs-result-actions button{width:100%;text-align:center;justify-content:center;}
-}
-</style>
+  /* === ANIMATED BACKGROUND === */
+  @keyframes aqs-orb-drift-1 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(40px, 30px) scale(1.1); }
+    100% { transform: translate(-20px, 50px) scale(0.95); }
+  }
+  @keyframes aqs-orb-drift-2 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(-30px, -20px) scale(1.08); }
+    100% { transform: translate(25px, -40px) scale(0.92); }
+  }
+  @keyframes aqs-orb-drift-3 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(20px, -30px) scale(1.05); }
+    100% { transform: translate(-35px, 20px) scale(1.02); }
+  }
+  @keyframes aqs-float-particle {
+    0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+    10%  { opacity: 0.7; }
+    90%  { opacity: 0.3; }
+    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+  }
+  @keyframes aqs-bg-shift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: linear-gradient(-45deg, #0d0d1f, #0f1729, #0d1a2e, #12082a, #0a0f1e);
+    background-size: 400% 400%;
+    animation: aqs-bg-shift 18s ease infinite;
+    position: relative;
+  }
+
+  /* Grid overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Purple orb — top left */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 560px; height: 560px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(109,40,217,0.45), rgba(67,26,191,0.12) 60%, transparent 80%);
+    top: -140px; left: -100px;
+    filter: blur(70px);
+    animation: aqs-orb-drift-1 12s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Orb container */
+  #aqs-ambient-bg {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  /* Cyan orb — bottom right */
+  #aqs-ambient-bg::before {
+    content: '';
+    position: absolute;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(6,182,212,0.35), rgba(2,132,199,0.1) 60%, transparent 80%);
+    bottom: -100px; right: -80px;
+    filter: blur(80px);
+    animation: aqs-orb-drift-2 10s ease-in-out infinite alternate;
+  }
+  /* Pink orb — center */
+  #aqs-ambient-bg::after {
+    content: '';
+    position: absolute;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(236,72,153,0.22), rgba(190,24,93,0.06) 60%, transparent 80%);
+    top: 40%; left: 50%;
+    transform: translate(-50%, -50%);
+    filter: blur(90px);
+    animation: aqs-orb-drift-3 14s ease-in-out infinite alternate;
+  }
+
+  /* Floating particles */
+  .aqs-particle {
+    position: fixed;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    pointer-events: none;
+    z-index: 0;
+    animation: aqs-float-particle linear infinite;
+  }
+
+  /* Push all content above bg layers */
+  .aqs-site-header, .aqs-page-main, .aqs-wrap, #aqs-take-quiz { position: relative; z-index: 1; }
+
+  /* Header — glassmorphism */
+  .aqs-site-header {
+    background: rgba(13,13,31,0.7) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.09) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .aqs-site-logo { color: #c4b5fd !important; }
+  .aqs-site-header .aqs-btn { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.07); color: #e2e8f0; }
+  .aqs-site-header .aqs-btn:hover { background: rgba(255,255,255,0.13); }
+
+  /* Page bg transparent */
+  .aqs-page-main { background: transparent !important; }
+
+  /* Quiz cover — glass card */
+  .aqs-quiz-cover {
+    background: rgba(255,255,255,0.055) !important;
+    border: 1px solid rgba(255,255,255,0.11) !important;
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 0 0 1px rgba(109,40,217,0.18), 0 32px 80px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07) !important;
+  }
+  .aqs-quiz-cover h1, .aqs-quiz-cover h2 { color: #fff !important; }
+  .aqs-quiz-cover p, .aqs-quiz-subject { color: rgba(255,255,255,0.6) !important; }
+  .aqs-quiz-meta span { color: rgba(255,255,255,0.55) !important; }
+
+  /* Question area */
+  .aqs-question-area, .aqs-question-card, .aqs-quiz-question {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.09) !important;
+    backdrop-filter: blur(16px);
+    border-radius: 16px;
+  }
+  .aqs-question-text { color: #f1f5f9 !important; }
+  .aqs-question-num, .aqs-quiz-progress-label { color: rgba(255,255,255,0.45) !important; }
+
+  /* Options */
+  .aqs-option {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.85) !important;
+    transition: all 0.22s ease !important;
+  }
+  .aqs-option:hover:not(.aqs-correct):not(.aqs-wrong):not(.aqs-selected) {
+    border-color: rgba(109,40,217,0.65) !important;
+    background: rgba(109,40,217,0.13) !important;
+    color: #fff !important;
+    transform: translateX(5px);
+  }
+  .aqs-option.aqs-correct { border-color: #4ade80 !important; background: rgba(74,222,128,0.12) !important; color: #4ade80 !important; }
+  .aqs-option.aqs-wrong, .aqs-option.aqs-selected-wrong { border-color: #f87171 !important; background: rgba(248,113,113,0.1) !important; color: #f87171 !important; }
+
+  /* Timer */
+  .aqs-timer-circle { color: #fff !important; border-color: rgba(109,40,217,0.6) !important; background: rgba(109,40,217,0.15) !important; }
+  .aqs-quiz-progress-bar { background: rgba(255,255,255,0.1) !important; }
+  .aqs-quiz-progress-fill { background: linear-gradient(90deg, #7c3aed, #38bdf8) !important; }
+
+  /* Input fields */
+  .aqs-field input { background: rgba(255,255,255,0.07) !important; border-color: rgba(255,255,255,0.12) !important; color: #f1f5f9 !important; }
+  .aqs-field input::placeholder { color: rgba(255,255,255,0.35) !important; }
+  .aqs-field label { color: rgba(255,255,255,0.7) !important; }
+
+  /* Mobile */
+  @media(max-width:640px){
+    .aqs-page-main{padding:12px 10px;}
+    .aqs-quiz-cover{padding:20px 14px!important;border-radius:14px!important;}
+    .aqs-quiz-cover h1{font-size:1.2rem!important;}
+    .aqs-quiz-meta{flex-direction:column;gap:6px!important;align-items:flex-start!important;}
+    .aqs-option{padding:12px 14px!important;font-size:.9rem!important;}
+    .aqs-question-text{font-size:1rem!important;line-height:1.6!important;}
+    .aqs-options-grid{grid-template-columns:1fr!important;gap:8px!important;}
+    .aqs-quiz-progress-bar{height:6px!important;}
+    .aqs-timer-circle{width:52px!important;height:52px!important;font-size:1.1rem!important;}
+    .aqs-result-header{padding:24px 16px!important;}
+    .aqs-result-stats{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+    .aqs-result-card{padding:14px!important;}
+    .aqs-result-actions{flex-direction:column!important;}
+    .aqs-result-actions a,.aqs-result-actions button{width:100%;text-align:center;justify-content:center;}
+  }
+  </style>
 <script>
 window.AQS = {
     ajax_url: 'firebase',
@@ -57,6 +228,23 @@ window.AQS = {
 <script type="module" src="js/aqs-firebase.js"></script>
 </head>
 <body>
+<div id="aqs-ambient-bg"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:0%;animation-duration:9s;animation-delay:0s;"></div>
+<div class="aqs-particle" style="width:13px;height:13px;left:6.3%;animation-duration:12s;animation-delay:0.8s;"></div>
+<div class="aqs-particle" style="width:18px;height:18px;left:12.6%;animation-duration:15s;animation-delay:1.6s;"></div>
+<div class="aqs-particle" style="width:23px;height:23px;left:18.9%;animation-duration:18s;animation-delay:2.4000000000000004s;"></div>
+<div class="aqs-particle" style="width:28px;height:28px;left:25.2%;animation-duration:21s;animation-delay:3.2s;"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:31.5%;animation-duration:9s;animation-delay:4s;"></div>
+<div class="aqs-particle" style="width:13px;height:13px;left:37.8%;animation-duration:12s;animation-delay:4.800000000000001s;"></div>
+<div class="aqs-particle" style="width:18px;height:18px;left:44.1%;animation-duration:15s;animation-delay:5.6000000000000005s;"></div>
+<div class="aqs-particle" style="width:23px;height:23px;left:50.4%;animation-duration:18s;animation-delay:6.4s;"></div>
+<div class="aqs-particle" style="width:28px;height:28px;left:56.699999999999996%;animation-duration:21s;animation-delay:7.2s;"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:63%;animation-duration:9s;animation-delay:0s;"></div>
+<div class="aqs-particle" style="width:13px;height:13px;left:69.3%;animation-duration:12s;animation-delay:0.8000000000000007s;"></div>
+<div class="aqs-particle" style="width:18px;height:18px;left:75.6%;animation-duration:15s;animation-delay:1.6000000000000014s;"></div>
+<div class="aqs-particle" style="width:23px;height:23px;left:81.89999999999999%;animation-duration:18s;animation-delay:2.4000000000000004s;"></div>
+<div class="aqs-particle" style="width:28px;height:28px;left:88.2%;animation-duration:21s;animation-delay:3.200000000000001s;"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:94.5%;animation-duration:9s;animation-delay:4s;"></div>
 <header class="aqs-site-header">
     <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
     <a href="index.html" class="aqs-btn aqs-btn-sm" style="font-size:.85rem;padding:7px 14px;">← Home</a>
@@ -64,7 +252,7 @@ window.AQS = {
 <main class="aqs-page-main">
 
 <canvas id="aqs-particle-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none;"></canvas>
-<div class="aqs-ambient-bg" id="aqs-ambient-bg" style="display:none;"></div>
+
 
 <div class="aqs-wrap aqs-quiz-wrap" id="aqs-take-quiz" style="position:relative;z-index:1;">
 
