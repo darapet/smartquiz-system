@@ -1,4 +1,4 @@
-package com.darapet.darasmart;
+package com.darapet.smart;
 
 import android.Manifest;
 import android.content.Intent;
@@ -41,7 +41,9 @@ public class MainActivity extends BridgeActivity {
             }
         );
 
-        /* Ask for mic permission immediately on first launch */
+        /* Ask for mic permission immediately on first launch —
+           this shows the Android permission dialog before the user
+           has to tap anything, so it appears under App Permissions */
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this,
@@ -52,11 +54,11 @@ public class MainActivity extends BridgeActivity {
         WebView webView = getBridge().getWebView();
         WebSettings settings = webView.getSettings();
 
-        /* Fix 1: Allow audio/video to play without requiring a user tap */
+        /* Allow audio/video to play without requiring a user tap first */
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        /* Fix 2: Override WebChromeClient to auto-grant mic/camera
-           to the WebView and keep file upload working */
+        /* Override WebChromeClient to auto-grant mic/camera to the WebView
+           and keep file-upload working (needed for Studio & Study pages) */
         webView.setWebChromeClient(new WebChromeClient() {
 
             @Override
