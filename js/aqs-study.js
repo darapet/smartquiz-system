@@ -1005,7 +1005,7 @@ function summonHandleSetup(q) {
    the AI speaks (speakingQueue flag) and re-enabled with a delay. */
 
 /* ── RECOGNITION ─────────────────────────────────────────────── */
-var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0;
+var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0, _nextFinalIndex = 0;
 
 function _doStartRecognition() {
     if (_recDisabled) return;
@@ -1020,21 +1020,36 @@ function _doStartRecognition() {
     VS.recognition.onend = function () {
         VS.listening = false; _recStopWatchdog();
         if (!_recDisabled && !VS.speakingQueue) {
-            _recRetryTimer = setTimeout(_doStartRecognition, 400);
+            /* 900ms lets the audio hardware fully settle before re-opening the
+               mic, which eliminates the popping click on restart. */
+            _nextFinalIndex = 0;
+            _recRetryTimer = setTimeout(_doStartRecognition, 900);
         }
     };
     VS.recognition.onerror = function (e) {
         _recLastEvent = Date.now();
         if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { _recDisabled = true; return; }
         VS.listening = false; _recStopWatchdog();
-        if (!_recDisabled) _recRetryTimer = setTimeout(_doStartRecognition, 800);
+        if (!_recDisabled) {
+            _nextFinalIndex = 0;
+            _recRetryTimer = setTimeout(_doStartRecognition, 1200);
+        }
     };
     VS.recognition.onresult = function (e) {
         _recLastEvent = Date.now();
         var interim = '', final = '';
         for (var i = e.resultIndex; i < e.results.length; i++) {
-            if (e.results[i].isFinal) final += e.results[i][0].transcript;
-            else interim += e.results[i][0].transcript;
+            if (e.results[i].isFinal) {
+                /* Guard against Chrome re-delivering already-processed final
+                   results (e.resultIndex can be 0 on every event in continuous
+                   mode, causing each new word to re-append earlier words). */
+                if (i >= _nextFinalIndex) {
+                    final += e.results[i][0].transcript;
+                    _nextFinalIndex = i + 1;
+                }
+            } else {
+                interim += e.results[i][0].transcript;
+            }
         }
         VS._interimSnapshot = interim;
         if (interim) { summonShowInterim(interim); summonResetSilence(); }
@@ -1052,6 +1067,7 @@ function summonStartListening() {
     _recDisabled = false;
     clearTimeout(_recRetryTimer); _recStopWatchdog();
     VS.transcript = ''; VS._interimSnapshot = '';
+    _nextFinalIndex = 0;
     _doStartRecognition();
 }
 
