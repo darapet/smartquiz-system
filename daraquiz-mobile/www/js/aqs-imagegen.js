@@ -242,7 +242,7 @@
           var encoded = encodeURIComponent(prompt);
           var s = seed || Math.floor(Math.random() * 9999999);
           var m = model || 'flux-pro';
-          return 'https://image.pollinations.ai/prompt/' + encoded +
+          return 'https://image.pollinations.ai/prompt/' + encoded + '&noCache=' + Date.now() +
                  '?width=' + width + '&height=' + height +
                  '&model=' + m + '&seed=' + s +
                  '&nologo=true&private=true&enhance=true' +
@@ -401,8 +401,10 @@
           var count      = parseInt($countEl ? $countEl.value : '1') || 1;
 
           $genBtn.disabled = true;
-          $results.style.display = 'block';
-          $grid.innerHTML = '';
+            $results.style.display = 'block';
+            $grid.innerHTML = '';
+            /* Safety: re-enable button after 3 min if generation hangs */
+            var _igSafety = setTimeout(function () { $genBtn.disabled = false; }, 180000);
 
           setStatus('Generating ' + count + ' professional image' + (count > 1 ? 's' : '') + '… ' +
                     (isHD ? 'HD mode — using best quality AI model' : 'please wait'));
@@ -480,8 +482,9 @@
       }
 
       function finishGeneration(prompt, urls) {
-          $status.style.display = 'none';
-          $genBtn.disabled = false;
+            if (typeof _igSafety !== 'undefined') clearTimeout(_igSafety);
+            $status.style.display = 'none';
+            $genBtn.disabled = false;
           $genBtn.innerHTML =
               '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
               '<path d="M15 4V2"/><path d="M15 16v-2"/><path d="M8 9h2"/><path d="M20 9h2"/>' +
