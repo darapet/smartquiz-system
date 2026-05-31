@@ -3,6 +3,39 @@
 (function () {
     'use strict';
 
+  /* ── CAPACITOR SPEECH GUARD ──────────────────────────────────────────────────
+     window.webkitSpeechRecognition / window.speechSynthesis exist in Android
+     WebView but crash or silently fail inside Capacitor when used. This block
+     runs first inside the IIFE and makes every existing  if (!SpeechRec) guard
+     in this file fire correctly — voice is disabled gracefully, not crashed.   */
+  (function () {
+      var _isNative = !!(window.Capacitor &&
+          typeof window.Capacitor.isNativePlatform === 'function' &&
+          window.Capacitor.isNativePlatform());
+      if (!_isNative) return;
+      /* Nullify broken Speech Recognition */
+      try { Object.defineProperty(window, 'SpeechRecognition',
+          { value: null, writable: true, configurable: true }); } catch (e) { window.SpeechRecognition = null; }
+      try { Object.defineProperty(window, 'webkitSpeechRecognition',
+          { value: null, writable: true, configurable: true }); } catch (e) { window.webkitSpeechRecognition = null; }
+      /* Wrap speechSynthesis.speak() — prevents UI freezing when voice list empty */
+      if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') {
+          var _orig = window.speechSynthesis.speak.bind(window.speechSynthesis);
+          window.speechSynthesis.speak = function (utt) {
+              try {
+                  var vs = window.speechSynthesis.getVoices();
+                  if (vs.length === 0) {
+                      var done = false;
+                      var go = function () { if (done) return; done = true; try { _orig(utt); } catch (e2) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} } };
+                      window.speechSynthesis.addEventListener('voiceschanged', go);
+                      setTimeout(go, 2000);
+                  } else { _orig(utt); }
+              } catch (e) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} }
+          };
+      }
+  })();
+  
+
     var cfg        = window.DTS_CONFIG || {};
     var messages   = [];          // current conversation messages
     var isStreaming = false;
