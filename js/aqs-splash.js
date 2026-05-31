@@ -40,7 +40,7 @@
     var defaultBg = {
         1: '#ffffff', 2: '#050816', 3: '#4f46e5',
         4: '#0d0d0d', 5: '#f8fafc', 6: '#ffffff',
-        7: '#0a0a0a', 8: '#0f172a', 9: '#0a0800',
+        7: '#0a0a0a', 8: '#130a2e', 9: '#0a0800',
         10: '#0c4a6e'
     };
     var defaultText = {
@@ -68,7 +68,7 @@
             + '<div class="aqs-t8-orbit aqs-t8-orbit-1"></div>'
             + '<div class="aqs-t8-orbit aqs-t8-orbit-2"></div>'
             + '<div class="aqs-t8-orbit aqs-t8-orbit-3"></div>'
-            + logoHtml
+            + '<div class="aqs-splash-logo-wrap aqs-t8-logo-inner">' + logoHtml + '</div>'
           + '</div>'
         : '<div class="aqs-splash-logo-wrap">' + logoHtml + '</div>';
 
