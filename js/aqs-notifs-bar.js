@@ -107,6 +107,14 @@
                             btn.style.setProperty('top', (cdH + 8) + 'px', 'important');
                         });
 
+                        /* User-dashboard mobile drawer — shift below countdown bar.
+                           The CSS already uses var(--aqs-cd-bar-h) so setting the
+                           custom property above is enough; this is a belt-and-braces
+                           fallback for browsers that need an explicit top value. */
+                        document.querySelectorAll('.aqs-hdr-drawer').forEach(function (drawer) {
+                            drawer.style.setProperty('top', (cdH + 60) + 'px', 'important');
+                        });
+
                         /* Mobile sidebar body */
                         if (window.innerWidth <= 768) {
                             document.querySelectorAll('.aqs-sidebar-body').forEach(function (b) {
@@ -142,6 +150,9 @@
         });
         document.querySelectorAll('.aqs-sidebar-body').forEach(function (b) {
             b.style.removeProperty('padding-top');
+        });
+        document.querySelectorAll('.aqs-hdr-drawer').forEach(function (drawer) {
+            drawer.style.removeProperty('top');
         });
         document.querySelectorAll('.std-main').forEach(function (el) {
             el.style.height = '';
