@@ -858,10 +858,12 @@
             setVoiceTranscript('Mic error: ' + (e.error || 'unknown'));
         };
 
-        try { rec.start(); } catch (e) {
-            setVoiceState('error');
-            setVoiceTranscript('Could not access microphone: ' + e.message);
-        }
+        setTimeout(function () {
+            try { rec.start(); } catch (e) {
+                setVoiceState('error');
+                setVoiceTranscript('Could not access microphone: ' + e.message);
+            }
+        }, 120);
     }
 
     async function handleVoiceInput(text) {
