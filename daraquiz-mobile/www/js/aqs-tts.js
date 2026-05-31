@@ -232,7 +232,9 @@
         var ctrl = new AbortController();
         var tid  = setTimeout(function() { ctrl.abort(); }, 15000);
         try {
-            var r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+            /* Add seed to avoid Pollinations caching the same text response */
+              var fetchUrl = url + (url.includes('?') ? '&nc=' : '?nc=') + Date.now();
+              var r = await fetch(fetchUrl, { signal: ctrl.signal, cache: 'no-store' });
             clearTimeout(tid);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             var buf = await r.arrayBuffer();
@@ -412,8 +414,10 @@
         var audio = document.getElementById('tts-audio');
         if (audio) {
             audio.style.display = 'block';
-            audio.src = url;
-            audio.load();
+              audio.setAttribute('playsinline', '');
+              audio.setAttribute('webkit-playsinline', '');
+              audio.src = url;
+              audio.load();
             audio.playbackRate = speed;
             /* FIX: unlock audio then play; if still blocked show a visible tap-overlay */
               (window._aqsAudioUnlocked ? Promise.resolve() :
