@@ -1008,6 +1008,10 @@ function summonHandleSetup(q) {
 var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0;
 
 function _doStartRecognition() {
+      /* Trigger Android mic permission dialog if not yet granted */
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          navigator.mediaDevices.getUserMedia({ audio: true }).catch(function () {});
+      }
     if (_recDisabled) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
@@ -1025,7 +1029,12 @@ function _doStartRecognition() {
     };
     VS.recognition.onerror = function (e) {
         _recLastEvent = Date.now();
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { _recDisabled = true; return; }
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+          _recDisabled = true;
+          var el = document.getElementById('std-summon-transcript') || document.getElementById('std-summon-state-txt');
+          if (el) el.textContent = '🎙️ Mic access denied — please allow microphone in your device settings and try again.';
+          return;
+      }
         VS.listening = false; _recStopWatchdog();
         if (!_recDisabled) _recRetryTimer = setTimeout(_doStartRecognition, 800);
     };
@@ -1352,19 +1361,48 @@ function summonSpeakStream(text, isCheckpoint) {
 }
 
 function summonSpeak(text, onDone) {
-    if (!VS.synth) { if (onDone) onDone(); return; }
-    try { VS.synth.cancel(); } catch(e) {}
-    summonPickVoice(); summonSetState('speaking'); VS.speaking = true;
-    var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
-    if (VS.voice) u.voice = VS.voice;
-    /* FIX: Chrome silently pauses speechSynthesis — poll and resume */
-    var _rc = setInterval(function () {
-        if (VS.synth && VS.synth.paused) { try { VS.synth.resume(); } catch(e) {} }
-    }, 250);
-    u.onend = u.onerror = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
-    VS.synth.speak(u);
-}
+      summonSetState('speaking'); VS.speaking = true;
+      /* Pollinations TTS — works reliably in Capacitor WebView on Android/iOS.
+         Falls back to browser speechSynthesis if Pollinations fetch fails. */
+      var ttsText = text.slice(0, 350);
+      var ttsUrl  = 'https://audio.pollinations.ai/' + encodeURIComponent(ttsText) +
+                    '?voice=nova&model=openai-audio&nc=' + Date.now();
+      var ctrl = new AbortController();
+      var timer = setTimeout(function () { ctrl.abort(); }, 12000);
+      fetch(ttsUrl, { signal: ctrl.signal })
+          .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('http'); return r.blob(); })
+          .then(function (blob) {
+              var blobUrl = URL.createObjectURL(blob);
+              var aud = new Audio();
+              aud.setAttribute('playsinline', '');
+              aud.setAttribute('webkit-playsinline', '');
+              aud.src = blobUrl;
+              aud.onended = function () {
+                  try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                  VS.speaking = false; if (onDone) onDone();
+              };
+              aud.onerror = function () {
+                  try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                  _summonSpeakSynth(text, onDone);
+              };
+              aud.play().catch(function () { _summonSpeakSynth(text, onDone); });
+          })
+          .catch(function () { clearTimeout(timer); _summonSpeakSynth(text, onDone); });
+  }
+  function _summonSpeakSynth(text, onDone) {
+      VS.speaking = true;
+      if (!VS.synth) { VS.speaking = false; if (onDone) onDone(); return; }
+      try { VS.synth.cancel(); } catch(e) {}
+      summonPickVoice();
+      var u = new SpeechSynthesisUtterance(text);
+      u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+      if (VS.voice) u.voice = VS.voice;
+      var _rc = setInterval(function () {
+          if (VS.synth && VS.synth.paused) { try { VS.synth.resume(); } catch(e) {} }
+      }, 250);
+      u.onend = u.onerror = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
+      VS.synth.speak(u);
+  }
 
 /* ── INJECT STYLES ───────────────────────────────────────────── */
 function injectSummonStyles() {
