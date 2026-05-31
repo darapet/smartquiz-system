@@ -39,7 +39,7 @@
 }
 .std-main *, .std-main *::before, .std-main *::after { box-sizing: border-box; }
 
-/* ── HERO (compact) ──────���────────────────────────────────── */
+/* ── HERO (compact) ──────�����────────────────────────────────── */
 .std-hero {
     display: flex;
     align-items: center;
@@ -287,7 +287,7 @@
 .std-spinner.lg { width: 44px; height: 44px; border-width: 3px; }
 @keyframes std-spin { to { transform: rotate(360deg); } }
 
-/* ── BUTTONS ──��───────────────────────────────────────────── */
+/* ── BUTTONS ��─��───────────────────────────────────────────── */
 .std-btn { padding: 7px 14px; border-radius: var(--std-radius-sm); border: 1px solid var(--std-border); background: var(--std-surface2); color: var(--std-text); font-size: .8rem; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
 .std-btn:hover { background: var(--std-surface3); border-color: var(--std-border2); }
 .std-btn-primary { background: var(--std-accent); border-color: var(--std-accent); color: #fff; }
@@ -551,44 +551,29 @@
       }
   }
 
-/* AQS-STUDY-MOB-v9-START */
+/* AQS-STUDY-MOB-v10-START */
 @media (max-width: 768px) {
 
-    /* ── Pull the study content up — reduces the white gap
-          between the countdown/hamburger row and the hero ── */
+    /* Pull study content slightly toward the hamburger row —
+       removes most of the visible white gap without clipping
+       the heading or adding left-side padding. */
     .std-main {
-        margin-top: -14px;
+        margin-top: -12px;
     }
 
-    /* ── Hero: tighter padding + left indent to clear the
-          sidebar hamburger (fixed; left:8px; width:40px → 56px total) ── */
+    /* Hero: trim only vertical padding on mobile (no left change —
+       that caused the heading to be cut off in v9). */
     .std-hero {
-        padding: 6px 14px 6px 56px !important;
-        align-items: flex-start !important;
-    }
-    .std-hero-icon {
-        margin-top: 2px;
-        flex-shrink: 0;
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
     }
 
-    /* ── Search & history sections: less top breathing-room ── */
+    /* Tighten search and history top spacing */
     .std-search-section {
-        padding-top: 8px !important;
-        padding-left: 14px !important;
-        padding-right: 14px !important;
+        padding-top: 6px !important;
     }
     .std-hist-section {
-        padding-top: 6px !important;
+        padding-top: 4px !important;
     }
 }
-
-@media (max-width: 480px) {
-    /* Even tighter on narrow phones */
-    .std-hero {
-        padding: 4px 10px 4px 54px !important;
-    }
-    .std-search-section {
-        padding-top: 6px !important;
-    }
-}
-/* AQS-STUDY-MOB-v9-END */
+/* AQS-STUDY-MOB-v10-END */
