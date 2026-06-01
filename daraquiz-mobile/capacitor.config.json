@@ -4,6 +4,7 @@
   "webDir": "www",
   "server": {
     "androidScheme": "https",
+    "hostname": "localhost",
     "cleartext": true,
     "allowNavigation": [
       "*.firebaseapp.com",
