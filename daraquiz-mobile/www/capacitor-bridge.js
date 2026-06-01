@@ -291,4 +291,131 @@
   window.AQSUnlockAudio = _unlockAllAudio;
   window.AQSPlatform = { isNative: isCapacitor, platform: platform };
 
+  /* ══════════════════════════════════════════════════
+     NATIVE-ONLY FIRST-TIME DISCLAIMER POPUP
+     Shows once on Studio and Study pages to tell users
+     that TTS, voice chat and image generation need the web.
+  ══════════════════════════════════════════════════ */
+  var DISCLAIMER_PAGES = {
+    'studio.html': {
+      title: '🖥️ Some Features Need the Web App',
+      body: 'On the <b>mobile app</b>, features like <b>Voice Conversation, Text-to-Speech (TTS) and Image Generation</b> require a stable internet connection and work best on the web version.<br><br>For the full experience, visit our web app anytime — it works on any browser, no download needed.',
+      page: 'Studio'
+    },
+    'study.html': {
+      title: '📚 Some Features Need the Web App',
+      body: 'On the <b>mobile app</b>, features like <b>Voice Chat with the AI Tutor, Text-to-Speech</b> reading, and <b>Image Generation</b> work best on the web version.<br><br>For the full AI Study experience visit our web app — it's free and needs no download.',
+      page: 'Study'
+    }
+  };
+
+  var DISCLAIMER_KEY = '_aqsNativeDisclaimer_v1';
+  var WEB_URL = 'https://darapet.github.io/smartquiz-system';
+
+  function injectDisclaimerStyles() {
+    if (document.getElementById('_aqsDclStyle')) return;
+    var s = document.createElement('style');
+    s.id = '_aqsDclStyle';
+    s.textContent = [
+      '._aqsDcl{position:fixed;inset:0;z-index:99995;display:flex;align-items:flex-end;',
+      'justify-content:center;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);',
+      'animation:_aqsDclFadeIn .25s ease;}',
+      '@keyframes _aqsDclFadeIn{from{opacity:0}to{opacity:1}}',
+      '._aqsDclCard{background:linear-gradient(160deg,#1e1b4b,#1e293b);',
+      'border:1px solid rgba(129,140,248,0.3);border-radius:22px 22px 0 0;',
+      'padding:28px 24px 36px;max-width:480px;width:100%;',
+      'box-shadow:0 -8px 40px rgba(0,0,0,0.5);',
+      'animation:_aqsDclSlideUp .3s cubic-bezier(.34,1.56,.64,1);}',
+      '@keyframes _aqsDclSlideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}',
+      '._aqsDclHandle{width:36px;height:4px;background:rgba(255,255,255,0.2);',
+      'border-radius:2px;margin:0 auto 20px;}',
+      '._aqsDclIcon{font-size:2.5rem;text-align:center;margin-bottom:12px;}',
+      '._aqsDclTitle{font-size:1.1rem;font-weight:800;color:#e0e7ff;',
+      'text-align:center;margin-bottom:12px;font-family:-apple-system,Inter,sans-serif;}',
+      '._aqsDclBody{font-size:0.88rem;color:#94a3b8;line-height:1.7;',
+      'text-align:center;margin-bottom:20px;font-family:-apple-system,Inter,sans-serif;}',
+      '._aqsDclBody b{color:#c7d2fe;}',
+      '._aqsDclBtns{display:flex;flex-direction:column;gap:10px;}',
+      '._aqsDclWeb{display:flex;align-items:center;justify-content:center;gap:8px;',
+      'background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;',
+      'border:none;border-radius:12px;padding:14px 24px;font-size:0.95rem;',
+      'font-weight:700;cursor:pointer;text-decoration:none;',
+      'font-family:-apple-system,Inter,sans-serif;',
+      'box-shadow:0 4px 20px rgba(99,102,241,0.4);transition:transform .15s;}',
+      '._aqsDclWeb:active{transform:scale(0.97);}',
+      '._aqsDclDismiss{background:transparent;color:rgba(148,163,184,0.7);',
+      'border:1px solid rgba(148,163,184,0.2);border-radius:12px;',
+      'padding:12px 24px;font-size:0.85rem;cursor:pointer;',
+      'font-family:-apple-system,Inter,sans-serif;transition:color .15s;}',
+      '._aqsDclDismiss:active{color:#e2e8f0;}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  function showNativeDisclaimer(cfg) {
+    injectDisclaimerStyles();
+
+    var overlay = document.createElement('div');
+    overlay.className = '_aqsDcl';
+    overlay.innerHTML = [
+      '<div class="_aqsDclCard">',
+        '<div class="_aqsDclHandle"></div>',
+        '<div class="_aqsDclTitle">' + cfg.title + '</div>',
+        '<div class="_aqsDclBody">' + cfg.body + '</div>',
+        '<div class="_aqsDclBtns">',
+          '<a href="' + WEB_URL + '" target="_blank" class="_aqsDclWeb">',
+            '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>',
+            'Open Web App — Full Features',
+          '</a>',
+          '<button class="_aqsDclDismiss" id="_aqsDclDismissBtn">Continue in app (limited features)</button>',
+        '</div>',
+      '</div>'
+    ].join('');
+
+    document.body.appendChild(overlay);
+
+    function close() {
+      overlay.style.animation = '_aqsDclFadeIn .2s ease reverse';
+      setTimeout(function(){ if (overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 200);
+    }
+
+    document.getElementById('_aqsDclDismissBtn').addEventListener('click', close);
+    overlay.addEventListener('click', function(e){ if (e.target === overlay) close(); });
+
+    try { localStorage.setItem(DISCLAIMER_KEY, '1'); } catch(e){}
+  }
+
+  function maybeShowDisclaimer() {
+    if (!isCapacitor) return;
+    try { if (localStorage.getItem(DISCLAIMER_KEY)) return; } catch(e){ return; }
+    var page = (window.location.pathname.split('/').pop()) || 'index.html';
+    var cfg = DISCLAIMER_PAGES[page];
+    if (!cfg) return;
+    setTimeout(function(){ showNativeDisclaimer(cfg); }, 1200);
+  }
+
+  document.addEventListener('DOMContentLoaded', maybeShowDisclaimer);
+
+  /* ── Speed: prefetch likely next pages in the background ── */
+  document.addEventListener('DOMContentLoaded', function() {
+    var page = (window.location.pathname.split('/').pop()) || 'index.html';
+    var prefetchMap = {
+      'index.html':       ['create-quiz.html', 'studio.html', 'login.html'],
+      'login.html':       ['user-dashboard.html', 'register.html'],
+      'register.html':    ['login.html'],
+      'user-dashboard.html': ['create-quiz.html', 'study.html', 'studio.html'],
+      'create-quiz.html': ['take-quiz.html', 'user-dashboard.html'],
+      'studio.html':      ['study.html', 'create-quiz.html'],
+      'study.html':       ['studio.html', 'create-quiz.html']
+    };
+    var pages = prefetchMap[page] || [];
+    pages.forEach(function(href) {
+      var link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = href;
+      document.head.appendChild(link);
+    });
+  });
+
+
 })();
