@@ -418,15 +418,28 @@ async function actionSocialLogin(data) {
         throw new Error('Unsupported social provider: ' + provider);
     }
 
-    /* Capacitor WebView blocks popups — use redirect flow instead */
-    var isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+    /* Use signInWithPopup for both web and native Capacitor.
+       In Capacitor Android, this opens a Chrome Custom Tab — no domain
+       restriction like signInWithRedirect. For the popup to work, add
+       "localhost" to: Firebase Console → Authentication → Settings → Authorized Domains */
     var cred;
-    if (isNativeApp) {
-        await signInWithRedirect(auth, authProvider);
-        cred = await getRedirectResult(auth);
-        if (!cred || !cred.user) throw new Error('Sign-in cancelled or redirect failed. Please try again.');
-    } else {
+    try {
         cred = await signInWithPopup(auth, authProvider);
+    } catch (popupErr) {
+        if (popupErr.code === 'auth/unauthorized-domain') {
+            throw new Error(
+                'Google sign-in is blocked: your app domain is not authorized in Firebase.\n\n' +
+                'FIX (30 seconds):\n' +
+                '1. Open Firebase Console → Authentication → Settings → Authorized Domains\n' +
+                '2. Click "Add domain" and enter: localhost\n' +
+                '3. Try signing in again.\n\n' +
+                'Or use Email/Password login below instead.'
+            );
+        }
+        if (popupErr.code === 'auth/popup-closed-by-user' || popupErr.code === 'auth/cancelled-popup-request') {
+            throw new Error('Google sign-in was cancelled. Please try again.');
+        }
+        throw popupErr;
     }
     var user = cred.user;
 
