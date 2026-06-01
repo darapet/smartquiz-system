@@ -50,17 +50,29 @@
         <div class="aqs-site-header-auth">
             <a href="create-quiz.html" class="aqs-site-header-btn aqs-site-header-btn-primary">Get Started</a>
         </div>
-        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu">
+        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <span></span><span></span><span></span>
         </button>
     </div>
 </header>
 <script>
-(function(){
-    var btn=document.getElementById('aqs-site-nav-toggle');
-    var nav=document.getElementById('aqs-site-nav');
-    if(btn&&nav){btn.addEventListener('click',function(){nav.classList.toggle('aqs-site-nav-open');btn.classList.toggle('aqs-site-nav-toggle-open');});}
-})();
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('aqs-site-nav-toggle');
+    var nav = document.getElementById('aqs-site-nav');
+    if (btn && nav) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            nav.classList.toggle('aqs-site-nav-open');
+            btn.classList.toggle('aqs-site-nav-toggle-open');
+        });
+        document.addEventListener('click', function(e) {
+            if (nav.classList.contains('aqs-site-nav-open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+                nav.classList.remove('aqs-site-nav-open');
+                btn.classList.remove('aqs-site-nav-toggle-open');
+            }
+        });
+    }
+});
 </script>
 
 <main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
@@ -385,17 +397,29 @@ var AQS_SPLASH={enabled:'1',once:'0',template:'8',app_name:'DaraQuiz AI',tagline
         <div class="aqs-site-header-auth">
             <a href="create-quiz.html" class="aqs-site-header-btn aqs-site-header-btn-primary">Get Started</a>
         </div>
-        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu">
+        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
             <span></span><span></span><span></span>
         </button>
     </div>
 </header>
 <script>
-(function(){
-    var btn=document.getElementById('aqs-site-nav-toggle');
-    var nav=document.getElementById('aqs-site-nav');
-    if(btn&&nav){btn.addEventListener('click',function(){nav.classList.toggle('aqs-site-nav-open');btn.classList.toggle('aqs-site-nav-toggle-open');});}
-})();
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('aqs-site-nav-toggle');
+    var nav = document.getElementById('aqs-site-nav');
+    if (btn && nav) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            nav.classList.toggle('aqs-site-nav-open');
+            btn.classList.toggle('aqs-site-nav-toggle-open');
+        });
+        document.addEventListener('click', function(e) {
+            if (nav.classList.contains('aqs-site-nav-open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+                nav.classList.remove('aqs-site-nav-open');
+                btn.classList.remove('aqs-site-nav-toggle-open');
+            }
+        });
+    }
+});
 </script>
 
 <main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
