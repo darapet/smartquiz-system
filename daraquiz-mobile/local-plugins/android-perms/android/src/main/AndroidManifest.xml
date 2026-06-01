@@ -27,6 +27,9 @@
     <!-- Notifications (Android 13+) -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- In-app APK self-update — allows installing downloaded APK files -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Feature declarations for Play Store filtering -->
     <uses-feature
         android:name="android.hardware.microphone"
