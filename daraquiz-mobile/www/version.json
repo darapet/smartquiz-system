@@ -1,8 +1,8 @@
 {
-  "version": "1.1.0",
-  "versionCode": 4,
+  "version": "1.20",
+  "versionCode": 5,
   "releaseDate": "2026-06-01",
-  "notes": "Hamburger menu fixed, Google sign-in removed from app (email login only), improved navigation.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/latest",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/latest"
+  "notes": "mn mn",
+  "downloadUrl": "https://darapet.github.io/smartquiz-system/admin-update.html",
+  "apkUrl": "https://darapet.github.io/smartquiz-system/admin-update.html"
 }
