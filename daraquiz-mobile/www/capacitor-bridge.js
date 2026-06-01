@@ -292,6 +292,177 @@
   window.AQSPlatform = { isNative: isCapacitor, platform: platform };
 
   /* ══════════════════════════════════════════════════
+     IN-APP UPDATE CHECKER
+     Fetches version.json from GitHub on startup.
+     Compares installed version (from Capacitor App.getInfo)
+     with the latest published version.
+     Shows a slide-up bottom-sheet if an update is available.
+     Only runs on native Capacitor (Android/iOS).
+  ══════════════════════════════════════════════════ */
+  var _UPD_URL  = 'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
+  var _UPD_DKEY = '_aqsUpdDismissed_';
+
+  function _semverGt(remote, local) {
+    /* returns true if remote > local */
+    var r = (remote || '0.0.0').split('.').map(Number);
+    var l = (local  || '0.0.0').split('.').map(Number);
+    for (var i = 0; i < 3; i++) {
+      if ((r[i]||0) > (l[i]||0)) return true;
+      if ((r[i]||0) < (l[i]||0)) return false;
+    }
+    return false;
+  }
+
+  function _showUpdateSheet(current, upd) {
+    /* Inject styles once */
+    if (!document.getElementById('_aqsUpdStyle')) {
+      var s = document.createElement('style');
+      s.id = '_aqsUpdStyle';
+      s.textContent = [
+        '._aqsUpdOverlay{position:fixed;inset:0;z-index:99994;',
+        'background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);',
+        'display:flex;align-items:flex-end;justify-content:center;',
+        'animation:_aqsUpdFadeIn .25s ease;}',
+        '@keyframes _aqsUpdFadeIn{from{opacity:0}to{opacity:1}}',
+        '._aqsUpdSheet{background:linear-gradient(160deg,#0f172a,#1e1b4b);',
+        'border:1px solid rgba(129,140,248,0.25);border-radius:24px 24px 0 0;',
+        'padding:6px 24px 40px;max-width:480px;width:100%;',
+        'box-shadow:0 -8px 40px rgba(0,0,0,0.6);',
+        'animation:_aqsUpdSlide .35s cubic-bezier(.34,1.56,.64,1);}',
+        '@keyframes _aqsUpdSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}',
+        '._aqsUpdHandle{width:36px;height:4px;background:rgba(255,255,255,.18);',
+        'border-radius:2px;margin:10px auto 20px;}',
+        '._aqsUpdBadge{display:inline-flex;align-items:center;gap:6px;',
+        'background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.4);',
+        'border-radius:100px;padding:5px 14px;font-size:.75rem;font-weight:700;',
+        'letter-spacing:.05em;color:#34d399;text-transform:uppercase;margin-bottom:14px;}',
+        '._aqsUpdTitle{font-size:1.2rem;font-weight:800;color:#e0e7ff;margin-bottom:8px;',
+        'font-family:-apple-system,Inter,sans-serif;}',
+        '._aqsUpdMeta{font-size:.8rem;color:#64748b;margin-bottom:14px;',
+        'font-family:-apple-system,Inter,sans-serif;}',
+        '._aqsUpdNotes{font-size:.88rem;color:#94a3b8;line-height:1.7;',
+        'background:rgba(255,255,255,0.04);border-radius:12px;padding:12px 14px;',
+        'margin-bottom:20px;font-family:-apple-system,Inter,sans-serif;}',
+        '._aqsUpdNotes b{color:#c7d2fe;}',
+        '._aqsUpdDl{display:flex;align-items:center;justify-content:center;gap:9px;',
+        'background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;',
+        'border:none;border-radius:14px;padding:15px 24px;width:100%;',
+        'font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px;',
+        'font-family:-apple-system,Inter,sans-serif;letter-spacing:.01em;',
+        'box-shadow:0 4px 20px rgba(34,197,94,0.35);transition:transform .15s;}',
+        '._aqsUpdDl:active{transform:scale(0.97);}',
+        '._aqsUpdSkip{background:transparent;color:#475569;border:1px solid rgba(71,85,105,0.3);',
+        'border-radius:14px;padding:12px 24px;width:100%;font-size:.85rem;',
+        'cursor:pointer;font-family:-apple-system,Inter,sans-serif;transition:color .15s;}',
+        '._aqsUpdSkip:active{color:#94a3b8;}'
+      ].join('');
+      document.head.appendChild(s);
+    }
+
+    var overlay = document.createElement('div');
+    overlay.className = '_aqsUpdOverlay';
+    overlay.innerHTML = [
+      '<div class="_aqsUpdSheet">',
+        '<div class="_aqsUpdHandle"></div>',
+        '<div class="_aqsUpdBadge">',
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="#34d399"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+          'Update Available',
+        '</div>',
+        '<div class="_aqsUpdTitle">Version ' + upd.version + ' is ready!</div>',
+        '<div class="_aqsUpdMeta">You have v' + current + ' &nbsp;→&nbsp; Latest: v' + upd.version + '</div>',
+        '<div class="_aqsUpdNotes"><b>What's new:</b><br>' + (upd.notes || 'Bug fixes and improvements.') + '</div>',
+        '<button class="_aqsUpdDl" id="_aqsUpdDlBtn">',
+          '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+          'Download & Install Update',
+        '</button>',
+        '<button class="_aqsUpdSkip" id="_aqsUpdSkipBtn">Remind me later</button>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(overlay);
+
+    document.getElementById('_aqsUpdDlBtn').addEventListener('click', function() {
+      var url = upd.apkUrl || upd.downloadUrl || 'https://github.com/darapet/smartquiz-system/releases/latest';
+      if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+        window.Capacitor.Plugins.Browser.open({ url: url });
+      } else {
+        window.open(url, '_blank');
+      }
+      overlay.remove();
+    });
+
+    document.getElementById('_aqsUpdSkipBtn').addEventListener('click', function() {
+      try { localStorage.setItem(_UPD_DKEY + upd.version, Date.now().toString()); } catch(e){}
+      overlay.style.animation = '_aqsUpdFadeIn .2s ease reverse';
+      setTimeout(function(){ overlay.remove(); }, 200);
+    });
+
+    overlay.addEventListener('click', function(e){
+      if (e.target === overlay) document.getElementById('_aqsUpdSkipBtn').click();
+    });
+  }
+
+  /* Also expose a floating badge for pages where the sheet was dismissed */
+  function _showUpdateBadge(upd) {
+    if (document.getElementById('_aqsUpdBadgeFloat')) return;
+    var badge = document.createElement('div');
+    badge.id = '_aqsUpdBadgeFloat';
+    badge.title = 'Update available: v' + upd.version;
+    badge.style.cssText = [
+      'position:fixed;top:10px;right:12px;z-index:9993;',
+      'background:linear-gradient(135deg,#22c55e,#16a34a);',
+      'color:#fff;border-radius:100px;padding:6px 14px 6px 10px;',
+      'font-size:.78rem;font-weight:700;cursor:pointer;',
+      'display:flex;align-items:center;gap:6px;',
+      'box-shadow:0 3px 14px rgba(34,197,94,0.45);',
+      'font-family:-apple-system,Inter,sans-serif;',
+      'animation:_aqsUpdPulse 2s ease infinite;'
+    ].join('');
+    var pulse = document.createElement('style');
+    pulse.textContent = '@keyframes _aqsUpdPulse{0%,100%{box-shadow:0 3px 14px rgba(34,197,94,.45)}50%{box-shadow:0 3px 22px rgba(34,197,94,.75)}}';
+    document.head.appendChild(pulse);
+    badge.innerHTML = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> v' + upd.version + ' Update';
+    badge.addEventListener('click', function() {
+      badge.remove();
+      try { localStorage.removeItem(_UPD_DKEY + upd.version); } catch(e){}
+      _showUpdateSheet('?', upd);
+    });
+    document.body.appendChild(badge);
+  }
+
+  async function checkForUpdates() {
+    if (!isCapacitor) return;
+    try {
+      var appPlugin = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+      var currentVer = '1.0.0';
+      if (appPlugin && appPlugin.getInfo) {
+        try { var info = await appPlugin.getInfo(); currentVer = info.version || '1.0.0'; } catch(e2){}
+      }
+
+      var res = await fetch(_UPD_URL + '?_=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      var upd = await res.json();
+      if (!upd || !upd.version) return;
+
+      if (!_semverGt(upd.version, currentVer)) return; /* already up to date */
+
+      var dismissed = false;
+      try { dismissed = !!localStorage.getItem(_UPD_DKEY + upd.version); } catch(e){}
+
+      if (dismissed) {
+        _showUpdateBadge(upd);
+      } else {
+        _showUpdateSheet(currentVer, upd);
+      }
+    } catch(e) { /* silent fail */ }
+  }
+
+  /* Run update check 4 seconds after page load so it doesn't slow startup */
+  document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(checkForUpdates, 4000);
+  });
+
+
+  /* ══════════════════════════════════════════════════
      NATIVE-ONLY FIRST-TIME DISCLAIMER POPUP
      Shows once on Studio and Study pages to tell users
      that TTS, voice chat and image generation need the web.
