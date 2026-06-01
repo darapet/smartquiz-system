@@ -1,8 +1,8 @@
 {
-  "version": "1.20",
-  "versionCode": 5,
+  "version": "1.21",
+  "versionCode": 6,
   "releaseDate": "2026-06-01",
-  "notes": "Home page redesign, AI voice fixed, quiz page improvements.",
+  "notes": "UI fix: removed white gaps between timer, header and hero section on homepage.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.20/app-release.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.20/app-release.apk"
 }
