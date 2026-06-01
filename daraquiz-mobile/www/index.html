@@ -15,12 +15,13 @@
 
 <style>
 html,body{background:#ffffff;margin:0;padding:0}
-/* Header sits exactly at bottom of countdown bar */
+/* Header snaps below the fixed countdown bar */
 .aqs-site-header{top:var(--aqs-cd-bar-h,0px)!important}
-/* Main content starts right after countdown bar + header — no white gap */
-.aqs-page-main{padding-top:calc(var(--aqs-cd-bar-h,0px) + 64px)!important}
-/* Hero top padding reduced since main already offsets for header */
-.aqs-hero{padding-top:44px!important}
+/* No extra padding needed — body.paddingTop already clears the fixed countdown bar,
+   and the sticky header is in flow so content naturally starts below it */
+.aqs-page-main{padding-top:0!important}
+/* Keep a small breathing room inside the hero */
+.aqs-hero{padding-top:24px!important}
 </style>
 
 <!-- Firebase SDK -->
