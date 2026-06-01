@@ -1,0 +1,8 @@
+{
+  "version": "1.0.2",
+  "versionCode": 3,
+  "releaseDate": "2026-06-01",
+  "notes": "Google sign-in fixed (Chrome Custom Tab), bottom navigation bar, first-time feature guide on Studio & Study, faster startup with preloading, Home button fix on quiz page, persistent login session on mobile.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/latest",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/latest"
+}
