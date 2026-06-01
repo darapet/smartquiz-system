@@ -4,7 +4,10 @@
 (function () {
     'use strict';
 
-    var TIMEOUT_MS = 20 * 60 * 1000; /* 20 minutes */
+    /* On native Capacitor, Firebase persists auth in IndexedDB — keep users logged in.
+       Use 30-day timeout (effectively "never") on native, 20 min on web browser. */
+    var _isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+    var TIMEOUT_MS = _isNativeApp ? (30 * 24 * 60 * 60 * 1000) : (20 * 60 * 1000);
     var _timer = null;
 
     /* ── inactivity timer ── */
@@ -193,7 +196,7 @@
         if (bar) bar.parentNode.removeChild(bar);
     }
 
-    /* ── show a gentle timeout warning 2 min before auto-logout ── */
+    /* ── show a gentle timeout warning 2 min before auto-logout (web only) ── */
     function showTimeoutWarning() {
         var existing = document.getElementById('aqs-timeout-warning');
         if (existing) return;
@@ -238,6 +241,21 @@
 
     /* Override resetTimer with warning version */
     resetTimer = resetTimerWithWarning;
+
+    /* ── Pause inactivity timer when app goes to background (native only) ── */
+    if (_isNativeApp && typeof window.Capacitor !== 'undefined' &&
+        window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+      window.Capacitor.Plugins.App.addListener('appStateChange', function(state) {
+        if (state.isActive) {
+          /* App came to foreground — restart timer fresh */
+          resetTimer();
+        } else {
+          /* App went to background — pause the timer so background time doesn't count */
+          clearTimeout(_timer);
+          clearTimeout(_warnTimer);
+        }
+      });
+    }
 
     /* ── wire existing logout buttons already in the DOM ── */
     function wireExistingLogoutBtns() {
