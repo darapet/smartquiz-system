@@ -13,7 +13,10 @@
       "*.gstatic.com",
       "*.google.com",
       "*.groq.com",
-      "*.openai.com"
+      "*.openai.com",
+      "*.pollinations.ai",
+      "audio.pollinations.ai",
+      "voice.pollinations.ai"
     ]
   },
   "plugins": {
