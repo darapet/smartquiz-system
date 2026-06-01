@@ -43,38 +43,13 @@
             </a>
             <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
             <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
-            <div class="aqs-site-nav-mobile-auth">
-                <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">Get Started</a>
-            </div>
+            
         </nav>
-        <div class="aqs-site-header-auth">
-            <a href="create-quiz.html" class="aqs-site-header-btn aqs-site-header-btn-primary">Get Started</a>
-        </div>
-        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
-            <span></span><span></span><span></span>
-        </button>
+        
+        
     </div>
 </header>
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-    if (window._aqsNavDone) return; window._aqsNavDone = true;
-    var btn = document.getElementById('aqs-site-nav-toggle');
-    var nav = document.getElementById('aqs-site-nav');
-    if (btn && nav) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            nav.classList.toggle('aqs-site-nav-open');
-            btn.classList.toggle('aqs-site-nav-toggle-open');
-        });
-        document.addEventListener('click', function(e) {
-            if (nav.classList.contains('aqs-site-nav-open') && !nav.contains(e.target) && !btn.contains(e.target)) {
-                nav.classList.remove('aqs-site-nav-open');
-                btn.classList.remove('aqs-site-nav-toggle-open');
-            }
-        });
-    }
-});
-</script>
+
 
 <main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
 
@@ -183,9 +158,34 @@ document.addEventListener('DOMContentLoaded', function(){
         </div>
     </section>
 
-    <svg class="aqs-wave" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 60" preserveAspectRatio="none" style="display:block;background:#f8fafc;"><path fill="#4f46e5" fill-opacity="0.08" d="M0,40 C360,0 1080,80 1440,40 L1440,0 L0,0 Z"/><path fill="#6366f1" fill-opacity="0.06" d="M0,60 C480,20 960,80 1440,30 L1440,0 L0,0 Z"/></svg>
-
-    <section class="aqs-features">
+    
+    <!-- Get Started + Challenge blocks -->
+    <section style="background:#f8fafc;padding:48px 20px;">
+        <div style="max-width:860px;margin:0 auto;">
+            <p style="text-align:center;font-size:0.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin-bottom:12px;">Jump right in</p>
+            <h2 style="text-align:center;font-size:clamp(1.4rem,3vw,2rem);font-weight:800;margin-bottom:40px;letter-spacing:-.02em;">What do you want to do?</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
+                <a href="create-quiz.html" style="background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:20px;padding:40px 32px;text-decoration:none;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 28px rgba(79,70,229,.3);transition:transform .2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+                    <span style="font-size:2.5rem;">📝</span>
+                    <span style="color:rgba(255,255,255,.7);font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Create &amp; Learn</span>
+                    <h3 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">Get Started</h3>
+                    <p style="margin:0;color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.65;">Build an AI-powered quiz from any topic in seconds. Login is handled automatically.</p>
+                    <span style="margin-top:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:11px 22px;color:#fff;font-size:.95rem;font-weight:700;width:fit-content;">
+                        Create a Quiz →
+                    </span>
+                </a>
+                <a href="challenge.html" style="background:linear-gradient(135deg,#e11d48,#f43f5e);border-radius:20px;padding:40px 32px;text-decoration:none;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 28px rgba(225,29,72,.3);transition:transform .2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+                    <span style="font-size:2.5rem;">⚔️</span>
+                    <span style="color:rgba(255,255,255,.7);font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Live Battle</span>
+                    <h3 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">Challenge</h3>
+                    <p style="margin:0;color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.65;">Join or host a real-time head-to-head quiz battle against friends on the leaderboard.</p>
+                    <span style="margin-top:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:11px 22px;color:#fff;font-size:.95rem;font-weight:700;width:fit-content;">
+                        Enter Challenge →
+                    </span>
+                </a>
+            </div>
+        </div>
+    </section>
         <div class="aqs-features-inner">
             <p class="aqs-section-label">Why DaraQuiz AI Studio</p>
             <h2 class="aqs-section-title">Everything you need, powered by DaraQuiz AI</h2>
@@ -235,19 +235,14 @@ document.addEventListener('DOMContentLoaded', function(){
                     <p>Enter a topic or upload a document and let AI build a full quiz for you. Review, edit, then share with anyone.</p>
                     <span class="aqs-mode-cta">Generate a Quiz <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
                 </a>
-                <a href="studio.html" class="aqs-mode-card aqs-mode-card-studio">
-                    <span class="aqs-mode-card-bg">✦</span>
-                    <span class="aqs-mode-tag">AI Studio</span>
-                    <h2>xzily AI Chat</h2>
-                    <p>Your intelligent learning assistant. Ask anything — from quiz prep to complex math problems. Upload files for AI analysis.</p>
-                    <span class="aqs-mode-cta">Open Studio <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
-                </a>
                 
-            </div>
-        </div>
-    </section>
-
-    <section class="aqs-how">
+                <a href="challenge.html" class="aqs-mode-card" style="background:linear-gradient(135deg,#e11d48 0%,#f43f5e 100%);box-shadow:0 8px 32px rgba(225,29,72,.35);color:white;">
+                    <span class="aqs-mode-card-bg">⚔️</span>
+                    <span class="aqs-mode-tag">Live Battle</span>
+                    <h2>Challenge Mode</h2>
+                    <p>Join or host a real-time head-to-head quiz battle. Compete live against friends and see who tops the leaderboard.</p>
+                    <span class="aqs-mode-cta">Start a Challenge <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>
+                </a>
         <div class="aqs-how-inner">
             <p class="aqs-section-label">How it works</p>
             <h2 class="aqs-section-title">Up and running in 3 steps</h2>
@@ -391,38 +386,13 @@ var AQS_SPLASH={enabled:'1',once:'0',template:'8',app_name:'DaraQuiz AI',tagline
             </a>
             <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
             <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
-            <div class="aqs-site-nav-mobile-auth">
-                <a href="create-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">Get Started</a>
-            </div>
+            
         </nav>
-        <div class="aqs-site-header-auth">
-            <a href="create-quiz.html" class="aqs-site-header-btn aqs-site-header-btn-primary">Get Started</a>
-        </div>
-        <button class="aqs-site-nav-toggle" id="aqs-site-nav-toggle" aria-label="Toggle menu" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;">
-            <span></span><span></span><span></span>
-        </button>
+        
+        
     </div>
 </header>
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-    if (window._aqsNavDone) return; window._aqsNavDone = true;
-    var btn = document.getElementById('aqs-site-nav-toggle');
-    var nav = document.getElementById('aqs-site-nav');
-    if (btn && nav) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            nav.classList.toggle('aqs-site-nav-open');
-            btn.classList.toggle('aqs-site-nav-toggle-open');
-        });
-        document.addEventListener('click', function(e) {
-            if (nav.classList.contains('aqs-site-nav-open') && !nav.contains(e.target) && !btn.contains(e.target)) {
-                nav.classList.remove('aqs-site-nav-open');
-                btn.classList.remove('aqs-site-nav-toggle-open');
-            }
-        });
-    }
-});
-</script>
+
 
 <main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
 
