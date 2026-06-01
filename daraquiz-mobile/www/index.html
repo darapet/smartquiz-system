@@ -57,6 +57,7 @@
 </header>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
+    if (window._aqsNavDone) return; window._aqsNavDone = true;
     var btn = document.getElementById('aqs-site-nav-toggle');
     var nav = document.getElementById('aqs-site-nav');
     if (btn && nav) {
@@ -404,6 +405,7 @@ var AQS_SPLASH={enabled:'1',once:'0',template:'8',app_name:'DaraQuiz AI',tagline
 </header>
 <script>
 document.addEventListener('DOMContentLoaded', function(){
+    if (window._aqsNavDone) return; window._aqsNavDone = true;
     var btn = document.getElementById('aqs-site-nav-toggle');
     var nav = document.getElementById('aqs-site-nav');
     if (btn && nav) {
