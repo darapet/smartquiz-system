@@ -1,20 +1,20 @@
 /**
  * aqs-update-check.js
  * ─────────────────────────────────────────────────────────────────────────────
- * IN-APP UPDATE CHECKER
+ * IN-APP UPDATE CHECKER — downloads APK inside the app, no browser needed.
  *
  * HOW IT WORKS:
  *   1. App opens → waits 4 seconds (lets splash screen finish)
  *   2. Fetches version.json from GitHub to get the latest version info
  *   3. Compares the remote versionCode with AQS_APP_VERSION_CODE below
- *   4. If remote is newer → shows a beautiful update popup
- *   5. User taps "Update Now" → opens the APK download link
- *   6. User taps "Remind Me Later" → waits 24 hours before asking again
+ *   4. If remote is newer → shows update popup
+ *   5. User taps "Download Update" → APK downloads IN-APP with progress bar
+ *   6. When download completes → Android installer is triggered automatically
+ *   7. User taps "Remind Me Later" → waits 24 hours before asking again
  *
  * THE ONLY THING YOU EVER NEED TO CHANGE:
  *   When you build a new APK, update AQS_APP_VERSION_CODE below to match
  *   the new versionCode you pushed via admin-update.html.
- *   e.g. if you pushed versionCode 6, set AQS_APP_VERSION_CODE = 6
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
@@ -29,91 +29,80 @@ var AQS_APP_VERSION_CODE = 6;
     'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
 
   var REMIND_KEY  = 'aqs_update_remind_time';
-  var REMIND_WAIT = 24 * 60 * 60 * 1000; /* 24 hours in ms */
+  var REMIND_WAIT = 24 * 60 * 60 * 1000;
 
-  /* ── Inject styles ──────────────────────────────────────────────────────── */
+  /* ── Inject styles ────────────────────────────────────────────────────── */
   var style = document.createElement('style');
   style.textContent = [
-    '#aqs-upd-overlay{',
-      'display:none;position:fixed;inset:0;z-index:99999;',
+    /* Update popup overlay */
+    '#aqs-upd-overlay{display:none;position:fixed;inset:0;z-index:99999;',
       'background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);',
       '-webkit-backdrop-filter:blur(6px);',
-      'align-items:center;justify-content:center;padding:20px;',
-    '}',
+      'align-items:center;justify-content:center;padding:20px;}',
     '#aqs-upd-overlay.aqs-upd-show{display:flex;}',
 
-    '#aqs-upd-card{',
-      'background:linear-gradient(145deg,#1e1b4b,#1a1035);',
-      'border:1px solid rgba(139,92,246,0.4);',
-      'border-radius:22px;',
-      'padding:32px 28px 28px;',
-      'max-width:360px;width:100%;',
+    '#aqs-upd-card{background:linear-gradient(145deg,#1e1b4b,#1a1035);',
+      'border:1px solid rgba(139,92,246,0.4);border-radius:22px;',
+      'padding:32px 28px 28px;max-width:360px;width:100%;',
       'box-shadow:0 0 0 1px rgba(139,92,246,0.2),0 30px 80px rgba(0,0,0,0.7);',
-      'position:relative;',
-      'text-align:center;',
+      'position:relative;text-align:center;',
       'font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;',
-      'animation:aqs-upd-pop .35s cubic-bezier(.34,1.56,.64,1) both;',
-    '}',
+      'animation:aqs-upd-pop .35s cubic-bezier(.34,1.56,.64,1) both;}',
 
     '@keyframes aqs-upd-pop{',
       'from{opacity:0;transform:scale(.82) translateY(20px)}',
-      'to{opacity:1;transform:scale(1) translateY(0)}',
-    '}',
+      'to{opacity:1;transform:scale(1) translateY(0)}}',
 
-    '#aqs-upd-close{',
-      'position:absolute;top:14px;right:16px;',
+    '#aqs-upd-close{position:absolute;top:14px;right:16px;',
       'background:rgba(255,255,255,0.08);border:none;',
       'color:rgba(255,255,255,0.5);font-size:1.2rem;',
       'width:30px;height:30px;border-radius:50%;cursor:pointer;',
       'display:flex;align-items:center;justify-content:center;',
-      'transition:background .15s,color .15s;',
-    '}',
+      'transition:background .15s,color .15s;}',
     '#aqs-upd-close:hover{background:rgba(255,255,255,0.15);color:#fff;}',
 
     '#aqs-upd-icon{font-size:3rem;margin-bottom:14px;line-height:1;}',
 
-    '#aqs-upd-title{',
-      'font-size:1.25rem;font-weight:800;color:#fff;',
-      'margin:0 0 6px;letter-spacing:-.02em;',
-    '}',
+    '#aqs-upd-title{font-size:1.25rem;font-weight:800;color:#fff;',
+      'margin:0 0 6px;letter-spacing:-.02em;}',
 
-    '#aqs-upd-ver{',
-      'display:inline-flex;align-items:center;gap:6px;',
+    '#aqs-upd-ver{display:inline-flex;align-items:center;gap:6px;',
       'background:rgba(139,92,246,0.2);border:1px solid rgba(139,92,246,0.35);',
       'border-radius:100px;padding:4px 14px;',
       'font-size:.78rem;font-weight:700;color:#c4b5fd;',
-      'margin-bottom:14px;letter-spacing:.03em;',
-    '}',
+      'margin-bottom:14px;letter-spacing:.03em;}',
 
-    '#aqs-upd-notes{',
-      'font-size:.88rem;color:rgba(255,255,255,0.65);',
+    '#aqs-upd-notes{font-size:.88rem;color:rgba(255,255,255,0.65);',
       'line-height:1.6;margin:0 0 22px;',
       'background:rgba(255,255,255,0.05);',
-      'border-radius:10px;padding:12px 14px;',
-      'text-align:left;',
-    '}',
+      'border-radius:10px;padding:12px 14px;text-align:left;}',
 
-    '#aqs-upd-btn-now{',
-      'display:block;width:100%;',
+    '#aqs-upd-btn-now{display:block;width:100%;',
       'background:linear-gradient(135deg,#7c3aed,#4f46e5);',
       'color:#fff;border:none;border-radius:12px;',
       'padding:15px 20px;font-size:1rem;font-weight:700;',
       'cursor:pointer;margin-bottom:10px;',
       'box-shadow:0 4px 20px rgba(124,58,237,0.5);',
-      'transition:transform .15s,box-shadow .15s;',
-      'font-family:inherit;',
-    '}',
+      'transition:transform .15s,box-shadow .15s;font-family:inherit;}',
     '#aqs-upd-btn-now:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(124,58,237,0.65);}',
-    '#aqs-upd-btn-now:active{transform:translateY(0);}',
+    '#aqs-upd-btn-now:disabled{opacity:0.6;cursor:not-allowed;transform:none;}',
 
-    '#aqs-upd-btn-later{',
-      'display:block;width:100%;',
+    '#aqs-upd-btn-later{display:block;width:100%;',
       'background:transparent;color:rgba(255,255,255,0.45);',
       'border:none;font-size:.85rem;cursor:pointer;',
-      'padding:8px;font-family:inherit;',
-      'transition:color .15s;',
-    '}',
+      'padding:8px;font-family:inherit;transition:color .15s;}',
     '#aqs-upd-btn-later:hover{color:rgba(255,255,255,0.7);}',
+
+    /* Download progress bar inside the card */
+    '#aqs-upd-progress-wrap{display:none;margin-bottom:16px;}',
+    '#aqs-upd-progress-wrap.aqs-upd-dl-active{display:block;}',
+    '#aqs-upd-progress-label{font-size:.82rem;color:rgba(255,255,255,0.6);',
+      'margin-bottom:8px;text-align:left;}',
+    '#aqs-upd-progress-track{width:100%;height:8px;',
+      'background:rgba(255,255,255,0.1);border-radius:99px;overflow:hidden;}',
+    '#aqs-upd-progress-fill{height:100%;width:0%;border-radius:99px;',
+      'background:linear-gradient(90deg,#7c3aed,#6366f1);',
+      'transition:width .3s ease;}',
   ].join('');
   document.head.appendChild(style);
 
@@ -127,6 +116,13 @@ var AQS_APP_VERSION_CODE = 6;
       '<h2 id="aqs-upd-title">Update Available!</h2>',
       '<div id="aqs-upd-ver">✨ Version <span id="aqs-upd-ver-num">—</span></div>',
       '<p id="aqs-upd-notes">Loading…</p>',
+      /* Progress bar (hidden until download starts) */
+      '<div id="aqs-upd-progress-wrap">',
+        '<div id="aqs-upd-progress-label">Downloading… 0%</div>',
+        '<div id="aqs-upd-progress-track">',
+          '<div id="aqs-upd-progress-fill"></div>',
+        '</div>',
+      '</div>',
       '<button id="aqs-upd-btn-now">⬇️ Download Update</button>',
       '<button id="aqs-upd-btn-later">Remind me later</button>',
     '</div>',
@@ -135,30 +131,96 @@ var AQS_APP_VERSION_CODE = 6;
 
   /* ── Helpers ────────────────────────────────────────────────────────────── */
   function showPopup(data) {
-    document.getElementById('aqs-upd-ver-num').textContent  = data.version || '';
-    document.getElementById('aqs-upd-notes').textContent    = data.notes   || 'Bug fixes and improvements.';
+    document.getElementById('aqs-upd-ver-num').textContent = data.version || '';
+    document.getElementById('aqs-upd-notes').textContent   = data.notes   || 'Bug fixes and improvements.';
     overlay.classList.add('aqs-upd-show');
   }
 
   function hidePopup() {
     overlay.classList.remove('aqs-upd-show');
+    /* Reset download UI */
+    document.getElementById('aqs-upd-progress-wrap').classList.remove('aqs-upd-dl-active');
+    document.getElementById('aqs-upd-progress-fill').style.width = '0%';
+    document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… 0%';
+    document.getElementById('aqs-upd-btn-now').disabled = false;
+    document.getElementById('aqs-upd-btn-now').textContent = '⬇️ Download Update';
   }
 
-  function openDownload(url) {
-    if (!url || url.indexOf('admin-update') !== -1) {
-      alert('⚠️ Download link not configured yet. Please contact the developer.');
-      return;
-    }
-    /* Open in system browser so Android can download the APK */
-    try {
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
-        window.Capacitor.Plugins.Browser.open({ url: url });
-      } else {
-        window.open(url, '_system') || window.open(url, '_blank');
-      }
-    } catch (e) {
-      window.open(url, '_blank');
-    }
+  function setProgress(pct) {
+    document.getElementById('aqs-upd-progress-fill').style.width  = pct + '%';
+    document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… ' + pct + '%';
+  }
+
+  /* ── In-app APK download with progress ──────────────────────────────────── */
+  function downloadInApp(url) {
+    var btn      = document.getElementById('aqs-upd-btn-now');
+    var btnLater = document.getElementById('aqs-upd-btn-later');
+    var progWrap = document.getElementById('aqs-upd-progress-wrap');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Starting download…';
+    btnLater.style.display = 'none';
+    progWrap.classList.add('aqs-upd-dl-active');
+
+    fetch(url)
+      .then(function (response) {
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+
+        var contentLength = response.headers.get('content-length');
+        var total = contentLength ? parseInt(contentLength, 10) : 0;
+        var loaded = 0;
+        var chunks = [];
+        var reader = response.body.getReader();
+
+        function pump() {
+          return reader.read().then(function (result) {
+            if (result.done) {
+              /* All chunks received — assemble blob and trigger install */
+              var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
+              var blobUrl = URL.createObjectURL(blob);
+
+              btn.textContent = '✅ Installing…';
+              setProgress(100);
+
+              /* Trigger install: Android WebView download listener picks this up */
+              var a = document.createElement('a');
+              a.href = blobUrl;
+              a.download = 'daraquiz-update.apk';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+
+              setTimeout(function () {
+                URL.revokeObjectURL(blobUrl);
+                hidePopup();
+              }, 3000);
+              return;
+            }
+
+            chunks.push(result.value);
+            loaded += result.value.length;
+
+            if (total) {
+              setProgress(Math.min(99, Math.round((loaded / total) * 100)));
+            } else {
+              /* Unknown size — animate indeterminate */
+              var kb = Math.round(loaded / 1024);
+              document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… ' + kb + ' KB';
+            }
+            return pump();
+          });
+        }
+
+        return pump();
+      })
+      .catch(function (err) {
+        console.warn('[AQS-UPD] Download failed:', err.message || err);
+        btn.disabled = false;
+        btn.textContent = '⬇️ Retry Download';
+        btnLater.style.display = '';
+        progWrap.classList.remove('aqs-upd-dl-active');
+        alert('Download failed: ' + (err.message || 'Please check your connection and try again.'));
+      });
   }
 
   /* ── Button events ──────────────────────────────────────────────────────── */
@@ -166,23 +228,23 @@ var AQS_APP_VERSION_CODE = 6;
 
   document.getElementById('aqs-upd-close').addEventListener('click', function () {
     hidePopup();
-    /* Dismissed for this session — don't ask again until app is restarted */
   });
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
-    openDownload(_apkUrl);
-    hidePopup();
+    if (!_apkUrl || _apkUrl.indexOf('admin-update') !== -1) {
+      alert('⚠️ Download link not configured yet. Please contact the developer.');
+      return;
+    }
+    downloadInApp(_apkUrl);
   });
 
   document.getElementById('aqs-upd-btn-later').addEventListener('click', function () {
-    /* Remind in 24 hours */
     localStorage.setItem(REMIND_KEY, String(Date.now()));
     hidePopup();
   });
 
   /* ── Main check ─────────────────────────────────────────────────────────── */
   function runCheck() {
-    /* Skip if user chose "Later" within the last 24 hours */
     var remindTime = parseInt(localStorage.getItem(REMIND_KEY) || '0', 10);
     if (remindTime && (Date.now() - remindTime) < REMIND_WAIT) {
       console.log('[AQS-UPD] Skipping — user snoozed update.');
@@ -197,19 +259,16 @@ var AQS_APP_VERSION_CODE = 6;
       .then(function (data) {
         var remoteCode = parseInt(data.versionCode, 10) || 0;
         console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', remoteCode);
-
         if (remoteCode > AQS_APP_VERSION_CODE) {
           _apkUrl = data.apkUrl || data.downloadUrl || '';
           showPopup(data);
         }
       })
       .catch(function (err) {
-        /* Silent fail — never block the user if update check fails */
         console.warn('[AQS-UPD] Check failed:', err.message || err);
       });
   }
 
-  /* Wait for splash to finish before checking (4 seconds) */
   setTimeout(runCheck, 4000);
 
 })();
