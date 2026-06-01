@@ -43,13 +43,28 @@
             </a>
             <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
             <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
-            
         </nav>
-        
-        
     </div>
 </header>
-
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('aqs-site-nav-toggle');
+    var nav = document.getElementById('aqs-site-nav');
+    if (btn && nav) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            nav.classList.toggle('aqs-site-nav-open');
+            btn.classList.toggle('aqs-site-nav-toggle-open');
+        });
+        document.addEventListener('click', function(e) {
+            if (nav.classList.contains('aqs-site-nav-open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+                nav.classList.remove('aqs-site-nav-open');
+                btn.classList.remove('aqs-site-nav-toggle-open');
+            }
+        });
+    }
+});
+</script>
 
 <main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
 
@@ -159,29 +174,24 @@
     </section>
 
     
-    <!-- Get Started + Challenge blocks -->
-    <section style="background:#f8fafc;padding:48px 20px;">
+    <section style="background:#fff;padding:52px 20px;">
         <div style="max-width:860px;margin:0 auto;">
-            <p style="text-align:center;font-size:0.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin-bottom:12px;">Jump right in</p>
-            <h2 style="text-align:center;font-size:clamp(1.4rem,3vw,2rem);font-weight:800;margin-bottom:40px;letter-spacing:-.02em;">What do you want to do?</h2>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;">
-                <a href="create-quiz.html" style="background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:20px;padding:40px 32px;text-decoration:none;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 28px rgba(79,70,229,.3);transition:transform .2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
-                    <span style="font-size:2.5rem;">📝</span>
-                    <span style="color:rgba(255,255,255,.7);font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Create &amp; Learn</span>
-                    <h3 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">Get Started</h3>
-                    <p style="margin:0;color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.65;">Build an AI-powered quiz from any topic in seconds. Login is handled automatically.</p>
-                    <span style="margin-top:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:11px 22px;color:#fff;font-size:.95rem;font-weight:700;width:fit-content;">
-                        Create a Quiz →
-                    </span>
+            <p style="text-align:center;font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin-bottom:10px;">Jump right in</p>
+            <h2 style="text-align:center;font-size:clamp(1.4rem,3vw,2rem);font-weight:800;margin:0 0 36px;letter-spacing:-.02em;">What do you want to do?</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px;">
+                <a href="create-quiz.html" style="background:linear-gradient(135deg,#4f46e5,#6366f1);border-radius:20px;padding:36px 28px;text-decoration:none;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 28px rgba(79,70,229,.28);transition:transform .2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+                    <span style="font-size:2.2rem;">📝</span>
+                    <span style="color:rgba(255,255,255,.7);font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Create &amp; Learn</span>
+                    <h3 style="margin:0;color:#fff;font-size:1.3rem;font-weight:800;">Get Started</h3>
+                    <p style="margin:0;color:rgba(255,255,255,.82);font-size:.9rem;line-height:1.6;">Build an AI quiz from any topic in seconds. Login is handled automatically when you tap.</p>
+                    <span style="margin-top:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:10px 20px;color:#fff;font-size:.92rem;font-weight:700;width:fit-content;">Create a Quiz →</span>
                 </a>
-                <a href="challenge.html" style="background:linear-gradient(135deg,#e11d48,#f43f5e);border-radius:20px;padding:40px 32px;text-decoration:none;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 28px rgba(225,29,72,.3);transition:transform .2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
-                    <span style="font-size:2.5rem;">⚔️</span>
-                    <span style="color:rgba(255,255,255,.7);font-size:.8rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Live Battle</span>
-                    <h3 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">Challenge</h3>
-                    <p style="margin:0;color:rgba(255,255,255,.8);font-size:.92rem;line-height:1.65;">Join or host a real-time head-to-head quiz battle against friends on the leaderboard.</p>
-                    <span style="margin-top:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:10px;padding:11px 22px;color:#fff;font-size:.95rem;font-weight:700;width:fit-content;">
-                        Enter Challenge →
-                    </span>
+                <a href="challenge.html" style="background:linear-gradient(135deg,#e11d48,#f43f5e);border-radius:20px;padding:36px 28px;text-decoration:none;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 28px rgba(225,29,72,.28);transition:transform .2s;" onmouseover="this.style.transform='translateY(-4px)'" onmouseout="this.style.transform=''">
+                    <span style="font-size:2.2rem;">⚔️</span>
+                    <span style="color:rgba(255,255,255,.7);font-size:.75rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;">Live Battle</span>
+                    <h3 style="margin:0;color:#fff;font-size:1.3rem;font-weight:800;">Challenge</h3>
+                    <p style="margin:0;color:rgba(255,255,255,.82);font-size:.9rem;line-height:1.6;">Join or host a real-time head-to-head quiz battle and compete live on the leaderboard.</p>
+                    <span style="margin-top:auto;display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);border-radius:10px;padding:10px 20px;color:#fff;font-size:.92rem;font-weight:700;width:fit-content;">Enter Challenge →</span>
                 </a>
             </div>
         </div>
@@ -386,13 +396,28 @@ var AQS_SPLASH={enabled:'1',once:'0',template:'8',app_name:'DaraQuiz AI',tagline
             </a>
             <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
             <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
-            
         </nav>
-        
-        
     </div>
 </header>
-
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    var btn = document.getElementById('aqs-site-nav-toggle');
+    var nav = document.getElementById('aqs-site-nav');
+    if (btn && nav) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            nav.classList.toggle('aqs-site-nav-open');
+            btn.classList.toggle('aqs-site-nav-toggle-open');
+        });
+        document.addEventListener('click', function(e) {
+            if (nav.classList.contains('aqs-site-nav-open') && !nav.contains(e.target) && !btn.contains(e.target)) {
+                nav.classList.remove('aqs-site-nav-open');
+                btn.classList.remove('aqs-site-nav-toggle-open');
+            }
+        });
+    }
+});
+</script>
 
 <main class="aqs-page-main" style="padding:0;min-height:0;overflow-x:visible;">
 
