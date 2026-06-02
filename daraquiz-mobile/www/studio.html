@@ -110,6 +110,19 @@
         </a>
     </nav>
 
+    <!-- ── New Chat + History ── -->
+    <button id="dts-new-chat" style="display:flex;align-items:center;gap:8px;width:calc(100% - 24px);margin:14px 12px 2px;padding:9px 14px;background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.35);border-radius:10px;color:#a5b4fc;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(99,102,241,0.3)'" onmouseout="this.style.background='rgba(99,102,241,0.18)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Chat
+    </button>
+    <div class="dts-nav-divider" style="margin:10px 0 4px;"></div>
+    <div class="dts-history-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+        <div class="dts-history-label">Chat History</div>
+        <div id="dts-history-list" class="dts-history-list" style="flex:1;overflow-y:auto;">
+            <div id="dts-history-empty" class="dts-history-empty">No conversations yet</div>
+        </div>
+    </div>
+
     <div class="aqs-sidebar-footer">
         <div class="aqs-sidebar-user">
             <div class="aqs-sidebar-avatar">U</div>
