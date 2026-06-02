@@ -2,7 +2,7 @@
   "version": "1.26",
   "versionCode": 11,
   "releaseDate": "2026-06-02",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Fixed sign-in redirect loop. Fixed in-app APK download and auto-install. New video splash screen.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.26/daraquiz-v1.26.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.26/daraquiz-v1.26.apk"
 }
