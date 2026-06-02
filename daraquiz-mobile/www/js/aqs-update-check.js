@@ -15,7 +15,7 @@
  */
 
 /* ══ CHANGE THIS NUMBER EVERY TIME YOU INSTALL A NEW APK ═══════════════════ */
-var AQS_APP_VERSION_CODE = 9;
+var AQS_APP_VERSION_CODE = 8;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -179,72 +179,34 @@ var AQS_APP_VERSION_CODE = 9;
     window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
   }
 
-  /* ── Web fetch fallback (non-Android or no bridge) ──────────────────────── */
-  function downloadFetch(url) {
+  /* ── Download dispatcher — native bridge only, no browser fallback ──────── */
+  function downloadInApp(url) {
     var btn      = document.getElementById('aqs-upd-btn-now');
     var btnLater = document.getElementById('aqs-upd-btn-later');
-    var progWrap = document.getElementById('aqs-upd-progress-wrap');
 
-    btn.disabled = true;
-    btn.textContent = '⏳ Starting download…';
-    btnLater.style.display = 'none';
-    progWrap.classList.add('aqs-upd-dl-active');
-
-    fetch(url)
-      .then(function (response) {
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        var contentLength = response.headers.get('content-length');
-        var total = contentLength ? parseInt(contentLength, 10) : 0;
-        var loaded = 0;
-        var chunks = [];
-        var reader = response.body.getReader();
-
-        function pump() {
-          return reader.read().then(function (result) {
-            if (result.done) {
-              var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
-              var blobUrl = URL.createObjectURL(blob);
-              btn.textContent = '✅ Installing…';
-              setProgress(100);
-              var a = document.createElement('a');
-              a.href = blobUrl;
-              a.download = 'daraquiz-update.apk';
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
-              setTimeout(function () { URL.revokeObjectURL(blobUrl); hidePopup(); }, 3000);
-              return;
-            }
-            chunks.push(result.value);
-            loaded += result.value.length;
-            if (total) {
-              setProgress(Math.min(99, Math.round((loaded / total) * 100)));
-            } else {
-              var kb = Math.round(loaded / 1024);
-              document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… ' + kb + ' KB';
-            }
-            return pump();
-          });
-        }
-        return pump();
-      })
-      .catch(function (err) {
-        console.warn('[AQS-UPD] Download failed:', err.message || err);
-        btn.disabled = false;
-        btn.textContent = '⬇️ Retry Download';
-        btnLater.style.display = '';
-        progWrap.classList.remove('aqs-upd-dl-active');
-        alert('Download failed: ' + (err.message || 'Please check your connection and try again.'));
-      });
-  }
-
-  /* ── Download dispatcher ────────────────────────────────────────────────── */
-  function downloadInApp(url) {
+    /* Try native bridge immediately */
     if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
       downloadNative(url);
-    } else {
-      downloadFetch(url);
+      return;
     }
+
+    /* Bridge not ready yet — wait up to 3 seconds then retry */
+    var waited = 0;
+    var interval = setInterval(function () {
+      waited += 200;
+      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
+        clearInterval(interval);
+        downloadNative(url);
+        return;
+      }
+      if (waited >= 3000) {
+        clearInterval(interval);
+        btn.disabled = false;
+        btn.textContent = '⬇️ Download Update';
+        btnLater.style.display = '';
+        alert('Download not ready yet. Please close and reopen the app, then try again.');
+      }
+    }, 200);
   }
 
   /* ── Button events ──────────────────────────────────────────────────────── */
