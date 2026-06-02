@@ -2144,8 +2144,11 @@ function _updateAqsGlobals(user, profile) {
         var _authRedirectDone = false;
         onAuthStateChanged(auth, function(user) {
             if (_authRedirectDone) return;
-            /* Do NOT redirect while a registration is in progress */
+            /* Do NOT redirect while a login/registration form is in progress —
+               let the form's own success callback handle the redirect with a
+               delay long enough for Firebase to persist the session to storage. */
             if (window._aqsIsRegistering) return;
+            if (window._aqsIsLoggingIn) return;
             if (user) {
                 _authRedirectDone = true;
                 var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
