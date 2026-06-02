@@ -91,8 +91,6 @@
 
     /* Detect if the query needs live web data */
     function detectSearchNeeds(text) {
-        var t = text.toLowerCase();
-
         /* Explicit URL → fetch that page */
         var urlMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
         if (urlMatch) return { type: 'url', url: urlMatch[0] };
@@ -101,18 +99,36 @@
         var domainMatch = text.match(/\b(www\.[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
         if (domainMatch) return { type: 'url', url: 'https://' + domainMatch[1] };
 
-        /* News / real-time / current events triggers */
-        if (/\b(latest|breaking|news|today|tonight|this week|this month|this year|current|right now|live|trending|happening|just happened|recently|new release|update|announcement|price|stock|weather|score|match|result|election|rate|exchange rate|usd|naira|dollar|nasd|crypto|bitcoin|ethereum)\b/i.test(text)) {
+        /* Year mentions → likely needs current info */
+        if (/\b(202[3-9]|2030)\b/.test(text)) return { type: 'search', query: text };
+
+        /* News / real-time / current events */
+        if (/\b(latest|breaking|news|today|tonight|yesterday|this week|this month|this year|current|right now|live|trending|happening|just happened|recently|new release|update|announced|dropped|released|launched|upcoming|schedule|fixtures|standings|table)\b/i.test(text)) {
             return { type: 'search', query: text };
         }
 
-        /* "Search for / look up / find / check" explicit commands */
-        if (/\b(search|look up|look for|find out|check|browse|visit|open|go to|show me|tell me about)\b/i.test(text)) {
+        /* Prices, rates, money */
+        if (/\b(price|cost|rate|exchange rate|how much|worth|value|usd|naira|dollar|pound|euro|nasd|nse|stock|crypto|bitcoin|ethereum|bnb|usdt|market cap)\b/i.test(text)) {
             return { type: 'search', query: text };
         }
 
-        /* Questions about specific people, companies, products */
-        if (/\b(who is|what is|where is|when did|when was|how much|how many|tell me about|what happened to|what does .* do|who owns|who runs|ceo|president|governor|minister|founded|released|launched)\b/i.test(text)) {
+        /* Sports */
+        if (/\b(score|match|game result|who won|who beat|champion|league|premier league|laliga|champions league|world cup|super eagles|barca|arsenal|chelsea|man united|man city|liverpool|psg|real madrid)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
+
+        /* Explicit search commands */
+        if (/\b(search|look up|look for|find out|find me|check|browse|visit|open|go to|show me|google|bing|search for)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
+
+        /* Questions about people, companies, events */
+        if (/\b(who is|who are|what is|where is|when did|when was|how much|how many|tell me about|what happened|what happened to|who owns|who runs|ceo|president|governor|minister|founded|born|died|age of|capital of|population of|located)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
+
+        /* Nigerian / African specific */
+        if (/\b(naija|nigeria|ghana|kenya|south africa|nollywood|afrobeats|dangote|tinubu|obi|atiku|inec|efcc|cbn|nnpc|nddc|waec|jamb|neco|ssce|school fees)\b/i.test(text)) {
             return { type: 'search', query: text };
         }
 
@@ -148,7 +164,7 @@
     async function fetchViaAllOrigins(url) {
         try {
             var apiUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
-            var res    = await timedFetch(apiUrl, {}, 18000);
+            var res    = await timedFetch(apiUrl, {}, 10000);
             if (!res.ok) throw new Error('HTTP ' + res.status);
             var data   = await res.json();
             var html   = (data && data.contents) || '';
@@ -171,7 +187,7 @@
     async function fetchViaCorsProxy(url) {
         try {
             var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
-            var res      = await timedFetch(proxyUrl, {}, 18000);
+            var res      = await timedFetch(proxyUrl, {}, 10000);
             if (!res.ok) throw new Error('HTTP ' + res.status);
             var html = await res.text();
             if (!html) return null;
@@ -187,15 +203,20 @@
         } catch (e) { return null; }
     }
 
-    /* Master fetchWebPage — tries Jina → AllOrigins → corsproxy.io */
+    /* Master fetchWebPage — all 3 methods in parallel, fastest wins */
     async function fetchWebPage(url) {
-        var result;
-        result = await fetchViaJina(url);
-        if (result) return result;
-        result = await fetchViaAllOrigins(url);
-        if (result) return result;
-        result = await fetchViaCorsProxy(url);
-        return result;
+        return new Promise(function(resolve) {
+            var done = false;
+            var remaining = 3;
+            function tryResolve(result) {
+                remaining--;
+                if (result && !done) { done = true; resolve(result); return; }
+                if (remaining === 0 && !done) resolve(null);
+            }
+            fetchViaJina(url).then(tryResolve).catch(function(){ tryResolve(null); });
+            fetchViaAllOrigins(url).then(tryResolve).catch(function(){ tryResolve(null); });
+            fetchViaCorsProxy(url).then(tryResolve).catch(function(){ tryResolve(null); });
+        });
     }
 
     /* Search DuckDuckGo Instant Answer API — FREE, no key needed */
@@ -204,7 +225,7 @@
             var url  = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) +
                        '&format=json&no_html=1&skip_disambig=1&no_redirect=1';
             var ctrl = new AbortController();
-            var timer = setTimeout(function () { ctrl.abort(); }, 12000);
+            var timer = setTimeout(function () { ctrl.abort(); }, 5000);
             var res  = await fetch(url, { signal: ctrl.signal });
             clearTimeout(timer);
             if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -240,6 +261,21 @@
         }
     }
 
+    /* Jina AI web search — returns real web results, no key needed */
+    async function searchJinaWeb(query) {
+        try {
+            var res = await timedFetch(
+                'https://s.jina.ai/' + encodeURIComponent(query),
+                { headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' } },
+                10000
+            );
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var text = await res.text();
+            if (text && text.trim().length > 80) return { source: 'Web', content: text.trim().slice(0, 4500) };
+            return null;
+        } catch (e) { return null; }
+    }
+
     /* Wikipedia direct summary (by exact title guess) */
     async function searchWikipedia(query) {
         try {
@@ -255,29 +291,58 @@
         } catch (e) { return null; }
     }
 
-    /* Master search: DuckDuckGo → Wikipedia full-text search → Wikipedia direct → nothing */
+    /* Master search: ALL sources run in PARALLEL — fastest winner wins */
     async function performWebSearch(query) {
-        /* 1. DuckDuckGo instant answers */
-        var ddg = await searchDuckDuckGo(query);
-        if (ddg && ddg.length > 80) return { source: 'DuckDuckGo', content: ddg };
-
         /* Clean query for Wikipedia */
         var wikiQ = query
-            .replace(/\b(latest|news|what is|who is|who are|tell me about|search for|find|current|today|abeg|please|help me with)\b/gi, '')
-            .replace(/[?!.,]/g, '')
-            .trim();
+            .replace(/\b(latest|news|what is|who is|who are|tell me about|search for|find|current|today|abeg|please|help me with|search)\b/gi, '')
+            .replace(/[?!.,]/g, '').trim();
 
-        if (wikiQ.length > 3) {
-            /* 2. Wikipedia full-text search (most reliable) */
-            var wikiSearch = await searchWikipediaFullText(wikiQ);
-            if (wikiSearch) return { source: 'Wikipedia', content: wikiSearch };
+        /* Fire all searches at once */
+        var searches = [
+            /* 1. Jina Search — real live web results (usually fastest & best) */
+            searchJinaWeb(query).catch(function(){ return null; }),
+            /* 2. DuckDuckGo instant answers (fast for well-known topics) */
+            searchDuckDuckGo(query).then(function(ddg){
+                return (ddg && ddg.length > 80) ? { source: 'DuckDuckGo', content: ddg } : null;
+            }).catch(function(){ return null; }),
+            /* 3. Wikipedia full-text search */
+            (wikiQ.length > 3 ? searchWikipediaFullText(wikiQ).then(function(w){
+                return w ? { source: 'Wikipedia', content: w } : null;
+            }).catch(function(){ return null; }) : Promise.resolve(null)),
+            /* 4. Wikipedia direct fallback */
+            (wikiQ.length > 3 ? searchWikipedia(wikiQ).then(function(w){
+                return w ? { source: 'Wikipedia', content: w } : null;
+            }).catch(function(){ return null; }) : Promise.resolve(null))
+        ];
 
-            /* 3. Wikipedia direct title lookup */
-            var wikiDirect = await searchWikipedia(wikiQ);
-            if (wikiDirect) return { source: 'Wikipedia', content: wikiDirect };
-        }
+        /* Return as soon as any source has ≥80 chars */
+        return new Promise(function(resolve) {
+            var resolved = false;
+            var remaining = searches.length;
+            var best = null;
 
-        return null;
+            searches.forEach(function(p) {
+                p.then(function(result) {
+                    remaining--;
+                    if (result && result.content && result.content.length > 80) {
+                        /* Prefer Jina/DDG over Wikipedia if Jina comes back first */
+                        if (!resolved) {
+                            resolved = true;
+                            resolve(result);
+                        } else if (!best || result.source === 'Web') {
+                            best = result; /* save richer result for potential re-use */
+                        }
+                    }
+                    if (remaining === 0 && !resolved) {
+                        resolve(best); /* all failed — return best we got or null */
+                    }
+                }).catch(function(){
+                    remaining--;
+                    if (remaining === 0 && !resolved) resolve(null);
+                });
+            });
+        });
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -522,7 +587,7 @@
         var bubble = wrap.querySelector('.dts-msg-bubble');
         var tokens = content.split(/(?=\s)/);
         if (tokens.length < 4) tokens = content.split('');
-        var idx=0, acc='', CHUNK=4, DELAY=16;
+        var idx=0, acc='', CHUNK=6, DELAY=10;
         function tick() {
             if (idx < tokens.length) {
                 var end=Math.min(idx+CHUNK,tokens.length);
