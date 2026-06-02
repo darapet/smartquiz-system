@@ -8,18 +8,14 @@
  *   2. Fetches version.json from GitHub to get the latest version info
  *   3. Compares the remote versionCode with AQS_APP_VERSION_CODE below
  *   4. If remote is newer → shows update popup
- *   5. User taps "Download Update" → APK downloads IN-APP with progress bar
+ *   5. On Android: uses native DownloadManager bridge for in-app download + progress
  *   6. When download completes → Android installer is triggered automatically
  *   7. User taps "Remind Me Later" → waits 24 hours before asking again
- *
- * THE ONLY THING YOU EVER NEED TO CHANGE:
- *   When you build a new APK, update AQS_APP_VERSION_CODE below to match
- *   the new versionCode you pushed via admin-update.html.
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
 /* ══ CHANGE THIS NUMBER EVERY TIME YOU INSTALL A NEW APK ═══════════════════ */
-var AQS_APP_VERSION_CODE = 7;
+var AQS_APP_VERSION_CODE = 6;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -34,7 +30,6 @@ var AQS_APP_VERSION_CODE = 7;
   /* ── Inject styles ────────────────────────────────────────────────────── */
   var style = document.createElement('style');
   style.textContent = [
-    /* Update popup overlay */
     '#aqs-upd-overlay{display:none;position:fixed;inset:0;z-index:99999;',
       'background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);',
       '-webkit-backdrop-filter:blur(6px);',
@@ -93,7 +88,6 @@ var AQS_APP_VERSION_CODE = 7;
       'padding:8px;font-family:inherit;transition:color .15s;}',
     '#aqs-upd-btn-later:hover{color:rgba(255,255,255,0.7);}',
 
-    /* Download progress bar inside the card */
     '#aqs-upd-progress-wrap{display:none;margin-bottom:16px;}',
     '#aqs-upd-progress-wrap.aqs-upd-dl-active{display:block;}',
     '#aqs-upd-progress-label{font-size:.82rem;color:rgba(255,255,255,0.6);',
@@ -116,7 +110,6 @@ var AQS_APP_VERSION_CODE = 7;
       '<h2 id="aqs-upd-title">Update Available!</h2>',
       '<div id="aqs-upd-ver">✨ Version <span id="aqs-upd-ver-num">—</span></div>',
       '<p id="aqs-upd-notes">Loading…</p>',
-      /* Progress bar (hidden until download starts) */
       '<div id="aqs-upd-progress-wrap">',
         '<div id="aqs-upd-progress-label">Downloading… 0%</div>',
         '<div id="aqs-upd-progress-track">',
@@ -138,12 +131,13 @@ var AQS_APP_VERSION_CODE = 7;
 
   function hidePopup() {
     overlay.classList.remove('aqs-upd-show');
-    /* Reset download UI */
     document.getElementById('aqs-upd-progress-wrap').classList.remove('aqs-upd-dl-active');
     document.getElementById('aqs-upd-progress-fill').style.width = '0%';
     document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… 0%';
     document.getElementById('aqs-upd-btn-now').disabled = false;
     document.getElementById('aqs-upd-btn-now').textContent = '⬇️ Download Update';
+    document.getElementById('aqs-upd-btn-later').style.display = '';
+    window.aqsNativeProgress = null;
   }
 
   function setProgress(pct) {
@@ -151,8 +145,42 @@ var AQS_APP_VERSION_CODE = 7;
     document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… ' + pct + '%';
   }
 
-  /* ── In-app APK download with progress ──────────────────────────────────── */
-  function downloadInApp(url) {
+  /* ── Native Android bridge download (no browser) ────────────────────────── */
+  function downloadNative(url) {
+    var btn      = document.getElementById('aqs-upd-btn-now');
+    var btnLater = document.getElementById('aqs-upd-btn-later');
+    var progWrap = document.getElementById('aqs-upd-progress-wrap');
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Starting download…';
+    btnLater.style.display = 'none';
+    progWrap.classList.add('aqs-upd-dl-active');
+    setProgress(0);
+
+    /* Progress callback invoked by MainActivity.java */
+    window.aqsNativeProgress = function (pct) {
+      if (pct < 0) {
+        /* Error */
+        btn.disabled = false;
+        btn.textContent = '⬇️ Retry Download';
+        btnLater.style.display = '';
+        progWrap.classList.remove('aqs-upd-dl-active');
+        alert('Download failed. Please check your connection and try again.');
+        return;
+      }
+      setProgress(pct);
+      if (pct >= 100) {
+        btn.textContent = '✅ Installing…';
+        setTimeout(hidePopup, 4000);
+      }
+    };
+
+    /* Call native bridge — MainActivity registers this on the WebView */
+    window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
+  }
+
+  /* ── Web fetch fallback (non-Android or no bridge) ──────────────────────── */
+  function downloadFetch(url) {
     var btn      = document.getElementById('aqs-upd-btn-now');
     var btnLater = document.getElementById('aqs-upd-btn-later');
     var progWrap = document.getElementById('aqs-upd-progress-wrap');
@@ -165,7 +193,6 @@ var AQS_APP_VERSION_CODE = 7;
     fetch(url)
       .then(function (response) {
         if (!response.ok) throw new Error('HTTP ' + response.status);
-
         var contentLength = response.headers.get('content-length');
         var total = contentLength ? parseInt(contentLength, 10) : 0;
         var loaded = 0;
@@ -175,42 +202,30 @@ var AQS_APP_VERSION_CODE = 7;
         function pump() {
           return reader.read().then(function (result) {
             if (result.done) {
-              /* All chunks received — assemble blob and trigger install */
               var blob = new Blob(chunks, { type: 'application/vnd.android.package-archive' });
               var blobUrl = URL.createObjectURL(blob);
-
               btn.textContent = '✅ Installing…';
               setProgress(100);
-
-              /* Trigger install: Android WebView download listener picks this up */
               var a = document.createElement('a');
               a.href = blobUrl;
               a.download = 'daraquiz-update.apk';
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
-
-              setTimeout(function () {
-                URL.revokeObjectURL(blobUrl);
-                hidePopup();
-              }, 3000);
+              setTimeout(function () { URL.revokeObjectURL(blobUrl); hidePopup(); }, 3000);
               return;
             }
-
             chunks.push(result.value);
             loaded += result.value.length;
-
             if (total) {
               setProgress(Math.min(99, Math.round((loaded / total) * 100)));
             } else {
-              /* Unknown size — animate indeterminate */
               var kb = Math.round(loaded / 1024);
               document.getElementById('aqs-upd-progress-label').textContent = 'Downloading… ' + kb + ' KB';
             }
             return pump();
           });
         }
-
         return pump();
       })
       .catch(function (err) {
@@ -223,16 +238,23 @@ var AQS_APP_VERSION_CODE = 7;
       });
   }
 
+  /* ── Download dispatcher ────────────────────────────────────────────────── */
+  function downloadInApp(url) {
+    if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
+      downloadNative(url);
+    } else {
+      downloadFetch(url);
+    }
+  }
+
   /* ── Button events ──────────────────────────────────────────────────────── */
   var _apkUrl = '';
 
-  document.getElementById('aqs-upd-close').addEventListener('click', function () {
-    hidePopup();
-  });
+  document.getElementById('aqs-upd-close').addEventListener('click', hidePopup);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
-    if (!_apkUrl || _apkUrl.indexOf('admin-update') !== -1) {
-      alert('⚠️ Download link not configured yet. Please contact the developer.');
+    if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
+      alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
       return;
     }
     downloadInApp(_apkUrl);
