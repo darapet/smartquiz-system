@@ -224,6 +224,7 @@ function enterLobby(){
     $('pz-btn-start') && ($('pz-btn-start').style.display = G.isHost ? '' : 'none');
     $('pz-lobby-wait-msg') && ($('pz-lobby-wait-msg').style.display = G.isHost ? 'none' : '');
 
+    listenChat();
     /* Listen for room changes */
     addListener('room', 'puzzle_rooms/'+G.roomCode, function(snap){
         if(!snap.exists()){ toast('Room closed'); showScreen('setup'); return; }
@@ -385,23 +386,21 @@ function enterGame(room){
     /* Listen for question changes (host advances) */
     addListener('room_game', 'puzzle_rooms/'+G.roomCode, function(snap){
         if(!snap.exists()) return;
-        var room = snap.val();
-        G.players = room.players || {};
+        var roomData = snap.val();  /* FIXED: use snapshot not stale closure var */
+        G.players = roomData.players || {};
         renderScoreboard();
 
-        if(room.status === 'results'){ showResults(room); return; }
-        if(room.status !== 'playing') return;
+        if(roomData.status === 'results'){ showResults(roomData); return; }
+        if(roomData.status !== 'playing') return;
 
-        var newQ = room.currentQ || 0;
-        G.questions = Object.values(room.questions || G.questions);
+        var newQ = roomData.currentQ || 0;
+        G.questions = Object.values(roomData.questions || {});
         renderQProgress();
 
-        if(newQ !== G.currentQ){
+        if(newQ !== G.currentQ || !G.renderedFirstQ){
             G.currentQ = newQ;
-            G.myAnswers[newQ] = undefined;
-            renderQuestion();
-        } else if(G.currentQ === 0 && !G.renderedFirstQ){
             G.renderedFirstQ = true;
+            G.myAnswers[newQ] = undefined;
             renderQuestion();
         }
     });
@@ -457,7 +456,12 @@ function onTimerEnd(){
     revealAnswer();
     if(G.isHost){
         setTimeout(function(){
-            advanceQuestion();
+            if(G.mode === 'crossword'){
+                /* Crossword has one timer for the whole puzzle - end the game */
+                update(rtRef('puzzle_rooms/'+G.roomCode), { status: 'results' }).catch(function(){});
+            } else {
+                advanceQuestion();
+            }
         }, 2500);
     }
 }
@@ -678,7 +682,7 @@ function renderCrosswordQ(){
             var pts = 12;
             G.myScore += pts;
             G.myAnswers[G.cwActive] = typed;
-            updateMyScore(pts);
+            updateMyScore();
             toast('✅ Correct! +'+pts+' pts');
             inp.value = '';
             G.cwActive = null;
@@ -740,7 +744,7 @@ function renderJigsawQ(q){
             G.jigsawPieces[G.myPos].add(G.currentQ);
             renderJigsawGrid(G.myPos);
             showAnswerOverlay('🧩');
-            updateMyScore(10);
+            updateMyScore();
         } else {
             if(fb){ fb.textContent='❌ Not quite! Try again'; fb.className='pz-word-feedback wrong'; }
             inp.value='';
@@ -800,7 +804,7 @@ async function submitAnswer(val){
         if(G.correctInRow >= 3) pts += 3;
     }
 
-    if(pts > 0) updateMyScore(pts);
+    if(pts > 0) updateMyScore();
 
     /* Write answer to RTDB */
     try {
@@ -815,9 +819,8 @@ async function submitAnswer(val){
     }
 }
 
-async function updateMyScore(pts){
-    G.myScore += (G.mode === 'quiz' || G.mode === 'crossword') ? 0 : pts; // quiz adds in submitAnswer
-    /* Ensure sync */
+async function updateMyScore(){
+    /* Only syncs to RTDB - score is already updated in submitAnswer/caller */
     await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/'+G.myPos+'/score'), G.myScore).catch(function(){});
     renderScoreboard();
 }
