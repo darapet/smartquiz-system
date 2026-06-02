@@ -354,7 +354,14 @@
         '._aqsUpdSkip{background:transparent;color:#475569;border:1px solid rgba(71,85,105,0.3);',
         'border-radius:14px;padding:12px 24px;width:100%;font-size:.85rem;',
         'cursor:pointer;font-family:-apple-system,Inter,sans-serif;transition:color .15s;}',
-        '._aqsUpdSkip:active{color:#94a3b8;}'
+        '._aqsUpdSkip:active{color:#94a3b8;}',
+        '._aqsUpdProgWrap{display:none;margin-bottom:14px;}',
+        '._aqsUpdProgLabel{font-size:.82rem;color:rgba(255,255,255,0.6);margin-bottom:8px;text-align:left;',
+        'font-family:-apple-system,Inter,sans-serif;}',
+        '._aqsUpdProgTrack{width:100%;height:8px;background:rgba(255,255,255,0.1);',
+        'border-radius:99px;overflow:hidden;}',
+        '._aqsUpdProgFill{height:100%;width:0%;border-radius:99px;',
+        'background:linear-gradient(90deg,#22c55e,#16a34a);transition:width .3s ease;}'
       ].join('');
       document.head.appendChild(s);
     }
@@ -370,7 +377,11 @@
         '</div>',
         '<div class="_aqsUpdTitle">Version ' + upd.version + ' is ready!</div>',
         '<div class="_aqsUpdMeta">You have v' + current + ' &nbsp;→&nbsp; Latest: v' + upd.version + '</div>',
-        '<div class="_aqsUpdNotes"><b>What's new:</b><br>' + (upd.notes || 'Bug fixes and improvements.') + '</div>',
+        '<div class="_aqsUpdNotes"><b>What\'s new:</b><br>' + (upd.notes || 'Bug fixes and improvements.') + '</div>',
+        '<div class="_aqsUpdProgWrap" id="_aqsUpdProgWrap">',
+          '<div class="_aqsUpdProgLabel" id="_aqsUpdProgLabel">Downloading… 0%</div>',
+          '<div class="_aqsUpdProgTrack"><div class="_aqsUpdProgFill" id="_aqsUpdProgFill"></div></div>',
+        '</div>',
         '<button class="_aqsUpdDl" id="_aqsUpdDlBtn">',
           '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
           'Download & Install Update',
@@ -381,13 +392,59 @@
     document.body.appendChild(overlay);
 
     document.getElementById('_aqsUpdDlBtn').addEventListener('click', function() {
-      var url = upd.apkUrl || upd.downloadUrl || 'https://github.com/darapet/smartquiz-system/releases/latest';
-      if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
-        window.Capacitor.Plugins.Browser.open({ url: url });
-      } else {
-        window.open(url, '_blank');
+      var url = upd.apkUrl || upd.downloadUrl || '';
+      if (!url) {
+        alert('Download link not available yet. Please try again later.');
+        return;
       }
-      overlay.remove();
+
+      var btn      = document.getElementById('_aqsUpdDlBtn');
+      var skipBtn  = document.getElementById('_aqsUpdSkipBtn');
+      var progWrap = document.getElementById('_aqsUpdProgWrap');
+      var progFill = document.getElementById('_aqsUpdProgFill');
+      var progLbl  = document.getElementById('_aqsUpdProgLabel');
+
+      /* ── Native Android in-app download (no browser) ── */
+      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
+        btn.disabled = true;
+        btn.textContent = '⏳ Starting download…';
+        skipBtn.style.display = 'none';
+        progWrap.style.display = 'block';
+        progFill.style.width = '0%';
+        progLbl.textContent = 'Downloading… 0%';
+
+        window.aqsNativeProgress = function(pct) {
+          if (pct < 0) {
+            btn.disabled = false;
+            btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Retry Download';
+            skipBtn.style.display = '';
+            progWrap.style.display = 'none';
+            alert('Download failed. Please check your connection and try again.');
+            window.aqsNativeProgress = null;
+            return;
+          }
+          progFill.style.width = pct + '%';
+          progLbl.textContent = pct >= 100 ? '✅ Installing…' : 'Downloading… ' + pct + '%';
+          if (pct >= 100) {
+            btn.textContent = '✅ Installing…';
+            setTimeout(function() {
+              overlay.remove();
+              window.aqsNativeProgress = null;
+            }, 4000);
+          }
+        };
+
+        window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
+
+      /* ── Fallback: open in browser (iOS or web) ── */
+      } else {
+        if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+          window.Capacitor.Plugins.Browser.open({ url: url });
+        } else {
+          window.open(url, '_blank');
+        }
+        overlay.remove();
+      }
     });
 
     document.getElementById('_aqsUpdSkipBtn').addEventListener('click', function() {
