@@ -233,8 +233,9 @@ window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'
     return g + (name ? ', ' + name.split(' ')[0] : '') + '! 👋';
   }
 
-  document.addEventListener('aqs:authchange', function(ev) {
-    var user = ev.detail && ev.detail.user;
+  /* Use onAqsAuthChange (replay-safe) so we don't miss the event if Firebase
+     resolved before this script ran. Falls back to addEventListener if not yet ready. */
+  function _initDash(user) {
     if (!user) { window.location.href = 'login.html'; return; }
 
     var name = user.displayName || (user.email ? user.email.split('@')[0] : 'Friend');
@@ -273,7 +274,18 @@ window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'
           + '</div>';
       }).join('');
     }, null);
-  });
+  }
+
+  /* Wire up — replay-safe: fires immediately if Firebase already resolved */
+  if (typeof window.onAqsAuthChange === 'function') {
+    window.onAqsAuthChange(_initDash);
+  } else {
+    /* onAqsAuthChange not yet defined (firebase.js still loading) — fall back */
+    document.addEventListener('aqs:authchange', function handler(ev) {
+      document.removeEventListener('aqs:authchange', handler);
+      _initDash(ev.detail && ev.detail.user);
+    });
+  }
 })();
 </script>
 <script src="js/aqs-main.js"></script>
