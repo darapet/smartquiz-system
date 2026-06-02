@@ -1,8 +1,8 @@
 {
-  "version": "1.21",
-  "versionCode": 7,
+  "version": "1.22",
+  "versionCode": 8,
   "releaseDate": "2026-06-02",
-  "notes": "Home page redesign, AI voice fixed, in-app update with download progress bar, 30-day session.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.21/daraquiz-v1.21.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.21/daraquiz-v1.21.apk"
+  "notes": "In-app download with progress bar, auto-install after update, no browser needed.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.22/daraquiz-v1.22.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.22/daraquiz-v1.22.apk"
 }
