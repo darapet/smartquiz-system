@@ -1956,19 +1956,25 @@ function _updateAqsGlobals(user, profile) {
     }
 
     if (authPages.indexOf(page) !== -1) {
-        window.onAqsAuthChange(function(user) {
-            /* Do NOT redirect while a registration is in progress — the register
-               success callback will do its own role-aware redirect. */
+        /* Use onAuthStateChanged directly (persistent) so the redirect fires
+           BOTH on page-load (already signed in) AND right after form sign-in.
+           onAqsAuthChange is one-shot — it misses the sign-in event if the user
+           was not logged in when the page first loaded. */
+        var _authRedirectDone = false;
+        onAuthStateChanged(auth, function(user) {
+            if (_authRedirectDone) return;
+            /* Do NOT redirect while a registration is in progress */
             if (window._aqsIsRegistering) return;
             if (user) {
+                _authRedirectDone = true;
                 var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
-                if (redirectUrl) { window.location.href = redirectUrl; return; }
+                if (redirectUrl) { window.location.replace(redirectUrl); return; }
                 /* Look up the user's role so hosts go to the correct dashboard */
                 getDoc(doc(db, 'users', user.uid)).then(function(profileSnap) {
                     var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
-                    window.location.href = _dashboardUrl(role);
+                    window.location.replace(_dashboardUrl(role));
                 }).catch(function() {
-                    window.location.href = 'user-dashboard.html';
+                    window.location.replace('user-dashboard.html');
                 });
             }
         });
