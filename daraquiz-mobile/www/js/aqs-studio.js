@@ -55,6 +55,8 @@
         'You were created by Omomo Excellence (XZILY), a student of the Federal University of Technology Akure (FUTA), in collaboration with Darapet Technology. ' +
         'You help students, teachers, and educators with studying, quiz preparation, ' +
         'problem solving, and any academic topic. Be clear, thorough, and encouraging. ' +
+        'You have access to real-time web search. When web search results are provided to you in the conversation, ' +
+        'use them to give accurate, current, and up-to-date answers. Cite the source where useful. ' +
         '\n\nMATH FORMATTING RULES (follow strictly):\n' +
         '- For inline math expressions, always wrap with single dollar signs: $expression$\n' +
         '- For display/block math (equations on their own line), always wrap with double dollar signs: $$expression$$\n' +
@@ -194,20 +196,223 @@
         return null;
     }
 
+    /* =========================================================
+       WEB SEARCH ENGINE
+       Adds real-time web data to AI responses.
+       Sources: Jina AI · DuckDuckGo · Google News · Wikipedia
+    ========================================================= */
+
+    function timedFetch(url, options, ms) {
+        var ctrl  = new AbortController();
+        var timer = setTimeout(function () { ctrl.abort(); }, ms || 8000);
+        var opts  = Object.assign({}, options || {}, { signal: ctrl.signal });
+        return fetch(url, opts).then(function (r) {
+            clearTimeout(timer); return r;
+        }).catch(function (e) {
+            clearTimeout(timer); throw e;
+        });
+    }
+
+    async function searchDuckDuckGo(query) {
+        try {
+            var url  = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) +
+                       '&format=json&no_html=1&skip_disambig=1&no_redirect=1';
+            var res  = await timedFetch(url, {}, 6000);
+            if (!res.ok) return null;
+            var data = await res.json();
+            var parts = [];
+            if (data.AbstractText) parts.push(data.AbstractText);
+            if (data.Answer)       parts.push('Answer: ' + data.Answer);
+            if (data.Definition)   parts.push('Definition: ' + data.Definition);
+            if (data.RelatedTopics && data.RelatedTopics.length) {
+                var topics = data.RelatedTopics.slice(0, 5).map(function (t) {
+                    return t.Text || (t.Topics && t.Topics[0] && t.Topics[0].Text) || '';
+                }).filter(Boolean);
+                if (topics.length) parts.push('Related:\n' + topics.join('\n'));
+            }
+            if (data.Infobox && data.Infobox.content && data.Infobox.content.length) {
+                var info = data.Infobox.content.slice(0, 8).map(function (item) {
+                    return item.label + ': ' + item.value;
+                }).join('\n');
+                parts.push('Info:\n' + info);
+            }
+            if (data.AbstractURL) parts.push('Source: ' + data.AbstractURL);
+            return parts.join('\n\n').trim() || null;
+        } catch (e) { return null; }
+    }
+
+    async function searchJinaWeb(query) {
+        try {
+            var res = await timedFetch(
+                'https://s.jina.ai/' + encodeURIComponent(query),
+                { headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' } },
+                10000
+            );
+            if (!res.ok) return null;
+            var text = await res.text();
+            if (text && text.trim().length > 80) return { source: 'Web', content: text.trim().slice(0, 4500) };
+            return null;
+        } catch (e) { return null; }
+    }
+
+    async function searchWikipedia(query) {
+        try {
+            var title = query.trim().replace(/\s+/g, '_');
+            var url   = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title);
+            var res   = await timedFetch(url, {}, 8000);
+            if (!res.ok) return null;
+            var data  = await res.json();
+            if (data.extract && data.extract.length > 50) {
+                return data.extract + (data.content_urls ? '\nSource: ' + data.content_urls.desktop.page : '');
+            }
+            return null;
+        } catch (e) { return null; }
+    }
+
+    async function searchWikipediaFullText(query) {
+        try {
+            var url = 'https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' +
+                      encodeURIComponent(query) + '&srlimit=3&format=json&origin=*';
+            var res = await timedFetch(url, {}, 8000);
+            if (!res.ok) return null;
+            var data = await res.json();
+            var results = (data.query && data.query.search) || [];
+            if (!results.length) return null;
+            var parts = results.slice(0, 3).map(function (r) {
+                return r.title + ': ' + (r.snippet || '').replace(/<[^>]*>/g, '');
+            });
+            return parts.join('\n\n') || null;
+        } catch (e) { return null; }
+    }
+
+    async function searchGoogleNews(query) {
+        try {
+            var rssUrl   = 'https://news.google.com/rss/search?q=' + encodeURIComponent(query) + '&hl=en-US&gl=US&ceid=US:en';
+            var proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(rssUrl);
+            var res  = await timedFetch(proxyUrl, {}, 8000);
+            if (!res.ok) return null;
+            var data = await res.json();
+            var xml  = (data && data.contents) || '';
+            if (!xml) return null;
+            var items = xml.match(/<item[\s\S]*?<\/item>/g) || [];
+            var headlines = items.slice(0, 6).map(function (item) {
+                var titleM = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || item.match(/<title>(.*?)<\/title>/) || [];
+                var descM  = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || item.match(/<description>(.*?)<\/description>/) || [];
+                var t = titleM[1] || '';
+                var d = (descM[1] || '').replace(/<[^>]*>/g, '').slice(0, 120);
+                return t + (d ? ' — ' + d : '');
+            }).filter(Boolean);
+            if (headlines.length) return 'Latest news headlines:\n' + headlines.join('\n');
+            return null;
+        } catch (e) { return null; }
+    }
+
+    function detectSearchNeeds(userMessage) {
+        var msg  = userMessage.toLowerCase();
+        var now  = /\b(today|tonight|this week|this month|this year|current|currently|now|right now|latest|recent|recently|new|just|breaking|live|ongoing)\b/.test(msg);
+        var who  = /\b(who is|who are|who was|who were|who won|who leads|who owns|what is|what are|what was|what were|whats|what's|how much|how many|how old)\b/.test(msg);
+        var event = /\b(news|update|happening|happened|result|score|election|match|game|war|conflict|price|rate|gdp|stock|crypto|bitcoin|weather|forecast|announce|released|launched|discovered)\b/.test(msg);
+        var search = /\b(search|find|look up|check|google|tell me about|information on|facts about|details about|abeg search|find out)\b/.test(msg);
+        var person = /\b(president|minister|ceo|governor|senator|prime minister|chancellor|manager|coach|winner|champion)\b/.test(msg);
+        var hasUrl = /https?:\/\//i.test(userMessage);
+        return now || who || event || search || person || hasUrl;
+    }
+
+    async function performWebSearch(query) {
+        var wikiQ = query
+            .replace(/\b(latest|news|what is|who is|who are|tell me about|search for|find|current|today|abeg|please|help me with|search)\b/gi, '')
+            .replace(/[?!.,]/g, '').trim();
+
+        var isNewsQuery = /\b(news|latest|breaking|today|tonight|yesterday|this week|trending|happening|recently|score|match|who won)\b/i.test(query);
+
+        var searches = [
+            searchJinaWeb(query).catch(function () { return null; }),
+            searchDuckDuckGo(query).then(function (ddg) {
+                return (ddg && ddg.length > 80) ? { source: 'DuckDuckGo', content: ddg } : null;
+            }).catch(function () { return null; }),
+            (isNewsQuery ? searchGoogleNews(query).then(function (gn) {
+                return gn ? { source: 'Google News', content: gn } : null;
+            }).catch(function () { return null; }) : Promise.resolve(null)),
+            (wikiQ.length > 3 ? searchWikipediaFullText(wikiQ).then(function (w) {
+                return w ? { source: 'Wikipedia', content: w } : null;
+            }).catch(function () { return null; }) : Promise.resolve(null)),
+            (wikiQ.length > 3 ? searchWikipedia(wikiQ).then(function (w) {
+                return w ? { source: 'Wikipedia', content: w } : null;
+            }).catch(function () { return null; }) : Promise.resolve(null))
+        ];
+
+        var hardTimeout = new Promise(function (resolve) {
+            setTimeout(function () { resolve(null); }, 7000);
+        });
+
+        var raceResult = new Promise(function (resolve) {
+            var resolved = false;
+            var remaining = searches.length;
+            var best = null;
+            searches.forEach(function (p) {
+                p.then(function (result) {
+                    remaining--;
+                    if (result && result.content && result.content.length > 80) {
+                        if (!resolved) { resolved = true; resolve(result); return; }
+                        if (result.source === 'Web' || result.source === 'Google News') best = result;
+                    }
+                    if (remaining === 0 && !resolved) { resolved = true; resolve(best); }
+                }).catch(function () {
+                    remaining--;
+                    if (remaining === 0 && !resolved) { resolved = true; resolve(null); }
+                });
+            });
+        });
+
+        return Promise.race([raceResult, hardTimeout]);
+    }
+
     /* ── Main entry point called by sendMessage() ── */
     async function callAI() {
         var fileCtx = pendingFileContext;
         pendingFileContext = null;
 
-        /* Build messages — inject file content into last user message */
+        /* Check if user's last message needs a web search */
+        var lastUserMsg = '';
+        for (var i = messages.length - 1; i >= 0; i--) {
+            if (messages[i].role === 'user') { lastUserMsg = messages[i].content; break; }
+        }
+
+        var searchContext = null;
+        if (lastUserMsg && detectSearchNeeds(lastUserMsg)) {
+            /* Show searching indicator */
+            var typingEl = document.getElementById('dts-typing');
+            if (typingEl) {
+                var dots = typingEl.querySelector('.dts-typing-dots');
+                if (dots) dots.setAttribute('data-label', '🔍 Searching the web…');
+            }
+            try {
+                var result = await performWebSearch(lastUserMsg);
+                if (result && result.content) {
+                    searchContext = '[Web search results from ' + result.source + ']:\n' + result.content;
+                }
+            } catch (e) { /* ignore search errors */ }
+            /* Restore normal typing label */
+            if (typingEl) {
+                var dots2 = typingEl.querySelector('.dts-typing-dots');
+                if (dots2) dots2.removeAttribute('data-label');
+            }
+        }
+
+        /* Build messages — inject file content + search context into last user message */
         var apiMessages = [{ role: 'system', content: SYSTEM }].concat(
             messages.map(function (m, idx) {
                 var content = m.content;
-                if (fileCtx && idx === messages.length - 1 && m.role === 'user') {
-                    var truncated = fileCtx.content.length > 6000
-                        ? fileCtx.content.substring(0, 6000) + '\n\n[File truncated to fit AI context limit]'
-                        : fileCtx.content;
-                    content = content + '\n\n[Attached file: ' + fileCtx.name + ']\n\n' + truncated;
+                if (idx === messages.length - 1 && m.role === 'user') {
+                    if (fileCtx) {
+                        var truncated = fileCtx.content.length > 6000
+                            ? fileCtx.content.substring(0, 6000) + '\n\n[File truncated to fit AI context limit]'
+                            : fileCtx.content;
+                        content = content + '\n\n[Attached file: ' + fileCtx.name + ']\n\n' + truncated;
+                    }
+                    if (searchContext) {
+                        content = content + '\n\n' + searchContext;
+                    }
                 }
                 return { role: m.role, content: content };
             })

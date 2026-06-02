@@ -281,7 +281,7 @@
         try {
             var title = query.trim().replace(/\s+/g, '_');
             var url   = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title);
-            var res   = await timedFetch(url, {}, 10000);
+            var res   = await timedFetch(url, {}, 8000);
             if (!res.ok) return null;
             var data  = await res.json();
             if (data.extract && data.extract.length > 50) {
@@ -291,12 +291,54 @@
         } catch (e) { return null; }
     }
 
-    /* Master search: ALL sources run in PARALLEL — fastest winner wins */
+    /* Wikipedia full-text search (searches across all articles) */
+    async function searchWikipediaFullText(query) {
+        try {
+            var url = 'https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' +
+                      encodeURIComponent(query) + '&srlimit=3&format=json&origin=*';
+            var res = await timedFetch(url, {}, 8000);
+            if (!res.ok) return null;
+            var data = await res.json();
+            var results = (data.query && data.query.search) || [];
+            if (!results.length) return null;
+            var parts = results.slice(0, 3).map(function (r) {
+                return r.title + ': ' + (r.snippet || '').replace(/<[^>]*>/g, '');
+            });
+            return parts.join('\n\n') || null;
+        } catch (e) { return null; }
+    }
+
+    /* Google News via RSS (free, no key, gives real headlines) */
+    async function searchGoogleNews(query) {
+        try {
+            var rssUrl  = 'https://news.google.com/rss/search?q=' + encodeURIComponent(query) + '&hl=en-US&gl=US&ceid=US:en';
+            var proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(rssUrl);
+            var res  = await timedFetch(proxyUrl, {}, 8000);
+            if (!res.ok) return null;
+            var data = await res.json();
+            var xml  = (data && data.contents) || '';
+            if (!xml) return null;
+            var items = xml.match(/<item[\s\S]*?<\/item>/g) || [];
+            var headlines = items.slice(0, 6).map(function (item) {
+                var title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || item.match(/<title>(.*?)<\/title>/) || [])[1] || '';
+                var desc  = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || item.match(/<description>(.*?)<\/description>/) || [])[1] || '';
+                return title + (desc ? ' — ' + desc.replace(/<[^>]*>/g, '').slice(0, 120) : '');
+            }).filter(Boolean);
+            if (headlines.length) return 'Latest news headlines:\n' + headlines.join('\n');
+            return null;
+        } catch (e) { return null; }
+    }
+
+    /* Master search: ALL sources run in PARALLEL — fastest winner wins.
+       Hard cap: 7 seconds total — never blocks the AI response longer than that. */
     async function performWebSearch(query) {
         /* Clean query for Wikipedia */
         var wikiQ = query
             .replace(/\b(latest|news|what is|who is|who are|tell me about|search for|find|current|today|abeg|please|help me with|search)\b/gi, '')
             .replace(/[?!.,]/g, '').trim();
+
+        /* Detect if this looks like a news query for Google News */
+        var isNewsQuery = /\b(news|latest|breaking|today|tonight|yesterday|this week|trending|happening|just happened|recently|score|match|who won)\b/i.test(query);
 
         /* Fire all searches at once */
         var searches = [
@@ -306,18 +348,25 @@
             searchDuckDuckGo(query).then(function(ddg){
                 return (ddg && ddg.length > 80) ? { source: 'DuckDuckGo', content: ddg } : null;
             }).catch(function(){ return null; }),
-            /* 3. Wikipedia full-text search */
+            /* 3. Google News RSS (for news/current event queries) */
+            (isNewsQuery ? searchGoogleNews(query).then(function(gn){
+                return gn ? { source: 'Google News', content: gn } : null;
+            }).catch(function(){ return null; }) : Promise.resolve(null)),
+            /* 4. Wikipedia full-text search */
             (wikiQ.length > 3 ? searchWikipediaFullText(wikiQ).then(function(w){
                 return w ? { source: 'Wikipedia', content: w } : null;
             }).catch(function(){ return null; }) : Promise.resolve(null)),
-            /* 4. Wikipedia direct fallback */
+            /* 5. Wikipedia direct fallback */
             (wikiQ.length > 3 ? searchWikipedia(wikiQ).then(function(w){
                 return w ? { source: 'Wikipedia', content: w } : null;
             }).catch(function(){ return null; }) : Promise.resolve(null))
         ];
 
-        /* Return as soon as any source has ≥80 chars */
-        return new Promise(function(resolve) {
+        /* Hard 7-second cap so search never delays AI response too long */
+        var hardTimeout = new Promise(function(resolve) { setTimeout(function(){ resolve(null); }, 7000); });
+
+        /* Race: return as soon as any source has ≥80 chars, or timeout */
+        var raceResult = new Promise(function(resolve) {
             var resolved = false;
             var remaining = searches.length;
             var best = null;
@@ -326,23 +375,18 @@
                 p.then(function(result) {
                     remaining--;
                     if (result && result.content && result.content.length > 80) {
-                        /* Prefer Jina/DDG over Wikipedia if Jina comes back first */
-                        if (!resolved) {
-                            resolved = true;
-                            resolve(result);
-                        } else if (!best || result.source === 'Web') {
-                            best = result; /* save richer result for potential re-use */
-                        }
+                        if (!resolved) { resolved = true; resolve(result); return; }
+                        if (result.source === 'Web' || result.source === 'Google News') best = result;
                     }
-                    if (remaining === 0 && !resolved) {
-                        resolve(best); /* all failed — return best we got or null */
-                    }
+                    if (remaining === 0 && !resolved) { resolved = true; resolve(best); }
                 }).catch(function(){
                     remaining--;
-                    if (remaining === 0 && !resolved) resolve(null);
+                    if (remaining === 0 && !resolved) { resolved = true; resolve(null); }
                 });
             });
         });
+
+        return Promise.race([raceResult, hardTimeout]);
     }
 
     /* ═══════════════════════════════════════════════════════════
