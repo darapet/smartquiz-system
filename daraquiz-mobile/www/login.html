@@ -322,7 +322,11 @@ window.AQS={
     var name = (res.data && res.data.user_name) || _currentEmail.split('@')[0];
     document.getElementById('done-title').textContent = 'Welcome, ' + name + '!';
     document.getElementById('done-sub').textContent   = 'Taking you to your dashboard…';
+    /* Keep _aqsIsLoggingIn = true during the "Welcome" screen so the auth guard
+       does not redirect first.  Clear it right before we navigate so Firebase has
+       had ~900 ms to write the session to IndexedDB. */
     setTimeout(function() {
+      window._aqsIsLoggingIn = false;
       window.location.replace(res.data.redirect);
     }, 900);
   }
@@ -344,11 +348,18 @@ window.AQS={
     _currentEmail = email;
 
     setLoading(true);
+    /* Tell the auth guard in aqs-firebase.js not to redirect while we're
+       handling login ourselves — we control the redirect timing to ensure
+       Firebase has persisted the session before navigating. */
+    window._aqsIsLoggingIn = true;
+
+    function _clearLoginFlag() { window._aqsIsLoggingIn = false; }
 
     /* ── Password fallback mode: user has a password-based account ── */
     if (_pwMode) {
       var password = (document.getElementById('login-password').value || '');
       if (!password) {
+        _clearLoginFlag();
         showAlert('Please enter your password.', 'error');
         setLoading(false);
         return;
@@ -361,8 +372,9 @@ window.AQS={
           { action: 'aqs_login', username: email, password: password },
           function(res) {
             if (res && res.success && res.data && res.data.redirect) {
-              onLoginSuccess(res);
+              onLoginSuccess(res);          /* _clearLoginFlag called inside onLoginSuccess */
             } else {
+              _clearLoginFlag();
               var msg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Wrong password.')) : 'Wrong password.';
               showStep('email');
               showAlert(msg, 'error');
@@ -370,6 +382,7 @@ window.AQS={
             }
           },
           function(err) {
+            _clearLoginFlag();
             showStep('email');
             showAlert((err && err.message) || 'Sign-in failed. Check your password and try again.', 'error');
             setLoading(false);
@@ -390,12 +403,12 @@ window.AQS={
         { action: 'aqs_email_login', email: email },
         function(res) {
           if (res && res.success && res.data && res.data.redirect) {
-            onLoginSuccess(res);
+            onLoginSuccess(res);           /* _clearLoginFlag called inside onLoginSuccess */
           } else {
+            _clearLoginFlag();
             var rawMsg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Sign-in failed.')) : 'Sign-in failed.';
             showStep('email');
             setLoading(false);
-            /* PASSWORD_ACCOUNT prefix = show password field */
             if (rawMsg.indexOf('PASSWORD_ACCOUNT:') === 0) {
               showAlert(rawMsg.replace('PASSWORD_ACCOUNT:', ''), 'info');
               showPasswordFallback(email);
@@ -405,10 +418,10 @@ window.AQS={
           }
         },
         function(err) {
+          _clearLoginFlag();
           var errMsg = (err && err.message) || 'Sign-in failed. Please try again.';
           showStep('email');
           setLoading(false);
-          /* PASSWORD_ACCOUNT prefix from the thrown Error */
           if (errMsg.indexOf('PASSWORD_ACCOUNT:') === 0) {
             showAlert(errMsg.replace('PASSWORD_ACCOUNT:', ''), 'info');
             showPasswordFallback(email);
