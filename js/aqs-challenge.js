@@ -255,7 +255,12 @@
   function btnRestore($b,t){$b.prop('disabled',false).text(t);}
   function getUrlParam(k){return new URLSearchParams(window.location.search).get(k)||'';}
   function setUrlCode(c){var u=new URL(window.location.href);u.searchParams.set('aqs_challenge',c);window.history.replaceState({},'',u.toString());}
-  function challengeUrl(c){var u=new URL(window.location.href);u.searchParams.set('aqs_challenge',c);return u.toString();}
+  function challengeUrl(c){
+    var base=(typeof window!=='undefined'&&window.Capacitor)
+        ?'https://darapet.github.io/smartquiz-system/challenge.html'
+        :window.location.href.split('?')[0].split('#')[0];
+    var u=new URL(base);u.searchParams.set('aqs_challenge',c);return u.toString();
+  }
   function getPlayerName(players,pos){var p=(players||[]).find(function(x){return parseInt(x.position)===parseInt(pos);});return p?p.player_name:'Player '+(parseInt(pos)+1);}
 
   /* ── Rounds preview helper ─────────────────────────────────────────── */
