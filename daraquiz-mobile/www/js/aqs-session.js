@@ -1,4 +1,4 @@
-/* aqs-session.js — Persistent user nav bar + 20-min inactivity auto-logout
+/* aqs-session.js — Persistent user nav bar + 30-day inactivity auto-logout
    Works on ALL pages. Listens for aqs:authchange from aqs-firebase.js.
    Safe to include on any page — does nothing if user is not logged in. */
 (function () {
@@ -227,7 +227,7 @@
         document.addEventListener('click', killWarn, { passive: true });
     }
 
-    /* Improved timer: show warning at 18 min, log out at 20 min */
+    /* Improved timer: show warning 2 min before 30-day logout */
     var _warnTimer = null;
     function resetTimerWithWarning() {
         clearTimeout(_timer);
@@ -283,22 +283,6 @@
         }
     });
 
-    /* ── show timeout reason on login page ── */
-    document.addEventListener('DOMContentLoaded', function () {
-        if (window.location.search.indexOf('reason=timeout') !== -1) {
-            var alert = document.getElementById('aqs-login-alert');
-            if (alert) {
-                alert.textContent = 'You were automatically logged out after 20 minutes of inactivity.';
-                alert.style.display = 'block';
-                alert.style.padding = '10px 14px';
-                alert.style.borderRadius = '8px';
-                alert.style.marginBottom = '12px';
-                alert.style.fontSize = '.9rem';
-                alert.style.background = 'rgba(245,158,11,0.12)';
-                alert.style.color = '#d97706';
-                alert.style.border = '1px solid rgba(245,158,11,0.3)';
-            }
-        }
-    });
+    /* login.html handles the timeout message in its own inline script */
 
 })();
