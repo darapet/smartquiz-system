@@ -15,8 +15,8 @@
     var style = document.createElement('style');
     style.id = 'aqs-notifs-bar-css';
     style.textContent = [
-        /* ── COUNTDOWN — fixed at very top ── */
-        '#aqs-countdown-bar{display:none;text-align:center;padding:8px 20px;font-size:.88rem;position:fixed;top:0;left:0;right:0;z-index:9990;border-bottom:1px solid rgba(255,255,255,.15);}',
+        /* ── COUNTDOWN — sticky at very top (in flow, no body.paddingTop needed) ── */
+        '#aqs-countdown-bar{display:none;text-align:center;padding:8px 20px;font-size:.88rem;position:sticky;top:0;left:0;right:0;z-index:9990;border-bottom:1px solid rgba(255,255,255,.15);}',
         '#aqs-countdown-bar .aqs-cd-label{font-weight:700;margin-right:12px;opacity:.9;}',
         '#aqs-countdown-digits{display:inline-flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums;}',
         '.aqs-cd-block{background:rgba(255,255,255,.18);border-radius:6px;padding:3px 9px;font-size:1rem;font-weight:800;min-width:40px;text-align:center;}',
@@ -86,11 +86,8 @@
 
                         document.documentElement.style.setProperty('--aqs-cd-bar-h', cdH + 'px');
 
-                        /* body paddingTop fills the exact space the fixed bar occupies —
-                           content sits directly below it with zero white gap */
-                        document.body.style.paddingTop = cdH + 'px';
-
-                        /* Sticky site headers: update snap-point only, no marginTop */
+                        /* Sticky site headers: update snap-point only, no marginTop
+                           (countdown bar is now position:sticky so no body.paddingTop needed) */
                         document.querySelectorAll('.aqs-site-header').forEach(function (h) {
                             h.style.marginTop = '0px';
                             h.style.top       = cdH + 'px';
@@ -133,7 +130,6 @@
     /* ── Reset offsets when countdown bar hides ──────────────── */
     function _resetOffsets() {
         document.documentElement.style.removeProperty('--aqs-cd-bar-h');
-        document.body.style.paddingTop    = '';
         document.body.style.paddingBottom = '';
         document.querySelectorAll('.aqs-site-header').forEach(function (h) {
             h.style.marginTop = '';
