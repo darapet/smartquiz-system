@@ -1,8 +1,8 @@
 {
-  "version": "1.52",
-  "versionCode": 37,
+  "version": "1.53",
+  "versionCode": 38,
   "releaseDate": "2026-06-02",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.52/daraquiz-v1.52.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.52/daraquiz-v1.52.apk"
+  "notes": "Added quiz management page with full details, questions, attendance and 8 export formats (Print, PDF, Excel, CSV, Word, JSON, TSV, HTML). Added leaderboard with podium, rankings and sort modes. Added View, Edit, Disable/Enable and Delete actions to profile quiz cards.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.53/daraquiz-v1.53.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.53/daraquiz-v1.53.apk"
 }
