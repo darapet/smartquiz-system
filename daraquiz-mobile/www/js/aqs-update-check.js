@@ -24,8 +24,7 @@ var AQS_APP_VERSION_CODE = 14;
   var VERSION_JSON_URL =
     'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
 
-  var REMIND_KEY  = 'aqs_update_remind_time';
-  var REMIND_WAIT = 24 * 60 * 60 * 1000;
+  var DISMISSED_KEY = 'aqs_update_dismissed_ver';
 
   /* ── Inject styles ────────────────────────────────────────────────────── */
   var style = document.createElement('style');
@@ -212,41 +211,50 @@ var AQS_APP_VERSION_CODE = 14;
   /* ── Button events ──────────────────────────────────────────────────────── */
   var _apkUrl = '';
 
-  document.getElementById('aqs-upd-close').addEventListener('click', hidePopup);
+  function dismissVersion() {
+    localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
+    hidePopup();
+  }
+
+  document.getElementById('aqs-upd-close').addEventListener('click', dismissVersion);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
     if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
       alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
       return;
     }
+    /* Mark this version as dismissed so popup won't show again after install */
+    localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
     downloadInApp(_apkUrl);
   });
 
-  document.getElementById('aqs-upd-btn-later').addEventListener('click', function () {
-    localStorage.setItem(REMIND_KEY, String(Date.now()));
-    hidePopup();
-  });
+  document.getElementById('aqs-upd-btn-later').addEventListener('click', dismissVersion);
 
   /* ── Main check ─────────────────────────────────────────────────────────── */
-  function runCheck() {
-    var remindTime = parseInt(localStorage.getItem(REMIND_KEY) || '0', 10);
-    if (remindTime && (Date.now() - remindTime) < REMIND_WAIT) {
-      console.log('[AQS-UPD] Skipping — user snoozed update.');
-      return;
-    }
+  var _remoteCode = 0;
 
+  function runCheck() {
     fetch(VERSION_JSON_URL + '?_=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
       .then(function (data) {
-        var remoteCode = parseInt(data.versionCode, 10) || 0;
-        console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', remoteCode);
-        if (remoteCode > AQS_APP_VERSION_CODE) {
-          _apkUrl = data.apkUrl || data.downloadUrl || '';
-          showPopup(data);
+        _remoteCode = parseInt(data.versionCode, 10) || 0;
+        console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', _remoteCode);
+
+        /* Only show if remote is genuinely newer than what's installed */
+        if (_remoteCode <= AQS_APP_VERSION_CODE) return;
+
+        /* Don't show again if user already dismissed THIS specific version */
+        var dismissedVer = parseInt(localStorage.getItem(DISMISSED_KEY) || '0', 10);
+        if (_remoteCode <= dismissedVer) {
+          console.log('[AQS-UPD] Already dismissed v' + _remoteCode);
+          return;
         }
+
+        _apkUrl = data.apkUrl || data.downloadUrl || '';
+        showPopup(data);
       })
       .catch(function (err) {
         console.warn('[AQS-UPD] Check failed:', err.message || err);

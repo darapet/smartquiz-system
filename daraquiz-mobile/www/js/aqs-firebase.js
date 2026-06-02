@@ -629,6 +629,10 @@ async function actionEmailLogin(data) {
     /* Save email to localStorage for quick re-entry */
     try { localStorage.setItem('aqs_last_email', email); } catch(_) {}
 
+    /* Mark "just logged in" so the Capacitor auth guard gives Firebase time
+       to restore the IndexedDB session before redirecting to login. */
+    try { sessionStorage.setItem('aqs_login_ts', String(Date.now())); } catch(_) {}
+
     _updateAqsGlobals(user, profile);
 
     return {
@@ -639,9 +643,10 @@ async function actionEmailLogin(data) {
 }
 
 function _generateEmailToken() {
-    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    /* Alphanumeric only — avoids any encoding issues in Firebase Auth passwords */
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
     var token = '';
-    for (var i = 0; i < 32; i++) {
+    for (var i = 0; i < 40; i++) {
         token += chars[Math.floor(Math.random() * chars.length)];
     }
     return token;
@@ -2065,10 +2070,25 @@ function _updateAqsGlobals(user, profile) {
     var authPages      = ['login.html', 'register.html'];
 
     if (protectedPages.indexOf(page) !== -1) {
-        /* Use onAqsAuthChange so we never miss the event if Firebase resolved
-           before this IIFE ran (e.g. on fast cached loads). */
-        window.onAqsAuthChange(function(user) {
-            if (!user) window.location.href = 'login.html';
+        /* Auth guard with Capacitor-safe grace period.
+           In a native WebView, Firebase can briefly fire null before restoring
+           the IndexedDB session. We mark a "just logged in" flag in sessionStorage
+           (written by actionEmailLogin) and give a 2.5 s window before redirecting. */
+        onAuthStateChanged(auth, function(user) {
+            if (user) return; /* signed in — nothing to do */
+
+            var justLoggedIn = parseInt(sessionStorage.getItem('aqs_login_ts') || '0', 10);
+            var age = Date.now() - justLoggedIn;
+
+            if (justLoggedIn && age < 5000) {
+                /* Session was established within the last 5 s — wait for Firebase to
+                   restore from IndexedDB before deciding the user is logged out. */
+                setTimeout(function() {
+                    if (!auth.currentUser) window.location.href = 'login.html';
+                }, 2500);
+            } else {
+                window.location.href = 'login.html';
+            }
         });
     }
 
