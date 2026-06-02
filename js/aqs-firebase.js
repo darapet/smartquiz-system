@@ -1977,6 +1977,7 @@ async function actionGetMyQuizzes(data) {
             time_limit:    q.time_limit,
             mode:          q.mode,
             status:        q.status,
+            host_status:   q.host_status || 'active',
             quiz_url:      q.quiz_url || '',
             created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
         };
