@@ -5,39 +5,6 @@
 (function () {
 'use strict';
 
-  /* ── CAPACITOR SPEECH GUARD ──────────────────────────────────────────────────
-     window.webkitSpeechRecognition / window.speechSynthesis exist in Android
-     WebView but crash or silently fail inside Capacitor when used. This block
-     runs first inside the IIFE and makes every existing  if (!SpeechRec) guard
-     in this file fire correctly — voice is disabled gracefully, not crashed.   */
-  (function () {
-      var _isNative = !!(window.Capacitor &&
-          typeof window.Capacitor.isNativePlatform === 'function' &&
-          window.Capacitor.isNativePlatform());
-      if (!_isNative) return;
-      /* Nullify broken Speech Recognition */
-      try { Object.defineProperty(window, 'SpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.SpeechRecognition = null; }
-      try { Object.defineProperty(window, 'webkitSpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.webkitSpeechRecognition = null; }
-      /* Wrap speechSynthesis.speak() — prevents UI freezing when voice list empty */
-      if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') {
-          var _orig = window.speechSynthesis.speak.bind(window.speechSynthesis);
-          window.speechSynthesis.speak = function (utt) {
-              try {
-                  var vs = window.speechSynthesis.getVoices();
-                  if (vs.length === 0) {
-                      var done = false;
-                      var go = function () { if (done) return; done = true; try { _orig(utt); } catch (e2) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} } };
-                      window.speechSynthesis.addEventListener('voiceschanged', go);
-                      setTimeout(go, 2000);
-                  } else { _orig(utt); }
-              } catch (e) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} }
-          };
-      }
-  })();
-  
-
 /* ── CONFIG ─────────────────────────────────────────────────── */
 var CFG        = window.AQS_CONFIG || {};
 var GROQ_MODEL = CFG.groqModel || 'llama-3.3-70b-versatile';
@@ -83,8 +50,8 @@ function _stdInit() {
     setupFileUpload();
     setupEvents();
     renderHistory();
-    injectSummonStyles();
-    injectSummonUI();
+    // injectSummonStyles(); // floating voice bot removed
+    // injectSummonUI(); // floating voice bot removed
     initSummonVoices();
     /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
     setTimeout(checkAI, 500);
@@ -1038,13 +1005,9 @@ function summonHandleSetup(q) {
    the AI speaks (speakingQueue flag) and re-enabled with a delay. */
 
 /* ── RECOGNITION ─────────────────────────────────────────────── */
-var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0;
+var _recDisabled = false, _recRetryTimer = null, _recWatchdog = null, _recLastEvent = 0, _nextFinalIndex = 0;
 
 function _doStartRecognition() {
-      /* Trigger Android mic permission dialog if not yet granted */
-      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          navigator.mediaDevices.getUserMedia({ audio: true }).catch(function () {});
-      }
     if (_recDisabled) return;
     var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) return;
@@ -1057,26 +1020,36 @@ function _doStartRecognition() {
     VS.recognition.onend = function () {
         VS.listening = false; _recStopWatchdog();
         if (!_recDisabled && !VS.speakingQueue) {
-            _recRetryTimer = setTimeout(_doStartRecognition, 400);
+            /* 900ms lets the audio hardware fully settle before re-opening the
+               mic, which eliminates the popping click on restart. */
+            _nextFinalIndex = 0;
+            _recRetryTimer = setTimeout(_doStartRecognition, 900);
         }
     };
     VS.recognition.onerror = function (e) {
         _recLastEvent = Date.now();
-        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-          _recDisabled = true;
-          var el = document.getElementById('std-summon-transcript') || document.getElementById('std-summon-state-txt');
-          if (el) el.textContent = '🎙️ Mic access denied — please allow microphone in your device settings and try again.';
-          return;
-      }
+        if (e.error === 'not-allowed' || e.error === 'service-not-allowed') { _recDisabled = true; return; }
         VS.listening = false; _recStopWatchdog();
-        if (!_recDisabled) _recRetryTimer = setTimeout(_doStartRecognition, 800);
+        if (!_recDisabled) {
+            _nextFinalIndex = 0;
+            _recRetryTimer = setTimeout(_doStartRecognition, 1200);
+        }
     };
     VS.recognition.onresult = function (e) {
         _recLastEvent = Date.now();
         var interim = '', final = '';
         for (var i = e.resultIndex; i < e.results.length; i++) {
-            if (e.results[i].isFinal) final += e.results[i][0].transcript;
-            else interim += e.results[i][0].transcript;
+            if (e.results[i].isFinal) {
+                /* Guard against Chrome re-delivering already-processed final
+                   results (e.resultIndex can be 0 on every event in continuous
+                   mode, causing each new word to re-append earlier words). */
+                if (i >= _nextFinalIndex) {
+                    final += e.results[i][0].transcript;
+                    _nextFinalIndex = i + 1;
+                }
+            } else {
+                interim += e.results[i][0].transcript;
+            }
         }
         VS._interimSnapshot = interim;
         if (interim) { summonShowInterim(interim); summonResetSilence(); }
@@ -1094,17 +1067,8 @@ function summonStartListening() {
     _recDisabled = false;
     clearTimeout(_recRetryTimer); _recStopWatchdog();
     VS.transcript = ''; VS._interimSnapshot = '';
-    /* FIX: explicitly request mic permission so browser shows the prompt */
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-        navigator.mediaDevices.getUserMedia({ audio: true })
-            .then(function (stream) {
-                stream.getTracks().forEach(function (t) { t.stop(); });
-                _doStartRecognition();
-            })
-            .catch(function () { _doStartRecognition(); });
-    } else {
-        _doStartRecognition();
-    }
+    _nextFinalIndex = 0;
+    _doStartRecognition();
 }
 
 function _recStartWatchdog() {
@@ -1366,16 +1330,11 @@ function summonStopQueue() {
 function summonSpeakOne(text, onDone) {
     if (!VS.synth || !text) { if (onDone) onDone(); return; }
     summonPickVoice(); VS.speaking = true;
-    try { VS.synth.cancel(); } catch(e) {}
     var u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
     if (VS.voice) u.voice = VS.voice;
-    /* FIX: Chrome silently pauses speechSynthesis — poll and resume */
-    var _rc = setInterval(function () {
-        if (VS.synth && VS.synth.paused) { try { VS.synth.resume(); } catch(e) {} }
-    }, 250);
-    u.onend  = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
-    u.onerror = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
+    u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
+    u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
     VS.synth.speak(u);
 }
 
@@ -1394,51 +1353,15 @@ function summonSpeakStream(text, isCheckpoint) {
 }
 
 function summonSpeak(text, onDone) {
-      summonSetState('speaking'); VS.speaking = true;
-      /* Pollinations TTS — works reliably in Capacitor WebView on Android/iOS.
-         Falls back to browser speechSynthesis if Pollinations fetch fails. */
-      var ttsText = text.slice(0, 350);
-      var ttsUrl  = 'https://audio.pollinations.ai/' + encodeURIComponent(ttsText) +
-                    '?voice=nova&model=openai-audio&nc=' + Date.now();
-      var ctrl = new AbortController();
-      var timer = setTimeout(function () { ctrl.abort(); }, 12000);
-      fetch(ttsUrl, { signal: ctrl.signal })
-          .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('http'); return r.blob(); })
-          .then(function (blob) {
-              var blobUrl = URL.createObjectURL(blob);
-              var aud = new Audio();
-              aud.setAttribute('playsinline', '');
-              aud.setAttribute('webkit-playsinline', '');
-              aud.volume = 1.0;
-              aud.src = blobUrl;
-              aud.onended = function () {
-                  try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                  VS.speaking = false; if (onDone) onDone();
-              };
-              aud.onerror = function () {
-                  try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                  _summonSpeakSynth(text, onDone);
-              };
-              /* Ensure audio context is unlocked before playing (Android fix) */
-              if (typeof window.AQSUnlockAudio === 'function') window.AQSUnlockAudio();
-              aud.play().catch(function () { _summonSpeakSynth(text, onDone); });
-          })
-          .catch(function () { clearTimeout(timer); _summonSpeakSynth(text, onDone); });
-  }
-  function _summonSpeakSynth(text, onDone) {
-      VS.speaking = true;
-      if (!VS.synth) { VS.speaking = false; if (onDone) onDone(); return; }
-      try { VS.synth.cancel(); } catch(e) {}
-      summonPickVoice();
-      var u = new SpeechSynthesisUtterance(text);
-      u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
-      if (VS.voice) u.voice = VS.voice;
-      var _rc = setInterval(function () {
-          if (VS.synth && VS.synth.paused) { try { VS.synth.resume(); } catch(e) {} }
-      }, 250);
-      u.onend = u.onerror = function () { clearInterval(_rc); VS.speaking = false; if (onDone) onDone(); };
-      VS.synth.speak(u);
-  }
+    if (!VS.synth) { if (onDone) onDone(); return; }
+    try { VS.synth.cancel(); } catch(e) {}
+    summonPickVoice(); summonSetState('speaking'); VS.speaking = true;
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+    if (VS.voice) u.voice = VS.voice;
+    u.onend = u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+    VS.synth.speak(u);
+}
 
 /* ── INJECT STYLES ───────────────────────────────────────────── */
 function injectSummonStyles() {
