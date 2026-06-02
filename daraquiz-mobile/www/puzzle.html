@@ -31,9 +31,94 @@ window.AQS_HOME_URL='index.html';
 </header>
 
 <!-- ══════════════════════════════════════════════════
+     SCREEN: HOW TO PLAY
+══════════════════════════════════════════════════ -->
+<div id="pz-screen-howtoplay" class="pz-screen active">
+<div class="pz-main">
+
+  <div class="pz-hero">
+    <h1>🧩 How to Play</h1>
+    <p>Puzzle Battle — understand the game before you start</p>
+  </div>
+
+  <!-- Game Modes -->
+  <div class="pz-card">
+    <div class="pz-card-title">🎮 4 Game Modes</div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+
+      <div style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.25);border-radius:10px;padding:14px 16px;">
+        <div style="font-weight:700;color:#a5b4fc;font-size:.95rem;margin-bottom:4px;">⚡ Quiz Battle</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.65;">Pick the correct answer from 4 choices (A/B/C/D). The faster you answer, the more points you earn. As soon as you pick, you get instant feedback — correct/wrong — plus an AI explanation!</div>
+      </div>
+
+      <div style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.22);border-radius:10px;padding:14px 16px;">
+        <div style="font-weight:700;color:#6ee7b7;font-size:.95rem;margin-bottom:4px;">🔤 Word Hunt</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.65;">A clue is shown and you type the hidden word. Blank cells show how many letters. A free hint letter is revealed every 8 seconds. Type your answer and press Enter or tap →</div>
+      </div>
+
+      <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.22);border-radius:10px;padding:14px 16px;">
+        <div style="font-weight:700;color:#fcd34d;font-size:.95rem;margin-bottom:4px;">📝 Crossword</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.65;">Across and Down clues appear on screen. Tap a clue to select it, then type the answer. Solve as many as you can before time runs out — most solved wins!</div>
+      </div>
+
+      <div style="background:rgba(236,72,153,0.1);border:1px solid rgba(236,72,153,0.22);border-radius:10px;padding:14px 16px;">
+        <div style="font-weight:700;color:#f9a8d4;font-size:.95rem;margin-bottom:4px;">🧩 Jigsaw Quiz</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.65;">Answer 9 questions to unlock all 9 puzzle pieces on your 3×3 board. Each correct answer fills one piece. Complete your board before everyone else to win!</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Step-by-step -->
+  <div class="pz-card">
+    <div class="pz-card-title">📋 Step-by-Step</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="background:#6366f1;color:#fff;border-radius:50%;width:26px;height:26px;min-width:26px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;margin-top:2px;">1</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.6;"><strong style="color:#e2e8f0;">Host creates a room</strong> — picks subject, game mode, number of questions and time per question, then clicks "Create Room".</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="background:#6366f1;color:#fff;border-radius:50%;width:26px;height:26px;min-width:26px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;margin-top:2px;">2</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.6;"><strong style="color:#e2e8f0;">Share the 6-letter room code</strong> — friends open puzzle.html, switch to "Join Room", type the code and their name, then tap "Join Room". No account needed!</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="background:#6366f1;color:#fff;border-radius:50%;width:26px;height:26px;min-width:26px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;margin-top:2px;">3</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.6;"><strong style="color:#e2e8f0;">Host taps "Start Game"</strong> — XZILY AI generates all questions (takes ~5–10 seconds). Everyone gets the same questions at the same time.</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="background:#6366f1;color:#fff;border-radius:50%;width:26px;height:26px;min-width:26px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;margin-top:2px;">4</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.6;"><strong style="color:#e2e8f0;">Play!</strong> — Answer as fast as you can. Scores update live for everyone. Chat with players on the right side.</div>
+      </div>
+      <div style="display:flex;gap:12px;align-items:flex-start;">
+        <div style="background:#10b981;color:#fff;border-radius:50%;width:26px;height:26px;min-width:26px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;margin-top:2px;">🏆</div>
+        <div style="color:#94a3b8;font-size:.85rem;line-height:1.6;"><strong style="color:#e2e8f0;">Highest score wins!</strong> — Full leaderboard and podium shown at the end.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scoring -->
+  <div class="pz-card">
+    <div class="pz-card-title">💡 Scoring & Tips</div>
+    <div style="color:#94a3b8;font-size:.85rem;line-height:1.9;">
+      ⚡ <strong style="color:#e2e8f0;">Speed bonus</strong> — correct answers earn up to +5 extra points if answered quickly<br>
+      🔥 <strong style="color:#e2e8f0;">Combo bonus</strong> — 3 correct in a row earns +3 bonus points<br>
+      ❌ <strong style="color:#e2e8f0;">No penalty</strong> — wrong answers don't remove points, always try!<br>
+      ⏰ <strong style="color:#e2e8f0;">No answer</strong> — if time runs out without picking, that question scores 0
+    </div>
+  </div>
+
+  <button onclick="document.querySelectorAll('.pz-screen').forEach(function(s){s.classList.remove('active')});var s=document.getElementById('pz-screen-setup');if(s){s.classList.add('active');window.scrollTo(0,0);}" class="pz-btn pz-btn-primary pz-btn-full" style="font-size:1rem;padding:15px;margin-top:4px;">
+    🚀 Got it — Let's Play!
+  </button>
+  <p style="text-align:center;color:#475569;font-size:.78rem;margin-top:10px;">You can play solo or with up to 10 friends at the same time</p>
+
+</div>
+</div><!-- /howtoplay -->
+
+<!-- ══════════════════════════════════════════════════
      SCREEN: SETUP
 ══════════════════════════════════════════════════ -->
-<div id="pz-screen-setup" class="pz-screen active">
+<div id="pz-screen-setup" class="pz-screen">
 <div class="pz-main">
 
   <div class="pz-hero">
