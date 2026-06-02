@@ -50,8 +50,8 @@ function _stdInit() {
     setupFileUpload();
     setupEvents();
     renderHistory();
-    injectSummonStyles();
-    injectSummonUI();
+    // injectSummonStyles(); // floating voice bot removed
+    // injectSummonUI(); // floating voice bot removed
     initSummonVoices();
     /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
     setTimeout(checkAI, 500);
