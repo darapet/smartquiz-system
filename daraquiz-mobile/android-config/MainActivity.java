@@ -31,6 +31,7 @@ public class MainActivity extends BridgeActivity {
     private long activeDownloadId = -1;
     private WebView appWebView;
     private DownloadManager downloadManager;
+    private BroadcastReceiver downloadReceiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,7 +64,7 @@ public class MainActivity extends BridgeActivity {
         WebSettings settings = appWebView.getSettings();
         settings.setMediaPlaybackRequiresUserGesture(false);
 
-        // Attach native download bridge — JS calls window.AqsDownloadBridge.startDownload(url, name)
+        /* Attach native download bridge — JS calls window.AqsDownloadBridge.startDownload(url, name) */
         appWebView.addJavascriptInterface(new AqsDownloadBridge(), "AqsDownloadBridge");
 
         appWebView.setWebChromeClient(new WebChromeClient() {
@@ -87,44 +88,73 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
-        // Listen for DownloadManager completion
+        /* Register DownloadManager completion receiver */
+        downloadReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                if (id != activeDownloadId) return;
+
+                DownloadManager.Query query = new DownloadManager.Query();
+                query.setFilterById(id);
+                android.database.Cursor cursor = downloadManager.query(query);
+                if (cursor != null && cursor.moveToFirst()) {
+                    int status = cursor.getInt(
+                        cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                    cursor.close();
+                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                        notifyJs(100);
+                        Uri apkUri = downloadManager.getUriForDownloadedFile(id);
+                        if (apkUri != null) openInstaller(apkUri);
+                    } else {
+                        notifyJsError();
+                    }
+                }
+            }
+        };
+
         IntentFilter filter = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(downloadReceiver, filter, Context.RECEIVER_EXPORTED);
-        } else {
-            registerReceiver(downloadReceiver, filter);
+        registerReceiver(downloadReceiver, filter);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        if (downloadReceiver != null) {
+            try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) {}
+            downloadReceiver = null;
         }
     }
 
     @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        try { unregisterReceiver(downloadReceiver); } catch (Exception ignored) {}
-    }
-
-    /** Called by the BroadcastReceiver when DownloadManager finishes */
-    private final BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
-            if (id != activeDownloadId) return;
-
-            DownloadManager.Query query = new DownloadManager.Query();
-            query.setFilterById(id);
-            android.database.Cursor cursor = downloadManager.query(query);
-            if (cursor != null && cursor.moveToFirst()) {
-                int status = cursor.getInt(cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
-                cursor.close();
-                if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                    notifyJs(100);
-                    Uri apkUri = downloadManager.getUriForDownloadedFile(id);
-                    if (apkUri != null) openInstaller(apkUri);
-                } else {
-                    notifyJsError();
+    protected void onStart() {
+        super.onStart();
+        if (downloadReceiver == null) {
+            downloadReceiver = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context context, Intent intent) {
+                    long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                    if (id != activeDownloadId) return;
+                    DownloadManager.Query query = new DownloadManager.Query();
+                    query.setFilterById(id);
+                    android.database.Cursor cursor = downloadManager.query(query);
+                    if (cursor != null && cursor.moveToFirst()) {
+                        int status = cursor.getInt(
+                            cursor.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
+                        cursor.close();
+                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            notifyJs(100);
+                            Uri apkUri = downloadManager.getUriForDownloadedFile(id);
+                            if (apkUri != null) openInstaller(apkUri);
+                        } else {
+                            notifyJsError();
+                        }
+                    }
                 }
-            }
+            };
+            registerReceiver(downloadReceiver, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         }
-    };
+    }
 
     /** Push progress percentage (0-100) back to the web page */
     private void notifyJs(final int pct) {
@@ -146,17 +176,13 @@ public class MainActivity extends BridgeActivity {
         Intent install = new Intent(Intent.ACTION_VIEW);
         install.setDataAndType(apkUri, "application/vnd.android.package-archive");
         install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        try {
-            startActivity(install);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        try { startActivity(install); } catch (Exception e) { e.printStackTrace(); }
     }
 
-    /** Background thread that polls DownloadManager for progress */
+    /** Background thread: polls DownloadManager every 400ms and reports progress to JS */
     private void pollProgress() {
+        final long id = activeDownloadId;
         new Thread(() -> {
-            final long id = activeDownloadId;
             while (true) {
                 try { Thread.sleep(400); } catch (InterruptedException e) { break; }
                 if (id != activeDownloadId) break;
@@ -170,12 +196,13 @@ public class MainActivity extends BridgeActivity {
                 int status = c.getInt(c.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS));
                 if (status == DownloadManager.STATUS_FAILED ||
                     status == DownloadManager.STATUS_SUCCESSFUL) {
-                    c.close();
-                    break;
+                    c.close(); break;
                 }
 
-                long done  = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
-                long total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
+                long done  = c.getLong(c.getColumnIndexOrThrow(
+                    DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR));
+                long total = c.getLong(c.getColumnIndexOrThrow(
+                    DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
                 c.close();
 
                 if (total > 0) {
@@ -194,7 +221,7 @@ public class MainActivity extends BridgeActivity {
                 try {
                     DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
                     req.setTitle("DaraQuiz AI Update");
-                    req.setDescription("Downloading update…");
+                    req.setDescription("Downloading update, please wait…");
                     req.setNotificationVisibility(
                         DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
                     req.setDestinationInExternalFilesDir(
