@@ -1,8 +1,8 @@
 {
-  "version": "1.47",
-  "versionCode": 32,
+  "version": "1.48",
+  "versionCode": 33,
   "releaseDate": "2026-06-02",
-  "notes": "Puzzle: how-to-play intro screen + instant answer feedback (timer stops when you pick, explanation shows immediately, next question after 2s).",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.47/daraquiz-v1.47.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.47/daraquiz-v1.47.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.48/daraquiz-v1.48.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.48/daraquiz-v1.48.apk"
 }
