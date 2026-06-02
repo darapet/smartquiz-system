@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.Manifest;
@@ -84,7 +85,7 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
-        registerReceiver(new BroadcastReceiver() {
+        BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
                 long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
@@ -107,7 +108,16 @@ public class MainActivity extends BridgeActivity {
                     notifyJsError();
                 }
             }
-        }, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        };
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(downloadReceiver,
+                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
+                Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(downloadReceiver,
+                new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
+        }
     }
 
     private void notifyJs(final int pct) {
@@ -149,8 +159,18 @@ public class MainActivity extends BridgeActivity {
                 long total = c.getLong(c.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES));
                 c.close();
 
-                if (status == DownloadManager.STATUS_FAILED ||
-                    status == DownloadManager.STATUS_SUCCESSFUL) break;
+                if (status == DownloadManager.STATUS_FAILED) {
+                    notifyJsError();
+                    break;
+                }
+
+                if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                    /* Backup: trigger install from poll thread in case BroadcastReceiver missed it */
+                    notifyJs(100);
+                    Uri apkUri = downloadManager.getUriForDownloadedFile(myId);
+                    if (apkUri != null) openInstaller(apkUri);
+                    break;
+                }
 
                 if (total > 0) notifyJs((int) Math.min(99, (done * 100) / total));
             }
