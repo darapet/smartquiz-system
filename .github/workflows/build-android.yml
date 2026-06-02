@@ -211,6 +211,7 @@ jobs:
           fi
           git diff --cached --quiet && exit 0
           git commit -m "chore: release v${{ steps.ver.outputs.new_ver }} (build ${{ steps.ver.outputs.new_code }}) [skip ci]"
+          git pull --rebase origin main
           git push
 
       - name: Summary
