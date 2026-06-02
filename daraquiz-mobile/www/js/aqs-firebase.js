@@ -17,6 +17,7 @@ import {
     updateProfile,
     GoogleAuthProvider,
     signInWithCredential,
+    signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
     getFirestore,
@@ -120,6 +121,28 @@ window.onAqsAuthChange = function(fn) {
 function requireAuth() {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('Not authenticated');
+    return user;
+}
+
+/* ── Guest / anonymous session ──────────────────────────────────────────────
+   Allows unauthenticated users (no sign-up) to create quizzes and use the app.
+   Signs in anonymously with Firebase so they get a real UID that satisfies
+   Firestore security rules (isSignedIn() = auth != null).
+   The anonymous UID is cached in localStorage so the same guest can always
+   access their own quizzes across page reloads.
+   ─────────────────────────────────────────────────────────────────────────── */
+async function getOrCreateGuestSession() {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (user) return user;
+    /* Firebase may already have an anonymous session in IndexedDB — signInAnonymously
+       reuses it automatically when persistence is LOCAL (the default on mobile). */
+    var cred = await signInAnonymously(auth);
+    user = cred.user;
+    window._aqsFirebaseUser = user;
+    /* Remember this guest UID so the dashboard can show their quizzes */
+    try { localStorage.setItem('aqs_guest_uid', user.uid); } catch(_) {}
+    /* Fire the authchange event so session.js can inject the user bar */
+    document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
     return user;
 }
 
@@ -543,21 +566,29 @@ async function actionEmailLogin(data) {
 
     /* Safe Firestore document key from email (no slashes, dots, etc.) */
     var safeKey = btoa(email).replace(/[^A-Za-z0-9]/g, '_');
+    var lsKey   = 'aqs_et_' + safeKey;
 
-    /* 1. Look up existing token */
-    var tokenRef  = doc(db, 'email_tokens', safeKey);
-    var tokenSnap = await getDoc(tokenRef);
+    /* 1. Check localStorage first — avoids a Firestore round-trip on repeat visits */
     var token;
+    try { token = localStorage.getItem(lsKey); } catch(_) {}
 
-    if (tokenSnap.exists()) {
-        token = tokenSnap.data().token;
-    } else {
-        /* 2. New user — generate a random token */
-        token = _generateEmailToken();
-        await setDoc(tokenRef, { email: email, token: token, created_at: serverTimestamp() });
+    if (!token) {
+        /* 2. Look up existing token in Firestore */
+        var tokenRef  = doc(db, 'email_tokens', safeKey);
+        var tokenSnap = await getDoc(tokenRef);
+
+        if (tokenSnap.exists()) {
+            token = tokenSnap.data().token;
+            try { localStorage.setItem(lsKey, token); } catch(_) {} /* cache it */
+        } else {
+            /* 3. New user — generate a random token and persist to both stores */
+            token = _generateEmailToken();
+            try { await setDoc(tokenRef, { email: email, token: token, created_at: serverTimestamp() }); } catch(_) {}
+            try { localStorage.setItem(lsKey, token); } catch(_) {}
+        }
     }
 
-    /* 3. Try to sign in — if account doesn't exist yet, create it */
+    /* 4. Try to sign in — if account doesn't exist yet, create it */
     var user;
     try {
         var cred = await signInWithEmailAndPassword(auth, email, token);
@@ -570,10 +601,13 @@ async function actionEmailLogin(data) {
                 user = newCred.user;
             } catch (createErr) {
                 if (createErr.code === 'auth/email-already-in-use') {
-                    /* Edge case: account exists with an old password (pre-migration).
-                       Remove the stale token from Firestore so next attempt re-generates. */
-                    try { await deleteDoc(tokenRef); } catch(_) {}
-                    throw new Error('This email has an existing account. Please ask the admin to reset it, or sign in with your old password at the login page.');
+                    /* This email has a password-based account (registered via register.html).
+                       Clear the stale token from both stores so the next email-only attempt
+                       doesn't keep trying the same wrong token.
+                       Prefix "PASSWORD_ACCOUNT:" is read by login.html to show the password field. */
+                    try { localStorage.removeItem(lsKey); } catch(_) {}
+                    try { await deleteDoc(doc(db, 'email_tokens', safeKey)); } catch(_) {}
+                    throw new Error('PASSWORD_ACCOUNT:This email is registered with a password. Please enter your password below.');
                 }
                 throw createErr;
             }
@@ -656,7 +690,12 @@ function _generateEmailToken() {
    QUIZ ACTIONS
    ============================================================ */
 async function actionSaveQuiz(data) {
-    var user = requireAuth();
+    /* Allow guests: sign in anonymously if no account exists yet.
+       The anonymous UID is cached in localStorage so the guest's quizzes
+       are tied to the same "account" across sessions on the same device. */
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) { user = await getOrCreateGuestSession(); }
+
     var questions = [];
     try { questions = JSON.parse(data.questions_json || data.questions || '[]'); } catch(_) {}
     var customForm = [];
@@ -774,7 +813,9 @@ async function actionGetQuizForPdf(data) {
 }
 
 async function actionPublishQuiz(data) {
-    var user   = requireAuth();
+    /* Allow guests (anonymous auth) to publish their own quizzes */
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) { user = await getOrCreateGuestSession(); }
     var quizId = String(data.quiz_id || '');
     var snap   = await getDoc(doc(db, 'quizzes', quizId));
     if (!snap.exists()) throw new Error('Quiz not found.');
