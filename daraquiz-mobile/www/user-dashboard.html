@@ -170,6 +170,18 @@ window.AQS = {
     </a>
   </div>
 
+  <!-- My Created Quizzes -->
+  <div class="udash-activity-card">
+    <div class="udash-activity-title">🗂️ My Created Quizzes
+      <span style="font-size:.75rem;font-weight:500;color:#94a3b8;margin-left:4px;" id="udash-myquiz-count"></span>
+      <a href="create-quiz.html" style="margin-left:auto;font-size:.78rem;font-weight:600;color:#4f46e5;text-decoration:none;padding:4px 12px;border:1px solid #c7d2fe;border-radius:20px;background:#f5f3ff;">+ New Quiz</a>
+    </div>
+    <div id="udash-myquiz-list">
+      <div class="udash-skeleton" style="width:70%;"></div>
+      <div class="udash-skeleton" style="width:50%;"></div>
+    </div>
+  </div>
+
   <!-- Quiz Activity -->
   <div class="udash-activity-card">
     <div class="udash-activity-title">📋 Quiz Activity
@@ -238,6 +250,71 @@ window.AQS = {
         }).catch(function(){});
     }
 
+    function mqBtn(style, label, extra){ return '<button style="font-size:.7rem;padding:3px 9px;border-radius:6px;font-weight:600;cursor:pointer;border:1px solid transparent;'+style+'" '+extra+'>'+label+'</button>'; }
+
+    function renderMyQuizCards(items){
+        var el = document.getElementById('udash-myquiz-list');
+        var ct = document.getElementById('udash-myquiz-count');
+        if(ct) ct.textContent = items.length ? '('+items.length+' quiz'+(items.length!==1?'zes':'')+')' : '';
+        if(!items.length){
+            el.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#94a3b8;">'+
+                '<div style="font-size:2.5rem;margin-bottom:8px;">✏️</div>'+
+                '<p style="margin:0 0 10px;font-weight:600;color:#64748b;">No quizzes created yet</p>'+
+                '<p style="margin:0;font-size:.87rem;color:#94a3b8;">Create your first quiz and it will appear here.</p>'+
+                '<a href="create-quiz.html" style="display:inline-block;margin-top:14px;background:#4f46e5;color:#fff;padding:9px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:.88rem;">+ Create Quiz</a>'+
+                '</div>';
+            return;
+        }
+        el.innerHTML = items.map(function(q, i){
+            var isDisabled  = q.host_status === 'disabled';
+            var isPublished = q.status === 'published' && !isDisabled;
+            var statusColor = isDisabled ? '#ef4444' : isPublished ? '#10b981' : '#f59e0b';
+            var statusBg    = isDisabled ? '#fef2f2' : isPublished ? '#ecfdf5' : '#fffbeb';
+            var statusLabel = isDisabled ? 'Disabled' : isPublished ? 'Published' : 'Draft';
+            var border = i===items.length-1 ? 'border-bottom:none' : 'border-bottom:1px solid #f1f5f9';
+            var nQ = q.num_questions || 0;
+            var viewUrl = 'quiz-manage.html?id='+q.id;
+            var editUrl = 'create-quiz.html?edit='+q.id;
+            var toggleAction = isDisabled ? 'enable' : 'disable';
+            var toggleLabel  = isDisabled ? '✅ Enable' : '⛔ Disable';
+            var toggleStyle  = isDisabled ? 'background:#f0fdf4;color:#059669;border-color:#bbf7d0;' : 'background:#fffbeb;color:#d97706;border-color:#fde68a;';
+            return '<div id="mqcard-'+q.id+'" style="display:flex;align-items:flex-start;gap:12px;padding:13px 0;'+border+'">'+
+                '<div style="width:44px;height:44px;border-radius:11px;background:'+statusBg+';border:2px solid '+statusColor+';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.2rem;margin-top:2px;">📝</div>'+
+                '<div style="flex:1;min-width:0;">'+
+                    '<div style="font-weight:700;font-size:.88rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(q.title||'Untitled Quiz')+'</div>'+
+                    (q.subject?'<div style="font-size:.72rem;color:#6366f1;margin:2px 0;">'+q.subject+'</div>':'')+
+                    '<div style="font-size:.75rem;color:#94a3b8;margin-bottom:7px;">'+nQ+' question'+(nQ!==1?'s:':'s')+' &middot; '+(q.mode||'exam')+'</div>'+
+                    '<div style="display:flex;flex-wrap:wrap;gap:5px;">'+
+                        '<a href="'+viewUrl+'" style="font-size:.7rem;padding:3px 9px;border-radius:6px;background:#f5f3ff;color:#4f46e5;text-decoration:none;font-weight:600;border:1px solid #ddd6fe;">👁️ View</a>'+
+                        '<a href="'+editUrl+'" style="font-size:.7rem;padding:3px 9px;border-radius:6px;background:#eff6ff;color:#2563eb;text-decoration:none;font-weight:600;border:1px solid #bfdbfe;">✏️ Edit</a>'+
+                        mqBtn(toggleStyle, toggleLabel, 'onclick="udashToggleQuiz(\''+q.id+'\',\''+toggleAction+'\')"')+
+                        mqBtn('background:#fef2f2;color:#dc2626;border-color:#fecaca;', '🗑️ Delete', 'onclick="window.location.href=\'quiz-manage.html?id='+q.id+'\'"')+
+                    '</div>'+
+                '</div>'+
+                '<span style="font-size:.7rem;font-weight:700;color:'+statusColor+';background:'+statusBg+';padding:3px 9px;border-radius:20px;border:1px solid '+statusColor+'33;flex-shrink:0;">'+statusLabel+'</span>'+
+            '</div>';
+        }).join('');
+    }
+
+    function loadMyQuizzes(){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_quizzes', limit:50}).then(function(items){
+            renderMyQuizCards(Array.isArray(items) ? items : []);
+        }).catch(function(){
+            document.getElementById('udash-myquiz-list').innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Could not load quizzes. <a href="#" onclick="location.reload()">Retry</a></p>';
+        });
+    }
+
+    window.udashToggleQuiz = function(quizId, toggleAction){
+        jQuery.post(AQS.ajax_url, {action:'aqs_toggle_quiz_status', quiz_id: quizId, toggle_action: toggleAction}).then(function(){
+            var label = toggleAction === 'disable' ? 'Quiz disabled.' : 'Quiz enabled.';
+            var toastEl = document.createElement('div');
+            toastEl.textContent = label;
+            toastEl.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:30px;font-size:.87rem;font-weight:600;z-index:9999;';
+            document.body.appendChild(toastEl);
+            setTimeout(function(){ toastEl.remove(); loadMyQuizzes(); }, 1500);
+        }).catch(function(e){ alert('Error: ' + (e.message || 'Could not toggle quiz.')); });
+    };
+
     function loadActivity(){
         var el = document.getElementById('udash-activity-list');
         var ct = document.getElementById('udash-activity-count');
@@ -290,6 +367,7 @@ window.AQS = {
     waitReady(function(){
         loadProfile();
         loadStats();
+        loadMyQuizzes();
         loadActivity();
     });
 })();
