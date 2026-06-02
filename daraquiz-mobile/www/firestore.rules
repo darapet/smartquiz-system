@@ -47,6 +47,14 @@ rules_version = '2';
         allow write: if isAdmin() || isSignedIn();
       }
 
+      // ─── Email tokens (passwordless sign-in) ─────────────────────────
+      // Keyed by a safe base64 of the email → { token, created_at }.
+      // Public read+write needed so the app can look up / create a token
+      // before any Firebase Auth session exists.
+      match /email_tokens/{tokenId} {
+        allow read, write: if true;
+      }
+
       // ─── Settings ───────────────────────────────────────────────────
       match /settings/{settingId} {
         // Anyone can read settings (needed for notifications, splash, etc.)
@@ -76,4 +84,3 @@ rules_version = '2';
 
     }
   }
-  

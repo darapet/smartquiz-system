@@ -275,6 +275,7 @@ async function handleAction(data) {
     var action = data.action || '';
     switch(action) {
         /* ── AUTH ── */
+        case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
         case 'aqs_register':         return await actionRegister(data);
         case 'aqs_social_login':     return await actionSocialLogin(data);
@@ -528,6 +529,122 @@ async function actionVerifyOtp(data) {
     if (Date.now() > (profile.otp_exp || 0)) throw new Error('Code expired. Please request a new one.');
     await updateDoc(doc(db, 'users', user.uid), { otp: null, otp_exp: null, email_verified: true });
     return { verified: true };
+}
+
+/* ============================================================
+   EMAIL-ONLY (PASSWORDLESS) LOGIN
+   Uses a per-email auto-generated token stored in Firestore
+   email_tokens/{safeKey} → { token, created_at }
+   The user never sees or enters a password.
+   ============================================================ */
+async function actionEmailLogin(data) {
+    var email = (data.email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') === -1) throw new Error('Please enter a valid email address.');
+
+    /* Safe Firestore document key from email (no slashes, dots, etc.) */
+    var safeKey = btoa(email).replace(/[^A-Za-z0-9]/g, '_');
+
+    /* 1. Look up existing token */
+    var tokenRef  = doc(db, 'email_tokens', safeKey);
+    var tokenSnap = await getDoc(tokenRef);
+    var token;
+
+    if (tokenSnap.exists()) {
+        token = tokenSnap.data().token;
+    } else {
+        /* 2. New user — generate a random token */
+        token = _generateEmailToken();
+        await setDoc(tokenRef, { email: email, token: token, created_at: serverTimestamp() });
+    }
+
+    /* 3. Try to sign in — if account doesn't exist yet, create it */
+    var user;
+    try {
+        var cred = await signInWithEmailAndPassword(auth, email, token);
+        user = cred.user;
+    } catch (signInErr) {
+        /* auth/invalid-credential = wrong password OR user not found (Firebase v10) */
+        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+            try {
+                var newCred = await createUserWithEmailAndPassword(auth, email, token);
+                user = newCred.user;
+            } catch (createErr) {
+                if (createErr.code === 'auth/email-already-in-use') {
+                    /* Edge case: account exists with an old password (pre-migration).
+                       Remove the stale token from Firestore so next attempt re-generates. */
+                    try { await deleteDoc(tokenRef); } catch(_) {}
+                    throw new Error('This email has an existing account. Please ask the admin to reset it, or sign in with your old password at the login page.');
+                }
+                throw createErr;
+            }
+        } else {
+            throw signInErr;
+        }
+    }
+
+    /* 4. Token refresh */
+    try { await user.getIdToken(true); } catch(_) {}
+
+    /* 5. Build display name from email local part */
+    var displayName = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+
+    /* 6. Ensure Firestore user profile exists */
+    var profileRef = doc(db, 'users', user.uid);
+    var profileDoc = await getDoc(profileRef);
+    var profile;
+
+    if (profileDoc.exists()) {
+        profile = profileDoc.data();
+        /* Update last login */
+        try { await updateDoc(profileRef, { last_login: serverTimestamp() }); } catch(_) {}
+    } else {
+        /* Auto-create profile */
+        var autoUsername = email.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase().substring(0, 20);
+        /* Ensure username uniqueness */
+        var collision = await getDoc(doc(db, 'usernames', autoUsername));
+        if (collision.exists()) autoUsername = autoUsername + Math.floor(1000 + Math.random() * 9000);
+
+        profile = {
+            uid:        user.uid,
+            name:       displayName,
+            username:   autoUsername,
+            email:      email,
+            role:       'student',
+            provider:   'email',
+            status:     'active',
+            created_at: serverTimestamp(),
+            last_login: serverTimestamp()
+        };
+        try {
+            await setDoc(profileRef, profile);
+            await setDoc(doc(db, 'usernames', autoUsername), { uid: user.uid });
+        } catch(fsErr) {
+            console.warn('[AQS EmailLogin] Firestore profile write failed (will retry):', fsErr && fsErr.message);
+        }
+
+        /* Update Firebase Auth display name */
+        try { await updateProfile(user, { displayName: displayName }); } catch(_) {}
+    }
+
+    /* Save email to localStorage for quick re-entry */
+    try { localStorage.setItem('aqs_last_email', email); } catch(_) {}
+
+    _updateAqsGlobals(user, profile);
+
+    return {
+        logged_in:  true,
+        redirect:   _dashboardUrl(profile.role),
+        user_name:  profile.name || displayName
+    };
+}
+
+function _generateEmailToken() {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%';
+    var token = '';
+    for (var i = 0; i < 32; i++) {
+        token += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return token;
 }
 
 /* ============================================================

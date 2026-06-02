@@ -2,187 +2,356 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>Sign In — DaraQuiz AI</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/aqs-style.css">
-<link rel="stylesheet" href="css/aqs-auth.css">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 html,body{height:100%;font-family:'Inter',sans-serif;}
-body{background:linear-gradient(135deg,#0f0c29 0%,#302b63 50%,#24243e 100%);min-height:100vh;display:flex;align-items:stretch;}
 
-/* ── Two-column layout ── */
-.auth-wrap{display:flex;width:100%;min-height:100vh;}
+body{
+  background:#0d1117;
+  min-height:100vh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  position:relative;
+  overflow:hidden;
+}
 
-/* ── Left panel (branding) ── */
-.auth-left{flex:1;display:none;flex-direction:column;justify-content:space-between;padding:48px;background:rgba(0,0,0,.25);border-right:1px solid rgba(99,102,241,.15);position:relative;overflow:hidden;}
-@media(min-width:900px){.auth-left{display:flex;}}
-.auth-left::before{content:'';position:absolute;top:-100px;left:-100px;width:400px;height:400px;background:radial-gradient(circle,rgba(99,102,241,.25) 0%,transparent 70%);pointer-events:none;}
-.auth-left::after{content:'';position:absolute;bottom:-100px;right:-100px;width:350px;height:350px;background:radial-gradient(circle,rgba(139,92,246,.2) 0%,transparent 70%);pointer-events:none;}
-.auth-brand-logo{display:flex;align-items:center;gap:12px;color:#e0e7ff;font-weight:800;font-size:1.15rem;position:relative;z-index:1;}
-.auth-brand-tagline{position:relative;z-index:1;}
-.auth-brand-tagline h1{font-size:2.4rem;font-weight:800;color:#fff;line-height:1.2;letter-spacing:-.03em;margin-bottom:16px;}
-.auth-brand-tagline h1 span{background:linear-gradient(135deg,#a5b4fc,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-.auth-brand-tagline p{font-size:1rem;color:rgba(255,255,255,.6);line-height:1.7;max-width:340px;}
-.auth-features{display:flex;flex-direction:column;gap:14px;position:relative;z-index:1;}
-.auth-feature{display:flex;align-items:flex-start;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;}
-.auth-feature-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;}
-.auth-feature-text{font-size:.84rem;color:rgba(255,255,255,.75);line-height:1.5;}
-.auth-feature-text strong{color:#e0e7ff;display:block;margin-bottom:2px;font-size:.86rem;}
-.auth-testimonial{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px;position:relative;z-index:1;}
-.auth-testimonial p{font-size:.88rem;color:rgba(255,255,255,.7);line-height:1.6;font-style:italic;margin-bottom:10px;}
-.auth-testimonial-author{font-size:.75rem;color:#a5b4fc;font-weight:600;}
+/* Animated background blobs */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:
+    radial-gradient(ellipse 60% 50% at 20% 20%, rgba(99,102,241,0.18) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 60% at 80% 80%, rgba(139,92,246,0.15) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 40% at 50% 50%, rgba(79,70,229,0.08) 0%, transparent 70%);
+  pointer-events:none;
+  z-index:0;
+}
 
-/* ── Right panel (form) ── */
-.auth-right{display:flex;align-items:center;justify-content:center;padding:40px 24px;flex:none;width:100%;}
-@media(min-width:900px){.auth-right{width:440px;flex:none;}}
-.auth-card{width:100%;max-width:400px;}
-.auth-card-brand{text-align:center;margin-bottom:28px;}
-.auth-card-brand-logo{display:inline-flex;align-items:center;justify-content:center;width:54px;height:54px;border-radius:16px;background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(139,92,246,.2));border:1px solid rgba(99,102,241,.35);margin-bottom:14px;}
-.auth-card-title{font-size:1.6rem;font-weight:800;color:#e0e7ff;margin-bottom:5px;letter-spacing:-.02em;}
-.auth-card-sub{font-size:.88rem;color:#64748b;}
+.wrap{
+  position:relative;z-index:1;
+  width:100%;max-width:400px;
+}
 
-/* ── Alert ── */
-.auth-alert{display:none;padding:11px 14px;border-radius:10px;font-size:.85rem;margin-bottom:16px;line-height:1.5;}
-.auth-alert.error{background:rgba(225,29,72,.1);border:1px solid rgba(225,29,72,.3);color:#f87171;}
-.auth-alert.warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:#fcd34d;}
-.auth-alert.info{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;}
+/* Logo / brand */
+.brand{
+  text-align:center;
+  margin-bottom:36px;
+}
+.brand-icon{
+  width:64px;height:64px;
+  border-radius:20px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  box-shadow:0 0 0 1px rgba(99,102,241,0.4), 0 12px 40px rgba(99,102,241,0.35);
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-bottom:16px;
+  animation:pulse 3s ease-in-out infinite;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 1px rgba(99,102,241,0.4),0 12px 40px rgba(99,102,241,0.35)}50%{box-shadow:0 0 0 1px rgba(99,102,241,0.6),0 12px 48px rgba(99,102,241,0.5)}}
+.brand-name{font-size:1.5rem;font-weight:800;color:#f1f5f9;letter-spacing:-.02em;margin-bottom:4px;}
+.brand-sub{font-size:.875rem;color:#64748b;font-weight:500;}
 
-/* ── Social ── */
-.auth-social{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
-.auth-social-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 20px;border-radius:12px;font-size:.9rem;font-weight:600;cursor:pointer;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#e0e7ff;transition:background .15s,border-color .15s,transform .1s;font-family:'Inter',sans-serif;-webkit-tap-highlight-color:transparent;}
-.auth-social-btn:hover{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.2);}
-.auth-social-btn:active{transform:scale(0.98);}
+/* Card */
+.card{
+  background:rgba(255,255,255,0.04);
+  border:1px solid rgba(255,255,255,0.08);
+  border-radius:24px;
+  padding:32px 28px;
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  box-shadow:0 24px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+@media(max-width:440px){.card{padding:24px 20px;border-radius:18px;}}
 
-/* ── Divider ── */
-.auth-divider{display:flex;align-items:center;gap:12px;margin:16px 0;color:#475569;font-size:.78rem;font-weight:500;}
-.auth-divider::before,.auth-divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.08);}
+.card-title{
+  font-size:1.1rem;font-weight:700;color:#e2e8f0;
+  margin-bottom:6px;
+}
+.card-sub{
+  font-size:.82rem;color:#64748b;
+  margin-bottom:24px;line-height:1.5;
+}
 
-/* ── Form ── */
-.auth-field{margin-bottom:14px;}
-.auth-field label{display:block;font-size:.78rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
-.auth-field input{width:100%;padding:12px 14px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:11px;color:#e0e7ff;font-size:.92rem;font-family:'Inter',sans-serif;transition:border-color .15s,background .15s;outline:none;}
-.auth-field input:focus{border-color:rgba(99,102,241,.6);background:rgba(99,102,241,.08);}
-.auth-field input::placeholder{color:#475569;}
-.auth-pw-wrap{position:relative;}
-.auth-pw-wrap input{padding-right:44px;}
-.auth-pw-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#475569;padding:4px;display:flex;transition:color .15s;}
-.auth-pw-toggle:hover{color:#94a3b8;}
-.auth-forgot{display:block;text-align:right;font-size:.78rem;color:#6366f1;text-decoration:none;margin-top:5px;font-weight:600;}
-.auth-forgot:hover{color:#818cf8;}
-.auth-submit{width:100%;padding:13px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;border-radius:12px;color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:transform .1s,box-shadow .15s;box-shadow:0 4px 20px rgba(99,102,241,.35);margin-top:8px;}
-.auth-submit:hover{box-shadow:0 6px 28px rgba(99,102,241,.5);}
-.auth-submit:active{transform:scale(0.98);}
-.auth-submit:disabled{opacity:.7;cursor:not-allowed;}
-.auth-switch{text-align:center;margin-top:20px;font-size:.85rem;color:#64748b;}
-.auth-switch a{color:#818cf8;font-weight:600;text-decoration:none;}
-.auth-switch a:hover{color:#a5b4fc;}
+/* Alert */
+.alert{
+  display:none;
+  padding:11px 14px;
+  border-radius:10px;
+  font-size:.83rem;
+  font-weight:500;
+  margin-bottom:16px;
+  line-height:1.5;
+}
+.alert.error{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+.alert.success{background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);color:#6ee7b7;}
+.alert.info{background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;}
+.alert.show{display:block;}
 
-/* ── Loading spinner in button ── */
-.auth-spinner{display:inline-block;width:16px;height:16px;border:2.5px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:_spin .7s linear infinite;vertical-align:middle;}
-@keyframes _spin{to{transform:rotate(360deg)}}
+/* Email step */
+#step-email, #step-loading, #step-done{transition:opacity .25s;}
+
+.field-label{
+  display:block;
+  font-size:.75rem;font-weight:600;
+  color:#64748b;
+  text-transform:uppercase;letter-spacing:.07em;
+  margin-bottom:7px;
+}
+.email-input{
+  width:100%;
+  padding:14px 16px;
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(255,255,255,0.1);
+  border-radius:12px;
+  color:#e2e8f0;
+  font-size:1rem;
+  font-family:'Inter',sans-serif;
+  outline:none;
+  transition:border-color .15s,background .15s;
+  margin-bottom:16px;
+}
+.email-input:focus{
+  border-color:rgba(99,102,241,.65);
+  background:rgba(99,102,241,.07);
+}
+.email-input::placeholder{color:#475569;}
+
+.submit-btn{
+  width:100%;
+  padding:14px 20px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  border:none;border-radius:12px;
+  color:#fff;font-size:.95rem;font-weight:700;
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+  transition:transform .1s,box-shadow .15s,opacity .15s;
+  box-shadow:0 4px 20px rgba(99,102,241,.4);
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.submit-btn:hover{box-shadow:0 6px 28px rgba(99,102,241,.55);transform:translateY(-1px);}
+.submit-btn:active{transform:translateY(0);}
+.submit-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+
+.spinner{
+  width:18px;height:18px;
+  border:2.5px solid rgba(255,255,255,.3);
+  border-top-color:#fff;
+  border-radius:50%;
+  animation:spin .7s linear infinite;
+  display:none;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Loading state */
+#step-loading{
+  display:none;
+  text-align:center;
+  padding:20px 0;
+}
+.loading-ring{
+  width:48px;height:48px;
+  border:3px solid rgba(99,102,241,.2);
+  border-top-color:#6366f1;
+  border-radius:50%;
+  animation:spin .9s linear infinite;
+  margin:0 auto 16px;
+}
+.loading-text{font-size:.9rem;color:#94a3b8;}
+
+/* Done state */
+#step-done{display:none;text-align:center;padding:12px 0;}
+.done-icon{
+  font-size:2.8rem;
+  margin-bottom:12px;
+  animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes popIn{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+.done-title{font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;}
+.done-sub{font-size:.85rem;color:#94a3b8;line-height:1.5;}
+
+/* Bottom note */
+.bottom-note{
+  text-align:center;
+  font-size:.76rem;
+  color:#334155;
+  margin-top:20px;
+  line-height:1.5;
+}
+
+/* Divider */
+.divider{
+  display:flex;align-items:center;gap:10px;
+  margin:18px 0;
+  color:#334155;font-size:.75rem;font-weight:500;
+}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,.07);}
 </style>
 <script>
-window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'create-quiz.html',studio_url:'studio.html',dashboard_url:'dashboard.html',register_url:'register.html',is_logged_in:false,is_host:false,is_admin:false,groq_key:'',plugin_url:'./'};
+window.AQS={
+  ajax_url:'firebase',nonce:'',home_url:'index.html',
+  create_page_url:'create-quiz.html',studio_url:'studio.html',
+  dashboard_url:'dashboard.html',register_url:'login.html',
+  is_logged_in:false,is_host:false,is_admin:false,groq_key:'',plugin_url:'./'
+};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
 </head>
 <body>
-<div class="auth-wrap">
 
-  <!-- LEFT: Branding panel (desktop only) -->
-  <div class="auth-left">
-    <div class="auth-brand-logo">
-      <svg width="32" height="32" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity="0.08"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
-      DaraQuiz AI
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="32" height="32" viewBox="0 0 36 36" fill="none">
+        <polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/>
+        <circle cx="18" cy="18" r="6" fill="#6366f1"/>
+      </svg>
     </div>
-    <div class="auth-brand-tagline">
-      <h1>The Smarter Way to<br><span>Learn &amp; Quiz</span></h1>
-      <p>AI-powered quizzes, intelligent study sessions, voice chat tutoring and live challenges — all in one platform.</p>
+    <div class="brand-name">DaraQuiz AI</div>
+    <div class="brand-sub">Powered by Darapet Technology</div>
+  </div>
+
+  <div class="card">
+    <div id="aqs-login-alert" class="alert"></div>
+
+    <!-- Step 1: Email input -->
+    <div id="step-email">
+      <div class="card-title">Welcome!</div>
+      <div class="card-sub">Enter your email to sign in or create your account — no password needed.</div>
+
+      <form id="aqs-email-form" autocomplete="off" novalidate>
+        <label class="field-label" for="login-email">Your Email Address</label>
+        <input
+          type="email"
+          id="login-email"
+          class="email-input"
+          placeholder="you@example.com"
+          autocomplete="email"
+          inputmode="email"
+          required
+        />
+        <button type="submit" class="submit-btn" id="aqs-email-submit">
+          <span id="btn-label">Continue with Email</span>
+          <span class="spinner" id="btn-spinner"></span>
+        </button>
+      </form>
     </div>
-    <div class="auth-features">
-      <div class="auth-feature">
-        <div class="auth-feature-icon" style="background:rgba(99,102,241,.2);">🤖</div>
-        <div class="auth-feature-text"><strong>AI Quiz Generation</strong>Type any topic and get perfect multiple-choice questions instantly.</div>
-      </div>
-      <div class="auth-feature">
-        <div class="auth-feature-icon" style="background:rgba(139,92,246,.2);">💬</div>
-        <div class="auth-feature-text"><strong>AI Chat Studio</strong>Ask questions, get explanations, and study smarter with your AI tutor.</div>
-      </div>
-      <div class="auth-feature">
-        <div class="auth-feature-icon" style="background:rgba(245,158,11,.15);">⚔️</div>
-        <div class="auth-feature-text"><strong>Live Challenges</strong>Battle friends in real-time head-to-head quiz competitions.</div>
-      </div>
+
+    <!-- Step 2: Loading -->
+    <div id="step-loading">
+      <div class="loading-ring"></div>
+      <div class="loading-text" id="loading-msg">Setting up your account…</div>
     </div>
-    <div class="auth-testimonial">
-      <p>"DaraQuiz AI helped me study smarter and score higher — the AI quiz generator saves me hours every week."</p>
-      <div class="auth-testimonial-author">⭐⭐⭐⭐⭐ — Student, SEMS</div>
+
+    <!-- Step 3: Done -->
+    <div id="step-done">
+      <div class="done-icon">✅</div>
+      <div class="done-title" id="done-title">You're in!</div>
+      <div class="done-sub" id="done-sub">Taking you to your dashboard…</div>
     </div>
   </div>
 
-  <!-- RIGHT: Form panel -->
-  <div class="auth-right">
-    <div class="auth-card">
-
-      <div class="auth-card-brand">
-        <div class="auth-card-brand-logo">
-          <svg width="28" height="28" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg>
-        </div>
-        <div class="auth-card-title">Welcome back</div>
-        <div class="auth-card-sub">Sign in to your DaraQuiz AI account</div>
-      </div>
-
-      <div id="aqs-login-alert" class="auth-alert"></div>
-
-      <form id="aqs-login-form" autocomplete="off" novalidate>
-        <div class="auth-field">
-          <label for="login-identifier">Email or Username</label>
-          <input type="text" id="login-identifier" placeholder="you@example.com" required autocomplete="username" />
-        </div>
-        <div class="auth-field">
-          <label for="login-password">Password</label>
-          <div class="auth-pw-wrap">
-            <input type="password" id="login-password" placeholder="Your password" required autocomplete="current-password" />
-            <button type="button" class="auth-pw-toggle" data-target="login-password" aria-label="Toggle visibility">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-          </div>
-        </div>
-        <button type="submit" class="auth-submit" id="aqs-login-submit">Sign In</button>
-      </form>
-
-      <p class="auth-switch">
-        Don't have an account? <a href="register.html">Create account</a>
-      </p>
-
-    </div>
+  <div class="bottom-note">
+    By continuing you agree to our terms of service.<br>
+    Your email is used only for sign-in and tracking your quiz data.
   </div>
 </div>
 
 <script>
-/* Password toggle */
-document.querySelectorAll('.auth-pw-toggle').forEach(function(btn) {
-  btn.addEventListener('click', function() {
-    var inp = document.getElementById(btn.dataset.target);
-    if (!inp) return;
-    inp.type = inp.type === 'password' ? 'text' : 'password';
-  });
-});
-/* Timeout reason */
-document.addEventListener('DOMContentLoaded', function() {
-  if (window.location.search.indexOf('reason=timeout') !== -1) {
-    var al = document.getElementById('aqs-login-alert');
-    al.className = 'auth-alert warn';
-    al.textContent = 'You were logged out after 20 minutes of inactivity. Please sign in again.';
-    al.style.display = 'block';
+(function() {
+  'use strict';
+
+  function showAlert(msg, type) {
+    var el = document.getElementById('aqs-login-alert');
+    el.textContent = msg;
+    el.className = 'alert show ' + (type || 'error');
   }
-});
+  function hideAlert() {
+    var el = document.getElementById('aqs-login-alert');
+    el.className = 'alert';
+  }
+
+  function showStep(name) {
+    ['step-email','step-loading','step-done'].forEach(function(id) {
+      document.getElementById(id).style.display = (id === 'step-' + name) ? '' : 'none';
+    });
+  }
+
+  function setLoading(on) {
+    var btn    = document.getElementById('aqs-email-submit');
+    var label  = document.getElementById('btn-label');
+    var spinner= document.getElementById('btn-spinner');
+    btn.disabled  = on;
+    label.style.display  = on ? 'none' : '';
+    spinner.style.display= on ? 'inline-block' : 'none';
+  }
+
+  /* Handle inactivity timeout message */
+  if (window.location.search.indexOf('reason=timeout') !== -1) {
+    showAlert('You were signed out after inactivity. Enter your email to sign in again.', 'info');
+  }
+
+  document.getElementById('aqs-email-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    hideAlert();
+    var email = (document.getElementById('login-email').value || '').trim().toLowerCase();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showAlert('Please enter a valid email address.', 'error');
+      return;
+    }
+
+    setLoading(true);
+
+    function doLogin() {
+      if (typeof window.aqsAjax !== 'function') {
+        setTimeout(doLogin, 300);
+        return;
+      }
+      showStep('loading');
+      document.getElementById('loading-msg').textContent = 'Signing you in…';
+
+      window.aqsAjax(
+        { action: 'aqs_email_login', email: email },
+        function(res) {
+          if (res && res.success && res.data && res.data.redirect) {
+            showStep('done');
+            var name = res.data.user_name || email.split('@')[0];
+            document.getElementById('done-title').textContent = 'Welcome, ' + name + '!';
+            document.getElementById('done-sub').textContent   = 'Taking you to your dashboard…';
+            setTimeout(function() {
+              window.location.replace(res.data.redirect);
+            }, 900);
+          } else {
+            var msg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Sign-in failed.')) : 'Sign-in failed.';
+            showStep('email');
+            showAlert(msg, 'error');
+            setLoading(false);
+          }
+        },
+        function(err) {
+          showStep('email');
+          showAlert((err && err.message) || 'Sign-in failed. Please try again.', 'error');
+          setLoading(false);
+        }
+      );
+    }
+
+    doLogin();
+  });
+
+  /* Auto-fill email if previously stored */
+  var savedEmail = localStorage.getItem('aqs_last_email');
+  if (savedEmail) {
+    document.getElementById('login-email').value = savedEmail;
+  }
+})();
 </script>
 <script src="js/aqs-notifs-bar.js"></script>
-<script src="js/aqs-auth.js"></script>
 <script src="js/aqs-session.js"></script>
 <script src="capacitor-bridge.js"></script>
 </body>
