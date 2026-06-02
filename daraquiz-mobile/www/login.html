@@ -235,11 +235,25 @@ window.AQS={
           inputmode="email"
           required
         />
+        <!-- Password fallback — shown only when the email has a password-based account -->
+        <div id="pw-fallback" style="display:none;">
+          <label class="field-label" for="login-password" style="margin-top:4px;">Password</label>
+          <input
+            type="password"
+            id="login-password"
+            class="email-input"
+            placeholder="Enter your password"
+            autocomplete="current-password"
+          />
+        </div>
         <button type="submit" class="submit-btn" id="aqs-email-submit">
           <span id="btn-label">Continue with Email</span>
           <span class="spinner" id="btn-spinner"></span>
         </button>
       </form>
+      <div style="text-align:center;margin-top:14px;">
+        <a href="register.html" style="font-size:.8rem;color:#6366f1;text-decoration:none;">Don't have an account? Register</a>
+      </div>
     </div>
 
     <!-- Step 2: Loading -->
@@ -266,6 +280,9 @@ window.AQS={
 (function() {
   'use strict';
 
+  var _currentEmail = '';
+  var _pwMode = false; /* true when showing the password fallback field */
+
   function showAlert(msg, type) {
     var el = document.getElementById('aqs-login-alert');
     el.textContent = msg;
@@ -291,6 +308,25 @@ window.AQS={
     spinner.style.display= on ? 'inline-block' : 'none';
   }
 
+  function showPasswordFallback(email) {
+    _pwMode = true;
+    document.getElementById('pw-fallback').style.display = '';
+    document.getElementById('btn-label').textContent = 'Sign In with Password';
+    document.getElementById('login-email').readOnly = true;
+    document.getElementById('login-email').style.opacity = '0.6';
+    document.getElementById('login-password').focus();
+  }
+
+  function onLoginSuccess(res) {
+    showStep('done');
+    var name = (res.data && res.data.user_name) || _currentEmail.split('@')[0];
+    document.getElementById('done-title').textContent = 'Welcome, ' + name + '!';
+    document.getElementById('done-sub').textContent   = 'Taking you to your dashboard…';
+    setTimeout(function() {
+      window.location.replace(res.data.redirect);
+    }, 900);
+  }
+
   /* Handle inactivity timeout message */
   if (window.location.search.indexOf('reason=timeout') !== -1) {
     showAlert('You were signed out after inactivity. Enter your email to sign in again.', 'info');
@@ -299,19 +335,54 @@ window.AQS={
   document.getElementById('aqs-email-form').addEventListener('submit', function(e) {
     e.preventDefault();
     hideAlert();
+
     var email = (document.getElementById('login-email').value || '').trim().toLowerCase();
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       showAlert('Please enter a valid email address.', 'error');
       return;
     }
+    _currentEmail = email;
 
     setLoading(true);
 
-    function doLogin() {
-      if (typeof window.aqsAjax !== 'function') {
-        setTimeout(doLogin, 300);
+    /* ── Password fallback mode: user has a password-based account ── */
+    if (_pwMode) {
+      var password = (document.getElementById('login-password').value || '');
+      if (!password) {
+        showAlert('Please enter your password.', 'error');
+        setLoading(false);
         return;
       }
+      function doPasswordLogin() {
+        if (typeof window.aqsAjax !== 'function') { setTimeout(doPasswordLogin, 300); return; }
+        showStep('loading');
+        document.getElementById('loading-msg').textContent = 'Signing you in…';
+        window.aqsAjax(
+          { action: 'aqs_login', username: email, password: password },
+          function(res) {
+            if (res && res.success && res.data && res.data.redirect) {
+              onLoginSuccess(res);
+            } else {
+              var msg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Wrong password.')) : 'Wrong password.';
+              showStep('email');
+              showAlert(msg, 'error');
+              setLoading(false);
+            }
+          },
+          function(err) {
+            showStep('email');
+            showAlert((err && err.message) || 'Sign-in failed. Check your password and try again.', 'error');
+            setLoading(false);
+          }
+        );
+      }
+      doPasswordLogin();
+      return;
+    }
+
+    /* ── Normal email-only mode ── */
+    function doLogin() {
+      if (typeof window.aqsAjax !== 'function') { setTimeout(doLogin, 300); return; }
       showStep('loading');
       document.getElementById('loading-msg').textContent = 'Signing you in…';
 
@@ -319,24 +390,31 @@ window.AQS={
         { action: 'aqs_email_login', email: email },
         function(res) {
           if (res && res.success && res.data && res.data.redirect) {
-            showStep('done');
-            var name = res.data.user_name || email.split('@')[0];
-            document.getElementById('done-title').textContent = 'Welcome, ' + name + '!';
-            document.getElementById('done-sub').textContent   = 'Taking you to your dashboard…';
-            setTimeout(function() {
-              window.location.replace(res.data.redirect);
-            }, 900);
+            onLoginSuccess(res);
           } else {
-            var msg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Sign-in failed.')) : 'Sign-in failed.';
+            var rawMsg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Sign-in failed.')) : 'Sign-in failed.';
             showStep('email');
-            showAlert(msg, 'error');
             setLoading(false);
+            /* PASSWORD_ACCOUNT prefix = show password field */
+            if (rawMsg.indexOf('PASSWORD_ACCOUNT:') === 0) {
+              showAlert(rawMsg.replace('PASSWORD_ACCOUNT:', ''), 'info');
+              showPasswordFallback(email);
+            } else {
+              showAlert(rawMsg, 'error');
+            }
           }
         },
         function(err) {
+          var errMsg = (err && err.message) || 'Sign-in failed. Please try again.';
           showStep('email');
-          showAlert((err && err.message) || 'Sign-in failed. Please try again.', 'error');
           setLoading(false);
+          /* PASSWORD_ACCOUNT prefix from the thrown Error */
+          if (errMsg.indexOf('PASSWORD_ACCOUNT:') === 0) {
+            showAlert(errMsg.replace('PASSWORD_ACCOUNT:', ''), 'info');
+            showPasswordFallback(email);
+          } else {
+            showAlert(errMsg, 'error');
+          }
         }
       );
     }
@@ -345,10 +423,10 @@ window.AQS={
   });
 
   /* Auto-fill email if previously stored */
-  var savedEmail = localStorage.getItem('aqs_last_email');
-  if (savedEmail) {
-    document.getElementById('login-email').value = savedEmail;
-  }
+  try {
+    var savedEmail = localStorage.getItem('aqs_last_email');
+    if (savedEmail) { document.getElementById('login-email').value = savedEmail; }
+  } catch(_) {}
 })();
 </script>
 <script src="js/aqs-notifs-bar.js"></script>
