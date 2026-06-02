@@ -438,6 +438,7 @@ window.AQS = {
       btns += '<button class="qm-btn qm-btn-warn" onclick="openToggleModal(\'disable\')">⛔ Disable Quiz</button>';
     }
 
+    btns += '<a href="quiz-leaderboard.html?id=' + quizId + '&from=quiz-manage.html%3Fid%3D' + quizId + '" class="qm-btn qm-btn-outline">🏆 Leaderboard</a>';
     btns += '<button class="qm-btn qm-btn-danger" onclick="openDeleteModal()">🗑️ Delete</button>';
 
     document.getElementById('qm-actions').innerHTML = btns;
