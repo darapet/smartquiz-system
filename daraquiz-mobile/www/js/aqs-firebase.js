@@ -93,15 +93,37 @@ function tsToStr(ts) {
 
 /* ── Auth state cache ── */
 window._aqsFirebaseUser = null;
-window._aqsAuthResolved = false;   /* true once onAuthStateChanged has fired at least once */
+window._aqsAuthResolved = false;   /* true once auth state is fully determined (after persistence) */
 window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = logged out; object = logged in */
 
-onAuthStateChanged(auth, function(user) {
+/* ── Why authStateReady() matters ───────────────────────────────────────────
+   Firebase's onAuthStateChanged fires TWICE on page load when a session exists:
+     1st call → user = null   (persistence not yet restored from IndexedDB)
+     2nd call → user = User   (IndexedDB read complete, session restored)
+   If we dispatch aqs:authchange on the 1st call, pages like user-dashboard.html
+   see null and redirect to login.html — creating an infinite login loop.
+   auth.authStateReady() resolves only AFTER persistence is fully checked,
+   so we get the real user on the first and only dispatch.
+   ─────────────────────────────────────────────────────────────────────────── */
+auth.authStateReady().then(function() {
+    /* Persistence fully resolved — set globals and fire the initial event */
+    var user = auth.currentUser;
     window._aqsFirebaseUser = user;
     window._aqsAuthResolved = true;
     window._aqsAuthUser     = user;
-    /* Dispatch event so pages can react */
     document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
+
+    /* NOW register ongoing listener for sign-in / sign-out AFTER initial load */
+    onAuthStateChanged(auth, function(user) {
+        window._aqsFirebaseUser = user;
+        window._aqsAuthUser     = user;
+        document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
+    });
+}).catch(function() {
+    /* Fallback: if authStateReady fails, treat as logged out */
+    window._aqsAuthResolved = true;
+    window._aqsAuthUser     = null;
+    document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: null } }));
 });
 
 /* Helper: like addEventListener('aqs:authchange') but fires immediately if auth already resolved.
