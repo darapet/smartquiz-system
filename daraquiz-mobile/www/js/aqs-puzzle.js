@@ -519,17 +519,36 @@ function renderQuizQ(q){
         btn.addEventListener('click', function(){
             if(G.myAnswers[G.currentQ] !== undefined) return;
             var idx = parseInt(btn.dataset.idx);
+            var q   = G.questions[G.currentQ];
             submitAnswer(idx);
             btn.classList.add('selected');
             cont.querySelectorAll('.pz-option').forEach(function(b){ b.disabled = true; });
-            /* Immediate visual feedback */
-            if(idx === G.questions[G.currentQ].answer){
+
+            /* Immediate correct/wrong highlight */
+            if(idx === q.answer){
                 btn.classList.add('correct');
                 showAnswerOverlay('✅');
             } else {
                 btn.classList.add('wrong');
-                cont.querySelectorAll('.pz-option')[G.questions[G.currentQ].answer].classList.add('correct');
+                var opts = cont.querySelectorAll('.pz-option');
+                if(opts[q.answer]) opts[q.answer].classList.add('correct');
                 showAnswerOverlay('❌');
+            }
+
+            /* Show explanation RIGHT NOW — no waiting for timer */
+            if(q.explanation){
+                var ex = $('pz-explanation');
+                if(ex){ ex.textContent = '💡 ' + q.explanation; ex.style.display = ''; }
+            }
+
+            /* Stop the countdown — player already answered */
+            if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+
+            /* Host: advance to next question after 2 s so everyone can read the explanation */
+            if(G.isHost){
+                setTimeout(function(){
+                    if(G.myAnswers[G.currentQ] !== undefined) advanceQuestion();
+                }, 2000);
             }
         });
     });
