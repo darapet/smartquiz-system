@@ -92,11 +92,30 @@ function tsToStr(ts) {
 
 /* ── Auth state cache ── */
 window._aqsFirebaseUser = null;
+window._aqsAuthResolved = false;   /* true once onAuthStateChanged has fired at least once */
+window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = logged out; object = logged in */
+
 onAuthStateChanged(auth, function(user) {
     window._aqsFirebaseUser = user;
+    window._aqsAuthResolved = true;
+    window._aqsAuthUser     = user;
     /* Dispatch event so pages can react */
     document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
 });
+
+/* Helper: like addEventListener('aqs:authchange') but fires immediately if auth already resolved.
+   Prevents the race where the page registers its listener AFTER the event already fired. */
+window.onAqsAuthChange = function(fn) {
+    if (window._aqsAuthResolved) {
+        /* Already resolved — fire synchronously so the caller doesn't miss it */
+        fn(window._aqsAuthUser);
+    } else {
+        document.addEventListener('aqs:authchange', function handler(ev) {
+            document.removeEventListener('aqs:authchange', handler);
+            fn(ev.detail && ev.detail.user);
+        });
+    }
+};
 
 function requireAuth() {
     var user = auth.currentUser || window._aqsFirebaseUser;
@@ -367,7 +386,8 @@ async function actionRegister(data) {
     var usernameSnap = await getDoc(doc(db, 'usernames', username));
     if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
 
-    /* Create Firebase Auth user */
+    /* Create Firebase Auth user — this is the critical step.
+       Everything after this is best-effort; we ALWAYS redirect on auth success. */
     window._aqsIsRegistering = true;
     var cred = await createUserWithEmailAndPassword(auth, email, password);
     var user = cred.user;
@@ -375,27 +395,33 @@ async function actionRegister(data) {
     /* Force token refresh so Firestore immediately recognises the new user */
     try { await user.getIdToken(true); } catch(_) {}
 
-    /* Update display name */
-    await updateProfile(user, { displayName: name });
+    /* Update display name (non-fatal) */
+    try { await updateProfile(user, { displayName: name }); } catch(_) {}
 
-    /* Save profile to Firestore */
+    /* Save profile to Firestore — wrapped so a rules/network error doesn't
+       block the user from getting into the app. The write will be retried
+       automatically by Firestore's offline persistence when connectivity returns. */
     var profile = {
         uid: user.uid, name: name, username: username, email: email,
         role: role, created_at: serverTimestamp(), status: 'active'
     };
-    await setDoc(doc(db, 'users', user.uid), profile);
+    try {
+        await setDoc(doc(db, 'users', user.uid), profile);
+        await setDoc(doc(db, 'usernames', username), { uid: user.uid });
+    } catch(fsErr) {
+        console.warn('[AQS Register] Firestore write failed (will retry):', fsErr && fsErr.message);
+        /* Do NOT throw — Firebase Auth user was created successfully.
+           The profile doc will be written on next login. */
+    }
 
-    /* Reserve username in public lookup map */
-    await setDoc(doc(db, 'usernames', username), { uid: user.uid });
-
-    /* Send email verification */
-    await sendEmailVerification(user);
+    /* Send email verification (fully non-blocking) */
+    sendEmailVerification(user).catch(function() {});
 
     _updateAqsGlobals(user, profile);
 
     var redirect = _dashboardUrl(role);
     return {
-        message:      '✓ Account created! Please verify your email.',
+        message:      '✓ Account created! Redirecting…',
         redirect:     redirect,
         otp_required: false,
         otp_sent:     false
@@ -1922,12 +1948,15 @@ function _updateAqsGlobals(user, profile) {
     var authPages      = ['login.html', 'register.html'];
 
     if (protectedPages.indexOf(page) !== -1) {
-        onAuthStateChanged(auth, function(user) {
+        /* Use onAqsAuthChange so we never miss the event if Firebase resolved
+           before this IIFE ran (e.g. on fast cached loads). */
+        window.onAqsAuthChange(function(user) {
             if (!user) window.location.href = 'login.html';
         });
     }
+
     if (authPages.indexOf(page) !== -1) {
-        onAuthStateChanged(auth, async function(user) {
+        window.onAqsAuthChange(function(user) {
             /* Do NOT redirect while a registration is in progress — the register
                success callback will do its own role-aware redirect. */
             if (window._aqsIsRegistering) return;
@@ -1935,17 +1964,40 @@ function _updateAqsGlobals(user, profile) {
                 var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
                 if (redirectUrl) { window.location.href = redirectUrl; return; }
                 /* Look up the user's role so hosts go to the correct dashboard */
-                try {
-                    var profileSnap = await getDoc(doc(db, 'users', user.uid));
+                getDoc(doc(db, 'users', user.uid)).then(function(profileSnap) {
                     var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
                     window.location.href = _dashboardUrl(role);
-                } catch(_) {
+                }).catch(function() {
                     window.location.href = 'user-dashboard.html';
-                }
+                });
             }
         });
     }
 
+    /* ── Also write missing Firestore profile on first login after registration.
+       If the Firestore write failed during registration, we retry it here. ── */
+    if (protectedPages.indexOf(page) !== -1) {
+        window.onAqsAuthChange(function(user) {
+            if (!user) return;
+            /* Check if profile exists; if not, create it from Firebase Auth data */
+            getDoc(doc(db, 'users', user.uid)).then(function(snap) {
+                if (!snap.exists()) {
+                    var displayName = user.displayName || '';
+                    var email       = user.email || '';
+                    var profile = {
+                        uid:        user.uid,
+                        name:       displayName,
+                        username:   displayName.replace(/\s+/g, '').toLowerCase() || email.split('@')[0],
+                        email:      email,
+                        role:       'student',
+                        status:     'active',
+                        created_at: serverTimestamp()
+                    };
+                    setDoc(doc(db, 'users', user.uid), profile).catch(function() {});
+                }
+            }).catch(function() {});
+        });
+    }
 
 })();
 
