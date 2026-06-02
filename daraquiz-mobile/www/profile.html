@@ -93,6 +93,16 @@ body{min-height:100vh;background:linear-gradient(135deg,#0f0c29 0%,#1a1545 50%,#
 /* ── Skeleton loader ── */
 .prf-skeleton{background:rgba(255,255,255,.06);border-radius:6px;animation:_skPulse 1.4s ease infinite;}
 @keyframes _skPulse{0%,100%{opacity:.4}50%{opacity:.8}}
+
+/* ── Avatar upload ── */
+.prf-avatar-wrap{cursor:pointer;position:relative;}
+.prf-avatar-upload-overlay{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);border-radius:0 0 50px 50px;display:flex;align-items:center;justify-content:center;padding:5px 0 3px;z-index:3;opacity:0;transition:opacity .2s;pointer-events:none;}
+.prf-avatar-wrap:hover .prf-avatar-upload-overlay,.prf-avatar-wrap:focus .prf-avatar-upload-overlay{opacity:1;}
+.prf-avatar-upload-overlay svg{display:block;}
+.prf-avatar-uploading{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:4;display:none;}
+.prf-avatar-uploading.visible{display:flex;}
+.prf-avatar-uploading-spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:_spin .7s linear infinite;}
+@keyframes _spin{to{transform:rotate(360deg)}}
 </style>
 <script>
 window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'create-quiz.html',studio_url:'studio.html',dashboard_url:'dashboard.html',user_dashboard_url:'user-dashboard.html',is_logged_in:true,is_host:false,is_admin:false,current_user_name:'',groq_key:'',plugin_url:'./'};
@@ -127,10 +137,17 @@ window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'
 
   <!-- Hero -->
   <div class="prf-hero">
-    <div class="prf-avatar-wrap">
+    <div class="prf-avatar-wrap" id="prf-avatar-wrap" title="Tap to change photo" tabindex="0" role="button" aria-label="Change profile photo">
       <div class="prf-avatar" id="prf-avatar-el">U</div>
       <div class="prf-online-dot"></div>
+      <div class="prf-avatar-upload-overlay">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div class="prf-avatar-uploading" id="prf-avatar-uploading">
+        <div class="prf-avatar-uploading-spinner"></div>
+      </div>
     </div>
+    <input type="file" id="prf-avatar-input" accept="image/*" style="display:none;" aria-hidden="true">
     <div class="prf-name" id="prf-name">Loading…</div>
     <div class="prf-username" id="prf-username">@—</div>
     <div class="prf-role-badge" id="prf-role-badge">
@@ -294,8 +311,15 @@ function populateProfile(user, profile) {
   var joined   = (profile && profile.created_at) || null;
   var lastLogin= (profile && profile.last_login) || null;
   var initial  = (name || email || 'U').charAt(0).toUpperCase();
+  var avatarEl = document.getElementById('prf-avatar-el');
 
-  document.getElementById('prf-avatar-el').textContent = initial;
+  /* Show profile photo if saved, otherwise show initial letter */
+  if (profile && profile.avatar) {
+    avatarEl.innerHTML = '<img src="' + profile.avatar + '" alt="Profile photo" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+  } else {
+    avatarEl.textContent = initial;
+  }
+
   document.getElementById('prf-name').textContent      = name || email || 'User';
   document.getElementById('prf-username').textContent  = username ? '@' + username : (email ? '@' + email.split('@')[0] : '');
   document.getElementById('prf-role-badge').innerHTML  =
@@ -358,6 +382,73 @@ document.addEventListener('aqs:authchange', function(ev) {
     }, { once: true });
   }
 });
+
+/* ── Avatar photo upload ── */
+(function() {
+  var wrap  = document.getElementById('prf-avatar-wrap');
+  var input = document.getElementById('prf-avatar-input');
+  var spinner = document.getElementById('prf-avatar-uploading');
+
+  /* Clicking the avatar (or pressing Enter/Space on it) opens the file picker */
+  wrap.addEventListener('click', function() { input.click(); });
+  wrap.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+  });
+
+  input.addEventListener('change', function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    input.value = '';   /* reset so same file can be picked again */
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        /* Crop square and scale to 200×200 */
+        var canvas = document.createElement('canvas');
+        canvas.width = 200; canvas.height = 200;
+        var ctx = canvas.getContext('2d');
+        var s  = Math.min(img.width, img.height);
+        var sx = (img.width  - s) / 2;
+        var sy = (img.height - s) / 2;
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, 200, 200);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.80);
+
+        /* Show preview immediately */
+        document.getElementById('prf-avatar-el').innerHTML =
+          '<img src="' + dataUrl + '" alt="Profile photo" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+
+        /* Upload to Firestore via firebase bridge */
+        if (spinner) spinner.classList.add('visible');
+        if (window.aqsAjax) {
+          window.aqsAjax({ action: 'aqs_update_avatar', avatar: dataUrl }, function(res) {
+            if (spinner) spinner.classList.remove('visible');
+            if (!res || !res.success) {
+              alert('Could not save photo. Please try again.');
+            }
+          }, function() {
+            if (spinner) spinner.classList.remove('visible');
+            alert('Could not save photo. Please check your connection and try again.');
+          });
+        } else {
+          /* aqsAjax not ready yet — wait for firebase:ready event */
+          document.addEventListener('aqs:firebase:ready', function onReady() {
+            document.removeEventListener('aqs:firebase:ready', onReady);
+            window.aqsAjax({ action: 'aqs_update_avatar', avatar: dataUrl }, function(res) {
+              if (spinner) spinner.classList.remove('visible');
+              if (!res || !res.success) alert('Could not save photo. Please try again.');
+            }, function() {
+              if (spinner) spinner.classList.remove('visible');
+            });
+          });
+        }
+      };
+      img.onerror = function() { alert('Could not read image. Please try a different file.'); };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+})();
 
 /* Logout */
 document.getElementById('prf-logout-btn').addEventListener('click', function() {
