@@ -108,7 +108,7 @@
                 function (res) {
                     if (res && res.success && res.data && res.data.redirect) {
                         showAlert('aqs-login-alert', '✓ Signed in! Redirecting…', false);
-                        setTimeout(function () { window.location.href = res.data.redirect; }, 800);
+                        setTimeout(function () { window.location.replace(res.data.redirect || 'user-dashboard.html'); }, 600);
                     } else {
                         var msg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Login failed.')) : 'Login failed.';
                         showAlert('aqs-login-alert', msg, true);
@@ -167,7 +167,7 @@
                         var msg = (res.data && res.data.message) || '✓ Account created! Redirecting…';
                         showAlert('aqs-register-alert', msg, false);
                         var dest = (res.data && res.data.redirect) || 'user-dashboard.html';
-                        setTimeout(function () { window.location.href = dest; }, 1200);
+                        setTimeout(function () { window.location.replace(dest); }, 900);
                     } else {
                         var errMsg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Registration failed.')) : 'Registration failed.';
                         showAlert('aqs-register-alert', errMsg, true);
