@@ -1,8 +1,6 @@
 /**
  * DaraQuiz AI — Android build.gradle (app level)
  * This file goes into:  android/app/build.gradle
- * Capacitor generates this automatically when you run `npx cap add android`
- * This version is provided for reference / customization.
  */
 
 apply plugin: 'com.android.application'
@@ -18,8 +16,16 @@ android {
         versionName "1.1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
-             // Files and dirs to omit from the build artifacts
              ignoreAssetsPattern '!.svn:!.git:!.gitignore:!.ds_store:!*.scc:<dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    signingConfigs {
+        release {
+            def ksFile = project.findProperty('android.injected.signing.store.file')
+            storeFile ksFile ? file(ksFile) : null
+            storePassword project.findProperty('android.injected.signing.store.password') ?: ''
+            keyAlias project.findProperty('android.injected.signing.key.alias') ?: 'daraquiz'
+            keyPassword project.findProperty('android.injected.signing.key.password') ?: ''
         }
     }
     buildTypes {
