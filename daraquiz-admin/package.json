@@ -2,9 +2,8 @@
   "name": "daraquiz-admin",
   "version": "1.0.0",
   "description": "DaraQuiz Admin — Admin-only mobile app by Darapet Technology",
-  "main": "index.js",
   "scripts": {
-    "build": "echo 'Static web app - no build step needed'",
+    "build": "echo 'Static web app'",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "android:release": "cd android && ./gradlew assembleRelease",
@@ -26,14 +25,6 @@
     "@capacitor/cli": "^6.1.0",
     "@capacitor/assets": "^3.0.5"
   },
-  "keywords": [
-    "capacitor",
-    "android",
-    "admin",
-    "quiz",
-    "firebase",
-    "darapet"
-  ],
   "author": "Darapet Technology",
   "license": "MIT"
 }

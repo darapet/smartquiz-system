@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>App Update Manager — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-style.css">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+
+/* Sidebar */
+.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;}
+.aqs-admin-nav{padding:12px 0;flex:1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
+
+/* Content */
+.aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
+.aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+
+/* Cards */
+.aqs-settings-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;}
+.aqs-settings-card-header{display:flex;align-items:flex-start;gap:14px;padding:20px 24px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
+.aqs-settings-card-icon{font-size:1.5rem;flex-shrink:0;}
+.aqs-settings-card-title{margin:0 0 3px;font-size:1rem;font-weight:700;color:#1e293b;}
+.aqs-settings-card-desc{margin:0;font-size:.82rem;color:#64748b;}
+.aqs-settings-card-body{padding:22px 24px;}
+
+/* Fields */
+.aqs-field-group{margin-bottom:16px;}
+.aqs-field-group label{display:block;font-weight:600;font-size:.84rem;color:#374151;margin-bottom:6px;}
+.aqs-field-group input,.aqs-field-group textarea{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:.9rem;color:#1e293b;transition:border-color .15s;font-family:inherit;}
+.aqs-field-group input:focus,.aqs-field-group textarea:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.aqs-field-group textarea{resize:vertical;min-height:80px;}
+.aqs-field-hint{font-size:.78rem;color:#9ca3af;margin-top:4px;}
+.aqs-settings-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+
+/* Buttons */
+.aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
+.aqs-btn:hover{background:#f8fafc;}
+.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.aqs-btn-primary:hover{background:#4338ca;}
+.aqs-btn-success{background:#10b981;color:#fff;border-color:#10b981;}
+.aqs-btn-success:hover{background:#059669;}
+.aqs-btn-danger{background:#ef4444;color:#fff;border-color:#ef4444;}
+.aqs-btn-full{width:100%;justify-content:center;padding:13px 20px;font-size:1rem;}
+.aqs-btn:disabled{opacity:.6;cursor:not-allowed;}
+
+/* Alert boxes */
+.aqs-alert{padding:12px 16px;border-radius:10px;font-size:.88rem;margin-bottom:16px;display:none;}
+.aqs-alert-success{background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;}
+.aqs-alert-error{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;}
+.aqs-alert-info{background:#dbeafe;border:1px solid #93c5fd;color:#1e40af;}
+
+/* Version badge */
+.ver-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:.8rem;font-weight:700;}
+.ver-badge-current{background:#ede9fe;color:#5b21b6;}
+.ver-badge-live{background:#d1fae5;color:#065f46;}
+
+/* Preview box */
+.json-preview{background:#1e293b;border-radius:10px;padding:16px;font-family:'Courier New',monospace;font-size:.8rem;color:#7dd3fc;white-space:pre;overflow-x:auto;margin-top:8px;}
+
+/* Token section */
+.token-section{background:#fff7ed;border:1.5px solid #fed7aa;border-radius:12px;padding:18px 20px;margin-bottom:20px;}
+.token-section h3{margin:0 0 6px;font-size:.95rem;font-weight:700;color:#92400e;}
+.token-section p{margin:0 0 12px;font-size:.82rem;color:#78350f;}
+.token-input-row{display:flex;gap:8px;}
+.token-input-row input{flex:1;border:1.5px solid #fed7aa;border-radius:8px;padding:9px 12px;font-size:.88rem;color:#1e293b;font-family:inherit;background:#fffbf5;}
+.token-input-row input:focus{border-color:#f97316;outline:none;}
+.token-saved{display:none;align-items:center;gap:6px;font-size:.82rem;color:#065f46;font-weight:600;margin-top:8px;}
+
+/* Steps guide */
+.steps-guide{counter-reset:steps;list-style:none;padding:0;margin:0;}
+.steps-guide li{counter-increment:steps;display:flex;gap:12px;align-items:flex-start;margin-bottom:14px;font-size:.88rem;color:#374151;}
+.steps-guide li::before{content:counter(steps);min-width:24px;height:24px;border-radius:50%;background:#6366f1;color:#fff;font-weight:700;font-size:.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;}
+.steps-guide li strong{display:block;margin-bottom:2px;color:#1e293b;}
+.steps-guide li code{background:#f1f5f9;padding:1px 6px;border-radius:4px;font-size:.82rem;color:#6366f1;font-family:'Courier New',monospace;}
+
+@media(max-width:640px){
+  .aqs-admin-sidebar{display:none;}
+  .aqs-admin-content{padding:16px;}
+  .aqs-settings-2col{grid-template-columns:1fr;}
+}
+</style>
+<script>
+window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',is_admin:true,plugin_url:'./'};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<!-- Sidebar -->
+<aside class="aqs-admin-sidebar">
+  <div class="aqs-admin-sidebar-brand">
+    <a href="admin.html">⚙️ Admin Panel</a>
+  </div>
+  <nav class="aqs-admin-nav">
+    <a href="admin.html"><span class="aqs-nav-icon">📊</span>Dashboard</a>
+    <a href="admin-create-quiz.html"><span class="aqs-nav-icon">➕</span>Create Quiz</a>
+    <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span>Hosts</a>
+    <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span>Settings</a>
+    <a href="admin-update.html" class="active"><span class="aqs-nav-icon">🚀</span>App Updates</a>
+    <a href="admin-about.html"><span class="aqs-nav-icon">ℹ️</span>About</a>
+  </nav>
+</aside>
+
+<!-- Main content -->
+<main class="aqs-admin-content">
+  <div class="aqs-admin-header">
+    <h1>🚀 App Update Manager</h1>
+    <div id="live-ver-info"></div>
+  </div>
+
+  <!-- Alert -->
+  <div id="upd-alert" class="aqs-alert"></div>
+
+  <!-- HOW IT WORKS -->
+  <div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+      <div class="aqs-settings-card-icon">📖</div>
+      <div>
+        <p class="aqs-settings-card-title">How App Updates Work</p>
+        <p class="aqs-settings-card-desc">Follow these steps every time you want to push an update to users</p>
+      </div>
+    </div>
+    <div class="aqs-settings-card-body">
+      <ol class="steps-guide">
+        <li>
+          <div>
+            <strong>Build a new APK with a higher version</strong>
+            In your <code>app-build.gradle</code> file, bump <code>versionCode</code> by 1 and <code>versionName</code> (e.g. <code>1.1.0 → 1.2.0</code>). Then build the release APK.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Upload the APK to GitHub Releases</strong>
+            Go to your GitHub repo → Releases → Draft a new release. Tag it <code>v1.2.0</code>, attach the APK file, then publish. Copy the direct download link to the <code>.apk</code> file.
+          </div>
+        </li>
+        <li>
+          <div>
+            <strong>Fill in the form below and tap "Push Update"</strong>
+            Enter the new version, paste the APK link, write what's new — then tap the button. Users with the old version will see the update popup automatically next time they open the app.
+          </div>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- GITHUB TOKEN -->
+  <div class="token-section" id="token-section">
+    <h3>🔑 GitHub Token (one-time setup)</h3>
+    <p>Enter your GitHub Personal Access Token with <strong>repo</strong> write permission. It's saved only on this device — never uploaded anywhere.</p>
+    <div class="token-input-row">
+      <input type="password" id="gh-token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+      <button class="aqs-btn aqs-btn-primary" onclick="saveToken()">Save</button>
+    </div>
+    <div id="token-saved-msg" class="token-saved">✅ Token saved on this device</div>
+    <p style="margin-top:10px;margin-bottom:0;font-size:.78rem;color:#92400e;">
+      Create one at: GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic) → tick <strong>repo</strong>
+    </p>
+  </div>
+
+  <!-- CURRENT VERSION -->
+  <div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+      <div class="aqs-settings-card-icon">📡</div>
+      <div>
+        <p class="aqs-settings-card-title">Current Live Version</p>
+        <p class="aqs-settings-card-desc">This is what's in <code>version.json</code> on GitHub right now</p>
+      </div>
+    </div>
+    <div class="aqs-settings-card-body">
+      <div id="current-ver-card" style="color:#64748b;font-size:.9rem;">Loading from GitHub…</div>
+    </div>
+  </div>
+
+  <!-- PUSH UPDATE FORM -->
+  <div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+      <div class="aqs-settings-card-icon">🚀</div>
+      <div>
+        <p class="aqs-settings-card-title">Push New Update</p>
+        <p class="aqs-settings-card-desc">Fill in the details below and tap Push Update — users will see the update popup instantly</p>
+      </div>
+    </div>
+    <div class="aqs-settings-card-body">
+
+      <div class="aqs-settings-2col">
+        <div class="aqs-field-group">
+          <label>New Version Name <span style="color:#ef4444">*</span></label>
+          <input type="text" id="f-version" placeholder="e.g. 1.2.0" />
+          <div class="aqs-field-hint">Must be higher than the current live version</div>
+        </div>
+        <div class="aqs-field-group">
+          <label>Version Code <span style="color:#ef4444">*</span></label>
+          <input type="number" id="f-vcode" placeholder="e.g. 5" min="1" />
+          <div class="aqs-field-hint">Must match what you put in app-build.gradle</div>
+        </div>
+      </div>
+
+      <div class="aqs-field-group">
+        <label>APK Download URL <span style="color:#ef4444">*</span></label>
+        <input type="text" id="f-apkurl" placeholder="https://github.com/darapet/smartquiz-system/releases/download/v1.2.0/app-release.apk" />
+        <div class="aqs-field-hint">Direct link to the .apk file from your GitHub Release</div>
+      </div>
+
+      <div class="aqs-field-group">
+        <label>What's New (shown to users) <span style="color:#ef4444">*</span></label>
+        <textarea id="f-notes" rows="4" placeholder="e.g. Bug fixes, faster loading, new quiz formats…"></textarea>
+        <div class="aqs-field-hint">Shown inside the update popup on users' phones</div>
+      </div>
+
+      <div class="aqs-field-group">
+        <label>Release Date</label>
+        <input type="date" id="f-date" />
+      </div>
+
+      <!-- Preview -->
+      <div class="aqs-field-group">
+        <label>Preview (version.json that will be pushed)</label>
+        <div class="json-preview" id="json-preview">Fill in the fields above to see the preview…</div>
+      </div>
+
+      <button class="aqs-btn aqs-btn-success aqs-btn-full" id="push-btn" onclick="pushUpdate()">
+        🚀 Push Update to GitHub
+      </button>
+
+    </div>
+  </div>
+
+</main>
+
+<script>
+var OWNER = 'darapet';
+var REPO  = 'smartquiz-system';
+var FILE  = 'daraquiz-mobile/www/version.json';
+var API   = 'https://api.github.com';
+
+/* ── Token management ── */
+function getToken() { return localStorage.getItem('_aqsGhToken') || ''; }
+function saveToken() {
+  var t = document.getElementById('gh-token-input').value.trim();
+  if (!t) { alert('Please enter a token first.'); return; }
+  localStorage.setItem('_aqsGhToken', t);
+  document.getElementById('gh-token-input').value = '';
+  document.getElementById('token-saved-msg').style.display = 'flex';
+  loadCurrentVersion();
+  showAlert('info', '🔑 Token saved on this device.');
+}
+
+function initTokenSection() {
+  if (getToken()) {
+    document.getElementById('token-section').style.background = '#f0fdf4';
+    document.getElementById('token-section').style.borderColor = '#86efac';
+    document.getElementById('token-section').querySelector('h3').textContent = '🔑 GitHub Token — Saved ✅';
+    document.getElementById('token-saved-msg').style.display = 'flex';
+  }
+}
+
+/* ── Alert ── */
+function showAlert(type, msg) {
+  var el = document.getElementById('upd-alert');
+  el.className = 'aqs-alert aqs-alert-' + type;
+  el.textContent = msg;
+  el.style.display = 'block';
+  if (type === 'success') setTimeout(function(){ el.style.display='none'; }, 6000);
+}
+
+/* ── GitHub API helpers ── */
+function ghFetch(path, opts) {
+  var token = getToken();
+  if (!token) { showAlert('error','⚠️ No GitHub token saved. Enter it above first.'); return Promise.reject('no token'); }
+  var headers = { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json', 'Content-Type': 'application/json' };
+  return fetch(API + path, Object.assign({ headers: headers }, opts || {})).then(function(r){ return r.json(); });
+}
+
+/* ── Load current version.json ── */
+function loadCurrentVersion() {
+  document.getElementById('current-ver-card').innerHTML = '<span style="color:#94a3b8">Loading…</span>';
+  var url = 'https://raw.githubusercontent.com/' + OWNER + '/' + REPO + '/main/' + FILE + '?_=' + Date.now();
+  fetch(url).then(function(r){ return r.json(); }).then(function(d) {
+    document.getElementById('current-ver-card').innerHTML = [
+      '<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:12px;">',
+        '<span class="ver-badge ver-badge-live">v' + d.version + ' live</span>',
+        '<span style="font-size:.82rem;color:#64748b;">Code: ' + d.versionCode + ' &nbsp;·&nbsp; Released: ' + (d.releaseDate||'—') + '</span>',
+      '</div>',
+      '<div style="font-size:.85rem;color:#374151;margin-bottom:8px;"><strong>What\'s new:</strong> ' + (d.notes||'—') + '</div>',
+      '<div style="font-size:.78rem;color:#94a3b8;">APK: <a href="' + (d.apkUrl||'#') + '" target="_blank" style="color:#6366f1;">' + (d.apkUrl||'Not set') + '</a></div>'
+    ].join('');
+    /* Pre-fill version code suggestion */
+    if (!document.getElementById('f-vcode').value) {
+      document.getElementById('f-vcode').value = (parseInt(d.versionCode)||1) + 1;
+    }
+    document.getElementById('live-ver-info').innerHTML = '<span class="ver-badge ver-badge-live">Live: v' + d.version + '</span>';
+  }).catch(function() {
+    document.getElementById('current-ver-card').innerHTML = '<span style="color:#ef4444">Could not load version.json from GitHub. Check your internet connection.</span>';
+  });
+}
+
+/* ── Preview updater ── */
+function updatePreview() {
+  var ver   = document.getElementById('f-version').value.trim() || '?.?.?';
+  var vcode = document.getElementById('f-vcode').value.trim() || '?';
+  var url   = document.getElementById('f-apkurl').value.trim() || 'https://github.com/darapet/smartquiz-system/releases/latest';
+  var notes = document.getElementById('f-notes').value.trim() || '…';
+  var date  = document.getElementById('f-date').value || new Date().toISOString().slice(0,10);
+  document.getElementById('json-preview').textContent = JSON.stringify({
+    version: ver, versionCode: parseInt(vcode)||0,
+    releaseDate: date, notes: notes,
+    downloadUrl: url, apkUrl: url
+  }, null, 2);
+}
+
+['f-version','f-vcode','f-apkurl','f-notes','f-date'].forEach(function(id) {
+  document.getElementById(id).addEventListener('input', updatePreview);
+});
+
+/* ── Push update ── */
+function pushUpdate() {
+  var ver   = document.getElementById('f-version').value.trim();
+  var vcode = parseInt(document.getElementById('f-vcode').value) || 0;
+  var url   = document.getElementById('f-apkurl').value.trim();
+  var notes = document.getElementById('f-notes').value.trim();
+  var date  = document.getElementById('f-date').value || new Date().toISOString().slice(0,10);
+
+  if (!ver)   { showAlert('error','❌ Please enter a version name (e.g. 1.2.0)'); return; }
+  if (!vcode) { showAlert('error','❌ Please enter a version code number'); return; }
+  if (!url)   { showAlert('error','❌ Please enter the APK download URL'); return; }
+  if (!notes) { showAlert('error','❌ Please enter the What\'s New text'); return; }
+  if (!getToken()) { showAlert('error','⚠️ No GitHub token saved. Enter it above first.'); return; }
+
+  var btn = document.getElementById('push-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Pushing to GitHub…';
+
+  var payload = { version: ver, versionCode: vcode, releaseDate: date, notes: notes, downloadUrl: url, apkUrl: url };
+
+  /* Step 1: get current file SHA */
+  ghFetch('/repos/' + OWNER + '/' + REPO + '/contents/' + FILE)
+    .then(function(res) {
+      if (!res.sha) throw new Error(res.message || 'Could not get file SHA');
+      var content = btoa(unescape(encodeURIComponent(JSON.stringify(payload, null, 2) + '\n')));
+      /* Step 2: PUT updated file */
+      return ghFetch('/repos/' + OWNER + '/' + REPO + '/contents/' + FILE, {
+        method: 'PUT',
+        body: JSON.stringify({
+          message: 'release: bump version to ' + ver,
+          content: content,
+          sha: res.sha
+        })
+      });
+    })
+    .then(function(res) {
+      if (!res.content) throw new Error(res.message || 'Push failed');
+      btn.disabled = false;
+      btn.textContent = '🚀 Push Update to GitHub';
+      showAlert('success', '✅ Version ' + ver + ' pushed! Users will see the update popup next time they open the app.');
+      loadCurrentVersion();
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.textContent = '🚀 Push Update to GitHub';
+      showAlert('error', '❌ Failed: ' + (err.message || err));
+    });
+}
+
+/* ── Init ── */
+document.addEventListener('DOMContentLoaded', function() {
+  initTokenSection();
+  loadCurrentVersion();
+  /* Set today as default date */
+  document.getElementById('f-date').value = new Date().toISOString().slice(0,10);
+  updatePreview();
+});
+</script>
+
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-auth.js"></script>
+<script src="js/aqs-session.js"></script>
+<script src="capacitor-bridge.js"></script>
+</body>
+</html>
