@@ -2129,12 +2129,30 @@ function _updateAqsGlobals(user, profile) {
    ============================================================ */
 (function() {
     var page = window.location.pathname.split('/').pop() || 'index.html';
-    var protectedPages = ['dashboard.html', 'user-dashboard.html', 'create-quiz.html', 'quiz-results.html'];
-    var authPages      = ['login.html', 'register.html'];
+    /* Pages that require a real (non-anonymous) account */
+    var protectedPages = [
+        'dashboard.html','user-dashboard.html','create-quiz.html','quiz-results.html',
+        'take-quiz.html','challenge.html','profile.html','study.html',
+        'docs-gen.html','image-gen.html','image-editor.html',
+        'admin.html','admin-dashboard.html','admin-settings.html','admin-update.html',
+        'admin-about.html','admin-about-settings.html','admin-hosts.html','admin-create-quiz.html',
+        'aqs-quiz-studio.html','tts.html','audio.html','ai-animate.html'
+    ];
+    /* Pages that are open to everyone (guests OK) */
+    var openPages = ['index.html','studio.html','login.html','register.html','unauthorized.html'];
+    var authPages = ['login.html', 'register.html'];
 
-    /* Protected-page redirect intentionally disabled — pages handle their own
-       auth display; Firebase rules protect the underlying data. */
-    void protectedPages;
+    /* Auth guard: redirect to register.html if not signed in with a real account */
+    if (openPages.indexOf(page) === -1 && page !== '') {
+        auth.authStateReady().then(function() {
+            var user = auth.currentUser;
+            /* null = no session, isAnonymous = guest only — both must register */
+            if (!user || user.isAnonymous) {
+                if (window._aqsIsRegistering || window._aqsIsLoggingIn) return;
+                window.location.replace('register.html?reason=auth&redirect=' + encodeURIComponent(window.location.pathname.split('/').pop() + window.location.search));
+            }
+        }).catch(function() {});
+    }
 
     if (authPages.indexOf(page) !== -1) {
         /* Use onAuthStateChanged directly (persistent) so the redirect fires
