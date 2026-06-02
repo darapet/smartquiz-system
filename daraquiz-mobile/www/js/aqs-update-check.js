@@ -26,6 +26,7 @@ var AQS_APP_VERSION_CODE = 21;
 
   var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
   var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
+  var SNOOZE_VER_KEY = 'aqs_update_snooze_ver';    /* which versionCode was snoozed */
   var SNOOZE_WAIT   = 24 * 60 * 60 * 1000;         /* 24 hours */
 
   /* ── Inject styles ────────────────────────────────────────────────────── */
@@ -216,6 +217,7 @@ var AQS_APP_VERSION_CODE = 21;
   /* Snooze — show again in 24 h (user hasn't downloaded yet) */
   function snoozeUpdate() {
     localStorage.setItem(SNOOZE_KEY, String(Date.now()));
+    localStorage.setItem(SNOOZE_VER_KEY, String(_remoteCode));  /* remember WHICH version was snoozed */
     hidePopup();
   }
 
@@ -262,9 +264,13 @@ var AQS_APP_VERSION_CODE = 21;
           return;
         }
 
-        /* User tapped X or Remind me later — snooze for 24 h then show again */
+        /* User tapped X or Remind me later — snooze for 24 h then show again.
+           BUT if a NEWER version came out since the snooze, skip the wait and show immediately. */
         var snoozeTime = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
-        if (snoozeTime && (Date.now() - snoozeTime) < SNOOZE_WAIT) {
+        var snoozeVer  = parseInt(localStorage.getItem(SNOOZE_VER_KEY) || '0', 10);
+        var withinSnoozeWindow = snoozeTime && (Date.now() - snoozeTime) < SNOOZE_WAIT;
+        var snoozedSameVersion = snoozeVer === _remoteCode;
+        if (withinSnoozeWindow && snoozedSameVersion) {
           console.log('[AQS-UPD] Snoozed — will remind again in 24 h');
           return;
         }
