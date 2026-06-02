@@ -2069,28 +2069,9 @@ function _updateAqsGlobals(user, profile) {
     var protectedPages = ['dashboard.html', 'user-dashboard.html', 'create-quiz.html', 'quiz-results.html'];
     var authPages      = ['login.html', 'register.html'];
 
-    if (protectedPages.indexOf(page) !== -1) {
-        /* Auth guard with Capacitor-safe grace period.
-           In a native WebView, Firebase can briefly fire null before restoring
-           the IndexedDB session. We mark a "just logged in" flag in sessionStorage
-           (written by actionEmailLogin) and give a 2.5 s window before redirecting. */
-        onAuthStateChanged(auth, function(user) {
-            if (user) return; /* signed in — nothing to do */
-
-            var justLoggedIn = parseInt(sessionStorage.getItem('aqs_login_ts') || '0', 10);
-            var age = Date.now() - justLoggedIn;
-
-            if (justLoggedIn && age < 5000) {
-                /* Session was established within the last 5 s — wait for Firebase to
-                   restore from IndexedDB before deciding the user is logged out. */
-                setTimeout(function() {
-                    if (!auth.currentUser) window.location.href = 'login.html';
-                }, 2500);
-            } else {
-                window.location.href = 'login.html';
-            }
-        });
-    }
+    /* Protected-page redirect intentionally disabled — pages handle their own
+       auth display; Firebase rules protect the underlying data. */
+    void protectedPages;
 
     if (authPages.indexOf(page) !== -1) {
         /* Use onAuthStateChanged directly (persistent) so the redirect fires

@@ -15,7 +15,7 @@
  */
 
 /* ══ CHANGE THIS NUMBER EVERY TIME YOU INSTALL A NEW APK ═══════════════════ */
-var AQS_APP_VERSION_CODE = 16;
+var AQS_APP_VERSION_CODE = 13;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -254,10 +254,11 @@ var AQS_APP_VERSION_CODE = 16;
         /* No update needed — already on latest */
         if (_remoteCode <= AQS_APP_VERSION_CODE) return;
 
-        /* User already started downloading this version — never show again */
+        /* Permanently dismissed only if user downloaded AND is actually on that version.
+           If they dismissed but still have an older build, treat as snoozed instead. */
         var dismissedVer = parseInt(localStorage.getItem(DISMISSED_KEY) || '0', 10);
-        if (_remoteCode <= dismissedVer) {
-          console.log('[AQS-UPD] Already downloaded v' + _remoteCode);
+        if (dismissedVer >= _remoteCode && AQS_APP_VERSION_CODE >= dismissedVer) {
+          console.log('[AQS-UPD] Already installed v' + _remoteCode);
           return;
         }
 
