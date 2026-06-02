@@ -153,13 +153,21 @@ jobs:
             -Pandroid.injected.signing.store.file="$(pwd)/app/daraquiz-release.keystore" \
             -Pandroid.injected.signing.store.password="DaraQuiz_Release2024" \
             -Pandroid.injected.signing.key.alias="daraquiz" \
-            -Pandroid.injected.signing.key.password="DaraQuiz_Release2024" \
-            --stacktrace 2>&1 | tail -60
+            -Pandroid.injected.signing.key.password="DaraQuiz_Release2024"
 
-      - name: Rename APK
+      - name: Locate and rename APK
         run: |
-          mv android/app/build/outputs/apk/release/app-release.apk \
-             android/app/build/outputs/apk/release/${{ steps.ver.outputs.apk_name }}
+          APK_DIR="android/app/build/outputs/apk/release"
+          echo "Files in APK dir:"
+          ls -la "$APK_DIR/" || { echo "APK directory not found!"; exit 1; }
+          FOUND=$(find "$APK_DIR" -name "*.apk" | head -1)
+          if [ -z "$FOUND" ]; then
+            echo "ERROR: No APK file found after build!"
+            exit 1
+          fi
+          echo "Found APK: $FOUND"
+          mv "$FOUND" "$APK_DIR/${{ steps.ver.outputs.apk_name }}"
+          echo "Renamed to: ${{ steps.ver.outputs.apk_name }}"
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -208,4 +216,4 @@ jobs:
       - name: Summary
         run: |
           echo "Released DaraQuiz AI v${{ steps.ver.outputs.new_ver }} (code ${{ steps.ver.outputs.new_code }})"
-          echo "APK URL: https://github.com/darapet/smartquiz-system/releases/download/${{ steps.ver.outputs.tag }}/${{ steps.ver.outputs.apk_name }}"
+          echo "APK: https://github.com/darapet/smartquiz-system/releases/download/${{ steps.ver.outputs.tag }}/${{ steps.ver.outputs.apk_name }}"
