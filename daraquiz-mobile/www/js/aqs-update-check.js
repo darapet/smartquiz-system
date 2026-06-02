@@ -15,7 +15,7 @@
  */
 
 /* ══ CHANGE THIS NUMBER EVERY TIME YOU INSTALL A NEW APK ═══════════════════ */
-var AQS_APP_VERSION_CODE = 15;
+var AQS_APP_VERSION_CODE = 13;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -24,7 +24,9 @@ var AQS_APP_VERSION_CODE = 15;
   var VERSION_JSON_URL =
     'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
 
-  var DISMISSED_KEY = 'aqs_update_dismissed_ver';
+  var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
+  var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
+  var SNOOZE_WAIT   = 24 * 60 * 60 * 1000;         /* 24 hours */
 
   /* ── Inject styles ────────────────────────────────────────────────────── */
   var style = document.createElement('style');
@@ -211,24 +213,30 @@ var AQS_APP_VERSION_CODE = 15;
   /* ── Button events ──────────────────────────────────────────────────────── */
   var _apkUrl = '';
 
-  function dismissVersion() {
-    localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
+  /* Snooze — show again in 24 h (user hasn't downloaded yet) */
+  function snoozeUpdate() {
+    localStorage.setItem(SNOOZE_KEY, String(Date.now()));
     hidePopup();
   }
 
-  document.getElementById('aqs-upd-close').addEventListener('click', dismissVersion);
+  /* Permanent dismiss — only called once download actually starts */
+  function permanentDismiss() {
+    localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
+    localStorage.removeItem(SNOOZE_KEY);
+  }
+
+  document.getElementById('aqs-upd-close').addEventListener('click', snoozeUpdate);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
     if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
       alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
       return;
     }
-    /* Mark this version as dismissed so popup won't show again after install */
-    localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
+    permanentDismiss();
     downloadInApp(_apkUrl);
   });
 
-  document.getElementById('aqs-upd-btn-later').addEventListener('click', dismissVersion);
+  document.getElementById('aqs-upd-btn-later').addEventListener('click', snoozeUpdate);
 
   /* ── Main check ─────────────────────────────────────────────────────────── */
   var _remoteCode = 0;
@@ -243,13 +251,20 @@ var AQS_APP_VERSION_CODE = 15;
         _remoteCode = parseInt(data.versionCode, 10) || 0;
         console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', _remoteCode);
 
-        /* Only show if remote is genuinely newer than what's installed */
+        /* No update needed — already on latest */
         if (_remoteCode <= AQS_APP_VERSION_CODE) return;
 
-        /* Don't show again if user already dismissed THIS specific version */
+        /* User already started downloading this version — never show again */
         var dismissedVer = parseInt(localStorage.getItem(DISMISSED_KEY) || '0', 10);
         if (_remoteCode <= dismissedVer) {
-          console.log('[AQS-UPD] Already dismissed v' + _remoteCode);
+          console.log('[AQS-UPD] Already downloaded v' + _remoteCode);
+          return;
+        }
+
+        /* User tapped X or Remind me later — snooze for 24 h then show again */
+        var snoozeTime = parseInt(localStorage.getItem(SNOOZE_KEY) || '0', 10);
+        if (snoozeTime && (Date.now() - snoozeTime) < SNOOZE_WAIT) {
+          console.log('[AQS-UPD] Snoozed — will remind again in 24 h');
           return;
         }
 
