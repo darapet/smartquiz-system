@@ -220,41 +220,7 @@
         if (bar) bar.parentNode.removeChild(bar);
     }
 
-    /* ── show a gentle timeout warning 2 min before auto-logout (web only) ── */
-    function showTimeoutWarning() {
-        var existing = document.getElementById('aqs-timeout-warning');
-        if (existing) return;
-        var warn = document.createElement('div');
-        warn.id = 'aqs-timeout-warning';
-        warn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;'
-            + 'background:#1e293b;color:#fff;padding:14px 18px;border-radius:10px;'
-            + 'box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:inherit;font-size:.88rem;'
-            + 'display:flex;align-items:center;gap:12px;max-width:320px;';
-        warn.innerHTML = '&#x23F0; <span>You will be logged out in <strong>2 minutes</strong> due to inactivity.</span>'
-            + '<button id="aqs-timeout-dismiss" style="background:#4f46e5;color:#fff;border:none;'
-            + 'padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.82rem;'
-            + 'white-space:nowrap;flex-shrink:0;">Stay logged in</button>';
-        document.body.appendChild(warn);
-        warn.querySelector('#aqs-timeout-dismiss').addEventListener('click', function () {
-            resetTimer();
-            warn.parentNode.removeChild(warn);
-        });
-        /* Auto-remove warning when user acts */
-        var killWarn = function () {
-            var el = document.getElementById('aqs-timeout-warning');
-            if (el) el.parentNode.removeChild(el);
-            document.removeEventListener('mousemove', killWarn);
-            document.removeEventListener('keydown', killWarn);
-            document.removeEventListener('click', killWarn);
-        };
-        document.addEventListener('mousemove', killWarn, { passive: true });
-        document.addEventListener('keydown', killWarn, { passive: true });
-        document.addEventListener('click', killWarn, { passive: true });
-    }
-
-    /* Timeout warning removed — with 30-day sessions the warning isn't practical.
-       The rolling hourly check handles logout without a separate warn timer. */
-    var _warnTimer = null;   /* kept for compat — not used */
+    var _warnTimer = null;   /* unused — kept only so clearTimeout(_warnTimer) below is safe */
 
     /* ── Pause inactivity timer when app goes to background (native only) ── */
     if (_isNativeApp && typeof window.Capacitor !== 'undefined' &&
