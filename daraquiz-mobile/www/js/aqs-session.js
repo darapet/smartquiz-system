@@ -4,10 +4,9 @@
 (function () {
     'use strict';
 
-    /* On native Capacitor, Firebase persists auth in IndexedDB — keep users logged in.
-       Use 30-day timeout (effectively "never") on native, 20 min on web browser. */
+    /* Keep users logged in for 30 days on all platforms (native and web). */
     var _isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-    var TIMEOUT_MS = _isNativeApp ? (30 * 24 * 60 * 60 * 1000) : (20 * 60 * 1000);
+    var TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; /* 30 days */
     var _timer = null;
 
     /* ── inactivity timer ── */
