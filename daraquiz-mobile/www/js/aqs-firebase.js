@@ -2167,7 +2167,9 @@ function _updateAqsGlobals(user, profile) {
                delay long enough for Firebase to persist the session to storage. */
             if (window._aqsIsRegistering) return;
             if (window._aqsIsLoggingIn) return;
-            if (user) {
+            /* Only redirect REAL (non-anonymous) signed-in users away from login/register.
+               Anonymous users must be allowed to stay and create a real account. */
+            if (user && !user.isAnonymous) {
                 _authRedirectDone = true;
                 var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
                 if (redirectUrl) { window.location.replace(redirectUrl); return; }
