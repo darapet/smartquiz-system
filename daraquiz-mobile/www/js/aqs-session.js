@@ -4,22 +4,47 @@
 (function () {
     'use strict';
 
-    /* Keep users logged in for 30 days on all platforms (native and web). */
+    /* Keep users logged in for 30 days on all platforms (native and web).
+       NOTE: setTimeout max is ~24.8 days (2^31-1 ms). Using a rolling hourly check
+       instead of one giant setTimeout to avoid the overflow-fires-instantly bug. */
     var _isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-    var TIMEOUT_MS = 30 * 24 * 60 * 60 * 1000; /* 30 days */
+    var TIMEOUT_DAYS  = 30;
+    var ACTIVITY_KEY  = 'aqs_last_activity';
+    var CHECK_MS      = 60 * 60 * 1000;   /* check every hour — safe for setTimeout */
     var _timer = null;
 
-    /* ── inactivity timer ── */
-    function resetTimer() {
+    /* Record activity timestamp in localStorage so it survives page navigations */
+    function _touch() {
+        try { localStorage.setItem(ACTIVITY_KEY, String(Date.now())); } catch(_) {}
+    }
+
+    /* Hourly check: has 30 days of inactivity elapsed? */
+    function _scheduleCheck() {
         clearTimeout(_timer);
-        _timer = setTimeout(function () { doLogout(true); }, TIMEOUT_MS);
+        _timer = setTimeout(function () {
+            try {
+                var last  = parseInt(localStorage.getItem(ACTIVITY_KEY) || '0', 10);
+                var limit = TIMEOUT_DAYS * 24 * 60 * 60 * 1000;
+                if (last && (Date.now() - last) >= limit) {
+                    doLogout(true);
+                } else {
+                    _scheduleCheck();   /* not yet — check again in an hour */
+                }
+            } catch(_) { _scheduleCheck(); }
+        }, CHECK_MS);
+    }
+
+    /* resetTimer: record activity + restart the hourly check cycle */
+    function resetTimer() {
+        _touch();
+        _scheduleCheck();
     }
 
     function startTracking() {
         ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (ev) {
             document.addEventListener(ev, resetTimer, { passive: true });
         });
-        resetTimer();
+        resetTimer();   /* record now as the start of the session */
     }
 
     function stopTracking() {
@@ -227,19 +252,9 @@
         document.addEventListener('click', killWarn, { passive: true });
     }
 
-    /* Improved timer: show warning 2 min before 30-day logout */
-    var _warnTimer = null;
-    function resetTimerWithWarning() {
-        clearTimeout(_timer);
-        clearTimeout(_warnTimer);
-        var el = document.getElementById('aqs-timeout-warning');
-        if (el) el.parentNode.removeChild(el);
-        _warnTimer = setTimeout(showTimeoutWarning, TIMEOUT_MS - 2 * 60 * 1000);
-        _timer = setTimeout(function () { doLogout(true); }, TIMEOUT_MS);
-    }
-
-    /* Override resetTimer with warning version */
-    resetTimer = resetTimerWithWarning;
+    /* Timeout warning removed — with 30-day sessions the warning isn't practical.
+       The rolling hourly check handles logout without a separate warn timer. */
+    var _warnTimer = null;   /* kept for compat — not used */
 
     /* ── Pause inactivity timer when app goes to background (native only) ── */
     if (_isNativeApp && typeof window.Capacitor !== 'undefined' &&
