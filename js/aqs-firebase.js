@@ -67,6 +67,9 @@ const rtdb = getDatabase(app);
    e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
    So generated quiz/challenge links point to the right subfolder. */
 function _baseUrl() {
+    if (typeof window !== 'undefined' && window.Capacitor) {
+        return 'https://darapet.github.io/smartquiz-system/';
+    }
     var href = window.location.href.split('?')[0].split('#')[0];
     return href.substring(0, href.lastIndexOf('/') + 1);
 }
@@ -283,6 +286,12 @@ async function handleAction(data) {
         case 'aqs_get_leaderboard':  return await actionGetLeaderboard(data);
         case 'aqs_get_my_attempts':  return await actionGetMyAttempts(data);
         case 'aqs_get_user_dashboard': return await actionGetUserDashboard(data);
+
+        /* ── PROFILE ── */
+        case 'aqs_get_my_profile':   return await actionGetMyProfile();
+        case 'aqs_get_my_stats':     return await actionGetMyStats();
+        case 'aqs_get_my_quizzes':   return await actionGetMyQuizzes(data);
+        case 'aqs_update_avatar':    return await actionUpdateAvatar(data);
 
         /* ── AI GENERATE (proxy — deprecated, keep as fallback) ── */
         case 'aqs_ai_generate':      return await actionAiGenerate(data);
@@ -1893,6 +1902,97 @@ async function actionGetActiveAds(data) {
         return snap.docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
     } catch(_) {}
     return [];
+}
+
+/* ============================================================
+   PROFILE ACTIONS
+   ============================================================ */
+async function actionGetMyProfile() {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('Not authenticated.');
+    var snap = await getDoc(doc(db, 'users', user.uid));
+    if (!snap.exists()) return {};
+    return snap.data();
+}
+
+async function actionGetMyStats() {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) return { quizzes_taken: 0, quizzes_created: 0, streak: 0, recent_activity: [] };
+
+    var profileSnap = await getDoc(doc(db, 'users', user.uid));
+    var profile = profileSnap.exists() ? profileSnap.data() : {};
+    var name = profile.name || user.displayName || user.email || '';
+
+    var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
+    var quizzesCreated = createdSnap.size;
+
+    var attempts = [];
+    if (name) {
+        var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
+        attempts = attSnap.docs.map(function(d) {
+            var a = d.data();
+            var ms = a.finished_at && a.finished_at.toDate ? a.finished_at.toDate().getTime() : 0;
+            return { score: a.score, total: a.total, _ms: ms, time: tsToStr(a.finished_at) };
+        });
+        attempts.sort(function(a, b) { return b._ms - a._ms; });
+    }
+
+    var streak = 0;
+    if (attempts.length) {
+        var days = new Set(attempts.filter(function(a) { return a._ms; }).map(function(a) {
+            return new Date(a._ms).toDateString();
+        }));
+        var d = new Date();
+        while (days.has(d.toDateString())) {
+            streak++;
+            d.setDate(d.getDate() - 1);
+        }
+    }
+
+    var recent = attempts.slice(0, 5).map(function(a) {
+        var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
+        return { text: 'Took a quiz — scored <b>' + a.score + '/' + a.total + ' (' + pct + '%)</b>', time: (a.time || '').substring(0, 16) };
+    });
+
+    return {
+        quizzes_taken:   attempts.length,
+        quizzes_created: quizzesCreated,
+        streak:          streak,
+        recent_activity: recent
+    };
+}
+
+async function actionGetMyQuizzes(data) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) return [];
+    var lim = parseInt(data && data.limit) || 5;
+    var snap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
+    var items = snap.docs.map(function(d) {
+        var q = d.data();
+        return {
+            id:            d.id,
+            title:         q.title,
+            subject:       q.subject,
+            num_questions: q.num_questions || (q.questions || []).length,
+            time_limit:    q.time_limit,
+            mode:          q.mode,
+            status:        q.status,
+            quiz_url:      q.quiz_url || '',
+            created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
+        };
+    });
+    items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
+    return items.slice(0, lim);
+}
+
+async function actionUpdateAvatar(data) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('Not authenticated.');
+    var avatarData = data.avatar || '';
+    if (!avatarData) throw new Error('No avatar data provided.');
+    if (avatarData.length > 400000) throw new Error('Image is too large. Please choose a smaller photo.');
+    await updateDoc(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() });
+    return { avatar: avatarData };
 }
 
 /* ============================================================
