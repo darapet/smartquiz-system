@@ -1,8 +1,8 @@
 {
-  "version": "1.22",
-  "versionCode": 8,
+  "version": "1.23",
+  "versionCode": 9,
   "releaseDate": "2026-06-02",
-  "notes": "In-app download with progress bar, auto-install after update, no browser needed.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.22/daraquiz-v1.22.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.22/daraquiz-v1.22.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.23/daraquiz-v1.23.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.23/daraquiz-v1.23.apk"
 }
