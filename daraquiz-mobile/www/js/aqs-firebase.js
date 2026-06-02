@@ -2206,7 +2206,8 @@ async function actionUpdateAvatar(data) {
     var avatarData = data.avatar || '';
     if (!avatarData) throw new Error('No avatar data provided.');
     if (avatarData.length > 400000) throw new Error('Image is too large. Please choose a smaller photo.');
-    await updateDoc(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() });
+    /* Use setDoc with merge so it works even if the user doc does not exist yet */
+    await setDoc(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() }, { merge: true });
     return { avatar: avatarData };
 }
 

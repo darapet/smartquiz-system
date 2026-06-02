@@ -196,18 +196,20 @@
             /* Wait for Firebase auth to resolve before loading quizzes.
                If auth is already known, fire immediately; otherwise listen. */
             function tryLoadQuizzes() {
-                if (window._aqsFirebaseUser) {
-                    loadQuizzes();
+                function _doLoad(user) {
+                    if (user) {
+                        loadQuizzes();
+                    } else {
+                        $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
+                    }
+                }
+                if (typeof window.onAqsAuthChange === 'function') {
+                    window.onAqsAuthChange(_doLoad);
                 } else {
-                    $('#aqs-quiz-list').html('<p class="aqs-loading">Signing you in…</p>');
-                    document.addEventListener('aqs:authchange', function onAuth(ev) {
-                        document.removeEventListener('aqs:authchange', onAuth);
-                        if (ev.detail && ev.detail.user) {
-                            loadQuizzes();
-                        } else {
-                            $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
-                        }
-                    });
+                    /* onAqsAuthChange not yet available — wait for firebase module to patch jQuery */
+                    document.addEventListener('aqs:firebase:ready', function() {
+                        window.onAqsAuthChange(_doLoad);
+                    }, { once: true });
                 }
             }
             tryLoadQuizzes();

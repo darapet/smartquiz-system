@@ -1,8 +1,8 @@
 {
-  "version": "1.55",
-  "versionCode": 40,
+  "version": "1.56",
+  "versionCode": 41,
   "releaseDate": "2026-06-02",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.55/daraquiz-v1.55.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.55/daraquiz-v1.55.apk"
+  "notes": "Fix host dashboard quiz list loading; add profile picture upload; fix avatar save on new accounts.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.56/daraquiz-v1.56.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.56/daraquiz-v1.56.apk"
 }
