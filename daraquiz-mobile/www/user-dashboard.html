@@ -236,7 +236,19 @@ window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'
   /* Use onAqsAuthChange (replay-safe) so we don't miss the event if Firebase
      resolved before this script ran. Falls back to addEventListener if not yet ready. */
   function _initDash(user) {
-    if (!user) { window.location.href = 'login.html'; return; }
+    if (!user) {
+      /* Firebase may still be writing the session to storage after a fresh login.
+         Poll window._aqsFirebaseUser (set by aqs-firebase.js after authStateReady)
+         for up to 2 s before giving up and redirecting to login. */
+      var _dashPollMs = 0;
+      (function _pollForUser() {
+          if (window._aqsFirebaseUser) { _initDash(window._aqsFirebaseUser); return; }
+          if (_dashPollMs >= 2000) { window.location.href = 'login.html'; return; }
+          _dashPollMs += 200;
+          setTimeout(_pollForUser, 200);
+      })();
+      return;
+    }
 
     var name = user.displayName || (user.email ? user.email.split('@')[0] : 'Friend');
     var initial = name.charAt(0).toUpperCase();
