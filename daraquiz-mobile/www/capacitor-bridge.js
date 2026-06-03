@@ -43,10 +43,12 @@
       var href = window.location.href;
       var isHome = href.endsWith('index.html') || href.endsWith('/') || window.location.pathname === '/';
       if (isHome) {
-        if (confirm('Exit DaraSmart?')) {
-          if (window.Capacitor.Plugins && window.Capacitor.Plugins.App)
-            window.Capacitor.Plugins.App.exitApp();
-        }
+        _showRatingPopup(function() {
+          if (confirm('Exit DaraSmart?')) {
+            if (window.Capacitor.Plugins && window.Capacitor.Plugins.App)
+              window.Capacitor.Plugins.App.exitApp();
+          }
+        });
       } else {
         history.back();
       }
@@ -290,6 +292,152 @@
 
   window.AQSUnlockAudio = _unlockAllAudio;
   window.AQSPlatform = { isNative: isCapacitor, platform: platform };
+
+  /* ══════════════════════════════════════════════════
+     IN-APP RATING POPUP
+     Shows once per session when user tries to close
+     the app from the home page (back button).
+     Saves rating + comment to Firestore via aqsAjax.
+  ══════════════════════════════════════════════════ */
+  var _ratingShownThisSession = false;
+
+  function _showRatingPopup(onDone) {
+    if (_ratingShownThisSession) { onDone(false); return; }
+    _ratingShownThisSession = true;
+
+    if (!document.getElementById('_aqsRatStyle')) {
+      var rs = document.createElement('style');
+      rs.id = '_aqsRatStyle';
+      rs.textContent =
+        '._aqsRatOverlay{position:fixed;inset:0;z-index:99997;' +
+        'background:rgba(0,0,0,0.65);backdrop-filter:blur(6px);' +
+        'display:flex;align-items:flex-end;justify-content:center;' +
+        'animation:_aqsRatFadeIn .25s ease;}' +
+        '@keyframes _aqsRatFadeIn{from{opacity:0}to{opacity:1}}' +
+        '._aqsRatSheet{background:linear-gradient(160deg,#0f172a,#1e1b4b);' +
+        'border:1px solid rgba(129,140,248,0.3);border-radius:24px 24px 0 0;' +
+        'padding:6px 24px 36px;max-width:480px;width:100%;' +
+        'box-shadow:0 -8px 40px rgba(0,0,0,0.7);' +
+        'animation:_aqsRatSlide .35s cubic-bezier(.34,1.56,.64,1);}' +
+        '@keyframes _aqsRatSlide{from{transform:translateY(100%)}to{transform:translateY(0)}}' +
+        '._aqsRatHandle{width:36px;height:4px;background:rgba(255,255,255,.18);' +
+        'border-radius:2px;margin:12px auto 20px;}' +
+        '._aqsRatTitle{font-size:1.2rem;font-weight:800;color:#e0e7ff;text-align:center;' +
+        'margin-bottom:6px;font-family:-apple-system,Inter,sans-serif;}' +
+        '._aqsRatSub{font-size:.85rem;color:#94a3b8;text-align:center;margin-bottom:20px;' +
+        'font-family:-apple-system,Inter,sans-serif;line-height:1.5;}' +
+        '._aqsRatStars{display:flex;justify-content:center;gap:12px;margin-bottom:16px;}' +
+        '._aqsRatStar{font-size:2.5rem;cursor:pointer;opacity:0.3;transition:opacity .15s,transform .15s;' +
+        '-webkit-tap-highlight-color:transparent;}' +
+        '._aqsRatStar.lit{opacity:1;}' +
+        '._aqsRatStar:active{transform:scale(1.2);}' +
+        '._aqsRatComment{width:100%;background:rgba(255,255,255,.06);' +
+        'border:1.5px solid rgba(99,102,241,.25);border-radius:12px;' +
+        'color:#e0e7ff;font-family:-apple-system,Inter,sans-serif;font-size:.9rem;' +
+        'padding:12px 14px;resize:none;box-sizing:border-box;margin-bottom:16px;' +
+        'outline:none;}' +
+        '._aqsRatComment:focus{border-color:rgba(99,102,241,.6);}' +
+        '._aqsRatComment::placeholder{color:#475569;}' +
+        '._aqsRatSubmit{width:100%;background:linear-gradient(135deg,#6366f1,#8b5cf6);' +
+        'color:#fff;border:none;border-radius:14px;padding:15px 24px;' +
+        'font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:10px;' +
+        'font-family:-apple-system,Inter,sans-serif;' +
+        'box-shadow:0 4px 20px rgba(99,102,241,0.4);transition:transform .15s;}' +
+        '._aqsRatSubmit:active{transform:scale(0.97);}' +
+        '._aqsRatSubmit:disabled{opacity:0.6;cursor:not-allowed;}' +
+        '._aqsRatSkip{width:100%;background:transparent;color:#475569;' +
+        'border:1px solid rgba(71,85,105,0.3);border-radius:14px;' +
+        'padding:12px;font-size:.85rem;cursor:pointer;' +
+        'font-family:-apple-system,Inter,sans-serif;transition:color .15s;}' +
+        '._aqsRatSkip:active{color:#94a3b8;}' +
+        '._aqsRatSuccess{text-align:center;padding:8px 0 12px;}' +
+        '._aqsRatSuccessIcon{font-size:3rem;margin-bottom:10px;}' +
+        '._aqsRatSuccessTitle{font-size:1.1rem;font-weight:800;color:#e0e7ff;' +
+        'margin-bottom:6px;font-family:-apple-system,Inter,sans-serif;}' +
+        '._aqsRatSuccessSub{font-size:.88rem;color:#94a3b8;' +
+        'font-family:-apple-system,Inter,sans-serif;line-height:1.5;}';
+      document.head.appendChild(rs);
+    }
+
+    var selectedStars = 0;
+
+    var overlay = document.createElement('div');
+    overlay.className = '_aqsRatOverlay';
+    overlay.innerHTML =
+      '<div class="_aqsRatSheet" id="_aqsRatSheet">' +
+        '<div class="_aqsRatHandle"></div>' +
+        '<div class="_aqsRatTitle">Enjoying DaraQuiz AI? ⭐</div>' +
+        '<div class="_aqsRatSub">Your feedback helps us improve!<br>Rate your experience below.</div>' +
+        '<div class="_aqsRatStars" id="_aqsRatStars">' +
+          '<span class="_aqsRatStar" data-v="1">★</span>' +
+          '<span class="_aqsRatStar" data-v="2">★</span>' +
+          '<span class="_aqsRatStar" data-v="3">★</span>' +
+          '<span class="_aqsRatStar" data-v="4">★</span>' +
+          '<span class="_aqsRatStar" data-v="5">★</span>' +
+        '</div>' +
+        '<textarea class="_aqsRatComment" id="_aqsRatComment" rows="3" ' +
+          'placeholder="Share your thoughts (optional)…" maxlength="500"></textarea>' +
+        '<button class="_aqsRatSubmit" id="_aqsRatSubmit" disabled>Submit Feedback</button>' +
+        '<button class="_aqsRatSkip" id="_aqsRatSkip">Not now</button>' +
+      '</div>';
+    document.body.appendChild(overlay);
+
+    var starEls = overlay.querySelectorAll('._aqsRatStar');
+    starEls.forEach(function(star) {
+      star.addEventListener('click', function() {
+        selectedStars = parseInt(this.getAttribute('data-v'));
+        starEls.forEach(function(s) {
+          s.classList.toggle('lit', parseInt(s.getAttribute('data-v')) <= selectedStars);
+        });
+        document.getElementById('_aqsRatSubmit').disabled = false;
+      });
+    });
+
+    function _closeRating() {
+      overlay.style.animation = '_aqsRatFadeIn .2s ease reverse';
+      setTimeout(function(){ overlay.remove(); }, 200);
+    }
+
+    function _doSave(stars, comment) {
+      if (window.aqsAjax) {
+        window.aqsAjax(
+          { action: 'aqs_submit_rating', stars: stars, comment: comment },
+          function() {
+            document.getElementById('_aqsRatSheet').innerHTML =
+              '<div class="_aqsRatHandle"></div>' +
+              '<div class="_aqsRatSuccess">' +
+                '<div class="_aqsRatSuccessIcon">🎉</div>' +
+                '<div class="_aqsRatSuccessTitle">Thank you for your feedback!</div>' +
+                '<div class="_aqsRatSuccessSub">Your rating helps us make DaraQuiz AI even better.</div>' +
+              '</div>' +
+              '<button class="_aqsRatSkip" id="_aqsRatDone" style="margin-top:8px;">Close</button>';
+            var doneBtn = document.getElementById('_aqsRatDone');
+            if (doneBtn) doneBtn.addEventListener('click', function(){ _closeRating(); onDone(true); });
+            setTimeout(function(){ _closeRating(); onDone(true); }, 3000);
+          },
+          function() { _closeRating(); onDone(false); }
+        );
+      } else {
+        document.addEventListener('aqs:firebase:ready', function onFbReady() {
+          document.removeEventListener('aqs:firebase:ready', onFbReady);
+          _doSave(stars, comment);
+        }, { once: true });
+      }
+    }
+
+    document.getElementById('_aqsRatSubmit').addEventListener('click', function() {
+      var btn2 = this;
+      btn2.disabled = true;
+      btn2.textContent = 'Sending…';
+      var comment = (document.getElementById('_aqsRatComment').value || '').trim();
+      _doSave(selectedStars, comment);
+    });
+
+    document.getElementById('_aqsRatSkip').addEventListener('click', function() {
+      _closeRating(); onDone(false);
+    });
+  }
+
 
   /* ══════════════════════════════════════════════════
      IN-APP UPDATE CHECKER
