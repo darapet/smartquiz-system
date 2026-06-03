@@ -214,9 +214,11 @@ window.AQS = {
 </main>
 <!-- INSTANT QUIZ PREFETCH: runs before any Firebase module, uses localStorage UID + Firestore REST API.
        This is the primary load path for the Capacitor Android app where the Firebase SDK WebChannel hangs.
-       Two-stage approach:
+       Three-stage approach:
          Stage 1 — UID already in localStorage: query Firestore directly (API key is sufficient).
-         Stage 2 — UID missing: exchange stored refresh token for a new ID token, then query. -->
+         Stage 2 — UID missing: exchange stored refresh token for a new ID token, then query.
+         Stage 3 — No cached credentials: wait for Firebase Auth to resolve, then fetch via REST API
+                   (bypasses the Firebase SDK AJAX path which can hang in Capacitor WebView). -->
   <script>
   (function() {
       'use strict';
@@ -268,6 +270,32 @@ window.AQS = {
           }).then(function(r) { return r.json(); }).then(_done);
       }
 
+      /* Stage 3 helper — called after Firebase Auth resolves.
+         Uses the REST API to fetch quizzes so we never touch the Firebase SDK
+         AJAX path, which can stall in Capacitor WebView due to WebChannel issues. */
+      function _fetchWithAuthUser(user) {
+          if (window._aqsPrefetchDone && Array.isArray(window._prefetchedQuizzes)) return;
+          if (!user || user.isAnonymous) { _fail(new Error('no real auth user')); return; }
+          /* Persist credentials so Stages 1 & 2 can handle the NEXT page load instantly */
+          try { localStorage.setItem('aqs_host_uid', user.uid); } catch(_) {}
+          if (user.refreshToken) {
+              try { localStorage.setItem('aqs_refresh_token', user.refreshToken); } catch(_) {}
+          }
+          /* Get a fresh ID token for an authenticated REST query */
+          if (typeof user.getIdToken === 'function') {
+              user.getIdToken().then(function(tok) {
+                  _fetchQuizzes(user.uid, tok).catch(_fail);
+              }).catch(function() {
+                  _fetchQuizzes(user.uid, null).catch(_fail);
+              });
+          } else {
+              _fetchQuizzes(user.uid, null).catch(_fail);
+          }
+      }
+
+      /* Expose so other scripts can trigger a re-fetch if needed */
+      window._aqsRetryPrefetch = _fetchWithAuthUser;
+
       /* Stage 1: UID is already cached */
       var uid = '';
       try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
@@ -276,21 +304,39 @@ window.AQS = {
       /* Stage 2: No UID — exchange stored refresh token for ID token + UID */
       var refreshToken = '';
       try { refreshToken = localStorage.getItem('aqs_refresh_token') || ''; } catch(_) {}
-      if (!refreshToken) return; /* No stored session — fall back to Firebase Auth flow */
+      if (refreshToken) {
+          fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+              if (!data.user_id) throw new Error('token-exchange: no user_id');
+              uid = data.user_id;
+              try { localStorage.setItem('aqs_host_uid', uid); } catch(_) {}
+              return _fetchQuizzes(uid, data.id_token);
+          })
+          .catch(_fail);
+          return;
+      }
 
-      fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
-      })
-      .then(function(r) { return r.json(); })
-      .then(function(data) {
-          if (!data.user_id) throw new Error('token-exchange: no user_id');
-          uid = data.user_id;
-          try { localStorage.setItem('aqs_host_uid', uid); } catch(_) {}
-          return _fetchQuizzes(uid, data.id_token);
-      })
-      .catch(_fail);
+      /* Stage 3: No cached credentials at all — wait for Firebase Auth SDK to resolve,
+         then fetch quizzes via the REST API (avoids the hanging AJAX path in Capacitor). */
+      function _stage3() {
+          if (typeof window.onAqsAuthChange === 'function') {
+              window.onAqsAuthChange(function(user) { _fetchWithAuthUser(user); });
+          } else {
+              document.addEventListener('aqs:firebase:ready', function() {
+                  if (typeof window.onAqsAuthChange === 'function') {
+                      window.onAqsAuthChange(function(user) { _fetchWithAuthUser(user); });
+                  } else {
+                      _fail(new Error('firebase auth not available'));
+                  }
+              }, { once: true });
+          }
+      }
+      _stage3();
   })();
   </script>
 <script src="js/aqs-main.js"></script>
