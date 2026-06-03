@@ -214,6 +214,9 @@ window.AQS = {
 
 <script>
 (function(){
+    /* Unwrap the {success, data} envelope that the Firebase jQuery patch adds */
+    function unwrap(res){ return (res && res.data !== undefined) ? res.data : res; }
+
     function waitReady(fn){
         if(typeof window.onAqsAuthChange === 'function'){
             window.onAqsAuthChange(fn);
@@ -225,7 +228,8 @@ window.AQS = {
     }
 
     function loadProfile(){
-        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_profile'}).then(function(d){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_profile'}).then(function(res){
+            var d = unwrap(res);
             if(!d) return;
             var name = d.name || '';
             if(name){
@@ -244,7 +248,8 @@ window.AQS = {
     }
 
     function loadStats(){
-        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_stats'}).then(function(d){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_stats'}).then(function(res){
+            var d = unwrap(res);
             if(!d) return;
             document.getElementById('udash-stat-taken').textContent   = d.quizzes_taken||0;
             document.getElementById('udash-stat-created').textContent = d.quizzes_created||0;
@@ -300,7 +305,8 @@ window.AQS = {
     }
 
     function loadMyQuizzes(){
-        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_quizzes', limit:50}).then(function(items){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_quizzes', limit:50}).then(function(res){
+            var items = unwrap(res);
             renderMyQuizCards(Array.isArray(items) ? items : []);
         }).catch(function(){
             document.getElementById('udash-myquiz-list').innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Could not load quizzes. <a href="#" onclick="location.reload()">Retry</a></p>';
@@ -321,7 +327,8 @@ window.AQS = {
     function loadActivity(){
         var el = document.getElementById('udash-activity-list');
         var ct = document.getElementById('udash-activity-count');
-        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_attempts'}).then(function(items){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_attempts'}).then(function(res){
+            var items = unwrap(res);
             if(!Array.isArray(items)) items = [];
             if(ct) ct.textContent = items.length ? '('+items.length+' quiz'+(items.length!==1?'zes':'')+')' : '';
             if(!items.length){
