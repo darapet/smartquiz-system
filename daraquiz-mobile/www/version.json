@@ -1,8 +1,8 @@
 {
-  "version": "1.84",
-  "versionCode": 69,
+  "version": "1.85",
+  "versionCode": 70,
   "releaseDate": "2026-06-03",
-  "notes": "Updated app icon, animated splash screen with logo inside orbit ring, sound enabled.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.84/daraquiz-v1.84.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.84/daraquiz-v1.84.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.85/daraquiz-v1.85.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.85/daraquiz-v1.85.apk"
 }
