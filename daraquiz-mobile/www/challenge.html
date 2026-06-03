@@ -27,7 +27,14 @@
 .aqs-ch-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;margin-bottom:20px}
 /* Game layout */
 #aqs-ch-screen-game .aqs-ch-game-wrap{display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start}
-@media(max-width:680px){#aqs-ch-screen-game .aqs-ch-game-wrap{grid-template-columns:1fr}}
+@media(max-width:680px){
+  #aqs-ch-screen-game .aqs-ch-game-wrap{grid-template-columns:1fr}
+  #aqs-ch-screen-game .aqs-ch-game-wrap > div:first-child{order:2}
+  #aqs-ch-screen-game .aqs-ch-game-wrap > div:last-child{order:1}
+  #aqs-ch-chat-msgs{height:90px!important}
+  #aqs-ch-screen-game .aqs-ch-card{padding:12px!important}
+  #aqs-ch-question-area{min-height:auto!important}
+}
 /* Scoreboard */
 .aqs-ch-score-player{display:flex;align-items:center;gap:8px;padding:8px;border-radius:10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);margin-bottom:6px;transition:all .3s}
 .aqs-ch-score-player.active-turn{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.12)}
