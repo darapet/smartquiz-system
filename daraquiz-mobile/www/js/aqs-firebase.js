@@ -20,6 +20,7 @@ import {
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
+    initializeFirestore,
     getFirestore,
     collection,
     doc,
@@ -61,7 +62,15 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db   = getFirestore(app);
+/* Use experimentalForceLongPolling on Capacitor/Android — fixes Firestore
+   hanging on Android WebView's IndexedDB persistence layer. Falls back to
+   the standard getFirestore() on web where long-polling is not needed. */
+var _isCapacitorNative = typeof window !== 'undefined'
+    && typeof window.Capacitor !== 'undefined'
+    && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+const db = _isCapacitorNative
+    ? initializeFirestore(app, { experimentalForceLongPolling: true })
+    : getFirestore(app);
 const rtdb = getDatabase(app);
 
 /* ── Base URL helper: works on GitHub Pages subfolders ──
@@ -300,7 +309,7 @@ window.aqsUploadFile = async function(file, storagePath) {
 
 function _interceptJqueryCall(settings, data) {
       var deferred = jQuery.Deferred();
-      var timeoutMs = settings.timeout || 20000;
+      var timeoutMs = settings.timeout || 8000;
       var done = false;
 
       // Timeout guard — honours the jQuery AJAX timeout setting
@@ -787,7 +796,10 @@ async function actionSaveQuiz(data) {
 }
 
 async function actionGetQuizzes(data) {
-    var user = requireAuth();
+    /* Ensure we have a user — fall back to guest/anonymous session if not signed in */
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) user = await getOrCreateGuestSession();
+    if (!user) throw new Error('Not authenticated');
     /* No orderBy to avoid requiring a Firestore composite index — we sort client-side */
     var snap = await getDocs(
         query(collection(db, 'quizzes'),
