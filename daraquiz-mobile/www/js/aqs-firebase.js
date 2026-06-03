@@ -143,6 +143,14 @@ auth.authStateReady().then(function() {
     onAuthStateChanged(auth, function(user) {
         window._aqsFirebaseUser = user;
         window._aqsAuthUser     = user;
+        /* Persist UID + refresh token so dashboard prefetch can load quizzes
+           even if the Firebase module is slow or hangs in Android WebView. */
+        if (user) {
+            try {
+                localStorage.setItem('aqs_host_uid', user.uid);
+                if (user.refreshToken) localStorage.setItem('aqs_refresh_token', user.refreshToken);
+            } catch(_) {}
+        }
         document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
     });
 }).catch(function() {
