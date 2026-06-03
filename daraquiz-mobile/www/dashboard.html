@@ -18,18 +18,13 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
-/* Loading spinner */
-#aqs-load-spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;gap:16px;}
-#aqs-load-spinner .spin{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#4f46e5;border-radius:50%;animation:spin .8s linear infinite;}
-@keyframes spin{to{transform:rotate(360deg)}}
-#aqs-load-spinner p{color:#6b7280;font-size:.95rem;margin:0;}
-/* Pull-to-refresh */
-#aqs-ptr-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:10px;background:#4f46e5;color:#fff;font-size:.88rem;font-weight:600;padding:0;height:0;overflow:hidden;transition:height .2s,padding .2s;will-change:height;}
-#aqs-ptr-bar.ptr-pulling{height:44px;padding:0;}
-#aqs-ptr-bar.ptr-refreshing{height:44px;padding:0;}
+/* Pull-to-refresh bar */
+#aqs-ptr-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:10px;background:#4f46e5;color:#fff;font-size:.88rem;font-weight:600;height:0;overflow:hidden;transition:height .2s;will-change:height;}
+#aqs-ptr-bar.ptr-pulling,#aqs-ptr-bar.ptr-refreshing{height:44px;}
 #aqs-ptr-icon{font-size:1.1rem;transition:transform .3s;}
 #aqs-ptr-bar.ptr-ready #aqs-ptr-icon{transform:rotate(180deg);}
-#aqs-ptr-bar.ptr-refreshing #aqs-ptr-icon{animation:spin .7s linear infinite;}
+#aqs-ptr-bar.ptr-refreshing #aqs-ptr-icon{display:inline-block;animation:ptr-spin .7s linear infinite;}
+@keyframes ptr-spin{to{transform:rotate(360deg)}}
 @media(max-width:640px){
   .aqs-hdr-nav{display:none;}
   .aqs-hdr-hamburger{display:flex;}
@@ -59,16 +54,18 @@ window.AQS = {
 };
 </script>
 
-<!-- Firebase SDK -->
+<!-- Firebase SDK — same load order as the web version -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
 </head>
 <body>
-<!-- Pull-to-refresh indicator bar -->
+
+<!-- Pull-to-refresh indicator -->
 <div id="aqs-ptr-bar">
     <span id="aqs-ptr-icon">↓</span>
     <span id="aqs-ptr-label">Pull down to refresh</span>
 </div>
+
 <header class="aqs-site-header">
     <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
     <nav class="aqs-hdr-nav">
@@ -136,10 +133,7 @@ window.AQS = {
 
     <div class="aqs-quiz-list-wrap">
         <div id="aqs-quiz-list">
-            <div id="aqs-load-spinner">
-                <div class="spin"></div>
-                <p id="aqs-load-msg">Loading your quizzes…</p>
-            </div>
+            <p class="aqs-loading">Loading quizzes...</p>
         </div>
     </div>
 
@@ -233,420 +227,104 @@ window.AQS = {
 </div>
 </main>
 
-<!-- ═══════════════════════════════════════════════════════════════════
-     SELF-CONTAINED QUIZ LOADER
-     Loads quizzes using only the Firestore REST API — never touches the
-     Firebase SDK AJAX path (which hangs in Capacitor Android WebView).
-
-     Auth stages:
-       1. UID already cached in localStorage → fetch immediately
-       2. No UID but refresh token cached → exchange token → fetch
-       3. No credentials at all → wait for Firebase Auth → fetch via REST
-     On every success: saves uid + refresh_token so next load is instant.
-     On failure: shows a retry button — never stays stuck on a spinner.
-════════════════════════════════════════════════════════════════════ -->
-<script>
-(function () {
-    'use strict';
-
-    var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
-    var PROJ    = 'smartquiz-darapet';
-
-    var _rendered = false;
-    var _timeoutId = null;
-
-    /* ── helpers ─────────────────────────────────────────── */
-    function esc(s) {
-        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-
-    function ls(key, val) {
-        try {
-            if (val === undefined) return localStorage.getItem(key) || '';
-            localStorage.setItem(key, val);
-        } catch (_) { return ''; }
-    }
-
-    /* ── map a Firestore REST document row to a plain quiz object ── */
-    function mapDoc(r) {
-        if (!r || !r.document) return null;
-        var f   = r.document.fields || {};
-        var gs  = function(k) { return (f[k] && f[k].stringValue) || ''; };
-        var gn  = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
-        return {
-            id:            r.document.name.split('/').pop(),
-            title:         gs('title'),
-            subject:       gs('subject'),
-            num_questions: gn('num_questions'),
-            time_limit:    gn('time_limit'),
-            mode:          gs('mode'),
-            status:        gs('status'),
-            host_status:   gs('host_status') || 'active',
-            quiz_token:    gs('quiz_token'),
-            quiz_url:      gs('quiz_url')
-        };
-    }
-
-    /* ── render the quiz list directly into the DOM ── */
-    function render(quizzes) {
-        if (_rendered) return;
-        _rendered = true;
-        if (_timeoutId) clearTimeout(_timeoutId);
-
-        /* also expose for aqs-main.js so its own handlers work */
-        window._prefetchedQuizzes = quizzes;
-        window._aqsPrefetchDone   = true;
-        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-
-        var total = quizzes.length, published = 0, draft = 0;
-        var html = '';
-
-        quizzes.forEach(function (q) {
-            if (q.status === 'published') published++; else draft++;
-            var hs          = q.host_status || 'active';
-            var statusBadge = q.status === 'published'
-                ? '<span class="aqs-badge aqs-badge-success">✅ Published</span>'
-                : '<span class="aqs-badge aqs-badge-draft">📝 Draft</span>';
-            var hostBadge   = hs === 'disabled'
-                ? '<span class="aqs-badge aqs-badge-warn">⛔ Disabled</span>'
-                : '';
-            html +=
-                '<div class="aqs-quiz-list-item">' +
-                  '<div class="aqs-quiz-list-info">' +
-                    '<div class="aqs-quiz-list-title">' + esc(q.title) + '</div>' +
-                    '<div class="aqs-quiz-list-meta">' +
-                      statusBadge + hostBadge +
-                      '<span class="aqs-quiz-list-meta-txt">📚 ' + esc(q.subject) + '</span>' +
-                      '<span class="aqs-quiz-list-meta-txt">❓ ' + q.num_questions + ' Qs</span>' +
-                      '<span class="aqs-quiz-list-meta-txt">⏱ ' + q.time_limit + ' min</span>' +
-                    '</div>' +
-                  '</div>' +
-                  '<div class="aqs-quiz-list-actions">' +
-                    '<button class="aqs-btn aqs-btn-sm aqs-view-quiz-btn" data-id="' + esc(q.id) + '">👁 View</button>' +
-                    '<button class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;" onclick="location.href=\'create-quiz.html?edit=' + esc(q.id) + '\'">✏️ Edit</button>' +
-                    (hs === 'disabled'
-                        ? '<button class="aqs-btn aqs-btn-sm aqs-btn-success aqs-toggle-status-btn" data-id="' + esc(q.id) + '" data-action="enable">✅ Enable</button>'
-                        : '<button class="aqs-btn aqs-btn-sm aqs-btn-warn aqs-toggle-status-btn" data-id="' + esc(q.id) + '" data-action="disable">⛔ Disable</button>') +
-                    '<button class="aqs-btn aqs-btn-sm aqs-view-attendance-btn" data-id="' + esc(q.id) + '" data-title="' + esc(q.title) + '" data-token="' + esc(q.quiz_token) + '">📊 Attendance</button>' +
-                    '<button class="aqs-btn aqs-btn-sm aqs-print-quiz-pdf-btn" data-id="' + esc(q.id) + '" data-title="' + esc(q.title) + '">🖨 Print</button>' +
-                    '<button class="aqs-btn aqs-btn-sm aqs-btn-danger aqs-delete-btn" data-id="' + esc(q.id) + '" data-title="' + esc(q.title) + '">🗑 Delete</button>' +
-                  '</div>' +
-                '</div>';
-        });
-
-        if (!html) {
-            html = '<p class="aqs-empty" style="text-align:center;padding:32px;">No quizzes yet. <a href="create-quiz.html">Create one →</a></p>';
-        }
-
-        document.getElementById('aqs-quiz-list').innerHTML = html;
-        document.getElementById('stat-total').textContent     = total;
-        document.getElementById('stat-published').textContent = published;
-        document.getElementById('stat-draft').textContent     = draft;
-    }
-
-    /* ── show error with retry button ── */
-    function showError(msg) {
-        if (_rendered) return;
-        _rendered = true;
-        if (_timeoutId) clearTimeout(_timeoutId);
-        window._aqsPrefetchDone = true;
-        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-        document.getElementById('aqs-quiz-list').innerHTML =
-            '<div style="text-align:center;padding:40px 20px;">' +
-            '<p style="color:#ef4444;font-size:.95rem;margin-bottom:16px;">⚠️ ' + esc(msg) + '</p>' +
-            '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Tap to Retry</button>' +
-            '</div>';
-    }
-
-    /* ── fetch quizzes from Firestore REST API ── */
-    function fetchQuizzes(uid, idToken) {
-        var url  = 'https://firestore.googleapis.com/v1/projects/' + PROJ + '/databases/(default)/documents:runQuery?key=' + API_KEY;
-        var hdrs = { 'Content-Type': 'application/json' };
-        if (idToken) hdrs['Authorization'] = 'Bearer ' + idToken;
-
-        return fetch(url, {
-            method: 'POST',
-            headers: hdrs,
-            body: JSON.stringify({
-                structuredQuery: {
-                    from: [{ collectionId: 'quizzes' }],
-                    where: {
-                        fieldFilter: {
-                            field: { fieldPath: 'host_uid' },
-                            op: 'EQUAL',
-                            value: { stringValue: uid }
-                        }
-                    }
-                }
-            })
-        })
-        .then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-        })
-        .then(function (rows) {
-            var quizzes = (Array.isArray(rows) ? rows : [])
-                .map(mapDoc)
-                .filter(Boolean);
-            render(quizzes);
-        });
-    }
-
-    /* ── Stage 3 helper: called once Firebase Auth resolves ── */
-    function loadFromAuthUser(user) {
-        if (_rendered) return;
-        if (!user || user.isAnonymous) {
-            showError('Sign-in required. Please go back and log in again.');
-            return;
-        }
-        ls('aqs_host_uid', user.uid);
-        if (user.refreshToken) ls('aqs_refresh_token', user.refreshToken);
-
-        var doFetch = function (tok) { fetchQuizzes(user.uid, tok).catch(function () { showError('Could not load quizzes. Please retry.'); }); };
-
-        if (typeof user.getIdToken === 'function') {
-            user.getIdToken().then(doFetch).catch(function () { doFetch(null); });
-        } else {
-            doFetch(null);
-        }
-    }
-
-    /* expose so other scripts can trigger a re-fetch */
-    window._aqsRetryPrefetch = loadFromAuthUser;
-
-    /* ── Hard timeout — 20 s, then show retry ── */
-    _timeoutId = setTimeout(function () {
-        if (!_rendered) showError('Connection timed out. Check your internet and try again.');
-    }, 20000);
-
-    /* ════════════════════
-       STAGE 1: UID cached
-    ════════════════════ */
-    var uid = ls('aqs_host_uid');
-    if (uid) {
-        document.getElementById('aqs-load-msg').textContent = 'Loading your quizzes…';
-        fetchQuizzes(uid, null).catch(function () {
-            /* UID stale — clear and fall through to Stage 2 */
-            ls('aqs_host_uid', '');
-            var rt = ls('aqs_refresh_token');
-            if (rt) runStage2(rt); else runStage3();
-        });
-        return;
-    }
-
-    /* ════════════════════════════════════════
-       STAGE 2: Refresh token cached — exchange
-    ════════════════════════════════════════ */
-    var storedRt = ls('aqs_refresh_token');
-    if (storedRt) { runStage2(storedRt); return; }
-
-    /* ═══════════════════════════════════════════════════
-       STAGE 3: No credentials — wait for Firebase Auth
-    ═══════════════════════════════════════════════════ */
-    runStage3();
-
-    function runStage2(rt) {
-        document.getElementById('aqs-load-msg').textContent = 'Signing you in…';
-        fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: rt })
-        })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            if (!data.user_id) throw new Error('no user_id from token exchange');
-            ls('aqs_host_uid', data.user_id);
-            if (data.refresh_token) ls('aqs_refresh_token', data.refresh_token);
-            document.getElementById('aqs-load-msg').textContent = 'Loading your quizzes…';
-            return fetchQuizzes(data.user_id, data.id_token);
-        })
-        .catch(function (e) {
-            console.warn('[AQS] Stage 2 failed:', e && e.message);
-            ls('aqs_refresh_token', '');
-            runStage3();
-        });
-    }
-
-    function runStage3() {
-        document.getElementById('aqs-load-msg').textContent = 'Waiting for sign-in…';
-        if (typeof window.onAqsAuthChange === 'function') {
-            window.onAqsAuthChange(loadFromAuthUser);
-        } else {
-            document.addEventListener('aqs:firebase:ready', function () {
-                if (typeof window.onAqsAuthChange === 'function') {
-                    window.onAqsAuthChange(loadFromAuthUser);
-                } else {
-                    showError('Could not connect to Firebase. Please retry.');
-                }
-            }, { once: true });
-        }
-    }
-
-})();
-</script>
+<!-- Same scripts as the web — aqs-firebase.js already uses REST API internally -->
 <script src="js/aqs-main.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
 <script src="capacitor-bridge.js"></script>
 
-<!-- ═══════════════════════════════════════════
-     PULL-TO-REFRESH
-     Works in Capacitor Android WebView.
-     Pull the page down 70px → release → reloads quizzes.
-     Only fires when page is already scrolled to the top.
-════════════════════════════════════════════ -->
+<!-- Pull-to-refresh: swipe down at top of page to reload quiz list -->
 <script>
 (function () {
     'use strict';
+    var THRESHOLD = 70;
+    var MAX_PULL  = 110;
+    var bar   = document.getElementById('aqs-ptr-bar');
+    var icon  = document.getElementById('aqs-ptr-icon');
+    var label = document.getElementById('aqs-ptr-label');
+    var startY = 0, pulling = false, refreshing = false;
 
-    var THRESHOLD  = 70;   /* px to pull before "ready" state triggers */
-    var MAX_PULL   = 110;  /* px maximum visual drag */
+    function reset() {
+        bar.className = '';
+        bar.style.height = '0';
+        icon.textContent = '↓';
+        icon.style.transform = '';
+        label.textContent = 'Pull down to refresh';
+        pulling = false;
+    }
 
-    var bar    = document.getElementById('aqs-ptr-bar');
-    var icon   = document.getElementById('aqs-ptr-icon');
-    var label  = document.getElementById('aqs-ptr-label');
-
-    var startY      = 0;
-    var pulling     = false;
-    var refreshing  = false;
-
-    function setState(state, dist) {
-        bar.className = state ? 'ptr-' + state : '';
-        if (state === 'pulling') {
-            var pct = Math.min(dist / THRESHOLD, 1);
-            bar.style.height = Math.min(dist * 0.55, 44) + 'px';
-            icon.style.transform = 'rotate(' + (pct * 180) + 'deg)';
-            label.textContent = dist >= THRESHOLD ? 'Release to refresh' : 'Pull down to refresh';
-        } else if (state === 'refreshing') {
-            bar.style.height = '44px';
-            icon.textContent = '↻';
-            label.textContent = 'Refreshing…';
-        } else {
-            bar.style.height = '0';
-            icon.textContent = '↓';
-            label.textContent = 'Pull down to refresh';
-            icon.style.transform = '';
-        }
+    function setRefreshing() {
+        bar.className = 'ptr-refreshing';
+        bar.style.height = '44px';
+        icon.textContent = '↻';
+        label.textContent = 'Refreshing…';
     }
 
     function doRefresh() {
         if (refreshing) return;
         refreshing = true;
-        setState('refreshing');
-
-        /* Reset render flag so the loader can run again */
+        setRefreshing();
+        /* Let aqs-main.js re-run the load via the same web flow */
+        $('#aqs-quiz-list').html('<p class="aqs-loading">Loading quizzes...</p>');
+        /* Clear prefetch flags so aqs-main.js falls through to the AJAX path */
         window._aqsPrefetchDone   = false;
         window._prefetchedQuizzes = undefined;
-
-        /* Show spinner in the list */
-        document.getElementById('aqs-quiz-list').innerHTML =
-            '<div id="aqs-load-spinner">' +
-            '<div class="spin"></div>' +
-            '<p id="aqs-load-msg">Refreshing your quizzes…</p>' +
-            '</div>';
-
-        /* Re-run the loader using cached credentials */
-        var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
-        var PROJ    = 'smartquiz-darapet';
-
-        function mapDoc(r) {
-            if (!r || !r.document) return null;
-            var f  = r.document.fields || {};
-            var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
-            var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
-            return { id: r.document.name.split('/').pop(), title: gs('title'), subject: gs('subject'), num_questions: gn('num_questions'), time_limit: gn('time_limit'), mode: gs('mode'), status: gs('status'), host_status: gs('host_status') || 'active', quiz_token: gs('quiz_token'), quiz_url: gs('quiz_url') };
-        }
-
-        function finish() {
-            refreshing = false;
-            setState(null);
-        }
-
-        function exchange(rt) {
-            return fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: rt })
-            }).then(function(r){ return r.json(); });
-        }
-
-        function fetchAndRender(uid, idToken) {
-            var hdrs = { 'Content-Type': 'application/json' };
-            if (idToken) hdrs['Authorization'] = 'Bearer ' + idToken;
-            return fetch('https://firestore.googleapis.com/v1/projects/' + PROJ + '/databases/(default)/documents:runQuery?key=' + API_KEY, {
-                method: 'POST', headers: hdrs,
-                body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'quizzes' }], where: { fieldFilter: { field: { fieldPath: 'host_uid' }, op: 'EQUAL', value: { stringValue: uid } } } } })
-            })
-            .then(function(r){ return r.json(); })
-            .then(function(rows) {
-                var quizzes = (Array.isArray(rows) ? rows : []).map(mapDoc).filter(Boolean);
-                /* Trigger main loader's render by setting globals and firing event */
-                window._prefetchedQuizzes = quizzes;
-                window._aqsPrefetchDone   = true;
-                document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-                /* Also call our own _aqsRenderQuizzes if available */
-                if (typeof window._aqsRenderQuizzes === 'function') window._aqsRenderQuizzes(quizzes);
-                finish();
+        /* Trigger loadQuizzes() the web way — via jQuery AJAX intercept in aqs-firebase.js */
+        if (typeof $ !== 'undefined') {
+            $.post(AQS.ajax_url, { action: 'aqs_get_quizzes', nonce: AQS.nonce }, function (res) {
+                refreshing = false;
+                reset();
+                if (res && res.success && Array.isArray(res.data)) {
+                    window._prefetchedQuizzes = res.data;
+                    window._aqsPrefetchDone   = true;
+                    /* Let aqs-main.js render it */
+                    document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+                } else {
+                    $('#aqs-quiz-list').html(
+                        '<div style="text-align:center;padding:32px;">' +
+                        '<p style="color:#ef4444;margin-bottom:12px;">⚠️ Could not refresh. Try again.</p>' +
+                        '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Reload</button>' +
+                        '</div>'
+                    );
+                }
             });
-        }
-
-        var uid = '';
-        var rt  = '';
-        try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_){}
-        try { rt  = localStorage.getItem('aqs_refresh_token') || ''; } catch(_){}
-
-        if (uid && rt) {
-            exchange(rt)
-                .then(function(d){ return fetchAndRender(d.user_id || uid, d.id_token); })
-                .catch(function(){ return fetchAndRender(uid, null); })
-                .catch(function(){ finish(); location.reload(); });
-        } else if (rt) {
-            exchange(rt)
-                .then(function(d){
-                    try { localStorage.setItem('aqs_host_uid', d.user_id); } catch(_){}
-                    return fetchAndRender(d.user_id, d.id_token);
-                })
-                .catch(function(){ finish(); location.reload(); });
         } else {
-            /* No credentials at all — full reload */
-            finish();
+            refreshing = false;
+            reset();
             location.reload();
         }
     }
 
     document.addEventListener('touchstart', function (e) {
-        if (refreshing) return;
-        if (window.scrollY > 2) return;  /* only trigger at top of page */
-        startY   = e.touches[0].clientY;
-        pulling  = true;
+        if (refreshing || window.scrollY > 2) return;
+        startY  = e.touches[0].clientY;
+        pulling = true;
     }, { passive: true });
 
     document.addEventListener('touchmove', function (e) {
         if (!pulling || refreshing) return;
-        var dist = e.touches[0].clientY - startY;
-        if (dist <= 0) { pulling = false; setState(null); return; }
-        if (window.scrollY > 2) { pulling = false; setState(null); return; }
+        if (window.scrollY > 2) { reset(); return; }
+        var dist    = e.touches[0].clientY - startY;
+        if (dist <= 0) { reset(); return; }
         var clamped = Math.min(dist, MAX_PULL);
-        setState(clamped >= THRESHOLD ? 'ready' : 'pulling', clamped);
+        bar.style.height = Math.min(clamped * 0.55, 44) + 'px';
+        var pct = Math.min(dist / THRESHOLD, 1);
+        icon.style.transform = 'rotate(' + (pct * 180) + 'deg)';
+        bar.className = dist >= THRESHOLD ? 'ptr-pulling ptr-ready' : 'ptr-pulling';
+        label.textContent = dist >= THRESHOLD ? 'Release to refresh' : 'Pull down to refresh';
     }, { passive: true });
 
     document.addEventListener('touchend', function (e) {
         if (!pulling || refreshing) return;
         var dist = e.changedTouches[0].clientY - startY;
-        pulling = false;
         if (dist >= THRESHOLD && window.scrollY <= 2) {
             doRefresh();
         } else {
-            setState(null);
+            reset();
         }
     }, { passive: true });
 
-    /* Expose globally so other scripts can trigger a refresh */
     window.aqsPullRefresh = doRefresh;
-
-    /* Also expose the render function for the refresh path */
-    window._aqsRenderQuizzes = null; /* set by main loader after first render */
-
 })();
 </script>
 </body>
