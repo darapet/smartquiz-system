@@ -113,13 +113,15 @@ window.AQS = {
   <!-- Profile Header -->
   <div class="aqs-user-topbar">
     <div class="aqs-user-topbar-left">
-      <div class="aqs-avatar-wrap" id="aqs-avatar-wrap" title="Tap to change photo" tabindex="0" role="button" aria-label="Change profile photo">
+      <div class="aqs-avatar-wrap" id="aqs-avatar-wrap" title="Tap to change photo" aria-label="Change profile photo">
         <div class="aqs-avatar" id="aqs-user-avatar-initial">?</div>
         <div class="aqs-avatar-overlay">📷</div>
         <div class="aqs-avatar-cam">📷</div>
         <div class="aqs-avatar-spinner-wrap" id="aqs-avatar-spinner-wrap"><div class="aqs-avatar-spinner"></div></div>
+        <!-- File input sits directly on top of the avatar so the tap is a trusted gesture on Android WebView -->
+        <input type="file" id="aqs-avatar-file-input" accept="image/*"
+               style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border-radius:50%;z-index:10;">
       </div>
-      <input type="file" id="aqs-avatar-file-input" accept="image/*" style="display:none;">
       <div>
         <div class="aqs-user-name" id="aqs-user-display-name">Loading…</div>
         <div class="aqs-user-role-badge" id="aqs-user-role-badge">Member</div>
@@ -364,10 +366,6 @@ window.AQS = {
             reader.readAsDataURL(file);
         }
 
-        if(wrap){
-            wrap.addEventListener('click', function(){ input && input.click(); });
-            wrap.addEventListener('keydown', function(e){ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); input && input.click(); } });
-        }
         if(input){
             input.addEventListener('change', function(){
                 if(this.files && this.files[0]) resizeAndUpload(this.files[0]);
