@@ -21,10 +21,10 @@
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 3000,
+      "launchShowDuration": 0,
       "launchAutoHide": true,
-      "launchFadeOutDuration": 500,
-      "backgroundColor": "#0d2e7d",
+      "launchFadeOutDuration": 0,
+      "backgroundColor": "#0d1b6e",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false,
@@ -33,7 +33,7 @@
     },
     "StatusBar": {
       "style": "DARK",
-      "backgroundColor": "#0d2e7d"
+      "backgroundColor": "#0d1b6e"
     },
     "Keyboard": {
       "resize": "body",
