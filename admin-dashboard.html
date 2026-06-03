@@ -181,6 +181,7 @@ window._AQS_SETTINGS_NONCE = '';
         <button class="aqs-admin-tab" data-tab="tab-deleted">🗑 Deleted Quizzes</button>
         <button class="aqs-admin-tab" data-tab="tab-attendees">All Attendees</button>
         <button class="aqs-admin-tab" data-tab="tab-ads">📢 Ads Manager</button>
+        <button class="aqs-admin-tab" data-tab="tab-ratings">⭐ Ratings</button>
     </div>
 
     <!-- TAB: My Quizzes -->
@@ -376,7 +377,24 @@ window._AQS_SETTINGS_NONCE = '';
     </div>
 
     <!-- Print-Before-Delete Modal -->
-    <div id="aqs-admin-print-delete-modal" class="aqs-modal" style="display:none;">
+    
+    <!-- TAB: Ratings & Feedback -->
+    <div id="tab-ratings" class="aqs-admin-tab-content">
+        <div class="aqs-stats" id="aqs-ratings-stats">
+            <div class="aqs-stat-card"><span id="rat-total">—</span><label>Total Ratings</label></div>
+            <div class="aqs-stat-card"><span id="rat-avg">—</span><label>Avg Stars</label></div>
+            <div class="aqs-stat-card"><span id="rat-five">—</span><label>5-Star Ratings</label></div>
+        </div>
+        <div id="rat-dist" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;height:60px;"></div>
+        <div class="aqs-table-wrap">
+            <table class="aqs-table">
+                <thead><tr><th>#</th><th>User</th><th>Stars</th><th>Comment</th><th>Date</th></tr></thead>
+                <tbody id="aqs-ratings-rows"><tr><td colspan="5" class="aqs-loading">Click "⭐ Ratings" tab to load…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+<div id="aqs-admin-print-delete-modal" class="aqs-modal" style="display:none;">
         <div class="aqs-modal-content" style="max-width:560px;">
             <div class="aqs-modal-header" style="border-bottom:3px solid #dc2626;">
                 <div><h3 style="color:#dc2626;">🖨️ Print Required Before Deleting</h3><p class="aqs-modal-sub" id="aqs-admin-pbd-sub"></p></div>
@@ -414,6 +432,7 @@ window._AQS_SETTINGS_NONCE = '';
 
 <script>
 // Tab switching
+var _ratingsLoaded = false;
 document.querySelectorAll('.aqs-admin-tab').forEach(function(btn){
     btn.addEventListener('click', function(){
         var tab = this.dataset.tab;
@@ -422,8 +441,55 @@ document.querySelectorAll('.aqs-admin-tab').forEach(function(btn){
         this.classList.add('active');
         var el = document.getElementById(tab);
         if(el) el.classList.add('active');
+        if (tab === 'tab-ratings' && !_ratingsLoaded) { _ratingsLoaded = true; _loadRatings(); }
     });
 });
+
+function _loadRatings() {
+    var tbody = document.getElementById('aqs-ratings-rows');
+    tbody.innerHTML = '<tr><td colspan="5" class="aqs-loading">Loading ratings…</td></tr>';
+    function doLoad() {
+        if (!window.aqsAjax) { setTimeout(doLoad, 500); return; }
+        window.aqsAjax({ action: 'aqs_get_ratings', limit: 200 }, function(res) {
+            var ratings = (res && res.success && res.data && res.data.ratings) ? res.data.ratings : [];
+            if (ratings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="aqs-loading">No ratings yet.</td></tr>';
+                document.getElementById('rat-total').textContent = '0';
+                document.getElementById('rat-avg').textContent = '—';
+                document.getElementById('rat-five').textContent = '0';
+                return;
+            }
+            var total = ratings.length;
+            var sum   = ratings.reduce(function(a,r){ return a + (r.stars||0); }, 0);
+            var avg   = (sum/total).toFixed(1);
+            var five  = ratings.filter(function(r){ return r.stars===5; }).length;
+            document.getElementById('rat-total').textContent = total;
+            document.getElementById('rat-avg').textContent   = avg + ' ⭐';
+            document.getElementById('rat-five').textContent  = five;
+            var dist = [0,0,0,0,0];
+            ratings.forEach(function(r){ if(r.stars>=1&&r.stars<=5) dist[r.stars-1]++; });
+            var maxD = Math.max.apply(null,dist)||1;
+            var barColors = ['#ef4444','#f97316','#eab308','#84cc16','#22c55e'];
+            document.getElementById('rat-dist').innerHTML = dist.map(function(n,i){
+                return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">' +
+                    '<span style="font-size:.7rem;color:#64748b;font-weight:700;">' + n + '</span>' +
+                    '<div style="width:100%;background:' + barColors[i] + ';border-radius:4px 4px 0 0;height:' + Math.round((n/maxD)*40) + 'px;"></div>' +
+                    '<span style="font-size:.75rem;">' + (i+1) + '★</span>' +
+                '</div>';
+            }).join('');
+            var starsMap = ['☆☆☆☆☆','★☆☆☆☆','★★☆☆☆','★★★☆☆','★★★★☆','★★★★★'];
+            tbody.innerHTML = ratings.map(function(r,idx){
+                var ts = r.createdAt && r.createdAt.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
+                var comment = r.comment ? ('<span style="color:#374151;">' + r.comment.replace(/</g,'&lt;') + '</span>') : '<span style="color:#9ca3af;font-style:italic;">No comment</span>';
+                var colorMap = {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#84cc16',5:'#22c55e'};
+                return '<tr><td>' + (idx+1) + '</td><td style="font-weight:600;">' + ((r.userName||'Anonymous').replace(/</g,'&lt;')) + '</td><td><span style="color:' + (colorMap[r.stars]||'#6366f1') + ';font-size:1.1rem;">' + (starsMap[r.stars]||'—') + '</span></td><td>' + comment + '</td><td style="white-space:nowrap;color:#64748b;">' + ts + '</td></tr>';
+            }).join('');
+        }, function() {
+            tbody.innerHTML = '<tr><td colspan="5" class="aqs-loading">Failed to load. Must be logged in as admin.</td></tr>';
+        });
+    }
+    doLoad();
+}
 // Export dropdown toggle
 var expBtn = document.getElementById('aqs-all-att-export-btn');
 var expMenu = document.getElementById('aqs-all-att-export-menu');
