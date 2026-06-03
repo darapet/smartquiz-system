@@ -1,8 +1,8 @@
 {
-  "version": "1.58",
-  "versionCode": 43,
+  "version": "1.59",
+  "versionCode": 44,
   "releaseDate": "2026-06-03",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.58/daraquiz-v1.58.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.58/daraquiz-v1.58.apk"
+  "notes": "Fixed sign-in page layout — removed sidebar and countdown bar from login screen so only the clean sign-in form shows. No more split layout on mobile.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.59/daraquiz-v1.59.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.59/daraquiz-v1.59.apk"
 }
