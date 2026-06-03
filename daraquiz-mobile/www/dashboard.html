@@ -213,60 +213,86 @@ window.AQS = {
 </div>
 </main>
 <!-- INSTANT QUIZ PREFETCH: runs before any Firebase module, uses localStorage UID + Firestore REST API.
-     This is the primary load path for the Capacitor Android app where the Firebase SDK WebChannel hangs. -->
-<script>
-(function() {
-    'use strict';
-    var uid = '';
-    try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
-    if (!uid) return; // No stored UID — fall back to Firebase Auth flow
+       This is the primary load path for the Capacitor Android app where the Firebase SDK WebChannel hangs.
+       Two-stage approach:
+         Stage 1 — UID already in localStorage: query Firestore directly (API key is sufficient).
+         Stage 2 — UID missing: exchange stored refresh token for a new ID token, then query. -->
+  <script>
+  (function() {
+      'use strict';
+      var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
+      var PROJ    = 'smartquiz-darapet';
 
-    window._aqsPrefetchDone   = false;
-    window._prefetchedQuizzes = undefined;
+      window._aqsPrefetchDone   = false;
+      window._prefetchedQuizzes = undefined;
 
-    fetch('https://firestore.googleapis.com/v1/projects/smartquiz-darapet/databases/(default)/documents:runQuery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            structuredQuery: {
-                from: [{ collectionId: 'quizzes' }],
-                where: {
-                    fieldFilter: {
-                        field: { fieldPath: 'host_uid' },
-                        op: 'EQUAL',
-                        value: { stringValue: uid }
-                    }
-                }
-            }
-        })
-    })
-    .then(function(r) { return r.json(); })
-    .then(function(rows) {
-        var items = (rows || []).filter(function(r) { return r.document; }).map(function(r) {
-            var f = r.document.fields || {};
-            var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
-            var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
-            return {
-                id: r.document.name.split('/').pop(),
-                title: gs('title'), subject: gs('subject'),
-                num_questions: gn('num_questions'), time_limit: gn('time_limit'),
-                mode: gs('mode'), status: gs('status'),
-                host_status: gs('host_status') || 'active',
-                quiz_token: gs('quiz_token'), quiz_url: gs('quiz_url'),
-                created_at_ms: 0
-            };
-        });
-        window._prefetchedQuizzes = items;
-        window._aqsPrefetchDone   = true;
-        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-    })
-    .catch(function(e) {
-        console.warn('[AQS] Dashboard instant prefetch failed:', e.message);
-        window._aqsPrefetchDone = true; // unblock the safety-net
-        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-    });
-})();
-</script>
+      function _mapDoc(r) {
+          var f  = (r.document && r.document.fields) || {};
+          var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
+          var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
+          return {
+              id:            r.document.name.split('/').pop(),
+              title:         gs('title'),         subject:       gs('subject'),
+              num_questions: gn('num_questions'), time_limit:    gn('time_limit'),
+              mode:          gs('mode'),           status:        gs('status'),
+              host_status:   gs('host_status') || 'active',
+              quiz_token:    gs('quiz_token'),     quiz_url:      gs('quiz_url'),
+              created_at_ms: 0
+          };
+      }
+
+      function _done(rows) {
+          window._prefetchedQuizzes = (rows || []).filter(function(r) { return r.document; }).map(_mapDoc);
+          window._aqsPrefetchDone   = true;
+          document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+      }
+
+      function _fail(e) {
+          console.warn('[AQS] Prefetch failed:', e && e.message);
+          window._aqsPrefetchDone = true;
+          document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+      }
+
+      function _fetchQuizzes(uid, idToken) {
+          var url     = 'https://firestore.googleapis.com/v1/projects/' + PROJ + '/databases/(default)/documents:runQuery?key=' + API_KEY;
+          var hdrs    = { 'Content-Type': 'application/json' };
+          if (idToken) hdrs['Authorization'] = 'Bearer ' + idToken;
+          return fetch(url, {
+              method: 'POST', headers: hdrs,
+              body: JSON.stringify({
+                  structuredQuery: {
+                      from: [{ collectionId: 'quizzes' }],
+                      where: { fieldFilter: { field: { fieldPath: 'host_uid' }, op: 'EQUAL', value: { stringValue: uid } } }
+                  }
+              })
+          }).then(function(r) { return r.json(); }).then(_done);
+      }
+
+      /* Stage 1: UID is already cached */
+      var uid = '';
+      try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
+      if (uid) { _fetchQuizzes(uid, null).catch(_fail); return; }
+
+      /* Stage 2: No UID — exchange stored refresh token for ID token + UID */
+      var refreshToken = '';
+      try { refreshToken = localStorage.getItem('aqs_refresh_token') || ''; } catch(_) {}
+      if (!refreshToken) return; /* No stored session — fall back to Firebase Auth flow */
+
+      fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+          if (!data.user_id) throw new Error('token-exchange: no user_id');
+          uid = data.user_id;
+          try { localStorage.setItem('aqs_host_uid', uid); } catch(_) {}
+          return _fetchQuizzes(uid, data.id_token);
+      })
+      .catch(_fail);
+  })();
+  </script>
 <script src="js/aqs-main.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
