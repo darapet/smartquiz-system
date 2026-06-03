@@ -358,8 +358,8 @@ var AQS_SPLASH={enabled:'1',once:'0',template:'8',app_name:'DaraQuiz AI',tagline
             var base = window.AQS_SPLASH || {};
             window.aqsRunSplash && window.aqsRunSplash({
                 enabled:       '1',
-                once:          (s.splash_once === false || s.splash_once === '0') ? '0' : '1',
-                template:      s.splash_template  || '1',
+                once:          (s.splash_once === false || s.splash_once === '0' || !s.splash_once) ? '0' : '1',
+                template:      s.splash_template  || '8',
                 app_name:      s.splash_app_name  || 'XZILY AI',
                 tagline:       s.splash_tagline   || 'Powered by Darapet Technology',
                 logo_url:      s.splash_logo_url  || '',
