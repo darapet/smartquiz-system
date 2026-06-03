@@ -3581,4 +3581,122 @@
         setTimeout(function () { win.print(); }, 600);
     }
 
+      /* ================================================================
+         aqsBackupAllResults — export every quiz's attendance to a single
+         printable / save-as-PDF backup page.
+         ================================================================ */
+      function aqsBackupAllResults() {
+          /* Collect quiz IDs + titles from the rendered quiz cards */
+          var quizzes = [];
+          $('.aqs-export-quiz-csv-btn[data-id]').each(function () {
+              quizzes.push({ id: $(this).data('id'), title: String($(this).data('title') || 'Untitled') });
+          });
+          if (!quizzes.length) {
+              alert('No quizzes found.\nPlease wait for your quizzes to finish loading, then try again.');
+              return;
+          }
+          var $btn = $('#aqs-backup-results-btn');
+          $btn.prop('disabled', true).html('⏳ Loading…');
+
+          /* Fetch attendance for every quiz in parallel */
+          var promises = quizzes.map(function (q) {
+              return new Promise(function (resolve) {
+                  $.ajax({
+                      url: AQS.ajax_url, type: 'POST', dataType: 'json',
+                      data: { action: 'aqs_get_attendance', nonce: AQS.nonce, quiz_id: q.id },
+                      success: function (res) {
+                          resolve(res && res.success ? res.data : { quiz_id: q.id, quiz_title: q.title, quiz_subject: '', attempts: [] });
+                      },
+                      error: function () {
+                          resolve({ quiz_id: q.id, quiz_title: q.title, quiz_subject: '', attempts: [] });
+                      }
+                  });
+              });
+          });
+
+          Promise.all(promises).then(function (results) {
+              $btn.prop('disabled', false).html('📥 Backup All Results');
+              var now = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+              var totalP = results.reduce(function (s, r) { return s + (r.attempts || []).length; }, 0);
+
+              var css = [
+                  '* { box-sizing: border-box; margin: 0; padding: 0; }',
+                  'body { font-family: "Segoe UI", Arial, sans-serif; font-size: 13px; color: #1a1a2e; background: #fff; }',
+                  '.page { padding: 28px 36px; max-width: 960px; margin: 0 auto; }',
+                  '.master-header { border-bottom: 3px solid #4f46e5; padding-bottom: 14px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: flex-end; }',
+                  '.master-title { font-size: 22px; font-weight: 800; color: #4f46e5; }',
+                  '.master-sub { font-size: 11px; color: #64748b; margin-top: 4px; }',
+                  '.master-stats { text-align: right; font-size: 11px; color: #64748b; line-height: 1.8; }',
+                  '.quiz-block { margin-bottom: 32px; }',
+                  '.quiz-header { background: #4f46e5; color: #fff; padding: 10px 16px; border-radius: 6px 6px 0 0; }',
+                  '.quiz-title { font-size: 15px; font-weight: 700; }',
+                  '.quiz-sub { font-size: 11px; opacity: .8; margin-top: 2px; }',
+                  '.no-data { padding: 12px 16px; background: #f8f7ff; color: #64748b; font-style: italic; border: 1px solid #e0e7ff; border-radius: 0 0 6px 6px; }',
+                  'table { width: 100%; border-collapse: collapse; }',
+                  'thead th { background: #eef2ff; color: #3730a3; padding: 8px 12px; text-align: left; font-size: 11.5px; font-weight: 700; border-bottom: 2px solid #c7d2fe; }',
+                  'tbody tr:nth-child(even) { background: #f8f7ff; }',
+                  'td { padding: 7px 12px; border-bottom: 1px solid #e5e7eb; font-size: 12.5px; vertical-align: middle; }',
+                  '.pass { color: #065f46; font-weight: 600; } .fail { color: #991b1b; font-weight: 600; }',
+                  '@media print { @page { margin: 12mm; } .quiz-block { page-break-inside: avoid; } }'
+              ].join('');
+
+              var html = '<!DOCTYPE html><html><head><meta charset="utf-8">';
+              html += '<title>Quiz Results Backup — ' + now + '</title>';
+              html += '<style>' + css + '</style></head><body><div class="page">';
+              html += '<div class="master-header"><div>';
+              html += '<div class="master-title">📋 Quiz Results Backup</div>';
+              html += '<div class="master-sub">Generated: ' + now + '</div>';
+              html += '</div><div class="master-stats">';
+              html += '<strong>' + results.length + '</strong> quiz' + (results.length !== 1 ? 'zes' : '') + '<br>';
+              html += '<strong>' + totalP + '</strong> total participant' + (totalP !== 1 ? 's' : '');
+              html += '</div></div>';
+
+              results.forEach(function (r) {
+                  var title = escHtml(r.quiz_title || r.quiz_id || 'Untitled');
+                  var subj  = r.quiz_subject ? ' &nbsp;|&nbsp; ' + escHtml(r.quiz_subject) : '';
+                  var atts  = r.attempts || [];
+                  html += '<div class="quiz-block">';
+                  html += '<div class="quiz-header">';
+                  html += '<div class="quiz-title">' + title + '</div>';
+                  html += '<div class="quiz-sub">' + atts.length + ' participant' + (atts.length !== 1 ? 's' : '') + subj + '</div>';
+                  html += '</div>';
+                  if (!atts.length) {
+                      html += '<div class="no-data">No participants yet for this quiz.</div>';
+                  } else {
+                      html += '<table><thead><tr>';
+                      html += '<th>#</th><th>Name</th><th>Score</th><th>Percentage</th><th>Date</th>';
+                      html += '</tr></thead><tbody>';
+                      atts.forEach(function (a, idx) {
+                          var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
+                          html += '<tr>';
+                          html += '<td>' + (idx + 1) + '</td>';
+                          html += '<td>' + escHtml(a.participant_name || 'Anonymous') + '</td>';
+                          html += '<td>' + a.score + ' / ' + a.total + '</td>';
+                          html += '<td class="' + (pct >= 50 ? 'pass' : 'fail') + '">' + pct + '%</td>';
+                          html += '<td>' + escHtml(a.finished_at || '') + '</td>';
+                          html += '</tr>';
+                      });
+                      html += '</tbody></table>';
+                  }
+                  html += '</div>';
+              });
+
+              html += '</div></body></html>';
+
+              var win = window.open('', '_blank', 'width=1020,height=760');
+              if (!win) { alert('Please allow pop-ups to open the backup.'); return; }
+              win.document.write(html);
+              win.document.close();
+              win.focus();
+              setTimeout(function () { win.print(); }, 700);
+
+          }).catch(function () {
+              $btn.prop('disabled', false).html('📥 Backup All Results');
+              alert('Could not load results. Please refresh and try again.');
+          });
+      }
+
+      $(document).on('click', '#aqs-backup-results-btn', function () { aqsBackupAllResults(); });
+
+  
 })(jQuery);
