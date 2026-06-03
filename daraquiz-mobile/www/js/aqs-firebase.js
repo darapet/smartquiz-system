@@ -109,7 +109,20 @@ window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = log
    auth.authStateReady() resolves only AFTER persistence is fully checked,
    so we get the real user on the first and only dispatch.
    ─────────────────────────────────────────────────────────────────────────── */
+/* Timeout guard: on Android WebView, authStateReady() can hang silently if
+   IndexedDB is slow to initialise, leaving pages frozen on "Loading quizzes...".
+   After 8 s we fall back to auth.currentUser so the page always resolves. */
+var _authReadyTimer = setTimeout(function() {
+    if (window._aqsAuthResolved) return;
+    var fbUser = auth.currentUser || null;
+    window._aqsFirebaseUser = fbUser;
+    window._aqsAuthResolved = true;
+    window._aqsAuthUser     = fbUser;
+    document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: fbUser } }));
+}, 8000);
+
 auth.authStateReady().then(function() {
+    clearTimeout(_authReadyTimer);
     /* Persistence fully resolved — set globals and fire the initial event */
     var user = auth.currentUser;
     window._aqsFirebaseUser = user;
@@ -124,6 +137,7 @@ auth.authStateReady().then(function() {
         document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
     });
 }).catch(function() {
+    clearTimeout(_authReadyTimer);
     /* Fallback: if authStateReady fails, treat as logged out */
     window._aqsAuthResolved = true;
     window._aqsAuthUser     = null;
