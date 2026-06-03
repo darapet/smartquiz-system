@@ -1,8 +1,8 @@
 {
-  "version": "1.60",
-  "versionCode": 45,
+  "version": "1.61",
+  "versionCode": 46,
   "releaseDate": "2026-06-03",
-  "notes": "Cleaned up user profile page: removed duplicate quiz activity section, added View All Quiz Activity link to dashboard. Fixed sign-in page layout on mobile.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.60/daraquiz-v1.60.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.60/daraquiz-v1.60.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.61/daraquiz-v1.61.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.61/daraquiz-v1.61.apk"
 }
