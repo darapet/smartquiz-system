@@ -212,10 +212,21 @@
                     }, { once: true });
                 }
                 /* Safety net: if firebase never fires (network issues loading the SDK),
-                   force-load after 12 s so the page doesn't stay frozen on "Loading quizzes..." */
+                   force-load after 12 s so the page doesn't stay frozen on "Loading quizzes..."
+                   If the module never loaded (jQuery not patched), show an error immediately
+                   rather than hanging on an un-intercepted $.ajax call. */
                 setTimeout(function() {
-                    if (!_quizLoadTriggered) {
-                        _quizLoadTriggered = true;
+                    if (_quizLoadTriggered) return;
+                    _quizLoadTriggered = true;
+                    if (typeof window.aqsAjax !== 'function') {
+                        /* Firebase SDK module failed to load — show error with retry */
+                        $('#aqs-quiz-list').html(
+                            '<div style="text-align:center;padding:32px;">' +
+                            '<p style="color:#ef4444;margin-bottom:12px;">⚠️ Could not connect to Firebase. Please check your internet connection and try again.</p>' +
+                            '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Retry</button>' +
+                            '</div>'
+                        );
+                    } else {
                         loadQuizzes();
                     }
                 }, 12000);
