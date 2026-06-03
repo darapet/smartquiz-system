@@ -364,6 +364,15 @@ async function generateQuestions(){
     var arr = JSON.parse(match[0]);
     if(!Array.isArray(arr) || arr.length < 1) throw new Error('No questions generated');
 
+    /* Normalize quiz answer to integer (AI sometimes returns string like "2" instead of 2) */
+    if(G.mode === 'quiz'){
+        arr = arr.map(function(q){
+            var ans = parseInt(q.answer, 10);
+            q.answer = isNaN(ans) ? 0 : Math.max(0, Math.min(3, ans));
+            return q;
+        });
+    }
+
     /* Sanitize */
     if(G.mode === 'jigsaw') return arr.slice(0, 9);
     return arr.slice(0, G.numQ);
@@ -379,6 +388,7 @@ function enterGame(room){
     G.myAnswers = {};
 
     showScreen('game');
+    showModeIntro();
     renderScoreboard();
     renderQProgress();
     $('pz-game-mode-lbl') && ($('pz-game-mode-lbl').textContent = modeLabel(G.mode));
@@ -470,10 +480,11 @@ function revealAnswer(){
     var q = G.questions[G.currentQ];
     if(!q) return;
     if(G.mode === 'quiz'){
+        var correctAns = Number(q.answer);
         var opts = document.querySelectorAll('.pz-option');
         opts.forEach(function(opt, i){
             opt.disabled = true;
-            if(i === q.answer) opt.classList.add('correct');
+            if(i === correctAns) opt.classList.add('correct');
             else if(opt.classList.contains('selected')) opt.classList.add('wrong');
         });
         /* Show explanation */
@@ -525,13 +536,14 @@ function renderQuizQ(q){
             cont.querySelectorAll('.pz-option').forEach(function(b){ b.disabled = true; });
 
             /* Immediate correct/wrong highlight */
-            if(idx === q.answer){
+            var correctIdx = Number(q.answer);
+            if(idx === correctIdx){
                 btn.classList.add('correct');
                 showAnswerOverlay('✅');
             } else {
                 btn.classList.add('wrong');
                 var opts = cont.querySelectorAll('.pz-option');
-                if(opts[q.answer]) opts[q.answer].classList.add('correct');
+                if(opts[correctIdx]) opts[correctIdx].classList.add('correct');
                 showAnswerOverlay('❌');
             }
 
@@ -811,7 +823,7 @@ async function submitAnswer(val){
     /* Score for quiz mode */
     var pts = 0;
     if(G.mode === 'quiz'){
-        var correct = val === G.questions[G.currentQ].answer;
+        var correct = Number(val) === Number(G.questions[G.currentQ].answer);
         if(correct){
             pts = 10 + Math.round((tLeft/maxT)*5); /* speed bonus up to 5 */
             G.myScore += pts;
@@ -993,6 +1005,48 @@ function listenChat(){
         }).join('');
         el.scrollTop = el.scrollHeight;
     });
+}
+
+/* ══════════════════════════════════════════════════════════
+   MODE INTRO OVERLAY (shown when game begins)
+══════════════════════════════════════════════════════════ */
+var MODE_INTROS = {
+    quiz:      { icon:'⚡', label:'Quiz Battle',   desc:'4 choices appear for each question (A/B/C/D). Pick the correct answer as fast as possible — speed earns bonus points! You get instant right/wrong feedback plus an AI explanation every round.' },
+    word:      { icon:'🔤', label:'Word Hunt',     desc:'A clue describes a hidden word. Blank cells show how many letters it has. A hint letter is revealed every 8 seconds — type the full word and press Enter (or ▶) to submit!' },
+    crossword: { icon:'📝', label:'Crossword',     desc:'Across and Down clues are listed. Tap a clue to select it, then type the answer in the box and press Enter. Solve as many clues as you can before time runs out!' },
+    jigsaw:    { icon:'🧩', label:'Jigsaw Quiz',   desc:'Answer 9 trivia questions to unlock pieces on your 3×3 board. Every correct answer fills one piece. Complete your board before everyone else to win!' }
+};
+
+function showModeIntro(){
+    var info = MODE_INTROS[G.mode] || MODE_INTROS.quiz;
+    var el = document.getElementById('pz-mode-intro');
+    if(!el) return;
+
+    var iconEl = document.getElementById('pz-intro-icon');
+    var modeEl = document.getElementById('pz-intro-mode');
+    var descEl = document.getElementById('pz-intro-desc');
+    if(iconEl) iconEl.textContent = info.icon;
+    if(modeEl) modeEl.textContent = info.label;
+    if(descEl) descEl.textContent = info.desc;
+
+    el.style.display = 'flex';
+
+    /* Animate progress bar */
+    var bar = document.getElementById('pz-intro-bar');
+    if(bar){ bar.style.width = '0%'; setTimeout(function(){ bar.style.width='100%'; }, 60); }
+
+    var dismissed = false;
+    function dismiss(){
+        if(dismissed) return;
+        dismissed = true;
+        el.style.opacity = '0';
+        setTimeout(function(){ el.style.display = 'none'; el.style.opacity = '1'; }, 350);
+    }
+
+    var timer = setTimeout(dismiss, 4500);
+
+    var btn = document.getElementById('pz-intro-btn');
+    if(btn){ btn.onclick = function(){ clearTimeout(timer); dismiss(); }; }
 }
 
 /* ══════════════════════════════════════════════════════════
