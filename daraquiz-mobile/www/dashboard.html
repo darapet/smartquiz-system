@@ -12,13 +12,17 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
 .aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px;}
 .aqs-page-main{padding:32px 20px;max-width:1200px;margin:0 auto;}
-/* Responsive header nav */
 .aqs-hdr-nav{display:flex;gap:8px;align-items:center;}
 .aqs-hdr-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px;cursor:pointer;}
 .aqs-hdr-hamburger span{display:block;width:18px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
 .aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
+/* Loading spinner */
+#aqs-load-spinner{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px;gap:16px;}
+#aqs-load-spinner .spin{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#4f46e5;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+#aqs-load-spinner p{color:#6b7280;font-size:.95rem;margin:0;}
 @media(max-width:640px){
   .aqs-hdr-nav{display:none;}
   .aqs-hdr-hamburger{display:flex;}
@@ -77,6 +81,7 @@ window.AQS = {
     document.addEventListener('click',function(e){if(drawer&&!drawer.contains(e.target)&&e.target!==ham)drawer.classList.remove('open');});
 })();
 </script>
+
 <main class="aqs-page-main">
 <div class="aqs-wrap">
     <div class="aqs-header">
@@ -119,7 +124,10 @@ window.AQS = {
 
     <div class="aqs-quiz-list-wrap">
         <div id="aqs-quiz-list">
-            <p class="aqs-loading">Loading quizzes...</p>
+            <div id="aqs-load-spinner">
+                <div class="spin"></div>
+                <p id="aqs-load-msg">Loading your quizzes…</p>
+            </div>
         </div>
     </div>
 
@@ -212,136 +220,261 @@ window.AQS = {
     </div>
 </div>
 </main>
-<!-- INSTANT QUIZ PREFETCH: runs before any Firebase module, uses localStorage UID + Firestore REST API.
-       This is the primary load path for the Capacitor Android app where the Firebase SDK WebChannel hangs.
-       Three-stage approach:
-         Stage 1 — UID already in localStorage: query Firestore directly (API key is sufficient).
-         Stage 2 — UID missing: exchange stored refresh token for a new ID token, then query.
-         Stage 3 — No cached credentials: wait for Firebase Auth to resolve, then fetch via REST API
-                   (bypasses the Firebase SDK AJAX path which can hang in Capacitor WebView). -->
-  <script>
-  (function() {
-      'use strict';
-      var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
-      var PROJ    = 'smartquiz-darapet';
 
-      window._aqsPrefetchDone   = false;
-      window._prefetchedQuizzes = undefined;
+<!-- ═══════════════════════════════════════════════════════════════════
+     SELF-CONTAINED QUIZ LOADER
+     Loads quizzes using only the Firestore REST API — never touches the
+     Firebase SDK AJAX path (which hangs in Capacitor Android WebView).
 
-      function _mapDoc(r) {
-          var f  = (r.document && r.document.fields) || {};
-          var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
-          var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
-          return {
-              id:            r.document.name.split('/').pop(),
-              title:         gs('title'),         subject:       gs('subject'),
-              num_questions: gn('num_questions'), time_limit:    gn('time_limit'),
-              mode:          gs('mode'),           status:        gs('status'),
-              host_status:   gs('host_status') || 'active',
-              quiz_token:    gs('quiz_token'),     quiz_url:      gs('quiz_url'),
-              created_at_ms: 0
-          };
-      }
+     Auth stages:
+       1. UID already cached in localStorage → fetch immediately
+       2. No UID but refresh token cached → exchange token → fetch
+       3. No credentials at all → wait for Firebase Auth → fetch via REST
+     On every success: saves uid + refresh_token so next load is instant.
+     On failure: shows a retry button — never stays stuck on a spinner.
+════════════════════════════════════════════════════════════════════ -->
+<script>
+(function () {
+    'use strict';
 
-      function _done(rows) {
-          window._prefetchedQuizzes = (rows || []).filter(function(r) { return r.document; }).map(_mapDoc);
-          window._aqsPrefetchDone   = true;
-          document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-      }
+    var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
+    var PROJ    = 'smartquiz-darapet';
 
-      function _fail(e) {
-          console.warn('[AQS] Prefetch failed:', e && e.message);
-          window._aqsPrefetchDone = true;
-          document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
-      }
+    var _rendered = false;
+    var _timeoutId = null;
 
-      function _fetchQuizzes(uid, idToken) {
-          var url     = 'https://firestore.googleapis.com/v1/projects/' + PROJ + '/databases/(default)/documents:runQuery?key=' + API_KEY;
-          var hdrs    = { 'Content-Type': 'application/json' };
-          if (idToken) hdrs['Authorization'] = 'Bearer ' + idToken;
-          return fetch(url, {
-              method: 'POST', headers: hdrs,
-              body: JSON.stringify({
-                  structuredQuery: {
-                      from: [{ collectionId: 'quizzes' }],
-                      where: { fieldFilter: { field: { fieldPath: 'host_uid' }, op: 'EQUAL', value: { stringValue: uid } } }
-                  }
-              })
-          }).then(function(r) { return r.json(); }).then(_done);
-      }
+    /* ── helpers ─────────────────────────────────────────── */
+    function esc(s) {
+        return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
 
-      /* Stage 3 helper — called after Firebase Auth resolves.
-         Uses the REST API to fetch quizzes so we never touch the Firebase SDK
-         AJAX path, which can stall in Capacitor WebView due to WebChannel issues. */
-      function _fetchWithAuthUser(user) {
-          if (window._aqsPrefetchDone && Array.isArray(window._prefetchedQuizzes)) return;
-          if (!user || user.isAnonymous) { _fail(new Error('no real auth user')); return; }
-          /* Persist credentials so Stages 1 & 2 can handle the NEXT page load instantly */
-          try { localStorage.setItem('aqs_host_uid', user.uid); } catch(_) {}
-          if (user.refreshToken) {
-              try { localStorage.setItem('aqs_refresh_token', user.refreshToken); } catch(_) {}
-          }
-          /* Get a fresh ID token for an authenticated REST query */
-          if (typeof user.getIdToken === 'function') {
-              user.getIdToken().then(function(tok) {
-                  _fetchQuizzes(user.uid, tok).catch(_fail);
-              }).catch(function() {
-                  _fetchQuizzes(user.uid, null).catch(_fail);
-              });
-          } else {
-              _fetchQuizzes(user.uid, null).catch(_fail);
-          }
-      }
+    function ls(key, val) {
+        try {
+            if (val === undefined) return localStorage.getItem(key) || '';
+            localStorage.setItem(key, val);
+        } catch (_) { return ''; }
+    }
 
-      /* Expose so other scripts can trigger a re-fetch if needed */
-      window._aqsRetryPrefetch = _fetchWithAuthUser;
+    /* ── map a Firestore REST document row to a plain quiz object ── */
+    function mapDoc(r) {
+        if (!r || !r.document) return null;
+        var f   = r.document.fields || {};
+        var gs  = function(k) { return (f[k] && f[k].stringValue) || ''; };
+        var gn  = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
+        return {
+            id:            r.document.name.split('/').pop(),
+            title:         gs('title'),
+            subject:       gs('subject'),
+            num_questions: gn('num_questions'),
+            time_limit:    gn('time_limit'),
+            mode:          gs('mode'),
+            status:        gs('status'),
+            host_status:   gs('host_status') || 'active',
+            quiz_token:    gs('quiz_token'),
+            quiz_url:      gs('quiz_url')
+        };
+    }
 
-      /* Stage 1: UID is already cached */
-      var uid = '';
-      try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
-      if (uid) { _fetchQuizzes(uid, null).catch(_fail); return; }
+    /* ── render the quiz list directly into the DOM ── */
+    function render(quizzes) {
+        if (_rendered) return;
+        _rendered = true;
+        if (_timeoutId) clearTimeout(_timeoutId);
 
-      /* Stage 2: No UID — exchange stored refresh token for ID token + UID */
-      var refreshToken = '';
-      try { refreshToken = localStorage.getItem('aqs_refresh_token') || ''; } catch(_) {}
-      if (refreshToken) {
-          fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: refreshToken })
-          })
-          .then(function(r) { return r.json(); })
-          .then(function(data) {
-              if (!data.user_id) throw new Error('token-exchange: no user_id');
-              uid = data.user_id;
-              try { localStorage.setItem('aqs_host_uid', uid); } catch(_) {}
-              return _fetchQuizzes(uid, data.id_token);
-          })
-          .catch(_fail);
-          return;
-      }
+        /* also expose for aqs-main.js so its own handlers work */
+        window._prefetchedQuizzes = quizzes;
+        window._aqsPrefetchDone   = true;
+        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
 
-      /* Stage 3: No cached credentials at all — wait for Firebase Auth SDK to resolve,
-         then fetch quizzes via the REST API (avoids the hanging AJAX path in Capacitor). */
-      function _stage3() {
-          if (typeof window.onAqsAuthChange === 'function') {
-              window.onAqsAuthChange(function(user) { _fetchWithAuthUser(user); });
-          } else {
-              document.addEventListener('aqs:firebase:ready', function() {
-                  if (typeof window.onAqsAuthChange === 'function') {
-                      window.onAqsAuthChange(function(user) { _fetchWithAuthUser(user); });
-                  } else {
-                      _fail(new Error('firebase auth not available'));
-                  }
-              }, { once: true });
-          }
-      }
-      _stage3();
-  })();
-  </script>
+        var total = quizzes.length, published = 0, draft = 0;
+        var html = '';
+
+        quizzes.forEach(function (q) {
+            if (q.status === 'published') published++; else draft++;
+            var hs          = q.host_status || 'active';
+            var statusBadge = q.status === 'published'
+                ? '<span class="aqs-badge aqs-badge-success">✅ Published</span>'
+                : '<span class="aqs-badge aqs-badge-draft">📝 Draft</span>';
+            var hostBadge   = hs === 'disabled'
+                ? '<span class="aqs-badge aqs-badge-warn">⛔ Disabled</span>'
+                : '';
+            html +=
+                '<div class="aqs-quiz-list-item">' +
+                  '<div class="aqs-quiz-list-info">' +
+                    '<div class="aqs-quiz-list-title">' + esc(q.title) + '</div>' +
+                    '<div class="aqs-quiz-list-meta">' +
+                      statusBadge + hostBadge +
+                      '<span class="aqs-quiz-list-meta-txt">📚 ' + esc(q.subject) + '</span>' +
+                      '<span class="aqs-quiz-list-meta-txt">❓ ' + q.num_questions + ' Qs</span>' +
+                      '<span class="aqs-quiz-list-meta-txt">⏱ ' + q.time_limit + ' min</span>' +
+                    '</div>' +
+                  '</div>' +
+                  '<div class="aqs-quiz-list-actions">' +
+                    '<button class="aqs-btn aqs-btn-sm aqs-view-quiz-btn" data-id="' + esc(q.id) + '">👁 View</button>' +
+                    '<button class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;" onclick="location.href=\'create-quiz.html?edit=' + esc(q.id) + '\'">✏️ Edit</button>' +
+                    (hs === 'disabled'
+                        ? '<button class="aqs-btn aqs-btn-sm aqs-btn-success aqs-toggle-status-btn" data-id="' + esc(q.id) + '" data-action="enable">✅ Enable</button>'
+                        : '<button class="aqs-btn aqs-btn-sm aqs-btn-warn aqs-toggle-status-btn" data-id="' + esc(q.id) + '" data-action="disable">⛔ Disable</button>') +
+                    '<button class="aqs-btn aqs-btn-sm aqs-view-attendance-btn" data-id="' + esc(q.id) + '" data-title="' + esc(q.title) + '" data-token="' + esc(q.quiz_token) + '">📊 Attendance</button>' +
+                    '<button class="aqs-btn aqs-btn-sm aqs-print-quiz-pdf-btn" data-id="' + esc(q.id) + '" data-title="' + esc(q.title) + '">🖨 Print</button>' +
+                    '<button class="aqs-btn aqs-btn-sm aqs-btn-danger aqs-delete-btn" data-id="' + esc(q.id) + '" data-title="' + esc(q.title) + '">🗑 Delete</button>' +
+                  '</div>' +
+                '</div>';
+        });
+
+        if (!html) {
+            html = '<p class="aqs-empty" style="text-align:center;padding:32px;">No quizzes yet. <a href="create-quiz.html">Create one →</a></p>';
+        }
+
+        document.getElementById('aqs-quiz-list').innerHTML = html;
+        document.getElementById('stat-total').textContent     = total;
+        document.getElementById('stat-published').textContent = published;
+        document.getElementById('stat-draft').textContent     = draft;
+    }
+
+    /* ── show error with retry button ── */
+    function showError(msg) {
+        if (_rendered) return;
+        _rendered = true;
+        if (_timeoutId) clearTimeout(_timeoutId);
+        window._aqsPrefetchDone = true;
+        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+        document.getElementById('aqs-quiz-list').innerHTML =
+            '<div style="text-align:center;padding:40px 20px;">' +
+            '<p style="color:#ef4444;font-size:.95rem;margin-bottom:16px;">⚠️ ' + esc(msg) + '</p>' +
+            '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Tap to Retry</button>' +
+            '</div>';
+    }
+
+    /* ── fetch quizzes from Firestore REST API ── */
+    function fetchQuizzes(uid, idToken) {
+        var url  = 'https://firestore.googleapis.com/v1/projects/' + PROJ + '/databases/(default)/documents:runQuery?key=' + API_KEY;
+        var hdrs = { 'Content-Type': 'application/json' };
+        if (idToken) hdrs['Authorization'] = 'Bearer ' + idToken;
+
+        return fetch(url, {
+            method: 'POST',
+            headers: hdrs,
+            body: JSON.stringify({
+                structuredQuery: {
+                    from: [{ collectionId: 'quizzes' }],
+                    where: {
+                        fieldFilter: {
+                            field: { fieldPath: 'host_uid' },
+                            op: 'EQUAL',
+                            value: { stringValue: uid }
+                        }
+                    }
+                }
+            })
+        })
+        .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
+        .then(function (rows) {
+            var quizzes = (Array.isArray(rows) ? rows : [])
+                .map(mapDoc)
+                .filter(Boolean);
+            render(quizzes);
+        });
+    }
+
+    /* ── Stage 3 helper: called once Firebase Auth resolves ── */
+    function loadFromAuthUser(user) {
+        if (_rendered) return;
+        if (!user || user.isAnonymous) {
+            showError('Sign-in required. Please go back and log in again.');
+            return;
+        }
+        ls('aqs_host_uid', user.uid);
+        if (user.refreshToken) ls('aqs_refresh_token', user.refreshToken);
+
+        var doFetch = function (tok) { fetchQuizzes(user.uid, tok).catch(function () { showError('Could not load quizzes. Please retry.'); }); };
+
+        if (typeof user.getIdToken === 'function') {
+            user.getIdToken().then(doFetch).catch(function () { doFetch(null); });
+        } else {
+            doFetch(null);
+        }
+    }
+
+    /* expose so other scripts can trigger a re-fetch */
+    window._aqsRetryPrefetch = loadFromAuthUser;
+
+    /* ── Hard timeout — 20 s, then show retry ── */
+    _timeoutId = setTimeout(function () {
+        if (!_rendered) showError('Connection timed out. Check your internet and try again.');
+    }, 20000);
+
+    /* ════════════════════
+       STAGE 1: UID cached
+    ════════════════════ */
+    var uid = ls('aqs_host_uid');
+    if (uid) {
+        document.getElementById('aqs-load-msg').textContent = 'Loading your quizzes…';
+        fetchQuizzes(uid, null).catch(function () {
+            /* UID stale — clear and fall through to Stage 2 */
+            ls('aqs_host_uid', '');
+            var rt = ls('aqs_refresh_token');
+            if (rt) runStage2(rt); else runStage3();
+        });
+        return;
+    }
+
+    /* ════════════════════════════════════════
+       STAGE 2: Refresh token cached — exchange
+    ════════════════════════════════════════ */
+    var storedRt = ls('aqs_refresh_token');
+    if (storedRt) { runStage2(storedRt); return; }
+
+    /* ═══════════════════════════════════════════════════
+       STAGE 3: No credentials — wait for Firebase Auth
+    ═══════════════════════════════════════════════════ */
+    runStage3();
+
+    function runStage2(rt) {
+        document.getElementById('aqs-load-msg').textContent = 'Signing you in…';
+        fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: rt })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            if (!data.user_id) throw new Error('no user_id from token exchange');
+            ls('aqs_host_uid', data.user_id);
+            if (data.refresh_token) ls('aqs_refresh_token', data.refresh_token);
+            document.getElementById('aqs-load-msg').textContent = 'Loading your quizzes…';
+            return fetchQuizzes(data.user_id, data.id_token);
+        })
+        .catch(function (e) {
+            console.warn('[AQS] Stage 2 failed:', e && e.message);
+            ls('aqs_refresh_token', '');
+            runStage3();
+        });
+    }
+
+    function runStage3() {
+        document.getElementById('aqs-load-msg').textContent = 'Waiting for sign-in…';
+        if (typeof window.onAqsAuthChange === 'function') {
+            window.onAqsAuthChange(loadFromAuthUser);
+        } else {
+            document.addEventListener('aqs:firebase:ready', function () {
+                if (typeof window.onAqsAuthChange === 'function') {
+                    window.onAqsAuthChange(loadFromAuthUser);
+                } else {
+                    showError('Could not connect to Firebase. Please retry.');
+                }
+            }, { once: true });
+        }
+    }
+
+})();
+</script>
 <script src="js/aqs-main.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
-  <script src="capacitor-bridge.js"></script>
+<script src="capacitor-bridge.js"></script>
 </body>
 </html>
