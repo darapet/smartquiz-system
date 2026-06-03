@@ -195,13 +195,13 @@
         if ($('#aqs-quiz-list').length) {
             /* Wait for Firebase auth to resolve before loading quizzes.
                If auth is already known, fire immediately; otherwise listen. */
+            var _quizLoadTriggered = false;
             function tryLoadQuizzes() {
                 function _doLoad(user) {
-                    if (user) {
-                        loadQuizzes();
-                    } else {
-                        $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
-                    }
+                    if (_quizLoadTriggered) return;
+                    _quizLoadTriggered = true;
+                    /* Always attempt to load — actionGetQuizzes falls back to guest session */
+                    loadQuizzes();
                 }
                 if (typeof window.onAqsAuthChange === 'function') {
                     window.onAqsAuthChange(_doLoad);
@@ -211,6 +211,14 @@
                         window.onAqsAuthChange(_doLoad);
                     }, { once: true });
                 }
+                /* Safety net: if firebase never fires (network issues loading the SDK),
+                   force-load after 12 s so the page doesn't stay frozen on "Loading quizzes..." */
+                setTimeout(function() {
+                    if (!_quizLoadTriggered) {
+                        _quizLoadTriggered = true;
+                        loadQuizzes();
+                    }
+                }, 12000);
             }
             tryLoadQuizzes();
 
@@ -329,7 +337,12 @@
             success: function (res) {
             if (!res || !res.success) {
                 var msg = (res && res.data && typeof res.data === 'string') ? res.data : 'Could not load quizzes — please refresh.';
-                $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ ' + msg + '</p>');
+                $('#aqs-quiz-list').html(
+                    '<div style="text-align:center;padding:32px;">' +
+                    '<p style="color:#ef4444;margin-bottom:12px;">⚠️ ' + escHtml(msg) + '</p>' +
+                    '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Retry</button>' +
+                    '</div>'
+                );
                 return;
             }
             const quizzes = res.data;
