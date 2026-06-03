@@ -56,6 +56,10 @@ window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
+<style id="login-isolation">
+/* Block any injected bars on sign-in page */
+#aqs-countdown-bar,#aqs-news-ticker-bar,.aqs-nav-bar,.aqs-sidebar,.aqs-top-bar{display:none!important;}
+</style>
 </head>
 <body>
 
@@ -204,8 +208,6 @@ window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'
   });
 })();
 </script>
-<script src="js/aqs-notifs-bar.js"></script>
-<script src="js/aqs-session.js"></script>
 <script src="capacitor-bridge.js"></script>
 </body>
 </html>
