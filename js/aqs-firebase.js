@@ -390,6 +390,10 @@ async function handleAction(data) {
         case 'aqs_get_my_quizzes':   return await actionGetMyQuizzes(data);
         case 'aqs_update_avatar':    return await actionUpdateAvatar(data);
 
+        /* ── APP RATINGS ── */
+        case 'aqs_submit_rating':    return await actionSubmitRating(data);
+        case 'aqs_get_ratings':      return await actionGetRatings(data);
+
         /* ── AI GENERATE (proxy — deprecated, keep as fallback) ── */
         case 'aqs_ai_generate':      return await actionAiGenerate(data);
 
@@ -2491,6 +2495,46 @@ async function actionChVoicePoll(data) {
         });
         return { chunks: chunks, server_time: Date.now() };
     } catch(e) { return { chunks: [] }; }
+}
+
+
+/* ============================================================
+   APP RATINGS
+   Stored at Firestore: ratings/{uid_timestamp}
+   Fields: uid, userName, stars, comment, createdAt
+   ============================================================ */
+async function actionSubmitRating(data) {
+    var user = await requireAuth();
+    var stars   = parseInt(data.stars) || 0;
+    var comment = (data.comment || '').slice(0, 1000);
+    if (stars < 1 || stars > 5) throw new Error('Invalid star rating (1-5 required).');
+    var profile = {};
+    try {
+        var snap = await getDoc(doc(db, 'users', user.uid));
+        if (snap.exists()) profile = snap.data();
+    } catch(e) {}
+    var docId = user.uid + '_' + Date.now();
+    await setDoc(doc(db, 'ratings', docId), {
+        uid:       user.uid,
+        userName:  profile.name || user.displayName || user.email || 'Anonymous',
+        stars:     stars,
+        comment:   comment,
+        createdAt: serverTimestamp(),
+        version:   (window && window._APP_VERSION) || '—'
+    });
+    return { ok: true };
+}
+
+async function actionGetRatings(data) {
+    var user = await requireAuth();
+    var snap2 = await getDoc(doc(db,'users',user.uid));
+    if (!snap2.exists() || snap2.data().role !== 'admin') throw new Error('Admin only.');
+    var limit2 = parseInt(data && data.limit) || 100;
+    var q2 = query(collection(db,'ratings'), orderBy('createdAt','desc'), limit(limit2));
+    var snap3 = await getDocs(q2);
+    var ratings = [];
+    snap3.forEach(function(d){ ratings.push(Object.assign({id:d.id},d.data())); });
+    return { ratings: ratings };
 }
 
 export { auth, db, rtdb, requireAuth, generateToken };
