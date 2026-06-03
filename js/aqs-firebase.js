@@ -597,32 +597,107 @@ async function actionSaveQuiz(data) {
 }
 
 async function actionGetQuizzes(data) {
-    var user = requireAuth();
-    /* No orderBy to avoid requiring a Firestore composite index — we sort client-side */
-    var snap = await getDocs(
-        query(collection(db, 'quizzes'),
-              where('host_uid', '==', user.uid))
-    );
-    var items = snap.docs.map(function(d) {
-        var q = d.data();
-        return {
-            id:            d.id,
-            title:         q.title,
-            subject:       q.subject,
-            num_questions: q.num_questions || (q.questions || []).length,
-            time_limit:    q.time_limit,
-            mode:          q.mode,
-            status:        q.status,
-            host_status:   q.host_status || 'active',
-            quiz_token:    q.quiz_token || '',
-            quiz_url:      q.quiz_url || '',
-            created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
-        };
-    });
-    /* Sort newest first client-side */
-    items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
-    return items;
-}
+      var user = requireAuth();
+      var projectId = firebaseConfig.projectId;
+
+      /* ── Firestore REST API (avoids getDocs hang on web/Android) ─────────
+         Uses the user's ID token to query quizzes directly via HTTP.
+         Falls back to the Firebase SDK getDocs if REST fails.            */
+      async function _fetchViaRest() {
+          var token = await user.getIdToken(false);
+          var url   = 'https://firestore.googleapis.com/v1/projects/' + projectId +
+                      '/databases/(default)/documents:runQuery';
+          var body  = {
+              structuredQuery: {
+                  from: [{ collectionId: 'quizzes' }],
+                  where: {
+                      fieldFilter: {
+                          field: { fieldPath: 'host_uid' },
+                          op:    'EQUAL',
+                          value: { stringValue: user.uid }
+                      }
+                  }
+              }
+          };
+          var resp = await fetch(url, {
+              method:  'POST',
+              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+              body:    JSON.stringify(body)
+          });
+          if (!resp.ok) throw new Error('REST query failed: ' + resp.status);
+          var rows = await resp.json();
+          /* Parse Firestore typed-value format */
+          function str(f)  { return (f && f.stringValue)   || ''; }
+          function num(f)  { return f ? parseInt(f.integerValue || f.doubleValue || 0) : 0; }
+          function tsMs(f) {
+              if (!f) return 0;
+              if (f.timestampValue) return new Date(f.timestampValue).getTime();
+              return 0;
+          }
+          function arrLen(f) {
+              return (f && f.arrayValue && f.arrayValue.values) ? f.arrayValue.values.length : 0;
+          }
+          var items = rows
+              .filter(function(r) { return r.document; })
+              .map(function(r) {
+                  var d  = r.document;
+                  var f  = d.fields || {};
+                  var id = d.name.split('/').pop();
+                  return {
+                      id:            id,
+                      title:         str(f.title),
+                      subject:       str(f.subject),
+                      num_questions: num(f.num_questions) || arrLen(f.questions),
+                      time_limit:    num(f.time_limit),
+                      mode:          str(f.mode),
+                      status:        str(f.status),
+                      host_status:   str(f.host_status) || 'active',
+                      quiz_token:    str(f.quiz_token),
+                      quiz_url:      str(f.quiz_url),
+                      created_at_ms: tsMs(f.created_at)
+                  };
+              });
+          items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
+          return items;
+      }
+
+      /* ── SDK getDocs with 8-second timeout (fallback) ───────────────────── */
+      async function _fetchViaSdk() {
+          var sdkPromise = getDocs(
+              query(collection(db, 'quizzes'), where('host_uid', '==', user.uid))
+          );
+          var timeoutPromise = new Promise(function(_, reject) {
+              setTimeout(function() { reject(new Error('sdk_timeout')); }, 8000);
+          });
+          var snap = await Promise.race([sdkPromise, timeoutPromise]);
+          var items = snap.docs.map(function(d) {
+              var q = d.data();
+              return {
+                  id:            d.id,
+                  title:         q.title,
+                  subject:       q.subject,
+                  num_questions: q.num_questions || (q.questions || []).length,
+                  time_limit:    q.time_limit,
+                  mode:          q.mode,
+                  status:        q.status,
+                  host_status:   q.host_status || 'active',
+                  quiz_token:    q.quiz_token || '',
+                  quiz_url:      q.quiz_url || '',
+                  created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
+              };
+          });
+          items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
+          return items;
+      }
+
+      /* Try REST first — fast and reliable; fall back to SDK on any error */
+      try {
+          return await _fetchViaRest();
+      } catch(restErr) {
+          console.warn('[AQS] REST quiz fetch failed, falling back to SDK:', restErr.message);
+          return await _fetchViaSdk();
+      }
+  }
 
 async function actionGetQuizPublic(data) {
     var token = data.token || '';
