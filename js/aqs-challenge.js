@@ -207,6 +207,21 @@
       t=t.replace(/\\begin\{align\*?\}([\s\S]+?)\\end\{align\*?\}/g,
                   function(_,m){ return '$$'+m+'$$'; });
 
+      /* ── Auto-wrap bare LaTeX commands the AI forgot to delimit ─── */
+      /* Protect already-delimited math first */
+      var _ph=[]; var _phPat=/(\$\$[\s\S]+?\$\$|\$[^$\n]+?\$)/g;
+      t=t.replace(_phPat,function(m){_ph.push(m);return '\x00m'+(_ph.length-1)+'\x00';});
+      /* Wrap \frac{}{}, \dfrac{}{}, \tfrac{}{} */
+      t=t.replace(/(\\(?:d|t)?frac\{(?:[^{}]|\{[^{}]*\})*\}\{(?:[^{}]|\{[^{}]*\})*\})/g,'$$$1$$');
+      /* Wrap \sqrt[]{} and \sqrt{} */
+      t=t.replace(/(\\sqrt(?:\[[^\]]*\])?\{(?:[^{}]|\{[^{}]*\})*\})/g,'$$$1$$');
+      /* Wrap \sum, \int, \prod with sub/superscripts */
+      t=t.replace(/(\\(?:sum|int|prod|oint|iint|lim|limsup|liminf)(?:_\{[^{}]+\}|_[a-zA-Z0-9])?(?:\^\{[^{}]+\}|\^[a-zA-Z0-9])?)/g,'$$$1$$');
+      /* Wrap plain \command that are math symbols: \alpha \beta \pi etc. */
+      t=t.replace(/(\\(?:alpha|beta|gamma|delta|epsilon|zeta|eta|theta|iota|kappa|lambda|mu|nu|xi|pi|rho|sigma|tau|upsilon|phi|chi|psi|omega|Gamma|Delta|Theta|Lambda|Xi|Pi|Sigma|Upsilon|Phi|Psi|Omega|infty|partial|nabla|forall|exists|pm|mp|times|div|cdot|leq|geq|neq|approx|equiv|subset|supset|in|notin|rightarrow|leftarrow|Rightarrow|Leftarrow|mapsto|to)(?![a-zA-Z]|{))/g,'$$$1$$');
+      /* Restore placeholders */
+      t=t.replace(/\x00m(\d+)\x00/g,function(_,i){return _ph[+i];});
+
       var out='';
       /* Match $$...$$ (display) OR $...$ (inline) — display tested first */
       var pattern=/(\$\$[\s\S]+?\$\$|\$[^$\n]{1,400}?\$)/g;
@@ -2224,7 +2239,7 @@
       return window.groqFetch({
           model:'llama-3.1-8b-instant',
           messages:[
-              {role:'system',content:'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.'},
+              {role:'system',content:'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.\n\nMATH FORMATTING RULE — STRICTLY FOLLOW:\n- ALWAYS wrap ALL mathematical expressions in LaTeX dollar delimiters.\n- Inline: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$, $\\sin\\theta$.\n- Display: $$x = \\frac{-b}{2a}$$.\n- NEVER write bare math like \\frac{a}{b} or x^2 without $ signs.'},
               {role:'user',content:prompt}
           ],
           max_tokens:4096,temperature:0.3,
@@ -2280,7 +2295,7 @@
               body:JSON.stringify({
                   model:model, seed:Math.floor(Math.random()*99999), temperature:0.4, private:true,
                   messages:[
-                      {role:'system',content:'You are an expert quiz maker. Output ONLY a raw valid JSON array. No markdown, no code fences.'},
+                      {role:'system',content:'You are an expert quiz maker. Output ONLY a raw valid JSON array. No markdown, no code fences.\n\nMATH FORMATTING RULE — STRICTLY FOLLOW:\n- ALWAYS wrap ALL mathematical expressions in LaTeX dollar delimiters.\n- Inline: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$, $\\sin\\theta$.\n- Display: $$x = \\frac{-b}{2a}$$.\n- NEVER write bare math like \\frac{a}{b} or x^2 without $ signs.'},
                       {role:'user',content:prompt}
                   ]
               })
