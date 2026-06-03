@@ -23,10 +23,6 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .udash-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;text-align:center;}
 .udash-stat-num{font-size:1.9rem;font-weight:800;color:#4f46e5;line-height:1;}
 .udash-stat-label{font-size:.78rem;color:#64748b;margin-top:6px;font-weight:500;}
-/* Activity */
-.udash-activity-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 24px;margin-bottom:18px;}
-.udash-activity-title{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
-.udash-activity-list{min-height:60px;}
 /* Topbar */
 .aqs-user-topbar{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
 .aqs-user-topbar-left{display:flex;align-items:center;gap:16px;}
@@ -187,16 +183,6 @@ window.AQS = {
   </div>
 
 
-  <!-- Quiz Activity -->
-  <div class="udash-activity-card">
-    <div class="udash-activity-title">📋 Quiz Activity
-      <span style="font-size:.75rem;font-weight:500;color:#94a3b8;margin-left:4px;" id="udash-activity-count"></span>
-    </div>
-    <div class="udash-activity-list" id="udash-activity-list">
-      <div class="udash-skeleton" style="width:60%;"></div>
-      <div class="udash-skeleton" style="width:80%;"></div>
-      <div class="udash-skeleton" style="width:50%;"></div>
-    </div>
   </div>
 
   <!-- Account -->
@@ -290,22 +276,6 @@ window.AQS = {
         }).catch(function(){});
     }
 
-    function loadActivity(){
-        var el = document.getElementById('udash-activity-list');
-        var ct = document.getElementById('udash-activity-count');
-        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_attempts'}).then(function(res){
-            var items = unwrap(res);
-            if(!Array.isArray(items)) items = [];
-            if(ct) ct.textContent = items.length ? '('+items.length+' quiz'+(items.length!==1?'zes':'')+')' : '';
-            if(!items.length){
-                el.innerHTML = '<div style="text-align:center;padding:32px 16px;color:#94a3b8;">'+
-                    '<div style="font-size:2.5rem;margin-bottom:8px;">📝</div>'+
-                    '<p style="margin:0 0 10px;font-weight:600;color:#64748b;">No quiz activity yet</p>'+
-                    '<p style="margin:0;font-size:.87rem;color:#94a3b8;">Take any quiz to see your results here.</p>'+
-                    '<a href="index.html" style="display:inline-block;margin-top:14px;background:#4f46e5;color:#fff;padding:9px 22px;border-radius:8px;text-decoration:none;font-weight:600;font-size:.88rem;">Browse Quizzes →</a>'+
-                    '</div>';
-                return;
-            }
             el.innerHTML = items.map(function(a, i){
                 var score  = a.score||0, total = a.total||0;
                 var pct    = total ? Math.round((score/total)*100) : 0;
@@ -398,7 +368,6 @@ window.AQS = {
         loadProfile();
         loadStats();
 
-        loadActivity();
     });
 })();
 </script>
