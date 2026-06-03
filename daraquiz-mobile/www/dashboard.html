@@ -18,6 +18,9 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
+/* Offline banner */
+#aqs-offline-bar{position:fixed;top:0;left:0;right:0;z-index:300;display:flex;align-items:center;justify-content:center;gap:8px;background:#dc2626;color:#fff;font-size:.85rem;font-weight:600;padding:10px 16px;transform:translateY(-100%);transition:transform .3s ease;pointer-events:none;}
+#aqs-offline-bar.show{transform:translateY(0);pointer-events:auto;}
 /* Pull-to-refresh bar */
 #aqs-ptr-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:10px;background:#4f46e5;color:#fff;font-size:.88rem;font-weight:600;height:0;overflow:hidden;transition:height .2s;will-change:height;}
 #aqs-ptr-bar.ptr-pulling,#aqs-ptr-bar.ptr-refreshing{height:44px;}
@@ -59,6 +62,12 @@ window.AQS = {
 <script type="module" src="js/aqs-firebase.js"></script>
 </head>
 <body>
+
+<!-- Offline banner -->
+<div id="aqs-offline-bar">
+    <span>📵</span>
+    <span id="aqs-offline-msg">No internet connection</span>
+</div>
 
 <!-- Pull-to-refresh indicator -->
 <div id="aqs-ptr-bar">
@@ -325,6 +334,94 @@ window.AQS = {
     }, { passive: true });
 
     window.aqsPullRefresh = doRefresh;
+})();
+</script>
+
+<!-- ══════════════════════════════════════════════════
+     OFFLINE DETECTION
+     Shows a red banner when the device loses internet.
+     Auto-refreshes the quiz list when connection returns.
+══════════════════════════════════════════════════ -->
+<script>
+(function () {
+    'use strict';
+
+    var bar     = document.getElementById('aqs-offline-bar');
+    var msg     = document.getElementById('aqs-offline-msg');
+    var wasOffline = false;
+
+    function showOffline() {
+        msg.textContent = 'No internet connection';
+        bar.classList.add('show');
+    }
+
+    function showReconnecting() {
+        msg.textContent = 'Back online — refreshing…';
+        bar.style.background = '#16a34a';
+    }
+
+    function hide() {
+        bar.classList.remove('show');
+        bar.style.background = '#dc2626';
+    }
+
+    function onOffline() {
+        if (wasOffline) return;
+        wasOffline = true;
+        showOffline();
+    }
+
+    function onOnline() {
+        if (!wasOffline) return;
+        wasOffline = false;
+        showReconnecting();
+
+        /* Auto-reload the quiz list the same way as the web flow */
+        if (typeof $ !== 'undefined' && typeof AQS !== 'undefined') {
+            $('#aqs-quiz-list').html('<p class="aqs-loading">Loading quizzes...</p>');
+            $.post(AQS.ajax_url, { action: 'aqs_get_quizzes', nonce: AQS.nonce }, function (res) {
+                setTimeout(hide, 800);
+                if (res && res.success && Array.isArray(res.data)) {
+                    window._prefetchedQuizzes = res.data;
+                    window._aqsPrefetchDone   = true;
+                    document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+                } else {
+                    $('#aqs-quiz-list').html(
+                        '<div style="text-align:center;padding:32px;">' +
+                        '<p style="color:#ef4444;margin-bottom:12px;">⚠️ Could not load quizzes. Pull down to retry.</p>' +
+                        '</div>'
+                    );
+                }
+            });
+        } else {
+            setTimeout(function () { hide(); location.reload(); }, 1500);
+        }
+    }
+
+    window.addEventListener('offline', onOffline);
+    window.addEventListener('online',  onOnline);
+
+    /* Check immediately on page load */
+    if (!navigator.onLine) {
+        wasOffline = true;
+        showOffline();
+    }
+
+    /* Periodic connectivity check — navigator.onLine can lie on Android */
+    setInterval(function () {
+        if (!navigator.onLine) {
+            onOffline();
+            return;
+        }
+        /* Ping a tiny endpoint to confirm real connectivity */
+        fetch('https://www.gstatic.com/generate_204', {
+            method: 'HEAD', mode: 'no-cors', cache: 'no-store'
+        }).then(function () {
+            if (wasOffline) onOnline();
+        }).catch(function () {
+            onOffline();
+        });
+    }, 5000);
 })();
 </script>
 </body>
