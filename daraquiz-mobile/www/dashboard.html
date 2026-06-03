@@ -23,6 +23,13 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 #aqs-load-spinner .spin{width:40px;height:40px;border:4px solid #e5e7eb;border-top-color:#4f46e5;border-radius:50%;animation:spin .8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg)}}
 #aqs-load-spinner p{color:#6b7280;font-size:.95rem;margin:0;}
+/* Pull-to-refresh */
+#aqs-ptr-bar{position:fixed;top:0;left:0;right:0;z-index:200;display:flex;align-items:center;justify-content:center;gap:10px;background:#4f46e5;color:#fff;font-size:.88rem;font-weight:600;padding:0;height:0;overflow:hidden;transition:height .2s,padding .2s;will-change:height;}
+#aqs-ptr-bar.ptr-pulling{height:44px;padding:0;}
+#aqs-ptr-bar.ptr-refreshing{height:44px;padding:0;}
+#aqs-ptr-icon{font-size:1.1rem;transition:transform .3s;}
+#aqs-ptr-bar.ptr-ready #aqs-ptr-icon{transform:rotate(180deg);}
+#aqs-ptr-bar.ptr-refreshing #aqs-ptr-icon{animation:spin .7s linear infinite;}
 @media(max-width:640px){
   .aqs-hdr-nav{display:none;}
   .aqs-hdr-hamburger{display:flex;}
@@ -57,6 +64,11 @@ window.AQS = {
 <script type="module" src="js/aqs-firebase.js"></script>
 </head>
 <body>
+<!-- Pull-to-refresh indicator bar -->
+<div id="aqs-ptr-bar">
+    <span id="aqs-ptr-icon">↓</span>
+    <span id="aqs-ptr-label">Pull down to refresh</span>
+</div>
 <header class="aqs-site-header">
     <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
     <nav class="aqs-hdr-nav">
@@ -476,5 +488,166 @@ window.AQS = {
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
 <script src="capacitor-bridge.js"></script>
+
+<!-- ═══════════════════════════════════════════
+     PULL-TO-REFRESH
+     Works in Capacitor Android WebView.
+     Pull the page down 70px → release → reloads quizzes.
+     Only fires when page is already scrolled to the top.
+════════════════════════════════════════════ -->
+<script>
+(function () {
+    'use strict';
+
+    var THRESHOLD  = 70;   /* px to pull before "ready" state triggers */
+    var MAX_PULL   = 110;  /* px maximum visual drag */
+
+    var bar    = document.getElementById('aqs-ptr-bar');
+    var icon   = document.getElementById('aqs-ptr-icon');
+    var label  = document.getElementById('aqs-ptr-label');
+
+    var startY      = 0;
+    var pulling     = false;
+    var refreshing  = false;
+
+    function setState(state, dist) {
+        bar.className = state ? 'ptr-' + state : '';
+        if (state === 'pulling') {
+            var pct = Math.min(dist / THRESHOLD, 1);
+            bar.style.height = Math.min(dist * 0.55, 44) + 'px';
+            icon.style.transform = 'rotate(' + (pct * 180) + 'deg)';
+            label.textContent = dist >= THRESHOLD ? 'Release to refresh' : 'Pull down to refresh';
+        } else if (state === 'refreshing') {
+            bar.style.height = '44px';
+            icon.textContent = '↻';
+            label.textContent = 'Refreshing…';
+        } else {
+            bar.style.height = '0';
+            icon.textContent = '↓';
+            label.textContent = 'Pull down to refresh';
+            icon.style.transform = '';
+        }
+    }
+
+    function doRefresh() {
+        if (refreshing) return;
+        refreshing = true;
+        setState('refreshing');
+
+        /* Reset render flag so the loader can run again */
+        window._aqsPrefetchDone   = false;
+        window._prefetchedQuizzes = undefined;
+
+        /* Show spinner in the list */
+        document.getElementById('aqs-quiz-list').innerHTML =
+            '<div id="aqs-load-spinner">' +
+            '<div class="spin"></div>' +
+            '<p id="aqs-load-msg">Refreshing your quizzes…</p>' +
+            '</div>';
+
+        /* Re-run the loader using cached credentials */
+        var API_KEY = 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY';
+        var PROJ    = 'smartquiz-darapet';
+
+        function mapDoc(r) {
+            if (!r || !r.document) return null;
+            var f  = r.document.fields || {};
+            var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
+            var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
+            return { id: r.document.name.split('/').pop(), title: gs('title'), subject: gs('subject'), num_questions: gn('num_questions'), time_limit: gn('time_limit'), mode: gs('mode'), status: gs('status'), host_status: gs('host_status') || 'active', quiz_token: gs('quiz_token'), quiz_url: gs('quiz_url') };
+        }
+
+        function finish() {
+            refreshing = false;
+            setState(null);
+        }
+
+        function exchange(rt) {
+            return fetch('https://securetoken.googleapis.com/v1/token?key=' + API_KEY, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ grant_type: 'refresh_token', refresh_token: rt })
+            }).then(function(r){ return r.json(); });
+        }
+
+        function fetchAndRender(uid, idToken) {
+            var hdrs = { 'Content-Type': 'application/json' };
+            if (idToken) hdrs['Authorization'] = 'Bearer ' + idToken;
+            return fetch('https://firestore.googleapis.com/v1/projects/' + PROJ + '/databases/(default)/documents:runQuery?key=' + API_KEY, {
+                method: 'POST', headers: hdrs,
+                body: JSON.stringify({ structuredQuery: { from: [{ collectionId: 'quizzes' }], where: { fieldFilter: { field: { fieldPath: 'host_uid' }, op: 'EQUAL', value: { stringValue: uid } } } } })
+            })
+            .then(function(r){ return r.json(); })
+            .then(function(rows) {
+                var quizzes = (Array.isArray(rows) ? rows : []).map(mapDoc).filter(Boolean);
+                /* Trigger main loader's render by setting globals and firing event */
+                window._prefetchedQuizzes = quizzes;
+                window._aqsPrefetchDone   = true;
+                document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+                /* Also call our own _aqsRenderQuizzes if available */
+                if (typeof window._aqsRenderQuizzes === 'function') window._aqsRenderQuizzes(quizzes);
+                finish();
+            });
+        }
+
+        var uid = '';
+        var rt  = '';
+        try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_){}
+        try { rt  = localStorage.getItem('aqs_refresh_token') || ''; } catch(_){}
+
+        if (uid && rt) {
+            exchange(rt)
+                .then(function(d){ return fetchAndRender(d.user_id || uid, d.id_token); })
+                .catch(function(){ return fetchAndRender(uid, null); })
+                .catch(function(){ finish(); location.reload(); });
+        } else if (rt) {
+            exchange(rt)
+                .then(function(d){
+                    try { localStorage.setItem('aqs_host_uid', d.user_id); } catch(_){}
+                    return fetchAndRender(d.user_id, d.id_token);
+                })
+                .catch(function(){ finish(); location.reload(); });
+        } else {
+            /* No credentials at all — full reload */
+            finish();
+            location.reload();
+        }
+    }
+
+    document.addEventListener('touchstart', function (e) {
+        if (refreshing) return;
+        if (window.scrollY > 2) return;  /* only trigger at top of page */
+        startY   = e.touches[0].clientY;
+        pulling  = true;
+    }, { passive: true });
+
+    document.addEventListener('touchmove', function (e) {
+        if (!pulling || refreshing) return;
+        var dist = e.touches[0].clientY - startY;
+        if (dist <= 0) { pulling = false; setState(null); return; }
+        if (window.scrollY > 2) { pulling = false; setState(null); return; }
+        var clamped = Math.min(dist, MAX_PULL);
+        setState(clamped >= THRESHOLD ? 'ready' : 'pulling', clamped);
+    }, { passive: true });
+
+    document.addEventListener('touchend', function (e) {
+        if (!pulling || refreshing) return;
+        var dist = e.changedTouches[0].clientY - startY;
+        pulling = false;
+        if (dist >= THRESHOLD && window.scrollY <= 2) {
+            doRefresh();
+        } else {
+            setState(null);
+        }
+    }, { passive: true });
+
+    /* Expose globally so other scripts can trigger a refresh */
+    window.aqsPullRefresh = doRefresh;
+
+    /* Also expose the render function for the refresh path */
+    window._aqsRenderQuizzes = null; /* set by main loader after first render */
+
+})();
+</script>
 </body>
 </html>
