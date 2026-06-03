@@ -195,25 +195,14 @@
         if ($('#aqs-quiz-list').length) {
             /* Wait for Firebase auth to resolve before loading quizzes.
                If auth is already known, fire immediately; otherwise listen. */
-            var _quizLoadTriggered = false;
-            function _triggerLoad() {
-                if (_quizLoadTriggered) return;
-                _quizLoadTriggered = true;
-                loadQuizzes();
-            }
             function tryLoadQuizzes() {
-                /* ── FASTEST PATH: prefetch inline script already resolved ── */
-                if (window._aqsPrefetchDone && Array.isArray(window._prefetchedQuizzes)) {
-                    _triggerLoad();
-                    return;
+                function _doLoad(user) {
+                    if (user) {
+                        loadQuizzes();
+                    } else {
+                        $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
+                    }
                 }
-                /* ── FAST PATH: listen for prefetch completion (Capacitor REST API) ── */
-                document.addEventListener('aqs:quizzes:prefetched', function() {
-                    _triggerLoad();
-                }, { once: true });
-
-                /* ── FALLBACK: Firebase Auth → AJAX path (web version) ── */
-                function _doLoad(user) { _triggerLoad(); }
                 if (typeof window.onAqsAuthChange === 'function') {
                     window.onAqsAuthChange(_doLoad);
                 } else {
@@ -221,22 +210,6 @@
                         window.onAqsAuthChange(_doLoad);
                     }, { once: true });
                 }
-
-                /* ── SAFETY NET: 12 s hard timeout ── */
-                setTimeout(function() {
-                    if (_quizLoadTriggered) return;
-                    _quizLoadTriggered = true;
-                    if (typeof window.aqsAjax !== 'function' && !window._aqsPrefetchDone) {
-                        $('#aqs-quiz-list').html(
-                            '<div style="text-align:center;padding:32px;">' +
-                            '<p style="color:#ef4444;margin-bottom:12px;">⚠️ Could not connect. Please check your internet connection and try again.</p>' +
-                            '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Retry</button>' +
-                            '</div>'
-                        );
-                    } else {
-                        loadQuizzes();
-                    }
-                }, 12000);
             }
             tryLoadQuizzes();
 
@@ -342,56 +315,7 @@
     /* Quiz data cache for detail view */
     var quizzesData = {};
 
-    /* Shared quiz list renderer — used by both the instant prefetch path and the AJAX path */
-    function _renderQuizList(quizzes) {
-        quizzesData = {};
-        var total = quizzes.length, published = 0, draft = 0;
-        var html = '';
-        quizzes.forEach(function (q) {
-            quizzesData[q.id] = q;
-            if (q.status === 'published') published++; else draft++;
-            var statusBadge = q.status === 'published'
-                ? '<span class="aqs-badge aqs-badge-success">✅ Published</span>'
-                : '<span class="aqs-badge aqs-badge-draft">📝 Draft</span>';
-            var hs = q.host_status || 'active';
-            var hostBadge = hs === 'disabled'
-                ? '<span class="aqs-badge aqs-badge-warn">⛔ Disabled</span>'
-                : '';
-            html += '<div class="aqs-quiz-list-item">' +
-                '<div class="aqs-quiz-list-info">' +
-                '<div class="aqs-quiz-list-title">' + escHtml(q.title) + '</div>' +
-                '<div class="aqs-quiz-list-meta">' +
-                statusBadge + hostBadge +
-                '<span class="aqs-quiz-list-meta-txt">📚 ' + escHtml(q.subject) + '</span>' +
-                '<span class="aqs-quiz-list-meta-txt">❓ ' + q.num_questions + ' Qs</span>' +
-                '<span class="aqs-quiz-list-meta-txt">⏱ ' + q.time_limit + ' min</span>' +
-                '</div></div>' +
-                '<div class="aqs-quiz-list-actions">' +
-                '<button class="aqs-btn aqs-btn-sm aqs-view-quiz-btn" data-id="' + q.id + '">👁 View</button>' +
-                '<button class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;" onclick="location.href=\'create-quiz.html?edit=' + q.id + '\'">✏️ Edit</button>' +
-                (hs === 'disabled'
-                    ? '<button class="aqs-btn aqs-btn-sm aqs-btn-success aqs-toggle-status-btn" data-id="' + q.id + '" data-action="enable">✅ Enable</button>'
-                    : '<button class="aqs-btn aqs-btn-sm aqs-btn-warn aqs-toggle-status-btn" data-id="' + q.id + '" data-action="disable">⛔ Disable</button>') +
-                '<button class="aqs-btn aqs-btn-sm aqs-view-attendance-btn" data-id="' + q.id + '" data-title="' + escHtml(q.title) + '" data-token="' + escHtml(q.quiz_token || '') + '">📊 Attendance</button>' +
-                '<button class="aqs-btn aqs-btn-sm aqs-print-quiz-pdf-btn" data-id="' + q.id + '" data-title="' + escHtml(q.title) + '">🖨 Print</button>' +
-                '<button class="aqs-btn aqs-btn-sm aqs-btn-danger aqs-delete-btn" data-id="' + q.id + '" data-title="' + escHtml(q.title) + '">🗑 Delete</button>' +
-                '</div></div>';
-        });
-        if (!html) html = '<p class="aqs-empty" style="text-align:center;padding:32px;">No quizzes yet. <a href="' + AQS.create_page_url + '">Create one →</a></p>';
-        $('#aqs-quiz-list').html(html);
-        $('#stat-total').text(total);
-        $('#stat-published').text(published);
-        $('#stat-draft').text(draft);
-    }
-
     function loadQuizzes() {
-        /* ── FAST PATH: instant prefetch via Firestore REST API (Capacitor-safe) ── */
-        if (Array.isArray(window._prefetchedQuizzes)) {
-            _renderQuizList(window._prefetchedQuizzes);
-            return;
-        }
-
-        /* ── NORMAL PATH: AJAX → actionGetQuizzes (web + fallback) ── */
         $('#aqs-quiz-list').html('<p class="aqs-loading">Loading quizzes...</p>');
         $.ajax({
             url:      AQS.ajax_url,
@@ -402,18 +326,59 @@
                 $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Connection error — please refresh the page. (' + (err || status) + ')</p>');
             },
             success: function (res) {
-                if (!res || !res.success) {
-                    var msg = (res && res.data && typeof res.data === 'string') ? res.data : 'Could not load quizzes — please refresh.';
-                    $('#aqs-quiz-list').html(
-                        '<div style="text-align:center;padding:32px;">' +
-                        '<p style="color:#ef4444;margin-bottom:12px;">⚠️ ' + escHtml(msg) + '</p>' +
-                        '<button class="aqs-btn aqs-btn-primary" onclick="location.reload()">🔄 Retry</button>' +
-                        '</div>'
-                    );
-                    return;
-                }
-                _renderQuizList(res.data);
+            if (!res || !res.success) {
+                var msg = (res && res.data && typeof res.data === 'string') ? res.data : 'Could not load quizzes — please refresh.';
+                $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ ' + msg + '</p>');
+                return;
             }
+            const quizzes = res.data;
+            quizzesData = {};
+            let total = quizzes.length, published = 0, draft = 0;
+            let html = '';
+
+            quizzes.forEach(function (q) {
+                quizzesData[q.id] = q;
+                if (q.status === 'published') published++; else draft++;
+
+                const statusBadge = q.status === 'published'
+                    ? '<span class="aqs-badge aqs-badge-success">✅ Published</span>'
+                    : '<span class="aqs-badge aqs-badge-draft">📝 Draft</span>';
+
+                const hs = q.host_status || 'active';
+                const hostBadge = hs === 'disabled'
+                    ? '<span class="aqs-badge aqs-badge-warn">⛔ Disabled</span>'
+                    : '';
+
+                html += `<div class="aqs-quiz-list-item">
+                    <div class="aqs-quiz-list-info">
+                        <div class="aqs-quiz-list-title">${escHtml(q.title)}</div>
+                        <div class="aqs-quiz-list-meta">
+                            ${statusBadge}${hostBadge}
+                            <span class="aqs-quiz-list-meta-txt">📚 ${escHtml(q.subject)}</span>
+                            <span class="aqs-quiz-list-meta-txt">❓ ${q.num_questions} Qs</span>
+                            <span class="aqs-quiz-list-meta-txt">⏱ ${q.time_limit} min</span>
+                        </div>
+                    </div>
+                    <div class="aqs-quiz-list-actions">
+                        <button class="aqs-btn aqs-btn-sm aqs-view-quiz-btn" data-id="${q.id}">👁 View</button>
+                        <button class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;" onclick="location.href='create-quiz.html?edit=${q.id}'">✏️ Edit</button>
+                        ${hs === 'disabled'
+                            ? `<button class="aqs-btn aqs-btn-sm aqs-btn-success aqs-toggle-status-btn" data-id="${q.id}" data-action="enable">✅ Enable</button>`
+                            : `<button class="aqs-btn aqs-btn-sm aqs-btn-warn aqs-toggle-status-btn" data-id="${q.id}" data-action="disable">⛔ Disable</button>`
+                        }
+                        <button class="aqs-btn aqs-btn-sm aqs-view-attendance-btn" data-id="${q.id}" data-title="${escHtml(q.title)}" data-token="${escHtml(q.quiz_token || '')}">📊 Attendance</button>
+                        <button class="aqs-btn aqs-btn-sm aqs-print-quiz-pdf-btn" data-id="${q.id}" data-title="${escHtml(q.title)}">🖨 Print</button>
+                        <button class="aqs-btn aqs-btn-sm aqs-btn-danger aqs-delete-btn" data-id="${q.id}" data-title="${escHtml(q.title)}">🗑 Delete</button>
+                    </div>
+                </div>`;
+            });
+
+            if (!html) html = `<p class="aqs-empty" style="text-align:center;padding:32px;">No quizzes yet. <a href="${AQS.create_page_url}">Create one →</a></p>`;
+            $('#aqs-quiz-list').html(html);
+            $('#stat-total').text(total);
+            $('#stat-published').text(published);
+            $('#stat-draft').text(draft);
+            } /* end success */
         }); /* end $.ajax */
     }
 
@@ -998,7 +963,7 @@
             win2.document.write('<div class="stat"><strong>' + (total2 - passed) + '</strong><span>Below Pass</span></div>');
             win2.document.write('</div>');
             win2.document.write('<table><thead><tr>' + pThHtml + '</tr></thead><tbody>' + pTrHtml + '</tbody></table>');
-            win2.document.write('<div class="footer">daraquiz AI Quiz System</div>');
+            win2.document.write('<div class="footer">xzily AI Quiz System</div>');
             win2.document.write('</body></html>');
             win2.document.close();
             win2.focus();
@@ -2031,25 +1996,6 @@
             }
 
             /* 2. Fallback — race Pollinations model groups */
-            for (let gi = 0; gi < RACE_GROUPS.length; gi++) {
-                const models = RACE_GROUPS[gi];
-                statusFn('Generating' + (gi > 0 ? ' (backup models)' : '') +
-                         '… racing ' + (models.length + 1) + ' AI connections simultaneously…');
-                try {
-                    const text = await _raceGroup(prompt, models);
-                    if (text) return text;
-                } catch (e) {
-                    console.warn('[AQS] Race group ' + (gi + 1) + ' failed:', e.message);
-                    if (gi < RACE_GROUPS.length - 1) {
-                        statusFn('Switching to backup models…');
-                        await new Promise(function (r) { setTimeout(r, 1500); });
-                    }
-                }
-            }
-            throw new Error('AI generation failed. Please check your connection and try again.');
-        }
-        async function callAI(prompt, statusFn) {
-            statusFn = statusFn || setStatus;
             for (let gi = 0; gi < RACE_GROUPS.length; gi++) {
                 const models = RACE_GROUPS[gi];
                 statusFn('Generating' + (gi > 0 ? ' (backup models)' : '') +
