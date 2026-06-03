@@ -15,7 +15,7 @@
  */
 
 /* ══ CHANGE THIS NUMBER EVERY TIME YOU INSTALL A NEW APK ═══════════════════ */
-var AQS_APP_VERSION_CODE = 48;
+var AQS_APP_VERSION_CODE = 49;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
