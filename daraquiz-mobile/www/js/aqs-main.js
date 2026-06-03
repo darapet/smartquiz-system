@@ -196,11 +196,24 @@
             /* Wait for Firebase auth to resolve before loading quizzes.
                If auth is already known, fire immediately; otherwise listen. */
             function tryLoadQuizzes() {
+                var _quizzesLoaded = false;
                 function _doLoad(user) {
+                    if (_quizzesLoaded) return;
                     if (user) {
+                        _quizzesLoaded = true;
                         loadQuizzes();
                     } else {
-                        $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
+                        /* Auth returned null — on Android WebView, auth.currentUser can be null
+                           even when the user IS signed in (IndexedDB slow to initialise).
+                           Check localStorage for a stored UID; actionGetQuizzes handles it. */
+                        var storedUid = '';
+                        try { storedUid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
+                        if (storedUid) {
+                            _quizzesLoaded = true;
+                            loadQuizzes();
+                        } else {
+                            $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
+                        }
                     }
                 }
                 if (typeof window.onAqsAuthChange === 'function') {
@@ -210,6 +223,18 @@
                         window.onAqsAuthChange(_doLoad);
                     }, { once: true });
                 }
+                /* Safety net: if auth never resolves within 12 s, force-load using localStorage UID */
+                setTimeout(function() {
+                    if (_quizzesLoaded) return;
+                    var storedUid = '';
+                    try { storedUid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
+                    if (storedUid) {
+                        _quizzesLoaded = true;
+                        loadQuizzes();
+                    } else if ($('#aqs-quiz-list').find('.aqs-loading').length || ($('#aqs-quiz-list').html() || '').indexOf('Loading') !== -1) {
+                        $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
+                    }
+                }, 12000);
             }
             tryLoadQuizzes();
 
@@ -601,7 +626,7 @@
         $('#aqs-activity-modal').hide();
         $.post(AQS.ajax_url, { action: 'aqs_delete_quiz', nonce: AQS.nonce, quiz_id: id }, function (res) {
             if (res.success) {
-                alert('Quiz deleted. Admin has been notified and can restore it if needed.\n\nTo request a restore, contact admin on WhatsApp: +2347055428581');
+                alert('Quiz deleted. Admin has been notified and can restore it if needed.\n\nTo request a restore, contact admin on WhatsApp: +2349164257181');
                 loadQuizzes();
             } else { alert('Error: ' + (res.data || 'Unknown error')); }
         });

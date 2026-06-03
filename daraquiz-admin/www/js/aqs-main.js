@@ -600,7 +600,7 @@
         $('#aqs-activity-modal').hide();
         $.post(AQS.ajax_url, { action: 'aqs_delete_quiz', nonce: AQS.nonce, quiz_id: id }, function (res) {
             if (res.success) {
-                alert('Quiz deleted. Admin has been notified and can restore it if needed.\n\nTo request a restore, contact admin on WhatsApp: +2347055428581');
+                alert('Quiz deleted. Admin has been notified and can restore it if needed.\n\nTo request a restore, contact admin on WhatsApp: +2349164257181');
                 loadQuizzes();
             } else { alert('Error: ' + (res.data || 'Unknown error')); }
         });
