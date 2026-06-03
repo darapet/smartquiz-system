@@ -1,8 +1,8 @@
 {
-  "version": "1.77",
-  "versionCode": 62,
+  "version": "1.78",
+  "versionCode": 63,
   "releaseDate": "2026-06-03",
-  "notes": "Nav updated to xzily Ai, AI personality enhanced, contact info updated, dashboard loading fixed.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.77/daraquiz-v1.77.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.77/daraquiz-v1.77.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.78/daraquiz-v1.78.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.78/daraquiz-v1.78.apk"
 }
