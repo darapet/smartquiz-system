@@ -17,8 +17,10 @@ import {
     updateProfile,
     GoogleAuthProvider,
     signInWithCredential,
+    signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
+    initializeFirestore,
     getFirestore,
     collection,
     doc,
@@ -60,12 +62,21 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db   = getFirestore(app);
+/* Use experimentalForceLongPolling on Capacitor/Android — fixes Firestore
+   hanging on Android WebView's IndexedDB persistence layer. Falls back to
+   the standard getFirestore() on web where long-polling is not needed. */
+var _isCapacitorNative = typeof window !== 'undefined'
+    && typeof window.Capacitor !== 'undefined'
+    && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
+const db = _isCapacitorNative
+    ? initializeFirestore(app, { experimentalForceLongPolling: true })
+    : getFirestore(app);
 const rtdb = getDatabase(app);
 
 /* ── Base URL helper: works on GitHub Pages subfolders ──
    e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
-   So generated quiz/challenge links point to the right subfolder. */
+   In Capacitor (mobile app) window.location is https://localhost/… — always
+   return the real public website URL so shared quiz links work. */
 function _baseUrl() {
     if (typeof window !== 'undefined' && window.Capacitor) {
         return 'https://darapet.github.io/smartquiz-system/';
@@ -95,37 +106,66 @@ function tsToStr(ts) {
 
 /* ── Auth state cache ── */
 window._aqsFirebaseUser = null;
-window._aqsAuthResolved = false;   /* true once auth state fully determined (after persistence) */
-window._aqsAuthUser     = undefined; /* undefined=not yet resolved; null=logged out; object=logged in */
+window._aqsAuthResolved = false;   /* true once auth state is fully determined (after persistence) */
+window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = logged out; object = logged in */
 
-/* authStateReady() waits for IndexedDB persistence to restore the session before
-   firing, preventing a double-fire race (null → user) that causes pages to
-   incorrectly see "not logged in" on first load. */
+/* ── Why authStateReady() matters ───────────────────────────────────────────
+   Firebase's onAuthStateChanged fires TWICE on page load when a session exists:
+     1st call → user = null   (persistence not yet restored from IndexedDB)
+     2nd call → user = User   (IndexedDB read complete, session restored)
+   If we dispatch aqs:authchange on the 1st call, pages like user-dashboard.html
+   see null and redirect to login.html — creating an infinite login loop.
+   auth.authStateReady() resolves only AFTER persistence is fully checked,
+   so we get the real user on the first and only dispatch.
+   ─────────────────────────────────────────────────────────────────────────── */
+/* Timeout guard: on Android WebView, authStateReady() can hang silently if
+   IndexedDB is slow to initialise, leaving pages frozen on "Loading quizzes...".
+   After 8 s we fall back to auth.currentUser so the page always resolves. */
+var _authReadyTimer = setTimeout(function() {
+    if (window._aqsAuthResolved) return;
+    var fbUser = auth.currentUser || null;
+    window._aqsFirebaseUser = fbUser;
+    window._aqsAuthResolved = true;
+    window._aqsAuthUser     = fbUser;
+    document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: fbUser } }));
+}, 8000);
+
 auth.authStateReady().then(function() {
+    clearTimeout(_authReadyTimer);
+    /* Persistence fully resolved — set globals and fire the initial event */
     var user = auth.currentUser;
     window._aqsFirebaseUser = user;
     window._aqsAuthResolved = true;
     window._aqsAuthUser     = user;
     document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
-    /* Register ongoing listener for subsequent sign-in / sign-out events */
+
+    /* NOW register ongoing listener for sign-in / sign-out AFTER initial load */
     onAuthStateChanged(auth, function(user) {
         window._aqsFirebaseUser = user;
         window._aqsAuthUser     = user;
+        /* Persist UID + refresh token so dashboard prefetch can load quizzes
+           even if the Firebase module is slow or hangs in Android WebView. */
+        if (user) {
+            try {
+                localStorage.setItem('aqs_host_uid', user.uid);
+                if (user.refreshToken) localStorage.setItem('aqs_refresh_token', user.refreshToken);
+            } catch(_) {}
+        }
         document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
     });
 }).catch(function() {
-    /* Fallback: treat as logged out if authStateReady fails */
+    clearTimeout(_authReadyTimer);
+    /* Fallback: if authStateReady fails, treat as logged out */
     window._aqsAuthResolved = true;
     window._aqsAuthUser     = null;
     document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: null } }));
 });
 
-/* Helper: registers a one-shot auth callback that fires immediately if auth
-   is already resolved, or waits for the first aqs:authchange event otherwise.
-   This prevents the race where a page registers its listener AFTER the event
-   has already fired. */
+/* Helper: like addEventListener('aqs:authchange') but fires immediately if auth already resolved.
+   Prevents the race where the page registers its listener AFTER the event already fired. */
 window.onAqsAuthChange = function(fn) {
     if (window._aqsAuthResolved) {
+        /* Already resolved — fire synchronously so the caller doesn't miss it */
         fn(window._aqsAuthUser);
     } else {
         document.addEventListener('aqs:authchange', function handler(ev) {
@@ -138,6 +178,28 @@ window.onAqsAuthChange = function(fn) {
 function requireAuth() {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('Not authenticated');
+    return user;
+}
+
+/* ── Guest / anonymous session ──────────────────────────────────────────────
+   Allows unauthenticated users (no sign-up) to create quizzes and use the app.
+   Signs in anonymously with Firebase so they get a real UID that satisfies
+   Firestore security rules (isSignedIn() = auth != null).
+   The anonymous UID is cached in localStorage so the same guest can always
+   access their own quizzes across page reloads.
+   ─────────────────────────────────────────────────────────────────────────── */
+async function getOrCreateGuestSession() {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (user) return user;
+    /* Firebase may already have an anonymous session in IndexedDB — signInAnonymously
+       reuses it automatically when persistence is LOCAL (the default on mobile). */
+    var cred = await signInAnonymously(auth);
+    user = cred.user;
+    window._aqsFirebaseUser = user;
+    /* Remember this guest UID so the dashboard can show their quizzes */
+    try { localStorage.setItem('aqs_guest_uid', user.uid); } catch(_) {}
+    /* Fire the authchange event so session.js can inject the user bar */
+    document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
     return user;
 }
 
@@ -255,7 +317,7 @@ window.aqsUploadFile = async function(file, storagePath) {
 
 function _interceptJqueryCall(settings, data) {
       var deferred = jQuery.Deferred();
-      var timeoutMs = settings.timeout || 20000;
+      var timeoutMs = settings.timeout || 8000;
       var done = false;
 
       // Timeout guard — honours the jQuery AJAX timeout setting
@@ -293,6 +355,7 @@ async function handleAction(data) {
     var action = data.action || '';
     switch(action) {
         /* ── AUTH ── */
+        case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
         case 'aqs_register':         return await actionRegister(data);
         case 'aqs_social_login':     return await actionSocialLogin(data);
@@ -410,7 +473,8 @@ async function actionRegister(data) {
     var usernameSnap = await getDoc(doc(db, 'usernames', username));
     if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
 
-    /* Create Firebase Auth user */
+    /* Create Firebase Auth user — this is the critical step.
+       Everything after this is best-effort; we ALWAYS redirect on auth success. */
     window._aqsIsRegistering = true;
     var cred = await createUserWithEmailAndPassword(auth, email, password);
     var user = cred.user;
@@ -418,27 +482,33 @@ async function actionRegister(data) {
     /* Force token refresh so Firestore immediately recognises the new user */
     try { await user.getIdToken(true); } catch(_) {}
 
-    /* Update display name */
-    await updateProfile(user, { displayName: name });
+    /* Update display name (non-fatal) */
+    try { await updateProfile(user, { displayName: name }); } catch(_) {}
 
-    /* Save profile to Firestore */
+    /* Save profile to Firestore — wrapped so a rules/network error doesn't
+       block the user from getting into the app. The write will be retried
+       automatically by Firestore's offline persistence when connectivity returns. */
     var profile = {
         uid: user.uid, name: name, username: username, email: email,
         role: role, created_at: serverTimestamp(), status: 'active'
     };
-    await setDoc(doc(db, 'users', user.uid), profile);
+    try {
+        await setDoc(doc(db, 'users', user.uid), profile);
+        await setDoc(doc(db, 'usernames', username), { uid: user.uid });
+    } catch(fsErr) {
+        console.warn('[AQS Register] Firestore write failed (will retry):', fsErr && fsErr.message);
+        /* Do NOT throw — Firebase Auth user was created successfully.
+           The profile doc will be written on next login. */
+    }
 
-    /* Reserve username in public lookup map */
-    await setDoc(doc(db, 'usernames', username), { uid: user.uid });
-
-    /* Send email verification */
-    await sendEmailVerification(user);
+    /* Send email verification (fully non-blocking) */
+    sendEmailVerification(user).catch(function() {});
 
     _updateAqsGlobals(user, profile);
 
     var redirect = _dashboardUrl(role);
     return {
-        message:      '✓ Account created! Please verify your email.',
+        message:      '✓ Account created! Redirecting…',
         redirect:     redirect,
         otp_required: false,
         otp_sent:     false
@@ -548,10 +618,150 @@ async function actionVerifyOtp(data) {
 }
 
 /* ============================================================
+   EMAIL-ONLY (PASSWORDLESS) LOGIN
+   Uses a per-email auto-generated token stored in Firestore
+   email_tokens/{safeKey} → { token, created_at }
+   The user never sees or enters a password.
+   ============================================================ */
+async function actionEmailLogin(data) {
+    var email = (data.email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') === -1) throw new Error('Please enter a valid email address.');
+
+    /* Safe Firestore document key from email (no slashes, dots, etc.) */
+    var safeKey = btoa(email).replace(/[^A-Za-z0-9]/g, '_');
+    var lsKey   = 'aqs_et_' + safeKey;
+
+    /* 1. Check localStorage first — avoids a Firestore round-trip on repeat visits */
+    var token;
+    try { token = localStorage.getItem(lsKey); } catch(_) {}
+
+    if (!token) {
+        /* 2. Look up existing token in Firestore */
+        var tokenRef  = doc(db, 'email_tokens', safeKey);
+        var tokenSnap = await getDoc(tokenRef);
+
+        if (tokenSnap.exists()) {
+            token = tokenSnap.data().token;
+            try { localStorage.setItem(lsKey, token); } catch(_) {} /* cache it */
+        } else {
+            /* 3. New user — generate a random token and persist to both stores */
+            token = _generateEmailToken();
+            try { await setDoc(tokenRef, { email: email, token: token, created_at: serverTimestamp() }); } catch(_) {}
+            try { localStorage.setItem(lsKey, token); } catch(_) {}
+        }
+    }
+
+    /* 4. Try to sign in — if account doesn't exist yet, create it */
+    var user;
+    try {
+        var cred = await signInWithEmailAndPassword(auth, email, token);
+        user = cred.user;
+    } catch (signInErr) {
+        /* auth/invalid-credential = wrong password OR user not found (Firebase v10) */
+        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
+            try {
+                var newCred = await createUserWithEmailAndPassword(auth, email, token);
+                user = newCred.user;
+            } catch (createErr) {
+                if (createErr.code === 'auth/email-already-in-use') {
+                    /* This email has a password-based account (registered via register.html).
+                       Clear the stale token from both stores so the next email-only attempt
+                       doesn't keep trying the same wrong token.
+                       Prefix "PASSWORD_ACCOUNT:" is read by login.html to show the password field. */
+                    try { localStorage.removeItem(lsKey); } catch(_) {}
+                    try { await deleteDoc(doc(db, 'email_tokens', safeKey)); } catch(_) {}
+                    throw new Error('PASSWORD_ACCOUNT:This email is registered with a password. Please enter your password below.');
+                }
+                throw createErr;
+            }
+        } else {
+            throw signInErr;
+        }
+    }
+
+    /* 4. Token refresh */
+    try { await user.getIdToken(true); } catch(_) {}
+
+    /* 5. Build display name from email local part */
+    var displayName = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
+
+    /* 6. Ensure Firestore user profile exists */
+    var profileRef = doc(db, 'users', user.uid);
+    var profileDoc = await getDoc(profileRef);
+    var profile;
+
+    if (profileDoc.exists()) {
+        profile = profileDoc.data();
+        /* Update last login */
+        try { await updateDoc(profileRef, { last_login: serverTimestamp() }); } catch(_) {}
+    } else {
+        /* Auto-create profile */
+        var autoUsername = email.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase().substring(0, 20);
+        /* Ensure username uniqueness */
+        var collision = await getDoc(doc(db, 'usernames', autoUsername));
+        if (collision.exists()) autoUsername = autoUsername + Math.floor(1000 + Math.random() * 9000);
+
+        profile = {
+            uid:        user.uid,
+            name:       displayName,
+            username:   autoUsername,
+            email:      email,
+            role:       'student',
+            provider:   'email',
+            status:     'active',
+            created_at: serverTimestamp(),
+            last_login: serverTimestamp()
+        };
+        try {
+            await setDoc(profileRef, profile);
+            await setDoc(doc(db, 'usernames', autoUsername), { uid: user.uid });
+        } catch(fsErr) {
+            console.warn('[AQS EmailLogin] Firestore profile write failed (will retry):', fsErr && fsErr.message);
+        }
+
+        /* Update Firebase Auth display name */
+        try { await updateProfile(user, { displayName: displayName }); } catch(_) {}
+    }
+
+    /* Save email to localStorage for quick re-entry */
+    try { localStorage.setItem('aqs_last_email', email); } catch(_) {}
+
+    /* Mark "just logged in" so the Capacitor auth guard gives Firebase time
+       to restore the IndexedDB session before redirecting to login. */
+    try { sessionStorage.setItem('aqs_login_ts', String(Date.now())); } catch(_) {}
+
+    _updateAqsGlobals(user, profile);
+
+    return {
+        logged_in:  true,
+        redirect:   _dashboardUrl(profile.role),
+        user_name:  profile.name || displayName
+    };
+}
+
+function _generateEmailToken() {
+    /* Alphanumeric only — avoids any encoding issues in Firebase Auth passwords */
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    var token = '';
+    for (var i = 0; i < 40; i++) {
+        token += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return token;
+}
+
+/* ============================================================
    QUIZ ACTIONS
    ============================================================ */
 async function actionSaveQuiz(data) {
-    var user = requireAuth();
+    /* Allow guests: sign in anonymously if no account exists yet.
+       The anonymous UID is cached in localStorage so the guest's quizzes
+       are tied to the same "account" across sessions on the same device. */
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) { user = await getOrCreateGuestSession(); }
+    /* Persist UID so dashboard can always find this user's quizzes even
+       when auth is slow to restore from IndexedDB on Android */
+    try { localStorage.setItem('aqs_host_uid', user.uid); } catch(_) {}
+
     var questions = [];
     try { questions = JSON.parse(data.questions_json || data.questions || '[]'); } catch(_) {}
     var customForm = [];
@@ -596,107 +806,112 @@ async function actionSaveQuiz(data) {
     return { quiz_id: finalId };
 }
 
-async function actionGetQuizzes(data) {
-      var user = requireAuth();
-      var projectId = firebaseConfig.projectId;
-
-      /* ── Firestore REST API (avoids getDocs hang on web/Android) ─────────
-         Uses the user's ID token to query quizzes directly via HTTP.
-         Falls back to the Firebase SDK getDocs if REST fails.            */
-      async function _fetchViaRest() {
-          var token = await user.getIdToken(false);
-          var url   = 'https://firestore.googleapis.com/v1/projects/' + projectId +
-                      '/databases/(default)/documents:runQuery';
-          var body  = {
-              structuredQuery: {
-                  from: [{ collectionId: 'quizzes' }],
-                  where: {
-                      fieldFilter: {
-                          field: { fieldPath: 'host_uid' },
-                          op:    'EQUAL',
-                          value: { stringValue: user.uid }
-                      }
+/* ── Firestore REST API helper ──────────────────────────────────────────────
+   Queries quizzes by host_uid using the public Firestore REST API.
+   Requires NO Firebase SDK — uses plain fetch(). Works in every environment
+   including Capacitor Android WebView where the SDK's WebChannel can hang.
+   Firestore rules: allow read: if true — so no auth token is needed.
+   ─────────────────────────────────────────────────────────────────────────── */
+async function _fetchQuizzesByRest(uid, authToken) {
+      var PROJECT = 'smartquiz-darapet';
+      var url = 'https://firestore.googleapis.com/v1/projects/' + PROJECT +
+                '/databases/(default)/documents:runQuery';
+      var headers = { 'Content-Type': 'application/json' };
+      if (authToken) headers['Authorization'] = 'Bearer ' + authToken;
+      var body = JSON.stringify({
+          structuredQuery: {
+              from: [{ collectionId: 'quizzes' }],
+              where: {
+                  fieldFilter: {
+                      field:  { fieldPath: 'host_uid' },
+                      op:     'EQUAL',
+                      value:  { stringValue: uid }
                   }
               }
-          };
-          var resp = await fetch(url, {
-              method:  'POST',
-              headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
-              body:    JSON.stringify(body)
-          });
-          if (!resp.ok) throw new Error('REST query failed: ' + resp.status);
-          var rows = await resp.json();
-          /* Parse Firestore typed-value format */
-          function str(f)  { return (f && f.stringValue)   || ''; }
-          function num(f)  { return f ? parseInt(f.integerValue || f.doubleValue || 0) : 0; }
-          function tsMs(f) {
-              if (!f) return 0;
-              if (f.timestampValue) return new Date(f.timestampValue).getTime();
-              return 0;
           }
-          function arrLen(f) {
-              return (f && f.arrayValue && f.arrayValue.values) ? f.arrayValue.values.length : 0;
-          }
-          var items = rows
-              .filter(function(r) { return r.document; })
-              .map(function(r) {
-                  var d  = r.document;
-                  var f  = d.fields || {};
-                  var id = d.name.split('/').pop();
-                  return {
-                      id:            id,
-                      title:         str(f.title),
-                      subject:       str(f.subject),
-                      num_questions: num(f.num_questions) || arrLen(f.questions),
-                      time_limit:    num(f.time_limit),
-                      mode:          str(f.mode),
-                      status:        str(f.status),
-                      host_status:   str(f.host_status) || 'active',
-                      quiz_token:    str(f.quiz_token),
-                      quiz_url:      str(f.quiz_url),
-                      created_at_ms: tsMs(f.created_at)
-                  };
-              });
-          items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
-          return items;
-      }
-
-      /* ── SDK getDocs with 8-second timeout (fallback) ───────────────────── */
-      async function _fetchViaSdk() {
-          var sdkPromise = getDocs(
-              query(collection(db, 'quizzes'), where('host_uid', '==', user.uid))
-          );
-          var timeoutPromise = new Promise(function(_, reject) {
-              setTimeout(function() { reject(new Error('sdk_timeout')); }, 8000);
-          });
-          var snap = await Promise.race([sdkPromise, timeoutPromise]);
-          var items = snap.docs.map(function(d) {
-              var q = d.data();
+      });
+      var res  = await fetch(url, { method: 'POST', headers: headers, body: body });
+      if (!res.ok) throw new Error('REST query failed: ' + res.status);
+      var rows = await res.json();
+      var items = (rows || [])
+          .filter(function(r) { return r.document; })
+          .map(function(r) {
+              var f  = r.document.fields || {};
+              var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
+              var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
+              var id = r.document.name.split('/').pop();
               return {
-                  id:            d.id,
-                  title:         q.title,
-                  subject:       q.subject,
-                  num_questions: q.num_questions || (q.questions || []).length,
-                  time_limit:    q.time_limit,
-                  mode:          q.mode,
-                  status:        q.status,
-                  host_status:   q.host_status || 'active',
-                  quiz_token:    q.quiz_token || '',
-                  quiz_url:      q.quiz_url || '',
-                  created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
+                  id:            id,
+                  title:         gs('title'),
+                  subject:       gs('subject'),
+                  num_questions: gn('num_questions'),
+                  time_limit:    gn('time_limit'),
+                  mode:          gs('mode'),
+                  status:        gs('status'),
+                  host_status:   gs('host_status') || 'active',
+                  quiz_token:    gs('quiz_token'),
+                  quiz_url:      gs('quiz_url'),
+                  created_at_ms: 0
               };
           });
-          items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
-          return items;
+      items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
+      return items;
+  }
+
+async function actionGetQuizzes(data) {
+      /* 1. Resolve user identity — Firebase Auth with guest fallback */
+      var user = auth.currentUser || window._aqsFirebaseUser;
+      if (!user) {
+          try { user = await getOrCreateGuestSession(); } catch(_) {}
+      }
+      /* 2. Determine UID — prefer live auth, fall back to last-known UID stored in localStorage */
+      var uid = (user && user.uid) || '';
+      if (!uid) {
+          try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
+      }
+      if (!uid) throw new Error('Could not determine your account ID. Please log in again.');
+
+      /* 3. Persist UID so the dashboard always has it even if auth is slow next time */
+      try { localStorage.setItem('aqs_host_uid', uid); } catch(_) {}
+
+      /* 4. Get auth token for REST API (optional — rules allow read:true but token improves security) */
+      var authToken = null;
+      try {
+          if (user && user.getIdToken) authToken = await user.getIdToken(false);
+      } catch(_) {}
+
+      /* 5. Try Firestore REST API first — immune to WebChannel/WebSocket hangs in Android WebView.
+            Falls back to SDK getDocs (with 5-second timeout) if REST fails for any reason. */
+      try {
+          return await _fetchQuizzesByRest(uid, authToken);
+      } catch(restErr) {
+          console.warn('[AQS] REST quiz fetch failed, trying SDK:', restErr.message);
       }
 
-      /* Try REST first — fast and reliable; fall back to SDK on any error */
-      try {
-          return await _fetchViaRest();
-      } catch(restErr) {
-          console.warn('[AQS] REST quiz fetch failed, falling back to SDK:', restErr.message);
-          return await _fetchViaSdk();
-      }
+      /* 6. SDK fallback with timeout */
+      var sdkPromise = getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', uid)));
+      var timeoutPromise = new Promise(function(_, rej) {
+          setTimeout(function() { rej(new Error('sdk_timeout')); }, 5000);
+      });
+      var snap = await Promise.race([sdkPromise, timeoutPromise]);
+      var sdkItems = snap.docs.map(function(d) {
+          var q = d.data();
+          return {
+              id:            d.id,
+              title:         q.title,
+              subject:       q.subject,
+              num_questions: q.num_questions || (q.questions || []).length,
+              time_limit:    q.time_limit,
+              mode:          q.mode,
+              status:        q.status,
+              host_status:   q.host_status || 'active',
+              quiz_token:    q.quiz_token || '',
+              quiz_url:      q.quiz_url || '',
+              created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
+          };
+      });
+      sdkItems.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
+      return sdkItems;
   }
 
 async function actionGetQuizPublic(data) {
@@ -744,7 +959,9 @@ async function actionGetQuizForPdf(data) {
 }
 
 async function actionPublishQuiz(data) {
-    var user   = requireAuth();
+    /* Allow guests (anonymous auth) to publish their own quizzes */
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) { user = await getOrCreateGuestSession(); }
     var quizId = String(data.quiz_id || '');
     var snap   = await getDoc(doc(db, 'quizzes', quizId));
     if (!snap.exists()) throw new Error('Quiz not found.');
@@ -2032,9 +2249,11 @@ async function actionGetMyStats() {
     var profile = profileSnap.exists() ? profileSnap.data() : {};
     var name = profile.name || user.displayName || user.email || '';
 
+    /* Quizzes created by this user */
     var createdSnap = await getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', user.uid)));
     var quizzesCreated = createdSnap.size;
 
+    /* Attempts where participant matches this user's display name */
     var attempts = [];
     if (name) {
         var attSnap = await getDocs(query(collection(db, 'attempts'), where('participant_name', '==', name)));
@@ -2046,6 +2265,7 @@ async function actionGetMyStats() {
         attempts.sort(function(a, b) { return b._ms - a._ms; });
     }
 
+    /* Day streak — consecutive days with at least one attempt (counting back from today) */
     var streak = 0;
     if (attempts.length) {
         var days = new Set(attempts.filter(function(a) { return a._ms; }).map(function(a) {
@@ -2086,7 +2306,6 @@ async function actionGetMyQuizzes(data) {
             time_limit:    q.time_limit,
             mode:          q.mode,
             status:        q.status,
-            host_status:   q.host_status || 'active',
             quiz_url:      q.quiz_url || '',
             created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
         };
@@ -2101,7 +2320,8 @@ async function actionUpdateAvatar(data) {
     var avatarData = data.avatar || '';
     if (!avatarData) throw new Error('No avatar data provided.');
     if (avatarData.length > 400000) throw new Error('Image is too large. Please choose a smaller photo.');
-    await updateDoc(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() });
+    /* Use setDoc with merge so it works even if the user doc does not exist yet */
+    await setDoc(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() }, { merge: true });
     return { avatar: avatarData };
 }
 
@@ -2128,34 +2348,85 @@ function _updateAqsGlobals(user, profile) {
    ============================================================ */
 (function() {
     var page = window.location.pathname.split('/').pop() || 'index.html';
-    var protectedPages = ['dashboard.html', 'user-dashboard.html', 'create-quiz.html', 'quiz-results.html'];
-    var authPages      = ['login.html', 'register.html'];
+    /* Pages that require a real (non-anonymous) account */
+    var protectedPages = [
+        'dashboard.html','user-dashboard.html','create-quiz.html','quiz-results.html',
+        'take-quiz.html','challenge.html','profile.html','study.html',
+        'docs-gen.html','image-gen.html','image-editor.html',
+        'admin.html','admin-dashboard.html','admin-settings.html','admin-update.html',
+        'admin-about.html','admin-about-settings.html','admin-hosts.html','admin-create-quiz.html',
+        'aqs-quiz-studio.html','tts.html','audio.html','ai-animate.html'
+    ];
+    /* Pages that are open to everyone (guests OK) */
+    var openPages = ['index.html','studio.html','login.html','register.html','unauthorized.html'];
+    var authPages = ['login.html', 'register.html'];
 
-    if (protectedPages.indexOf(page) !== -1) {
-        onAuthStateChanged(auth, function(user) {
-            if (!user) window.location.href = 'login.html';
-        });
+    /* Auth guard: redirect to register.html if not signed in with a real account */
+    if (openPages.indexOf(page) === -1 && page !== '') {
+        auth.authStateReady().then(function() {
+            var user = auth.currentUser;
+            /* null = no session, isAnonymous = guest only — both must register */
+            if (!user || user.isAnonymous) {
+                if (window._aqsIsRegistering || window._aqsIsLoggingIn) return;
+                window.location.replace('register.html?reason=auth&redirect=' + encodeURIComponent(window.location.pathname.split('/').pop() + window.location.search));
+            }
+        }).catch(function() {});
     }
+
     if (authPages.indexOf(page) !== -1) {
-        onAuthStateChanged(auth, async function(user) {
-            /* Do NOT redirect while a registration is in progress — the register
-               success callback will do its own role-aware redirect. */
+        /* Use onAuthStateChanged directly (persistent) so the redirect fires
+           BOTH on page-load (already signed in) AND right after form sign-in.
+           onAqsAuthChange is one-shot — it misses the sign-in event if the user
+           was not logged in when the page first loaded. */
+        var _authRedirectDone = false;
+        onAuthStateChanged(auth, function(user) {
+            if (_authRedirectDone) return;
+            /* Do NOT redirect while a login/registration form is in progress —
+               let the form's own success callback handle the redirect with a
+               delay long enough for Firebase to persist the session to storage. */
             if (window._aqsIsRegistering) return;
-            if (user) {
+            if (window._aqsIsLoggingIn) return;
+            /* Only redirect REAL (non-anonymous) signed-in users away from login/register.
+               Anonymous users must be allowed to stay and create a real account. */
+            if (user && !user.isAnonymous) {
+                _authRedirectDone = true;
                 var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
-                if (redirectUrl) { window.location.href = redirectUrl; return; }
+                if (redirectUrl) { window.location.replace(redirectUrl); return; }
                 /* Look up the user's role so hosts go to the correct dashboard */
-                try {
-                    var profileSnap = await getDoc(doc(db, 'users', user.uid));
+                getDoc(doc(db, 'users', user.uid)).then(function(profileSnap) {
                     var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
-                    window.location.href = _dashboardUrl(role);
-                } catch(_) {
-                    window.location.href = 'user-dashboard.html';
-                }
+                    window.location.replace(_dashboardUrl(role));
+                }).catch(function() {
+                    window.location.replace('user-dashboard.html');
+                });
             }
         });
     }
 
+    /* ── Also write missing Firestore profile on first login after registration.
+       If the Firestore write failed during registration, we retry it here. ── */
+    if (protectedPages.indexOf(page) !== -1) {
+        window.onAqsAuthChange(function(user) {
+            if (!user) return;
+            /* Check if profile exists; if not, create it from Firebase Auth data */
+            getDoc(doc(db, 'users', user.uid)).then(function(snap) {
+                if (!snap.exists()) {
+                    var displayName = user.displayName || '';
+                    var email       = user.email || '';
+                    var profile = {
+                        uid:        user.uid,
+                        name:       displayName,
+                        username:   displayName.replace(/\s+/g, '').toLowerCase() || email.split('@')[0],
+                        email:      email,
+                        role:       'student',
+                        status:     'active',
+                        created_at: serverTimestamp()
+                    };
+                    setDoc(doc(db, 'users', user.uid), profile).catch(function() {});
+                }
+            }).catch(function() {});
+        });
+    }
 
 })();
 
