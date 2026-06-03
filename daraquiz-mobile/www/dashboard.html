@@ -211,6 +211,61 @@ window.AQS = {
     </div>
 </div>
 </main>
+<!-- INSTANT QUIZ PREFETCH: runs before any Firebase module, uses localStorage UID + Firestore REST API.
+     This is the primary load path for the Capacitor Android app where the Firebase SDK WebChannel hangs. -->
+<script>
+(function() {
+    'use strict';
+    var uid = '';
+    try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
+    if (!uid) return; // No stored UID — fall back to Firebase Auth flow
+
+    window._aqsPrefetchDone   = false;
+    window._prefetchedQuizzes = undefined;
+
+    fetch('https://firestore.googleapis.com/v1/projects/smartquiz-darapet/databases/(default)/documents:runQuery', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            structuredQuery: {
+                from: [{ collectionId: 'quizzes' }],
+                where: {
+                    fieldFilter: {
+                        field: { fieldPath: 'host_uid' },
+                        op: 'EQUAL',
+                        value: { stringValue: uid }
+                    }
+                }
+            }
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(rows) {
+        var items = (rows || []).filter(function(r) { return r.document; }).map(function(r) {
+            var f = r.document.fields || {};
+            var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
+            var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
+            return {
+                id: r.document.name.split('/').pop(),
+                title: gs('title'), subject: gs('subject'),
+                num_questions: gn('num_questions'), time_limit: gn('time_limit'),
+                mode: gs('mode'), status: gs('status'),
+                host_status: gs('host_status') || 'active',
+                quiz_token: gs('quiz_token'), quiz_url: gs('quiz_url'),
+                created_at_ms: 0
+            };
+        });
+        window._prefetchedQuizzes = items;
+        window._aqsPrefetchDone   = true;
+        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+    })
+    .catch(function(e) {
+        console.warn('[AQS] Dashboard instant prefetch failed:', e.message);
+        window._aqsPrefetchDone = true; // unblock the safety-net
+        document.dispatchEvent(new CustomEvent('aqs:quizzes:prefetched'));
+    });
+})();
+</script>
 <script src="js/aqs-main.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
