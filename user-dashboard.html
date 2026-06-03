@@ -214,11 +214,14 @@ window.AQS = {
 
 <script>
 (function(){
-    function waitReady(fn, t){
-        t = t||0;
-        if(window._aqsFirebaseReady && typeof jQuery!=='undefined'){ fn(); }
-        else if(t<50){ setTimeout(function(){ waitReady(fn, t+1); }, 300); }
-        else { console.warn('[udash] Firebase not ready after 15s'); }
+    function waitReady(fn){
+        if(typeof window.onAqsAuthChange === 'function'){
+            window.onAqsAuthChange(fn);
+        } else {
+            document.addEventListener('aqs:firebase:ready', function(){
+                window.onAqsAuthChange(fn);
+            }, { once: true });
+        }
     }
 
     function loadProfile(){
@@ -364,7 +367,14 @@ window.AQS = {
     document.getElementById('aqs-user-logout-btn').addEventListener('click', doLogout);
     document.getElementById('aqs-user-logout-btn2').addEventListener('click', doLogout);
 
-    waitReady(function(){
+    waitReady(function(user){
+        if(!user){
+            document.getElementById('aqs-user-display-name').textContent = 'Please log in';
+            document.getElementById('aqs-user-avatar-initial').textContent = '?';
+            document.getElementById('udash-myquiz-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your quizzes.</p>';
+            document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your activity.</p>';
+            return;
+        }
         loadProfile();
         loadStats();
         loadMyQuizzes();
