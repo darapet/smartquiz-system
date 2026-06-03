@@ -750,6 +750,9 @@ async function actionSaveQuiz(data) {
        are tied to the same "account" across sessions on the same device. */
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) { user = await getOrCreateGuestSession(); }
+    /* Persist UID so dashboard can always find this user's quizzes even
+       when auth is slow to restore from IndexedDB on Android */
+    try { localStorage.setItem('aqs_host_uid', user.uid); } catch(_) {}
 
     var questions = [];
     try { questions = JSON.parse(data.questions_json || data.questions || '[]'); } catch(_) {}
@@ -795,35 +798,105 @@ async function actionSaveQuiz(data) {
     return { quiz_id: finalId };
 }
 
-async function actionGetQuizzes(data) {
-    /* Ensure we have a user — fall back to guest/anonymous session if not signed in */
-    var user = auth.currentUser || window._aqsFirebaseUser;
-    if (!user) user = await getOrCreateGuestSession();
-    if (!user) throw new Error('Not authenticated');
-    /* No orderBy to avoid requiring a Firestore composite index — we sort client-side */
-    var snap = await getDocs(
-        query(collection(db, 'quizzes'),
-              where('host_uid', '==', user.uid))
-    );
-    var items = snap.docs.map(function(d) {
-        var q = d.data();
-        return {
-            id:            d.id,
-            title:         q.title,
-            subject:       q.subject,
-            num_questions: q.num_questions || (q.questions || []).length,
-            time_limit:    q.time_limit,
-            mode:          q.mode,
-            status:        q.status,
-            host_status:   q.host_status || 'active',
-            quiz_token:    q.quiz_token || '',
-            quiz_url:      q.quiz_url || '',
-            created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
-        };
+/* ── Firestore REST API helper ──────────────────────────────────────────────
+   Queries quizzes by host_uid using the public Firestore REST API.
+   Requires NO Firebase SDK — uses plain fetch(). Works in every environment
+   including Capacitor Android WebView where the SDK's WebChannel can hang.
+   Firestore rules: allow read: if true — so no auth token is needed.
+   ─────────────────────────────────────────────────────────────────────────── */
+async function _fetchQuizzesByRest(uid) {
+    var PROJECT = 'smartquiz-darapet';
+    var url = 'https://firestore.googleapis.com/v1/projects/' + PROJECT +
+              '/databases/(default)/documents:runQuery';
+    var body = JSON.stringify({
+        structuredQuery: {
+            from: [{ collectionId: 'quizzes' }],
+            where: {
+                fieldFilter: {
+                    field:  { fieldPath: 'host_uid' },
+                    op:     'EQUAL',
+                    value:  { stringValue: uid }
+                }
+            }
+        }
     });
-    /* Sort newest first client-side */
+    var res  = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: body });
+    if (!res.ok) throw new Error('REST query failed: ' + res.status);
+    var rows = await res.json();
+    var items = (rows || [])
+        .filter(function(r) { return r.document; })
+        .map(function(r) {
+            var f  = r.document.fields || {};
+            var gs = function(k) { return (f[k] && f[k].stringValue) || ''; };
+            var gn = function(k) { return parseInt((f[k] && (f[k].integerValue || f[k].doubleValue)) || 0, 10); };
+            var id = r.document.name.split('/').pop();
+            return {
+                id:            id,
+                title:         gs('title'),
+                subject:       gs('subject'),
+                num_questions: gn('num_questions'),
+                time_limit:    gn('time_limit'),
+                mode:          gs('mode'),
+                status:        gs('status'),
+                host_status:   gs('host_status') || 'active',
+                quiz_token:    gs('quiz_token'),
+                quiz_url:      gs('quiz_url'),
+                created_at_ms: 0
+            };
+        });
     items.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
     return items;
+}
+
+async function actionGetQuizzes(data) {
+    /* 1. Resolve user identity — Firebase Auth with guest fallback */
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) {
+        try { user = await getOrCreateGuestSession(); } catch(_) {}
+    }
+    /* 2. Determine UID — prefer live auth, fall back to last-known UID stored in localStorage */
+    var uid = (user && user.uid) || '';
+    if (!uid) {
+        try { uid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
+    }
+    if (!uid) throw new Error('Could not determine your account ID. Please log in again.');
+
+    /* 3. Persist UID so the dashboard always has it even if auth is slow next time */
+    try { localStorage.setItem('aqs_host_uid', uid); } catch(_) {}
+
+    /* 4. Try Firebase SDK first (5 s timeout), then fall back to Firestore REST API.
+          The REST API uses plain fetch() — immune to WebChannel/WebSocket issues
+          in Android WebView that can cause getDocs() to hang indefinitely. */
+    var sdkItems = null;
+    try {
+        var sdkPromise = getDocs(query(collection(db, 'quizzes'), where('host_uid', '==', uid)));
+        var timeoutPromise = new Promise(function(_, rej) {
+            setTimeout(function() { rej(new Error('sdk_timeout')); }, 5000);
+        });
+        var snap = await Promise.race([sdkPromise, timeoutPromise]);
+        sdkItems = snap.docs.map(function(d) {
+            var q = d.data();
+            return {
+                id:            d.id,
+                title:         q.title,
+                subject:       q.subject,
+                num_questions: q.num_questions || (q.questions || []).length,
+                time_limit:    q.time_limit,
+                mode:          q.mode,
+                status:        q.status,
+                host_status:   q.host_status || 'active',
+                quiz_token:    q.quiz_token || '',
+                quiz_url:      q.quiz_url || '',
+                created_at_ms: q.created_at && q.created_at.toDate ? q.created_at.toDate().getTime() : 0
+            };
+        });
+        sdkItems.sort(function(a, b) { return b.created_at_ms - a.created_at_ms; });
+    } catch(sdkErr) {
+        /* SDK timed out or threw — use REST API fallback (always works in Capacitor) */
+        console.warn('[AQS] SDK getDocs failed/timeout, using REST fallback:', sdkErr.message);
+        sdkItems = await _fetchQuizzesByRest(uid);
+    }
+    return sdkItems;
 }
 
 async function actionGetQuizPublic(data) {
