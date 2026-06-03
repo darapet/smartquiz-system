@@ -95,11 +95,45 @@ function tsToStr(ts) {
 
 /* ── Auth state cache ── */
 window._aqsFirebaseUser = null;
-onAuthStateChanged(auth, function(user) {
+window._aqsAuthResolved = false;   /* true once auth state fully determined (after persistence) */
+window._aqsAuthUser     = undefined; /* undefined=not yet resolved; null=logged out; object=logged in */
+
+/* authStateReady() waits for IndexedDB persistence to restore the session before
+   firing, preventing a double-fire race (null → user) that causes pages to
+   incorrectly see "not logged in" on first load. */
+auth.authStateReady().then(function() {
+    var user = auth.currentUser;
     window._aqsFirebaseUser = user;
-    /* Dispatch event so pages can react */
+    window._aqsAuthResolved = true;
+    window._aqsAuthUser     = user;
     document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
+    /* Register ongoing listener for subsequent sign-in / sign-out events */
+    onAuthStateChanged(auth, function(user) {
+        window._aqsFirebaseUser = user;
+        window._aqsAuthUser     = user;
+        document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: user } }));
+    });
+}).catch(function() {
+    /* Fallback: treat as logged out if authStateReady fails */
+    window._aqsAuthResolved = true;
+    window._aqsAuthUser     = null;
+    document.dispatchEvent(new CustomEvent('aqs:authchange', { detail: { user: null } }));
 });
+
+/* Helper: registers a one-shot auth callback that fires immediately if auth
+   is already resolved, or waits for the first aqs:authchange event otherwise.
+   This prevents the race where a page registers its listener AFTER the event
+   has already fired. */
+window.onAqsAuthChange = function(fn) {
+    if (window._aqsAuthResolved) {
+        fn(window._aqsAuthUser);
+    } else {
+        document.addEventListener('aqs:authchange', function handler(ev) {
+            document.removeEventListener('aqs:authchange', handler);
+            fn(ev.detail && ev.detail.user);
+        });
+    }
+};
 
 function requireAuth() {
     var user = auth.currentUser || window._aqsFirebaseUser;
