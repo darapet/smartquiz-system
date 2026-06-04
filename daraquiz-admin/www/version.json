@@ -1,8 +1,8 @@
 {
-  "version": "1.0.1",
-  "versionCode": 2,
-  "releaseDate": "2026-06-02",
+  "version": "1.0.2",
+  "versionCode": 3,
+  "releaseDate": "2026-06-04",
   "notes": "Initial release of DaraQuiz Admin app. Includes admin dashboard, host management, quiz management, settings and update tools.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk"
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.2/daraquiz-admin-v1.0.2.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.2/daraquiz-admin-v1.0.2.apk"
 }
