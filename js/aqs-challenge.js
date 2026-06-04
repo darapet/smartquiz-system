@@ -1962,7 +1962,7 @@
       var perPlayer = qpr * rounds;
       if(perPlayer < 2){ flash('Need at least 2 questions per player per round.'); return; }
       var totalNeeded = isLeague ? (qpr*(players-1)+3) : (players * perPlayer + 3);
-      var subject     = $('#aqs-ch-doc-subject').val().trim() || 'General';
+      var subject     = ($('#aqs-ch-doc-subject').val() || '').trim() || 'General';
       var difficulty  = $('#aqs-ch-doc-difficulty').val()     || 'medium';
       if(chQuestions.length >= totalNeeded){ flash('Already have enough questions!','success'); return; }
 
@@ -2089,7 +2089,7 @@
       var perPlayer = qpr * rounds;
       if(perPlayer < 2){ flash('Need at least 2 questions per player per round.'); return; }
       var totalNeeded = isLeague ? (qpr*(players-1)+3) : (players * perPlayer + 3);
-      var subject     = $('#aqs-ch-readdoc-subject').val().trim()    || 'General';
+      var subject     = ($('#aqs-ch-readdoc-subject').val() || '').trim() || 'General';
       var difficulty  = $('#aqs-ch-readdoc-difficulty').val()         || 'medium';
       if(chQuestions.length >= totalNeeded){ flash('Already have enough questions!','success'); return; }
 

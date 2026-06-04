@@ -2434,6 +2434,7 @@
         let timerInterval   = null;
         let secondsLeft     = 0;
         let quizSubmitted   = false;
+        let repickable      = {};  /* keys: question idx; true = answer can be changed on this question */
         let participantName = '';
         let customFormValues= {};
         let soundMuted      = false;
@@ -2841,7 +2842,7 @@
                         if (oi === userAnswers[idx]) cls = ' aqs-option-selected';
                     }
                 }
-                const locked = answered ? ' aqs-option-locked' : '';
+                const locked = answered && !repickable[idx] ? ' aqs-option-locked' : '';
                 opts += '<div class="aqs-option' + cls + locked + '" data-qi="' + idx + '" data-oi="' + oi + '">'
                     + '<span class="aqs-option-letter">' + letter + '</span>'
                     + '<span class="aqs-option-text">' + renderMath(opt) + '</span>'
@@ -2890,7 +2891,8 @@
             if (quizSubmitted) return;
             const qi = parseInt($(this).data('qi'));
             const oi = parseInt($(this).data('oi'));
-            if (userAnswers[qi] !== undefined) return;   // already answered
+            if (userAnswers[qi] !== undefined && !repickable[qi]) return;  // already answered
+              delete repickable[qi];  // consume repick token
 
             userAnswers[qi] = oi;
             clearTimeout(autoAdvTimer);
@@ -2936,9 +2938,16 @@
         /* Manual navigation (prev always works; next in single mode) */
         $(document).on('click', '.aqs-dot', function () { showQuestion(parseInt($(this).data('index'))); });
         $('#aqs-prev-btn').on('click', function () {
-            clearTimeout(autoAdvTimer);
-            if (currentQuestion > 0) showQuestion(currentQuestion - 1);
-        });
+              clearTimeout(autoAdvTimer);
+              if (currentQuestion > 0) {
+                  const isPractice  = quizData.mode === 'practice';
+                  const timeExpired = quizData.time_limit > 0 && secondsLeft <= 0;
+                  if (!isPractice && !timeExpired) {
+                      repickable[currentQuestion - 1] = true;
+                  }
+                  showQuestion(currentQuestion - 1);
+              }
+          });
         $('#aqs-next-btn').on('click', function () {
             clearTimeout(autoAdvTimer);
             if (currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1);

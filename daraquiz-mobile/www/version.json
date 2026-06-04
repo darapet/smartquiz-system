@@ -1,8 +1,8 @@
 {
-  "version": "1.118",
-  "versionCode": 103,
+  "version": "1.119",
+  "versionCode": 104,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Fix challenge document button crashes; add quiz Prev button repick support.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.118/daraquiz-v1.118.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.118/daraquiz-v1.118.apk"
 }
