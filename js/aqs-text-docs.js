@@ -257,15 +257,30 @@
       return html || '<p>' + escapeHtml(text) + '</p>';
     }
 
+    /* ── AI Status badge helper ── */
+    function ttdSetAIStatus(state, msg) {
+        var el = document.getElementById('ttd-ai-status');
+        var icon = document.getElementById('ttd-ai-status-icon');
+        var text = document.getElementById('ttd-ai-status-text');
+        if (!el) return;
+        el.className = 'st-' + state;
+        var icons = { ready:'&#9989;', working:'&#9201;&#65039;', busy:'&#9888;&#65039;', error:'&#9888;&#65039;' };
+        if (icon) icon.innerHTML = icons[state] || '&#9989;';
+        if (text) text.textContent = msg;
+    }
+
     /* ── AI API call — Groq (hardcoded key pool, auto-rotates on 429) ── */
     function callAI(prompt) {
         var k=['wMspDhSungnapsLU3v5hWG'+'dyb3FY9E9AFvBBjuSI38MmrL2ow46o','HMrJogeB2HUp6DFxebqgWG'+'dyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
         var keys=k.map(function(x){return'gsk_'+x;});
         var messages = [{ role: 'user', content: prompt }];
 
+        ttdSetAIStatus('working', 'AI is working…');
+
         function tryKey(idx) {
             if (idx >= keys.length) {
-                return Promise.reject(new Error('All Groq keys rate-limited — please try again in a moment.'));
+                ttdSetAIStatus('busy', 'Groq is busy right now — wait a minute and try again');
+                return Promise.reject(new Error('Groq is busy right now — wait a minute and try again.'));
             }
             return fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
@@ -273,10 +288,17 @@
                 body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.3 })
             }).then(function (r) {
                 if (r.status === 429) return tryKey(idx + 1);
-                if (!r.ok) throw new Error('Groq error ' + r.status);
+                if (!r.ok) {
+                    ttdSetAIStatus('error', 'Something went wrong — please try again');
+                    throw new Error('Something went wrong — please try again.');
+                }
                 return r.json().then(function (d) {
                     var t = (((d.choices || [])[0] || {}).message || {}).content || '';
-                    if (!t.trim()) throw new Error('AI returned an empty response — please try again.');
+                    if (!t.trim()) {
+                        ttdSetAIStatus('error', 'AI returned nothing — please try again');
+                        throw new Error('AI returned nothing — please try again.');
+                    }
+                    ttdSetAIStatus('ready', 'Groq AI Ready');
                     return t.trim();
                 });
             });
