@@ -1,8 +1,4 @@
 {
-  "version": "1.107",
-  "versionCode": 92,
-  "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.107/daraquiz-v1.107.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.107/daraquiz-v1.107.apk"
+  "version": "1.108",
+  "versionCode": 93
 }
