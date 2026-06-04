@@ -294,11 +294,19 @@
 
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         _active = false;
-        if (onError) onError('Microphone not available on this device.');
+        if (onError) onError('Microphone is not available on this device.');
         return;
       }
 
-      navigator.mediaDevices.getUserMedia({ audio: true })
+      /* ── Pre-check permission state so we can give a clear message ── */
+      function _doRecord() {
+        navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            sampleRate: 16000
+          }
+        })
         .then(function (stream) {
           if (!_active) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
 
@@ -344,8 +352,49 @@
         })
         .catch(function (err) {
           _active = false;
-          if (onError) onError('Microphone access denied: ' + (err.message || String(err)));
+          var n = err.name || '';
+          var msg;
+          if (n === 'NotAllowedError' || n === 'PermissionDeniedError' || n === 'SecurityError') {
+            msg = 'Microphone blocked by Android.\n\n'
+                + 'To fix:\n'
+                + '1. Open your phone \u2699\uFE0F Settings\n'
+                + '2. Tap Apps \u2192 DaraQuiz\n'
+                + '3. Tap Permissions \u2192 Microphone \u2192 Allow\n'
+                + '4. Come back and try again.';
+          } else if (n === 'NotReadableError' || n === 'TrackStartError' || n === 'OverconstrainedError') {
+            msg = 'Could not start microphone \u2014 another app may be using it.\n'
+                + 'Close other apps (calls, voice recorders) and try again.';
+          } else {
+            msg = 'Microphone error: ' + (err.message || String(err));
+          }
+          if (onError) onError(msg);
         });
+      } /* end _doRecord */
+
+      /* ── Check permission state before calling getUserMedia ── */
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'microphone' })
+          .then(function (status) {
+            if (status.state === 'denied') {
+              _active = false;
+              if (onError) onError(
+                'Microphone is blocked in Android settings.\n\n'
+                + 'To fix:\n'
+                + '1. Open your phone \u2699\uFE0F Settings\n'
+                + '2. Tap Apps \u2192 DaraQuiz\n'
+                + '3. Tap Permissions \u2192 Microphone \u2192 Allow\n'
+                + '4. Come back and try again.'
+              );
+            } else {
+              _doRecord(); /* 'granted' or 'prompt' — proceed */
+            }
+          })
+          .catch(function () {
+            _doRecord(); /* Permissions API not supported — try anyway */
+          });
+      } else {
+        _doRecord();
+      }
     };
 
     function _transcribe(blob, mimeType, onResult, onError) {
