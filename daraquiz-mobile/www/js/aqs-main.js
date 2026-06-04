@@ -1856,7 +1856,7 @@
                 model:       groqModel,
                 messages:    [{ role: 'system', content: _DIRECT_SYS }, { role: 'user', content: prompt }],
                 temperature: 0.35,
-                max_tokens:  4096
+                max_tokens:  1800
             }, { signal: ctrl.signal });
             clearTimeout(tid);
             if (!res.ok) throw new Error('Groq HTTP ' + res.status);
