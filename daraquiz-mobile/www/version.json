@@ -1,8 +1,8 @@
 {
-  "version": "1.128",
-  "versionCode": 113,
+  "version": "1.129",
+  "versionCode": 114,
   "releaseDate": "2026-06-04",
-  "notes": "Studio: added image upload button, voice button & voice overlay, Image Creator and Text to Speech sidebar links, layout offset fixes for countdown bar and news ticker.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.128/daraquiz-v1.128.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.128/daraquiz-v1.128.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.129/daraquiz-v1.129.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.129/daraquiz-v1.129.apk"
 }
