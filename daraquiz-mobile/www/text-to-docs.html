@@ -113,12 +113,47 @@
   }
   .ttd-print-root{display:none;}
   /* ── Responsive ──────────────────────────────── */
-  @media(max-width:900px){
-    .ttd-layout{flex-direction:column;height:auto;}
-    .ttd-settings{width:100%;min-width:0;max-height:55vh;}
-    .ttd-editor-area{min-height:60vh;}
-    .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal{width:100%!important;min-height:auto;}
-  }
+  @media(max-width:768px){
+      .ttd-layout{flex-direction:column;height:100svh;overflow:hidden;position:relative;}
+      .ttd-settings{position:fixed;bottom:0;left:0;right:0;z-index:200;width:100%;min-width:0;max-height:72vh;border-radius:18px 18px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;background:#fff;}
+      .ttd-settings.mob-open{transform:translateY(0);}
+      .ttd-mob-overlay{display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.35);}
+      .ttd-mob-overlay.visible{display:block;}
+      .ttd-mob-handle{display:flex;justify-content:center;padding:8px 0 4px;cursor:pointer;touch-action:none;}
+      .ttd-mob-handle::before{content:'';width:36px;height:4px;border-radius:2px;background:#d1d5db;}
+      .ttd-mob-toggle{display:flex;align-items:center;gap:6px;position:fixed;bottom:14px;right:14px;z-index:198;background:#0891b2;color:#fff;border:none;border-radius:24px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(8,145,178,.38);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+      .ttd-mob-toggle.panel-open{background:#64748b;}
+      .ttd-editor-area{flex:1;min-height:0;height:100%;overflow:hidden;display:flex;flex-direction:column;}
+      .ttd-pages-area{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+      .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal{width:100%!important;min-height:auto;padding:14px!important;box-shadow:none;border-radius:0;margin:0;}
+      .ttd-toolbar{overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;padding:6px 8px;gap:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+      .ttd-toolbar::-webkit-scrollbar{display:none;}
+      .tb-btn,.tb-color,.ttd-toolbar button{min-width:36px;height:36px;font-size:14px;padding:0 8px;flex-shrink:0;}
+      .tb-sel{height:36px;font-size:12px;flex-shrink:0;}
+      .tb-sep{flex-shrink:0;}
+      .ttd-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+      .ttd-tabs::-webkit-scrollbar{display:none;}
+      .ttd-tab{font-size:11px;padding:8px 10px;white-space:nowrap;flex-shrink:0;}
+      .ttd-page-nav{padding:6px 8px;gap:6px;}
+      .ttd-pnav-btn{padding:6px 14px;font-size:13px;}
+      .ttd-pnav-info{font-size:12px;}
+      .ttd-pnav-add{font-size:12px;padding:6px 10px;}
+      .ttd-sec{margin-bottom:12px;}
+      .aqs-btn,.ttd-btn{min-height:42px;font-size:13px;}
+      .ttd-textarea{min-height:90px;}
+      .ttd-upload-zone{padding:14px 10px;}
+      .ttd-hist-item{padding:8px 10px;}
+    }
+    @media(min-width:769px){
+      .ttd-mob-toggle{display:none!important;}
+      .ttd-mob-overlay{display:none!important;}
+      .ttd-mob-handle{display:none!important;}
+      .ttd-settings{transform:none!important;}
+    }
+    @media(max-width:420px){
+      .ttd-tab{font-size:10px;padding:7px 8px;}
+      .ttd-pnav-btn{padding:5px 10px;font-size:12px;}
+    }
   /* ── Spinner ──────────────────────────────────── */
   @keyframes ttd-spin{to{transform:rotate(360deg);}}
   .ttd-spin{display:inline-block;animation:ttd-spin .8s linear infinite;}
@@ -447,6 +482,10 @@
   <script src="capacitor-bridge.js"></script>
 <script src="js/aqs-groq-key.js"></script>
   <script src="js/aqs-text-docs.js"></script>
-  <script src="js/aqs-session.js"></script>
+  <script src="js/aqs-session.js">
+      function ttdMobToggle(){var s=document.querySelector('.ttd-settings'),o=document.getElementById('ttd-mob-overlay'),t=document.getElementById('ttd-mob-toggle');var isOpen=s&&s.classList.contains('mob-open');if(s)s.classList.toggle('mob-open',!isOpen);if(o)o.classList.toggle('visible',!isOpen);if(t)t.classList.toggle('panel-open',!isOpen);if(t)t.innerHTML=isOpen?'&#9881;&#65039; Settings':'&#10005; Close';}
+      function ttdMobClose(){var s=document.querySelector('.ttd-settings'),o=document.getElementById('ttd-mob-overlay'),t=document.getElementById('ttd-mob-toggle');if(s)s.classList.remove('mob-open');if(o)o.classList.remove('visible');if(t){t.classList.remove('panel-open');t.innerHTML='&#9881;&#65039; Settings';}}
+      var _ttdOrigSwitchTab=window.ttdSwitchTab;window.ttdSwitchTab=function(tab){if(_ttdOrigSwitchTab)_ttdOrigSwitchTab(tab);if(window.innerWidth<=768)ttdMobClose();};
+  </script>
   </body>
   </html>
