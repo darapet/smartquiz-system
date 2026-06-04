@@ -355,7 +355,7 @@ async function generateQuestions(){
     var res  = await window.groqFetch({ model: 'llama-3.3-70b-versatile', messages:[
         {role:'system',content:'You are a quiz question generator. Output ONLY valid JSON arrays, no markdown, no explanation.'},
         {role:'user',  content: prompt}
-    ], max_tokens: 3000, temperature: 0.7 });
+    ], max_tokens: 1500, temperature: 0.7 });
     var data = await res.json();
     var text = (((data.choices||[])[0]||{}).message||{}).content || '';
 
