@@ -73,6 +73,7 @@ function _stdInit() {
     injectSummonStyles();
     injectSummonUI();
     initSummonVoices();
+    stdVoiceInit();
     /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
     setTimeout(checkAI, 500);
     setTimeout(checkAI, 2000);
@@ -844,8 +845,8 @@ function setupEvents() {
     $('std-explain-btn')  && $('std-explain-btn').addEventListener('click', doExplain);
     $('std-test-btn')     && $('std-test-btn').addEventListener('click', openTest);
     $('std-test-hdr-btn') && $('std-test-hdr-btn').addEventListener('click', openTest);
-    $('std-voice-btn')    && $('std-voice-btn').addEventListener('click', summonToggle);
-    $('std-voice-hdr-btn')&& $('std-voice-hdr-btn').addEventListener('click', summonToggle);
+    $('std-voice-btn')    && $('std-voice-btn').addEventListener('click', stdVoiceOpen);
+    $('std-voice-hdr-btn')&& $('std-voice-hdr-btn').addEventListener('click', stdVoiceOpen);
 
     $('std-chapters-toggle') && $('std-chapters-toggle').addEventListener('click', function () {
         var panel = document.getElementById('std-chapters-panel');
@@ -2044,6 +2045,274 @@ function vhToggle() {
         vhRenderDropdown();
     }
     if (btn) btn.classList.toggle('active', !open);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STUDY PAGE — AI TUTOR VOICE CHAT PANEL  (#std-voice-panel)
+   ══════════════════════════════════════════════════════════════ */
+
+var VP = { speaking: false, _currentAudio: null };
+var _VP_MIC = { active: false, mediaRecorder: null, chunks: [], stream: null, _autoStop: null };
+
+function stdVoiceInit() {
+    var sendBtn  = document.getElementById('std-voice-send-btn');
+    var closeBtn = document.getElementById('std-voice-close-btn');
+    var stopBtn  = document.getElementById('std-voice-stop-btn');
+    var micBtn   = document.getElementById('std-voice-mic-btn');
+    var inp      = document.getElementById('std-voice-text-input');
+
+    if (sendBtn)  sendBtn.addEventListener('click', stdVoiceSend);
+    if (closeBtn) closeBtn.addEventListener('click', stdVoiceClose);
+    if (stopBtn)  stopBtn.addEventListener('click', stdVoiceStopSpeak);
+    if (micBtn)   micBtn.addEventListener('click', stdVoiceMicToggle);
+    if (inp) inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); stdVoiceSend(); }
+    });
+}
+
+function stdVoiceOpen() {
+    var panel = document.getElementById('std-voice-panel');
+    if (!panel) return;
+    panel.style.display = 'flex';
+
+    var msgs = document.getElementById('std-voice-msgs');
+    if (msgs && !msgs.children.length) {
+        var topicName = (S && S.title) ? S.title : 'your topic';
+        var greeting = 'Hello! I\'m your AI tutor for "' + topicName + '". Ask me anything about what you\'re studying!';
+        stdVoiceAddMsg('ai', greeting);
+        stdVoiceSpeak(greeting);
+    }
+    setTimeout(function () {
+        var inp = document.getElementById('std-voice-text-input');
+        if (inp) inp.focus();
+    }, 150);
+}
+
+function stdVoiceClose() {
+    var panel = document.getElementById('std-voice-panel');
+    if (panel) panel.style.display = 'none';
+    stdVoiceStopSpeak();
+}
+
+function stdVoiceAddMsg(role, text) {
+    var msgs = document.getElementById('std-voice-msgs');
+    if (!msgs) return;
+    var wrap   = document.createElement('div');
+    wrap.className = 'std-vmsg ' + (role === 'user' ? 'std-vmsg-user' : 'std-vmsg-ai');
+    var bubble = document.createElement('div');
+    bubble.className = 'std-vbubble' + (text === '…' ? ' std-vtyping' : '');
+    bubble.textContent = text;
+    wrap.appendChild(bubble);
+    msgs.appendChild(wrap);
+    msgs.scrollTop = msgs.scrollHeight;
+    return wrap;
+}
+
+async function stdVoiceSend() {
+    var inp = document.getElementById('std-voice-text-input');
+    if (!inp) return;
+    var text = (inp.value || '').trim();
+    if (!text) return;
+    inp.value = '';
+
+    stdVoiceAddMsg('user', text);
+    stdVoiceStopSpeak();
+
+    var thinkingEl = stdVoiceAddMsg('ai', '…');
+
+    try {
+        var context = '';
+        if (S && S.title)           context += 'The student is studying: ' + S.title + '.\n';
+        if (S && S.uploadedContent) context += 'Study material excerpt:\n' + S.uploadedContent.slice(0, 3000) + '\n';
+
+        var sysMsg = 'You are a warm, encouraging AI tutor. ' + context +
+                     'Answer the student\'s question clearly and concisely. ' +
+                     'Keep answers under 80 words so they are easy to hear.';
+
+        var reply = await aiChat([
+            { role: 'system', content: sysMsg },
+            { role: 'user',   content: text }
+        ], 0.7);
+
+        var msgs = document.getElementById('std-voice-msgs');
+        if (thinkingEl && thinkingEl.parentNode === msgs) msgs.removeChild(thinkingEl);
+
+        var clean = (reply || '').replace(/```[\s\S]*?```/g, '').replace(/[*_`#~>]/g, '').trim();
+        stdVoiceAddMsg('ai', clean);
+        stdVoiceSpeak(clean);
+    } catch (e) {
+        var msgs2 = document.getElementById('std-voice-msgs');
+        if (thinkingEl && msgs2 && thinkingEl.parentNode === msgs2) msgs2.removeChild(thinkingEl);
+        stdVoiceAddMsg('ai', 'Sorry, I could not get a response right now. Please try again.');
+    }
+}
+
+function stdVoiceSpeak(text) {
+    stdVoiceStopSpeak();
+    var stopBtn = document.getElementById('std-voice-stop-btn');
+    if (stopBtn) stopBtn.style.display = 'inline-flex';
+    VP.speaking = true;
+
+    var onDone = function () {
+        VP.speaking = false;
+        VP._currentAudio = null;
+        if (stopBtn) stopBtn.style.display = 'none';
+    };
+
+    /* AudioContext path — bypasses Android autoplay block */
+    var ctx = window._aqsAudioCtx;
+    if (ctx) {
+        if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+        var chunk = text.slice(0, 280);
+        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+                  '?model=openai-audio&voice=nova&seed=42';
+        fetch(url)
+            .then(function (r) { return r.arrayBuffer(); })
+            .then(function (buf) { return ctx.decodeAudioData(buf); })
+            .then(function (decoded) {
+                if (!VP.speaking) { onDone(); return; }
+                var src = ctx.createBufferSource();
+                src.buffer = decoded;
+                src.connect(ctx.destination);
+                VP._currentAudio = src;
+                src.onended = onDone;
+                src.start(0);
+            })
+            .catch(function () { stdVoiceSpeakSynth(text, onDone); });
+        return;
+    }
+
+    /* Fallback: Web Speech API */
+    stdVoiceSpeakSynth(text, onDone);
+}
+
+function stdVoiceSpeakSynth(text, onDone) {
+    var synth = window.speechSynthesis;
+    if (!synth) { if (onDone) onDone(); return; }
+    synth.cancel();
+    var u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+    var voices = synth.getVoices();
+    var en = voices.find(function (v) { return v.lang && v.lang.startsWith('en'); });
+    if (en) u.voice = en;
+    u.onend   = onDone || function () {};
+    u.onerror = onDone || function () {};
+    VP._currentAudio = { stop: function () { synth.cancel(); } };
+    synth.speak(u);
+}
+
+function stdVoiceStopSpeak() {
+    VP.speaking = false;
+    if (VP._currentAudio) {
+        try {
+            if (typeof VP._currentAudio.stop  === 'function') VP._currentAudio.stop();
+            else if (typeof VP._currentAudio.pause === 'function') { VP._currentAudio.pause(); VP._currentAudio.src = ''; }
+        } catch (e) {}
+        VP._currentAudio = null;
+    }
+    if (window.speechSynthesis) { try { window.speechSynthesis.cancel(); } catch (e) {} }
+    var stopBtn = document.getElementById('std-voice-stop-btn');
+    if (stopBtn) stopBtn.style.display = 'none';
+}
+
+/* ── Microphone / Whisper ─────────────────────────────────── */
+function stdVoiceMicToggle() {
+    if (_VP_MIC.active) stdVoiceMicStop(); else stdVoiceMicStart();
+}
+
+function stdVoiceMicStart() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        stdVoiceAddMsg('ai', 'Microphone not supported on this device.');
+        return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(function (stream) {
+            _VP_MIC.stream  = stream;
+            _VP_MIC.chunks  = [];
+            _VP_MIC.active  = true;
+
+            var mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']
+                .find(function (m) { try { return MediaRecorder.isTypeSupported(m); } catch (e) { return false; } }) || '';
+            try {
+                _VP_MIC.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : {});
+            } catch (e) {
+                _VP_MIC.mediaRecorder = new MediaRecorder(stream);
+            }
+            _VP_MIC.mediaRecorder.ondataavailable = function (e) {
+                if (e.data && e.data.size > 0) _VP_MIC.chunks.push(e.data);
+            };
+            _VP_MIC.mediaRecorder.onstop = function () { stdVoiceMicTranscribe(); };
+            _VP_MIC.mediaRecorder.start(200);
+
+            var btn = document.getElementById('std-voice-mic-btn');
+            if (btn) { btn.textContent = '⏹ Stop'; btn.classList.add('active'); }
+
+            _VP_MIC._autoStop = setTimeout(function () {
+                if (_VP_MIC.active) stdVoiceMicStop();
+            }, 30000);
+        })
+        .catch(function (err) {
+            var msg = err.name === 'NotAllowedError'
+                ? 'Microphone permission denied. Please allow mic access in settings.'
+                : 'Could not start mic: ' + (err.message || err.name);
+            stdVoiceAddMsg('ai', msg);
+        });
+}
+
+function stdVoiceMicStop() {
+    if (!_VP_MIC.active) return;
+    _VP_MIC.active = false;
+    clearTimeout(_VP_MIC._autoStop);
+    if (_VP_MIC.mediaRecorder && _VP_MIC.mediaRecorder.state !== 'inactive') {
+        try { _VP_MIC.mediaRecorder.stop(); } catch (e) {}
+    }
+    if (_VP_MIC.stream) {
+        _VP_MIC.stream.getTracks().forEach(function (t) { try { t.stop(); } catch (e) {} });
+        _VP_MIC.stream = null;
+    }
+    var btn = document.getElementById('std-voice-mic-btn');
+    if (btn) { btn.textContent = '🎤 Speak'; btn.classList.remove('active'); }
+}
+
+function stdVoiceMicTranscribe() {
+    if (!_VP_MIC.chunks.length) return;
+    var mimeType = (_VP_MIC.mediaRecorder && _VP_MIC.mediaRecorder.mimeType)
+        ? _VP_MIC.mediaRecorder.mimeType.split(';')[0] : 'audio/webm';
+    var blob = new Blob(_VP_MIC.chunks, { type: mimeType });
+    _VP_MIC.chunks = [];
+    var ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+    if (!key) {
+        stdVoiceAddMsg('ai', 'No API key available. Type your question instead.');
+        return;
+    }
+
+    var thinkEl = stdVoiceAddMsg('ai', 'Transcribing…');
+
+    var formData = new FormData();
+    formData.append('file', blob, 'voice.' + ext);
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('response_format', 'json');
+
+    fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + key },
+        body: formData
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+        var msgs = document.getElementById('std-voice-msgs');
+        if (thinkEl && msgs && thinkEl.parentNode === msgs) msgs.removeChild(thinkEl);
+        var transcript = (d.text || '').trim();
+        if (!transcript) { stdVoiceAddMsg('ai', 'No speech detected. Try again.'); return; }
+        var inp = document.getElementById('std-voice-text-input');
+        if (inp) inp.value = transcript;
+        stdVoiceSend();
+    })
+    .catch(function () {
+        stdVoiceAddMsg('ai', 'Transcription failed. Type your question instead.');
+    });
 }
 
 /* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
