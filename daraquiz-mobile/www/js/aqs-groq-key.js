@@ -3,6 +3,10 @@
     var STORAGE_KEY = 'aqs_groq_key';
     var IDX_KEY     = 'aqs_groq_key_idx';
 
+    /* Per-key cooldown tracking. Maps key index → timestamp (ms) when it
+       becomes available again. Stored in memory only (resets on page load). */
+    var _keyCooldowns = {};
+
     /* Master keys are loaded at runtime from Firestore (via aqs-firebase.js).
        They are NEVER hardcoded here so the file is safe to push to GitHub.
        window._AQS_GROQ_MASTER_KEYS is set by aqs-firebase.js after it loads
@@ -25,6 +29,35 @@
     function _setIdx(i) {
         var keys = _getMasterKeys();
         try { localStorage.setItem(IDX_KEY, String(i % Math.max(1, keys.length))); } catch(e) {}
+    }
+
+    /* Mark key slot as rate-limited. Parses Retry-After header when available. */
+    function _markCooldown(idx, retryAfterHeader) {
+        var waitSec = 60;
+        if (retryAfterHeader) {
+            var parsed = parseInt(retryAfterHeader, 10);
+            if (!isNaN(parsed) && parsed > 0) waitSec = Math.min(parsed, 300);
+        }
+        _keyCooldowns[idx] = Date.now() + waitSec * 1000;
+        console.warn('[groqFetch] key slot', idx, 'cooling down for', waitSec, 's');
+    }
+
+    /* Returns true if the key slot is still in cooldown. */
+    function _isCooling(idx) {
+        var until = _keyCooldowns[idx];
+        return until && Date.now() < until;
+    }
+
+    /* Returns how many ms until the soonest key becomes available (0 = now). */
+    function _msUntilNextKey(keys) {
+        var now = Date.now();
+        var soonest = Infinity;
+        for (var i = 0; i < keys.length; i++) {
+            var until = _keyCooldowns[i] || 0;
+            if (until <= now) return 0;
+            if (until < soonest) soonest = until;
+        }
+        return soonest === Infinity ? 0 : Math.max(0, soonest - now);
     }
 
     window.getGroqKey = function(){
@@ -52,10 +85,17 @@
         var keys = _getMasterKeys();
         if (!keys.length) throw new Error('No Groq API keys configured. Ask the site admin to add keys in Settings.');
 
+        /* Try each key, skipping ones still in their cooldown window. */
         var startIdx = _getIdx();
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
             var idx = (startIdx + attempt) % keys.length;
+
+            if (_isCooling(idx)) {
+                console.warn('[groqFetch] key slot', idx, 'still cooling — skipping');
+                continue;
+            }
+
             var key = keys[idx];
             var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
                 method:  'POST',
@@ -64,7 +104,8 @@
             }));
 
             if (res.status === 429) {
-                console.warn('[groqFetch] key slot', idx, 'rate-limited (429), trying next…');
+                var retryAfter = res.headers ? res.headers.get('Retry-After') : null;
+                _markCooldown(idx, retryAfter);
                 _setIdx(idx + 1);
                 continue;
             }
@@ -73,7 +114,13 @@
             return res;
         }
 
-        throw new Error('All Groq keys rate-limited (429). Try again in a moment.');
+        /* All keys exhausted — report soonest available time */
+        var waitMs  = _msUntilNextKey(keys);
+        var waitSec = Math.ceil(waitMs / 1000);
+        var msg = waitSec > 0
+            ? 'All AI slots are busy right now. Please try again in ' + waitSec + ' seconds.'
+            : 'All AI slots are busy right now. Please try again in a moment.';
+        throw new Error(msg);
     };
 
     window.setGroqKey = function(k){
@@ -83,6 +130,7 @@
 
     window.setGroqKeys = function(arr){
         window._AQS_GROQ_MASTER_KEYS = (arr || []).filter(function(k){ return k && k.startsWith('gsk_'); });
+        _keyCooldowns = {};
         _setIdx(0);
     };
 })();
