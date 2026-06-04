@@ -257,20 +257,31 @@
       return html || '<p>' + escapeHtml(text) + '</p>';
     }
 
-    /* ── AI API call (Groq → Pollinations fallback) ─────────────── */
+    /* ── AI API call (Groq via groqFetch → Pollinations fallback) ─────────────── */
     function callAI(prompt) {
-        var groqKey = '';
-        try { groqKey = localStorage.getItem('aqs_groq_key') || ''; } catch(e){}
-        function groqReq(model) {
-          return fetch('https://api.groq.com/openai/v1/chat/completions', {method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},body:JSON.stringify({model:model,messages:[{role:'user',content:prompt}],max_tokens:2000,temperature:0.3})})
-          .then(function(r){if(r.status===429)throw new Error('RATE_LIMIT');if(!r.ok)throw new Error('Groq '+r.status);return r.json();})
-          .then(function(d){return d.choices[0].message.content.trim();});
+        var messages = [{ role: 'user', content: prompt }];
+
+        /* 1. window.groqFetch handles personal key + Firebase master keys + auto key-rotation */
+        if (typeof window.groqFetch === 'function') {
+            var ctrl = new AbortController();
+            var tid  = setTimeout(function () { ctrl.abort(); }, 25000);
+            return window.groqFetch(
+                { model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.3 },
+                { signal: ctrl.signal }
+            ).then(function (r) {
+                clearTimeout(tid);
+                if (!r.ok) throw new Error('Groq ' + r.status);
+                return r.json();
+            }).then(function (d) {
+                var t = (((d.choices || [])[0] || {}).message || {}).content || '';
+                if (!t.trim()) throw new Error('empty');
+                return t.trim();
+            }).catch(function () {
+                clearTimeout(tid);
+                return pollinationsAI(prompt);
+            });
         }
-        if (groqKey) {
-          return groqReq('llama-3.1-8b-instant')
-            .catch(function(e){if(e.message==='RATE_LIMIT')return groqReq('llama3-8b-8192');throw e;})
-            .catch(function(){return pollinationsAI(prompt);});
-        }
+        /* 2. No groqFetch available — go straight to Pollinations */
         return pollinationsAI(prompt);
       }
       function pollinationsAI(prompt) {
