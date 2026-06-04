@@ -181,7 +181,15 @@
       isProcessing = true;
       if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ttd-spin">&#9696;</span> Formatting...'; }
 
-      var prompt = 'You are a professional document formatter. Transform the following raw text into a well-structured, print-ready ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+      var hintEl = document.getElementById('ttd-ai-hint');
+      var showHint = function(msg, bg, col) { if(!hintEl) return; hintEl.style.display='block'; hintEl.style.background=bg; hintEl.style.color=col; hintEl.innerHTML=msg; };
+      var hideHint = function() { if(hintEl) hintEl.style.display='none'; };
+      hideHint();
+
+      var prompt = 'You are a professional document formatter.\n\n' +
+        'STEP 1 — ALIGNMENT CHECK: Does the text below make sense as a "' + dtype + '"? ' +
+        'If the content clearly does not match (e.g. random chat as a research paper, a shopping list as a business letter), respond with ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
+        'STEP 2 — FORMAT: If content aligns (even loosely), format it as a well-structured ' + dtype + ' with ' + tone + ' tone.\n\n' +
         'RETURN ONLY clean HTML using ONLY these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br. ABSOLUTELY NO html/head/body/style/script tags.\n\n' +
         'RULES:\n' +
         '1. Detect or create a clear main title → wrap in <h1>\n' +
@@ -199,7 +207,19 @@
 
       callAI(prompt)
         .then(function (html) {
-          var clean = sanitizeHTML(html);
+          var trimmed = html.trim();
+          if (trimmed.toUpperCase().startsWith('MISMATCH:')) {
+            var reason = trimmed.slice(9).trim();
+            showHint(
+              '⚠️ ' + reason + '<br><small style="opacity:.8;">Change the <strong>Document Type</strong> above, or paste content that suits a <strong>' + dtype + '</strong>.</small>',
+              '#fefce8', '#854d0e'
+            );
+            isProcessing = false;
+            if (btn) { btn.disabled = false; btn.innerHTML = '&#10024; Format with AI'; }
+            return;
+          }
+          hideHint();
+          var clean = sanitizeHTML(trimmed);
           if (editor) {
             ttdLoadContent(clean || '<p>' + escapeHtml(text) + '</p>');
             var autoTitle=(clean.match(/<h1[^>]*>(.*?)<\/h1>/i)||[])[1]||text.slice(0,50)||'Formatted Doc';
@@ -209,12 +229,11 @@
         })
         .catch(function (err) {
           console.error('AI error:', err);
-          // Fallback: basic formatting
-          if (editor) {
-            editor.innerHTML = basicFormat(text);
-            ttdUpdateStats();
-          }
-          alert('AI formatting failed — applied basic formatting instead.');
+          if (editor) { editor.innerHTML = basicFormat(text); ttdUpdateStats(); }
+          showHint(
+            '⚠️ ' + (err.message || 'AI is busy') + ' — basic formatting applied.<br><small style="opacity:.8;">Wait a moment and try again, or click <strong>Use Text As-Is</strong>.</small>',
+            '#fef2f2', '#dc2626'
+          );
         })
         .finally(function () {
           isProcessing = false;
