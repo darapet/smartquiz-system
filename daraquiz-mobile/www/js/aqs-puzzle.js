@@ -23,9 +23,10 @@ let G = {
     cwActive: null, cwSolved: {}, // crossword
     jigsawPieces: {}, // pos -> Set of piece indices
     status: 'idle',
+    hasBotPlayer: false, botScore: 0, botPos: 1, /* computer opponent */
 };
 
-/* ── Helpers ────────────────────────────────���───────────── */
+/* ── Helpers ────────────────────────────────────────────── */
 function $(id){ return document.getElementById(id); }
 function showScreen(name){
     document.querySelectorAll('.pz-screen').forEach(function(s){ s.classList.remove('active'); });
@@ -250,10 +251,12 @@ function renderLobbyPlayers(){
         if(p){
             var cls = (i===G.myPos) ? 'pz-player-slot filled me-slot' :
                       (i===0) ? 'pz-player-slot filled host-slot' : 'pz-player-slot filled';
+            var badge = p.bot ? 'Computer' :
+                        (i===0 ? 'Host' : 'Player'+(i+1)) + (i===G.myPos?' (you)':'');
             slots.push('<div class="'+cls+'">' +
                 '<div class="pz-player-avatar">'+avatar(p.name)+'</div>' +
                 '<div class="pz-player-name">'+esc(p.name)+'</div>' +
-                '<div class="pz-player-badge">'+(i===0?'Host':'Player'+(i+1))+(i===G.myPos?' (you)':'')+'</div>' +
+                '<div class="pz-player-badge">'+badge+'</div>' +
                 '</div>');
         } else {
             slots.push('<div class="pz-player-slot pz-empty-slot">' +
@@ -289,6 +292,18 @@ async function startGame(){
 
     var btn = $('pz-btn-start');
     btn.disabled = true; btn.textContent = 'Generating…';
+
+    /* Add a Computer opponent automatically when playing solo */
+    if(cnt === 1){
+        G.hasBotPlayer = true;
+        G.botScore = 0;
+        G.botPos = 1;
+        await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/1'),
+            { name: '🤖 Computer', score: 0, pos: 1, bot: true, joined: Date.now() });
+        G.players[1] = { name: '🤖 Computer', score: 0, pos: 1, bot: true };
+        renderLobbyPlayers();
+        toast('🤖 Computer opponent added!');
+    }
 
     /* Signal generating state */
     await update(rtRef('puzzle_rooms/'+G.roomCode), { status: 'generating' });
@@ -382,6 +397,14 @@ async function generateQuestions(){
    GAME SCREENS
 ══════════════════════════════════════════════════════════ */
 function enterGame(room){
+    /* FIX: detach the lobby listener so it never calls enterGame() again
+       (every currentQ change would re-fire it, resetting answers + flashing lobby) */
+    offListener('room');
+
+    /* Guard: only initialise game state once */
+    if(G.status === 'playing') return;
+    G.status = 'playing';
+
     G.questions = Object.values(room.questions || {});
     G.currentQ  = room.currentQ || 0;
     G.myScore   = (G.players[G.myPos]||{}).score || 0;
@@ -861,6 +884,17 @@ async function updateMyScore(){
 ══════════════════════════════════════════════════════════ */
 async function advanceQuestion(){
     if(!G.isHost) return;
+
+    /* Bot: simulate answer score for the question that just finished */
+    if(G.hasBotPlayer){
+        var botCorrect = Math.random() < 0.55; /* ~55% accuracy */
+        if(botCorrect){
+            var bPts = 10 + Math.floor(Math.random() * 5); /* 10-14 pts */
+            G.botScore += bPts;
+            await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/'+G.botPos+'/score'), G.botScore).catch(function(){});
+        }
+    }
+
     var next = G.currentQ + 1;
     if(next >= G.questions.length){
         /* Game over */
@@ -872,7 +906,7 @@ async function advanceQuestion(){
 
 /* ══════════════════════════════════════════════════════════
    SCOREBOARD
-═════��════════════════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 function renderScoreboard(){
     var el = $('pz-scoreboard');
     if(!el) return;
@@ -1062,5 +1096,5 @@ function showAnswerOverlay(emoji){
 
 /* ══════════════════════════════════════════════════════════
    UTILITY
-══════════════��═══════════════════════════════════════════ */
+══════════════════════════════════════════════════════════ */
 function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
