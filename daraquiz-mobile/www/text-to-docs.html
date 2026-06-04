@@ -249,8 +249,25 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 #ttd-editor li,.ttd-page-editor li{margin-bottom:.2em;}
 #ttd-editor blockquote,.ttd-page-editor blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;background:#f0f9ff;}
 #ttd-editor table,.ttd-page-editor table{border-collapse:collapse;width:100%;margin:.5em 0;}
-#ttd-editor td,#ttd-editor th,.ttd-page-editor td,.ttd-page-editor th{border:1px solid #d1d5db;padding:6px 10px;}
-#ttd-editor th,.ttd-page-editor th{background:#f8fafc;font-weight:600;}
+#ttd-editor td,#ttd-editor th,.ttd-page-editor td,.ttd-page-editor th{border:1px solid #d1d5db;padding:6px 10px;min-width:60px;vertical-align:top;}
+#ttd-editor th,.ttd-page-editor th{background:#f1f5f9;font-weight:600;}
+#ttd-editor td:focus,#ttd-editor th:focus,.ttd-page-editor td:focus,.ttd-page-editor th:focus{outline:2px solid #0891b2;outline-offset:-2px;}
+/* ── Table picker popup ─────────────────────── */
+.ttd-tbl-btn-wrap{position:relative;display:inline-block;}
+.ttd-tbl-picker{position:absolute;top:calc(100% + 5px);left:0;z-index:300;
+  background:#fff;border:1px solid #d1d5db;border-radius:10px;padding:10px 12px;
+  box-shadow:0 6px 24px rgba(0,0,0,.15);display:none;min-width:200px;}
+.ttd-tbl-picker.open{display:block;}
+.ttd-tbl-label{font-size:11px;color:#6b7280;text-align:center;margin-bottom:8px;font-weight:700;letter-spacing:.03em;}
+.ttd-tbl-grid{display:grid;grid-template-columns:repeat(8,20px);gap:3px;margin-bottom:8px;}
+.ttd-tbl-cell{width:20px;height:20px;border:1.5px solid #d1d5db;border-radius:3px;cursor:pointer;
+  background:#f9fafb;transition:all .08s;}
+.ttd-tbl-cell.hi{background:#bfdbfe;border-color:#3b82f6;}
+.ttd-tbl-divider{border:none;border-top:1px solid #f1f5f9;margin:6px 0;}
+.ttd-tbl-custom{display:flex;gap:5px;align-items:center;font-size:11px;color:#6b7280;}
+.ttd-tbl-custom input{width:38px;border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11px;text-align:center;}
+.ttd-tbl-custom button{padding:3px 8px;background:#0891b2;color:#fff;border:none;border-radius:5px;font-size:11px;cursor:pointer;font-weight:600;}
+.ttd-tbl-custom button:hover{background:#0e7490;}
 /* ── Download bar ────────────────────────────── */
 .ttd-dl-bar{background:#fff;border-top:1px solid #e2e8f0;padding:7px 10px;
   display:flex;flex-wrap:wrap;gap:5px;align-items:center;flex-shrink:0;}
@@ -894,6 +911,21 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
       <button class="tb-btn" onclick="ttdFmt('insertOrderedList')" title="Numbered list">1. List</button>
       <button class="tb-btn" onclick="ttdFmt('indent')" title="Indent">&#8677;&#8677;</button>
       <button class="tb-btn" onclick="ttdFmt('outdent')" title="Outdent">&#8676;&#8676;</button>
+      <span class="tb-sep"></span>
+      <div class="ttd-tbl-btn-wrap" id="ttd-tbl-wrap">
+        <button class="tb-btn" onclick="ttdShowTablePicker(this)" title="Insert Table" style="font-weight:600;">&#9632; Table</button>
+        <div class="ttd-tbl-picker" id="ttd-tbl-picker">
+          <div class="ttd-tbl-label" id="ttd-tbl-lbl">Insert Table</div>
+          <div class="ttd-tbl-grid" id="ttd-tbl-grid"></div>
+          <hr class="ttd-tbl-divider">
+          <div class="ttd-tbl-custom">
+            <input type="number" id="ttd-tbl-cr" min="1" max="20" value="3" title="Rows">
+            <span>×</span>
+            <input type="number" id="ttd-tbl-cc" min="1" max="10" value="3" title="Cols">
+            <button onclick="ttdInsertTable(+document.getElementById('ttd-tbl-cr').value,+document.getElementById('ttd-tbl-cc').value)">Insert</button>
+          </div>
+        </div>
+      </div>
       <span class="tb-sep"></span>
       <button class="tb-btn" onclick="ttdFmt('undo')" title="Undo">&#8617;</button>
       <button class="tb-btn" onclick="ttdFmt('redo')" title="Redo">&#8618;</button>
