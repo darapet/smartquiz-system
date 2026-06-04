@@ -293,19 +293,7 @@ async function startGame(){
     var btn = $('pz-btn-start');
     btn.disabled = true; btn.textContent = 'Generating…';
 
-    /* Add a Computer opponent automatically when playing solo */
-    if(cnt === 1){
-        G.hasBotPlayer = true;
-        G.botScore = 0;
-        G.botPos = 1;
-        await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/1'),
-            { name: '🤖 Computer', score: 0, pos: 1, bot: true, joined: Date.now() });
-        G.players[1] = { name: '🤖 Computer', score: 0, pos: 1, bot: true };
-        renderLobbyPlayers();
-        toast('🤖 Computer opponent added!');
-    }
-
-    /* Signal generating state */
+    /* Signal generating state FIRST — before any Firebase player writes */
     await update(rtRef('puzzle_rooms/'+G.roomCode), { status: 'generating' });
     showGenerating();
     updateGenBar(10);
@@ -314,7 +302,19 @@ async function startGame(){
         G.questions = await generateQuestions();
         updateGenBar(90);
 
-        /* Store questions in RTDB */
+        /* Add Computer opponent AFTER AI succeeds, right before game starts.
+           This keeps the bot write completely separate from the generation phase
+           and prevents the room listener from firing during the AI call. */
+        if(cnt === 1){
+            G.hasBotPlayer = true;
+            G.botScore = 0;
+            G.botPos = 1;
+            await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/1'),
+                { name: '🤖 Computer', score: 0, pos: 1, bot: true, joined: Date.now() });
+            G.players[1] = { name: '🤖 Computer', score: 0, pos: 1, bot: true };
+        }
+
+        /* Store questions in RTDB and start game */
         var qObj = {};
         G.questions.forEach(function(q, i){ qObj[i] = q; });
 
