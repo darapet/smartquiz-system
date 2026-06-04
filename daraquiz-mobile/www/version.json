@@ -2,7 +2,7 @@
   "version": "1.130",
   "versionCode": 115,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Image upload fixed: pick any image in Studio and XZILY AI will fully read and analyse it. Voice TTS/STT also active (AudioContext speaker + Whisper mic).",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.130/daraquiz-v1.130.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.130/daraquiz-v1.130.apk"
 }
