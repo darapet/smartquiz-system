@@ -772,7 +772,7 @@ async function aiChat(messages, temp) {
     if (typeof window.groqFetch === 'function') {
         try {
             var rg = await window.groqFetch(
-                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
+                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:1500},
                 {signal:AbortSignal.timeout(60000)}
             );
             if (!rg.ok) {
