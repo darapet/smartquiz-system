@@ -232,7 +232,7 @@
                 var res = await window.groqFetch({
                     model: 'meta-llama/llama-4-scout-17b-16e-instruct',
                     messages: visionMsg,
-                    max_tokens: 4096,
+                    max_tokens: 2000,
                     temperature: 0.1
                 }, { signal: ctrl.signal });
                 if (res.ok) {
