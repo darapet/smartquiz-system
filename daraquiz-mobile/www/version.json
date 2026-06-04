@@ -1,8 +1,8 @@
 {
-  "version": "1.143",
-  "versionCode": 127,
+  "version": "1.144",
+  "versionCode": 128,
   "releaseDate": "2026-06-04",
-  "notes": "Add Pollinations AI as silent fallback when Groq keys are busy. No ads, no branding, no errors shown to users.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.143/daraquiz-v1.143.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.143/daraquiz-v1.143.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.144/daraquiz-v1.144.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.144/daraquiz-v1.144.apk"
 }
