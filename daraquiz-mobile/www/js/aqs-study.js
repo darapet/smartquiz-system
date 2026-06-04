@@ -1036,6 +1036,8 @@ function _doStartRecognition() {
         }
     };
     VS.recognition.onresult = function (e) {
+          /* Echo guard: ignore STT results for 1200ms after AI stops speaking */
+          if (VS._speakEndTime && Date.now() - VS._speakEndTime < 1200) return;
         _recLastEvent = Date.now();
         var interim = '', final = '';
         for (var i = e.resultIndex; i < e.results.length; i++) {
@@ -1287,11 +1289,12 @@ async function summonStreamResponse(messages) {
     /* If the AI skipped [DISPLAY] (non-math topic), show full text in panel */
     if (!seenDisplay) summonSetAiText(full);
     summonFlushQueue(function () {
+        VS._speakEndTime = Date.now();
         VS.speakingQueue = false;
         summonSetState('listening');
         /* Mobile needs longer to clear speaker audio before mic opens —
            prevents the popping/clicking sound on first word. */
-        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        var micDelay = (navigator.maxTouchPoints > 0) ? 1500 : 600;
         setTimeout(function () { summonStartListening(); }, micDelay);
     });
     return full;
@@ -1344,10 +1347,11 @@ function summonSpeakStream(text, isCheckpoint) {
     VS.sentenceQueue = sentences.map(function (s) { return s.trim(); }).filter(Boolean);
     summonRunQueue();
     summonFlushQueue(function () {
+        VS._speakEndTime = Date.now();
         VS.speakingQueue = false;
         if (isCheckpoint) VS.waitingCheckpnt = true;
         summonSetState('listening');
-        var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
+        var micDelay = (navigator.maxTouchPoints > 0) ? 1500 : 600;
         setTimeout(function () { summonStartListening(); }, micDelay);
     });
 }
