@@ -6,6 +6,7 @@
   <title>Text &#8594; Docs | XZily AI</title>
   <meta name="theme-color" content="#0891b2">
   <link rel="stylesheet" href="css/aqs-style.css">
+  <link rel="stylesheet" href="css/aqs-sidebar.css">
   <link rel="manifest" href="manifest.json">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -13,7 +14,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <style>
   /* ── Page shell ─────────────────────────────── */
-  .ttd-layout{display:flex;height:calc(100vh - 0px);overflow:hidden;background:#e8edf3;}
+  .ttd-layout{display:flex;height:100vh;overflow:hidden;background:#e8edf3;flex:1;}
   /* ── Settings panel ─────────────────────────── */
   .ttd-settings{width:270px;min-width:230px;background:#fff;border-right:1px solid #e2e8f0;
     display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
@@ -148,8 +149,7 @@
   </nav>
 
   <!-- ══ MAIN LAYOUT ══ -->
-  <div class="aqs-full-page-layout">
-  <div class="aqs-full-page-main">
+  <div class="aqs-sidebar-body">
   <div class="ttd-layout">
 
     <!-- ══ LEFT SETTINGS PANEL ══ -->
@@ -371,8 +371,7 @@
     </div><!-- /ttd-editor-area -->
 
   </div><!-- /ttd-layout -->
-  </div><!-- /aqs-full-page-main -->
-  </div><!-- /aqs-full-page-layout -->
+  </div><!-- /aqs-sidebar-body -->
 
   <!-- Print root (hidden except during print) -->
   <div class="ttd-print-root" id="ttd-print-root"></div>
