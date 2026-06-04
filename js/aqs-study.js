@@ -46,6 +46,9 @@ var _IS_MOBILE_APP = !!(
     /Android|iPhone|iPad/i.test(navigator.userAgent || '')
 );
 
+/* ── MIC RECORDING STATE (getUserMedia + Whisper) ───────────── */
+var _MIC_STATE = { active:false, mediaRecorder:null, chunks:[], stream:null, _autoStop:null };
+
 /* Pollinations neural voices — used for TTS on mobile (more reliable than speechSynthesis) */
 var POLL_VOICES = [
     {id:'alloy',   name:'Alloy',   desc:'Balanced & clear'},
@@ -1535,6 +1538,10 @@ function injectSummonStyles() {
         '#std-summon-text::placeholder{color:#8c84b8}',
         '#std-summon-send{background:#7c3aed;border:none;border-radius:50%;color:#fff;font-size:1rem;width:40px;height:40px;cursor:pointer;flex-shrink:0;transition:background .15s;display:flex;align-items:center;justify-content:center}',
         '#std-summon-send:hover{background:#6d28d9}',
+        '#std-summon-mic-btn{background:rgba(139,92,246,.22);border:1.5px solid rgba(139,92,246,.45);border-radius:50%;color:#fff;font-size:1rem;width:40px;height:40px;cursor:pointer;flex-shrink:0;transition:background .18s,border-color .18s;display:flex;align-items:center;justify-content:center}',
+        '#std-summon-mic-btn:hover{background:rgba(139,92,246,.45)}',
+        '#std-summon-mic-btn.recording{background:#ef4444!important;border-color:#ef4444!important;animation:smic-pulse .6s ease-in-out infinite alternate}',
+        '@keyframes smic-pulse{0%{box-shadow:0 0 4px 1px rgba(239,68,68,.4)}100%{box-shadow:0 0 14px 5px rgba(239,68,68,.8)}}',
 
         /* ── HISTORY DROPDOWN ── */
         '#std-vh-panel{position:absolute;top:62px;left:0;right:0;max-height:70vh;overflow-y:auto;background:rgba(8,6,24,.99);border-bottom:1px solid rgba(139,92,246,.3);z-index:4;display:flex;flex-direction:column}',
@@ -1597,6 +1604,7 @@ function injectSummonUI() {
         '<div id="std-summon-input-row">',
           '<input id="std-summon-text" type="text" placeholder="' + (_IS_MOBILE_APP ? 'Type your question…' : 'Or type here…') + '" autocomplete="off">',
           '<button id="std-summon-send">&#x27A4;</button>',
+          '<button id="std-summon-mic-btn" title="Speak">🎤</button>',
         '</div>',
     ].join('');
     document.body.appendChild(overlay);
@@ -1605,6 +1613,150 @@ function injectSummonUI() {
     document.getElementById('std-summon-send').addEventListener('click', summonSendText);
     document.getElementById('std-summon-text').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') summonSendText();
+    });
+    document.getElementById('std-summon-mic-btn').addEventListener('click', summonMicToggle);
+}
+
+/* ── MIC RECORDING + GROQ WHISPER STT ───────────────────────── */
+function summonMicToggle() {
+    if (_MIC_STATE.active) {
+        summonMicStop();
+    } else {
+        summonMicStart();
+    }
+}
+
+function summonMicStart() {
+    /* Stop any ongoing speech first */
+    summonStopQueue();
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        summonSetTranscript('Microphone not supported on this device.');
+        return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+        .then(function (stream) {
+            _MIC_STATE.stream  = stream;
+            _MIC_STATE.chunks  = [];
+            _MIC_STATE.active  = true;
+
+            /* Pick best supported MIME type */
+            var mimeType = ['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(function(m){
+                try { return MediaRecorder.isTypeSupported(m); } catch(e) { return false; }
+            }) || '';
+
+            try {
+                _MIC_STATE.mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : {});
+            } catch(e) {
+                _MIC_STATE.mediaRecorder = new MediaRecorder(stream);
+            }
+
+            _MIC_STATE.mediaRecorder.ondataavailable = function (e) {
+                if (e.data && e.data.size > 0) _MIC_STATE.chunks.push(e.data);
+            };
+            _MIC_STATE.mediaRecorder.onstop = function () {
+                summonMicTranscribe();
+            };
+
+            _MIC_STATE.mediaRecorder.start(200); /* 200ms chunks */
+
+            /* UI feedback */
+            var btn = document.getElementById('std-summon-mic-btn');
+            if (btn) { btn.textContent = '⏹'; btn.classList.add('recording'); }
+            summonSetState('listening');
+            summonSetTranscript('🔴 Recording… tap ⏹ to send');
+
+            /* Auto-stop after 30 s to prevent infinite recording */
+            _MIC_STATE._autoStop = setTimeout(function () {
+                if (_MIC_STATE.active) summonMicStop();
+            }, 30000);
+        })
+        .catch(function (err) {
+            var msg = err.name === 'NotAllowedError'
+                ? '🚫 Mic permission denied. Allow microphone access in Settings.'
+                : '❌ Could not start mic: ' + (err.message || err.name);
+            summonSetTranscript(msg);
+        });
+}
+
+function summonMicStop() {
+    if (!_MIC_STATE.active) return;
+    _MIC_STATE.active = false;
+    clearTimeout(_MIC_STATE._autoStop);
+
+    if (_MIC_STATE.mediaRecorder && _MIC_STATE.mediaRecorder.state !== 'inactive') {
+        try { _MIC_STATE.mediaRecorder.stop(); } catch(e) {}
+    }
+    if (_MIC_STATE.stream) {
+        _MIC_STATE.stream.getTracks().forEach(function (t) { try { t.stop(); } catch(e) {} });
+        _MIC_STATE.stream = null;
+    }
+
+    var btn = document.getElementById('std-summon-mic-btn');
+    if (btn) { btn.textContent = '🎤'; btn.classList.remove('recording'); }
+    summonSetTranscript('Processing…');
+}
+
+function summonMicTranscribe() {
+    if (!_MIC_STATE.chunks.length) {
+        summonSetTranscript('No audio captured. Please try again.');
+        summonSetState('listening');
+        return;
+    }
+
+    var mimeType = (_MIC_STATE.mediaRecorder && _MIC_STATE.mediaRecorder.mimeType)
+        ? _MIC_STATE.mediaRecorder.mimeType.split(';')[0]
+        : 'audio/webm';
+
+    var blob = new Blob(_MIC_STATE.chunks, { type: mimeType });
+    _MIC_STATE.chunks = [];
+
+    /* Derive file extension */
+    var ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+    if (!key) {
+        summonSetTranscript('❌ No API key found. Type your question instead.');
+        summonSetState('listening');
+        return;
+    }
+
+    summonSetTranscript('Transcribing…');
+    summonSetState('thinking');
+
+    var formData = new FormData();
+    formData.append('file', blob, 'voice.' + ext);
+    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('response_format', 'json');
+    formData.append('language', 'en');
+
+    fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bearer ' + key },
+        body: formData
+    })
+    .then(function (res) {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        return res.json();
+    })
+    .then(function (data) {
+        var transcript = (data.text || '').trim();
+        if (!transcript) {
+            summonSetTranscript('⚠️ No speech detected. Try speaking again.');
+            summonSetState('listening');
+            return;
+        }
+        summonSetTranscript('You: ' + transcript);
+        /* Fill the text box too so user can edit before sending */
+        var inp = document.getElementById('std-summon-text');
+        if (inp) { inp.value = transcript; }
+        /* Send directly to the AI */
+        summonHandleQuery(transcript);
+    })
+    .catch(function (err) {
+        summonSetTranscript('❌ Transcription error: ' + (err.message || 'unknown') + '. Type your question instead.');
+        summonSetState('listening');
     });
 }
 
