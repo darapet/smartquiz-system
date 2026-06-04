@@ -602,82 +602,104 @@ function renderWordQ(q){
     $('pz-word-clue').textContent = q.clue || '';
     if(q.category) $('pz-word-clue').textContent = '[' + q.category + '] ' + q.clue;
 
-    /* Blanks */
     var word = (q.word||'').toUpperCase();
-    var blanks = $('pz-blanks');
-    if(blanks){
-        blanks.innerHTML = word.split('').map(function(ch, i){
-            return '<div class="pz-blank-cell" id="pz-blank-'+i+'">_</div>';
-        }).join('');
-    }
-
-    var inp = $('pz-word-input');
-    if(inp){ inp.value=''; inp.disabled=false; inp.focus(); }
-
     var fb = $('pz-word-feedback');
     if(fb){ fb.className='pz-word-feedback'; fb.textContent=''; }
 
-    /* Live letter-by-letter preview as user types */
-    inp && inp.addEventListener('input', function(){
-        var typed = (inp.value||'').toUpperCase();
-        for(var ci=0; ci<word.length; ci++){
-            var cell = $('pz-blank-'+ci);
-            if(!cell) continue;
-            if(cell.classList.contains('revealed')) continue; /* keep hint reveals */
-            if(ci < typed.length){
-                cell.textContent = typed[ci];
-                if(typed[ci] === word[ci]){
-                    cell.classList.add('typed-correct');
-                    cell.classList.remove('typed-wrong');
-                } else {
-                    cell.classList.add('typed-wrong');
-                    cell.classList.remove('typed-correct');
-                }
-            } else {
-                cell.textContent = '_';
-                cell.classList.remove('typed-correct','typed-wrong');
-            }
-        }
-    });
+    /* Build one <input> per letter */
+    var blanks = $('pz-blanks');
+    if(blanks){
+        blanks.innerHTML = word.split('').map(function(ch, i){
+            return '<input class="pz-letter-box" id="pz-blank-'+i+'" maxlength="1" ' +
+                   'autocomplete="off" spellcheck="false" inputmode="text" ' +
+                   'aria-label="Letter '+(i+1)+'">';
+        }).join('');
+    }
 
-    /* Submit on enter or button */
-    var sendFn = function(){
+    var boxes = word.split('').map(function(_,i){ return $('pz-blank-'+i); });
+
+    function focusBox(i){
+        if(boxes[i]) boxes[i].focus();
+    }
+    focusBox(0);
+
+    function getTyped(){
+        return boxes.map(function(b){ return b ? (b.value||' ')[0].toUpperCase() : ' '; }).join('');
+    }
+
+    function colorBox(idx, ch){
+        var b = boxes[idx]; if(!b) return;
+        b.classList.remove('typed-correct','typed-wrong','revealed');
+        if(!ch || ch === ' '){ return; }
+        if(ch === word[idx]){
+            b.classList.add('typed-correct');
+        } else {
+            b.classList.add('typed-wrong');
+        }
+    }
+
+    function trySubmit(){
         if(G.myAnswers[G.currentQ] !== undefined) return;
-        var typed = (inp.value||'').trim().toUpperCase();
-        if(!typed) return;
+        var typed = getTyped();
+        if(typed.trim().length < word.length) return; /* not all filled */
         if(typed === word){
+            /* Correct! */
+            boxes.forEach(function(b){ if(b){ b.disabled=true; b.classList.add('typed-correct'); b.classList.remove('typed-wrong'); } });
             submitAnswer(typed);
-            inp.disabled = true;
-            fb.textContent = '✅ Correct! +'+calcWordPoints()+' points';
-            fb.className = 'pz-word-feedback correct';
-            revealAllBlanks(word);
+            if(fb){ fb.textContent='✅ Correct! +'+calcWordPoints()+' points'; fb.className='pz-word-feedback correct'; }
             showAnswerOverlay('✅');
         } else {
-            fb.textContent = '❌ Not quite — try again!';
-            fb.className = 'pz-word-feedback wrong';
-            inp.value = '';
-            setTimeout(function(){ if(fb) fb.className='pz-word-feedback'; },1200);
+            /* Wrong — shake & clear */
+            blanks && blanks.classList.add('pz-shake');
+            setTimeout(function(){ blanks && blanks.classList.remove('pz-shake'); }, 500);
+            if(fb){ fb.textContent='❌ Not quite — try again!'; fb.className='pz-word-feedback wrong'; }
+            setTimeout(function(){
+                if(G.myAnswers[G.currentQ] !== undefined) return;
+                boxes.forEach(function(b){ if(b && !b.classList.contains('revealed')){ b.value=''; b.classList.remove('typed-correct','typed-wrong'); } });
+                if(fb) fb.className='pz-word-feedback';
+                focusBox(0);
+            }, 900);
         }
-    };
-
-    inp && inp.addEventListener('keydown', function(e){
-        if(e.key==='Enter') sendFn();
-    });
-    var sendBtn = $('pz-word-send');
-    if(sendBtn){
-        var newBtn = sendBtn.cloneNode(true);
-        sendBtn.parentNode.replaceChild(newBtn, sendBtn);
-        newBtn.addEventListener('click', sendFn);
     }
+
+    boxes.forEach(function(box, i){
+        if(!box) return;
+        box.addEventListener('keydown', function(e){
+            if(e.key === 'Backspace'){
+                if(box.value){ box.value=''; colorBox(i,''); }
+                else if(i > 0){ boxes[i-1].value=''; colorBox(i-1,''); focusBox(i-1); }
+                e.preventDefault();
+            } else if(e.key === 'Enter'){
+                trySubmit();
+            } else if(e.key === 'ArrowLeft' && i > 0){ focusBox(i-1); e.preventDefault(); }
+            else if(e.key === 'ArrowRight' && i < word.length-1){ focusBox(i+1); e.preventDefault(); }
+        });
+        box.addEventListener('input', function(){
+            var ch = (box.value||'').toUpperCase().replace(/[^A-Z]/g,'');
+            box.value = ch ? ch[0] : '';
+            colorBox(i, box.value);
+            if(box.value && i < word.length-1) focusBox(i+1);
+            /* Check if all filled */
+            if(boxes.every(function(b){ return b && b.value; })) trySubmit();
+        });
+        /* Allow clicking to focus any box */
+        box.addEventListener('click', function(){ box.select(); });
+    });
 
     /* Reveal one letter every 8 seconds as hint */
     var revIdx = 0;
     var revInt = setInterval(function(){
         if(G.myAnswers[G.currentQ] !== undefined){ clearInterval(revInt); return; }
+        /* Skip already-filled boxes */
+        while(revIdx < word.length && boxes[revIdx] && boxes[revIdx].value){ revIdx++; }
         if(revIdx >= word.length){ clearInterval(revInt); return; }
-        var cell = $('pz-blank-'+revIdx);
-        if(cell){ cell.textContent = word[revIdx]; cell.classList.add('revealed'); }
+        var b = boxes[revIdx];
+        if(b){ b.value = word[revIdx]; b.disabled = true; b.classList.add('revealed'); b.classList.remove('typed-wrong'); }
         revIdx++;
+        /* Refocus next empty box */
+        for(var ni=0; ni<word.length; ni++){
+            if(boxes[ni] && !boxes[ni].value && !boxes[ni].disabled){ focusBox(ni); break; }
+        }
     }, 8000);
 }
 
@@ -692,7 +714,12 @@ function calcWordPoints(){
 function revealAllBlanks(word){
     word.split('').forEach(function(ch,i){
         var cell = $('pz-blank-'+i);
-        if(cell){ cell.textContent = ch; cell.classList.add('revealed'); }
+        if(!cell) return;
+        /* Inputs use .value; legacy divs use .textContent */
+        if(cell.tagName === 'INPUT'){ cell.value = ch; cell.disabled = true; }
+        else { cell.textContent = ch; }
+        cell.classList.add('revealed');
+        cell.classList.remove('typed-wrong');
     });
 }
 
