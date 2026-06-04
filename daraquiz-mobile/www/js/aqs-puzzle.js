@@ -23,7 +23,6 @@ let G = {
     cwActive: null, cwSolved: {}, // crossword
     jigsawPieces: {}, // pos -> Set of piece indices
     status: 'idle',
-    hasBotPlayer: false, botScore: 0, botPos: 1, /* computer opponent */
 };
 
 /* ── Helpers ────────────────────────────────────────────── */
@@ -251,8 +250,7 @@ function renderLobbyPlayers(){
         if(p){
             var cls = (i===G.myPos) ? 'pz-player-slot filled me-slot' :
                       (i===0) ? 'pz-player-slot filled host-slot' : 'pz-player-slot filled';
-            var badge = p.bot ? 'Computer' :
-                        (i===0 ? 'Host' : 'Player'+(i+1)) + (i===G.myPos?' (you)':'');
+            var badge = (i===0 ? 'Host' : 'Player'+(i+1)) + (i===G.myPos?' (you)':'');
             slots.push('<div class="'+cls+'">' +
                 '<div class="pz-player-avatar">'+avatar(p.name)+'</div>' +
                 '<div class="pz-player-name">'+esc(p.name)+'</div>' +
@@ -301,18 +299,6 @@ async function startGame(){
     try {
         G.questions = await generateQuestions();
         updateGenBar(90);
-
-        /* Add Computer opponent AFTER AI succeeds, right before game starts.
-           This keeps the bot write completely separate from the generation phase
-           and prevents the room listener from firing during the AI call. */
-        if(cnt === 1){
-            G.hasBotPlayer = true;
-            G.botScore = 0;
-            G.botPos = 1;
-            await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/1'),
-                { name: '🤖 Computer', score: 0, pos: 1, bot: true, joined: Date.now() });
-            G.players[1] = { name: '🤖 Computer', score: 0, pos: 1, bot: true };
-        }
 
         /* Store questions in RTDB and start game */
         var qObj = {};
@@ -934,16 +920,6 @@ async function updateMyScore(){
 ══════════════════════════════════════════════════════════ */
 async function advanceQuestion(){
     if(!G.isHost) return;
-
-    /* Bot: simulate answer score for the question that just finished */
-    if(G.hasBotPlayer){
-        var botCorrect = Math.random() < 0.55; /* ~55% accuracy */
-        if(botCorrect){
-            var bPts = 10 + Math.floor(Math.random() * 5); /* 10-14 pts */
-            G.botScore += bPts;
-            await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/'+G.botPos+'/score'), G.botScore).catch(function(){});
-        }
-    }
 
     var next = G.currentQ + 1;
     if(next >= G.questions.length){
