@@ -1239,7 +1239,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TTS — CHUNKED PLAYBACK (Pollinations audio API)
+       TTS — CHUNKED PLAYBACK (Browser Speech Synthesis)
     ═══════════════════════════════════════════════════════════ */
     function splitSpeechChunks(text, maxLen) {
         var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
@@ -1256,20 +1256,6 @@
         return chunks.filter(function (c) { return c.length > 0; });
     }
 
-    function fetchStudioAudioBlob(text, voices, timeout) {
-        var voice = (voices && voices[0]) || 'onyx';
-        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
-                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
-        return new Promise(function (resolve, reject) {
-            var ctrl  = new AbortController();
-            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
-            fetch(url, { signal: ctrl.signal })
-                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
-                .then(resolve)
-                .catch(function (e) { clearTimeout(timer); reject(e); });
-        });
-    }
-
     function speakWithBrowserFallback(text, onDone) {
         if (typeof window.speechSynthesis === 'undefined') { if (onDone) onDone(); return; }
         var utt   = new SpeechSynthesisUtterance(text);
@@ -1279,130 +1265,12 @@
     }
 
     function speakStudioChunked(spoken, onDone) {
-        var chunks    = splitSpeechChunks(spoken, 200);
-        var idx       = 0;
-        var doneCalled = false;
-
-        function finish() {
-            if (doneCalled) return; doneCalled = true;
+        voiceAiTalking = true;
+        speakWithBrowserFallback(spoken, function () {
             currentStudioAudio = null;
             voiceAiTalking     = false;
             if (onDone) onDone();
-        }
-
-        function fallbackRemaining() {
-            if (!voiceAiTalking) { finish(); return; }
-            var remaining = chunks.slice(idx - 1).join(' ');
-            if (!remaining.trim()) { finish(); return; }
-            fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
-                .then(function (blob) {
-                    if (!voiceAiTalking) { finish(); return; }
-                    var blobUrl = URL.createObjectURL(blob);
-                    var audio2  = new Audio();
-                    audio2.setAttribute('playsinline', '');
-                    audio2.src  = blobUrl;
-                    audio2.addEventListener('ended', function () {
-                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-                        idx = chunks.length;
-                        finish();
-                    });
-                    audio2.addEventListener('error', function () {
-                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-                        speakWithBrowserFallback(remaining, finish);
-                    });
-                    audio2.play().catch(function () {
-                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-                        speakWithBrowserFallback(remaining, finish);
-                    });
-                })
-                .catch(function () { speakWithBrowserFallback(remaining, finish); });
-        }
-
-        function playNext() {
-            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
-            var chunk = chunks[idx++];
-
-            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
-                .then(function (blob) {
-                    if (!voiceAiTalking) { finish(); return; }
-
-                    var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
-                    var blobUrl   = URL.createObjectURL(typedBlob);
-                    var audio     = new Audio();
-                    audio.setAttribute('playsinline', '');
-                    audio.setAttribute('webkit-playsinline', '');
-                    audio.preload  = 'auto';
-                    audio.volume   = 1.0;
-                    audio.src      = blobUrl;
-                    currentStudioAudio = audio;
-
-                    var stallTimer  = null;
-                    var cleaned     = false;
-                    var lastCurTime = -1;
-
-                    function cleanup() {
-                        if (cleaned) return; cleaned = true;
-                        clearTimeout(stallTimer);
-                        clearTimeout(hardCap);
-                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
-                        currentStudioAudio = null;
-                    }
-
-                    var hardCap = setTimeout(function () {
-                        if (!cleaned) { cleanup(); playNext(); }
-                    }, 60 * 60 * 1000);
-
-                    function armStallTimer() {
-                        clearTimeout(stallTimer);
-                        stallTimer = setTimeout(function () {
-                            if (cleaned) return;
-                            if (audio.currentTime > lastCurTime) {
-                                lastCurTime = audio.currentTime;
-                                armStallTimer();
-                            } else {
-                                clearTimeout(hardCap);
-                                cleanup();
-                                playNext();
-                            }
-                        }, 4000);
-                    }
-
-                    audio.addEventListener('timeupdate', function () {
-                        lastCurTime = audio.currentTime;
-                        armStallTimer();
-                    });
-                    audio.addEventListener('canplay', function () {
-                        if (lastCurTime < 0) armStallTimer();
-                    });
-                    audio.addEventListener('ended', function () {
-                        clearTimeout(hardCap);
-                        cleanup();
-                        playNext();
-                    });
-                    audio.addEventListener('error', function () {
-                        clearTimeout(hardCap);
-                        cleanup();
-                        fallbackRemaining();
-                    });
-
-                    audio.play().catch(function () {
-                        setTimeout(function () {
-                            if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
-                            audio.play().catch(function () {
-                                clearTimeout(hardCap);
-                                cleanup();
-                                fallbackRemaining();
-                            });
-                        }, 400);
-                    });
-                })
-                .catch(function () {
-                    if (!voiceAiTalking) { finish(); return; }
-                    fallbackRemaining();
-                });
-        }
-
-        playNext();
+        });
     }
 
     /* ═══════════════════════════════════════════════════════════
