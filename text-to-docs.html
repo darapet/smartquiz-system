@@ -68,8 +68,8 @@
   .ttd-page.sz-letter{width:816px;min-height:1056px;}
   .ttd-page.sz-legal {width:816px;min-height:1344px;}
   /* ── Editor inside page ──────────────────────── */
-  #ttd-editor{
-    min-height:800px;outline:none;
+  #ttd-editor,.ttd-page-editor{
+    min-height:700px;outline:none;
     font-family:var(--ttd-bfont,'Georgia, serif');
     font-size:var(--ttd-bsize,12pt);
     line-height:var(--ttd-lh,1.6);
@@ -108,8 +108,9 @@
   @media print{
     body>*{display:none!important;}
     .ttd-print-root{display:block!important;position:fixed!important;inset:0;background:#fff;z-index:99999;overflow:visible;}
-    .ttd-page{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;}
-    #ttd-editor{min-height:0!important;}
+    .ttd-page,.ttd-page-item{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;outline:none!important;}
+    .ttd-page-editor,#ttd-editor{min-height:0!important;}
+    .ttd-page-footer{display:none!important;}
   }
   .ttd-print-root{display:none;}
   /* ── Responsive ──────────────────────────────── */
@@ -540,13 +541,8 @@
 
       <!-- Pages area -->
       <div class="ttd-pages-area" id="ttd-pages">
-        <div class="ttd-page sz-a4" id="ttd-page">
-          <div id="ttd-editor" contenteditable="true"
-            data-placeholder="Your formatted document will appear here. Paste text and click Format with AI."
-            onkeydown="ttdKeydown(event)"
-            oninput="ttdEditorInput()"></div>
+          <!-- Pages rendered simultaneously by ttdRenderPages() -->
         </div>
-      </div>
 
       <!-- Download bar -->
       <div class="ttd-dl-bar">
