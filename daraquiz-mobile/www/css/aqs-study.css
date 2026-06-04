@@ -369,8 +369,8 @@
     box-shadow: 0 8px 28px rgba(0,0,0,.5); display: none;
 }
 
-/* ── OLD VOICE PANEL — hidden ─────────────────────────────── */
-#std-voice-panel { display: none !important; }
+/* ── VOICE PANEL — active ─────────────────────────────────── */
+/* panel visibility controlled by stdVoiceOpen / stdVoiceClose JS */
 
 /* ── RESPONSIVE ───────────────────────────────────────────── */
 @media (max-width: 900px) {
