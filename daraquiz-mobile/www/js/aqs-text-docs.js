@@ -1,484 +1,718 @@
-/* Text to Docs — AI text correction + multi-format download */
-  /* Formats: PDF, DOCX, ODT, TXT, HTML, Markdown, RTF, JSON, CSV, LaTeX */
-  (function ($) {
-      'use strict';
+/* ═══════════════════════════════════════════════════════════════
+     Text → Docs  |  XZily AI  |  Full word-processor + AI formatter
+     Formats: PDF · DOCX · ODT · TXT · HTML · MD · RTF · JSON · CSV · LaTeX
+  ═══════════════════════════════════════════════════════════════ */
+  (function () {
+    'use strict';
 
-      if (!$('#ttd-input').length) return;
+    /* ── Init ──────────────────────────────────────────────────── */
+    var editor, page, isProcessing = false;
 
-      var MAX_CHARS = 10000;
-      var correctedText = '';
-      var isProcessing  = false;
+    document.addEventListener('DOMContentLoaded', function () {
+      editor = document.getElementById('ttd-editor');
+      page   = document.getElementById('ttd-page');
+      if (!editor) return;
+      document.execCommand('defaultParagraphSeparator', false, 'p');
+      document.execCommand('styleWithCSS', false, true);
+      ttdApplyStyle();
+      // Sidebar toggle
+      var tog = document.getElementById('aqs-sidebar-toggle');
+      var ove = document.getElementById('aqs-sidebar-overlay');
+      var sb  = document.getElementById('aqs-sidebar');
+      if (tog && sb) {
+        tog.addEventListener('click', function () { sb.classList.toggle('open'); if(ove) ove.classList.toggle('open'); });
+        if (ove) ove.addEventListener('click', function () { sb.classList.remove('open'); ove.classList.remove('open'); });
+      }
+    });
 
-      /* ── Sidebar toggle ─────────────────────────────────────── */
-      var $overlay = $('#aqs-sidebar-overlay');
-      $('#aqs-sidebar-toggle').on('click', function () { $('#aqs-sidebar').addClass('open'); $overlay.addClass('open'); });
-      $overlay.on('click', function () { $('#aqs-sidebar').removeClass('open'); $overlay.removeClass('open'); });
+    /* ── Char counter ───────────────────────────────────────────── */
+    window.ttdCharCount = function () {
+      var el = document.getElementById('ttd-source');
+      var n  = el ? el.value.length : 0;
+      var cnt = document.getElementById('ttd-count');
+      if (!cnt) return;
+      cnt.textContent = n + ' / 10,000';
+      cnt.className   = 'ttd-count' + (n >= 10000 ? ' full' : n >= 8000 ? ' warn' : '');
+    };
 
-      /* ── Character counter ──────────────────────────────────── */
-      $('#ttd-input').on('input', function () {
-          var len  = this.value.length;
-          var pct  = len / MAX_CHARS;
-          $('#ttd-char-count').text(len.toLocaleString());
-          $('#ttd-counter-fill').css('width', (pct * 100) + '%');
-          var color = pct > 0.9 ? '#e11d48' : pct > 0.7 ? '#f59e0b' : '#6366f1';
-          $('#ttd-counter-fill').css('background', color);
-          $('#ttd-char-count').css('color', pct > 0.9 ? '#e11d48' : pct > 0.7 ? '#f59e0b' : '#6b7280');
-      });
+    /* ── Apply document style (CSS vars) ───────────────────────── */
+    window.ttdApplyStyle = function () {
+      var hf  = val('ttd-hfont',  'Georgia, serif');
+      var bf  = val('ttd-bfont',  'Georgia, serif');
+      var h1  = val('ttd-h1',  24);
+      var h2  = val('ttd-h2',  18);
+      var h3  = val('ttd-h3',  14);
+      var bd  = val('ttd-body',12);
+      var mg  = val('ttd-margin', 20);
+      var lh  = val('ttd-lh',  '1.6');
+      var p   = document.getElementById('ttd-page');
+      if (!p) return;
+      p.style.setProperty('--ttd-hfont', hf);
+      p.style.setProperty('--ttd-bfont', bf);
+      p.style.setProperty('--ttd-h1',    h1 + 'pt');
+      p.style.setProperty('--ttd-h2',    h2 + 'pt');
+      p.style.setProperty('--ttd-h3',    h3 + 'pt');
+      p.style.setProperty('--ttd-h4',    Math.round(bd * 1.1) + 'pt');
+      p.style.setProperty('--ttd-bsize', bd + 'pt');
+      p.style.setProperty('--ttd-lh',    lh);
+      p.style.padding = mg + 'mm';
+    };
 
-      /* ── Clear ──────────────────────────────────────────────── */
-      $('#ttd-clear-btn').on('click', function () {
-          if (!$('#ttd-input').val() || confirm('Clear all text?')) {
-              $('#ttd-input').val('').trigger('input');
-              correctedText = '';
-              $('#ttd-output-section, #ttd-dl-section').hide();
+    window.ttdSetPaper = function () {
+      var pg = document.getElementById('ttd-page');
+      if (!pg) return;
+      var v = val('ttd-paper', 'a4');
+      pg.className = 'ttd-page sz-' + v;
+    };
+
+    function val(id, def) {
+      var el = document.getElementById(id);
+      if (!el) return def;
+      return el.value || def;
+    }
+
+    /* ── Toolbar: execCommand ───────────────────────────────────── */
+    window.ttdFmt = function (cmd) {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand(cmd, false, null);
+      focusEditor();
+      ttdUpdateToolbarState();
+    };
+
+    window.ttdBlock = function (tag) {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand('formatBlock', false, '<' + tag + '>');
+      focusEditor();
+    };
+
+    window.ttdFont = function (family) {
+      if (!family) return;
+      document.execCommand('styleWithCSS', false, true);
+      // Wrap selection in span with font-family
+      wrapInlineStyle({ fontFamily: family });
+      document.getElementById('tb-font').value = '';
+      focusEditor();
+    };
+
+    window.ttdSize = function (pt) {
+      if (!pt) return;
+      wrapInlineStyle({ fontSize: pt + 'pt' });
+      focusEditor();
+    };
+
+    window.ttdColor = function (cmd, color) {
+      document.execCommand('styleWithCSS', false, true);
+      document.execCommand(cmd, false, color);
+      focusEditor();
+    };
+
+    /* wrap selection in a span with given styles (works across nodes) */
+    function wrapInlineStyle(styles) {
+      var sel = window.getSelection();
+      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+      var range = sel.getRangeAt(0);
+      var span  = document.createElement('span');
+      Object.assign(span.style, styles);
+      try {
+        range.surroundContents(span);
+      } catch (e) {
+        // Cross-element selection: extract and re-insert
+        var fragment = range.extractContents();
+        span.appendChild(fragment);
+        range.insertNode(span);
+      }
+      // Restore selection
+      sel.removeAllRanges();
+      var newRange = document.createRange();
+      newRange.selectNodeContents(span);
+      sel.addRange(newRange);
+    }
+
+    function focusEditor() {
+      if (editor) editor.focus();
+    }
+
+    /* ── Update bold/italic/underline toggle state ──────────────── */
+    window.ttdUpdateToolbarState = function () {
+      setOn('tb-bold',   document.queryCommandState('bold'));
+      setOn('tb-italic', document.queryCommandState('italic'));
+      setOn('tb-under',  document.queryCommandState('underline'));
+      setOn('tb-strike', document.queryCommandState('strikeThrough'));
+    };
+    function setOn(id, on) { var b = document.getElementById(id); if (b) b.classList.toggle('on', on); }
+
+    /* ── Keydown handler ────────────────────────────────────────── */
+    window.ttdKeydown = function (e) {
+      // Ctrl/Cmd shortcuts
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'b') { e.preventDefault(); ttdFmt('bold'); }
+        if (e.key === 'i') { e.preventDefault(); ttdFmt('italic'); }
+        if (e.key === 'u') { e.preventDefault(); ttdFmt('underline'); }
+        if (e.key === 'p') { e.preventDefault(); ttdPrint(); }
+      }
+      // Tab → indent
+      if (e.key === 'Tab') { e.preventDefault(); document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null); }
+    };
+
+    window.ttdEditorInput = function () { ttdUpdateToolbarState(); };
+
+    /* ── Update doc stats ───────────────────────────────────────── */
+    function ttdUpdateStats() {
+      var text = editor ? (editor.innerText || '') : '';
+      var words = text.trim() ? text.trim().split(/\s+/).length : 0;
+      var chars = text.length;
+      var paras = (editor.querySelectorAll('p,h1,h2,h3,h4').length) || 1;
+      var readMin = Math.max(1, Math.round(words / 200));
+      var sec = document.getElementById('ttd-stats-sec');
+      var st  = document.getElementById('ttd-stats');
+      if (sec) sec.style.display = '';
+      if (st)  st.innerHTML = '<span class="ttd-stat">'+words+' words</span><span class="ttd-stat">'+chars+' chars</span><span class="ttd-stat">'+paras+' paras</span><span class="ttd-stat">~'+readMin+' min read</span>';
+    }
+
+    /* ── AI Format ──────────────────────────────────────────────── */
+    window.ttdFormatAI = function () {
+      var src = document.getElementById('ttd-source');
+      if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
+      if (isProcessing) return;
+      var text = src.value.trim();
+      var tone = val('ttd-tone', 'professional');
+      var dtype= val('ttd-doctype', 'general document');
+      var btn  = document.getElementById('ttd-ai-btn');
+      isProcessing = true;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ttd-spin">&#9696;</span> Formatting...'; }
+
+      var prompt = 'You are a professional document formatter. Transform the following raw text into a well-structured, print-ready ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+        'RETURN ONLY clean HTML using ONLY these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br. ABSOLUTELY NO html/head/body/style/script tags.\n\n' +
+        'RULES:\n' +
+        '1. Detect or create a clear main title → wrap in <h1>\n' +
+        '2. Major sections/topics → wrap in <h2>\n' +
+        '3. Sub-sections → wrap in <h3>\n' +
+        '4. Key terms, names, important facts → wrap in <strong>\n' +
+        '5. ALL body text → wrap in <p> tags (never leave text outside a tag)\n' +
+        '6. Bullet/unordered lists → <ul><li>...</li></ul>\n' +
+        '7. Numbered/ordered lists → <ol><li>...</li></ol>\n' +
+        '8. Quotes or highlighted text → <blockquote>\n' +
+        '9. Fix grammar, spelling, punctuation and improve clarity\n' +
+        '10. Match the ' + tone + ' tone throughout\n' +
+        '11. Detect paragraphs from blank lines or sentence groups\n\n' +
+        'TEXT:\n' + text;
+
+      callAI(prompt)
+        .then(function (html) {
+          var clean = sanitizeHTML(html);
+          if (editor) {
+            editor.innerHTML = clean || '<p>' + escapeHtml(text) + '</p>';
+            ttdUpdateStats();
           }
-      });
-
-      /* ── Copy ───────────────────────────────────────────────── */
-      $('#ttd-copy-btn').on('click', function () {
-          var text = $('#ttd-output-body').text();
-          if (navigator.clipboard) {
-              navigator.clipboard.writeText(text).then(function () { flash('Copied!'); }).catch(function () { legacyCopy(text); });
-          } else { legacyCopy(text); }
-      });
-      function legacyCopy(text) {
-          var ta = document.createElement('textarea');
-          ta.value = text; document.body.appendChild(ta);
-          ta.select(); document.execCommand('copy');
-          document.body.removeChild(ta); flash('Copied!');
-      }
-      function flash(msg) {
-          var $btn = $('#ttd-copy-btn');
-          var orig = $btn.html();
-          $btn.html('&#10003; ' + msg);
-          setTimeout(function () { $btn.html(orig); }, 1800);
-      }
-
-      /* ── Use As-Is (skip AI) ────────────────────────────────── */
-      $('#ttd-raw-btn').on('click', function () {
-          var text = $('#ttd-input').val().trim();
-          if (!text) { alert('Please paste some text first.'); return; }
-          correctedText = text;
-          showOutput(text, false);
-      });
-
-      /* ── AI Correct button ──────────────────────────────────── */
-      $('#ttd-ai-btn').on('click', async function () {
-          var text = $('#ttd-input').val().trim();
-          if (!text) { alert('Please paste some text first.'); return; }
-          if (isProcessing) return;
-          isProcessing = true;
-
-          $('#ttd-ai-btn').prop('disabled', true).html('&#9203; Processing...');
-          $('#ttd-progress').css('display', 'flex');
-          $('#ttd-output-section, #ttd-dl-section').hide();
-
-          try {
-              var result = await correctWithAI(text);
-              correctedText = result;
-              showOutput(result, true);
-          } catch (e) {
-              alert('AI error: ' + e.message + '\nYou can still use "Use Text As-Is" to download without AI correction.');
-          } finally {
-              isProcessing = false;
-              $('#ttd-ai-btn').prop('disabled', false).html('&#10024; AI Correct &amp; Format');
-              $('#ttd-progress').hide();
+        })
+        .catch(function (err) {
+          console.error('AI error:', err);
+          // Fallback: basic formatting
+          if (editor) {
+            editor.innerHTML = basicFormat(text);
+            ttdUpdateStats();
           }
-      });
+          alert('AI formatting failed — applied basic formatting instead.');
+        })
+        .finally(function () {
+          isProcessing = false;
+          if (btn) { btn.disabled = false; btn.innerHTML = '&#10024; Format with AI'; }
+        });
+    };
 
-      function showOutput(text, aiCorrected) {
-          $('#ttd-output-body').text(text);
-          var words  = text.trim().split(/\s+/).filter(Boolean).length;
-          var chars  = text.length;
-          var paras  = text.split(/\n+/).filter(function (p) { return p.trim(); }).length;
-          var readMin = Math.ceil(words / 200);
-          $('#ttd-output-stats').html(
-              stat('Words', words.toLocaleString()) +
-              stat('Characters', chars.toLocaleString()) +
-              stat('Paragraphs', paras) +
-              stat('Read time', '~' + readMin + ' min') +
-              (aiCorrected ? stat('Status', '&#10024; AI corrected') : stat('Status', 'Raw text'))
-          );
-          $('#ttd-output-section').show();
-          $('#ttd-dl-section').show();
-          $('html,body').animate({ scrollTop: $('#ttd-output-section').offset().top - 20 }, 450);
+    window.ttdUseAsIs = function () {
+      var src = document.getElementById('ttd-source');
+      if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
+      if (editor) {
+        editor.innerHTML = basicFormat(src.value.trim());
+        ttdUpdateStats();
       }
-      function stat(label, val) {
-          return '<div class="ttd-stat"><strong>' + val + '</strong>&nbsp;' + label + '</div>';
+    };
+
+    /* ── Basic formatter (no AI fallback) ──────────────────────── */
+    function basicFormat(text) {
+      var lines = text.split(/\n/);
+      var html = '';
+      var inList = false;
+      for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (!line) { if (inList) { html += '</ul>'; inList = false; } continue; }
+        if (/^[#]{3}\s/.test(line)) { html += '<h3>' + escapeHtml(line.replace(/^###\s*/, '')) + '</h3>'; continue; }
+        if (/^[#]{2}\s/.test(line)) { html += '<h2>' + escapeHtml(line.replace(/^##\s*/, ''))  + '</h2>'; continue; }
+        if (/^[#]{1}\s/.test(line)) { html += '<h1>' + escapeHtml(line.replace(/^#\s*/, ''))   + '</h1>'; continue; }
+        if (/^[-*•]\s/.test(line)) {
+          if (!inList) { html += '<ul>'; inList = true; }
+          html += '<li>' + escapeHtml(line.replace(/^[-*•]\s*/, '')) + '</li>'; continue;
+        }
+        if (inList) { html += '</ul>'; inList = false; }
+        // ALL CAPS line → treat as heading
+        if (line === line.toUpperCase() && line.length > 4 && line.length < 80 && /[A-Z]/.test(line)) {
+          html += '<h2>' + escapeHtml(line) + '</h2>'; continue;
+        }
+        html += '<p>' + escapeHtml(line) + '</p>';
       }
+      if (inList) html += '</ul>';
+      return html || '<p>' + escapeHtml(text) + '</p>';
+    }
 
-      /* ── AI Correction ──────────────────────────────────────── */
-      async function correctWithAI(text) {
-          var tone   = $('#ttd-tone').val() || 'professional';
-          var toneMap = {
-              professional: 'professional and clear',
-              academic:     'academic with formal citations-ready structure',
-              casual:       'friendly and conversational',
-              formal:       'formal and legal-grade',
-              technical:    'technical and precise'
-          };
-          var prompt = 'You are a professional editor and document writer. Your task:\n' +
-              '1. Correct ALL spelling errors\n' +
-              '2. Fix grammar and punctuation\n' +
-              '3. Improve sentence clarity and flow\n' +
-              '4. Organize into proper paragraphs\n' +
-              '5. Use a ' + (toneMap[tone] || 'professional') + ' tone\n' +
-              '6. Keep the original meaning and ALL content — do not add new information\n\n' +
-              'IMPORTANT: Return ONLY the corrected text. No commentary, no labels, no explanations.\n\n' +
-              'TEXT TO CORRECT:\n' + text;
-
-          setProgress('Connecting to AI...');
-
-          /* 1. Groq — fast, best quality */
-          if (typeof window.groqFetch === 'function') {
-              try {
-                  setProgress('Correcting with Groq AI...');
-                  var ctrl = new AbortController();
-                  var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
-                  var res  = await window.groqFetch({
-                      model: 'llama-3.1-8b-instant',
-                      messages: [
-                          { role: 'system', content: 'You are a professional editor. Return ONLY the corrected text, nothing else.' },
-                          { role: 'user',   content: prompt }
-                      ],
-                      max_tokens: 4096, temperature: 0.15
-                  }, { signal: ctrl.signal });
-                  clearTimeout(tid);
-                  if (res.ok) {
-                      var data = await res.json();
-                      var t = (((data.choices || [])[0] || {}).message || {}).content || '';
-                      if (t.trim().length > 10) return t.trim();
-                  }
-              } catch (e) { /* fallthrough */ }
-          }
-
-          /* 2. Pollinations — free, no key */
-          setProgress('Correcting with AI (free)...');
-          var MODELS = ['openai', 'openai-fast', 'mistral'];
-          for (var i = 0; i < MODELS.length; i++) {
-              try {
-                  var ctrl2 = new AbortController();
-                  var tid2  = setTimeout(function () { ctrl2.abort(); }, 25000);
-                  var res2  = await fetch('https://text.pollinations.ai/openai', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      signal: ctrl2.signal,
-                      body: JSON.stringify({
-                          model: MODELS[i], temperature: 0.15, private: true,
-                          messages: [
-                              { role: 'system', content: 'You are a professional editor. Return ONLY the corrected text, nothing else.' },
-                              { role: 'user',   content: prompt }
-                          ]
-                      })
-                  });
-                  clearTimeout(tid2);
-                  if (!res2.ok) continue;
-                  var data2  = await res2.json();
-                  var t2 = ((((data2.choices || [])[0] || {}).message) || {}).content || '';
-                  if (t2.trim().length > 10) return t2.trim();
-              } catch (e2) { /* try next model */ }
-          }
-
-          throw new Error('All AI sources failed. Please check your internet connection and try again.');
+    /* ── AI API call (Groq → Pollinations fallback) ─────────────── */
+    function callAI(prompt) {
+      var groqKey = '';
+      try { groqKey = localStorage.getItem('aqs_groq_key') || ''; } catch(e){}
+      if (groqKey) {
+        return fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
+          body: JSON.stringify({
+            model: 'llama-3.1-8b-instant',
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 4096,
+            temperature: 0.3
+          })
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Groq HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (d) {
+          return d.choices[0].message.content.trim();
+        })
+        .catch(function () { return pollinationsAI(prompt); });
       }
+      return pollinationsAI(prompt);
+    }
 
-      function setProgress(msg) { $('#ttd-progress-msg').text(msg); }
+    function pollinationsAI(prompt) {
+      var encoded = encodeURIComponent(prompt.slice(0, 2000));
+      return fetch('https://text.pollinations.ai/' + encoded)
+        .then(function (r) { if (!r.ok) throw new Error('Pollinations HTTP ' + r.status); return r.text(); });
+    }
 
-      /* ── Download dispatcher ────────────────────────────────── */
-      $(document).on('click', '.ttd-dl-btn', async function () {
-          var fmt   = $(this).data('format');
-          var text  = correctedText || $('#ttd-input').val().trim();
-          var title = ($('#ttd-title').val() || 'document').trim();
-          if (!text) { alert('No text to download.'); return; }
+    /* ── HTML sanitizer (keep only safe formatting tags) ────────── */
+    function sanitizeHTML(raw) {
+      // Remove code fences and explanatory text before the HTML
+      var html = raw;
+      var codeBlock = raw.match(/```html?\n?([\s\S]*?)```/i);
+      if (codeBlock) html = codeBlock[1];
+      // Remove any <!DOCTYPE>, <html>, <head>, <body> wrapper
+      html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g, '')
+                 .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi, '')
+                 .replace(/<style[\s\S]*?<\/style>/gi, '')
+                 .replace(/<script[\s\S]*?<\/script>/gi, '');
+      return html.trim();
+    }
 
-          var $btn = $(this);
-          var orig = $btn.html();
-          $btn.html('<span class="ttd-dl-icon">&#8987;</span><span class="ttd-dl-name">...</span>').css('opacity',.6);
-          try {
-              switch (fmt) {
-                  case 'txt':   downloadTxt(text, title);        break;
-                  case 'html':  downloadHtml(text, title);       break;
-                  case 'md':    downloadMd(text, title);         break;
-                  case 'rtf':   downloadRtf(text, title);        break;
-                  case 'json':  downloadJson(text, title);       break;
-                  case 'csv':   downloadCsv(text, title);        break;
-                  case 'latex': downloadLatex(text, title);      break;
-                  case 'pdf':   await downloadPdf(text, title);  break;
-                  case 'docx':  await downloadDocx(text, title); break;
-                  case 'odt':   await downloadOdt(text, title);  break;
-              }
-          } catch (e) { alert('Download error: ' + e.message); }
-          $btn.html(orig).css('opacity', 1);
-      });
+    function escapeHtml(s) {
+      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 
-      /* ── Blob download helper ───────────────────────────────── */
-      function blobDl(content, filename, type) {
-          var blob = new Blob([content], { type: type });
-          var url  = URL.createObjectURL(blob);
-          var a    = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click();
-          setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
+    /* ── Print ──────────────────────────────────────────────────── */
+    window.ttdPrint = function () {
+      var pr = document.getElementById('ttd-print-root');
+      var pg = document.getElementById('ttd-page');
+      if (!pr || !pg) { window.print(); return; }
+      pr.innerHTML = '';
+      var clone = pg.cloneNode(true);
+      clone.querySelector('#ttd-editor').removeAttribute('contenteditable');
+      pr.appendChild(clone);
+      pr.style.display = 'block';
+      window.print();
+      setTimeout(function () { pr.style.display = 'none'; pr.innerHTML = ''; }, 1000);
+    };
+
+    /* ═══════════════════════════════════════════════════════════════
+       DOWNLOAD FUNCTIONS
+    ═══════════════════════════════════════════════════════════════ */
+    window.ttdDL = function (fmt) {
+      if (!editor) return;
+      var content = editor.innerHTML.trim();
+      if (!content || content === '' || editor.innerText.trim() === '') {
+        alert('Nothing to download. Please add some content first.'); return;
       }
+      var fns = { pdf: dlPDF, docx: dlDOCX, odt: dlODT, txt: dlTXT,
+                  html: dlHTML, md: dlMD, rtf: dlRTF, json: dlJSON, csv: dlCSV, latex: dlLaTeX };
+      if (fns[fmt]) fns[fmt]();
+    };
 
-      /* ── Format implementations ─────────────────────────────── */
+    function getDocTitle() {
+      var h1 = editor.querySelector('h1');
+      return (h1 ? h1.textContent.trim() : 'document') || 'document';
+    }
 
-      function downloadTxt(text, title) {
-          blobDl(text, safe(title) + '.txt', 'text/plain;charset=utf-8');
+    function safeName(title) {
+      return (title || 'document').replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 40);
+    }
+
+    function saveBlob(blob, filename) {
+      var url = URL.createObjectURL(blob);
+      var a   = document.createElement('a');
+      a.href  = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
+    }
+
+    function saveText(text, filename, mime) {
+      saveBlob(new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' }), filename);
+    }
+
+    /* ── PDF ────────────────────────────────────────────────────── */
+    function dlPDF() {
+      var btn = event ? event.target : null;
+      if (btn) btn.disabled = true;
+      if (!window.jspdf || !window.html2canvas) {
+        alert('PDF library not loaded. Please check your internet connection and try again.');
+        if (btn) btn.disabled = false;
+        return;
       }
+      var pg  = document.getElementById('ttd-page');
+      var paperVal = val('ttd-paper', 'a4');
+      var format   = paperVal === 'letter' ? [215.9,279.4] : paperVal === 'legal' ? [215.9,355.6] : [210,297];
 
-      function downloadHtml(text, title) {
-          var paras = text.split(/\n+/).map(function (p) {
-              return p.trim() ? '<p>' + eh(p) + '</p>' : '';
-          }).join('\n');
-          var html = '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="UTF-8">\n' +
-              '<meta name="viewport" content="width=device-width,initial-scale=1">\n' +
-              '<title>' + eh(title) + '</title>\n' +
-              '<style>body{font-family:Georgia,serif;max-width:780px;margin:48px auto;padding:0 24px;' +
-              'line-height:1.8;color:#1e293b}h1{font-size:1.8rem;margin-bottom:8px}' +
-              '.meta{color:#94a3b8;font-size:.83rem;margin-bottom:28px}p{margin-bottom:1em}</style>\n' +
-              '</head>\n<body>\n<h1>' + eh(title) + '</h1>\n' +
-              '<div class="meta">Generated by XZILY AI Text to Docs &middot; ' + new Date().toLocaleDateString() + '</div>\n' +
-              paras + '\n</body>\n</html>';
-          blobDl(html, safe(title) + '.html', 'text/html;charset=utf-8');
-      }
-
-      function downloadMd(text, title) {
-          var md = '# ' + title + '\n\n' +
-              '> Generated by XZILY AI Text to Docs — ' + new Date().toLocaleDateString() + '\n\n' +
-              text;
-          blobDl(md, safe(title) + '.md', 'text/markdown;charset=utf-8');
-      }
-
-      function downloadRtf(text, title) {
-          var paras = text.split(/\n+/).map(function (p) {
-              return p.trim() ? '{\\pard ' + er(p) + '\\par}' : '';
-          }).filter(Boolean).join('\n');
-          var rtf = '{\\rtf1\\ansi\\ansicpg1252\\deff0\n' +
-              '{\\fonttbl{\\f0\\froman Times New Roman;}{\\f1\\fswiss Arial;}}\n' +
-              '{\\colortbl;\\red30\\green41\\blue59;}\n' +
-              '\\f1\\fs24\\cf1\n' +
-              '{\\pard\\b\\fs36 ' + er(title) + '\\par}\n' +
-              '{\\pard\\fs18\\cf1 Generated by XZILY AI · ' + new Date().toLocaleDateString() + '\\par}\n' +
-              '\\pard\\fs24\\par\n' + paras + '\n}';
-          blobDl(rtf, safe(title) + '.rtf', 'application/rtf;charset=utf-8');
-      }
-
-      function downloadJson(text, title) {
-          var paras = text.split(/\n+/).filter(function (p) { return p.trim(); });
-          var obj = {
-              title:     title,
-              generated: new Date().toISOString(),
-              generator: 'XZILY AI Text to Docs',
-              stats: {
-                  wordCount: text.trim().split(/\s+/).filter(Boolean).length,
-                  charCount: text.length,
-                  paragraphs: paras.length
-              },
-              paragraphs: paras,
-              fullText:   text
-          };
-          blobDl(JSON.stringify(obj, null, 2), safe(title) + '.json', 'application/json;charset=utf-8');
-      }
-
-      function downloadCsv(text, title) {
-          var lines = text.split(/\n+/).filter(function (l) { return l.trim(); });
-          var rows  = [['#', 'Paragraph', 'Words', 'Characters']];
-          lines.forEach(function (line, i) {
-              rows.push([i + 1, '"' + line.replace(/"/g, '""') + '"',
-                  line.trim().split(/\s+/).filter(Boolean).length, line.length]);
-          });
-          blobDl(rows.map(function (r) { return r.join(','); }).join('\n'),
-              safe(title) + '.csv', 'text/csv;charset=utf-8');
-      }
-
-      function downloadLatex(text, title) {
-          var paras = text.split(/\n+/).map(function (p) {
-              return p.trim() ? el(p) : '';
-          }).join('\n\n');
-          var tex = '\\documentclass[12pt,a4paper]{article}\n' +
-              '\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n' +
-              '\\usepackage{geometry}\\geometry{margin=2.5cm}\n' +
-              '\\usepackage{parskip}\\usepackage{microtype}\n' +
-              '\\title{' + el(title) + '}\n' +
-              '\\author{XZILY AI Text to Docs}\n\\date{\\today}\n' +
-              '\\begin{document}\n\\maketitle\n\n' + paras + '\n\n\\end{document}\n';
-          blobDl(tex, safe(title) + '.tex', 'application/x-latex;charset=utf-8');
-      }
-
-      async function downloadPdf(text, title) {
-          if (typeof window.jspdf === 'undefined') { alert('PDF library loading, please try again in a moment.'); return; }
+      html2canvas(pg, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false })
+        .then(function (canvas) {
           var { jsPDF } = window.jspdf;
-          var doc   = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-          var pageW = doc.internal.pageSize.getWidth();
-          var pageH = doc.internal.pageSize.getHeight();
-          var ml    = 20, mr = 20, mt = 25, y = mt;
+          var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: format });
+          var pW  = pdf.internal.pageSize.getWidth();
+          var pH  = pdf.internal.pageSize.getHeight();
+          var cW  = canvas.width;
+          var cH  = canvas.height;
+          var ratio   = pW / (cW / 2);   // canvas is at scale:2 so divide by 2
+          var totalMM = cH / 2 * ratio;
+          var imgData = canvas.toDataURL('image/jpeg', 0.92);
 
-          /* Header */
-          doc.setFillColor(79, 70, 229);
-          doc.rect(0, 0, pageW, 14, 'F');
-          doc.setTextColor(255, 255, 255);
-          doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-          doc.text('XZILY AI • Text to Docs', ml, 9);
-          doc.text(new Date().toLocaleDateString(), pageW - mr, 9, { align: 'right' });
-
-          /* Title */
-          doc.setTextColor(30, 41, 59);
-          doc.setFontSize(20); doc.setFont('helvetica', 'bold');
-          y = 32;
-          var titleLines = doc.splitTextToSize(title, pageW - ml - mr);
-          doc.text(titleLines, ml, y);
-          y += titleLines.length * 8 + 4;
-
-          /* Divider */
-          doc.setDrawColor(99, 102, 241); doc.setLineWidth(0.5);
-          doc.line(ml, y, pageW - mr, y); y += 8;
-
-          /* Body */
-          doc.setFontSize(11); doc.setFont('helvetica', 'normal'); doc.setTextColor(30, 41, 59);
-          var paras = text.split(/\n+/).filter(function (p) { return p.trim(); });
-          paras.forEach(function (para) {
-              var lines = doc.splitTextToSize(para, pageW - ml - mr);
-              if (y + lines.length * 6 > pageH - 20) {
-                  doc.addPage();
-                  /* Page header */
-                  doc.setFillColor(79, 70, 229); doc.rect(0, 0, pageW, 14, 'F');
-                  doc.setTextColor(255, 255, 255); doc.setFontSize(8); doc.setFont('helvetica', 'normal');
-                  doc.text('XZILY AI • Text to Docs', ml, 9);
-                  doc.text(new Date().toLocaleDateString(), pageW - mr, 9, { align: 'right' });
-                  doc.setTextColor(30, 41, 59); doc.setFontSize(11); doc.setFont('helvetica', 'normal');
-                  y = 25;
-              }
-              doc.text(lines, ml, y);
-              y += lines.length * 6 + 3;
-          });
-
-          /* Page footer */
-          var totalPages = doc.internal.getNumberOfPages();
-          for (var i = 1; i <= totalPages; i++) {
-              doc.setPage(i);
-              doc.setFontSize(8); doc.setTextColor(148, 163, 184);
-              doc.text('Page ' + i + ' of ' + totalPages, pageW / 2, pageH - 8, { align: 'center' });
+          if (totalMM <= pH) {
+            pdf.addImage(imgData, 'JPEG', 0, 0, pW, totalMM);
+          } else {
+            var pageH  = pH;
+            var sliceH = Math.round(pageH / ratio * 2); // px per page
+            var offset = 0;
+            var page   = 0;
+            while (offset < cH) {
+              if (page > 0) pdf.addPage();
+              var sliceCanvas = document.createElement('canvas');
+              sliceCanvas.width  = cW;
+              sliceCanvas.height = Math.min(sliceH, cH - offset);
+              sliceCanvas.getContext('2d').drawImage(canvas, 0, offset, cW, sliceCanvas.height, 0, 0, cW, sliceCanvas.height);
+              pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pW, sliceCanvas.height / 2 * ratio);
+              offset += sliceH;
+              page++;
+            }
           }
+          pdf.save(safeName(getDocTitle()) + '.pdf');
+        })
+        .catch(function (e) { alert('PDF generation failed: ' + e.message); })
+        .finally(function () { if (btn) btn.disabled = false; });
+    }
 
-          doc.save(safe(title) + '.pdf');
-      }
+    /* ── DOCX ───────────────────────────────────────────────────── */
+    function dlDOCX() {
+      if (!window.docx) { alert('DOCX library not loaded. Check internet and retry.'); return; }
+      var { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
+            UnderlineType, BorderStyle } = window.docx;
+      var paragraphs = htmlToDOCXParagraphs(editor.innerHTML, { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType });
 
-      async function downloadDocx(text, title) {
-          if (typeof window.docx === 'undefined') { alert('DOCX library loading, please try again in a moment.'); return; }
-          var D = window.docx;
-          var paras = text.split(/\n+/).filter(function (p) { return p.trim(); });
+      var doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
+      Packer.toBlob(doc).then(function (blob) {
+        saveBlob(blob, safeName(getDocTitle()) + '.docx');
+      }).catch(function (e) { alert('DOCX error: ' + e.message); });
+    }
 
-          var children = [
-              new D.Paragraph({
-                  children: [new D.TextRun({ text: title, bold: true, size: 40, color: '4F46E5' })],
-                  spacing: { after: 240 }
-              }),
-              new D.Paragraph({
-                  children: [new D.TextRun({ text: 'Generated by XZILY AI Text to Docs · ' + new Date().toLocaleDateString(), size: 18, color: '94A3B8' })],
-                  spacing: { after: 400 }
-              })
-          ];
+    function htmlToDOCXParagraphs(html, docx) {
+      var { Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType } = docx;
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(html, 'text/html');
+      var result = [];
 
-          paras.forEach(function (para) {
-              children.push(new D.Paragraph({
-                  children: [new D.TextRun({ text: para, size: 24 })],
-                  spacing: { after: 200 }
-              }));
+      function processInline(node) {
+        var runs = [];
+        if (node.nodeType === Node.TEXT_NODE) {
+          if (node.textContent) runs.push(new TextRun(node.textContent));
+          return runs;
+        }
+        var tag = (node.tagName || '').toUpperCase();
+        var style = node.getAttribute ? (node.getAttribute('style') || '') : '';
+        var bold   = tag === 'STRONG' || tag === 'B' || /font-weight:\s*(bold|700)/i.test(style);
+        var italic = tag === 'EM'     || tag === 'I' || /font-style:\s*italic/i.test(style);
+        var under  = tag === 'U' || /text-decoration[^;]*underline/i.test(style);
+        var strike = tag === 'S' || tag === 'DEL';
+        for (var c = 0; c < node.childNodes.length; c++) {
+          var childRuns = processInline(node.childNodes[c]);
+          childRuns.forEach(function (r) {
+            if (bold)   r = new TextRun({ text: r.text || '', bold: true,   italics: r.options && r.options.italics });
+            if (italic) r = new TextRun({ text: r.text || '', italics: true, bold: r.options && r.options.bold });
+            if (under)  r = new TextRun({ text: r.text || '', underline: {} });
+            if (strike) r = new TextRun({ text: r.text || '', strike: true });
+            runs.push(r);
           });
+        }
+        return runs;
+      }
 
-          var doc = new D.Document({
-              sections: [{
-                  properties: {
-                      page: { margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 } }
-                  },
-                  children: children
-              }]
+      function processBlock(el) {
+        var tag = (el.tagName || '').toUpperCase();
+        if (tag === 'H1') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: el.textContent, bold: true })] })); }
+        else if (tag === 'H2') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: el.textContent, bold: true })] })); }
+        else if (tag === 'H3') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(el.textContent)] })); }
+        else if (tag === 'H4') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_4, children: [new TextRun(el.textContent)] })); }
+        else if (tag === 'BLOCKQUOTE') { result.push(new Paragraph({ indent: { left: 720 }, children: [new TextRun({ text: el.textContent, italics: true })] })); }
+        else if (tag === 'UL') {
+          el.querySelectorAll('li').forEach(function (li) {
+            result.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(li.textContent)] }));
           });
-
-          var blob = await D.Packer.toBlob(doc);
-          triggerBlobDownload(blob, safe(title) + '.docx');
+        } else if (tag === 'OL') {
+          var idx = 1;
+          el.querySelectorAll('li').forEach(function (li) {
+            result.push(new Paragraph({ children: [new TextRun(idx++ + '. ' + li.textContent)] }));
+          });
+        } else if (tag === 'P' || tag === 'DIV') {
+          var runs = [];
+          for (var c = 0; c < el.childNodes.length; c++) runs = runs.concat(processInline(el.childNodes[c]));
+          if (!runs.length) runs.push(new TextRun(''));
+          result.push(new Paragraph({ children: runs }));
+        }
       }
 
-      async function downloadOdt(text, title) {
-          if (typeof window.JSZip === 'undefined') { alert('ODT library loading, please try again in a moment.'); return; }
-          var paras   = text.split(/\n+/).filter(function (p) { return p.trim(); });
-          var bodyXml = paras.map(function (p) {
-              return '<text:p text:style-name="P1">' + eh(p) + '</text:p>';
-          }).join('\n');
+      var body = doc.body;
+      for (var i = 0; i < body.children.length; i++) processBlock(body.children[i]);
+      if (!result.length) result.push(new Paragraph({ children: [new TextRun(doc.body.textContent)] }));
+      return result;
+    }
 
-          var content = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-              '<office:document-content' +
-              ' xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
-              ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
-              ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' +
-              ' xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0">' +
-              '<office:automatic-styles>' +
-              '<style:style style:name="H1" style:family="paragraph">' +
-              '<style:text-properties fo:font-size="20pt" fo:font-weight="bold" fo:color="#4F46E5"/>' +
-              '<style:paragraph-properties fo:margin-bottom="0.4cm"/></style:style>' +
-              '<style:style style:name="P1" style:family="paragraph">' +
-              '<style:text-properties fo:font-size="12pt" fo:color="#1e293b"/>' +
-              '<style:paragraph-properties fo:margin-bottom="0.25cm" fo:line-height="150%"/></style:style>' +
-              '</office:automatic-styles>' +
-              '<office:body><office:text>' +
-              '<text:p text:style-name="H1">' + eh(title) + '</text:p>\n' + bodyXml +
-              '</office:text></office:body></office:document-content>';
+    /* ── ODT ────────────────────────────────────────────────────── */
+    function dlODT() {
+      if (!window.JSZip) { alert('JSZip not loaded. Check internet and retry.'); return; }
+      var text   = editor.innerText || '';
+      var title  = getDocTitle();
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
+      var body   = '';
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        var txt = escapeXml(el.textContent);
+        if (tag === 'H1') body += '<text:h text:style-name="Heading_20_1" text:outline-level="1">' + txt + '</text:h>';
+        else if (tag === 'H2') body += '<text:h text:style-name="Heading_20_2" text:outline-level="2">' + txt + '</text:h>';
+        else if (tag === 'H3') body += '<text:h text:style-name="Heading_20_3" text:outline-level="3">' + txt + '</text:h>';
+        else if (tag === 'BLOCKQUOTE') body += '<text:p text:style-name="Quotations">' + txt + '</text:p>';
+        else if (tag === 'UL' || tag === 'OL') {
+          var items = el.querySelectorAll('li');
+          body += '<text:list>';
+          items.forEach(function (li) { body += '<text:list-item><text:p>' + escapeXml(li.textContent) + '</text:p></text:list-item>'; });
+          body += '</text:list>';
+        } else body += '<text:p text:style-name="Text_20_Body">' + txt + '</text:p>';
+      }
+      var content = '<?xml version="1.0" encoding="UTF-8"?>' +
+        '<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
+        ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
+        ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' +
+        ' office:version="1.3">' +
+        '<office:automatic-styles/><office:body><office:text>' + body + '</office:text></office:body></office:document-content>';
+      var manifest = '<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>';
+      var mimetype = 'application/vnd.oasis.opendocument.text';
+      var zip = new JSZip();
+      zip.file('mimetype', mimetype, { compression: 'STORE' });
+      zip.file('content.xml', content);
+      zip.folder('META-INF').file('manifest.xml', manifest);
+      zip.generateAsync({ type: 'blob' }).then(function (b) { saveBlob(b, safeName(title) + '.odt'); });
+    }
 
-          var manifest = '<?xml version="1.0" encoding="UTF-8"?>\n' +
-              '<manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0" manifest:version="1.2">' +
-              '<manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/>' +
-              '<manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/>' +
-              '<manifest:file-entry manifest:full-path="styles.xml" manifest:media-type="text/xml"/>' +
-              '</manifest:manifest>';
+    function escapeXml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-          var styles = '<?xml version="1.0" encoding="UTF-8"?>' +
-              '<office:document-styles xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
-              ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' +
-              ' xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0">' +
-              '<office:styles/></office:document-styles>';
+    /* ── TXT ────────────────────────────────────────────────────── */
+    function dlTXT() {
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
+      var lines  = [];
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        var txt = el.textContent.trim();
+        if (!txt) continue;
+        if (tag === 'H1') { lines.push('\n' + txt.toUpperCase()); lines.push('='.repeat(Math.min(txt.length, 60))); }
+        else if (tag === 'H2') { lines.push('\n' + txt); lines.push('-'.repeat(Math.min(txt.length, 60))); }
+        else if (tag === 'H3') { lines.push('\n' + txt + ':'); }
+        else if (tag === 'BLOCKQUOTE') { lines.push('\n  "' + txt + '"'); }
+        else if (tag === 'UL') { el.querySelectorAll('li').forEach(function (li) { lines.push('  • ' + li.textContent.trim()); }); }
+        else if (tag === 'OL') { var n=1; el.querySelectorAll('li').forEach(function (li) { lines.push('  ' + n++ + '. ' + li.textContent.trim()); }); }
+        else { lines.push('\n' + txt); }
+      }
+      saveText(lines.join('\n'), safeName(getDocTitle()) + '.txt', 'text/plain');
+    }
 
-          var zip = new window.JSZip();
-          zip.file('mimetype', 'application/vnd.oasis.opendocument.text', { compression: 'STORE' });
-          zip.file('content.xml', content);
-          zip.file('styles.xml', styles);
-          zip.folder('META-INF').file('manifest.xml', manifest);
+    /* ── HTML ───────────────────────────────────────────────────── */
+    function dlHTML() {
+      var hfont = val('ttd-hfont','Georgia, serif');
+      var bfont = val('ttd-bfont','Georgia, serif');
+      var h1 = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
+      var bd = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
+      var title  = getDocTitle();
+      var full = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+        '<style>body{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';max-width:800px;margin:auto;padding:' + mg + 'mm;color:#1a1a1a;}' +
+        'h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;}' +
+        'h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;}' +
+        'h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
+        'p{margin:0 0 .6em;}ul,ol{padding-left:2em;margin:.3em 0 .6em;}li{margin-bottom:.2em;}' +
+        'blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
+        '@media print{body{max-width:100%;padding:15mm;}}' +
+        '</style></head><body>' + editor.innerHTML + '</body></html>';
+      saveText(full, safeName(title) + '.html', 'text/html');
+    }
 
-          var blob = await zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.oasis.opendocument.text' });
-          triggerBlobDownload(blob, safe(title) + '.odt');
+    /* ── Markdown ───────────────────────────────────────────────── */
+    function dlMD() {
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
+      var md     = [];
+      function inlineMD(node) {
+        var out = '';
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+        var tag = (node.tagName||'').toUpperCase();
+        var inner = Array.from(node.childNodes).map(inlineMD).join('');
+        if (tag === 'STRONG' || tag === 'B') return '**' + inner + '**';
+        if (tag === 'EM'     || tag === 'I') return '*'  + inner + '*';
+        if (tag === 'U')  return '__' + inner + '__';
+        if (tag === 'S')  return '~~' + inner + '~~';
+        return inner;
+      }
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        var txt = el.textContent.trim();
+        if (!txt) continue;
+        if (tag === 'H1') md.push('# ' + txt);
+        else if (tag === 'H2') md.push('## ' + txt);
+        else if (tag === 'H3') md.push('### ' + txt);
+        else if (tag === 'H4') md.push('#### ' + txt);
+        else if (tag === 'BLOCKQUOTE') md.push('> ' + txt);
+        else if (tag === 'UL') { el.querySelectorAll('li').forEach(function (li) { md.push('- ' + inlineMD(li).trim()); }); }
+        else if (tag === 'OL') { var n=1; el.querySelectorAll('li').forEach(function (li) { md.push(n++ + '. ' + inlineMD(li).trim()); }); }
+        else { md.push(Array.from(el.childNodes).map(inlineMD).join('').trim()); }
+        md.push('');
+      }
+      saveText(md.join('\n'), safeName(getDocTitle()) + '.md', 'text/markdown');
+    }
+
+    /* ── RTF ────────────────────────────────────────────────────── */
+    function dlRTF() {
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
+      function rtfEsc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/{/g,'\\{').replace(/}/g,'\\}').replace(/[^\x00-\x7F]/g, function(c){ return '\\u'+c.charCodeAt(0)+'?'; }); }
+      var rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Georgia;}{\\f1 Arial;}}{\\colortbl;\\red0\\green0\\blue0;}\\widowctrl\\hyphauto\n';
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        var txt = rtfEsc(el.textContent.trim());
+        if (!txt) continue;
+        if (tag === 'H1') rtf += '\\pard\\f0\\fs48\\b ' + txt + '\\b0\\fs24\\par\n';
+        else if (tag === 'H2') rtf += '\\pard\\f0\\fs36\\b ' + txt + '\\b0\\fs24\\par\n';
+        else if (tag === 'H3') rtf += '\\pard\\f0\\fs28\\b ' + txt + '\\b0\\fs24\\par\n';
+        else if (tag === 'BLOCKQUOTE') rtf += '\\pard\\li720\\i ' + txt + '\\i0\\par\n';
+        else if (tag === 'UL') { el.querySelectorAll('li').forEach(function (li) { rtf += '\\pard\\li360\\bullet  ' + rtfEsc(li.textContent) + '\\par\n'; }); }
+        else if (tag === 'OL') { var n=1; el.querySelectorAll('li').forEach(function (li) { rtf += '\\pard\\li360 ' + n++ + '. ' + rtfEsc(li.textContent) + '\\par\n'; }); }
+        else rtf += '\\pard\\f0\\fs24 ' + txt + '\\par\n';
+      }
+      rtf += '}';
+      saveText(rtf, safeName(getDocTitle()) + '.rtf', 'application/rtf');
+    }
+
+    /* ── JSON ───────────────────────────────────────────────────── */
+    function dlJSON() {
+      var parser   = new DOMParser();
+      var doc      = parser.parseFromString(editor.innerHTML, 'text/html');
+      var blocks   = [];
+      var wordCount= (editor.innerText||'').trim().split(/\s+/).length;
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        var txt = el.textContent.trim();
+        if (!txt) continue;
+        if (tag === 'UL' || tag === 'OL') {
+          var items = [];
+          el.querySelectorAll('li').forEach(function (li) { items.push(li.textContent.trim()); });
+          blocks.push({ type: tag === 'UL' ? 'bullet_list' : 'numbered_list', items: items });
+        } else {
+          var typeMap = { H1:'heading1', H2:'heading2', H3:'heading3', H4:'heading4', BLOCKQUOTE:'quote', P:'paragraph', DIV:'paragraph' };
+          blocks.push({ type: typeMap[tag] || 'paragraph', content: txt });
+        }
+      }
+      var obj = {
+        title: getDocTitle(),
+        createdAt: new Date().toISOString(),
+        wordCount: wordCount,
+        settings: { tone: val('ttd-tone','professional'), docType: val('ttd-doctype','general document') },
+        content: blocks,
+        rawHtml: editor.innerHTML
+      };
+      saveText(JSON.stringify(obj, null, 2), safeName(getDocTitle()) + '.json', 'application/json');
+    }
+
+    /* ── CSV ────────────────────────────────────────────────────── */
+    function dlCSV() {
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
+      var rows   = [['type','content','level']];
+      var typeMap = { H1:'heading', H2:'heading', H3:'heading', H4:'heading', P:'paragraph', BLOCKQUOTE:'quote', UL:'list', OL:'list', DIV:'paragraph' };
+      var lvlMap  = { H1:'1', H2:'2', H3:'3', H4:'4' };
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        if (tag === 'UL' || tag === 'OL') {
+          el.querySelectorAll('li').forEach(function (li) { rows.push(['list_item', li.textContent.trim(), '']); });
+        } else {
+          var txt = el.textContent.trim();
+          if (txt) rows.push([typeMap[tag]||'paragraph', txt, lvlMap[tag]||'']);
+        }
+      }
+      var csv = rows.map(function (r) { return r.map(function (c) { return '"' + (c||'').replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
+      saveText(csv, safeName(getDocTitle()) + '.csv', 'text/csv');
+    }
+
+    /* ── LaTeX ──────────────────────────────────────────────────── */
+    function dlLaTeX() {
+      function ltxEsc(s) {
+        return (s||'').replace(/\\/g,'\\textbackslash{}').replace(/[&%$#_{}~^]/g, function(c){ return '\\'+c; });
+      }
+      var parser = new DOMParser();
+      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
+      var title  = getDocTitle();
+      var body   = '';
+      var inList = false;
+      for (var i = 0; i < doc.body.children.length; i++) {
+        var el  = doc.body.children[i];
+        var tag = el.tagName.toUpperCase();
+        var txt = ltxEsc(el.textContent.trim());
+        if (!txt) continue;
+        if (tag === 'H1') { body += '\\section{' + txt + '}\n'; }
+        else if (tag === 'H2') { body += '\\subsection{' + txt + '}\n'; }
+        else if (tag === 'H3') { body += '\\subsubsection{' + txt + '}\n'; }
+        else if (tag === 'BLOCKQUOTE') { body += '\\begin{quote}\n' + txt + '\n\\end{quote}\n'; }
+        else if (tag === 'UL') {
+          body += '\\begin{itemize}\n';
+          el.querySelectorAll('li').forEach(function (li) { body += '  \\item ' + ltxEsc(li.textContent.trim()) + '\n'; });
+          body += '\\end{itemize}\n';
+        } else if (tag === 'OL') {
+          body += '\\begin{enumerate}\n';
+          el.querySelectorAll('li').forEach(function (li) { body += '  \\item ' + ltxEsc(li.textContent.trim()) + '\n'; });
+          body += '\\end{enumerate}\n';
+        } else { body += ltxInline(el) + '\n\n'; }
       }
 
-      /* ── Utilities ──────────────────────────────────────────── */
-      function triggerBlobDownload(blob, filename) {
-          var url = URL.createObjectURL(blob);
-          var a   = document.createElement('a');
-          a.href = url; a.download = filename;
-          document.body.appendChild(a); a.click();
-          setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1200);
+      function ltxInline(node) {
+        var out = '';
+        if (node.nodeType === Node.TEXT_NODE) return ltxEsc(node.textContent);
+        var tag = (node.tagName||'').toUpperCase();
+        var inner = Array.from(node.childNodes).map(ltxInline).join('');
+        if (tag === 'STRONG'||tag==='B') return '\\textbf{'+inner+'}';
+        if (tag === 'EM'||tag==='I')     return '\\textit{'+inner+'}';
+        if (tag === 'U')                 return '\\underline{'+inner+'}';
+        if (tag === 'S')                 return '\\sout{'+inner+'}';
+        return inner;
       }
 
-      function eh(str) {
-          return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-      }
+      var latex = '\\documentclass[12pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage{microtype}\n\\usepackage{ulem}\n\\usepackage{geometry}\n\\geometry{margin=' + val('ttd-margin',20) + 'mm}\n\\setlength{\\parskip}{0.6em}\n\\setlength{\\parindent}{0em}\n\\title{' + ltxEsc(title) + '}\n\\date{\\today}\n\\begin{document}\n\\maketitle\n' + body + '\n\\end{document}';
+      saveText(latex, safeName(title) + '.tex', 'text/plain');
+    }
 
-      function er(str) { /* RTF escape */
-          return String(str)
-              .replace(/\\/g, '\\\\').replace(/\{/g, '\\{').replace(/\}/g, '\\}')
-              .replace(/[^\x00-\x7F]/g, function (ch) {
-                  var c = ch.charCodeAt(0);
-                  return c > 255 ? '\\u' + c + '?' : "\\'" + c.toString(16).padStart(2, '0');
-              });
-      }
-
-      function el(str) { /* LaTeX escape */
-          return String(str)
-              .replace(/\\/g, '\\textbackslash{}')
-              .replace(/[&%$#_{}~^]/g, function (c) { return '\\' + c; });
-      }
-
-      function safe(str) { /* safe filename */
-          return String(str).replace(/[^a-z0-9_\-\s]/gi, '').replace(/\s+/g, '_').substring(0, 60) || 'document';
-      }
-
-  })(jQuery);
-  
+  })();
