@@ -201,6 +201,12 @@
   #ttd-ai-status.st-busy{background:#fefce8;border:1px solid #fde68a;color:#854d0e;}
   #ttd-ai-status.st-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;}
   #ttd-ai-status.st-working{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;}
+  /* ── Web Research panel ── */
+  .ttd-web-mode-btn{padding:5px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer;font-size:11.5px;font-weight:600;color:#374151;transition:all .2s;}
+  .ttd-web-mode-btn.active{background:#1d4ed8;border-color:#1d4ed8;color:#fff;}
+  #ttd-web-status{margin-top:8px;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.5;}
+  #ttd-web-url,#ttd-web-query{width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;outline:none;font-family:inherit;}
+  #ttd-web-url:focus,#ttd-web-query:focus{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.15);}
   </style>
   </head>
   <body class="aqs-full-page-body">
@@ -240,6 +246,7 @@
       <button class="ttd-tab active" id="ttd-tab-format" onclick="ttdSwitchTab('format')">&#128196; Format Text</button>
       <button class="ttd-tab" id="ttd-tab-write" onclick="ttdSwitchTab('write')">&#9997;&#65039; AI Writer</button>
       <button class="ttd-tab" id="ttd-tab-history" onclick="ttdSwitchTab('history')">&#128196; History</button>
+      <button class="ttd-tab" id="ttd-tab-web" onclick="ttdSwitchTab('web')">&#127760; Web</button>
     </div>
 
     <!-- FORMAT PANEL (existing) -->
@@ -400,6 +407,33 @@
           <button class="ttd-hist-clear" onclick="ttdClearHistory()">&#128465; Clear All History</button>
         </div>
       </div><!-- /ttd-panel-history -->
+
+      <!-- WEB RESEARCH PANEL -->
+      <div class="ttd-panel" id="ttd-panel-web">
+        <div class="ttd-write-area">
+          <div class="ttd-sec-title" style="padding:10px 0 6px;">&#127760; Web Research</div>
+          <label class="ttd-lbl" style="font-size:12px;color:#374151;margin-bottom:6px;font-weight:600;">Mode</label>
+          <div style="display:flex;gap:6px;margin-bottom:10px;">
+            <button id="ttd-web-mode-url" class="ttd-web-mode-btn active" onclick="ttdWebModeSwitch('url')">&#128279; URL</button>
+            <button id="ttd-web-mode-search" class="ttd-web-mode-btn" onclick="ttdWebModeSwitch('search')">&#128269; Search</button>
+          </div>
+          <div id="ttd-web-url-area">
+            <label class="ttd-lbl">Website URL</label>
+            <input type="url" id="ttd-web-url" placeholder="https://example.com/article">
+          </div>
+          <div id="ttd-web-search-area" style="display:none;">
+            <label class="ttd-lbl">Search Query</label>
+            <input type="text" id="ttd-web-query" placeholder="e.g. benefits of solar energy 2024">
+          </div>
+          <label class="ttd-lbl" style="margin-top:8px;">What do you want from it?</label>
+          <textarea id="ttd-web-instruction" class="ttd-prompt-ta" style="min-height:80px;" placeholder="e.g. Summarise the key points into a professional report with headings&#10;e.g. Extract all prices and make a comparison table&#10;e.g. Write a summary of the main argument"></textarea>
+          <button class="ttd-btn-primary" id="ttd-web-btn" onclick="ttdWebResearch()" style="margin-top:10px;">&#127760; Fetch &amp; Write to Document</button>
+          <div id="ttd-web-status" style="display:none;"></div>
+          <div style="margin-top:10px;padding:8px;background:#f0f9ff;border-radius:6px;font-size:11px;color:#0369a1;line-height:1.6;">
+            <strong>&#128161; How it works:</strong> The AI visits the page or searches the web, reads the content, then writes exactly what you asked for into your document.
+          </div>
+        </div>
+      </div><!-- /ttd-panel-web -->
 
   </div><!-- /ttd-settings -->
 
