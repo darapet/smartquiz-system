@@ -1,8 +1,8 @@
 {
-  "version": "1.113",
-  "versionCode": 98,
+  "version": "1.114",
+  "versionCode": 99,
   "releaseDate": "2026-06-04",
-  "notes": "New feature: Table support in Text-to-Docs — insert tables via grid picker or custom row/col inputs, Tab-key navigation between cells, auto row creation, and full table export in DOCX, ODT, PDF and Print. AI formatter now generates tables for comparative/statistical data.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.113/daraquiz-v1.113.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.113/daraquiz-v1.113.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.114/daraquiz-v1.114.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.114/daraquiz-v1.114.apk"
 }
