@@ -870,7 +870,7 @@
         window.groqFetch({
             model:       'llama-3.3-70b-versatile',
             messages:    messages,
-            max_tokens:  3000,
+            max_tokens:  1500,
             temperature: 0.7
         }).then(function (res) {
             return res.json();
