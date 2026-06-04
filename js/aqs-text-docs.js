@@ -257,7 +257,7 @@
       return html || '<p>' + escapeHtml(text) + '</p>';
     }
 
-    /* ── AI API call — Groq only via groqFetch (key rotation built-in) ─────────── */
+    /* ── AI API call — Groq only via groqFetch (key rotation built-in) ── */
     function callAI(prompt) {
         var messages = [{ role: 'user', content: prompt }];
 
@@ -283,7 +283,82 @@
             clearTimeout(tid);
             throw e;
         });
-    } catch (e) {
+    }
+
+    /* ── HTML sanitizer (keep only safe formatting tags) ────────── */
+    function sanitizeHTML(raw) {
+        if (!raw) return '';
+        var html = raw;
+        // Unwrap code fences
+        var fence = html.match(/```html?\n?([\s\S]*?)```/i);
+        if (fence) html = fence[1];
+        // Strip dangerous wrapper tags
+        html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g, '')
+                   .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi, '')
+                   .replace(/<style[\s\S]*?<\/style>/gi, '')
+                   .replace(/<script[\s\S]*?<\/script>/gi, '');
+        html = html.trim();
+        // If AI returned markdown instead of HTML, convert basic markdown → HTML
+        if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote)\b/.test(html)) {
+          html = html
+            .replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>')
+            .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+            .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+            .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m){ return '<ul>' + m + '</ul>'; })
+            .replace(/^(?!<[hulo]|$)(.+)$/gm, '<p>$1</p>');
+        }
+        return html.trim();
+      }
+
+    function escapeHtml(s) {
+      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    /* ── Print — works in browser AND Capacitor app ───────────── */
+    window.ttdPrint = function () {
+      var editor = document.getElementById('ttd-editor');
+      if (!editor || !editor.innerText.trim()) { alert('Nothing to print. Please add content first.'); return; }
+      var hfont = val('ttd-hfont','Georgia, serif');
+      var bfont = val('ttd-bfont','Georgia, serif');
+      var h1    = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
+      var bd    = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
+      var title = getDocTitle();
+      var printHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+        '<style>' +
+        'html,body{margin:0;padding:0;background:#fff;}' +
+        'body{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';color:#1a1a1a;padding:' + mg + 'mm;box-sizing:border-box;}' +
+        'h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;page-break-after:avoid;}' +
+        'h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;page-break-after:avoid;}' +
+        'h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;page-break-after:avoid;}' +
+        'h4{font-family:' + hfont + ';font-size:' + Math.round(+bd*1.1) + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
+        'p{margin:0 0 .55em;}ul,ol{padding-left:1.8em;margin:.3em 0 .55em;}li{margin-bottom:.2em;}' +
+        'blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
+        '@page{margin:' + mg + 'mm;}' +
+        '@media print{body{padding:0;}html,body{height:auto;}}' +
+        '</style></head><body>' + editor.innerHTML + '</body></html>';
+
+      /* ── Capacitor app: open in new window → auto-print ── */
+      var isCapacitor = !!(window.Capacitor || window.cordova || navigator.userAgent.match(/wv|WebView/i));
+      var pw = window.open('', '_blank', 'width=900,height=700,toolbar=yes,scrollbars=yes');
+      if (pw) {
+        pw.document.open();
+        pw.document.write(printHTML);
+        pw.document.close();
+        pw.focus();
+        /* Small delay to ensure content renders before print dialog */
+        setTimeout(function () {
+          try {
+            pw.print();
+            /* On desktop browsers close after print; on mobile leave open */
+            if (!isCapacitor) {
+              pw.onafterprint = function () { try { pw.close(); } catch(e){} };
+              setTimeout(function () { try { pw.close(); } catch(e){} }, 5000);
+            }
+          } catch (e) {
             /* Fallback if popup blocked: use data URI */
             var blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
             var url  = URL.createObjectURL(blob);
