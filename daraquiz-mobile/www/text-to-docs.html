@@ -1,263 +1,522 @@
 <!DOCTYPE html>
-  <html lang="en">
-  <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Text &#8594; Docs | XZily AI</title>
-  <meta name="theme-color" content="#0891b2">
-  <link rel="stylesheet" href="css/aqs-style.css">
-  <link rel="stylesheet" href="css/aqs-sidebar.css">
-  <link rel="manifest" href="manifest.json">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <style>
-  /* ── Page shell ─────────────────────────────── */
-  .ttd-layout{display:flex;height:100vh;overflow:hidden;background:#e8edf3;flex:1;}
-  /* ── Settings panel ─────────────────────────── */
-  .ttd-settings{width:270px;min-width:230px;background:#fff;border-right:1px solid #e2e8f0;
-    display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
-  .ttd-sec{padding:10px 12px;border-bottom:1px solid #f1f5f9;}
-  .ttd-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-    color:#6b7280;margin:0 0 7px;}
-  .ttd-textarea{width:100%;min-height:140px;border:1px solid #e2e8f0;border-radius:6px;
-    padding:8px;font-size:12.5px;resize:vertical;font-family:inherit;box-sizing:border-box;
-    line-height:1.5;}
-  .ttd-count{font-size:10px;color:#9ca3af;text-align:right;margin-top:2px;}
-  .ttd-count.warn{color:#f59e0b;} .ttd-count.full{color:#ef4444;}
-  .ttd-lbl{display:block;font-size:11px;color:#6b7280;margin-bottom:3px;}
-  .ttd-sel{width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:5px 7px;
-    font-size:12px;background:#fff;margin-bottom:7px;box-sizing:border-box;}
-  .ttd-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
-  .ttd-num{width:54px;border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:12px;}
-  .ttd-btn-primary{width:100%;padding:9px;background:linear-gradient(135deg,#0891b2,#0e7490);
-    color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s;}
-  .ttd-btn-primary:hover{opacity:.9;} .ttd-btn-primary:disabled{opacity:.55;cursor:not-allowed;}
-  .ttd-btn-secondary{width:100%;padding:8px;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;
-    border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;margin-top:5px;transition:background .2s;}
-  .ttd-btn-secondary:hover{background:#e2e8f0;}
-  /* ── Editor area ─────────────────────────────── */
-  .ttd-editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
-  /* ── Toolbar ─────────────────────────────────── */
-  .ttd-toolbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:5px 10px;
-    display:flex;flex-wrap:wrap;gap:3px;align-items:center;flex-shrink:0;}
-  .tb-btn{background:none;border:1px solid transparent;border-radius:4px;padding:3px 7px;
-    cursor:pointer;font-size:13px;color:#374151;display:inline-flex;align-items:center;
-    gap:3px;transition:background .12s;line-height:1.4;}
-  .tb-btn:hover{background:#f1f5f9;border-color:#d1d5db;}
-  .tb-btn.on{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;}
-  .tb-sep{width:1px;height:22px;background:#e2e8f0;margin:0 3px;flex-shrink:0;}
-  .tb-sel{border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11.5px;
-    background:#fff;color:#374151;cursor:pointer;max-width:120px;}
-  .tb-num{border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11.5px;
-    width:48px;background:#fff;}
-  .tb-col-wrap{display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;}
-  .tb-col-wrap input[type=color]{width:26px;height:24px;padding:1px 2px;border:1px solid #d1d5db;
-    border-radius:4px;cursor:pointer;}
-  /* ── Pages area ──────────────────────────────── */
-  .ttd-pages-area{flex:1;overflow-y:auto;overflow-x:auto;background:#d1d5db;
-    padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px;}
-  /* ── Page ────────────────────────────────────── */
-  .ttd-page{background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.18);border-radius:2px;
-    flex-shrink:0;}
-  .ttd-page.sz-a4    {width:794px;min-height:1123px;}
-  .ttd-page.sz-letter{width:816px;min-height:1056px;}
-  .ttd-page.sz-legal {width:816px;min-height:1344px;}
-  /* ── Editor inside page ──────────────────────── */
-  #ttd-editor,.ttd-page-editor{
-    min-height:700px;outline:none;
-    font-family:var(--ttd-bfont,'Georgia, serif');
-    font-size:var(--ttd-bsize,12pt);
-    line-height:var(--ttd-lh,1.6);
-    color:#1a1a1a;word-break:break-word;
-  }
-  #ttd-editor:empty:before{content:attr(data-placeholder);color:#9ca3af;font-style:italic;}
-  #ttd-editor h1{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h1,24pt);
-    font-weight:700;margin:.7em 0 .3em;line-height:1.2;}
-  #ttd-editor h2{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h2,18pt);
-    font-weight:600;margin:.6em 0 .25em;line-height:1.25;}
-  #ttd-editor h3{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h3,14pt);
-    font-weight:600;margin:.5em 0 .2em;line-height:1.3;}
-  #ttd-editor h4{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h4,12pt);
-    font-weight:600;margin:.5em 0 .2em;}
-  #ttd-editor p{margin:0 0 .55em;}
-  #ttd-editor ul,#ttd-editor ol{margin:.3em 0 .55em;padding-left:1.8em;}
-  #ttd-editor li{margin-bottom:.2em;}
-  #ttd-editor blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;
-    color:#475569;font-style:italic;background:#f0f9ff;}
-  #ttd-editor table{border-collapse:collapse;width:100%;margin:.5em 0;}
-  #ttd-editor td,#ttd-editor th{border:1px solid #d1d5db;padding:6px 10px;}
-  #ttd-editor th{background:#f8fafc;font-weight:600;}
-  /* ── Download bar ────────────────────────────── */
-  .ttd-dl-bar{background:#fff;border-top:1px solid #e2e8f0;padding:7px 10px;
-    display:flex;flex-wrap:wrap;gap:5px;align-items:center;flex-shrink:0;}
-  .ttd-dl-bar-label{font-size:11px;font-weight:700;color:#6b7280;margin-right:2px;}
-  .dl-btn{font-size:11.5px;padding:4px 9px;border-radius:5px;border:1px solid #d1d5db;
-    background:#f9fafb;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
-    transition:all .15s;color:#374151;font-weight:500;}
-  .dl-btn:hover{background:#e0f2fe;border-color:#7dd3fc;color:#0369a1;}
-  .dl-btn:disabled{opacity:.5;cursor:wait;}
-  /* ── Stats ───────────────────────────────────── */
-  .ttd-stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
-  .ttd-stat{background:#f0f9ff;border-radius:5px;padding:3px 7px;font-size:11px;color:#0369a1;font-weight:600;}
-  /* ── Print ───────────────────────────────────── */
-  @media print{
-    body>*{display:none!important;}
-    .ttd-print-root{display:block!important;position:fixed!important;inset:0;background:#fff;z-index:99999;overflow:visible;}
-    .ttd-page,.ttd-page-item{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;outline:none!important;}
-    .ttd-page-editor,#ttd-editor{min-height:0!important;}
-    .ttd-page-footer{display:none!important;}
-  }
-  .ttd-print-root{display:none;}
-  /* ── Responsive ──────────────────────────────── */
-  @media(max-width:768px){
-      .ttd-layout{flex-direction:column;height:100svh;overflow:hidden;position:relative;}
-      .ttd-settings{position:fixed;bottom:0;left:0;right:0;z-index:200;width:100%;min-width:0;max-height:72vh;border-radius:18px 18px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,.18);transform:translateY(100%);transition:transform .28s cubic-bezier(.4,0,.2,1);overflow-y:auto;background:#fff;}
-      .ttd-settings.mob-open{transform:translateY(0);}
-      .ttd-mob-overlay{display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.35);}
-      .ttd-mob-overlay.visible{display:block;}
-      .ttd-mob-handle{display:flex;justify-content:center;padding:8px 0 4px;cursor:pointer;touch-action:none;}
-      .ttd-mob-handle::before{content:'';width:36px;height:4px;border-radius:2px;background:#d1d5db;}
-      .ttd-mob-toggle{display:flex;align-items:center;gap:6px;position:fixed;bottom:14px;right:14px;z-index:198;background:#0891b2;color:#fff;border:none;border-radius:24px;padding:10px 16px;font-size:13px;font-weight:600;box-shadow:0 4px 16px rgba(8,145,178,.38);cursor:pointer;-webkit-tap-highlight-color:transparent;}
-      .ttd-mob-toggle.panel-open{background:#64748b;}
-      .ttd-editor-area{flex:1;min-height:0;height:100%;overflow:hidden;display:flex;flex-direction:column;}
-      .ttd-pages-area{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;}
-      .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal{width:100%!important;min-height:auto;padding:14px!important;box-shadow:none;border-radius:0;margin:0;}
-      .ttd-toolbar{overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;padding:6px 8px;gap:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-      .ttd-toolbar::-webkit-scrollbar{display:none;}
-      .ttd-dl-bar{overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:6px 8px;}
-      .ttd-dl-bar::-webkit-scrollbar{display:none;}
-      .dl-btn{flex-shrink:0;}
-      .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal,.ttd-page-item{width:100%!important;min-height:auto;padding:12px!important;box-shadow:0 2px 6px rgba(0,0,0,.12);border-radius:4px;margin:0;}
-      .ttd-page-editor{min-height:400px!important;}
-      .tb-btn,.tb-color,.ttd-toolbar button{min-width:36px;height:36px;font-size:14px;padding:0 8px;flex-shrink:0;}
-      .tb-sel{height:36px;font-size:12px;flex-shrink:0;}
-      .tb-sep{flex-shrink:0;}
-      .ttd-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
-      .ttd-tabs::-webkit-scrollbar{display:none;}
-      .ttd-tab{font-size:11px;padding:8px 10px;white-space:nowrap;flex-shrink:0;}
-      .ttd-page-nav{padding:6px 8px;gap:6px;}
-      .ttd-pnav-btn{padding:6px 14px;font-size:13px;}
-      .ttd-pnav-info{font-size:12px;}
-      .ttd-pnav-add{font-size:12px;padding:6px 10px;}
-      .ttd-sec{margin-bottom:12px;}
-      .aqs-btn,.ttd-btn{min-height:42px;font-size:13px;}
-      .ttd-textarea{min-height:90px;}
-      .ttd-upload-zone{padding:14px 10px;}
-      .ttd-hist-item{padding:8px 10px;}
-    }
-    @media(min-width:769px){
-      .ttd-mob-toggle{display:none!important;}
-      .ttd-mob-overlay{display:none!important;}
-      .ttd-mob-handle{display:none!important;}
-      .ttd-settings{transform:none!important;}
-    }
-    @media(max-width:420px){
-      .ttd-tab{font-size:10px;padding:7px 8px;}
-      .ttd-pnav-btn{padding:5px 10px;font-size:12px;}
-    }
-  /* ── Spinner ──────────────────────────────────── */
-  @keyframes ttd-spin{to{transform:rotate(360deg);}}
-  .ttd-spin{display:inline-block;animation:ttd-spin .8s linear infinite;}
-  
-    /* ── AI Writer panel ─────────────────────────────────────── */
-    .ttd-write-area{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
-    .ttd-prompt-ta{width:100%;min-height:130px;border:1.5px solid #e2e8f0;border-radius:7px;
-      padding:9px;font-size:12.5px;resize:vertical;font-family:inherit;box-sizing:border-box;
-      line-height:1.55;background:#fafafa;color:#1e293b;}
-    .ttd-prompt-ta:focus{border-color:#0891b2;outline:none;background:#fff;box-shadow:0 0 0 3px rgba(8,145,178,.1);}
-    .ttd-write-hint{font-size:10.5px;color:#6b7280;background:#f8fafc;border-radius:5px;
-      padding:6px 9px;border-left:3px solid #0891b2;line-height:1.55;}
-    /* ── History panel ───────────────────────────────────────── */
-    .ttd-hist-list{display:flex;flex-direction:column;gap:6px;padding:10px 12px;}
-    .ttd-hist-empty{text-align:center;padding:32px 12px;color:#9ca3af;font-size:12px;line-height:1.6;}
-    .ttd-hist-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
-      padding:9px 10px;cursor:pointer;transition:all .15s;position:relative;}
-    .ttd-hist-item:hover{background:#e0f2fe;border-color:#7dd3fc;}
-    .ttd-hist-title{font-size:12.5px;font-weight:600;color:#1e293b;
-      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:22px;}
-    .ttd-hist-meta{font-size:10px;color:#6b7280;margin-top:3px;}
-    .ttd-hist-del{position:absolute;top:8px;right:8px;background:none;border:none;
-      color:#94a3b8;cursor:pointer;font-size:14px;line-height:1;padding:0;}
-    .ttd-hist-del:hover{color:#ef4444;}
-    .ttd-hist-clear{width:100%;margin-top:4px;padding:6px;font-size:11px;background:none;
-      border:1px solid #fca5a5;color:#ef4444;border-radius:6px;cursor:pointer;}
-    .ttd-hist-clear:hover{background:#fef2f2;}
-  
-  
-    .ttd-upload-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;margin-bottom:6px;}
-    .ttd-upload-zone:hover,.ttd-upload-zone.drag{border-color:#0891b2;background:#e0f2fe;}
-    .ttd-upload-icon{font-size:22px;margin-bottom:4px;} .ttd-upload-label{font-size:12px;font-weight:600;color:#374151;} .ttd-upload-hint{font-size:10px;color:#9ca3af;margin-top:2px;}
-    .ttd-upload-status{font-size:11px;margin-top:5px;padding:5px 8px;border-radius:5px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;display:none;}
-    .ttd-upload-status.error{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
-    .ttd-page-nav{display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;}
-    .ttd-pnav-btn{background:none;border:1px solid #d1d5db;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;color:#374151;transition:all .15s;}
-    .ttd-pnav-btn:hover:not(:disabled){background:#e0f2fe;border-color:#7dd3fc;} .ttd-pnav-btn:disabled{opacity:.4;cursor:default;}
-    .ttd-pnav-info{font-size:12px;color:#374151;font-weight:500;min-width:90px;text-align:center;}
-    .ttd-pnav-add{font-size:11px;padding:3px 8px;border-radius:5px;background:#f1f5f9;border:1px solid #d1d5db;cursor:pointer;color:#374151;}
-    .ttd-pnav-add:hover{background:#dbeafe;}
-  
-  /* ── AI Status Badge ── */
-  #ttd-ai-status{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;margin:8px 10px 2px;transition:all .3s;}
-  #ttd-ai-status.st-ready{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;}
-  #ttd-ai-status.st-busy{background:#fefce8;border:1px solid #fde68a;color:#854d0e;}
-  #ttd-ai-status.st-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;}
-  #ttd-ai-status.st-working{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;}
-  /* ── Web Research panel ── */
-  .ttd-web-mode-btn{padding:5px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer;font-size:11.5px;font-weight:600;color:#374151;transition:all .2s;}
-  .ttd-web-mode-btn.active{background:#1d4ed8;border-color:#1d4ed8;color:#fff;}
-  #ttd-web-status{margin-top:8px;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.5;}
-  #ttd-web-url,#ttd-web-query{width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;outline:none;font-family:inherit;}
-  #ttd-web-url:focus,#ttd-web-query:focus{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.15);}
-  </style>
-  </head>
-  <body class="aqs-full-page-body">
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text &#8594; Docs | XZily AI</title>
+<meta name="theme-color" content="#0891b2">
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="manifest" href="manifest.json">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* ── Reset & base ─────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:#e8edf3;overflow:hidden;height:100vh;}
 
-  <!-- ══ SIDEBAR ══ -->
-  <button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-  </button>
-  <div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
-  <nav class="aqs-sidebar" id="aqs-sidebar">
-    <div class="aqs-sidebar-logo">
-      <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
-      <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
+/* ══════════════════════════════════════════════════════════════
+   MODE SELECTION OVERLAY
+══════════════════════════════════════════════════════════════ */
+.ttd-mode-overlay{
+  position:fixed;inset:0;z-index:500;
+  background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:20px;overflow-y:auto;
+}
+.ttd-mode-overlay.hidden{display:none;}
+.ttd-mode-header{text-align:center;margin-bottom:32px;}
+.ttd-mode-brand{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;}
+.ttd-mode-brand-icon{
+  width:44px;height:44px;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  border-radius:12px;display:flex;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(99,102,241,.5);
+}
+.ttd-mode-brand-name{font-size:1.4rem;font-weight:700;color:#f1f5f9;}
+.ttd-mode-title-main{font-size:1.7rem;font-weight:800;color:#fff;letter-spacing:-.02em;line-height:1.2;}
+.ttd-mode-subtitle{font-size:0.95rem;color:#94a3b8;margin-top:8px;}
+.ttd-mode-cards{
+  display:flex;gap:18px;flex-wrap:wrap;justify-content:center;
+  max-width:960px;width:100%;
+}
+.ttd-mode-card{
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(255,255,255,0.12);
+  border-radius:18px;padding:30px 24px;cursor:pointer;
+  width:260px;max-width:100%;text-align:center;
+  transition:all .22s cubic-bezier(.4,0,.2,1);
+  color:#fff;position:relative;overflow:hidden;
+}
+.ttd-mode-card::before{
+  content:'';position:absolute;inset:0;opacity:0;
+  background:linear-gradient(135deg,rgba(99,102,241,.25),rgba(139,92,246,.15));
+  transition:opacity .22s;border-radius:18px;
+}
+.ttd-mode-card:hover{border-color:rgba(99,102,241,.6);transform:translateY(-3px);box-shadow:0 12px 32px rgba(0,0,0,.3);}
+.ttd-mode-card:hover::before{opacity:1;}
+.ttd-mode-card-icon{font-size:2.4rem;margin-bottom:14px;display:block;position:relative;}
+.ttd-mode-card-title{font-size:1.05rem;font-weight:700;margin-bottom:8px;position:relative;}
+.ttd-mode-card-desc{font-size:0.82rem;color:#94a3b8;line-height:1.55;position:relative;}
+.ttd-mode-card:hover .ttd-mode-card-desc{color:#c4c9d6;}
+.ttd-mode-skip{margin-top:28px;background:none;border:1px solid rgba(255,255,255,.15);
+  color:#64748b;border-radius:8px;padding:8px 20px;font-size:0.82rem;cursor:pointer;
+  transition:all .15s;}
+.ttd-mode-skip:hover{color:#94a3b8;border-color:rgba(255,255,255,.3);}
+
+/* ══════════════════════════════════════════════════════════════
+   TOP NAV BAR (replaces sidebar)
+══════════════════════════════════════════════════════════════ */
+.ttd-topbar{
+  position:fixed;top:0;left:0;right:0;z-index:300;height:52px;
+  background:rgba(9,7,37,0.97);
+  border-bottom:1px solid rgba(255,255,255,0.07);
+  display:flex;align-items:center;gap:10px;padding:0 12px;
+  backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+}
+.ttd-ham-btn{
+  width:38px;height:38px;flex-shrink:0;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  border:none;border-radius:10px;cursor:pointer;color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  box-shadow:0 2px 10px rgba(99,102,241,.45);transition:all .15s;
+}
+.ttd-ham-btn:hover{transform:scale(1.05);box-shadow:0 4px 14px rgba(99,102,241,.6);}
+.ttd-topbar-brand{display:flex;align-items:center;gap:8px;text-decoration:none;}
+.ttd-topbar-brand-icon{
+  width:28px;height:28px;background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.ttd-topbar-brand-name{font-size:.9rem;font-weight:700;color:#f1f5f9;white-space:nowrap;}
+.ttd-topbar-sep{width:1px;height:22px;background:rgba(255,255,255,.1);flex-shrink:0;}
+.ttd-topbar-page{font-size:.78rem;color:#64748b;white-space:nowrap;}
+.ttd-topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.ttd-mode-change-btn{
+  background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.35);
+  color:#818cf8;border-radius:7px;padding:5px 12px;font-size:.75rem;font-weight:600;
+  cursor:pointer;white-space:nowrap;transition:all .15s;
+}
+.ttd-mode-change-btn:hover{background:rgba(99,102,241,.25);color:#a5b4fc;}
+
+/* Nav Dropdown */
+.ttd-nav-dropdown{
+  position:fixed;top:52px;left:0;width:260px;
+  background:rgba(9,7,37,0.98);border-right:1px solid rgba(255,255,255,.07);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  padding:10px 8px;z-index:299;
+  transform:translateX(-100%);
+  transition:transform .25s cubic-bezier(.4,0,.2,1);
+  max-height:calc(100vh - 52px);overflow-y:auto;
+}
+.ttd-nav-dropdown.open{transform:translateX(0);}
+.ttd-nav-backdrop{
+  display:none;position:fixed;inset:0;top:52px;z-index:298;
+  background:rgba(0,0,0,.4);
+}
+.ttd-nav-backdrop.open{display:block;}
+.ttd-nav-install{
+  display:flex;align-items:center;gap:9px;margin:0 4px 12px;padding:11px 14px;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  border-radius:10px;color:#fff !important;font-size:.82rem;font-weight:600;
+  text-decoration:none !important;transition:all .2s;
+  box-shadow:0 4px 14px rgba(99,102,241,.4);
+}
+.ttd-nav-link{
+  display:flex;align-items:center;gap:10px;padding:9px 11px;border-radius:8px;
+  color:#94a3b8 !important;font-size:.87rem;font-weight:500;text-decoration:none !important;
+  transition:all .15s;border-left:3px solid transparent;margin-left:2px;
+}
+.ttd-nav-link:hover{background:rgba(255,255,255,.06);color:#e2e8f0 !important;}
+.ttd-nav-link.active{
+  background:rgba(20,184,166,.12);color:#2dd4bf !important;
+  border-left-color:#14b8a6;font-weight:600;
+}
+.ttd-nav-link-icon{width:18px;height:18px;flex-shrink:0;opacity:.85;
+  display:flex;align-items:center;justify-content:center;}
+
+/* ══════════════════════════════════════════════════════════════
+   MAIN LAYOUT (no sidebar offset)
+══════════════════════════════════════════════════════════════ */
+.ttd-main-wrap{
+  padding-top:52px;height:100vh;display:flex;flex-direction:column;overflow:hidden;
+}
+.ttd-layout{display:flex;flex:1;overflow:hidden;background:#e8edf3;}
+
+/* ── Settings panel ─────────────────────────────── */
+.ttd-settings{
+  width:280px;min-width:240px;background:#fff;
+  border-right:1px solid #e2e8f0;
+  display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;
+  flex-shrink:0;
+}
+.ttd-sec{padding:10px 12px;border-bottom:1px solid #f1f5f9;}
+.ttd-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:#6b7280;margin:0 0 7px;}
+.ttd-textarea{width:100%;min-height:130px;border:1px solid #e2e8f0;border-radius:6px;
+  padding:8px;font-size:12.5px;resize:vertical;font-family:inherit;box-sizing:border-box;
+  line-height:1.5;}
+.ttd-count{font-size:10px;color:#9ca3af;text-align:right;margin-top:2px;}
+.ttd-count.warn{color:#f59e0b;} .ttd-count.full{color:#ef4444;}
+.ttd-lbl{display:block;font-size:11px;color:#6b7280;margin-bottom:3px;}
+.ttd-sel{width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:5px 7px;
+  font-size:12px;background:#fff;margin-bottom:7px;box-sizing:border-box;}
+.ttd-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+.ttd-num{width:54px;border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:12px;}
+.ttd-btn-primary{width:100%;padding:9px;background:linear-gradient(135deg,#0891b2,#0e7490);
+  color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s;}
+.ttd-btn-primary:hover{opacity:.9;} .ttd-btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+.ttd-btn-secondary{width:100%;padding:8px;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;
+  border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;margin-top:5px;transition:background .2s;}
+.ttd-btn-secondary:hover{background:#e2e8f0;}
+
+/* Tabs */
+.ttd-tabs{display:flex;border-bottom:1px solid #e2e8f0;background:#f8fafc;flex-shrink:0;overflow-x:auto;scrollbar-width:none;}
+.ttd-tabs::-webkit-scrollbar{display:none;}
+.ttd-tab{flex:1;min-width:0;padding:9px 6px;font-size:10.5px;font-weight:600;border:none;
+  background:none;cursor:pointer;color:#64748b;border-bottom:2px solid transparent;
+  white-space:nowrap;transition:all .15s;}
+.ttd-tab.active{color:#0891b2;border-bottom-color:#0891b2;background:#fff;}
+.ttd-panel{display:none;flex:1;flex-direction:column;}
+.ttd-panel.active{display:flex;flex-direction:column;}
+
+/* Format options collapsible (for Write/Web panels) */
+.ttd-fmt-toggle{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9;
+  font-size:11px;font-weight:700;color:#374151;text-transform:uppercase;letter-spacing:.05em;
+  background:#f8fafc;user-select:none;
+}
+.ttd-fmt-toggle:hover{background:#f1f5f9;}
+.ttd-fmt-toggle-arrow{transition:transform .2s;color:#9ca3af;}
+.ttd-fmt-toggle.open .ttd-fmt-toggle-arrow{transform:rotate(180deg);}
+.ttd-fmt-body{display:none;border-bottom:1px solid #f1f5f9;}
+.ttd-fmt-body.open{display:block;}
+.ttd-fmt-inner{padding:8px 12px;}
+
+/* ── Editor area ─────────────────────────────── */
+.ttd-editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+/* ── Toolbar ─────────────────────────────────── */
+.ttd-toolbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:5px 10px;
+  display:flex;flex-wrap:wrap;gap:3px;align-items:center;flex-shrink:0;}
+.tb-btn{background:none;border:1px solid transparent;border-radius:4px;padding:3px 7px;
+  cursor:pointer;font-size:13px;color:#374151;display:inline-flex;align-items:center;
+  gap:3px;transition:background .12s;line-height:1.4;}
+.tb-btn:hover{background:#f1f5f9;border-color:#d1d5db;}
+.tb-btn.on{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;}
+.tb-sep{width:1px;height:22px;background:#e2e8f0;margin:0 3px;flex-shrink:0;}
+.tb-sel{border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11.5px;
+  background:#fff;color:#374151;cursor:pointer;max-width:120px;}
+.tb-num{border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11.5px;
+  width:48px;background:#fff;}
+.tb-col-wrap{display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;}
+.tb-col-wrap input[type=color]{width:26px;height:24px;padding:1px 2px;border:1px solid #d1d5db;
+  border-radius:4px;cursor:pointer;}
+/* ── Pages area (stacked vertically) ──────────── */
+.ttd-pages-area{flex:1;overflow-y:auto;overflow-x:auto;background:#d1d5db;
+  padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px;}
+/* ── Page ────────────────────────────────────── */
+.ttd-page{background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.18);border-radius:2px;flex-shrink:0;}
+.ttd-page.sz-a4    {width:794px;min-height:1123px;}
+.ttd-page.sz-letter{width:816px;min-height:1056px;}
+.ttd-page.sz-legal {width:816px;min-height:1344px;}
+/* ── Editor inside page ──────────────────────── */
+#ttd-editor,.ttd-page-editor{
+  min-height:700px;outline:none;
+  font-family:var(--ttd-bfont,'Georgia, serif');
+  font-size:var(--ttd-bsize,12pt);
+  line-height:var(--ttd-lh,1.6);
+  color:#1a1a1a;word-break:break-word;
+}
+#ttd-editor:empty:before,.ttd-page-editor:empty:before{content:attr(data-placeholder);color:#9ca3af;font-style:italic;}
+.ttd-page-editor h1,.ttd-page-editor h2,.ttd-page-editor h3,.ttd-page-editor h4,
+#ttd-editor h1,#ttd-editor h2,#ttd-editor h3,#ttd-editor h4{font-family:var(--ttd-hfont,'Georgia, serif');}
+#ttd-editor h1,.ttd-page-editor h1{font-size:var(--ttd-h1,24pt);font-weight:700;margin:.7em 0 .3em;line-height:1.2;}
+#ttd-editor h2,.ttd-page-editor h2{font-size:var(--ttd-h2,18pt);font-weight:600;margin:.6em 0 .25em;line-height:1.25;}
+#ttd-editor h3,.ttd-page-editor h3{font-size:var(--ttd-h3,14pt);font-weight:600;margin:.5em 0 .2em;line-height:1.3;}
+#ttd-editor h4,.ttd-page-editor h4{font-size:var(--ttd-h4,12pt);font-weight:600;margin:.5em 0 .2em;}
+#ttd-editor p,.ttd-page-editor p{margin:0 0 .55em;}
+#ttd-editor ul,#ttd-editor ol,.ttd-page-editor ul,.ttd-page-editor ol{margin:.3em 0 .55em;padding-left:1.8em;}
+#ttd-editor li,.ttd-page-editor li{margin-bottom:.2em;}
+#ttd-editor blockquote,.ttd-page-editor blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;background:#f0f9ff;}
+#ttd-editor table,.ttd-page-editor table{border-collapse:collapse;width:100%;margin:.5em 0;}
+#ttd-editor td,#ttd-editor th,.ttd-page-editor td,.ttd-page-editor th{border:1px solid #d1d5db;padding:6px 10px;}
+#ttd-editor th,.ttd-page-editor th{background:#f8fafc;font-weight:600;}
+/* ── Download bar ────────────────────────────── */
+.ttd-dl-bar{background:#fff;border-top:1px solid #e2e8f0;padding:7px 10px;
+  display:flex;flex-wrap:wrap;gap:5px;align-items:center;flex-shrink:0;}
+.ttd-dl-bar-label{font-size:11px;font-weight:700;color:#6b7280;margin-right:2px;}
+.dl-btn{font-size:11.5px;padding:4px 9px;border-radius:5px;border:1px solid #d1d5db;
+  background:#f9fafb;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+  transition:all .15s;color:#374151;font-weight:500;}
+.dl-btn:hover{background:#e0f2fe;border-color:#7dd3fc;color:#0369a1;}
+.dl-btn:disabled{opacity:.5;cursor:wait;}
+/* ── Stats ───────────────────────────────────── */
+.ttd-stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+.ttd-stat{background:#f0f9ff;border-radius:5px;padding:3px 7px;font-size:11px;color:#0369a1;font-weight:600;}
+/* ── Print ───────────────────────────────────── */
+@media print{
+  body>*{display:none!important;}
+  .ttd-print-root{display:block!important;position:fixed!important;inset:0;background:#fff;z-index:99999;overflow:visible;}
+  .ttd-page,.ttd-page-item{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;outline:none!important;}
+  .ttd-page-editor,#ttd-editor{min-height:0!important;}
+  .ttd-page-footer{display:none!important;}
+}
+.ttd-print-root{display:none;}
+/* ── Spinner ──────────────────────────────────── */
+@keyframes ttd-spin{to{transform:rotate(360deg);}}
+.ttd-spin{display:inline-block;animation:ttd-spin .8s linear infinite;}
+/* ── AI Writer panel ─────────────────────────── */
+.ttd-write-area{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+.ttd-prompt-ta{width:100%;min-height:110px;border:1.5px solid #e2e8f0;border-radius:7px;
+  padding:9px;font-size:12.5px;resize:vertical;font-family:inherit;box-sizing:border-box;
+  line-height:1.55;background:#fafafa;color:#1e293b;}
+.ttd-prompt-ta:focus{border-color:#0891b2;outline:none;background:#fff;box-shadow:0 0 0 3px rgba(8,145,178,.1);}
+.ttd-write-hint{font-size:10.5px;color:#6b7280;background:#f8fafc;border-radius:5px;
+  padding:6px 9px;border-left:3px solid #0891b2;line-height:1.55;}
+/* ── History panel ───────────────────────────── */
+.ttd-hist-list{display:flex;flex-direction:column;gap:6px;padding:10px 12px;}
+.ttd-hist-empty{text-align:center;padding:32px 12px;color:#9ca3af;font-size:12px;line-height:1.6;}
+.ttd-hist-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
+  padding:9px 10px;cursor:pointer;transition:all .15s;position:relative;}
+.ttd-hist-item:hover{background:#e0f2fe;border-color:#7dd3fc;}
+.ttd-hist-title{font-size:12.5px;font-weight:600;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:22px;}
+.ttd-hist-meta{font-size:10px;color:#6b7280;margin-top:3px;}
+.ttd-hist-del{position:absolute;top:8px;right:8px;background:none;border:none;color:#94a3b8;cursor:pointer;font-size:14px;line-height:1;padding:0;}
+.ttd-hist-del:hover{color:#ef4444;}
+.ttd-hist-clear{width:100%;margin-top:4px;padding:6px;font-size:11px;background:none;border:1px solid #fca5a5;color:#ef4444;border-radius:6px;cursor:pointer;}
+.ttd-hist-clear:hover{background:#fef2f2;}
+.ttd-upload-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;margin-bottom:6px;}
+.ttd-upload-zone:hover,.ttd-upload-zone.drag{border-color:#0891b2;background:#e0f2fe;}
+.ttd-upload-icon{font-size:22px;margin-bottom:4px;}
+.ttd-upload-label{font-size:12px;font-weight:600;color:#374151;}
+.ttd-upload-hint{font-size:10px;color:#9ca3af;margin-top:2px;}
+.ttd-upload-status{font-size:11px;margin-top:5px;padding:5px 8px;border-radius:5px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;display:none;}
+.ttd-upload-status.error{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
+.ttd-page-nav{display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;}
+.ttd-pnav-btn{background:none;border:1px solid #d1d5db;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;color:#374151;transition:all .15s;}
+.ttd-pnav-btn:hover:not(:disabled){background:#e0f2fe;border-color:#7dd3fc;}
+.ttd-pnav-btn:disabled{opacity:.4;cursor:default;}
+.ttd-pnav-info{font-size:12px;color:#374151;font-weight:500;min-width:90px;text-align:center;}
+.ttd-pnav-add{font-size:11px;padding:3px 8px;border-radius:5px;background:#f1f5f9;border:1px solid #d1d5db;cursor:pointer;color:#374151;}
+.ttd-pnav-add:hover{background:#dbeafe;}
+/* ── AI Status Badge ── */
+#ttd-ai-status{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:8px;font-size:12px;font-weight:600;margin:8px 10px 2px;transition:all .3s;}
+#ttd-ai-status.st-ready{background:#f0fdf4;border:1px solid #bbf7d0;color:#15803d;}
+#ttd-ai-status.st-busy{background:#fefce8;border:1px solid #fde68a;color:#854d0e;}
+#ttd-ai-status.st-error{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;}
+#ttd-ai-status.st-working{background:#eff6ff;border:1px solid #bfdbfe;color:#1d4ed8;}
+/* ── Web Research panel ── */
+.ttd-web-mode-btn{padding:5px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer;font-size:11.5px;font-weight:600;color:#374151;transition:all .2s;}
+.ttd-web-mode-btn.active{background:#1d4ed8;border-color:#1d4ed8;color:#fff;}
+#ttd-web-status{margin-top:8px;padding:8px 10px;border-radius:6px;font-size:12px;line-height:1.5;}
+#ttd-web-url,#ttd-web-query{width:100%;box-sizing:border-box;font-size:12px;padding:7px 10px;border:1px solid #d1d5db;border-radius:6px;outline:none;font-family:inherit;}
+#ttd-web-url:focus,#ttd-web-query:focus{border-color:#6366f1;box-shadow:0 0 0 2px rgba(99,102,241,.15);}
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE SETTINGS TOGGLE & OVERLAY
+══════════════════════════════════════════════════════════════ */
+.ttd-mob-overlay{
+  display:none;position:fixed;inset:0;z-index:199;
+  background:rgba(0,0,0,.4);top:52px;
+}
+.ttd-mob-overlay.visible{display:block;}
+.ttd-mob-toggle{
+  display:none;
+  position:fixed;bottom:16px;right:16px;z-index:198;
+  background:linear-gradient(135deg,#0891b2,#0e7490);
+  color:#fff;border:none;border-radius:24px;
+  padding:11px 18px;font-size:13px;font-weight:600;
+  box-shadow:0 4px 18px rgba(8,145,178,.45);cursor:pointer;
+  align-items:center;gap:7px;
+  -webkit-tap-highlight-color:transparent;
+  transition:all .2s;
+}
+.ttd-mob-toggle:hover{transform:translateY(-2px);box-shadow:0 6px 22px rgba(8,145,178,.55);}
+.ttd-mob-toggle.panel-open{background:linear-gradient(135deg,#64748b,#475569);}
+.ttd-mob-handle{
+  display:none;justify-content:center;padding:8px 0 4px;
+  cursor:pointer;touch-action:none;flex-shrink:0;
+}
+.ttd-mob-handle::before{content:'';width:36px;height:4px;border-radius:2px;background:#d1d5db;}
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — MOBILE
+══════════════════════════════════════════════════════════════ */
+@media(max-width:768px){
+  .ttd-main-wrap{padding-top:52px;}
+
+  /* Settings panel slides up from bottom */
+  .ttd-settings{
+    position:fixed;bottom:0;left:0;right:0;z-index:200;
+    width:100%;min-width:0;max-height:75vh;
+    border-radius:16px 16px 0 0;
+    box-shadow:0 -4px 28px rgba(0,0,0,.2);
+    transform:translateY(100%);
+    transition:transform .28s cubic-bezier(.4,0,.2,1);
+    overflow-y:auto;background:#fff;border-right:none;
+  }
+  .ttd-settings.mob-open{transform:translateY(0);}
+  .ttd-mob-handle{display:flex;}
+  .ttd-mob-toggle{display:flex;}
+  .ttd-mob-overlay.visible{display:block;}
+
+  /* Editor area takes all space */
+  .ttd-editor-area{flex:1;min-height:0;height:100%;overflow:hidden;display:flex;flex-direction:column;}
+  .ttd-pages-area{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px;}
+  .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal{width:100%!important;min-height:auto;padding:14px!important;box-shadow:0 2px 8px rgba(0,0,0,.12);border-radius:4px;}
+
+  /* Toolbar — horizontal scroll */
+  .ttd-toolbar{overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;padding:5px 8px;gap:3px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .ttd-toolbar::-webkit-scrollbar{display:none;}
+  .tb-btn,.ttd-toolbar button{min-width:34px;height:34px;font-size:14px;padding:0 7px;flex-shrink:0;}
+  .tb-sel{height:34px;font-size:12px;flex-shrink:0;}
+  .tb-sep{flex-shrink:0;}
+
+  /* Tab bar */
+  .ttd-tabs{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+  .ttd-tabs::-webkit-scrollbar{display:none;}
+  .ttd-tab{font-size:10px;padding:8px 8px;white-space:nowrap;flex-shrink:0;}
+
+  /* Page nav */
+  .ttd-page-nav{padding:5px 8px;gap:5px;}
+  .ttd-pnav-btn{padding:5px 12px;font-size:12px;}
+  .ttd-pnav-info{font-size:11px;}
+  .ttd-pnav-add{font-size:11px;padding:5px 8px;}
+
+  /* Download bar wraps nicely */
+  .ttd-dl-bar{padding:6px 8px;gap:4px;}
+  .dl-btn{font-size:11px;padding:4px 7px;}
+
+  /* Mode cards stack on mobile */
+  .ttd-mode-cards{flex-direction:column;align-items:center;gap:14px;}
+  .ttd-mode-card{width:100%;max-width:360px;padding:22px 20px;}
+  .ttd-mode-card-icon{font-size:2rem;}
+
+  .ttd-topbar-brand-name{display:none;}
+  .ttd-topbar-sep{display:none;}
+  .ttd-topbar-page{display:none;}
+}
+
+@media(min-width:769px){
+  .ttd-mob-toggle{display:none!important;}
+  .ttd-mob-overlay{display:none!important;}
+  .ttd-mob-handle{display:none!important;}
+  .ttd-settings{transform:none!important;}
+}
+@media(max-width:420px){
+  .ttd-tab{font-size:9.5px;padding:7px 6px;}
+  .ttd-mode-title-main{font-size:1.4rem;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ MODE SELECTION OVERLAY ══ -->
+<div class="ttd-mode-overlay" id="ttd-mode-overlay">
+  <div class="ttd-mode-header">
+    <div class="ttd-mode-brand">
+      <div class="ttd-mode-brand-icon">
+        <svg width="24" height="24" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg>
+      </div>
+      <span class="ttd-mode-brand-name">xzily AI</span>
     </div>
-    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
-    <nav class="aqs-sidebar-nav">
-      <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
-      <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio</a>
-      <a href="image-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
-      <a href="text-to-docs.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Text &#8594; Docs</a>
-      <a href="docs-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
-      <a href="study.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study</a>
-      <a href="tts.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech</a>
-      <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
-      <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/></svg></span>Challenge</a>
-    </nav>
-  </nav>
+    <div class="ttd-mode-title-main">Text &#8594; Docs</div>
+    <div class="ttd-mode-subtitle">Choose how you want to create your document</div>
+  </div>
+  <div class="ttd-mode-cards">
+    <div class="ttd-mode-card" onclick="ttdSelectMode('format')">
+      <span class="ttd-mode-card-icon">&#10024;</span>
+      <div class="ttd-mode-card-title">AI Formatting</div>
+      <div class="ttd-mode-card-desc">Paste your raw text and let AI structure it into a beautifully formatted professional document</div>
+    </div>
+    <div class="ttd-mode-card" onclick="ttdSelectMode('write')">
+      <span class="ttd-mode-card-icon">&#9997;&#65039;</span>
+      <div class="ttd-mode-card-title">AI Generator</div>
+      <div class="ttd-mode-card-desc">Describe a topic and AI writes a complete, well-structured document for you from scratch</div>
+    </div>
+    <div class="ttd-mode-card" onclick="ttdSelectMode('web')">
+      <span class="ttd-mode-card-icon">&#127760;</span>
+      <div class="ttd-mode-card-title">Web Research</div>
+      <div class="ttd-mode-card-desc">Fetch any webpage or search the web and AI turns the content into a formatted document</div>
+    </div>
+  </div>
+  <button class="ttd-mode-skip" onclick="ttdCloseModeOverlay()">Skip &#8594; Open Editor</button>
+</div>
 
-  <!-- ══ MAIN LAYOUT ══ -->
-  <div class="aqs-sidebar-body">
-  <div class="ttd-layout">
+<!-- ══ TOP NAV BAR ══ -->
+<div class="ttd-topbar" id="ttd-topbar">
+  <button class="ttd-ham-btn" id="ttd-ham-btn" onclick="ttdToggleNav()" aria-label="Menu">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+  </button>
+  <div class="ttd-topbar-brand">
+    <div class="ttd-topbar-brand-icon"><svg width="16" height="16" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="5" fill="#6366f1"/></svg></div>
+    <span class="ttd-topbar-brand-name">xzily AI</span>
+  </div>
+  <div class="ttd-topbar-sep"></div>
+  <span class="ttd-topbar-page">Text &#8594; Docs</span>
+  <div class="ttd-topbar-right">
+    <button class="ttd-mode-change-btn" onclick="ttdShowModeOverlay()">&#127381; Change Mode</button>
+  </div>
+</div>
 
-    <!-- ══ LEFT SETTINGS PANEL ══ -->
-    <div class="ttd-settings">
+<!-- Nav Dropdown -->
+<div class="ttd-nav-dropdown" id="ttd-nav-dropdown">
+  <a href="#" class="ttd-nav-install" id="aqs-sidebar-pwa-btn">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    How to Install
+  </a>
+  <a href="index.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
+  <a href="studio.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio</a>
+  <a href="image-gen.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
+  <a href="text-to-docs.html" class="ttd-nav-link active">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Text &#8594; Docs</a>
+  <a href="docs-gen.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
+  <a href="study.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study</a>
+  <a href="tts.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech</a>
+  <a href="create-quiz.html" class="ttd-nav-link">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
+  <a href="challenge.html" class="ttd-nav-link" style="color:#e11d48 !important;font-weight:700;">
+    <span class="ttd-nav-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/></svg></span>Challenge</a>
+</div>
+<div class="ttd-nav-backdrop" id="ttd-nav-backdrop" onclick="ttdCloseNav()"></div>
+
+<!-- ══ MOBILE SETTINGS OVERLAY ══ -->
+<div class="ttd-mob-overlay" id="ttd-mob-overlay" onclick="ttdMobClose()"></div>
+
+<!-- ══ MAIN LAYOUT ══ -->
+<div class="ttd-main-wrap">
+<div class="ttd-layout">
+
+  <!-- ══ LEFT SETTINGS PANEL ══ -->
+  <div class="ttd-settings" id="ttd-settings">
+    <!-- Mobile drag handle -->
+    <div class="ttd-mob-handle" onclick="ttdMobClose()"></div>
+
     <!-- Tab bar -->
     <div class="ttd-tabs">
-      <button class="ttd-tab active" id="ttd-tab-format" onclick="ttdSwitchTab('format')">&#128196; Format Text</button>
-      <button class="ttd-tab" id="ttd-tab-write" onclick="ttdSwitchTab('write')">&#9997;&#65039; AI Writer</button>
-      <button class="ttd-tab" id="ttd-tab-history" onclick="ttdSwitchTab('history')">&#128196; History</button>
+      <button class="ttd-tab active" id="ttd-tab-format" onclick="ttdSwitchTab('format')">&#10024; Format</button>
+      <button class="ttd-tab" id="ttd-tab-write" onclick="ttdSwitchTab('write')">&#9997;&#65039; AI Write</button>
       <button class="ttd-tab" id="ttd-tab-web" onclick="ttdSwitchTab('web')">&#127760; Web</button>
+      <button class="ttd-tab" id="ttd-tab-history" onclick="ttdSwitchTab('history')">&#128196; History</button>
     </div>
 
-    <!-- FORMAT PANEL (existing) -->
+    <!-- ══ FORMAT PANEL ══ -->
     <div class="ttd-panel active" id="ttd-panel-format">
-  
+
+      <!-- AI Status -->
+      <div id="ttd-ai-status" class="st-ready">
+        <span id="ttd-ai-status-icon">&#9989;</span>
+        <span id="ttd-ai-status-text">Groq AI Ready</span>
+      </div>
 
       <!-- Source text -->
       <div class="ttd-sec">
@@ -267,25 +526,25 @@
       </div>
 
       <!-- File Upload -->
-        <div class="ttd-sec">
-          <div class="ttd-sec-title">&#128193; Upload File</div>
-          <div class="ttd-upload-zone" id="ttd-upload-zone"
-               onclick="document.getElementById('ttd-file-input').click()"
-               ondragover="event.preventDefault();this.classList.add('drag')"
-               ondragleave="this.classList.remove('drag')"
-               ondrop="this.classList.remove('drag');ttdHandleFileDrop(event)">
-            <input type="file" id="ttd-file-input" accept=".txt,.docx,.pdf,.html,.htm"
-                   style="display:none" onchange="ttdHandleFile(this.files[0]);this.value=''">
-            <div class="ttd-upload-icon">&#128196;</div>
-            <div class="ttd-upload-label">Click or drag &amp; drop</div>
-            <div class="ttd-upload-hint">TXT &nbsp;&#183;&nbsp; DOCX &nbsp;&#183;&nbsp; PDF &nbsp;&#183;&nbsp; HTML</div>
-          </div>
-          <div class="ttd-upload-status" id="ttd-upload-status"></div>
-        </div>
-
-        <!-- AI settings -->
       <div class="ttd-sec">
-        <div class="ttd-sec-title">&#10024; AI Formatting</div>
+        <div class="ttd-sec-title">&#128193; Upload File</div>
+        <div class="ttd-upload-zone" id="ttd-upload-zone"
+             onclick="document.getElementById('ttd-file-input').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="this.classList.remove('drag');ttdHandleFileDrop(event)">
+          <input type="file" id="ttd-file-input" accept=".txt,.docx,.pdf,.html,.htm"
+                 style="display:none" onchange="ttdHandleFile(this.files[0]);this.value=''">
+          <div class="ttd-upload-icon">&#128196;</div>
+          <div class="ttd-upload-label">Click or drag &amp; drop</div>
+          <div class="ttd-upload-hint">TXT &nbsp;&#183;&nbsp; DOCX &nbsp;&#183;&nbsp; PDF &nbsp;&#183;&nbsp; HTML</div>
+        </div>
+        <div class="ttd-upload-status" id="ttd-upload-status"></div>
+      </div>
+
+      <!-- AI formatting options -->
+      <div class="ttd-sec">
+        <div class="ttd-sec-title">&#10024; AI Formatting Options</div>
         <label class="ttd-lbl">Writing Tone</label>
         <select id="ttd-tone" class="ttd-sel">
           <option value="professional">Professional</option>
@@ -311,7 +570,7 @@
         <div id="ttd-ai-hint" style="display:none;margin-top:8px;padding:9px 11px;border-radius:7px;font-size:12px;line-height:1.55;"></div>
       </div>
 
-      <!-- Document style -->
+      <!-- Document Style -->
       <div class="ttd-sec">
         <div class="ttd-sec-title">&#127912; Document Style</div>
         <label class="ttd-lbl">Heading Font</label>
@@ -333,8 +592,18 @@
           <option value="Verdana, sans-serif">Verdana</option>
         </select>
         <label class="ttd-lbl">Heading / Body Sizes (pt)</label>
-        <div class="ttd-row"><span class="ttd-lbl" style="margin:0;min-width:30px;">H1</span><input type="number" id="ttd-h1" value="24" min="14" max="48" class="ttd-num" onchange="ttdApplyStyle()"><span class="ttd-lbl" style="margin:0 8px 0 2px;">H2</span><input type="number" id="ttd-h2" value="18" min="10" max="36" class="ttd-num" onchange="ttdApplyStyle()"></div>
-        <div class="ttd-row"><span class="ttd-lbl" style="margin:0;min-width:30px;">H3</span><input type="number" id="ttd-h3" value="14" min="8" max="28" class="ttd-num" onchange="ttdApplyStyle()"><span class="ttd-lbl" style="margin:0 8px 0 2px;">Body</span><input type="number" id="ttd-body" value="12" min="8" max="18" class="ttd-num" onchange="ttdApplyStyle()"></div>
+        <div class="ttd-row">
+          <span class="ttd-lbl" style="margin:0;min-width:28px;">H1</span>
+          <input type="number" id="ttd-h1" value="24" min="14" max="48" class="ttd-num" onchange="ttdApplyStyle()">
+          <span class="ttd-lbl" style="margin:0 6px 0 2px;">H2</span>
+          <input type="number" id="ttd-h2" value="18" min="10" max="36" class="ttd-num" onchange="ttdApplyStyle()">
+        </div>
+        <div class="ttd-row">
+          <span class="ttd-lbl" style="margin:0;min-width:28px;">H3</span>
+          <input type="number" id="ttd-h3" value="14" min="8" max="28" class="ttd-num" onchange="ttdApplyStyle()">
+          <span class="ttd-lbl" style="margin:0 6px 0 2px;">Body</span>
+          <input type="number" id="ttd-body" value="12" min="8" max="18" class="ttd-num" onchange="ttdApplyStyle()">
+        </div>
         <label class="ttd-lbl">Paper Size</label>
         <select id="ttd-paper" class="ttd-sel" onchange="ttdSetPaper()">
           <option value="a4">A4 (210&#215;297 mm)</option>
@@ -342,7 +611,10 @@
           <option value="legal">Legal (8.5&#215;14 in)</option>
         </select>
         <label class="ttd-lbl">Margins (mm)</label>
-        <div class="ttd-row"><input type="number" id="ttd-margin" value="20" min="5" max="50" class="ttd-num" onchange="ttdApplyStyle()"><span class="ttd-lbl" style="margin:0 0 0 4px;">all sides</span></div>
+        <div class="ttd-row">
+          <input type="number" id="ttd-margin" value="20" min="5" max="50" class="ttd-num" onchange="ttdApplyStyle()">
+          <span class="ttd-lbl" style="margin:0 0 0 4px;">all sides</span>
+        </div>
         <label class="ttd-lbl">Line Spacing</label>
         <select id="ttd-lh" class="ttd-sel" onchange="ttdApplyStyle()">
           <option value="1.3">Single (1.3)</option>
@@ -357,14 +629,14 @@
         <div class="ttd-stat-row" id="ttd-stats"></div>
       </div>
 
-      </div>
+    </div><!-- /ttd-panel-format -->
 
-    <!-- AI WRITE PANEL (new) -->
+    <!-- ══ AI WRITE PANEL ══ -->
     <div class="ttd-panel" id="ttd-panel-write">
       <div class="ttd-write-area">
         <div class="ttd-sec-title" style="padding:10px 0 6px;">&#9997;&#65039; AI Document Writer</div>
-        <label class="ttd-lbl" style="font-size:12px;color:#374151;margin-bottom:4px;font-weight:600;">What do you want the AI to write?</label>
-        <textarea id="ttd-prompt" class="ttd-prompt-ta" placeholder="Example: Write a professional report about the benefits of renewable energy for a business audience. Include an introduction, 3 main sections with sub-points, and a conclusion."></textarea>
+        <label class="ttd-lbl" style="font-size:12px;color:#374151;font-weight:600;">What do you want the AI to write?</label>
+        <textarea id="ttd-prompt" class="ttd-prompt-ta" placeholder="Example: Write a professional report about the benefits of renewable energy for a business audience. Include an introduction, 3 main sections, and a conclusion."></textarea>
         <div class="ttd-write-hint">&#128161; Be specific — mention the topic, purpose, audience, and key points you want covered.</div>
 
         <label class="ttd-lbl">Document Length</label>
@@ -398,152 +670,393 @@
         </select>
 
         <button class="ttd-btn-primary" id="ttd-write-btn" onclick="ttdAIWrite()">&#9997;&#65039; Write with AI</button>
+      </div>
 
-        <div style="margin-top:12px;padding:8px;background:#f0f9ff;border-radius:6px;font-size:11px;color:#0369a1;line-height:1.6;">
-          <strong>&#128270; Tip:</strong> After AI writes the document, switch to the <strong>Format Text</strong> tab to adjust fonts, sizes, and styles before downloading or printing.
+      <!-- Format Options collapsible -->
+      <div class="ttd-fmt-toggle" id="ttd-write-fmt-toggle" onclick="ttdToggleFmt('write')">
+        <span>&#127912; Document Format Options</span>
+        <span class="ttd-fmt-toggle-arrow">&#9660;</span>
+      </div>
+      <div class="ttd-fmt-body" id="ttd-write-fmt-body">
+        <div class="ttd-fmt-inner">
+          <label class="ttd-lbl">Number of Pages</label>
+          <select id="ttd-w-pages" class="ttd-sel">
+            <option value="auto" selected>Auto (based on length)</option>
+            <option value="1">1 page</option>
+            <option value="2">2 pages</option>
+            <option value="3">3 pages</option>
+            <option value="4">4 pages</option>
+            <option value="5">5 pages</option>
+            <option value="6">6 pages</option>
+            <option value="8">8 pages</option>
+            <option value="10">10 pages</option>
+          </select>
+          <label class="ttd-lbl">Heading Font</label>
+          <select id="ttd-w-hfont" class="ttd-sel">
+            <option value="Georgia, serif">Georgia (Classic)</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Inter, sans-serif">Inter (Modern)</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+          </select>
+          <label class="ttd-lbl">Body Font</label>
+          <select id="ttd-w-bfont" class="ttd-sel">
+            <option value="Georgia, serif">Georgia (Classic)</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Inter, sans-serif">Inter (Modern)</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Courier New', monospace">Courier New</option>
+          </select>
+          <label class="ttd-lbl">Heading / Body Sizes (pt)</label>
+          <div class="ttd-row">
+            <span class="ttd-lbl" style="margin:0;min-width:28px;">H1</span>
+            <input type="number" id="ttd-w-h1" value="24" min="14" max="48" class="ttd-num">
+            <span class="ttd-lbl" style="margin:0 6px 0 2px;">H2</span>
+            <input type="number" id="ttd-w-h2" value="18" min="10" max="36" class="ttd-num">
+          </div>
+          <div class="ttd-row">
+            <span class="ttd-lbl" style="margin:0;min-width:28px;">H3</span>
+            <input type="number" id="ttd-w-h3" value="14" min="8" max="28" class="ttd-num">
+            <span class="ttd-lbl" style="margin:0 6px 0 2px;">Body</span>
+            <input type="number" id="ttd-w-body" value="12" min="8" max="18" class="ttd-num">
+          </div>
+          <label class="ttd-lbl">Margins (mm)</label>
+          <div class="ttd-row">
+            <input type="number" id="ttd-w-margin" value="20" min="5" max="50" class="ttd-num">
+            <span class="ttd-lbl" style="margin:0 0 0 4px;">all sides</span>
+          </div>
+          <label class="ttd-lbl">Line Spacing</label>
+          <select id="ttd-w-lh" class="ttd-sel">
+            <option value="1.3">Single (1.3)</option>
+            <option value="1.6" selected>Normal (1.6)</option>
+            <option value="2.0">Double (2.0)</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="padding:10px 12px 16px;">
+        <div style="padding:8px;background:#f0f9ff;border-radius:6px;font-size:11px;color:#0369a1;line-height:1.6;">
+          <strong>&#128270; Tip:</strong> After AI writes your document, use the <strong>Format</strong> tab to adjust styles manually before downloading.
         </div>
       </div>
     </div><!-- /ttd-panel-write -->
 
-      <!-- HISTORY PANEL -->
-      <div class="ttd-panel" id="ttd-panel-history">
-        <div class="ttd-hist-list" id="ttd-hist-list">
-          <div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to save it here automatically.</div>
+    <!-- ══ WEB RESEARCH PANEL ══ -->
+    <div class="ttd-panel" id="ttd-panel-web">
+      <div class="ttd-write-area">
+        <div class="ttd-sec-title" style="padding:10px 0 6px;">&#127760; Web Research</div>
+        <label class="ttd-lbl" style="font-size:12px;color:#374151;font-weight:600;">Mode</label>
+        <div style="display:flex;gap:6px;margin-bottom:10px;">
+          <button id="ttd-web-mode-url" class="ttd-web-mode-btn active" onclick="ttdWebModeSwitch('url')">&#128279; URL</button>
+          <button id="ttd-web-mode-search" class="ttd-web-mode-btn" onclick="ttdWebModeSwitch('search')">&#128269; Search</button>
         </div>
-        <div style="padding:0 12px 10px;">
-          <button class="ttd-hist-clear" onclick="ttdClearHistory()">&#128465; Clear All History</button>
+        <div id="ttd-web-url-area">
+          <label class="ttd-lbl">Website URL</label>
+          <input type="url" id="ttd-web-url" placeholder="https://example.com/article">
         </div>
-      </div><!-- /ttd-panel-history -->
+        <div id="ttd-web-search-area" style="display:none;">
+          <label class="ttd-lbl">Search Query</label>
+          <input type="text" id="ttd-web-query" placeholder="e.g. benefits of solar energy 2024">
+        </div>
+        <label class="ttd-lbl" style="margin-top:8px;">What do you want from it?</label>
+        <textarea id="ttd-web-instruction" class="ttd-prompt-ta" style="min-height:80px;" placeholder="e.g. Summarise the key points into a professional report with headings&#10;e.g. Extract all prices and make a comparison table"></textarea>
+        <button class="ttd-btn-primary" id="ttd-web-btn" onclick="ttdWebResearch()" style="margin-top:10px;">&#127760; Fetch &amp; Write to Document</button>
+        <div id="ttd-web-status" style="display:none;"></div>
+      </div>
 
-      <!-- WEB RESEARCH PANEL -->
-      <div class="ttd-panel" id="ttd-panel-web">
-        <div class="ttd-write-area">
-          <div class="ttd-sec-title" style="padding:10px 0 6px;">&#127760; Web Research</div>
-          <label class="ttd-lbl" style="font-size:12px;color:#374151;margin-bottom:6px;font-weight:600;">Mode</label>
-          <div style="display:flex;gap:6px;margin-bottom:10px;">
-            <button id="ttd-web-mode-url" class="ttd-web-mode-btn active" onclick="ttdWebModeSwitch('url')">&#128279; URL</button>
-            <button id="ttd-web-mode-search" class="ttd-web-mode-btn" onclick="ttdWebModeSwitch('search')">&#128269; Search</button>
+      <!-- Format Options collapsible -->
+      <div class="ttd-fmt-toggle" id="ttd-web-fmt-toggle" onclick="ttdToggleFmt('web')">
+        <span>&#127912; Document Format Options</span>
+        <span class="ttd-fmt-toggle-arrow">&#9660;</span>
+      </div>
+      <div class="ttd-fmt-body" id="ttd-web-fmt-body">
+        <div class="ttd-fmt-inner">
+          <label class="ttd-lbl">Number of Pages</label>
+          <select id="ttd-web-pages" class="ttd-sel">
+            <option value="auto" selected>Auto (based on content)</option>
+            <option value="1">1 page</option>
+            <option value="2">2 pages</option>
+            <option value="3">3 pages</option>
+            <option value="4">4 pages</option>
+            <option value="5">5 pages</option>
+            <option value="6">6 pages</option>
+            <option value="8">8 pages</option>
+            <option value="10">10 pages</option>
+          </select>
+          <label class="ttd-lbl">Heading Font</label>
+          <select id="ttd-web-hfont" class="ttd-sel">
+            <option value="Georgia, serif">Georgia (Classic)</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Inter, sans-serif">Inter (Modern)</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+          </select>
+          <label class="ttd-lbl">Body Font</label>
+          <select id="ttd-web-bfont" class="ttd-sel">
+            <option value="Georgia, serif">Georgia (Classic)</option>
+            <option value="'Times New Roman', serif">Times New Roman</option>
+            <option value="Inter, sans-serif">Inter (Modern)</option>
+            <option value="Arial, sans-serif">Arial</option>
+            <option value="'Courier New', monospace">Courier New</option>
+          </select>
+          <label class="ttd-lbl">Heading / Body Sizes (pt)</label>
+          <div class="ttd-row">
+            <span class="ttd-lbl" style="margin:0;min-width:28px;">H1</span>
+            <input type="number" id="ttd-web-h1" value="24" min="14" max="48" class="ttd-num">
+            <span class="ttd-lbl" style="margin:0 6px 0 2px;">H2</span>
+            <input type="number" id="ttd-web-h2" value="18" min="10" max="36" class="ttd-num">
           </div>
-          <div id="ttd-web-url-area">
-            <label class="ttd-lbl">Website URL</label>
-            <input type="url" id="ttd-web-url" placeholder="https://example.com/article">
+          <div class="ttd-row">
+            <span class="ttd-lbl" style="margin:0;min-width:28px;">H3</span>
+            <input type="number" id="ttd-web-h3" value="14" min="8" max="28" class="ttd-num">
+            <span class="ttd-lbl" style="margin:0 6px 0 2px;">Body</span>
+            <input type="number" id="ttd-web-body" value="12" min="8" max="18" class="ttd-num">
           </div>
-          <div id="ttd-web-search-area" style="display:none;">
-            <label class="ttd-lbl">Search Query</label>
-            <input type="text" id="ttd-web-query" placeholder="e.g. benefits of solar energy 2024">
+          <label class="ttd-lbl">Margins (mm)</label>
+          <div class="ttd-row">
+            <input type="number" id="ttd-web-margin" value="20" min="5" max="50" class="ttd-num">
+            <span class="ttd-lbl" style="margin:0 0 0 4px;">all sides</span>
           </div>
-          <label class="ttd-lbl" style="margin-top:8px;">What do you want from it?</label>
-          <textarea id="ttd-web-instruction" class="ttd-prompt-ta" style="min-height:80px;" placeholder="e.g. Summarise the key points into a professional report with headings&#10;e.g. Extract all prices and make a comparison table&#10;e.g. Write a summary of the main argument"></textarea>
-          <button class="ttd-btn-primary" id="ttd-web-btn" onclick="ttdWebResearch()" style="margin-top:10px;">&#127760; Fetch &amp; Write to Document</button>
-          <div id="ttd-web-status" style="display:none;"></div>
-          <div style="margin-top:10px;padding:8px;background:#f0f9ff;border-radius:6px;font-size:11px;color:#0369a1;line-height:1.6;">
-            <strong>&#128161; How it works:</strong> The AI visits the page or searches the web, reads the content, then writes exactly what you asked for into your document.
-          </div>
+          <label class="ttd-lbl">Line Spacing</label>
+          <select id="ttd-web-lh" class="ttd-sel">
+            <option value="1.3">Single (1.3)</option>
+            <option value="1.6" selected>Normal (1.6)</option>
+            <option value="2.0">Double (2.0)</option>
+          </select>
         </div>
-      </div><!-- /ttd-panel-web -->
+      </div>
+
+      <div style="padding:10px 12px 16px;">
+        <div style="padding:8px;background:#f0f9ff;border-radius:6px;font-size:11px;color:#0369a1;line-height:1.6;">
+          <strong>&#128161; How it works:</strong> The AI visits the page or searches the web, reads the content, then writes exactly what you asked into your document.
+        </div>
+      </div>
+    </div><!-- /ttd-panel-web -->
+
+    <!-- ══ HISTORY PANEL ══ -->
+    <div class="ttd-panel" id="ttd-panel-history">
+      <div class="ttd-hist-list" id="ttd-hist-list">
+        <div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to save it here automatically.</div>
+      </div>
+      <div style="padding:0 12px 10px;">
+        <button class="ttd-hist-clear" onclick="ttdClearHistory()">&#128465; Clear All History</button>
+      </div>
+    </div><!-- /ttd-panel-history -->
 
   </div><!-- /ttd-settings -->
 
-    <!-- ══ EDITOR AREA ══ -->
-    <div class="ttd-editor-area">
+  <!-- ══ EDITOR AREA ══ -->
+  <div class="ttd-editor-area">
 
-      <!-- Toolbar -->
-      <div class="ttd-toolbar">
-        <select class="tb-sel" id="tb-block" onchange="ttdBlock(this.value)" title="Paragraph style">
-          <option value="p">Normal</option>
-          <option value="h1">Heading 1</option>
-          <option value="h2">Heading 2</option>
-          <option value="h3">Heading 3</option>
-          <option value="h4">Heading 4</option>
-          <option value="blockquote">Quote</option>
-        </select>
-        <select class="tb-sel" id="tb-font" onchange="ttdFont(this.value)" title="Font family" style="max-width:130px;">
-          <option value="">— Font —</option>
-          <option value="Georgia, serif">Georgia</option>
-          <option value="'Times New Roman',serif">Times New Roman</option>
-          <option value="Inter,sans-serif">Inter</option>
-          <option value="Arial,sans-serif">Arial</option>
-          <option value="'Courier New',monospace">Courier New</option>
-          <option value="Verdana,sans-serif">Verdana</option>
-          <option value="'Trebuchet MS',sans-serif">Trebuchet MS</option>
-        </select>
-        <input type="number" class="tb-num" id="tb-size" value="12" min="6" max="96" title="Font size (pt)" onchange="ttdSize(this.value)">
-        <span class="tb-sep"></span>
-        <button class="tb-btn" id="tb-bold" onclick="ttdFmt('bold')" title="Bold"><b>B</b></button>
-        <button class="tb-btn" id="tb-italic" onclick="ttdFmt('italic')" title="Italic"><i>I</i></button>
-        <button class="tb-btn" id="tb-under" onclick="ttdFmt('underline')" title="Underline"><u>U</u></button>
-        <button class="tb-btn" id="tb-strike" onclick="ttdFmt('strikeThrough')" title="Strikethrough"><s>S</s></button>
-        <span class="tb-sep"></span>
-        <label class="tb-col-wrap" title="Text Color">A<input type="color" id="tb-fgcol" value="#000000" oninput="ttdColor('foreColor',this.value)"></label>
-        <label class="tb-col-wrap" title="Highlight">&#9998;<input type="color" id="tb-bgcol" value="#ffffff" oninput="ttdColor('backColor',this.value)"></label>
-        <span class="tb-sep"></span>
-        <button class="tb-btn" onclick="ttdFmt('justifyLeft')" title="Left">&#8676;</button>
-        <button class="tb-btn" onclick="ttdFmt('justifyCenter')" title="Center">&#9868;</button>
-        <button class="tb-btn" onclick="ttdFmt('justifyRight')" title="Right">&#8677;</button>
-        <button class="tb-btn" onclick="ttdFmt('justifyFull')" title="Justify">&#9636;</button>
-        <span class="tb-sep"></span>
-        <button class="tb-btn" onclick="ttdFmt('insertUnorderedList')" title="Bullet list">&#8226; List</button>
-        <button class="tb-btn" onclick="ttdFmt('insertOrderedList')" title="Numbered list">1. List</button>
-        <button class="tb-btn" onclick="ttdFmt('indent')" title="Indent">&#8677;&#8677;</button>
-        <button class="tb-btn" onclick="ttdFmt('outdent')" title="Outdent">&#8676;&#8676;</button>
-        <span class="tb-sep"></span>
-        <button class="tb-btn" onclick="ttdFmt('undo')" title="Undo">&#8617;</button>
-        <button class="tb-btn" onclick="ttdFmt('redo')" title="Redo">&#8618;</button>
-        <span class="tb-sep"></span>
-        <button class="tb-btn" onclick="ttdPrint()" title="Print" style="color:#0891b2;font-weight:700;">&#128424; Print</button>
-      </div><!-- /toolbar -->
+    <!-- Toolbar -->
+    <div class="ttd-toolbar">
+      <select class="tb-sel" id="tb-block" onchange="ttdBlock(this.value)" title="Paragraph style">
+        <option value="p">Normal</option>
+        <option value="h1">Heading 1</option>
+        <option value="h2">Heading 2</option>
+        <option value="h3">Heading 3</option>
+        <option value="h4">Heading 4</option>
+        <option value="blockquote">Quote</option>
+      </select>
+      <select class="tb-sel" id="tb-font" onchange="ttdFont(this.value)" title="Font family" style="max-width:130px;">
+        <option value="">— Font —</option>
+        <option value="Georgia, serif">Georgia</option>
+        <option value="'Times New Roman',serif">Times New Roman</option>
+        <option value="Inter,sans-serif">Inter</option>
+        <option value="Arial,sans-serif">Arial</option>
+        <option value="'Courier New',monospace">Courier New</option>
+        <option value="Verdana,sans-serif">Verdana</option>
+        <option value="'Trebuchet MS',sans-serif">Trebuchet MS</option>
+      </select>
+      <input type="number" class="tb-num" id="tb-size" value="12" min="6" max="96" title="Font size (pt)" onchange="ttdSize(this.value)">
+      <span class="tb-sep"></span>
+      <button class="tb-btn" id="tb-bold" onclick="ttdFmt('bold')" title="Bold"><b>B</b></button>
+      <button class="tb-btn" id="tb-italic" onclick="ttdFmt('italic')" title="Italic"><i>I</i></button>
+      <button class="tb-btn" id="tb-under" onclick="ttdFmt('underline')" title="Underline"><u>U</u></button>
+      <button class="tb-btn" id="tb-strike" onclick="ttdFmt('strikeThrough')" title="Strikethrough"><s>S</s></button>
+      <span class="tb-sep"></span>
+      <label class="tb-col-wrap" title="Text Color">A<input type="color" id="tb-fgcol" value="#000000" oninput="ttdColor('foreColor',this.value)"></label>
+      <label class="tb-col-wrap" title="Highlight">&#9998;<input type="color" id="tb-bgcol" value="#ffffff" oninput="ttdColor('backColor',this.value)"></label>
+      <span class="tb-sep"></span>
+      <button class="tb-btn" onclick="ttdFmt('justifyLeft')" title="Left">&#8676;</button>
+      <button class="tb-btn" onclick="ttdFmt('justifyCenter')" title="Center">&#9868;</button>
+      <button class="tb-btn" onclick="ttdFmt('justifyRight')" title="Right">&#8677;</button>
+      <button class="tb-btn" onclick="ttdFmt('justifyFull')" title="Justify">&#9636;</button>
+      <span class="tb-sep"></span>
+      <button class="tb-btn" onclick="ttdFmt('insertUnorderedList')" title="Bullet list">&#8226; List</button>
+      <button class="tb-btn" onclick="ttdFmt('insertOrderedList')" title="Numbered list">1. List</button>
+      <button class="tb-btn" onclick="ttdFmt('indent')" title="Indent">&#8677;&#8677;</button>
+      <button class="tb-btn" onclick="ttdFmt('outdent')" title="Outdent">&#8676;&#8676;</button>
+      <span class="tb-sep"></span>
+      <button class="tb-btn" onclick="ttdFmt('undo')" title="Undo">&#8617;</button>
+      <button class="tb-btn" onclick="ttdFmt('redo')" title="Redo">&#8618;</button>
+      <span class="tb-sep"></span>
+      <button class="tb-btn" onclick="ttdPrint()" title="Print" style="color:#0891b2;font-weight:700;">&#128424; Print</button>
+    </div>
 
-      <!-- Page navigation bar -->
-      <div class="ttd-page-nav">
-        <button class="tb-btn" id="ttd-prev-btn" onclick="ttdNavPage(-1)" title="Previous page" disabled>&#9664;</button>
-        <span id="ttd-page-indicator" style="font-size:12px;font-weight:600;color:#374151;min-width:80px;text-align:center;">Page 1 of 1</span>
-        <button class="tb-btn" id="ttd-next-btn" onclick="ttdNavPage(1)" title="Next page" disabled>&#9654;</button>
-        <span style="width:1px;background:#e2e8f0;align-self:stretch;margin:0 4px;flex-shrink:0;"></span>
-        <label style="font-size:11px;color:#6b7280;font-weight:600;white-space:nowrap;">Pages:</label>
-        <select id="ttd-page-count" onchange="ttdSetPageCount(parseInt(this.value))" title="Choose number of pages (max 10)" style="font-size:12px;padding:3px 6px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">
-          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-          <option value="4">4</option><option value="5">5</option><option value="6">6</option>
-          <option value="7">7</option><option value="8">8</option><option value="9">9</option>
-          <option value="10">10</option>
-        </select>
-        <button class="tb-btn" onclick="ttdAddPageBreak()" title="Add a blank page" style="font-size:11px;white-space:nowrap;">+ Page</button>
-      </div>
+    <!-- Page navigation bar -->
+    <div class="ttd-page-nav">
+      <button class="tb-btn" id="ttd-prev-btn" onclick="ttdNavPage(-1)" title="Previous page" disabled>&#9664;</button>
+      <span id="ttd-page-indicator" style="font-size:12px;font-weight:600;color:#374151;min-width:80px;text-align:center;">Page 1 of 1</span>
+      <button class="tb-btn" id="ttd-next-btn" onclick="ttdNavPage(1)" title="Next page" disabled>&#9654;</button>
+      <span style="width:1px;background:#e2e8f0;align-self:stretch;margin:0 4px;flex-shrink:0;"></span>
+      <label style="font-size:11px;color:#6b7280;font-weight:600;white-space:nowrap;">Pages:</label>
+      <select id="ttd-page-count" onchange="ttdSetPageCount(parseInt(this.value))" title="Number of pages" style="font-size:12px;padding:3px 6px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">
+        <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+        <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+        <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+        <option value="10">10</option>
+      </select>
+      <button class="tb-btn" onclick="ttdAddPageBreak()" title="Add a blank page" style="font-size:11px;white-space:nowrap;">+ Page</button>
+    </div>
 
-      <!-- Pages area -->
-      <div class="ttd-pages-area" id="ttd-pages">
-          <!-- Pages rendered simultaneously by ttdRenderPages() -->
-        </div>
+    <!-- Pages area — stacked vertically -->
+    <div class="ttd-pages-area" id="ttd-pages">
+      <!-- Pages rendered simultaneously by ttdRenderPages() -->
+    </div>
 
-      <!-- Download bar -->
-      <div class="ttd-dl-bar">
-        <span class="ttd-dl-bar-label">Download:</span>
-        <button class="dl-btn" onclick="ttdDL('pdf')">&#128196; PDF</button>
-        <button class="dl-btn" onclick="ttdDL('docx')">&#128221; DOCX</button>
-        <button class="dl-btn" onclick="ttdDL('odt')">&#128196; ODT</button>
-        <button class="dl-btn" onclick="ttdDL('txt')">&#128195; TXT</button>
-        <button class="dl-btn" onclick="ttdDL('html')">&#127760; HTML</button>
-        <button class="dl-btn" onclick="ttdDL('md')">&#128209; MD</button>
-        <button class="dl-btn" onclick="ttdDL('rtf')">&#128203; RTF</button>
-        <button class="dl-btn" onclick="ttdDL('json')">&#128230; JSON</button>
-        <button class="dl-btn" onclick="ttdDL('csv')">&#128202; CSV</button>
-        <button class="dl-btn" onclick="ttdDL('latex')">&#128300; LaTeX</button>
-      </div>
+    <!-- Download bar -->
+    <div class="ttd-dl-bar">
+      <span class="ttd-dl-bar-label">Download:</span>
+      <button class="dl-btn" onclick="ttdDL('pdf')">&#128196; PDF</button>
+      <button class="dl-btn" onclick="ttdDL('docx')">&#128221; DOCX</button>
+      <button class="dl-btn" onclick="ttdDL('odt')">&#128196; ODT</button>
+      <button class="dl-btn" onclick="ttdDL('txt')">&#128195; TXT</button>
+      <button class="dl-btn" onclick="ttdDL('html')">&#127760; HTML</button>
+      <button class="dl-btn" onclick="ttdDL('md')">&#128209; MD</button>
+      <button class="dl-btn" onclick="ttdDL('rtf')">&#128203; RTF</button>
+      <button class="dl-btn" onclick="ttdDL('json')">&#128230; JSON</button>
+      <button class="dl-btn" onclick="ttdDL('csv')">&#128202; CSV</button>
+      <button class="dl-btn" onclick="ttdDL('latex')">&#128300; LaTeX</button>
+    </div>
 
-    </div><!-- /ttd-editor-area -->
+  </div><!-- /ttd-editor-area -->
 
-  </div><!-- /ttd-layout -->
-  </div><!-- /aqs-sidebar-body -->
+</div><!-- /ttd-layout -->
+</div><!-- /ttd-main-wrap -->
 
-  <!-- Print root (hidden except during print) -->
-  <div class="ttd-print-root" id="ttd-print-root"></div>
+<!-- Mobile settings toggle button -->
+<button class="ttd-mob-toggle" id="ttd-mob-toggle" onclick="ttdMobToggle()">
+  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  Settings
+</button>
 
-  <script src="capacitor-bridge.js"></script>
+<!-- Print root (hidden except during print) -->
+<div class="ttd-print-root" id="ttd-print-root"></div>
+
 <script src="js/aqs-groq-key.js"></script>
-  <script src="js/aqs-text-docs.js"></script>
-  <script src="js/aqs-session.js">
-      function ttdMobToggle(){var s=document.querySelector('.ttd-settings'),o=document.getElementById('ttd-mob-overlay'),t=document.getElementById('ttd-mob-toggle');var isOpen=s&&s.classList.contains('mob-open');if(s)s.classList.toggle('mob-open',!isOpen);if(o)o.classList.toggle('visible',!isOpen);if(t)t.classList.toggle('panel-open',!isOpen);if(t)t.innerHTML=isOpen?'&#9881;&#65039; Settings':'&#10005; Close';}
-      function ttdMobClose(){var s=document.querySelector('.ttd-settings'),o=document.getElementById('ttd-mob-overlay'),t=document.getElementById('ttd-mob-toggle');if(s)s.classList.remove('mob-open');if(o)o.classList.remove('visible');if(t){t.classList.remove('panel-open');t.innerHTML='&#9881;&#65039; Settings';}}
-      var _ttdOrigSwitchTab=window.ttdSwitchTab;window.ttdSwitchTab=function(tab){if(_ttdOrigSwitchTab)_ttdOrigSwitchTab(tab);if(window.innerWidth<=768)ttdMobClose();};
-  </script>
-  </body>
-  </html>
+<script src="js/aqs-text-docs.js"></script>
+<script src="js/aqs-session.js"></script>
+<script>
+  /* ── Mode overlay ──────────────────────────────── */
+  window.ttdSelectMode = function(mode) {
+    ttdCloseModeOverlay();
+    ttdSwitchTab(mode === 'write' ? 'write' : mode === 'web' ? 'web' : 'format');
+    if (window.innerWidth <= 768) {
+      setTimeout(function() { ttdMobOpen(); }, 300);
+    }
+  };
+  window.ttdShowModeOverlay = function() {
+    var el = document.getElementById('ttd-mode-overlay');
+    if (el) el.classList.remove('hidden');
+  };
+  window.ttdCloseModeOverlay = function() {
+    var el = document.getElementById('ttd-mode-overlay');
+    if (el) el.classList.add('hidden');
+  };
+
+  /* ── Top nav dropdown ──────────────────────────── */
+  window.ttdToggleNav = function() {
+    var d = document.getElementById('ttd-nav-dropdown');
+    var b = document.getElementById('ttd-nav-backdrop');
+    if (!d) return;
+    var isOpen = d.classList.contains('open');
+    d.classList.toggle('open', !isOpen);
+    if (b) b.classList.toggle('open', !isOpen);
+  };
+  window.ttdCloseNav = function() {
+    var d = document.getElementById('ttd-nav-dropdown');
+    var b = document.getElementById('ttd-nav-backdrop');
+    if (d) d.classList.remove('open');
+    if (b) b.classList.remove('open');
+  };
+
+  /* ── Mobile settings panel ─────────────────────── */
+  window.ttdMobOpen = function() {
+    var s = document.getElementById('ttd-settings');
+    var o = document.getElementById('ttd-mob-overlay');
+    var t = document.getElementById('ttd-mob-toggle');
+    if (s) s.classList.add('mob-open');
+    if (o) o.classList.add('visible');
+    if (t) { t.classList.add('panel-open'); t.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Close'; }
+  };
+  window.ttdMobClose = function() {
+    var s = document.getElementById('ttd-settings');
+    var o = document.getElementById('ttd-mob-overlay');
+    var t = document.getElementById('ttd-mob-toggle');
+    if (s) s.classList.remove('mob-open');
+    if (o) o.classList.remove('visible');
+    if (t) { t.classList.remove('panel-open'); t.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Settings'; }
+  };
+  window.ttdMobToggle = function() {
+    var s = document.getElementById('ttd-settings');
+    if (s && s.classList.contains('mob-open')) ttdMobClose();
+    else ttdMobOpen();
+  };
+
+  /* ── Format Options collapsible ───────────────── */
+  window.ttdToggleFmt = function(panel) {
+    var toggle = document.getElementById('ttd-' + panel + '-fmt-toggle');
+    var body   = document.getElementById('ttd-' + panel + '-fmt-body');
+    if (!toggle || !body) return;
+    var isOpen = toggle.classList.contains('open');
+    toggle.classList.toggle('open', !isOpen);
+    body.classList.toggle('open', !isOpen);
+  };
+
+  /* ── Apply format from panel prefix ─────────────── */
+  window.ttdApplyPanelFormat = function(prefix) {
+    var getVal = function(id, def) { var el = document.getElementById(id); return el ? (el.value || def) : def; };
+    var hf  = getVal('ttd-' + prefix + '-hfont',  'Georgia, serif');
+    var bf  = getVal('ttd-' + prefix + '-bfont',  'Georgia, serif');
+    var h1  = getVal('ttd-' + prefix + '-h1',  24);
+    var h2  = getVal('ttd-' + prefix + '-h2',  18);
+    var h3  = getVal('ttd-' + prefix + '-h3',  14);
+    var bd  = getVal('ttd-' + prefix + '-body', 12);
+    var mg  = getVal('ttd-' + prefix + '-margin', 20);
+    var lh  = getVal('ttd-' + prefix + '-lh',  '1.6');
+    // Sync to Format panel controls so ttdApplyStyle works
+    var sync = function(id, v) { var el = document.getElementById(id); if (el) el.value = v; };
+    sync('ttd-hfont', hf); sync('ttd-bfont', bf);
+    sync('ttd-h1', h1); sync('ttd-h2', h2); sync('ttd-h3', h3);
+    sync('ttd-body', bd); sync('ttd-margin', mg); sync('ttd-lh', lh);
+    if (window.ttdApplyStyle) ttdApplyStyle();
+  };
+
+  /* ── Get page count from panel ─────────────────── */
+  window.ttdGetPanelPages = function(prefix) {
+    var el = document.getElementById('ttd-' + prefix + '-pages');
+    if (!el || el.value === 'auto') return null;
+    return parseInt(el.value) || null;
+  };
+
+  /* Override ttdSwitchTab to close panel on mobile */
+  var _origSwitchTab = window.ttdSwitchTab;
+  window.ttdSwitchTab = function(tab) {
+    if (_origSwitchTab) _origSwitchTab(tab);
+    if (window.innerWidth <= 768) setTimeout(ttdMobClose, 400);
+  };
+
+  /* Show mode overlay on first load */
+  document.addEventListener('DOMContentLoaded', function() {
+    /* Only show mode overlay if no previous session */
+    if (!sessionStorage.getItem('ttd_mode_chosen')) {
+      setTimeout(function() {
+        var overlay = document.getElementById('ttd-mode-overlay');
+        if (overlay) overlay.classList.remove('hidden');
+      }, 100);
+    }
+  });
+</script>
+</body>
+</html>
