@@ -251,9 +251,7 @@ window.AQS_CHALLENGE = { primary_score: 10, steal_score: 5 };
                 <p class="aqs-ch-card-title" style="margin:0 0 14px;font-size:1rem;font-weight:700;color:#e2e8f0">📚 Question Source</p>
                 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px">
                     <button class="aqs-ch-source-tab active" data-src="topic">💡 Topic / AI</button>
-                    <button class="aqs-ch-source-tab" data-src="upload">📄 Upload File</button>
-                    <button class="aqs-ch-source-tab" data-src="paste">📋 Paste Text</button>
-                    <button class="aqs-ch-source-tab" data-src="readdoc">🔍 Read Doc</button>
+                    <button class="aqs-ch-source-tab" data-src="docupload">📄 Upload Document</button>
                     <button class="aqs-ch-source-tab" data-src="manual">✏️ Manual</button>
                 </div>
 
@@ -277,63 +275,44 @@ window.AQS_CHALLENGE = { primary_score: 10, steal_score: 5 };
                     </div>
                 </div>
 
-                <!-- UPLOAD SOURCE -->
-                <div id="aqs-ch-src-upload" class="aqs-ch-src-panel" style="display:none">
-                    <div id="aqs-ch-upload-zone" class="aqs-ch-upload-zone">
+
+
+
+
+
+
+
+                <!-- DOCUMENT UPLOAD SOURCE -->
+                <div id="aqs-ch-src-docupload" class="aqs-ch-src-panel" style="display:none">
+                    <p style="font-size:.85rem;color:#94a3b8;margin:0 0 10px">Upload a document and AI will read it and generate quiz questions automatically.</p>
+                    <div id="aqs-ch-docupload-zone" class="aqs-ch-upload-zone">
                         <div style="font-size:1.6rem;margin-bottom:8px">📄</div>
-                        <div style="font-weight:600;color:#94a3b8;margin-bottom:4px">Drop a file here or <span style="color:#a5b4fc;cursor:pointer" id="aqs-ch-browse-btn">browse</span></div>
-                        <div style="font-size:.78rem;color:#475569">PDF, Word, or plain text — MCQ format or AI extraction</div>
-                        <input id="aqs-ch-file-input" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none">
+                        <div style="font-weight:600;color:#94a3b8;margin-bottom:4px">Drop file here or <span style="color:#a5b4fc;cursor:pointer" id="aqs-ch-docupload-browse-btn">browse</span></div>
+                        <div style="font-size:.78rem;color:#475569">PDF, Word (.docx), or plain text</div>
+                        <input id="aqs-ch-docupload-file-input" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none">
                     </div>
-                    <div id="aqs-ch-file-info" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;margin-bottom:10px">
+                    <div id="aqs-ch-docupload-file-info" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;margin-bottom:10px">
                         <span style="font-size:1.2rem">📎</span>
-                        <span id="aqs-ch-file-name" style="color:#a5b4fc;font-size:.88rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-                        <button id="aqs-ch-remove-file" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0">✕</button>
+                        <span id="aqs-ch-docupload-file-name" style="color:#a5b4fc;font-size:.88rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+                        <button id="aqs-ch-docupload-remove-file" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0">✕</button>
                     </div>
-                    <div id="aqs-ch-upload-mode-choice" style="display:none;margin-bottom:10px">
-                        <p style="font-size:.82rem;color:#94a3b8;margin:0 0 8px">How should this file be processed?</p>
-                        <div style="display:flex;gap:8px">
-                            <button id="aqs-ch-mode-mcq" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">📋 Parse MCQ Format</button>
-                            <button id="aqs-ch-mode-ai" class="aqs-ch-btn aqs-ch-btn-ghost aqs-ch-btn-sm">🤖 AI Extract Questions</button>
+                    <div id="aqs-ch-docupload-settings" style="display:none;margin-bottom:10px">
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                            <div style="flex:1;min-width:140px">
+                                <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:4px">SUBJECT (optional)</label>
+                                <input id="aqs-ch-docupload-subject" type="text" class="aqs-ch-input" placeholder="e.g. Biology chapter 3" maxlength="80">
+                            </div>
+                            <div>
+                                <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:4px">DIFFICULTY</label>
+                                <select id="aqs-ch-docupload-difficulty" class="aqs-ch-input" style="padding:9px 12px">
+                                    <option value="easy">Easy</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="hard">Hard</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
-                    <div id="aqs-ch-upload-ai-settings" style="display:none;margin-bottom:10px">
-                        <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:4px">AI TOPIC HINT (optional)</label>
-                        <input id="aqs-ch-upload-ai-topic" type="text" class="aqs-ch-input" placeholder="e.g. Biology chapter 3" maxlength="80">
-                    </div>
-                    <div style="display:flex;gap:8px;flex-wrap:wrap">
-                        <button id="aqs-ch-parse-btn" class="aqs-ch-btn aqs-ch-btn-secondary" style="display:none">📋 Parse File</button>
-                        <button id="aqs-ch-gen-from-doc-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="display:none">🤖 Extract with AI</button>
-                    </div>
-                </div>
-
-                <!-- PASTE SOURCE -->
-                <div id="aqs-ch-src-paste" class="aqs-ch-src-panel" style="display:none">
-                    <label style="font-size:.8rem;color:#94a3b8;display:block;margin-bottom:5px">PASTE YOUR TEXT OR MCQ QUESTIONS</label>
-                    <textarea id="aqs-ch-paste-text" class="aqs-ch-input" rows="7"
-                        style="width:100%;resize:vertical;font-family:monospace;font-size:.82rem"
-                        placeholder="Paste multiple-choice questions or any text here. AI will extract or generate questions from it.&#10;&#10;MCQ format:&#10;1. Question here?&#10;A) Option A&#10;B) Option B&#10;C) Option C&#10;D) Option D&#10;Answer: A"></textarea>
-                    <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-                        <span style="font-size:.78rem;color:#475569"><span id="aqs-ch-paste-char-count">0</span> characters</span>
-                        <button id="aqs-ch-gen-from-paste-btn" class="aqs-ch-btn aqs-ch-btn-primary aqs-ch-btn-sm">🤖 Extract/Generate Questions</button>
-                    </div>
-                </div>
-
-                <!-- READDOC SOURCE -->
-                <div id="aqs-ch-src-readdoc" class="aqs-ch-src-panel" style="display:none">
-                    <p style="font-size:.85rem;color:#94a3b8;margin:0 0 10px">Upload a document and AI will read it and generate quiz questions automatically.</p>
-                    <div id="aqs-ch-readdoc-upload-zone" class="aqs-ch-upload-zone">
-                        <div style="font-size:1.6rem;margin-bottom:8px">🔍</div>
-                        <div style="font-weight:600;color:#94a3b8;margin-bottom:4px">Drop document or <span style="color:#a5b4fc;cursor:pointer" id="aqs-ch-readdoc-browse-btn">browse</span></div>
-                        <div style="font-size:.78rem;color:#475569">PDF, Word, or text files</div>
-                        <input id="aqs-ch-readdoc-file-input" type="file" accept=".pdf,.doc,.docx,.txt" style="display:none">
-                    </div>
-                    <div id="aqs-ch-readdoc-file-info" style="display:none;align-items:center;gap:10px;padding:10px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;margin-bottom:10px">
-                        <span style="font-size:1.2rem">📎</span>
-                        <span id="aqs-ch-readdoc-file-name" style="color:#a5b4fc;font-size:.88rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-                        <button id="aqs-ch-readdoc-remove-file" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:1rem;padding:0">✕</button>
-                    </div>
-                    <button id="aqs-ch-gen-from-readdoc-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="display:none">🤖 Read &amp; Generate Questions</button>
+                    <button id="aqs-ch-gen-from-docupload-btn" class="aqs-ch-btn aqs-ch-btn-primary" style="display:none">🤖 Generate Questions from Document</button>
                 </div>
 
                 <!-- MANUAL SOURCE -->

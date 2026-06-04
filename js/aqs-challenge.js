@@ -1,4 +1,4 @@
-/* AQS Challenge Mode v3 — aqs-challenge.js */
+/* AQS Challenge Mode v4 — aqs-challenge.js */
   (function($){
   'use strict';
 
@@ -37,9 +37,6 @@
   /* ── Challenge host question pool ─────────────────────────────────── */
   var chQuestions    = [];   /* accumulated question objects for the challenge */
   var _chRetryFn     = null; /* last generation function — used by Retry button */
-  var _chUploadFile  = null; /* file selected in Upload panel */
-  var _chUploadMode  = '';   /* 'mcq' | 'ai' — chosen after file selected */
-  var _chDocText     = '';   /* cached extracted text from uploaded file */
 
   /* ── Audio engine ──────────────────────────────────────────────────── */
   var _bgAudio = null;
@@ -1619,53 +1616,25 @@
           switchChSource($(this).data('src'));
       });
 
-      /* File browse & drag-drop — use delegation so they always fire */
-      $(document).on('click','#aqs-ch-browse-btn',function(){ $('#aqs-ch-file-input').click(); });
-      $(document).on('change','#aqs-ch-file-input',function(){ if(this.files[0]) setChFile(this.files[0]); });
-      $(document).on('click','#aqs-ch-remove-file',clearChFile);
-      var dz=document.getElementById('aqs-ch-upload-zone');
-      if(dz){
-          dz.addEventListener('dragover',function(e){ e.preventDefault(); dz.style.borderColor='rgba(99,102,241,.8)'; });
-          dz.addEventListener('dragleave',function(){ dz.style.borderColor='rgba(99,102,241,.4)'; });
-          dz.addEventListener('drop',function(e){
-              e.preventDefault(); dz.style.borderColor='rgba(99,102,241,.4)';
-              if(e.dataTransfer.files[0]) setChFile(e.dataTransfer.files[0]);
+      /* Document upload — browse, drag-drop, remove */
+      $(document).on('click','#aqs-ch-docupload-browse-btn',function(){ $('#aqs-ch-docupload-file-input').click(); });
+      $(document).on('change','#aqs-ch-docupload-file-input',function(){ if(this.files[0]) setChDocUploadFile(this.files[0]); });
+      $(document).on('click','#aqs-ch-docupload-remove-file',clearChDocUploadFile);
+      var ddz=document.getElementById('aqs-ch-docupload-zone');
+      if(ddz){
+          ddz.addEventListener('dragover',function(e){ e.preventDefault(); ddz.style.borderColor='rgba(99,102,241,.8)'; });
+          ddz.addEventListener('dragleave',function(){ ddz.style.borderColor='rgba(99,102,241,.4)'; });
+          ddz.addEventListener('drop',function(e){
+              e.preventDefault(); ddz.style.borderColor='rgba(99,102,241,.4)';
+              if(e.dataTransfer.files[0]) setChDocUploadFile(e.dataTransfer.files[0]);
           });
       }
 
       /* Action buttons — use delegation so they fire regardless of display state */
       $(document).on('click','#aqs-ch-generate-btn',chGenerateFromTopic);
-      $(document).on('click','#aqs-ch-parse-btn',chParseFile);
-      $(document).on('click','#aqs-ch-gen-from-doc-btn',chGenerateFromDoc);
-      $(document).on('click','#aqs-ch-gen-from-paste-btn',chGenerateFromPaste);
-      $(document).on('click','#aqs-ch-gen-from-readdoc-btn',chGenerateFromReadDoc);
+      $(document).on('click','#aqs-ch-gen-from-docupload-btn',chGenerateFromDocUpload);
       $(document).on('click','#aqs-ch-manual-start-btn',chAddManualQuestion);
       $(document).on('click','#aqs-ch-retry-btn',function(){ if(_chRetryFn) _chRetryFn(); });
-
-      /* Read Document tab — browse, drop, remove */
-      $(document).on('click','#aqs-ch-readdoc-browse-btn',function(){ $('#aqs-ch-readdoc-file-input').click(); });
-      $(document).on('change','#aqs-ch-readdoc-file-input',function(){
-          if(this.files[0]) setChReadDocFile(this.files[0]);
-      });
-      $(document).on('click','#aqs-ch-readdoc-remove-file',clearChReadDocFile);
-      var rdz=document.getElementById('aqs-ch-readdoc-upload-zone');
-      if(rdz){
-          rdz.addEventListener('dragover',function(e){ e.preventDefault(); rdz.style.borderColor='rgba(99,102,241,.8)'; });
-          rdz.addEventListener('dragleave',function(){ rdz.style.borderColor='rgba(99,102,241,.4)'; });
-          rdz.addEventListener('drop',function(e){
-              e.preventDefault(); rdz.style.borderColor='rgba(99,102,241,.4)';
-              if(e.dataTransfer.files[0]) setChReadDocFile(e.dataTransfer.files[0]);
-          });
-      }
-
-      /* Live character counter for paste textarea */
-      $(document).on('input','#aqs-ch-paste-text',function(){
-          $('#aqs-ch-paste-char-count').text($(this).val().length.toLocaleString());
-      });
-
-      /* Upload mode card selection */
-      $(document).on('click','#aqs-ch-mode-mcq',function(){ selectUploadMode('mcq'); });
-      $(document).on('click','#aqs-ch-mode-ai', function(){ selectUploadMode('ai');  });
 
       /* Add question from review card header */
       $(document).on('click','#aqs-ch-add-q-btn',chAddManualQuestion);
@@ -1753,84 +1722,93 @@
       $('#aqs-ch-src-'+src).show();
       /* Show the correct action button for the active source */
       $('#aqs-ch-generate-btn').toggle(src==='topic');
-      $('#aqs-ch-gen-from-paste-btn').toggle(src==='paste');
-      $('#aqs-ch-gen-from-readdoc-btn').toggle(src==='readdoc'&&!!_chReadDocFile);
-      /* For upload: action buttons depend on which sub-mode card was selected */
-      if(src==='upload'){
-          $('#aqs-ch-parse-btn').toggle(_chUploadMode==='mcq');
-          $('#aqs-ch-gen-from-doc-btn').toggle(_chUploadMode==='ai');
-      } else {
-          $('#aqs-ch-parse-btn').hide();
-          $('#aqs-ch-gen-from-doc-btn').hide();
-      }
+      $('#aqs-ch-gen-from-docupload-btn').toggle(src==='docupload'&&!!_chDocUploadFile);
       $('#aqs-ch-manual-start-btn').toggle(src==='manual');
   }
 
-  /* ── Read Document file helpers ─────────────────────────────────────── */
-  var _chReadDocFile = null;
-  var _chReadDocText = '';
-  function setChReadDocFile(file){
-      _chReadDocFile=file; _chReadDocText='';
-      $('#aqs-ch-readdoc-file-name').text(file.name);
-      $('#aqs-ch-readdoc-upload-zone').hide();
-      $('#aqs-ch-readdoc-file-info').show().css('display','flex');
-      $('#aqs-ch-gen-from-readdoc-btn').show();
+  /* ── Document upload helpers ────────────────────────────────────── */
+  var _chDocUploadFile = null;
+  var _chDocUploadText = '';
+  function setChDocUploadFile(file){
+      _chDocUploadFile = file;
+      _chDocUploadText = '';
+      $('#aqs-ch-docupload-file-name').text(file.name);
+      $('#aqs-ch-docupload-zone').hide();
+      $('#aqs-ch-docupload-file-info').show().css('display','flex');
+      $('#aqs-ch-docupload-settings').show();
+      $('#aqs-ch-gen-from-docupload-btn').show();
   }
-  function clearChReadDocFile(){
-      _chReadDocFile=null; _chReadDocText='';
-      $('#aqs-ch-readdoc-file-input').val('');
-      $('#aqs-ch-readdoc-upload-zone').show();
-      $('#aqs-ch-readdoc-file-info').hide();
-      $('#aqs-ch-gen-from-readdoc-btn').hide();
-  }
-
-  /* ── File helpers ────────────────────────────────────────────────── */
-  function setChFile(file){
-      _chUploadFile=file;
-      _chUploadMode='';
-      _chDocText='';
-      $('#aqs-ch-file-name').text(file.name);
-      $('#aqs-ch-upload-zone').hide();
-      $('#aqs-ch-file-info').show().css('display','flex');
-      $('#aqs-ch-upload-mode-choice').show();
-      $('#aqs-ch-upload-ai-settings').hide();
-      $('#aqs-ch-parse-btn').hide();
-      $('#aqs-ch-gen-from-doc-btn').hide();
-      /* Reset mode card styles */
-      $('#aqs-ch-mode-mcq,#aqs-ch-mode-ai').css({
-          'border-color':'rgba(255,255,255,.12)',
-          'background':'transparent'
-      });
-  }
-  function clearChFile(){
-      _chUploadFile=null;
-      _chUploadMode='';
-      _chDocText='';
-      $('#aqs-ch-file-input').val('');
-      $('#aqs-ch-upload-zone').show();
-      $('#aqs-ch-file-info').hide();
-      $('#aqs-ch-upload-mode-choice').hide();
-      $('#aqs-ch-upload-ai-settings').hide();
-      $('#aqs-ch-parse-btn').hide();
-      $('#aqs-ch-gen-from-doc-btn').hide();
+  function clearChDocUploadFile(){
+      _chDocUploadFile = null;
+      _chDocUploadText = '';
+      $('#aqs-ch-docupload-file-input').val('');
+      $('#aqs-ch-docupload-zone').show();
+      $('#aqs-ch-docupload-file-info').hide();
+      $('#aqs-ch-docupload-settings').hide();
+      $('#aqs-ch-gen-from-docupload-btn').hide();
   }
 
-  /* ── Upload mode card selection ──────────────────────────────────── */
-  function selectUploadMode(mode){
-      _chUploadMode=mode;
-      /* Highlight selected card */
-      $('#aqs-ch-mode-mcq').css({
-          'border-color': mode==='mcq' ? 'rgba(99,102,241,.7)' : 'rgba(255,255,255,.12)',
-          'background':   mode==='mcq' ? 'rgba(99,102,241,.18)' : 'transparent'
-      });
-      $('#aqs-ch-mode-ai').css({
-          'border-color': mode==='ai' ? 'rgba(99,102,241,.7)' : 'rgba(255,255,255,.12)',
-          'background':   mode==='ai' ? 'rgba(99,102,241,.18)' : 'transparent'
-      });
-      /* Show appropriate settings and action button */
-      $('#aqs-ch-upload-ai-settings').toggle(mode==='ai');
-      $('#aqs-ch-parse-btn').toggle(mode==='mcq');
-      $('#aqs-ch-gen-from-doc-btn').toggle(mode==='ai');
+  /* ── Generate questions from uploaded document (AI) ─────────────── */
+  async function chGenerateFromDocUpload(){
+      if(!_chDocUploadFile){ flash('Select a document first.'); return; }
+      var players   = parseInt($('#aqs-ch-players').val())        || 2;
+      var qpr       = parseInt($('#aqs-ch-qpr').val())            || 5;
+      var isLeague  = $('#aqs-ch-league-toggle').is(':checked');
+      var rounds    = isLeague ? Math.max(1, players-1) : (parseInt($('#aqs-ch-rounds').val()) || 1);
+      var perPlayer = qpr * rounds;
+      if(perPlayer < 2){ flash('Need at least 2 questions per player per round.'); return; }
+      var totalNeeded = isLeague ? (qpr*(players-1)+3) : (players * perPlayer + 3);
+      var subject     = ($('#aqs-ch-docupload-subject').val() || '').trim() || 'General';
+      var difficulty  = $('#aqs-ch-docupload-difficulty').val()   || 'medium';
+      if(chQuestions.length >= totalNeeded){ flash('Already have enough questions!','success'); return; }
+
+      var $btn = $('#aqs-ch-gen-from-docupload-btn');
+      $btn.prop('disabled', true).text('⏳ Reading document…');
+      chGenStart(chGenerateFromDocUpload, 'Extracting text from document…');
+
+      try{
+          if(!_chDocUploadText) _chDocUploadText = await chExtractText(_chDocUploadFile);
+          var excerpt = _chDocUploadText.substring(0, 8000);
+
+          var BATCH = 15;
+          while(chQuestions.length < totalNeeded){
+              var remaining  = totalNeeded - chQuestions.length;
+              var batchSize  = Math.min(BATCH, remaining);
+              var avoidBlock = chQuestions.length > 0
+                  ? '\n\nAlready generated — do NOT repeat:\n'+
+                    chQuestions.map(function(q,i){ return (i+1)+'. '+q.question; }).join('\n')
+                  : '';
+              var prompt =
+                  'You are an expert quiz maker. Read the following document and create exactly '+batchSize+' multiple-choice questions that test understanding of the content.\n\n'+
+                  'Subject: '+subject+'\nDifficulty: '+difficulty+avoidBlock+'\n\n'+
+                  '--- DOCUMENT CONTENT ---\n'+excerpt+'\n--- END ---\n\n'+
+                  'Rules:\n'+
+                  '- Questions must be based ONLY on the document above.\n'+
+                  '- Each question must have exactly 4 answer options.\n'+
+                  '- Use LaTeX ($x^2$) for any mathematical expressions.\n'+
+                  '- "correct_answer_index" is 0-based (0=A, 1=B, 2=C, 3=D).\n'+
+                  '- "explanation" briefly explains the correct answer.\n\n'+
+                  'Return ONLY a valid JSON array with NO markdown fences:\n'+
+                  '[{"question":"...","options":["A","B","C","D"],"correct_answer_index":0,"explanation":"..."}]';
+
+              var batchNum     = Math.floor(chQuestions.length / BATCH) + 1;
+              var totalBatches = Math.ceil(totalNeeded / BATCH);
+              $('#aqs-ch-gen-status').text('AI generating batch '+batchNum+' of '+totalBatches+'…');
+              $('#aqs-ch-gen-bar').css('width', Math.round(chQuestions.length / totalNeeded * 100)+'%');
+              $('#aqs-ch-gen-count').text(chQuestions.length+' / '+totalNeeded);
+
+              var aiText = await chCallAI(prompt);
+              var batch  = chParseJSON(aiText);
+              if(!batch || !batch.length) throw new Error('AI returned no valid questions. Try again.');
+              chQuestions = chQuestions.concat(batch);
+              renderChQList();
+          }
+          $btn.prop('disabled', false).text('🤖 Generate Questions from Document');
+          chGenDone(totalNeeded);
+      } catch(e){
+          $btn.prop('disabled', false).text('🤖 Generate Questions from Document');
+          chGenFail(e);
+      }
   }
 
   /* ── Shared helper: prep progress panel for generation ──────────── */
@@ -1925,222 +1903,9 @@
       }
   }
 
-  /* ── Parse questions from uploaded file ─────────────────────────── */
-  async function chParseFile(){
-      if(!_chUploadFile){ flash('Select a file first.'); return; }
-      $('#aqs-ch-parse-btn').prop('disabled',true).text('⏳ Parsing…');
-      $('#aqs-ch-gen-progress').show();
-      $('#aqs-ch-gen-status').text('Extracting text from file…');
-      $('#aqs-ch-gen-bar').css('width','30%');
-      $('#aqs-ch-gen-count').text('');
-      try{
-          var text=await chExtractText(_chUploadFile);
-          $('#aqs-ch-gen-status').text('Detecting questions…');
-          $('#aqs-ch-gen-bar').css('width','70%');
-          var parsed=chParseTextQuestions(text);
-          if(!parsed.length) throw new Error('No MCQ questions detected. Ensure your file has numbered questions with A) B) C) D) options.');
-          chQuestions=parsed;
-          $('#aqs-ch-gen-progress').hide();
-          $('#aqs-ch-gen-bar').css('width','100%');
-          $('#aqs-ch-parse-btn').prop('disabled',false).text('🔍 Parse Questions from File');
-          renderChQList();
-          flash(parsed.length+' question'+(parsed.length!==1?'s':'')+' parsed from file!','success');
-      } catch(e){
-          $('#aqs-ch-gen-progress').hide();
-          $('#aqs-ch-parse-btn').prop('disabled',false).text('🔍 Parse Questions from File');
-          flash('Parse failed: '+e.message);
-      }
-  }
 
-  /* ── Generate questions from uploaded notes/document (AI) ───────── */
-  async function chGenerateFromDoc(){
-      if(!_chUploadFile){ flash('Select a file first.'); return; }
-      var players   = parseInt($('#aqs-ch-players').val())  || 2;
-      var qpr       = parseInt($('#aqs-ch-qpr').val())      || 5;
-      var isLeague  = $('#aqs-ch-league-toggle').is(':checked');
-      var rounds    = isLeague ? Math.max(1, players-1) : (parseInt($('#aqs-ch-rounds').val()) || 1);
-      var perPlayer = qpr * rounds;
-      if(perPlayer < 2){ flash('Need at least 2 questions per player per round.'); return; }
-      var totalNeeded = isLeague ? (qpr*(players-1)+3) : (players * perPlayer + 3);
-      var subject     = ($('#aqs-ch-doc-subject').val() || '').trim() || 'General';
-      var difficulty  = $('#aqs-ch-doc-difficulty').val()     || 'medium';
-      if(chQuestions.length >= totalNeeded){ flash('Already have enough questions!','success'); return; }
 
-      var $btn = $('#aqs-ch-gen-from-doc-btn');
-      $btn.prop('disabled', true).text('⏳ Reading document…');
-      chGenStart(chGenerateFromDoc, 'Extracting text from document…');
 
-      try {
-          if(!_chDocText) _chDocText = await chExtractText(_chUploadFile);
-          var excerpt = _chDocText.substring(0, 8000);
-
-          var BATCH = 15;
-          while(chQuestions.length < totalNeeded){
-              var remaining  = totalNeeded - chQuestions.length;
-              var batchSize  = Math.min(BATCH, remaining);
-              var avoidBlock = chQuestions.length > 0
-                  ? '\n\nAlready generated — do NOT repeat these:\n' +
-                    chQuestions.map(function(q,i){ return (i+1)+'. '+q.question; }).join('\n')
-                  : '';
-              var prompt =
-                  'You are an expert quiz maker. Read the following study notes/text and create exactly '+batchSize+' multiple-choice questions based on the content.\n\n'+
-                  'Subject: '+subject+'\nDifficulty: '+difficulty+avoidBlock+'\n\n'+
-                  '--- DOCUMENT TEXT (use this as your source) ---\n'+excerpt+'\n--- END OF TEXT ---\n\n'+
-                  'Rules:\n'+
-                  '- Questions must be based ONLY on the text provided above.\n'+
-                  '- Each question must have exactly 4 answer options.\n'+
-                  '- Use LaTeX notation for any math expressions (e.g. $x^2$).\n'+
-                  '- "correct_answer_index" is 0-based (0=A, 1=B, 2=C, 3=D).\n'+
-                  '- "explanation" is a short sentence explaining why the answer is correct.\n\n'+
-                  'Return ONLY a valid JSON array with NO markdown or code fences. Example:\n'+
-                  '[{"question":"What is ...?","options":["Option A","Option B","Option C","Option D"],"correct_answer_index":1,"explanation":"Because..."}]';
-
-              var batchNum     = Math.floor(chQuestions.length / BATCH) + 1;
-              var totalBatches = Math.ceil(totalNeeded / BATCH);
-              $('#aqs-ch-gen-status').text('AI generating batch '+batchNum+' of '+totalBatches+'…');
-              $('#aqs-ch-gen-bar').css('width', Math.round(chQuestions.length / totalNeeded * 100)+'%');
-              $('#aqs-ch-gen-count').text(chQuestions.length+' / '+totalNeeded);
-
-              var aiText = await chCallAI(prompt);
-              var batch  = chParseJSON(aiText);
-              if(!batch || !batch.length) throw new Error('AI returned no valid questions. Try again.');
-              chQuestions = chQuestions.concat(batch);
-              renderChQList(); /* show each batch as it arrives */
-          }
-          $btn.prop('disabled', false).text('🤖 Generate Questions from Notes');
-          chGenDone(totalNeeded);
-      } catch(e){
-          $btn.prop('disabled', false).text('🤖 Generate Questions from Notes');
-          chGenFail(e);
-      }
-  }
-
-  /* ── Generate questions from pasted notes (AI) ──────────────────── */
-  async function chGenerateFromPaste(){
-      var pasteText = $('#aqs-ch-paste-text').val().trim();
-      if(!pasteText){ flash('Please paste some notes text first.'); return; }
-      if(pasteText.length < 80){ flash('Notes are too short — paste more content for better results.'); return; }
-
-      var players   = parseInt($('#aqs-ch-players').val())  || 2;
-      var qpr       = parseInt($('#aqs-ch-qpr').val())      || 5;
-      var isLeague  = $('#aqs-ch-league-toggle').is(':checked');
-      var rounds    = isLeague ? Math.max(1, players-1) : (parseInt($('#aqs-ch-rounds').val()) || 1);
-      var perPlayer = qpr * rounds;
-      if(perPlayer < 2){ flash('Need at least 2 questions per player per round.'); return; }
-      var totalNeeded = isLeague ? (qpr*(players-1)+3) : (players * perPlayer + 3);
-      var subject    = $('#aqs-ch-paste-subject').val().trim() || 'General';
-      var difficulty = $('#aqs-ch-paste-difficulty').val()     || 'medium';
-      var excerpt    = pasteText.substring(0, 8000);
-      if(chQuestions.length >= totalNeeded){ flash('Already have enough questions!','success'); return; }
-
-      var $btn = $('#aqs-ch-gen-from-paste-btn');
-      $btn.prop('disabled', true).text('⏳ Generating…');
-      chGenStart(chGenerateFromPaste, 'Sending notes to AI…');
-
-      try {
-          var BATCH = 15;
-          while(chQuestions.length < totalNeeded){
-              var remaining  = totalNeeded - chQuestions.length;
-              var batchSize  = Math.min(BATCH, remaining);
-              var avoidBlock = chQuestions.length > 0
-                  ? '\n\nAlready generated — do NOT repeat these:\n' +
-                    chQuestions.map(function(q,i){ return (i+1)+'. '+q.question; }).join('\n')
-                  : '';
-              var prompt =
-                  'You are an expert quiz maker. Read the following notes and create exactly '+batchSize+' multiple-choice questions based on the content.\n\n'+
-                  'Subject: '+subject+'\nDifficulty: '+difficulty+avoidBlock+'\n\n'+
-                  '--- NOTES (use this as your source) ---\n'+excerpt+'\n--- END OF NOTES ---\n\n'+
-                  'Rules:\n'+
-                  '- Questions must be based ONLY on the notes provided above.\n'+
-                  '- Each question must have exactly 4 answer options.\n'+
-                  '- Use LaTeX notation for any math expressions (e.g. $x^2$).\n'+
-                  '- "correct_answer_index" is 0-based (0=A, 1=B, 2=C, 3=D).\n'+
-                  '- "explanation" is a short sentence explaining why the answer is correct.\n\n'+
-                  'Return ONLY a valid JSON array with NO markdown or code fences. Example:\n'+
-                  '[{"question":"What is ...?","options":["Option A","Option B","Option C","Option D"],"correct_answer_index":1,"explanation":"Because..."}]';
-
-              var batchNum     = Math.floor(chQuestions.length / BATCH) + 1;
-              var totalBatches = Math.ceil(totalNeeded / BATCH);
-              $('#aqs-ch-gen-status').text('AI generating batch '+batchNum+' of '+totalBatches+'…');
-              $('#aqs-ch-gen-bar').css('width', Math.round(chQuestions.length / totalNeeded * 100)+'%');
-              $('#aqs-ch-gen-count').text(chQuestions.length+' / '+totalNeeded);
-
-              var aiText = await chCallAI(prompt);
-              var batch  = chParseJSON(aiText);
-              if(!batch || !batch.length) throw new Error('AI returned no valid questions. Try again.');
-              chQuestions = chQuestions.concat(batch);
-              renderChQList(); /* show each batch as it arrives */
-          }
-          $btn.prop('disabled', false).text('📋 Generate Questions from Pasted Notes');
-          chGenDone(totalNeeded);
-      } catch(e){
-          $btn.prop('disabled', false).text('📋 Generate Questions from Pasted Notes');
-          chGenFail(e);
-      }
-  }
-
-  /* ── Generate questions from standalone "Read Document" tab (AI) ─── */
-  async function chGenerateFromReadDoc(){
-      if(!_chReadDocFile){ flash('Select a document first.'); return; }
-      var players   = parseInt($('#aqs-ch-players').val())        || 2;
-      var qpr       = parseInt($('#aqs-ch-qpr').val())            || 5;
-      var isLeague  = $('#aqs-ch-league-toggle').is(':checked');
-      var rounds    = isLeague ? Math.max(1, players-1) : (parseInt($('#aqs-ch-rounds').val()) || 1);
-      var perPlayer = qpr * rounds;
-      if(perPlayer < 2){ flash('Need at least 2 questions per player per round.'); return; }
-      var totalNeeded = isLeague ? (qpr*(players-1)+3) : (players * perPlayer + 3);
-      var subject     = ($('#aqs-ch-readdoc-subject').val() || '').trim() || 'General';
-      var difficulty  = $('#aqs-ch-readdoc-difficulty').val()         || 'medium';
-      if(chQuestions.length >= totalNeeded){ flash('Already have enough questions!','success'); return; }
-
-      var $btn = $('#aqs-ch-gen-from-readdoc-btn');
-      $btn.prop('disabled',true).text('⏳ Reading document…');
-      chGenStart(chGenerateFromReadDoc,'Extracting text from document…');
-
-      try{
-          if(!_chReadDocText) _chReadDocText = await chExtractText(_chReadDocFile);
-          var excerpt = _chReadDocText.substring(0, 8000);
-
-          var BATCH = 15;
-          while(chQuestions.length < totalNeeded){
-              var remaining  = totalNeeded - chQuestions.length;
-              var batchSize  = Math.min(BATCH, remaining);
-              var avoidBlock = chQuestions.length > 0
-                  ? '\n\nAlready generated — do NOT repeat:\n'+
-                    chQuestions.map(function(q,i){ return (i+1)+'. '+q.question; }).join('\n')
-                  : '';
-              var prompt =
-                  'You are an expert quiz maker. Read the following document and create exactly '+batchSize+' multiple-choice questions that test understanding of the content.\n\n'+
-                  'Subject: '+subject+'\nDifficulty: '+difficulty+avoidBlock+'\n\n'+
-                  '--- DOCUMENT CONTENT ---\n'+excerpt+'\n--- END ---\n\n'+
-                  'Rules:\n'+
-                  '- Questions must be based ONLY on the document above.\n'+
-                  '- Each question must have exactly 4 answer options.\n'+
-                  '- Use LaTeX ($x^2$) for any mathematical expressions.\n'+
-                  '- "correct_answer_index" is 0-based (0=A, 1=B, 2=C, 3=D).\n'+
-                  '- "explanation" briefly explains the correct answer.\n\n'+
-                  'Return ONLY a valid JSON array with NO markdown fences:\n'+
-                  '[{"question":"...","options":["A","B","C","D"],"correct_answer_index":0,"explanation":"..."}]';
-
-              var batchNum     = Math.floor(chQuestions.length / BATCH) + 1;
-              var totalBatches = Math.ceil(totalNeeded / BATCH);
-              $('#aqs-ch-gen-status').text('AI generating batch '+batchNum+' of '+totalBatches+'…');
-              $('#aqs-ch-gen-bar').css('width', Math.round(chQuestions.length / totalNeeded * 100)+'%');
-              $('#aqs-ch-gen-count').text(chQuestions.length+' / '+totalNeeded);
-
-              var aiText = await chCallAI(prompt);
-              var batch  = chParseJSON(aiText);
-              if(!batch||!batch.length) throw new Error('AI returned no valid questions. Try again.');
-              chQuestions = chQuestions.concat(batch);
-              renderChQList();
-          }
-          $btn.prop('disabled',false).text('📖 Generate Questions from Document');
-          chGenDone(totalNeeded);
-      } catch(e){
-          $btn.prop('disabled',false).text('📖 Generate Questions from Document');
-          chGenFail(e);
-      }
-  }
 
   /* ── Text extraction helpers (PDF.js + Mammoth) ──────────────────── */
   function chExtractText(file){
@@ -2210,38 +1975,6 @@
       });
   }
 
-  /* ── MCQ text parser (mirrors aqs-file-parser.js parseQuestions) ─── */
-  function chParseTextQuestions(text){
-      var questions=[];
-      var clean=text.replace(/\*\*([^*\n]+)\*\*/g,'$1').replace(/\*([^*\n]+)\*/g,'$1');
-      var blocks=clean.split(/\n(?=\s*\d+[.)]\s)/);
-      blocks.forEach(function(block){
-          var qMatch=block.match(/^\s*\d+[.)]\s+([\s\S]+)/);
-          if(!qMatch) return;
-          var lines=qMatch[1].split('\n').map(function(l){return l.trim();}).filter(Boolean);
-          var questionLines=[],options=[],correctIdx=-1,explanation='',parsingOpts=false;
-          for(var i=0;i<lines.length;i++){
-              var line=lines[i].replace(/\*\*([^*]+)\*\*/g,'$1').replace(/\*([^*]+)\*/g,'$1').trim();
-              var optM=line.match(/^[-•*]?\s*\(?([A-Da-d])\)?[.):\]]\s*(.*)/);
-              if(optM){ parsingOpts=true; options.push(optM[2].trim()); continue; }
-              var ansM=line.match(/^(?:answer|correct(?:\s+answer)?|ans)[:\s]+\(?([A-Da-d])\)?/i);
-              if(ansM){ correctIdx=ansM[1].toUpperCase().charCodeAt(0)-65; continue; }
-              var expM=line.match(/^(?:explanation|reason|note)[:\s]+(.*)/i);
-              if(expM){ explanation=expM[1].trim(); continue; }
-              if(!parsingOpts) questionLines.push(line);
-          }
-          var question=questionLines.join(' ').trim();
-          if(question&&options.length>=2){
-              questions.push({
-                  question:question,
-                  options:options,
-                  correct_answer_index:correctIdx>=0?Math.min(correctIdx,options.length-1):-1,
-                  explanation:explanation
-              });
-          }
-      });
-      return questions;
-  }
 
   /* ── AI AJAX helper — matches aqs-main.js multi-model retry logic ── */
   var CH_AI_MODELS = [
