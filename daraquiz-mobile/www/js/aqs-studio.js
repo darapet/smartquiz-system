@@ -907,7 +907,12 @@
             setSendState(false);
         }).catch(function (err) {
             showTyping(false);
-            appendMessage('assistant', '\u26A0\uFE0F Connection error. Please check your internet and try again.');
+            var errMsg = (err && err.message) ? err.message : '';
+            var isRateLimit = errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate') !== -1 || errMsg.indexOf('429') !== -1;
+            var displayMsg = isRateLimit
+                ? '\u23F3 ' + (errMsg || 'AI is busy right now. Please wait a moment and try again.')
+                : '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+            appendMessage('assistant', displayMsg);
             console.error('[dts] Groq error:', err);
             isSending = false;
             setSendState(false);
@@ -1223,10 +1228,12 @@
             speakStudioChunked(spoken, function () {
                 if (voiceActive) setVoiceState('idle');
             });
-        }).catch(function () {
+        }).catch(function (err) {
             showTyping(false);
             setVoiceState('error');
-            setVoiceTranscript('Connection error.');
+            var errMsg = (err && err.message) ? err.message : '';
+            var isRateLimit = errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate') !== -1 || errMsg.indexOf('429') !== -1;
+            setVoiceTranscript(isRateLimit ? (errMsg || 'AI is busy. Please wait a moment.') : 'Connection error.');
         });
     }
 
