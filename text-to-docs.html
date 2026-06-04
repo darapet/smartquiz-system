@@ -120,6 +120,31 @@
   /* ── Spinner ──────────────────────────────────── */
   @keyframes ttd-spin{to{transform:rotate(360deg);}}
   .ttd-spin{display:inline-block;animation:ttd-spin .8s linear infinite;}
+  
+    /* ── AI Writer panel ─────────────────────────────────────── */
+    .ttd-write-area{padding:10px 12px;display:flex;flex-direction:column;gap:8px;}
+    .ttd-prompt-ta{width:100%;min-height:130px;border:1.5px solid #e2e8f0;border-radius:7px;
+      padding:9px;font-size:12.5px;resize:vertical;font-family:inherit;box-sizing:border-box;
+      line-height:1.55;background:#fafafa;color:#1e293b;}
+    .ttd-prompt-ta:focus{border-color:#0891b2;outline:none;background:#fff;box-shadow:0 0 0 3px rgba(8,145,178,.1);}
+    .ttd-write-hint{font-size:10.5px;color:#6b7280;background:#f8fafc;border-radius:5px;
+      padding:6px 9px;border-left:3px solid #0891b2;line-height:1.55;}
+    /* ── History panel ───────────────────────────────────────── */
+    .ttd-hist-list{display:flex;flex-direction:column;gap:6px;padding:10px 12px;}
+    .ttd-hist-empty{text-align:center;padding:32px 12px;color:#9ca3af;font-size:12px;line-height:1.6;}
+    .ttd-hist-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;
+      padding:9px 10px;cursor:pointer;transition:all .15s;position:relative;}
+    .ttd-hist-item:hover{background:#e0f2fe;border-color:#7dd3fc;}
+    .ttd-hist-title{font-size:12.5px;font-weight:600;color:#1e293b;
+      white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:22px;}
+    .ttd-hist-meta{font-size:10px;color:#6b7280;margin-top:3px;}
+    .ttd-hist-del{position:absolute;top:8px;right:8px;background:none;border:none;
+      color:#94a3b8;cursor:pointer;font-size:14px;line-height:1;padding:0;}
+    .ttd-hist-del:hover{color:#ef4444;}
+    .ttd-hist-clear{width:100%;margin-top:4px;padding:6px;font-size:11px;background:none;
+      border:1px solid #fca5a5;color:#ef4444;border-radius:6px;cursor:pointer;}
+    .ttd-hist-clear:hover{background:#fef2f2;}
+  
   </style>
   </head>
   <body class="aqs-full-page-body">
@@ -158,6 +183,7 @@
     <div class="ttd-tabs">
       <button class="ttd-tab active" id="ttd-tab-format" onclick="ttdSwitchTab('format')">&#128196; Format Text</button>
       <button class="ttd-tab" id="ttd-tab-write" onclick="ttdSwitchTab('write')">&#9997;&#65039; AI Writer</button>
+      <button class="ttd-tab" id="ttd-tab-history" onclick="ttdSwitchTab('history')">&#128196; History</button>
     </div>
 
     <!-- FORMAT PANEL (existing) -->
@@ -291,6 +317,16 @@
         </div>
       </div>
     </div><!-- /ttd-panel-write -->
+
+      <!-- HISTORY PANEL -->
+      <div class="ttd-panel" id="ttd-panel-history">
+        <div class="ttd-hist-list" id="ttd-hist-list">
+          <div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to save it here automatically.</div>
+        </div>
+        <div style="padding:0 12px 10px;">
+          <button class="ttd-hist-clear" onclick="ttdClearHistory()">&#128465; Clear All History</button>
+        </div>
+      </div><!-- /ttd-panel-history -->
 
   </div><!-- /ttd-settings -->
 
