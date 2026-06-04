@@ -68,8 +68,8 @@
   .ttd-page.sz-letter{width:816px;min-height:1056px;}
   .ttd-page.sz-legal {width:816px;min-height:1344px;}
   /* ── Editor inside page ──────────────────────── */
-  #ttd-editor{
-    min-height:800px;outline:none;
+  #ttd-editor,.ttd-page-editor{
+    min-height:700px;outline:none;
     font-family:var(--ttd-bfont,'Georgia, serif');
     font-size:var(--ttd-bsize,12pt);
     line-height:var(--ttd-lh,1.6);
@@ -108,8 +108,9 @@
   @media print{
     body>*{display:none!important;}
     .ttd-print-root{display:block!important;position:fixed!important;inset:0;background:#fff;z-index:99999;overflow:visible;}
-    .ttd-page{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;}
-    #ttd-editor{min-height:0!important;}
+    .ttd-page,.ttd-page-item{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;outline:none!important;}
+    .ttd-page-editor,#ttd-editor{min-height:0!important;}
+    .ttd-page-footer{display:none!important;}
   }
   .ttd-print-root{display:none;}
   /* ── Responsive ──────────────────────────────── */
@@ -128,6 +129,11 @@
       .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal{width:100%!important;min-height:auto;padding:14px!important;box-shadow:none;border-radius:0;margin:0;}
       .ttd-toolbar{overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;padding:6px 8px;gap:4px;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
       .ttd-toolbar::-webkit-scrollbar{display:none;}
+      .ttd-dl-bar{overflow-x:auto!important;flex-wrap:nowrap!important;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:6px 8px;}
+      .ttd-dl-bar::-webkit-scrollbar{display:none;}
+      .dl-btn{flex-shrink:0;}
+      .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal,.ttd-page-item{width:100%!important;min-height:auto;padding:12px!important;box-shadow:0 2px 6px rgba(0,0,0,.12);border-radius:4px;margin:0;}
+      .ttd-page-editor{min-height:400px!important;}
       .tb-btn,.tb-color,.ttd-toolbar button{min-width:36px;height:36px;font-size:14px;padding:0 8px;flex-shrink:0;}
       .tb-sel{height:36px;font-size:12px;flex-shrink:0;}
       .tb-sep{flex-shrink:0;}
@@ -505,13 +511,8 @@
 
       <!-- Pages area -->
       <div class="ttd-pages-area" id="ttd-pages">
-        <div class="ttd-page sz-a4" id="ttd-page">
-          <div id="ttd-editor" contenteditable="true"
-            data-placeholder="Your formatted document will appear here. Paste text and click Format with AI."
-            onkeydown="ttdKeydown(event)"
-            oninput="ttdEditorInput()"></div>
+          <!-- Pages rendered simultaneously by ttdRenderPages() -->
         </div>
-      </div>
 
       <!-- Download bar -->
       <div class="ttd-dl-bar">
