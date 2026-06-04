@@ -2009,7 +2009,7 @@
               {role:'system',content:'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.\n\nMATH FORMATTING RULE — STRICTLY FOLLOW:\n- ALWAYS wrap ALL mathematical expressions in LaTeX dollar delimiters.\n- Inline: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$, $\\sin\\theta$.\n- Display: $$x = \\frac{-b}{2a}$$.\n- NEVER write bare math like \\frac{a}{b} or x^2 without $ signs.'},
               {role:'user',content:prompt}
           ],
-          max_tokens:4096,temperature:0.3,
+          max_tokens:1800,temperature:0.3,
           response_format:{type:'json_object'}
       }).then(function(r){
           if(!r.ok) return Promise.reject(new Error('Groq '+r.status));
