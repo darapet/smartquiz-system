@@ -132,6 +132,94 @@
       if (editor) editor.focus();
     }
 
+    /* ── Table picker ───────────────────────────────────────────── */
+    window.ttdShowTablePicker = function (btn) {
+      var picker = document.getElementById('ttd-tbl-picker');
+      var grid   = document.getElementById('ttd-tbl-grid');
+      var lbl    = document.getElementById('ttd-tbl-lbl');
+      if (!picker) return;
+      if (picker.classList.contains('open')) { picker.classList.remove('open'); return; }
+      // Build 8×8 grid
+      grid.innerHTML = '';
+      for (var r = 1; r <= 8; r++) {
+        for (var c = 1; c <= 8; c++) {
+          (function(row, col) {
+            var cell = document.createElement('div');
+            cell.className = 'ttd-tbl-cell';
+            cell.title = row + ' × ' + col;
+            cell.addEventListener('mouseover', function () {
+              lbl.textContent = row + ' × ' + col + ' table';
+              grid.querySelectorAll('.ttd-tbl-cell').forEach(function(cl) {
+                var cr = parseInt(cl.dataset.row), cc = parseInt(cl.dataset.col);
+                cl.classList.toggle('hi', cr <= row && cc <= col);
+              });
+            });
+            cell.addEventListener('click', function () { ttdInsertTable(row, col); });
+            cell.dataset.row = r; cell.dataset.col = c;
+            grid.appendChild(cell);
+          })(r, c);
+        }
+      }
+      lbl.textContent = 'Insert Table';
+      picker.classList.add('open');
+      // Close on outside click
+      setTimeout(function () {
+        document.addEventListener('click', function handler(e) {
+          var wrap = document.getElementById('ttd-tbl-wrap');
+          if (wrap && !wrap.contains(e.target)) {
+            picker.classList.remove('open');
+            document.removeEventListener('click', handler);
+          }
+        });
+      }, 0);
+    };
+
+    /* ── Insert table into editor ───────────────────────────────── */
+    window.ttdInsertTable = function (rows, cols) {
+      rows = Math.max(1, Math.min(rows || 3, 20));
+      cols = Math.max(1, Math.min(cols || 3, 10));
+      var picker = document.getElementById('ttd-tbl-picker');
+      if (picker) picker.classList.remove('open');
+      var activeEd = document.activeElement;
+      if (!activeEd || !activeEd.classList.contains('ttd-page-editor')) {
+        activeEd = document.querySelector('.ttd-page-editor') || editor;
+      }
+      if (!activeEd) return;
+      activeEd.focus();
+
+      var html = '<table><thead><tr>';
+      for (var c = 0; c < cols; c++) html += '<th contenteditable="true">Header ' + (c + 1) + '</th>';
+      html += '</tr></thead><tbody>';
+      for (var r = 0; r < rows - 1; r++) {
+        html += '<tr>';
+        for (var cc = 0; cc < cols; cc++) html += '<td contenteditable="true">&nbsp;</td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table><p><br></p>';
+
+      var sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        var range = sel.getRangeAt(0);
+        // Walk up to find block-level ancestor inside editor
+        var node = range.startContainer;
+        while (node && node !== activeEd && node.parentNode !== activeEd) node = node.parentNode;
+        if (node && node !== activeEd) {
+          // Insert after current block
+          var after = node.nextSibling;
+          var tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          var frag = document.createDocumentFragment();
+          while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+          activeEd.insertBefore(frag, after);
+        } else {
+          document.execCommand('insertHTML', false, html);
+        }
+      } else {
+        document.execCommand('insertHTML', false, html);
+      }
+      ttdUpdateStats();
+    };
+
     /* ── Update bold/italic/underline toggle state ──────────────── */
     window.ttdUpdateToolbarState = function () {
       setOn('tb-bold',   document.queryCommandState('bold'));
@@ -150,8 +238,43 @@
         if (e.key === 'u') { e.preventDefault(); ttdFmt('underline'); }
         if (e.key === 'p') { e.preventDefault(); ttdPrint(); }
       }
-      // Tab → indent
-      if (e.key === 'Tab') { e.preventDefault(); document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null); }
+      // Tab → navigate table cells, or indent
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        var sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          var node = sel.getRangeAt(0).startContainer;
+          // Walk up to find td or th
+          var cell = node;
+          while (cell && cell.nodeName !== 'TD' && cell.nodeName !== 'TH' && cell.nodeName !== 'TABLE') cell = cell.parentNode;
+          if (cell && (cell.nodeName === 'TD' || cell.nodeName === 'TH')) {
+            var allCells = Array.prototype.slice.call(cell.closest('table').querySelectorAll('td,th'));
+            var idx = allCells.indexOf(cell);
+            var next = e.shiftKey ? allCells[idx - 1] : allCells[idx + 1];
+            if (next) {
+              next.focus();
+              var r = document.createRange(); r.selectNodeContents(next); r.collapse(false);
+              sel.removeAllRanges(); sel.addRange(r);
+            } else if (!e.shiftKey) {
+              // Add new row at end
+              var tbl = cell.closest('table');
+              var cols = allCells.length / tbl.querySelectorAll('tr').length || 1;
+              var newRow = tbl.insertRow(-1);
+              for (var ci = 0; ci < cols; ci++) {
+                var td = newRow.insertCell(-1);
+                td.setAttribute('contenteditable', 'true');
+                td.innerHTML = '&nbsp;';
+              }
+              var firstNew = newRow.cells[0];
+              firstNew.focus();
+              var nr = document.createRange(); nr.selectNodeContents(firstNew); nr.collapse(false);
+              sel.removeAllRanges(); sel.addRange(nr);
+            }
+            return;
+          }
+        }
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null);
+      }
     };
 
     window.ttdEditorInput = function () { ttdUpdateToolbarState(); };
@@ -197,7 +320,7 @@
         'STEP 1 — ALIGNMENT CHECK: Does the text below make sense as a "' + dtype + '"? ' +
         'If the content clearly does not match (e.g. random chat as a research paper, a shopping list as a business letter), respond with ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
         'STEP 2 — FORMAT: If content aligns (even loosely), format it as a well-structured ' + dtype + ' with ' + tone + ' tone.\n\n' +
-        'RETURN ONLY clean HTML using ONLY these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br. ABSOLUTELY NO html/head/body/style/script tags.\n\n' +
+        'RETURN ONLY clean HTML using ONLY these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br, table, thead, tbody, tr, th, td. ABSOLUTELY NO html/head/body/style/script tags.\n\n' +
         'RULES:\n' +
         '1. Detect or create a clear main title → wrap in <h1>\n' +
         '2. Major sections/topics → wrap in <h2>\n' +
@@ -209,7 +332,8 @@
         '8. Quotes or highlighted text → <blockquote>\n' +
         '9. Fix grammar, spelling, punctuation and improve clarity\n' +
         '10. Match the ' + tone + ' tone throughout\n' +
-        '11. Detect paragraphs from blank lines or sentence groups\n\n' +
+        '11. Detect paragraphs from blank lines or sentence groups\n' +
+        '12. When the content contains comparative, statistical, or multi-column data → use <table><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>\n\n' +
         'TEXT:\n' + text;
 
       callAI(prompt)
@@ -574,8 +698,8 @@
     function dlDOCX() {
       if (!window.docx) { alert('DOCX library not loaded. Check internet and retry.'); return; }
       var { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
-            UnderlineType, BorderStyle } = window.docx;
-      var paragraphs = htmlToDOCXParagraphs(editor.innerHTML, { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType });
+            UnderlineType, BorderStyle, Table, TableRow, TableCell, WidthType } = window.docx;
+      var paragraphs = htmlToDOCXParagraphs(editor.innerHTML, { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType, Table, TableRow, TableCell, WidthType });
 
       var doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
       Packer.toBlob(doc).then(function (blob) {
@@ -584,7 +708,7 @@
     }
 
     function htmlToDOCXParagraphs(html, docx) {
-      var { Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType } = docx;
+      var { Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType, Table, TableRow, TableCell, WidthType } = docx;
       var parser = new DOMParser();
       var doc    = parser.parseFromString(html, 'text/html');
       var result = [];
@@ -630,6 +754,37 @@
           el.querySelectorAll('li').forEach(function (li) {
             result.push(new Paragraph({ children: [new TextRun(idx++ + '. ' + li.textContent)] }));
           });
+        } else if (tag === 'TABLE') {
+          try {
+            if (Table && TableRow && TableCell) {
+              var trs = el.querySelectorAll('tr');
+              var docxRows = [];
+              trs.forEach(function (tr) {
+                var cells = tr.querySelectorAll('td,th');
+                var docxCells = [];
+                cells.forEach(function (td) {
+                  var isHdr = td.tagName.toUpperCase() === 'TH';
+                  var cellRuns = [];
+                  for (var ci = 0; ci < td.childNodes.length; ci++) cellRuns = cellRuns.concat(processInline(td.childNodes[ci]));
+                  if (!cellRuns.length) cellRuns.push(new TextRun({ text: td.textContent || '', bold: isHdr }));
+                  else if (isHdr) cellRuns = cellRuns.map(function(r){ return new TextRun({ text: (r.options && r.options.text) || r.text || td.textContent || '', bold: true }); });
+                  var cellOpts = { children: [new Paragraph({ children: cellRuns })] };
+                  if (isHdr) cellOpts.shading = { type: 'clear', color: 'auto', fill: 'F1F5F9' };
+                  docxCells.push(new TableCell(cellOpts));
+                });
+                if (docxCells.length) docxRows.push(new TableRow({ children: docxCells }));
+              });
+              if (docxRows.length) {
+                var tblOpts = { rows: docxRows };
+                if (WidthType) tblOpts.width = { size: 100, type: WidthType.PERCENTAGE };
+                result.push(new Table(tblOpts));
+              }
+            }
+          } catch (e) {
+            result.push(new Paragraph({ children: [new TextRun('[Table: ' + el.textContent.replace(/\s+/g,' ').trim().slice(0,120) + ']')] }));
+          }
+        } else if (tag === 'THEAD' || tag === 'TBODY' || tag === 'TFOOT') {
+          for (var ti = 0; ti < el.children.length; ti++) processBlock(el.children[ti]);
         } else if (tag === 'P' || tag === 'DIV') {
           var runs = [];
           for (var c = 0; c < el.childNodes.length; c++) runs = runs.concat(processInline(el.childNodes[c]));
@@ -665,6 +820,25 @@
           body += '<text:list>';
           items.forEach(function (li) { body += '<text:list-item><text:p>' + escapeXml(li.textContent) + '</text:p></text:list-item>'; });
           body += '</text:list>';
+        } else if (tag === 'TABLE') {
+          var trs = el.querySelectorAll('tr');
+          if (trs.length) {
+            var firstRow = trs[0].querySelectorAll('td,th');
+            var numCols = firstRow.length;
+            body += '<table:table xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0">';
+            for (var tc = 0; tc < numCols; tc++) body += '<table:table-column/>';
+            trs.forEach(function (tr) {
+              body += '<table:table-row>';
+              var cells2 = tr.querySelectorAll('td,th');
+              cells2.forEach(function (td2) {
+                var isH2 = td2.tagName.toUpperCase() === 'TH';
+                var sn = isH2 ? 'Table_20_Heading' : 'Table_20_Contents';
+                body += '<table:table-cell table:style-name="' + sn + '"><text:p>' + escapeXml(td2.textContent) + '</text:p></table:table-cell>';
+              });
+              body += '</table:table-row>';
+            });
+            body += '</table:table>';
+          }
         } else body += '<text:p text:style-name="Text_20_Body">' + txt + '</text:p>';
       }
       var content = '<?xml version="1.0" encoding="UTF-8"?>' +
