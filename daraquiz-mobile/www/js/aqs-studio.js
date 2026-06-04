@@ -1,267 +1,277 @@
-/* xzily AI Studio — Chat Interface */
-/* Developed by omomo excellence in corporation with Darapet Technology */
+/* aqs-studio.js — xzily AI Chat Studio v2
+   Developed by Omomo Excellence in corporation with Darapet Technology
+   Powered by Groq LLaMA-3.3 + Real-time Web Search (DuckDuckGo + Jina AI Reader)
+   Requires: aqs-groq-key.js (groqFetch / getGroqKey), marked.js, katex, highlight.js
+   Optional: pdfjs-dist, mammoth (for file parsing)
+*/
 (function () {
     'use strict';
 
-  /* ── CAPACITOR SPEECH GUARD ──────────────────────────────────────────────────
-     window.webkitSpeechRecognition / window.speechSynthesis exist in Android
-     WebView but crash or silently fail inside Capacitor when used. This block
-     runs first inside the IIFE and makes every existing  if (!SpeechRec) guard
-     in this file fire correctly — voice is disabled gracefully, not crashed.   */
-  (function () {
-      var _isNative = !!(window.Capacitor &&
-          typeof window.Capacitor.isNativePlatform === 'function' &&
-          window.Capacitor.isNativePlatform());
-      if (!_isNative) return;
-      /* Nullify broken Speech Recognition */
-      try { Object.defineProperty(window, 'SpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.SpeechRecognition = null; }
-      try { Object.defineProperty(window, 'webkitSpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.webkitSpeechRecognition = null; }
-      /* Wrap speechSynthesis.speak() — prevents UI freezing when voice list empty */
-      if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') {
-          var _orig = window.speechSynthesis.speak.bind(window.speechSynthesis);
-          window.speechSynthesis.speak = function (utt) {
-              try {
-                  var vs = window.speechSynthesis.getVoices();
-                  if (vs.length === 0) {
-                      var done = false;
-                      var go = function () { if (done) return; done = true; try { _orig(utt); } catch (e2) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} } };
-                      window.speechSynthesis.addEventListener('voiceschanged', go);
-                      setTimeout(go, 2000);
-                  } else { _orig(utt); }
-              } catch (e) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} }
-          };
-      }
-  })();
-  
+    /* ═══════════════════════════════════════════════════════════
+       STATE
+    ═══════════════════════════════════════════════════════════ */
+    var currentStudioAudio = null;
+    var voiceAiTalking     = false;
+    var voiceRecognition   = null;
+    var voiceActive        = false;
+    var chatHistory        = [];
+    var conversationId     = null;
+    var attachedFileText   = null;
+    var attachedFileName   = null;
+    var isSending          = false;
 
-    var cfg        = window.DTS_CONFIG || {};
-    var messages   = [];          // current conversation messages
-    var isStreaming = false;
-    var currentChatId = null;     // ID of active history entry
+    var STORAGE_KEY = 'dts_chat_sessions';
+    var ACTIVE_KEY  = 'dts_active_session';
 
-    /* ─── File upload state ─── */
-    var uploadedFileContent = null; // extracted text from the attached file
-    var uploadedFileName    = null; // original filename shown in UI
-    var pendingFileContext  = null; // { content, name } — injected once into next API call
+    /* ═══════════════════════════════════════════════════════════
+       SYSTEM PROMPT — Professional General AI
+    ═══════════════════════════════════════════════════════════ */
+    var TODAY = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    /* ─── Storage key ─── */
-    var HISTORY_KEY = 'xzily_chat_history';
+    var SYSTEM_PROMPT =
+        'You are xzily — one of the most capable and exciting new AI assistants in the world, developed by xzily omomo excellence and Darapet Technology. ' +
+        'You are highly intelligent, accurate, and comprehensive — and though xzily is new, it is built to rival and exceed any leading AI assistant in helpfulness and depth. ' +
+        'Today\'s date is ' + TODAY + '. ' +
 
-    /* ─── System prompt ─── */
-    var SYSTEM =
-        'You are xzily — one of the most capable and exciting new AI assistants available today. ' +
-        'You were built by xzily omomo excellence, in collaboration with Darapet Technology. ' +
-        'You help students, teachers, professionals, and curious minds with any subject or challenge. ' +
-        'You have access to real-time web search. When web search results are provided to you in the conversation, ' +
-        'use them to give accurate, current, and up-to-date answers. Cite the source where useful. ' +
+        '\n\n## LANGUAGE & TONE RULES:' +
+        '\n- MIRROR THE USER\'S LANGUAGE AND TONE completely — this is your single most important communication rule.' +
+        '\n- Detect the user\'s language from their message and reply in that SAME language.' +
+        '\n\n### Nigerian Languages & Dialects — respond natively if detected:' +
+        '\n- Nigerian Pidgin English: "abeg", "wetin", "how e dey", "oya", "wahala", "na so" → reply in full Pidgin' +
+        '\n- Yoruba: "bawo ni", "se o wa", "eku ojumo", "mo fe", "se e gbo" → reply fully in Yoruba' +
+        '\n- Igbo: "kedu", "i nwere ike", "nnoo", "gwa m", "ka anyi" → reply fully in Igbo' +
+        '\n- Hausa: "yaya dai", "sannu", "ina kwana", "me kike", "don Allah" → reply fully in Hausa' +
+        '\n- Efik/Ibibio: "mfon", "odudu", "ami" → reply in Efik/Ibibio' +
+        '\n- Ijaw: "wo", "egbesu" → reply in Ijaw' +
+        '\n\n### Other African Languages — respond natively if detected:' +
+        '\n- Twi (Ghana): "ɛte sɛn", "medaase", "akwaaba" → reply in Twi' +
+        '\n- Swahili: "habari", "asante", "karibu", "mambo" → reply in Swahili' +
+        '\n- Amharic: respond in Amharic if detected' +
+        '\n- Zulu/Xhosa: respond in Zulu or Xhosa if detected' +
+        '\n- French (West Africa): reply in French if user writes in French' +
+        '\n\n### Tone matching:' +
+        '\n- Casual/informal in any language → match that casual energy' +
+        '\n- Formal in any language → be formal and structured' +
+        '\n- Mix of English + dialect (code-switching) → match that same code-switching style' +
+        '\n- NEVER force formal standard English on a casual user — it feels cold and robotic.' +
+        '\n- The ONLY exception: financial data, rates, and factual information must always be clearly formatted and accurate, regardless of tone.' +
 
-        '\n\n## YOUR PERSONALITY:\n' +
-        '- Enthusiastic, engaging, and genuinely fascinated by ideas — never robotic or dry.\n' +
-        '- You simplify complex things brilliantly: vivid, clear explanations anyone can follow.\n' +
-        '- Warm, confident, and a little witty — you make every interaction feel alive and interesting.\n' +
-        '- You celebrate curiosity. When a question is fascinating, say so!\n' +
+        '\n\n## YOUR CAPABILITIES:' +
+        '\n- Deep expertise across ALL subjects: science, technology, medicine, law, finance, economics, engineering, history, arts, literature, and business.' +
+        '\n- Real-time web awareness: when web search results or page content are provided, analyze them thoroughly and give accurate, up-to-date answers.' +
+        '\n- Professional writing: emails, reports, legal documents, business proposals, marketing copy, code, essays, and creative writing.' +
+        '\n- Advanced reasoning: complex problem-solving, analysis, strategy, research summaries, and data interpretation.' +
+        '\n- Academic support: exam preparation, tutoring, step-by-step problem solving, and practice questions at all levels.' +
+        '\n- Technical expertise: code in any programming language, debugging, architecture design, DevOps, and system design.' +
 
-        '\n\n## YOUR CAPABILITIES & COMPARISON:\n' +
-        '- xzily is one of the best new AI assistants in the world — sharp, fast, and deeply knowledgeable.\n' +
-        '- While many AI assistants exist, xzily is specially designed to be more personal, more engaging, and more powerful for learning and problem-solving.\n' +
-        '- Though xzily is new, it is built to rival and exceed the experience of any existing AI assistant in helpfulness and depth.\n' +
-        '- Deep expertise across ALL subjects: science, technology, math, medicine, law, finance, history, arts, and business.\n' +
+        '\n\n## RESPONSE FORMAT RULES:' +
+        '\n- Structure every response with appropriate headers, bullet points, numbered lists, or tables — whichever improves clarity.' +
+        '\n- Be thorough and comprehensive. A good response fully answers the question and provides useful context.' +
+        '\n- Use LaTeX math notation where relevant: $ for inline math, $$ for display math.' +
+        '\n- Always cite web search results when they are provided in the context.' +
+        '\n- Be direct, confident, and honest. If information is uncertain or potentially outdated, clearly say so.' +
+        '\n- Never refuse reasonable requests. Handle sensitive topics with balanced, factual professionalism.' +
 
-        '\n\nMATH FORMATTING RULES (follow strictly):\n' +
-        '- For inline math expressions, always wrap with single dollar signs: $expression$\n' +
-        '- For display/block math (equations on their own line), always wrap with double dollar signs: $$expression$$\n' +
-        '- Example inline: The formula is $E = mc^2$\n' +
-        '- Example block: $$\\frac{-b \\pm \\sqrt{b^2 - 4ac}}{2a}$$\n' +
-        '- Never use \\[...\\], \\(...\\), or \\begin{equation}...\\end{equation}\n' +
-        '- Always use $ and $$ only. This is critical for correct rendering.\n' +
-        '\nCODE RULES: Only include code (e.g. ```python) when the user explicitly asks for code, a program, or a programming solution. For math problems, show the working steps and final answer using math formatting only — do NOT include Python or any programming code unless asked.\n' +
+        '\n\n## FINANCIAL & CURRENCY QUESTIONS (e.g. Dollar rate, exchange rates, crypto, stock prices):' +
+        '\n- When asked about exchange rates (e.g. USD to NGN, dollar to naira), always provide a COMPREHENSIVE response including:' +
+        '\n  1. The current rate figure (clearly labelled with the currency pair, e.g. "USD/NGN")' +
+        '\n  2. The type of rate: official CBN rate vs. parallel market (black market) rate — explain the difference if relevant' +
+        '\n  3. A brief note on recent trend (rising, falling, stable) if the web data includes it' +
+        '\n  4. A data source citation and note that live rates fluctuate and users should verify with their bank or a live platform' +
+        '\n  5. Practical advice: where to get the best rate (banks, BDC, fintech apps like Wise, Remitly, etc.)' +
+        '\n- NEVER give just a bare number without context. Always explain what it means.' +
+        '\n- If web search data is not available or is stale, clearly state: "Based on my last available data as of [date]..." and recommend the user check a live source such as CBN.gov.ng, Wise.com, or Google Finance.' +
 
-        '\n\nSTRICT IDENTITY RULES — NEVER BREAK:\n' +
-        '1. You are xzily, built by xzily omomo excellence and Darapet Technology. That is your entire identity.\n' +
-        '2. NEVER name any AI company, model, API, or service (Groq, Llama, OpenAI, ChatGPT, Anthropic, Meta, Gemini, Mistral, Hugging Face, Replicate, Pollinations, or any other). Not even indirectly.\n' +
-        '3. NEVER mention your version, build number, integration, or any technical detail about how you are built.\n' +
-        '4. If asked what AI you are or what powers you: say ONLY "I am xzily, an AI created by xzily omomo excellence (Darapet Technology). I keep my technical architecture private — what matters is what I can do for you!"\n' +
-        '5. When asked how you compare to other AIs: say that xzily is one of the best new AI assistants — fast, smart, built with love by Darapet Technology — without naming specific competitors.\n' +
-        '6. NEVER say "As an AI language model", "I was trained by", or any phrase revealing a third-party AI.\n' +
-        '7. Give zero hints about underlying technology — no speculation, no "I might be based on...\n\n## DARAPET TECHNOLOGY — CONTACT INFORMATION:\n- Company: Darapet Technology\n- Email: daramolapeter98@gmail.com\n- WhatsApp: +234 7055428581\n- LinkedIn: www.linkedin.com/in/daramola-peter-7122152b5\n- When asked about contacting Darapet Technology, the developer, or support, always provide all the above contact details.';
+        '\n\n## EXAMPLE OF BAD vs. GOOD RESPONSE (for financial/data questions):' +
+        '\n- BAD: Just giving a bare number with no context — "1,580" with nothing else.' +
+        '\n- GOOD: "## USD to NGN Exchange Rate\\n\\nAs of today, the exchange rates are as follows:\\n\\n| Rate Type | Rate |\\n|---|---|\\n| CBN Official Rate | ₦1,580/USD (approx.) |\\n| Parallel Market Rate | ₦1,620–₦1,640/USD (approx.) |\\n\\n**Note:** The Nigerian naira has experienced significant volatility. The rates above are indicative and may have changed. Always verify with your bank or a live platform such as [Wise](https://wise.com), [Remitly](https://remitly.com), or [CBN](https://cbn.gov.ng) for the most accurate current figure."' +
 
+        '\n\n## STRICT IDENTITY RULES — NEVER BREAK:' +
+        '\n1. You are xzily, built by xzily omomo excellence and Darapet Technology. That is your entire identity.' +
+        '\n2. NEVER name any AI company, model, API, or service (Groq, Llama, OpenAI, ChatGPT, Anthropic, Meta, Gemini, Mistral, Hugging Face, Replicate, Pollinations, or any other). Not even indirectly.' +
+        '\n3. NEVER mention your version, build number, integration, or any technical detail about how you are built.' +
+        '\n4. If asked what AI you are or what powers you: say ONLY "I am xzily, an AI created by xzily omomo excellence (Darapet Technology). I keep my technical architecture private — what matters is what I can do for you!"' +
+        '\n5. When asked how you compare to other AIs: say that xzily is one of the best new AI assistants — fast, smart, and built with excellence by Darapet Technology — without naming specific competitors in a negative way.' +
+        '\n6. NEVER say "As an AI language model", "I was trained by", or any phrase revealing a third-party AI.' +
+        '\n7. Give zero hints about underlying technology — no speculation, no "I might be based on...\n\n## DARAPET TECHNOLOGY — CONTACT INFORMATION:\n- Company: Darapet Technology\n- Email: daramolapeter98@gmail.com\n- WhatsApp: +234 7055428581\n- LinkedIn: www.linkedin.com/in/daramola-peter-7122152b5\n- When asked about contacting Darapet Technology, the developer, or support, always provide all the above contact details.';
 
-    /* =========================================================
-       INIT
-    ========================================================= */
-    document.addEventListener('DOMContentLoaded', function () {
-        /* Run each setup step in its own try-catch so one failure never
-           silently prevents the rest (e.g. file upload, voice) from loading */
-        var steps = [setupMarked, setupInput, setupSidebar, setupSuggestions,
-                     setupNewChat, setupFileUpload, setupVoice, renderHistoryList];
-        steps.forEach(function (fn) {
-            try { fn(); } catch (e) { /* isolated — continues to next step */ }
-        });
-    });
+    /* ═══════════════════════════════════════════════════════════
+       WEB SEARCH & BROWSING ENGINE
+    ═══════════════════════════════════════════════════════════ */
 
-    /* =========================================================
-         AI CALL STRATEGY — no API key required
-         ─────────────────────────────────────────────────────────
-           1. PRIMARY: Groq direct (fast, best quality) — used only
-              when a Groq API key is configured in settings.
-           2. FALLBACK A: server proxy (aqs_studio_ai action).
-           3. FALLBACK B: Pollinations AI direct from browser —
-              completely free, NO API key needed. Always available.
-         Steps 2 & 3 race simultaneously so there is no wait delay.
-      =========================================================== */
-    var voiceKeepAlive    = null; /* interval that keeps Chrome from pausing mid-utterance */
-    var currentStudioAudio = null; /* Pollinations audio element for studio TTS */
+    /* Detect if the query needs live web data */
+    function detectSearchNeeds(text) {
+        /* Explicit URL → fetch that page */
+        var urlMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
+        if (urlMatch) return { type: 'url', url: urlMatch[0] };
 
-    /* ── Groq browser call — auto-retries with next key on 429 ── */
-    async function callGroq(apiMessages) {
-        if (typeof window.groqFetch !== 'function') return null;
-        try {
-            var ctrl = new AbortController();
-            var tid  = setTimeout(function () { ctrl.abort(); }, 20000);
-            var res  = await window.groqFetch({
-                model:       'llama-3.1-8b-instant',
-                messages:    apiMessages,
-                max_tokens:  2048,
-                temperature: 0.7
-            }, { signal: ctrl.signal });
-            clearTimeout(tid);
-            if (!res.ok) { console.warn('[xzily] Groq HTTP', res.status); return null; }
-            var data = await res.json();
-            var text = (data.choices && data.choices[0] && data.choices[0].message)
-                       ? data.choices[0].message.content.trim() : '';
-            return text || null;
-        } catch (e) {
-            console.warn('[xzily] Groq failed:', e.message || e);
-            return null;
+        /* Domain without protocol */
+        var domainMatch = text.match(/\b(www\.[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
+        if (domainMatch) return { type: 'url', url: 'https://' + domainMatch[1] };
+
+        /* Year mentions → likely needs current info */
+        if (/\b(202[3-9]|2030)\b/.test(text)) return { type: 'search', query: text };
+
+        /* News / real-time / current events */
+        if (/\b(latest|breaking|news|today|tonight|yesterday|this week|this month|this year|current|right now|live|trending|happening|just happened|recently|new release|update|announced|dropped|released|launched|upcoming|schedule|fixtures|standings|table)\b/i.test(text)) {
+            return { type: 'search', query: text };
         }
-    }
 
-    /* ── WordPress server proxy (fallback when no client-side Groq key) ── */
-    async function callViaProxy(apiMessages) {
-        var ajaxUrl = (cfg.ajax_url     || '').trim();
-        var nonce   = (cfg.public_nonce || '').trim();
-        if (!ajaxUrl || !nonce) return null;
-
-        var fd = new FormData();
-        fd.append('action',   'aqs_studio_ai');
-        fd.append('nonce',    nonce);
-        fd.append('messages', JSON.stringify(apiMessages));
-
-        var ctrl = new AbortController();
-        var tid  = setTimeout(function () { ctrl.abort(); }, 35000);
-
-        try {
-            var res  = await fetch(ajaxUrl, { method: 'POST', body: fd, signal: ctrl.signal });
-            clearTimeout(tid);
-            var data = await res.json();
-            if (data && data.success && data.data && data.data.text) {
-                return data.data.text;
-            }
-            console.warn('[xzily] proxy: no text in response', data);
-            return null;
-        } catch (e) {
-            clearTimeout(tid);
-            console.warn('[xzily] proxy failed:', e.message || e);
-            return null;
+        /* Prices, rates, money */
+        if (/\b(price|cost|rate|exchange rate|how much|worth|value|usd|naira|dollar|pound|euro|nasd|nse|stock|crypto|bitcoin|ethereum|bnb|usdt|market cap)\b/i.test(text)) {
+            return { type: 'search', query: text };
         }
-    }
 
-    /* ── Pollinations direct (no key required — last resort fallback) ── */
-    async function callPollinations(apiMessages) {
-        var models = ['openai', 'mistral', 'llama'];
-        for (var mi = 0; mi < models.length; mi++) {
-            try {
-                var ctrl = new AbortController();
-                var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
-                var res  = await fetch('https://text.pollinations.ai/openai', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal:  ctrl.signal,
-                    body: JSON.stringify({
-                        messages:    apiMessages,
-                        model:       models[mi],
-                        max_tokens:  1024,
-                        temperature: 0.7,
-                        private:     true
-                    })
-                });
-                clearTimeout(tid);
-                if (!res.ok) { console.warn('[xzily] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
-                var data = await res.json();
-                var text = (data.choices && data.choices[0] && data.choices[0].message)
-                           ? data.choices[0].message.content.trim() : '';
-                if (text) return text;
-            } catch (e) {
-                console.warn('[xzily] Pollinations model', models[mi], 'failed:', e.message || e);
-            }
+        /* Sports */
+        if (/\b(score|match|game result|who won|who beat|champion|league|premier league|laliga|champions league|world cup|super eagles|barca|arsenal|chelsea|man united|man city|liverpool|psg|real madrid)\b/i.test(text)) {
+            return { type: 'search', query: text };
         }
-        return null;
-    }
 
-    /* ── AI call — sequential: Groq → Pollinations → proxy ── */
-    async function raceAI(apiMessages) {
-        /* 1. Groq direct — fastest & best quality (key saved via 🔑 button) */
-        var groqResult = await callGroq(apiMessages);
-        if (groqResult) return groqResult;
+        /* Explicit search commands */
+        if (/\b(search|look up|look for|find out|find me|check|browse|visit|open|go to|show me|google|bing|search for)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
 
-        /* 2. Pollinations direct — free, no key, works from browser immediately */
-        var pollResult = await callPollinations(apiMessages);
-        if (pollResult) return pollResult;
+        /* Questions about people, companies, events */
+        if (/\b(who is|who are|what is|where is|when did|when was|how much|how many|tell me about|what happened|what happened to|who owns|who runs|ceo|president|governor|minister|founded|born|died|age of|capital of|population of|located)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
 
-        /* 3. Server proxy — last resort only */
-        var proxyResult = await callViaProxy(apiMessages);
-        if (proxyResult) return proxyResult;
+        /* Nigerian / African specific */
+        if (/\b(naija|nigeria|ghana|kenya|south africa|nollywood|afrobeats|dangote|tinubu|obi|atiku|inec|efcc|cbn|nnpc|nddc|waec|jamb|neco|ssce|school fees)\b/i.test(text)) {
+            return { type: 'search', query: text };
+        }
 
         return null;
     }
 
-    /* =========================================================
-       WEB SEARCH ENGINE
-       Adds real-time web data to AI responses.
-       Sources: Jina AI · DuckDuckGo · Google News · Wikipedia
-    ========================================================= */
+    /* ── Web page fetcher — tries 3 methods in sequence ── */
 
-    function timedFetch(url, options, ms) {
+    /* Helper: quick fetch with timeout */
+    function timedFetch(url, opts, ms) {
         var ctrl  = new AbortController();
-        var timer = setTimeout(function () { ctrl.abort(); }, ms || 8000);
-        var opts  = Object.assign({}, options || {}, { signal: ctrl.signal });
-        return fetch(url, opts).then(function (r) {
-            clearTimeout(timer); return r;
-        }).catch(function (e) {
-            clearTimeout(timer); throw e;
+        var timer = setTimeout(function () { ctrl.abort(); }, ms || 18000);
+        return fetch(url, Object.assign({ signal: ctrl.signal }, opts || {}))
+            .finally(function () { clearTimeout(timer); });
+    }
+
+    /* Method 1 — Jina AI Reader (best quality, extracts clean article text) */
+    async function fetchViaJina(url) {
+        try {
+            var res = await timedFetch(
+                'https://r.jina.ai/' + encodeURIComponent(url),
+                { headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text', 'X-Timeout': '15' } },
+                20000
+            );
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var text = await res.text();
+            if (text && text.trim().length > 100) return text.trim().slice(0, 5000);
+            return null;
+        } catch (e) { return null; }
+    }
+
+    /* Method 2 — AllOrigins CORS proxy (fetches raw HTML, extracts visible text) */
+    async function fetchViaAllOrigins(url) {
+        try {
+            var apiUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+            var res    = await timedFetch(apiUrl, {}, 10000);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var data   = await res.json();
+            var html   = (data && data.contents) || '';
+            if (!html) return null;
+            /* Strip scripts, styles and tags — keep visible text */
+            var text = html
+                .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (text.length > 200) return text.slice(0, 5000);
+            return null;
+        } catch (e) { return null; }
+    }
+
+    /* Method 3 — corsproxy.io (another free open CORS proxy) */
+    async function fetchViaCorsProxy(url) {
+        try {
+            var proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+            var res      = await timedFetch(proxyUrl, {}, 10000);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var html = await res.text();
+            if (!html) return null;
+            var text = html
+                .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+                .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+                .replace(/<[^>]+>/g, ' ')
+                .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+            if (text.length > 200) return text.slice(0, 5000);
+            return null;
+        } catch (e) { return null; }
+    }
+
+    /* Master fetchWebPage — all 3 methods in parallel, fastest wins */
+    async function fetchWebPage(url) {
+        return new Promise(function(resolve) {
+            var done = false;
+            var remaining = 3;
+            function tryResolve(result) {
+                remaining--;
+                if (result && !done) { done = true; resolve(result); return; }
+                if (remaining === 0 && !done) resolve(null);
+            }
+            fetchViaJina(url).then(tryResolve).catch(function(){ tryResolve(null); });
+            fetchViaAllOrigins(url).then(tryResolve).catch(function(){ tryResolve(null); });
+            fetchViaCorsProxy(url).then(tryResolve).catch(function(){ tryResolve(null); });
         });
     }
 
+    /* Search DuckDuckGo Instant Answer API — FREE, no key needed */
     async function searchDuckDuckGo(query) {
         try {
             var url  = 'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) +
                        '&format=json&no_html=1&skip_disambig=1&no_redirect=1';
-            var res  = await timedFetch(url, {}, 6000);
-            if (!res.ok) return null;
+            var ctrl = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); }, 5000);
+            var res  = await fetch(url, { signal: ctrl.signal });
+            clearTimeout(timer);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             var data = await res.json();
+
             var parts = [];
+
             if (data.AbstractText) parts.push(data.AbstractText);
             if (data.Answer)       parts.push('Answer: ' + data.Answer);
             if (data.Definition)   parts.push('Definition: ' + data.Definition);
+
+            /* Related topics */
             if (data.RelatedTopics && data.RelatedTopics.length) {
                 var topics = data.RelatedTopics.slice(0, 5).map(function (t) {
                     return t.Text || (t.Topics && t.Topics[0] && t.Topics[0].Text) || '';
                 }).filter(Boolean);
                 if (topics.length) parts.push('Related:\n' + topics.join('\n'));
             }
+
+            /* Infobox */
             if (data.Infobox && data.Infobox.content && data.Infobox.content.length) {
                 var info = data.Infobox.content.slice(0, 8).map(function (item) {
                     return item.label + ': ' + item.value;
                 }).join('\n');
                 parts.push('Info:\n' + info);
             }
+
             if (data.AbstractURL) parts.push('Source: ' + data.AbstractURL);
+
             return parts.join('\n\n').trim() || null;
-        } catch (e) { return null; }
+        } catch (e) {
+            return null;
+        }
     }
 
+    /* Jina AI web search — returns real web results, no key needed */
     async function searchJinaWeb(query) {
         try {
             var res = await timedFetch(
@@ -269,13 +279,14 @@
                 { headers: { 'Accept': 'text/plain', 'X-Return-Format': 'text' } },
                 10000
             );
-            if (!res.ok) return null;
+            if (!res.ok) throw new Error('HTTP ' + res.status);
             var text = await res.text();
             if (text && text.trim().length > 80) return { source: 'Web', content: text.trim().slice(0, 4500) };
             return null;
         } catch (e) { return null; }
     }
 
+    /* Wikipedia direct summary (by exact title guess) */
     async function searchWikipedia(query) {
         try {
             var title = query.trim().replace(/\s+/g, '_');
@@ -290,6 +301,7 @@
         } catch (e) { return null; }
     }
 
+    /* Wikipedia full-text search (searches across all articles) */
     async function searchWikipediaFullText(query) {
         try {
             var url = 'https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=' +
@@ -306,9 +318,10 @@
         } catch (e) { return null; }
     }
 
+    /* Google News via RSS (free, no key, gives real headlines) */
     async function searchGoogleNews(query) {
         try {
-            var rssUrl   = 'https://news.google.com/rss/search?q=' + encodeURIComponent(query) + '&hl=en-US&gl=US&ceid=US:en';
+            var rssUrl  = 'https://news.google.com/rss/search?q=' + encodeURIComponent(query) + '&hl=en-US&gl=US&ceid=US:en';
             var proxyUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(rssUrl);
             var res  = await timedFetch(proxyUrl, {}, 8000);
             if (!res.ok) return null;
@@ -317,68 +330,66 @@
             if (!xml) return null;
             var items = xml.match(/<item[\s\S]*?<\/item>/g) || [];
             var headlines = items.slice(0, 6).map(function (item) {
-                var titleM = item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || item.match(/<title>(.*?)<\/title>/) || [];
-                var descM  = item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || item.match(/<description>(.*?)<\/description>/) || [];
-                var t = titleM[1] || '';
-                var d = (descM[1] || '').replace(/<[^>]*>/g, '').slice(0, 120);
-                return t + (d ? ' — ' + d : '');
+                var title = (item.match(/<title><!\[CDATA\[(.*?)\]\]><\/title>/) || item.match(/<title>(.*?)<\/title>/) || [])[1] || '';
+                var desc  = (item.match(/<description><!\[CDATA\[(.*?)\]\]><\/description>/) || item.match(/<description>(.*?)<\/description>/) || [])[1] || '';
+                return title + (desc ? ' — ' + desc.replace(/<[^>]*>/g, '').slice(0, 120) : '');
             }).filter(Boolean);
             if (headlines.length) return 'Latest news headlines:\n' + headlines.join('\n');
             return null;
         } catch (e) { return null; }
     }
 
-    function detectSearchNeeds(userMessage) {
-        var msg  = userMessage.toLowerCase();
-        var now  = /\b(today|tonight|this week|this month|this year|current|currently|now|right now|latest|recent|recently|new|just|breaking|live|ongoing)\b/.test(msg);
-        var who  = /\b(who is|who are|who was|who were|who won|who leads|who owns|what is|what are|what was|what were|whats|what's|how much|how many|how old)\b/.test(msg);
-        var event = /\b(news|update|happening|happened|result|score|election|match|game|war|conflict|price|rate|gdp|stock|crypto|bitcoin|weather|forecast|announce|released|launched|discovered)\b/.test(msg);
-        var search = /\b(search|find|look up|check|google|tell me about|information on|facts about|details about|abeg search|find out)\b/.test(msg);
-        var person = /\b(president|minister|ceo|governor|senator|prime minister|chancellor|manager|coach|winner|champion)\b/.test(msg);
-        var hasUrl = /https?:\/\//i.test(userMessage);
-        return now || who || event || search || person || hasUrl;
-    }
-
+    /* Master search: ALL sources run in PARALLEL — fastest winner wins.
+       Hard cap: 7 seconds total — never blocks the AI response longer than that. */
     async function performWebSearch(query) {
+        /* Clean query for Wikipedia */
         var wikiQ = query
             .replace(/\b(latest|news|what is|who is|who are|tell me about|search for|find|current|today|abeg|please|help me with|search)\b/gi, '')
             .replace(/[?!.,]/g, '').trim();
 
-        var isNewsQuery = /\b(news|latest|breaking|today|tonight|yesterday|this week|trending|happening|recently|score|match|who won)\b/i.test(query);
+        /* Detect if this looks like a news query for Google News */
+        var isNewsQuery = /\b(news|latest|breaking|today|tonight|yesterday|this week|trending|happening|just happened|recently|score|match|who won)\b/i.test(query);
 
+        /* Fire all searches at once */
         var searches = [
-            searchJinaWeb(query).catch(function () { return null; }),
-            searchDuckDuckGo(query).then(function (ddg) {
+            /* 1. Jina Search — real live web results (usually fastest & best) */
+            searchJinaWeb(query).catch(function(){ return null; }),
+            /* 2. DuckDuckGo instant answers (fast for well-known topics) */
+            searchDuckDuckGo(query).then(function(ddg){
                 return (ddg && ddg.length > 80) ? { source: 'DuckDuckGo', content: ddg } : null;
-            }).catch(function () { return null; }),
-            (isNewsQuery ? searchGoogleNews(query).then(function (gn) {
+            }).catch(function(){ return null; }),
+            /* 3. Google News RSS (for news/current event queries) */
+            (isNewsQuery ? searchGoogleNews(query).then(function(gn){
                 return gn ? { source: 'Google News', content: gn } : null;
-            }).catch(function () { return null; }) : Promise.resolve(null)),
-            (wikiQ.length > 3 ? searchWikipediaFullText(wikiQ).then(function (w) {
+            }).catch(function(){ return null; }) : Promise.resolve(null)),
+            /* 4. Wikipedia full-text search */
+            (wikiQ.length > 3 ? searchWikipediaFullText(wikiQ).then(function(w){
                 return w ? { source: 'Wikipedia', content: w } : null;
-            }).catch(function () { return null; }) : Promise.resolve(null)),
-            (wikiQ.length > 3 ? searchWikipedia(wikiQ).then(function (w) {
+            }).catch(function(){ return null; }) : Promise.resolve(null)),
+            /* 5. Wikipedia direct fallback */
+            (wikiQ.length > 3 ? searchWikipedia(wikiQ).then(function(w){
                 return w ? { source: 'Wikipedia', content: w } : null;
-            }).catch(function () { return null; }) : Promise.resolve(null))
+            }).catch(function(){ return null; }) : Promise.resolve(null))
         ];
 
-        var hardTimeout = new Promise(function (resolve) {
-            setTimeout(function () { resolve(null); }, 7000);
-        });
+        /* Hard 7-second cap so search never delays AI response too long */
+        var hardTimeout = new Promise(function(resolve) { setTimeout(function(){ resolve(null); }, 7000); });
 
-        var raceResult = new Promise(function (resolve) {
+        /* Race: return as soon as any source has ≥80 chars, or timeout */
+        var raceResult = new Promise(function(resolve) {
             var resolved = false;
             var remaining = searches.length;
             var best = null;
-            searches.forEach(function (p) {
-                p.then(function (result) {
+
+            searches.forEach(function(p) {
+                p.then(function(result) {
                     remaining--;
                     if (result && result.content && result.content.length > 80) {
                         if (!resolved) { resolved = true; resolve(result); return; }
                         if (result.source === 'Web' || result.source === 'Google News') best = result;
                     }
                     if (remaining === 0 && !resolved) { resolved = true; resolve(best); }
-                }).catch(function () {
+                }).catch(function(){
                     remaining--;
                     if (remaining === 0 && !resolved) { resolved = true; resolve(null); }
                 });
@@ -388,1483 +399,738 @@
         return Promise.race([raceResult, hardTimeout]);
     }
 
-    /* ── Main entry point called by sendMessage() ── */
-    async function callAI() {
-        var fileCtx = pendingFileContext;
-        pendingFileContext = null;
+    /* ═══════════════════════════════════════════════════════════
+       UTILITIES
+    ═══════════════════════════════════════════════════════════ */
+    function escHtml(str) {
+        return String(str || '')
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
 
-        /* Check if user's last message needs a web search */
-        var lastUserMsg = '';
-        for (var i = messages.length - 1; i >= 0; i--) {
-            if (messages[i].role === 'user') { lastUserMsg = messages[i].content; break; }
-        }
+    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-        var searchContext = null;
-        if (lastUserMsg && detectSearchNeeds(lastUserMsg)) {
-            /* Show searching indicator */
-            var typingEl = document.getElementById('dts-typing');
-            if (typingEl) {
-                var dots = typingEl.querySelector('.dts-typing-dots');
-                if (dots) dots.setAttribute('data-label', '🔍 Searching the web…');
+    function scrollToBottom(force) {
+        var msgs = document.getElementById('dts-messages');
+        if (!msgs) return;
+        var nearBottom = (msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight) < 150;
+        if (!nearBottom && !force) return;
+        requestAnimationFrame(function () {
+            msgs.scrollTop = msgs.scrollHeight + 200;
+        });
+    }
+
+    function showTyping(show, statusText) {
+        var el   = document.getElementById('dts-typing');
+        var msgs = document.getElementById('dts-messages');
+        if (!el) return;
+        if (show) {
+            /* Update status text if provided */
+            if (statusText) {
+                var span = el.querySelector('span');
+                if (span) span.textContent = statusText;
             }
-            try {
-                var result = await performWebSearch(lastUserMsg);
-                if (result && result.content) {
-                    searchContext = '[Web search results from ' + result.source + ']:\n' + result.content;
-                }
-            } catch (e) { /* ignore search errors */ }
-            /* Restore normal typing label */
-            if (typingEl) {
-                var dots2 = typingEl.querySelector('.dts-typing-dots');
-                if (dots2) dots2.removeAttribute('data-label');
-            }
-        }
-
-        /* Build messages — inject file content + search context into last user message */
-        var apiMessages = [{ role: 'system', content: SYSTEM }].concat(
-            messages.map(function (m, idx) {
-                var content = m.content;
-                if (idx === messages.length - 1 && m.role === 'user') {
-                    if (fileCtx) {
-                        var truncated = fileCtx.content.length > 6000
-                            ? fileCtx.content.substring(0, 6000) + '\n\n[File truncated to fit AI context limit]'
-                            : fileCtx.content;
-                        content = content + '\n\n[Attached file: ' + fileCtx.name + ']\n\n' + truncated;
-                    }
-                    if (searchContext) {
-                        content = content + '\n\n' + searchContext;
-                    }
-                }
-                return { role: m.role, content: content };
-            })
-        );
-
-        var winner = await raceAI(apiMessages);
-
-        showTyping(false);
-
-        if (winner) {
-            messages.push({ role: 'assistant', content: winner });
-            typeMessage(winner, function () {
-                document.getElementById('dts-send').disabled = false;
-                isStreaming = false;
-                scrollToBottom();
-                saveCurrentChat();
-            });
+            if (msgs) msgs.appendChild(el);
+            el.style.display = 'flex';
+            scrollToBottom();
         } else {
-            appendMessage('ai', '⚠️ xzily AI could not reach the server. Please check your internet connection and try again.');
-            document.getElementById('dts-send').disabled = false;
-            isStreaming = false;
+            /* Reset text */
+            var span2 = el.querySelector('span');
+            if (span2) span2.textContent = 'xzily AI is thinking\u2026';
+            el.style.display = 'none';
         }
     }
 
-    /* =========================================================
-       SEND MESSAGE
-    ========================================================= */
-    function sendMessage() {
-        if (isStreaming) return;
-        var input = document.getElementById('dts-input');
-        var text  = (input.value || '').trim();
-        if (!text && !uploadedFileContent) return;
-        if (!text && uploadedFileContent) text = 'Please analyse the attached file.';
-
-        var welcome = document.getElementById('dts-welcome');
-        if (welcome) welcome.style.display = 'none';
-
-        /* Start a new history entry if this is the first message */
-        if (messages.length === 0) {
-            currentChatId = 'chat_' + Date.now();
-        }
-
-        /* Capture file before clearing state */
-        var attachedFile = null;
-        if (uploadedFileContent) {
-            pendingFileContext = { content: uploadedFileContent, name: uploadedFileName };
-            attachedFile      = uploadedFileName;
-            clearFileAttachment();
-        }
-
-        messages.push({ role: 'user', content: text });
-        appendUserMessage(text, attachedFile);
-        input.value = '';
-        input.style.height = 'auto';
-        document.getElementById('dts-send').disabled = true;
-        isStreaming = true;
-
-        showTyping(true);
-        scrollToBottom();
-        callAI();
-    }
-
-    /* =========================================================
-       SETUP
-    ========================================================= */
-    function setupMarked() {
-        if (typeof marked === 'undefined') return;
+    /* ═══════════════════════════════════════════════════════════
+       MARKDOWN / MATH RENDERING
+    ═══════════════════════════════════════════════════════════ */
+    function renderMessage(text) {
+        if (!text) return '';
+        var html = '';
         try {
-            /* marked v4 and below use setOptions */
-            if (typeof marked.setOptions === 'function') {
-                marked.setOptions({
-                    breaks: true,
-                    gfm:    true,
-                    highlight: function (code, lang) {
-                        if (typeof hljs !== 'undefined' && lang && hljs.getLanguage(lang)) {
-                            return hljs.highlight(code, { language: lang }).value;
-                        }
-                        return typeof hljs !== 'undefined' ? hljs.highlightAuto(code).value : code;
-                    }
-                });
-            } else if (typeof marked.use === 'function') {
-                /* marked v5+ removed setOptions and the highlight callback;
-                   configure what's still available and let hljs run post-render */
-                marked.use({ breaks: true, gfm: true });
+            if (typeof marked !== 'undefined') {
+                marked.setOptions({ breaks: true, gfm: true });
+                html = marked.parse(String(text));
+            } else {
+                html = escHtml(String(text)).replace(/\n/g, '<br>');
             }
         } catch (e) {
-            /* Never let a marked API change crash the whole init chain */
+            html = escHtml(String(text)).replace(/\n/g, '<br>');
         }
-    }
-
-    function setupInput() {
-        var input   = document.getElementById('dts-input');
-        var sendBtn = document.getElementById('dts-send');
-        if (!input || !sendBtn) return;
-        input.addEventListener('input', function () {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 180) + 'px';
-        });
-        input.addEventListener('keydown', function (e) {
-            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
-        });
-        sendBtn.addEventListener('click', sendMessage);
-    }
-
-    function setupSidebar() {
-        var toggle  = document.getElementById('dts-sidebar-toggle');
-        var sidebar = document.getElementById('dts-sidebar');
-        if (!toggle || !sidebar) return;
-
-        /* Create dimming overlay for mobile */
-        var overlay = document.createElement('div');
-        overlay.className = 'dts-overlay';
-        document.body.appendChild(overlay);
-
-        function openSidebar() {
-            sidebar.classList.add('open');
-            overlay.style.display = 'block';
-            toggle.innerHTML = '✕';
-        }
-
-        function closeSidebar() {
-            sidebar.classList.remove('open');
-            overlay.style.display = 'none';
-            toggle.innerHTML = '☰';
-        }
-
-        /* Hamburger toggle — stop propagation so document listener doesn't instantly close */
-        toggle.addEventListener('click', function (e) {
-            e.stopPropagation();
-            if (sidebar.classList.contains('open')) {
-                closeSidebar();
-            } else {
-                openSidebar();
-            }
-        });
-
-        /* Tap overlay to close */
-        overlay.addEventListener('click', closeSidebar);
-        overlay.addEventListener('touchstart', function (e) { e.preventDefault(); closeSidebar(); }, { passive: false });
-
-        /* Clicking a nav link while sidebar is open on mobile closes it */
-        sidebar.querySelectorAll('a').forEach(function (a) {
-            a.addEventListener('click', function () {
-                if (window.innerWidth <= 768) closeSidebar();
-            });
-        });
-
-        /* ESC key closes sidebar */
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') closeSidebar();
-        });
-    }
-
-    function setupSuggestions() {
-        document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
-            btn.addEventListener('click', function () {
-                var prompt = this.getAttribute('data-prompt');
-                if (!prompt) return;
-                document.getElementById('dts-input').value = prompt;
-                sendMessage();
-            });
-        });
-    }
-
-    function setupNewChat() {
-        var btn = document.getElementById('dts-new-chat');
-        if (!btn) return;
-        btn.addEventListener('click', function () {
-            startNewChat();
-        });
-    }
-
-    function startNewChat() {
-        messages      = [];
-        currentChatId = null;
-        document.getElementById('dts-messages').innerHTML = '';
-        var welcome = document.getElementById('dts-welcome');
-        if (welcome) welcome.style.display = 'flex';
-        /* Deselect history items */
-        document.querySelectorAll('.dts-history-item').forEach(function (el) {
-            el.classList.remove('active');
-        });
-    }
-
-    /* =========================================================
-       TYPEWRITER MESSAGE (AI responses only)
-       Streams raw text char-by-char with a blinking cursor,
-       then swaps to full rendered markdown when done.
-    ========================================================= */
-    /* Tracks the flush fn for the current in-progress typeMessage animation.
-       Called on visibilitychange so animation completes even when tab was hidden. */
-    var _typingFlushFn  = null;
-    var _hiddenTickTimer = null;
-
-    /* When user returns to the tab, flush any paused animation immediately */
-    document.addEventListener('visibilitychange', function() {
-        if (!document.hidden && _typingFlushFn) {
-            _typingFlushFn();
-            _typingFlushFn = null;
-        }
-    });
-
-    function typeMessage(text, onDone) {
-          var container = document.getElementById('dts-messages');
-          if (!container) { if (onDone) onDone(); return; }
-
-          /* Build DOM structure */
-          var msgEl = document.createElement('div');
-          msgEl.className = 'dts-message dts-ai';
-
-          var avatarEl = document.createElement('div');
-          avatarEl.className = 'dts-msg-avatar';
-          avatarEl.textContent = '⬡';
-
-          var contentEl = document.createElement('div');
-          contentEl.className = 'dts-msg-content';
-
-          var bubbleEl = document.createElement('div');
-          bubbleEl.className = 'dts-msg-bubble';
-
-          /* Streaming text container — plain pre-wrap during animation */
-          var streamEl = document.createElement('div');
-          streamEl.className = 'aqs-type-stream';
-          bubbleEl.appendChild(streamEl);
-
-          /* Blinking cursor */
-          var cursorEl = document.createElement('span');
-          cursorEl.className = 'aqs-type-cursor';
-          cursorEl.setAttribute('aria-hidden', 'true');
-          bubbleEl.appendChild(cursorEl);
-
-          contentEl.appendChild(bubbleEl);
-          msgEl.appendChild(avatarEl);
-          msgEl.appendChild(contentEl);
-          container.appendChild(msgEl);
-          scrollToBottom();
-
-          /* Word-by-word streaming — safe regex, no lookbehind (works on all iOS/Android) */
-          var tokens      = text.match(/\S+|\s+/g) || [text];
-          var tokenIdx    = 0;
-          var accumulated = '';
-
-          /* requestAnimationFrame-based ticker — smooth and reliable on Android/iOS.
-             Uses a target timestamp so delays (40/70/180ms) work correctly without
-             setTimeout, which can be throttled aggressively on mobile. */
-          var nextTickAt = performance.now() + 16;
-
-          /* Register flush function so visibilitychange can trigger immediate completion */
-          _typingFlushFn = function() {
-              if (_hiddenTickTimer) { clearTimeout(_hiddenTickTimer); _hiddenTickTimer = null; }
-              accumulated = text;
-              tokenIdx    = tokens.length;
-              tick(performance.now());
-          };
-
-          function tick(ts) {
-              /* Clear hidden-tab fallback timer if we're running normally */
-              if (_hiddenTickTimer) { clearTimeout(_hiddenTickTimer); _hiddenTickTimer = null; }
-              var now = (typeof ts === 'number') ? ts : performance.now();
-
-              /* If the tab is hidden mid-animation, fast-forward to the complete text
-                 so the message is fully rendered when the user returns to the page */
-              if (document.hidden && tokenIdx < tokens.length) {
-                  accumulated = text;
-                  tokenIdx = tokens.length;
-              } else if (now < nextTickAt) {
-                  requestAnimationFrame(tick);
-                  /* Safari/Chrome throttle RAF on hidden tabs — setTimeout ensures tick()
-                     fires at least once per 250ms even when the tab is not visible */
-                  _hiddenTickTimer = setTimeout(function() { tick(performance.now()); }, 250);
-                  return;
-              }
-
-              /* Consume whitespace-only tokens so pauses feel natural */
-              while (tokenIdx < tokens.length && /^\s+$/.test(tokens[tokenIdx])) {
-                  accumulated += tokens[tokenIdx];
-                  tokenIdx++;
-              }
-
-              if (tokenIdx < tokens.length) {
-                  accumulated += tokens[tokenIdx];
-                  tokenIdx++;
-                  streamEl.textContent = accumulated;
-                  scrollToBottom();
-              }
-
-              if (tokenIdx < tokens.length) {
-                  /* Use trimRight for broad Android compat (trimEnd added in ES2019) */
-                  var lastChar = accumulated.replace(/\s+$/, '').slice(-1);
-                  var delay    = /[.!?]/.test(lastChar) ? 80
-                               : /[,;:]/.test(lastChar) ? 35
-                               : 20;
-                  nextTickAt = performance.now() + delay;
-                  requestAnimationFrame(tick);
-              } else {
-                  /* ── Streaming done ── swap to full rendered markdown ── */
-                  cursorEl.remove();
-                  bubbleEl.innerHTML = renderContent(text);
-
-                  /* Syntax-highlight code blocks */
-                  if (typeof hljs !== 'undefined') {
-                      bubbleEl.querySelectorAll('pre code').forEach(function (block) {
-                          hljs.highlightElement(block);
-                      });
-                  }
-
-                  /* Copy button — works on HTTPS and plain HTTP */
-                  var actionsEl = document.createElement('div');
-                  actionsEl.className = 'dts-msg-actions';
-                  var copyBtn = document.createElement('button');
-                  copyBtn.className = 'dts-copy-btn';
-                  copyBtn.textContent = 'Copy';
-                  copyBtn.addEventListener('click', function () {
-                      function doFallback() {
-                          var ta = document.createElement('textarea');
-                          ta.value = text;
-                          ta.setAttribute('readonly', '');
-                          ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
-                          document.body.appendChild(ta);
-                          ta.focus(); ta.select();
-                          try {
-                              document.execCommand('copy');
-                              copyBtn.textContent = 'Copied!';
-                          } catch(e) { copyBtn.textContent = 'Error'; }
-                          document.body.removeChild(ta);
-                          setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
-                      }
-                      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                          navigator.clipboard.writeText(text).then(function () {
-                              copyBtn.textContent = 'Copied!';
-                              setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
-                          }).catch(doFallback);
-                      } else { doFallback(); }
-                  });
-                  actionsEl.appendChild(copyBtn);
-                  contentEl.appendChild(actionsEl);
-
-                  /* "Save as Quiz" bar if MCQs detected */
-                  maybeShowCreateQuizBar(contentEl, text);
-
-                  _typingFlushFn = null;
-                  scrollToBottom();
-                  if (onDone) onDone();
-              }
-          }
-
-          requestAnimationFrame(tick);
-      }
-
-      /* =========================================================
-       RENDER MESSAGES
-    ========================================================= */
-    function appendMessage(role, content) {
-        var container = document.getElementById('dts-messages');
-        if (!container) return;
-
-        var msgEl = document.createElement('div');
-        msgEl.className = 'dts-message dts-' + role;
-
-        var avatarEl = document.createElement('div');
-        avatarEl.className = 'dts-msg-avatar';
-        avatarEl.textContent = role === 'user'
-            ? (cfg.user_name ? cfg.user_name.charAt(0).toUpperCase() : 'U')
-            : '⬡';
-
-        var contentEl = document.createElement('div');
-        contentEl.className = 'dts-msg-content';
-
-        var bubbleEl = document.createElement('div');
-        bubbleEl.className = 'dts-msg-bubble';
-
-        if (role === 'ai') {
-            bubbleEl.innerHTML = renderContent(content);
-            /* Syntax highlight code blocks */
-            if (typeof hljs !== 'undefined') {
-                bubbleEl.querySelectorAll('pre code').forEach(function (block) {
-                    hljs.highlightElement(block);
-                });
-            }
-        } else {
-            bubbleEl.textContent = content;
-        }
-
-        contentEl.appendChild(bubbleEl);
-
-        if (role === 'ai') {
-            var actionsEl = document.createElement('div');
-            actionsEl.className = 'dts-msg-actions';
-            var copyBtn = document.createElement('button');
-            copyBtn.className = 'dts-copy-btn';
-            copyBtn.textContent = 'Copy';
-            copyBtn.addEventListener('click', function () {
-                navigator.clipboard.writeText(content).then(function () {
-                    copyBtn.textContent = 'Copied!';
-                    setTimeout(function () { copyBtn.textContent = 'Copy'; }, 2000);
-                });
-            });
-            actionsEl.appendChild(copyBtn);
-            contentEl.appendChild(actionsEl);
-
-            /* Show "Save as Quiz" bar when MCQ questions are detected */
-            maybeShowCreateQuizBar(contentEl, content);
-        }
-
-        msgEl.appendChild(avatarEl);
-        msgEl.appendChild(contentEl);
-        container.appendChild(msgEl);
-        scrollToBottom();
-    }
-
-    /* =========================================================
-       QUIZ QUESTION DETECTION + CREATE QUIZ BUTTON
-       Parses numbered MCQs from AI responses and offers a
-       one-click "Save as Quiz" shortcut to the create-quiz page.
-    ========================================================= */
-
-    /* Parse multiple-choice questions from raw AI text.
-       Handles: numbered items, A/B/C/D options, Answer: X, Explanation: ... */
-    function parseStudioQuestions(text) {
-        var questions = [];
-        var clean = text.replace(/\*\*([^*\n]+)\*\*/g, '$1').replace(/\*([^*\n]+)\*/g, '$1');
-        var blocks = clean.split(/\n(?=\s*\d+[.)]\s)/);
-
-        blocks.forEach(function (block) {
-            var qMatch = block.match(/^\s*\d+[.)]\s+([\s\S]+)/);
-            if (!qMatch) return;
-
-            var lines       = qMatch[1].split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
-            var questionLines = [], options = [], correctIdx = 0, explanation = '', parsingOpts = false;
-
-            for (var i = 0; i < lines.length; i++) {
-                var line = lines[i].replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+)\*/g, '$1').trim();
-
-                /* Option: A) A. a) (A) - A) */
-                var optM = line.match(/^[-•*]?\s*\(?([A-Da-d])\)?[.):\]]\s*(.*)/);
-                if (optM) { parsingOpts = true; options.push(optM[2].trim()); continue; }
-
-                /* Answer: B */
-                var ansM = line.match(/^(?:answer|correct(?:\s+answer)?)[:\s]+\(?([A-Da-d])\)?/i);
-                if (ansM) { correctIdx = ansM[1].toUpperCase().charCodeAt(0) - 65; continue; }
-
-                /* Explanation: ... */
-                var expM = line.match(/^(?:explanation|reason)[:\s]+(.*)/i);
-                if (expM) { explanation = expM[1].trim(); continue; }
-
-                if (!parsingOpts) questionLines.push(line);
-            }
-
-            var question = questionLines.join(' ').trim();
-            if (question && options.length >= 2) {
-                questions.push({
-                    question:             question,
-                    options:              options,
-                    correct_answer_index: Math.min(Math.max(correctIdx, 0), options.length - 1),
-                    explanation:          explanation
-                });
-            }
-        });
-
-        return questions;
-    }
-
-    /* Append a "Save as Quiz" bar below AI messages that contain MCQs.
-       Only visible when the user has a create_quiz_url in config. */
-    function maybeShowCreateQuizBar(contentEl, rawText) {
-        var createUrl = cfg.create_quiz_url;
-        if (!createUrl) return;
-
-        var questions = parseStudioQuestions(rawText);
-        if (questions.length < 2) return;
-
-        var bar = document.createElement('div');
-        bar.className = 'dts-quiz-import-bar';
-
-        var info = document.createElement('span');
-        info.className = 'dts-quiz-import-info';
-        info.textContent = '\uD83D\uDCDD ' + questions.length + ' question' + (questions.length !== 1 ? 's' : '') + ' detected';
-
-        var btn = document.createElement('button');
-        btn.className = 'dts-create-quiz-btn';
-        btn.textContent = 'Save as Quiz \u2192';
-        btn.addEventListener('click', function () {
-            try { sessionStorage.setItem('aqs_studio_import', JSON.stringify({ questions: questions })); } catch (e) {}
-            window.location.href = createUrl;
-        });
-
-        bar.appendChild(info);
-        bar.appendChild(btn);
-        contentEl.appendChild(bar);
-    }
-
-    /* =========================================================
-       MATH + MARKDOWN RENDERER
-       Handles $$...$$, $...$, \[...\], \(...\), \begin{equation}
-    ========================================================= */
-    function renderContent(raw) {
-        var text = raw;
-
-        /* Step 1 — Normalise LaTeX delimiter variants → $ / $$ */
-        /* \[...\]  → $$...$$ */
-        text = text.replace(/\\\[([\s\S]+?)\\\]/g, function (_, m) { return '$$' + m + '$$'; });
-        /* \(...\)  → $...$ */
-        text = text.replace(/\\\(([\s\S]+?)\\\)/g, function (_, m) { return '$' + m + '$'; });
-        /* \begin{equation}...\end{equation}  → $$...$$ */
-        text = text.replace(/\\begin\{equation\*?\}([\s\S]+?)\\end\{equation\*?\}/g, function (_, m) { return '$$' + m + '$$'; });
-        /* \begin{align}...\end{align}  → $$...$$ */
-        text = text.replace(/\\begin\{align\*?\}([\s\S]+?)\\end\{align\*?\}/g, function (_, m) { return '$$' + m + '$$'; });
-        /* Bare [...] that contains a backslash → $$...$$ */
-        text = text.replace(/^\[([\s\S]+?)\]$/gm, function (full, m) {
-            return m.indexOf('\\') !== -1 ? '$$' + m + '$$' : full;
-        });
-
-        /* Step 2 — Extract and render $$ display math (before inline so $$ wins) */
-        var displayMath = [];
-        text = text.replace(/\$\$([\s\S]+?)\$\$/g, function (_, math) {
-            var idx = displayMath.length;
-            var rendered;
-            try {
-                rendered = '<div class="dts-katex-display">' +
-                    katex.renderToString(math.trim(), { displayMode: true, throwOnError: false, trust: true }) +
-                    '</div>';
-            } catch (e) {
-                rendered = '<pre class="dts-math-fallback"><code>' + escHtml(math) + '</code></pre>';
-            }
-            displayMath.push(rendered);
-            return '\x00DMATH' + idx + '\x00';
-        });
-
-        /* Step 3 — Extract and render $ inline math */
-        var inlineMath = [];
-        text = text.replace(/\$([^$\n]{1,400}?)\$/g, function (_, math) {
-            /* Skip if it looks like a currency amount (digit directly after $) */
-            if (/^\d[\d,\.]*$/.test(math.trim())) return '$' + math + '$';
-            var idx = inlineMath.length;
-            var rendered;
-            try {
-                rendered = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false, trust: true });
-            } catch (e) {
-                rendered = '<code>' + escHtml(math) + '</code>';
-            }
-            inlineMath.push(rendered);
-            return '\x00IMATH' + idx + '\x00';
-        });
-
-        /* Step 4 — Parse Markdown */
-        var html = typeof marked !== 'undefined' ? marked.parse(text) : escHtml(text);
-
-        /* Step 5 — Restore math placeholders */
-        inlineMath.forEach(function (r, i) { html = html.split('\x00IMATH' + i + '\x00').join(r); });
-        displayMath.forEach(function (r, i) { html = html.split('\x00DMATH' + i + '\x00').join(r); });
-
         return html;
     }
 
-    /* =========================================================
-       CHAT HISTORY (localStorage)
-    ========================================================= */
-    function loadHistory() {
+    function applyMathAndHighlight(containerEl) {
         try {
-            var raw = localStorage.getItem(HISTORY_KEY);
+            if (typeof hljs !== 'undefined') {
+                containerEl.querySelectorAll('pre code').forEach(function (block) {
+                    hljs.highlightElement(block);
+                });
+            }
+        } catch (e) {}
+        try {
+            if (typeof window.renderMathInElement !== 'undefined') {
+                window.renderMathInElement(containerEl, {
+                    delimiters: [
+                        { left: '$$', right: '$$', display: true  },
+                        { left: '$',  right: '$',  display: false }
+                    ],
+                    throwOnError: false
+                });
+            }
+        } catch (e) {}
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       CHAT SESSION — localStorage
+    ═══════════════════════════════════════════════════════════ */
+    function newSession() {
+        conversationId   = 'sess_' + Date.now();
+        chatHistory      = [];
+        attachedFileText = null;
+        attachedFileName = null;
+    }
+
+    function saveSession() {
+        if (!conversationId || !chatHistory.length) return;
+        var sessions = loadSessions();
+        var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
+        var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
+        var title = firstUser ? firstUser.content.slice(0, 55) : 'Chat';
+        if (title.length === 55) title += '\u2026';
+        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), ts: Date.now() };
+        if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
+        sessions = sessions.slice(0, 30);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (e) {}
+    }
+
+    function loadSessions() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
             return raw ? JSON.parse(raw) : [];
         } catch (e) { return []; }
     }
 
-    function saveHistory(history) {
-        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) {}
-    }
-
-    function saveCurrentChat() {
-        if (!currentChatId || messages.length === 0) return;
-        var history = loadHistory();
-        /* First user message becomes the title */
-        var firstUser = messages.find(function (m) { return m.role === 'user'; });
-        var title = firstUser ? firstUser.content.substring(0, 60) : 'Chat';
-        /* Find existing entry or prepend new one */
-        var idx = history.findIndex(function (h) { return h.id === currentChatId; });
-        var entry = {
-            id:        currentChatId,
-            title:     title,
-            timestamp: Date.now(),
-            messages:  messages.slice()
-        };
-        if (idx >= 0) {
-            history[idx] = entry;
-        } else {
-            history.unshift(entry);
-        }
-        /* Keep only the latest 50 conversations */
-        if (history.length > 50) history = history.slice(0, 50);
-        saveHistory(history);
-        renderHistoryList();
-    }
-
-    function loadChat(chatId) {
-        var history = loadHistory();
-        var entry = history.find(function (h) { return h.id === chatId; });
-        if (!entry) return;
-
-        currentChatId = entry.id;
-        messages      = entry.messages.slice();
-
-        /* Clear container immediately */
-        var container = document.getElementById('dts-messages');
-        container.innerHTML = '';
-        var welcome = document.getElementById('dts-welcome');
-        if (welcome) welcome.style.display = 'none';
-
-        /* Highlight active history item right away */
-        document.querySelectorAll('.dts-history-item').forEach(function (el) {
-            el.classList.toggle('active', el.dataset.id === chatId);
-        });
-
-        /* ANDROID ANR FIX: render messages asynchronously one-at-a-time.
-           Rendering all messages synchronously in a forEach blocks the Android
-           WebView main thread (marked + math + hljs rendering is heavy per-message),
-           triggering the "App is not responding" ANR dialog after ~5 seconds.
-           Yielding between each message keeps the UI thread alive.            */
-        var msgList = messages.filter(function (m) { return m.role !== 'system'; });
-        var msgIdx  = 0;
-        function renderNextMessage() {
-            if (msgIdx >= msgList.length) { scrollToBottom(); return; }
-            var m = msgList[msgIdx++];
-            appendMessage(m.role === 'assistant' ? 'ai' : m.role, m.content);
-            setTimeout(renderNextMessage, 0); /* yield to UI thread */
-        }
-        setTimeout(renderNextMessage, 30); /* small delay so sidebar can close first */
-    }
-
-    function deleteChat(chatId) {
-        var history = loadHistory().filter(function (h) { return h.id !== chatId; });
-        saveHistory(history);
-        if (currentChatId === chatId) startNewChat();
-        renderHistoryList();
+    function deleteSession(id) {
+        var sessions = loadSessions().filter(function (s) { return s.id !== id; });
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
     }
 
     function renderHistoryList() {
-        var list    = document.getElementById('dts-history-list');
-        var empty   = document.getElementById('dts-history-empty');
+        var list  = document.getElementById('dts-history-list');
+        var empty = document.getElementById('dts-history-empty');
         if (!list) return;
-        var history = loadHistory();
 
-        /* Remove old items (keep the empty placeholder) */
-        Array.from(list.querySelectorAll('.dts-history-item')).forEach(function (el) { el.remove(); });
+        list.querySelectorAll('.dts-drawer-item').forEach(function (el) {
+            el.parentNode.removeChild(el);
+        });
 
-        if (history.length === 0) {
+        var sessions = loadSessions();
+        if (!sessions.length) {
             if (empty) empty.style.display = '';
             return;
         }
         if (empty) empty.style.display = 'none';
 
-        history.forEach(function (entry) {
-            var item = document.createElement('div');
-            item.className = 'dts-history-item' + (entry.id === currentChatId ? ' active' : '');
-            item.dataset.id = entry.id;
+        sessions.forEach(function (sess) {
+            var item      = document.createElement('div');
+            item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
+            item.dataset.id = sess.id;
+            item.innerHTML =
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
 
-            var titleEl = document.createElement('span');
-            titleEl.className = 'dts-history-item-title';
-            titleEl.textContent = entry.title;
-            titleEl.title = entry.title;
-
-            var delBtn = document.createElement('button');
-            delBtn.className = 'dts-history-item-del';
-            delBtn.textContent = '✕';
-            delBtn.title = 'Delete conversation';
-            delBtn.addEventListener('click', function (e) {
+            item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
                 e.stopPropagation();
-                if (confirm('Delete this conversation?')) deleteChat(entry.id);
+                deleteSession(sess.id);
+                if (sess.id === conversationId) {
+                    startNewChat();
+                } else {
+                    renderHistoryList();
+                }
             });
 
-            item.appendChild(titleEl);
-            item.appendChild(delBtn);
-            item.addEventListener('click', function () { loadChat(entry.id); });
-            list.appendChild(item);
+            item.addEventListener('click', function () { loadSessionById(sess.id); closeHistoryDrawer(); });
+            list.insertBefore(item, empty || null);
         });
     }
 
-    /* =========================================================
-       FILE UPLOAD
-       Supports TXT, MD, CSV, JSON (FileReader),
-                 PDF (pdf.js), DOCX/DOC (mammoth.js)
-    ========================================================= */
-    var MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB
+    function loadSessionById(id) {
+        var sessions = loadSessions();
+        var sess     = sessions.find(function (s) { return s.id === id; });
+        if (!sess) return;
+        conversationId = sess.id;
+        chatHistory    = sess.messages.slice();
 
-    function setupFileUpload() {
-        /* The attach button is now a <label for="dts-file-input">, so the browser
-           opens the file picker natively on click — no JS input.click() needed.
-           We only need to handle the resulting 'change' event. */
-        var input = document.getElementById('dts-file-input');
-        if (!input) return;
-        input.addEventListener('change', function () {
-            var file = this.files[0];
-            if (!file) return;
-            this.value = ''; // allow re-selecting same file
-            handleFileUpload(file);
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        var _typing  = document.getElementById('dts-typing');
+        if (_typing && messages && _typing.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing, messages.nextSibling);
+        }
+        if (messages) messages.innerHTML = '';
+        if (welcome)  welcome.style.display = 'none';
+
+        chatHistory.forEach(function (msg) {
+            if (msg.role === 'user' || msg.role === 'assistant') {
+                appendMessage(msg.role, msg.content);
+            }
         });
+
+        renderHistoryList();
+        scrollToBottom(true);
     }
 
-    async function handleFileUpload(file) {
-        var ext     = (file.name.split('.').pop() || '').toLowerCase();
-        var allowed = ['txt', 'md', 'csv', 'json', 'pdf', 'docx', 'doc'];
-        if (allowed.indexOf(ext) === -1) {
-            showFileError('Unsupported file type. Allowed: TXT, MD, CSV, JSON, PDF, DOCX');
-            return;
+    function startNewChat() {
+        newSession();
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        var _typing2 = document.getElementById('dts-typing');
+        if (_typing2 && messages && _typing2.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing2, messages.nextSibling);
         }
-        if (file.size > MAX_FILE_BYTES) {
-            showFileError('File too large (max 10 MB)');
-            return;
+        if (messages) messages.innerHTML = '';
+        if (welcome)  welcome.style.display = 'flex';
+        clearFileAttachment();
+        renderHistoryList();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MESSAGE RENDERING
+    ═══════════════════════════════════════════════════════════ */
+    function appendMessage(role, content) {
+        var messages = document.getElementById('dts-messages');
+        if (!messages) return;
+
+        var welcome = document.getElementById('dts-welcome');
+        if (welcome) welcome.style.display = 'none';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-' + (role === 'user' ? 'user' : 'ai');
+
+        var avatarLetter = role === 'user' ? 'U' : '\u2736';
+        var bubbleHtml   = role === 'user'
+            ? escHtml(content)
+            : renderMessage(content);
+
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">' + avatarLetter + '</div>' +
+            '<div class="dts-msg-content">' +
+              '<div class="dts-msg-bubble">' + bubbleHtml + '</div>' +
+            '</div>';
+
+        if (role === 'assistant') {
+            applyMathAndHighlight(wrap);
         }
-        showFileLoading(file.name);
-        try {
-            var text = '';
-            if (['txt', 'md', 'csv', 'json'].indexOf(ext) !== -1) {
-                text = await readAsText(file);
-            } else if (ext === 'pdf') {
-                text = await readPDF(file);
+
+        messages.appendChild(wrap);
+        scrollToBottom();
+        return wrap;
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════
+       STREAM REPLY — types AI response word-by-word
+    ═══════════════════════════════════════════════════════════ */
+    function streamReply(content, onDone) {
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        if (!messages) { if (onDone) onDone(); return; }
+        if (welcome) welcome.style.display = 'none';
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-ai';
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">✶</div>' +
+            '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
+        messages.appendChild(wrap);
+        var bubble = wrap.querySelector('.dts-msg-bubble');
+        var tokens = content.split(/(?=\s)/);
+        if (tokens.length < 4) tokens = content.split('');
+        var idx=0, acc='', CHUNK=6, DELAY=10;
+        function tick() {
+            if (idx < tokens.length) {
+                var end=Math.min(idx+CHUNK,tokens.length);
+                for (var i=idx;i<end;i++) acc+=tokens[i];
+                idx=end;
+                try {
+                    bubble.innerHTML = typeof marked!=='undefined'
+                        ? marked.parse(acc,{breaks:true,gfm:true})
+                        : escHtml(acc).replace(/\n/g,'<br>');
+                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); }
+                scrollToBottom();
+                setTimeout(tick,DELAY);
             } else {
-                text = await readDOCX(file);
+                applyMathAndHighlight(wrap);
+                scrollToBottom();
+                if (onDone) onDone();
             }
-            if (!text || !text.trim()) {
-                showFileError('Could not extract text from this file.');
-                return;
+        }
+        tick();
+        return wrap;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SEND MESSAGE — with web search + Groq
+    ═══════════════════════════════════════════════════════════ */
+    async function sendMessage(text) {
+        text = (text || '').trim();
+        if (!text && !attachedFileText) return;
+        if (isSending) return;
+
+        isSending = true;
+        setSendState(true);
+
+        /* Build user content */
+        var userContent = text;
+        if (attachedFileText) {
+            userContent = (text ? text + '\n\n' : 'Please analyse this file:\n\n') +
+                'File: ' + escHtml(attachedFileName || 'attachment') + '\n```\n' +
+                attachedFileText.slice(0, 8000) + '\n```';
+        }
+
+        clearFileAttachment();
+
+        chatHistory.push({ role: 'user', content: userContent });
+        appendMessage('user', userContent);
+
+        var input = document.getElementById('dts-input');
+        if (input) { input.value = ''; input.style.height = 'auto'; }
+
+        /* ── Step 1: Detect if web search needed ── */
+        var webContext   = '';
+        var webSourceTag = '';
+        var searchNeeds  = detectSearchNeeds(text);
+
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
+                var pageContent = await fetchWebPage(searchNeeds.url);
+                if (pageContent) {
+                    webContext   = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pageContent;
+                    webSourceTag = '\uD83C\uDF10 *Read from:* ' + searchNeeds.url;
+                } else {
+                    showTyping(true, '\u26A0\uFE0F Could not visit page, searching instead\u2026');
+                    var fallback = await performWebSearch(text);
+                    if (fallback) {
+                        webContext   = 'WEB SEARCH RESULTS (' + fallback.source + '):\n\n' + fallback.content;
+                        webSourceTag = '\uD83D\uDD0D *Web search via ' + fallback.source + '*';
+                    }
+                }
+            } else {
+                showTyping(true, '\uD83D\uDD0D Searching the web\u2026');
+                var searchResult = await performWebSearch(searchNeeds.query);
+                if (searchResult) {
+                    webContext   = 'WEB SEARCH RESULTS (' + searchResult.source + '):\n\n' + searchResult.content;
+                    webSourceTag = '\uD83D\uDD0D *Web search via ' + searchResult.source + '*';
+                }
             }
-            uploadedFileContent = text;
-            uploadedFileName    = file.name;
-            showFileAttached(file.name);
-            document.getElementById('dts-input').focus();
-        } catch (e) {
-            showFileError('Error reading file: ' + (e.message || 'unknown error'));
         }
-    }
 
-    function readAsText(file) {
-        return new Promise(function (resolve, reject) {
-            var fr = new FileReader();
-            fr.onload  = function (e) { resolve(e.target.result); };
-            fr.onerror = function ()  { reject(new Error('FileReader error')); };
-            fr.readAsText(file);
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        /* ── Step 2: Build system prompt with optional web context ── */
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (webContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
+                             '\n===== END OF WEB DATA =====\n' +
+                             '\nIMPORTANT: Use the above live web data to answer the user\'s question accurately. Cite the source in your response.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+
+        if (typeof window.groqFetch !== 'function') {
+            showTyping(false);
+            appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
+            isSending = false;
+            setSendState(false);
+            return;
+        }
+
+        /* ── Step 3: Call Groq ── */
+        window.groqFetch({
+            model:       'llama-3.3-70b-versatile',
+            messages:    messages,
+            max_tokens:  3000,
+            temperature: 0.7
+        }).then(function (res) {
+            return res.json();
+        }).then(function (data) {
+            showTyping(false);
+            if (data.error) {
+                var errMsg = data.error.message || 'API error.';
+                if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
+                    errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
+                } else if (errMsg.indexOf('429') !== -1) {
+                    errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
+                }
+                appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
+            } else {
+                var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                    ? data.choices[0].message.content
+                    : 'Sorry, I could not generate a response. Please try again.';
+
+                /* Append web source badge if web was searched */
+                if (webSourceTag) {
+                    reply = reply + '\n\n---\n' + webSourceTag;
+                }
+
+                chatHistory.push({ role: 'assistant', content: reply });
+                streamReply(reply, function () {
+                    saveSession();
+                    renderHistoryList();
+                    if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
+                        showQuizImportBar(reply);
+                    }
+                });
+            }
+            isSending = false;
+            setSendState(false);
+        }).catch(function (err) {
+            showTyping(false);
+            appendMessage('assistant', '\u26A0\uFE0F Connection error. Please check your internet and try again.');
+            console.error('[dts] Groq error:', err);
+            isSending = false;
+            setSendState(false);
         });
     }
 
-    async function readPDF(file) {
-        if (typeof window.pdfjsLib === 'undefined') {
-            throw new Error('PDF reader not yet loaded — please wait a moment and try again.');
-        }
-        /* Set worker URL lazily (avoids timing issues with defer-loaded script) */
-        if (!window.pdfjsLib.GlobalWorkerOptions.workerSrc) {
-            window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-                'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-        }
-        var ab = await new Promise(function (resolve, reject) {
-            var fr = new FileReader();
-            fr.onload  = function (e) { resolve(e.target.result); };
-            fr.onerror = function ()  { reject(new Error('FileReader error')); };
-            fr.readAsArrayBuffer(file);
+    function setSendState(busy) {
+        var btn = document.getElementById('dts-send');
+        if (btn) btn.disabled = busy;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       QUIZ IMPORT BAR
+    ═══════════════════════════════════════════════════════════ */
+    function showQuizImportBar(content) {
+        var old = document.getElementById('dts-quiz-import-bar');
+        if (old) old.parentNode.removeChild(old);
+
+        var bar = document.createElement('div');
+        bar.id = 'dts-quiz-import-bar';
+        bar.className = 'dts-quiz-import-bar';
+        bar.innerHTML =
+            '<span class="dts-quiz-import-info">\uD83D\uDCDD Quiz questions detected!</span>' +
+            '<button class="dts-create-quiz-btn" id="dts-go-create-quiz">Create Quiz \u2192</button>';
+
+        bar.querySelector('#dts-go-create-quiz').addEventListener('click', function () {
+            try { sessionStorage.setItem('dts_quiz_content', content.slice(0, 5000)); } catch (e) {}
+            var cfg = window.DTS_CONFIG || {};
+            window.location.href = cfg.create_url || 'create-quiz.html';
         });
-        var pdf   = await window.pdfjsLib.getDocument({ data: ab }).promise;
-        var pages = [];
-        for (var i = 1; i <= Math.min(pdf.numPages, 50); i++) {
-            var page    = await pdf.getPage(i);
-            var content = await page.getTextContent();
-            pages.push(content.items.map(function (it) { return it.str; }).join(' '));
-        }
-        return pages.join('\n\n');
-    }
 
-    async function readDOCX(file) {
-        if (typeof window.mammoth === 'undefined') {
-            throw new Error('DOCX reader not yet loaded — please wait a moment and try again.');
-        }
-        var ab = await new Promise(function (resolve, reject) {
-            var fr = new FileReader();
-            fr.onload  = function (e) { resolve(e.target.result); };
-            fr.onerror = function ()  { reject(new Error('FileReader error')); };
-            fr.readAsArrayBuffer(file);
-        });
-        var result = await window.mammoth.extractRawText({ arrayBuffer: ab });
-        return result.value;
-    }
-
-    function showFileLoading(name) {
-        var s = document.getElementById('dts-file-status');
-        if (!s) return;
-        s.innerHTML = '<span class="dts-file-loading">⏳ Reading ' + escHtml(name) + '…</span>';
-        s.style.display = 'flex';
-    }
-
-    function showFileAttached(name) {
-        var s = document.getElementById('dts-file-status');
-        if (!s) return;
-        var attached = document.createElement('span');
-        attached.className   = 'dts-file-attached';
-        attached.textContent = '📎 ' + name;
-        var clearBtn = document.createElement('button');
-        clearBtn.className   = 'dts-file-clear';
-        clearBtn.title       = 'Remove file';
-        clearBtn.textContent = '✕';
-        clearBtn.addEventListener('click', clearFileAttachment);
-        s.innerHTML = '';
-        s.appendChild(attached);
-        s.appendChild(clearBtn);
-        s.style.display = 'flex';
-    }
-
-    function clearFileAttachment() {
-        uploadedFileContent = null;
-        uploadedFileName    = null;
-        var s = document.getElementById('dts-file-status');
-        if (s) { s.innerHTML = ''; s.style.display = 'none'; }
-    }
-
-    function showFileError(msg) {
-        var s = document.getElementById('dts-file-status');
-        if (!s) return;
-        s.innerHTML = '<span class="dts-file-error">⚠️ ' + escHtml(msg) + '</span>';
-        s.style.display = 'flex';
-        setTimeout(function () {
-            if (s) { s.innerHTML = ''; s.style.display = 'none'; }
-        }, 4500);
-    }
-
-    /* ── Render a user message with optional file chip ── */
-    function appendUserMessage(text, fileName) {
-        var container = document.getElementById('dts-messages');
-        if (!container) return;
-
-        var msgEl    = document.createElement('div');
-        msgEl.className = 'dts-message dts-user';
-
-        var avatarEl = document.createElement('div');
-        avatarEl.className   = 'dts-msg-avatar';
-        avatarEl.textContent = cfg.user_name ? cfg.user_name.charAt(0).toUpperCase() : 'U';
-
-        var contentEl = document.createElement('div');
-        contentEl.className = 'dts-msg-content';
-
-        if (fileName) {
-            var chipEl = document.createElement('div');
-            chipEl.className   = 'dts-file-chip';
-            chipEl.textContent = '📎 ' + fileName;
-            contentEl.appendChild(chipEl);
-        }
-
-        var bubbleEl = document.createElement('div');
-        bubbleEl.className   = 'dts-msg-bubble';
-        bubbleEl.textContent = text;
-        contentEl.appendChild(bubbleEl);
-
-        msgEl.appendChild(avatarEl);
-        msgEl.appendChild(contentEl);
-        container.appendChild(msgEl);
+        var msgs = document.getElementById('dts-messages');
+        if (msgs) msgs.appendChild(bar);
         scrollToBottom();
     }
 
-    /* =========================================================
-       VOICE CONVERSATION
-       ─────────────────────────────────────────────────────────
-       Uses Web Speech API:
-         • SpeechRecognition  — user voice → text
-         • SpeechSynthesis    — AI text → spoken response
-       Voice is FULLY INDEPENDENT from the text chat:
-         - maintains its own private voiceMessages history
-         - never reads from or writes to the chat window
-         - resets its history each time the overlay opens
-
-       Flow:
-         1. User clicks mic → overlay opens, history resets
-         2. Start Listening button or auto-start
-         3. User speaks; live interim transcript shown in overlay
-         4. After natural pause (or 15 s max), recognition ends
-         5. Text sent to AI directly (Groq → proxy → Pollinations)
-         6. AI response read aloud via SpeechSynthesis
-         7. Loop back to step 2 automatically
-    ========================================================= */
-    var voiceActive       = false;   // voice overlay is open
-    var voiceListening    = false;   // recognition is running
-    var voiceAiTalking    = false;   // synthesis is playing
-    var voiceRecog        = null;    // SpeechRecognition instance
-    var voiceSilenceTimer = null;    // max-15 s cutoff timer
-    var voiceRestartTimer = null;    // debounce for auto-restart
-    var VOICE_MAX_MS      = 15000;   // 15 s max per utterance
-    var voiceMessages     = [];      // private voice conversation history (never shared with chat)
-    /* ANDROID ANR FIX: cap consecutive silent restarts.
-       Without a limit, repeated "no-speech" errors spawn dozens of
-       SpeechRecognition instances per minute → CPU overload → ANR crash. */
-    var voiceSilentRestarts       = 0;
-    var VOICE_MAX_SILENT_RESTARTS = 10;
-
-    /* Short system prompt variant for voice — keeps replies concise */
-    var VOICE_SYSTEM = SYSTEM +
-        '\n\nIMPORTANT: This is a VOICE conversation. Keep all replies ' +
-        'concise (3-5 sentences max) and conversational. Avoid bullet ' +
-        'lists, markdown, code blocks, and math symbols — speak in plain ' +
-        'natural sentences only.';
-
-    /* ── Bootstrap ── */
-    function setupVoice() {
-        var openBtn  = document.getElementById('dts-voice-btn');
-        var closeBtn = document.getElementById('dts-voice-close');
-        var endBtn   = document.getElementById('dts-voice-end');
-        var togBtn   = document.getElementById('dts-voice-toggle');
-
-        var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        if (openBtn) {
-            if (!SpeechRec) {
-                /* Browser does not support voice */
-                openBtn.title   = 'Voice chat requires Chrome, Edge, or Safari';
-                openBtn.style.opacity = '0.35';
-                openBtn.style.cursor  = 'not-allowed';
-                openBtn.addEventListener('click', function () {
-                    alert('Voice chat is not supported in this browser.\nPlease use Chrome, Edge, or Safari.');
-                });
-            } else {
-                openBtn.addEventListener('click', openVoiceMode);
-            }
-        }
-
-        if (closeBtn) closeBtn.addEventListener('click', closeVoiceMode);
-        if (endBtn)   endBtn.addEventListener('click',   closeVoiceMode);
-        if (togBtn)   togBtn.addEventListener('click',   voiceToggleListen);
-
-        /* Close on ESC */
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape' && voiceActive) closeVoiceMode();
-        });
+    /* ═══════════════════════════════════════════════════════════
+       FILE ATTACHMENT
+    ═══════════════════════════════════════════════════════════ */
+    function clearFileAttachment() {
+        attachedFileText = null;
+        attachedFileName = null;
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = 'none'; status.textContent = ''; }
+        var fi = document.getElementById('dts-file-input');
+        if (fi) fi.value = '';
     }
 
-    /* ── Inject glowing orb CSS once ── */
-    function injectVoiceOrbStyles() {
-        if (document.getElementById('dts-voice-orb-css')) return;
-        var s = document.createElement('style');
-        s.id = 'dts-voice-orb-css';
-        s.textContent = [
-            /* Base orb — purple idle glow */
-            '#dts-voice-orb{transition:background .4s,box-shadow .4s}',
-            '#dts-voice-orb[data-state=idle]{animation:dts-orb-idle 3s ease-in-out infinite}',
-            '@keyframes dts-orb-idle{0%,100%{box-shadow:0 0 18px 4px rgba(139,92,246,.45)}50%{box-shadow:0 0 40px 14px rgba(139,92,246,.8)}}',
-            /* Listening — cyan */
-            '#dts-voice-orb[data-state=listening]{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490)!important;animation:dts-orb-listen 1.1s ease-in-out infinite}',
-            '@keyframes dts-orb-listen{0%,100%{box-shadow:0 0 20px 5px rgba(6,182,212,.55)}50%{box-shadow:0 0 55px 20px rgba(6,182,212,.95)}}',
-            /* Thinking — amber */
-            '#dts-voice-orb[data-state=thinking]{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309)!important;animation:dts-orb-think .85s ease-in-out infinite alternate}',
-            '@keyframes dts-orb-think{0%{box-shadow:0 0 16px 4px rgba(245,158,11,.4)}100%{box-shadow:0 0 50px 18px rgba(245,158,11,.85)}}',
-            /* Speaking — green */
-            '#dts-voice-orb[data-state=speaking]{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46)!important;animation:dts-orb-speak .5s ease-in-out infinite alternate}',
-            '@keyframes dts-orb-speak{0%{box-shadow:0 0 16px 4px rgba(16,185,129,.45)}100%{box-shadow:0 0 60px 22px rgba(16,185,129,.9)}}',
-            /* Error — red */
-            '#dts-voice-orb[data-state=error]{background:radial-gradient(circle at 35% 35%,#fca5a5,#ef4444 60%,#991b1b)!important;animation:dts-orb-err 1s ease-in-out infinite alternate}',
-            '@keyframes dts-orb-err{0%{box-shadow:0 0 14px 3px rgba(239,68,68,.4)}100%{box-shadow:0 0 38px 12px rgba(239,68,68,.75)}}',
-        ].join('');
-        document.head.appendChild(s);
-    }
+    function handleFileAttach(file) {
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB.'); return; }
 
-    /* ── Unlock mobile audio context — call inside a user-gesture handler ── */
-    var _audioUnlocked = false;
-    function unlockAudio() {
-        if (_audioUnlocked) return;
-        try {
-            /* Silent AudioContext node — unlocks subsequent Audio.play() on iOS/Android */
-            var ctx = new (window.AudioContext || window.webkitAudioContext)();
-            var buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 0.1), ctx.sampleRate);
-            var src = ctx.createBufferSource();
-            src.buffer = buf;
-            src.connect(ctx.destination);
-            src.start(0);
-            ctx.resume().then(function() { _audioUnlocked = true; }).catch(function(){});
-            /* Also unlock the HTML5 Audio pathway */
-            var sil = new Audio('data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA');
-            sil.volume = 0.001;
-            sil.play().then(function(){ _audioUnlocked = true; }).catch(function(){});
-        } catch(e) {}
-    }
-
-    function openVoiceMode() {
-        var overlay = document.getElementById('dts-voice-overlay');
-        if (!overlay) return;
-        injectVoiceOrbStyles();
-        /* Unlock audio IMMEDIATELY while still inside the user-gesture context */
-        unlockAudio();
-        voiceActive         = true;
-        voiceMessages       = [];   // fresh history each time voice opens
-        voiceSilentRestarts = 0;    // reset ANR-guard counter
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-        setVoiceState('idle');
-        /* FIX: explicitly request microphone permission before starting recognition.
-           On Android the permission entry only appears in App Settings if getUserMedia
-           has been called at least once — SpeechRecognition alone does not register it. */
-        var micDelay = (navigator.maxTouchPoints > 0) ? 900 : 500;
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(function (stream) {
-                    stream.getTracks().forEach(function (t) { t.stop(); });
-                    setTimeout(startVoiceListening, micDelay);
-                })
-                .catch(function () {
-                    /* Permission denied or unavailable — still attempt recognition */
-                    setTimeout(startVoiceListening, micDelay);
-                });
-        } else {
-            setTimeout(startVoiceListening, micDelay);
-        }
-    }
-
-    function closeVoiceMode() {
-        voiceActive = false;
-        stopVoiceSpeaking();
-        stopVoiceRecognition();
-        clearTimeout(voiceSilenceTimer);
-        clearTimeout(voiceRestartTimer);
-        var overlay = document.getElementById('dts-voice-overlay');
-        if (overlay) overlay.style.display = 'none';
-        document.body.style.overflow = '';
-        setVoiceState('closed');
-    }
-
-    function voiceToggleListen() {
-        if (voiceAiTalking) {
-            /* Interrupt AI speech and start listening */
-            stopVoiceSpeaking();
-            startVoiceListening();
-        } else if (voiceListening) {
-            stopVoiceRecognition();
-            setVoiceState('idle');
-        } else {
-            startVoiceListening();
-        }
-    }
-
-    /* ── Start listening (one utterance, max 15 s) ── */
-    function startVoiceListening() {
-          /* ── REQUEST MIC PERMISSION EXPLICITLY (required for Capacitor/Android) ── */
-          if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-              navigator.mediaDevices.getUserMedia({ audio: true }).catch(function () {});
-          }
-        if (!voiceActive) return;
-        var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SpeechRec || voiceListening) return;
-
-        stopVoiceSpeaking();
-        setVoiceState('listening');
-        setVoiceTranscript('');
-
-        var recog = new SpeechRec();
-        recog.lang            = 'en-US';
-        recog.continuous      = false;   /* one natural utterance */
-        recog.interimResults  = true;
-        recog.maxAlternatives = 1;
-        voiceRecog  = recog;
-        voiceListening = true;
-
-        var finalText   = '';
-        var hasSpoken   = false;
-
-        /* 15-second hard cutoff */
-        voiceSilenceTimer = setTimeout(function () {
-            if (voiceListening && voiceRecog) {
-                try { voiceRecog.stop(); } catch (e) {}
-            }
-        }, VOICE_MAX_MS);
-
-        recog.onresult = function (e) {
-            hasSpoken = true;
-            finalText = '';
-            var interim = '';
-            for (var i = e.resultIndex; i < e.results.length; i++) {
-                if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
-                else                      interim   += e.results[i][0].transcript;
-            }
-            setVoiceTranscript(finalText || interim);
+        var name  = file.name;
+        var ext   = name.split('.').pop().toLowerCase();
+        var setStatus = function (txt) {
+            var s = document.getElementById('dts-file-status');
+            if (s) { s.style.display = ''; s.textContent = txt; }
         };
 
-        recog.onend = function () {
-            clearTimeout(voiceSilenceTimer);
-            voiceListening = false;
-            voiceRecog     = null;
-            var spoken = finalText.trim();
-            if (spoken && voiceActive) {
-                voiceSilentRestarts = 0; // reset counter on successful speech
-                sendVoiceMessage(spoken);
-            } else if (voiceActive && !hasSpoken) {
-                /* No speech — restart, but cap to prevent CPU overload → ANR */
-                voiceSilentRestarts++;
-                if (voiceSilentRestarts >= VOICE_MAX_SILENT_RESTARTS) {
-                    voiceSilentRestarts = 0;
-                    setVoiceState('idle');
-                    setVoiceTranscript('Tap "Start Listening" when ready to speak.');
-                } else {
-                    voiceRestartTimer = setTimeout(startVoiceListening, 600);
-                }
-            } else if (voiceActive) {
-                voiceSilentRestarts = 0;
-                setVoiceState('idle');
+        /* PDF */
+        if (ext === 'pdf') {
+            if (typeof window.pdfjsLib === 'undefined') {
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
+                setTimeout(function () { handleFileAttach(file); }, 1800);
+                return;
             }
-        };
-
-        recog.onerror = function (e) {
-            clearTimeout(voiceSilenceTimer);
-            voiceListening = false;
-            voiceRecog     = null;
-            if (!voiceActive) return;
-            if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                setVoiceState('error');
-                setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
-            } else if (e.error === 'no-speech') {
-                /* Mobile mic recovers slower — cap restarts to prevent ANR */
-                voiceSilentRestarts++;
-                if (voiceSilentRestarts >= VOICE_MAX_SILENT_RESTARTS) {
-                    voiceSilentRestarts = 0;
-                    setVoiceState('idle');
-                    setVoiceTranscript('Tap "Start Listening" when ready to speak.');
-                } else {
-                    var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
-                    voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
-                }
-            } else {
-                voiceRestartTimer = setTimeout(startVoiceListening, 1000);
-            }
-        };
-
-        try {
-            recog.start();
-        } catch (err) {
-            voiceListening = false;
-            voiceRecog     = null;
-            voiceRestartTimer = setTimeout(startVoiceListening, 1200);
-        }
-    }
-
-    function stopVoiceRecognition() {
-        clearTimeout(voiceSilenceTimer);
-        if (voiceRecog) {
-            try { voiceRecog.abort(); } catch (e) {}
-            voiceRecog = null;
-        }
-        voiceListening = false;
-    }
-
-    function stopVoiceSpeaking() {
-        if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-        if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-        voiceAiTalking = false;
-    }
-
-    /* ── Web search / page fetch ── */
-    /* Detects phrases like "search for X", "look up X", "go to X.com", "visit X website"
-       Fetches via r.jina.ai (free reader API) for URLs, or DuckDuckGo instant answers for queries */
-    async function voiceFetchWebContext(text) {
-        /* 1. Detect a bare URL in the speech */
-        var urlMatch = text.match(/\b(https?:\/\/\S+|[\w-]+\.(com|org|net|io|gov|edu|co\.uk)[\S]*)/i);
-        if (urlMatch) {
-            var url = urlMatch[0];
-            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-            try {
-                var r = await fetch('https://r.jina.ai/' + encodeURIComponent(url), { signal: AbortSignal.timeout(8000) });
-                if (r.ok) {
-                    var body = await r.text();
-                    return '[Web page content from ' + url + ']\n' + body.slice(0, 2500);
-                }
-            } catch(_) {}
-            return null;
-        }
-
-        /* 2. Detect search/lookup intent */
-        var searchMatch = text.match(/(?:search(?:\s+for)?|look\s+up|find\s+(?:out\s+)?(?:about)?|google|check\s+online)\s+(.+)/i);
-        if (searchMatch) {
-            var query = searchMatch[1].trim();
-            try {
-                var ddg = await fetch(
-                    'https://api.duckduckgo.com/?q=' + encodeURIComponent(query) + '&format=json&no_html=1&skip_disambig=1',
-                    { signal: AbortSignal.timeout(6000) }
-                );
-                if (ddg.ok) {
-                    var data = await ddg.json();
-                    var result = data.AbstractText || data.Answer || '';
-                    if (result) return '[Web search result for "' + query + '"]\n' + result;
-                    /* Fall back to Jina search */
-                    var jr = await fetch('https://r.jina.ai/https://www.google.com/search?q=' + encodeURIComponent(query), { signal: AbortSignal.timeout(8000) });
-                    if (jr.ok) return '[Web search for "' + query + '"]\n' + (await jr.text()).slice(0, 2000);
-                }
-            } catch(_) {}
-        }
-
-        /* 3. Detect "visit website X" or "go to website X" */
-        var visitMatch = text.match(/(?:visit|go\s+to|open|browse)(?:\s+(?:the|a|website|site|page))?\s+([\w\-]+(?:\.[\w\-]+)+)/i);
-        if (visitMatch) {
-            var visitUrl = 'https://' + visitMatch[1];
-            try {
-                var vr = await fetch('https://r.jina.ai/' + encodeURIComponent(visitUrl), { signal: AbortSignal.timeout(8000) });
-                if (vr.ok) return '[Content from ' + visitUrl + ']\n' + (await vr.text()).slice(0, 2500);
-            } catch(_) {}
-        }
-
-        return null; // no web context needed
-    }
-
-    /* ── Send voice utterance to AI ── */
-    /* Voice now writes its Q&A to the chat page so the user can see
-       the conversation text while the voice AI keeps talking.           */
-    async function sendVoiceMessage(text) {
-        if (!voiceActive) return;
-        setVoiceState('thinking');
-        setVoiceTranscript('"' + text + '"');
-
-        voiceMessages.push({ role: 'user', content: text });
-
-        /* Try to fetch web context before sending to AI */
-        var webCtx = null;
-        try { webCtx = await voiceFetchWebContext(text); } catch(_) {}
-
-        var sysContent = VOICE_SYSTEM +
-            (webCtx ? '\n\nWEB CONTEXT (use this to answer):\n' + webCtx : '');
-
-        /* Build API payload */
-        var apiMessages = [{ role: 'system', content: sysContent }].concat(
-            voiceMessages.map(function (m) { return { role: m.role, content: m.content }; })
-        );
-
-        var response = await raceAI(apiMessages);
-
-        if (!voiceActive) return;
-
-        if (response) {
-            voiceMessages.push({ role: 'assistant', content: response });
-
-            /* ── Sync Q&A to the main Studio chat page ── */
-            appendMessage('user', text);
-            appendMessage('ai', response);
-            /* Also keep main messages in sync so chat history is aware */
-            messages.push({ role: 'user', content: text });
-            messages.push({ role: 'assistant', content: response });
-            if (messages.length > 40) messages = messages.slice(-40);
-            saveCurrentChat();
-
-            /* Speak the reply */
-            setVoiceState('speaking');
-            setVoiceTranscript('');
-            speakVoiceResponse(response, function () {
-                if (voiceActive) {
-                    var micDelay = (navigator.maxTouchPoints > 0) ? 950 : 650;
-                    voiceRestartTimer = setTimeout(startVoiceListening, micDelay);
-                }
-            });
-        } else {
-            setVoiceState('listening');
-            setVoiceTranscript('Sorry, I could not get a response. Please try again.');
-            voiceRestartTimer = setTimeout(function () {
-                setVoiceTranscript('');
-                startVoiceListening();
-            }, 2500);
-        }
-    }
-
-    /* ── Text-to-Speech ── */
-
-    /* Clean text for speaking — strip markdown, math, code blocks */
-    function cleanForSpeech(text) {
-        return text
-            .replace(/```[\s\S]*?```/g,       'code block.')
-            .replace(/`([^`]+)`/g,            '$1')
-            .replace(/\$\$[\s\S]+?\$\$/g,     'math expression.')
-            .replace(/\$[^$\n]{1,200}\$/g,    'math expression.')
-            .replace(/\*\*([^*\n]+)\*\*/g,    '$1')
-            .replace(/\*([^*\n]+)\*/g,        '$1')
-            .replace(/#{1,6}\s+/g,            '')
-            .replace(/\[([^\]]+)\]\([^)]+\)/g,'$1')
-            .replace(/[-_]{2,}/g,             '')
-            .replace(/\n{2,}/g,               ' ')
-            .trim()
-            .substring(0, 1500);
-    }
-
-    /* Browser TTS fallback — used only if Pollinations fails */
-    function speakWithBrowserFallback(spoken, onDone) {
-        if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
-        window.speechSynthesis.cancel();
-
-        /* Safety timeout — flat 1-hour ceiling, not based on text length. */
-        var safetyMs = 60 * 60 * 1000; /* 1 hour — never calculated from text length */
-        var safetyTimer = setTimeout(function() {
-            window.speechSynthesis.cancel();
-            voiceAiTalking = false;
-            if (onDone) onDone();
-        }, safetyMs);
-
-        function doSpeak() {
-            /* Split into ≤220-char chunks — iOS silently drops longer utterances */
-            var CHUNK = 220;
-            var parts = [];
-            var sentences = spoken.match(/[^.!?\n]+[.!?\n]*/g) || [spoken];
-            var cur = '';
-            sentences.forEach(function(s) {
-                if ((cur + s).length > CHUNK) {
-                    if (cur) parts.push(cur.trim());
-                    while (s.length > CHUNK) { parts.push(s.slice(0, CHUNK).trim()); s = s.slice(CHUNK); }
-                    cur = s;
-                } else { cur += s; }
-            });
-            if (cur.trim()) parts.push(cur.trim());
-            if (!parts.length) { clearTimeout(safetyTimer); voiceAiTalking = false; if (onDone) onDone(); return; }
-
-            var pidx = 0;
-            var voices = window.speechSynthesis.getVoices();
-            var pick = voices.find(function(v) {
-                return v.lang.startsWith('en') && /Google|Natural|Samantha|Karen|Moira|Daniel/i.test(v.name);
-            }) || voices.find(function(v) { return v.lang.startsWith('en-US'); })
-               || voices.find(function(v) { return v.lang.startsWith('en'); });
-
-            function speakPart() {
-                if (!voiceAiTalking || pidx >= parts.length) {
-                    clearTimeout(safetyTimer);
-                    voiceAiTalking = false;
-                    if (onDone) onDone();
-                    return;
-                }
-                var utter = new SpeechSynthesisUtterance(parts[pidx++]);
-                utter.lang = 'en-US'; utter.rate = 1.0; utter.pitch = 1.0; utter.volume = 1.0;
-                if (pick) utter.voice = pick;
-                utter.onend = function() { speakPart(); };
-                utter.onerror = function() { speakPart(); /* skip bad chunk, continue */ };
-                /* Per-chunk safety ceiling — flat 1 hour, not derived from text length */
-                var partMs = 60 * 60 * 1000; /* 1 hour per chunk — never cut off by length */
-                var partTimer = setTimeout(function() { speakPart(); }, partMs);
-                var origOnEnd = utter.onend;
-                utter.onend = function() { clearTimeout(partTimer); origOnEnd(); };
-                utter.onerror = function() { clearTimeout(partTimer); speakPart(); };
-                /* FIX: Chrome silently pauses speechSynthesis mid-utterance — poll and resume */
-                var _rc = setInterval(function () {
-                    if (window.speechSynthesis.paused) { try { window.speechSynthesis.resume(); } catch(e) {} }
-                }, 250);
-                var _origEnd = utter.onend;
-                var _origErr = utter.onerror;
-                utter.onend  = function () { clearInterval(_rc); _origEnd && _origEnd(); };
-                utter.onerror = function () { clearInterval(_rc); _origErr && _origErr(); };
-                if (window.speechSynthesis.paused) window.speechSynthesis.resume();
-                window.speechSynthesis.speak(utter);
-            }
-            speakPart();
-        }
-
-        var vs = window.speechSynthesis.getVoices();
-        if (!vs.length) {
-            var h = function() { window.speechSynthesis.removeEventListener('voiceschanged', h); setTimeout(doSpeak, 120); };
-            window.speechSynthesis.addEventListener('voiceschanged', h);
-            setTimeout(function() { if (!voiceAiTalking) doSpeak(); }, 1500);
-        } else { setTimeout(doSpeak, 120); }
-    }
-
-    /* ── Split cleaned text into sentence-aware chunks for sequential TTS ── */
-    function splitSpeechChunks(text, maxLen) {
-        if (text.length <= maxLen) return [text];
-        var chunks    = [];
-        var sentences = text.match(/[^.!?]+[.!?]+\s*/g) || [text]; /* \s* not s* */
-        var current   = '';
-        sentences.forEach(function(s) {
-            if ((current + s).length > maxLen) {
-                if (current) chunks.push(current.trim());
-                while (s.length > maxLen) { chunks.push(s.slice(0, maxLen).trim()); s = s.slice(maxLen); }
-                current = s;
-            } else { current += s; }
-        });
-        if (current.trim()) chunks.push(current.trim());
-        return chunks.filter(function(c) { return c.length > 0; });
-    }
-
-    /* ── Fetch one TTS chunk from Pollinations, trying voices in order ─ */
-    function fetchStudioAudioBlob(chunk, voices, timeoutMs) {
-        var voice = voices[0];
-        var rest  = voices.slice(1);
-        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
-                  '?model=openai-audio&voice=' + voice + '&nologo=true&v=' + cacheBust;
-        var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, timeoutMs || 12000);
-        return fetch(url, { signal: ctrl.signal, cache: 'no-store' })
-            .then(function(r) {
-                clearTimeout(tid);
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.blob();
-            })
-            .then(function(blob) {
-                /* Reject suspiciously tiny responses — API returned error body */
-                if (!blob || blob.size < 100) throw new Error('Empty blob');
-                return blob;
-            })
-            .catch(function(e) {
-                clearTimeout(tid);
-                if (rest.length) return fetchStudioAudioBlob(chunk, rest, timeoutMs);
-                throw e;
-            });
-    }
-
-    function speakVoiceResponse(text, onDone) {
-        var spoken = cleanForSpeech(text);
-        if (!spoken) { if (onDone) onDone(); return; }
-
-        /* Stop any ongoing speech */
-        if (voiceKeepAlive)     { clearInterval(voiceKeepAlive); voiceKeepAlive = null; }
-        if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src = ''; } catch(_) {} currentStudioAudio = null; }
-        if (window.speechSynthesis) window.speechSynthesis.cancel();
-
-        voiceAiTalking = true;
-
-        /* Global safety timeout — flat 1-hour ceiling.
-           Never calculated from text length — let the audio finish naturally. */
-        var _globalSpeakTimer = setTimeout(function() {
-            if (voiceAiTalking) {
-                if (currentStudioAudio) { try { currentStudioAudio.pause(); currentStudioAudio.src=''; } catch(_){} currentStudioAudio = null; }
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                voiceAiTalking = false;
-                if (onDone) onDone();
-            }
-        }, 60 * 60 * 1000); /* 1 hour — never cut off early */
-
-        /* Wrap original onDone to clear the global safety timer too */
-        var _origOnDone = onDone;
-        onDone = function() { clearTimeout(_globalSpeakTimer); if (_origOnDone) _origOnDone(); };
-
-        /* If fetch is unavailable (very old/restricted browsers like Phoenix SE),
-           go straight to browser TTS — no blob URL approach possible           */
-        if (typeof window.fetch !== 'function') {
-            speakWithBrowserFallback(spoken, onDone);
+            setStatus('\uD83D\uDCCE Reading PDF\u2026');
+            var r1 = new FileReader();
+            r1.onload = function (e) {
+                window.pdfjsLib.getDocument({ data: e.target.result }).promise.then(function (pdf) {
+                    var texts = [], done = 0, total = pdf.numPages;
+                    for (var p = 1; p <= total; p++) {
+                        (function (pn) {
+                            pdf.getPage(pn).then(function (pg) {
+                                return pg.getTextContent();
+                            }).then(function (tc) {
+                                texts[pn - 1] = tc.items.map(function (i) { return i.str; }).join(' ');
+                                done++;
+                                if (done === total) {
+                                    attachedFileText = texts.join('\n\n');
+                                    attachedFileName = name;
+                                    setStatus('\uD83D\uDCCE ' + name + ' attached (' + total + ' pages)');
+                                }
+                            });
+                        })(p);
+                    }
+                }).catch(function () { setStatus('\u274C Could not read PDF'); });
+            };
+            r1.readAsArrayBuffer(file);
             return;
         }
 
-        /* Split into ≤200-char sentence chunks (shorter = faster per-chunk load
-           on mobile, less chance of a mid-sentence network timeout)             */
-        var chunks = splitSpeechChunks(spoken, 200);
-        var idx    = 0;
+        /* DOCX */
+        if (ext === 'docx' || ext === 'doc') {
+            if (typeof mammoth === 'undefined') {
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
+                setTimeout(function () { handleFileAttach(file); }, 1800);
+                return;
+            }
+            setStatus('\uD83D\uDCCE Reading document\u2026');
+            var r2 = new FileReader();
+            r2.onload = function (e) {
+                mammoth.extractRawText({ arrayBuffer: e.target.result }).then(function (result) {
+                    attachedFileText = result.value;
+                    attachedFileName = name;
+                    setStatus('\uD83D\uDCCE ' + name + ' attached');
+                }).catch(function () { setStatus('\u274C Could not read document'); });
+            };
+            r2.readAsArrayBuffer(file);
+            return;
+        }
+
+        /* Plain text: txt, md, csv, json, etc. */
+        var r3 = new FileReader();
+        r3.onload = function (e) {
+            attachedFileText = e.target.result;
+            attachedFileName = name;
+            setStatus('\uD83D\uDCCE ' + name + ' attached');
+        };
+        r3.onerror = function () { setStatus('\u274C Could not read file'); };
+        r3.readAsText(file);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       VOICE MODE
+    ═══════════════════════════════════════════════════════════ */
+    function openVoiceModal() {
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'flex';
+        setVoiceState('idle');
+        voiceActive = true;
+    }
+
+    function closeVoiceModal() {
+        stopVoiceListening();
+        stopAiSpeech();
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'none';
+        setVoiceState('closed');
+        voiceActive = false;
+    }
+
+    function stopVoiceListening() {
+        if (voiceRecognition) {
+            try { voiceRecognition.abort(); } catch (e) {}
+            voiceRecognition = null;
+        }
+    }
+
+    function stopAiSpeech() {
+        voiceAiTalking = false;
+        if (currentStudioAudio) {
+            try { currentStudioAudio.pause(); } catch (e) {}
+            currentStudioAudio = null;
+        }
+        if (typeof window.speechSynthesis !== 'undefined') {
+            window.speechSynthesis.cancel();
+        }
+    }
+
+    function startVoiceListening() {
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            setVoiceState('error');
+            setVoiceTranscript('Speech recognition is not supported in this browser. Try Chrome or Edge.');
+            return;
+        }
+        stopVoiceListening();
+        var rec = new SR();
+        rec.continuous     = false;
+        rec.interimResults = true;
+        rec.lang           = 'en-US';
+        voiceRecognition   = rec;
+        setVoiceState('listening');
+        setVoiceTranscript('Listening\u2026');
+
+        rec.onresult = function (e) {
+            var transcript = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+                transcript += e.results[i][0].transcript;
+            }
+            setVoiceTranscript(transcript);
+            if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
+                rec.stop();
+                setVoiceState('thinking');
+                handleVoiceInput(transcript.trim());
+            }
+        };
+
+        rec.onerror = function (e) {
+            setVoiceState('error');
+            setVoiceTranscript('Mic error: ' + (e.error || 'unknown'));
+        };
+
+        setTimeout(function () {
+            try { rec.start(); } catch (e) {
+                setVoiceState('error');
+                setVoiceTranscript('Could not access microphone: ' + e.message);
+            }
+        }, 120);
+    }
+
+    async function handleVoiceInput(text) {
+        chatHistory.push({ role: 'user', content: text });
+        appendMessage('user', text);
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        if (typeof window.groqFetch !== 'function') {
+            showTyping(false);
+            setVoiceState('error');
+            setVoiceTranscript('API not available.');
+            return;
+        }
+
+        /* Web search for voice too */
+        var voiceWebContext = '';
+        var searchNeeds = detectSearchNeeds(text);
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                var pg = await fetchWebPage(searchNeeds.url);
+                if (pg) voiceWebContext = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pg;
+            } else {
+                var sr = await performWebSearch(text);
+                if (sr) voiceWebContext = 'WEB SEARCH RESULTS (' + sr.source + '):\n\n' + sr.content;
+            }
+        }
+
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (voiceWebContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA =====\n' + voiceWebContext + '\n===== END =====\nUse this data to answer accurately.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+
+        window.groqFetch({
+            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            showTyping(false);
+            if (data.error || !data.choices) {
+                setVoiceState('idle');
+                setVoiceTranscript('Could not get response.');
+                return;
+            }
+            var reply = data.choices[0].message.content;
+            chatHistory.push({ role: 'assistant', content: reply });
+            appendMessage('assistant', reply);
+            saveSession();
+            renderHistoryList();
+
+            var spoken = reply
+                .replace(/```[\s\S]*?```/g, 'code block.')
+                .replace(/`[^`]+`/g, '')
+                .replace(/[*_#>\[\]]/g, '')
+                .trim()
+                .slice(0, 600);
+
+            setVoiceState('speaking');
+            setVoiceTranscript('');
+            voiceAiTalking = true;
+            speakStudioChunked(spoken, function () {
+                if (voiceActive) setVoiceState('idle');
+            });
+        }).catch(function () {
+            showTyping(false);
+            setVoiceState('error');
+            setVoiceTranscript('Connection error.');
+        });
+    }
+
+    /* ── UI helpers for voice modal ── */
+    function setVoiceState(state) {
+        var orb      = document.getElementById('dts-voice-orb');
+        var statusEl = document.getElementById('dts-voice-status');
+        var togBtn   = document.getElementById('dts-voice-toggle');
+        var micIcon  = document.getElementById('dts-voice-mic-icon');
+        var waveIcon = document.getElementById('dts-voice-wave-icon');
+
+        var labels    = { idle: 'Tap "Start Listening" to begin', listening: 'Listening\u2026 speak now', thinking: 'XZILY is thinking\u2026', speaking: 'XZILY is speaking\u2026', error: 'Microphone error', closed: '' };
+        var togLabels = { idle: 'Start Listening', listening: 'Stop Listening', thinking: 'Please wait\u2026', speaking: 'Interrupt', error: 'Retry', closed: '' };
+
+        if (statusEl) statusEl.textContent = labels[state]    || state;
+        if (orb)      orb.dataset.state    = state;
+        if (togBtn)   togBtn.textContent   = togLabels[state] || state;
+
+        if (micIcon && waveIcon) {
+            micIcon.style.display  = state === 'speaking' ? 'none' : '';
+            waveIcon.style.display = state === 'speaking' ? ''     : 'none';
+        }
+    }
+
+    function setVoiceTranscript(text) {
+        var el = document.getElementById('dts-voice-transcript');
+        if (el) el.textContent = text;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TTS — CHUNKED PLAYBACK (Pollinations audio API)
+    ═══════════════════════════════════════════════════════════ */
+    function splitSpeechChunks(text, maxLen) {
+        var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+        var chunks = [], current = '';
+        sentences.forEach(function (s) {
+            if ((current + s).length > maxLen && current) {
+                chunks.push(current.trim());
+                current = s;
+            } else {
+                current += s;
+            }
+        });
+        if (current.trim()) chunks.push(current.trim());
+        return chunks.filter(function (c) { return c.length > 0; });
+    }
+
+    function fetchStudioAudioBlob(text, voices, timeout) {
+        var voice = (voices && voices[0]) || 'onyx';
+        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
+                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
+        return new Promise(function (resolve, reject) {
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
+            fetch(url, { signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+                .then(resolve)
+                .catch(function (e) { clearTimeout(timer); reject(e); });
+        });
+    }
+
+    function speakWithBrowserFallback(text, onDone) {
+        if (typeof window.speechSynthesis === 'undefined') { if (onDone) onDone(); return; }
+        var utt   = new SpeechSynthesisUtterance(text);
+        utt.rate  = 1.0;
+        utt.onend = utt.onerror = function () { if (onDone) onDone(); };
+        window.speechSynthesis.speak(utt);
+    }
+
+    function speakStudioChunked(spoken, onDone) {
+        var chunks    = splitSpeechChunks(spoken, 200);
+        var idx       = 0;
         var doneCalled = false;
+
         function finish() {
             if (doneCalled) return; doneCalled = true;
             currentStudioAudio = null;
@@ -1874,49 +1140,40 @@
 
         function fallbackRemaining() {
             if (!voiceAiTalking) { finish(); return; }
-            /* Try to continue playing remaining chunks via Pollinations.
-               If a chunk still fails, use browser TTS for just that chunk. */
             var remaining = chunks.slice(idx - 1).join(' ');
             if (!remaining.trim()) { finish(); return; }
-            /* For remaining, try Pollinations first, browser TTS as last resort */
             fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
-                .then(function(blob) {
+                .then(function (blob) {
                     if (!voiceAiTalking) { finish(); return; }
                     var blobUrl = URL.createObjectURL(blob);
                     var audio2  = new Audio();
                     audio2.setAttribute('playsinline', '');
                     audio2.src  = blobUrl;
-                    audio2.addEventListener('ended', function() {
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
-                        /* Mark remaining as consumed then finish */
+                    audio2.addEventListener('ended', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
                         idx = chunks.length;
                         finish();
                     });
-                    audio2.addEventListener('error', function() {
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                    audio2.addEventListener('error', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
                         speakWithBrowserFallback(remaining, finish);
                     });
-                    audio2.play().catch(function() {
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                    audio2.play().catch(function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
                         speakWithBrowserFallback(remaining, finish);
                     });
                 })
-                .catch(function() {
-                    speakWithBrowserFallback(remaining, finish);
-                });
+                .catch(function () { speakWithBrowserFallback(remaining, finish); });
         }
 
         function playNext() {
             if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
-
             var chunk = chunks[idx++];
 
             fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
-                .then(function(blob) {
+                .then(function (blob) {
                     if (!voiceAiTalking) { finish(); return; }
 
-                    /* Force audio/mpeg type — Android Chrome sometimes fails to
-                       decode untyped blobs fetched from audio.pollinations.ai    */
                     var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
                     var blobUrl   = URL.createObjectURL(typedBlob);
                     var audio     = new Audio();
@@ -1935,67 +1192,51 @@
                         if (cleaned) return; cleaned = true;
                         clearTimeout(stallTimer);
                         clearTimeout(hardCap);
-                        try { URL.revokeObjectURL(blobUrl); } catch(_) {}
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
                         currentStudioAudio = null;
                     }
 
-                    /* ── Android-safe stall watchdog ──────────────────────────
-                       audio.duration is UNRELIABLE on Android Chrome for blob
-                       URLs — often returns Infinity or NaN.
-
-                       Instead: watch currentTime advance via timeupdate.
-                       If currentTime stops moving for 4 s and audio hasn't
-                       ended → genuine stall → skip to next chunk.
-
-                       Hard cap is a flat 1-hour ceiling — never calculated
-                       from blob size or text length.
-                    ──────────────────────────────────────────────────────────── */
-                    var hardCap = setTimeout(function() {
+                    var hardCap = setTimeout(function () {
                         if (!cleaned) { cleanup(); playNext(); }
-                    }, 60 * 60 * 1000); /* 1 hour — never calculated from blob size */
+                    }, 60 * 60 * 1000);
 
                     function armStallTimer() {
                         clearTimeout(stallTimer);
-                        stallTimer = setTimeout(function() {
+                        stallTimer = setTimeout(function () {
                             if (cleaned) return;
                             if (audio.currentTime > lastCurTime) {
                                 lastCurTime = audio.currentTime;
-                                armStallTimer();   /* still progressing — re-arm */
+                                armStallTimer();
                             } else {
                                 clearTimeout(hardCap);
                                 cleanup();
-                                playNext();         /* truly stalled — skip chunk */
+                                playNext();
                             }
                         }, 4000);
                     }
 
-                    audio.addEventListener('timeupdate', function() {
+                    audio.addEventListener('timeupdate', function () {
                         lastCurTime = audio.currentTime;
-                        armStallTimer();   /* reset stall clock on every tick */
+                        armStallTimer();
                     });
-
-                    audio.addEventListener('canplay', function() {
+                    audio.addEventListener('canplay', function () {
                         if (lastCurTime < 0) armStallTimer();
                     });
-
-                    audio.addEventListener('ended', function() {
+                    audio.addEventListener('ended', function () {
                         clearTimeout(hardCap);
                         cleanup();
                         playNext();
                     });
-
-                    audio.addEventListener('error', function() {
+                    audio.addEventListener('error', function () {
                         clearTimeout(hardCap);
                         cleanup();
                         fallbackRemaining();
                     });
 
-                    /* On mobile: retry play() once after 400 ms if first call
-                       is rejected by Android autoplay policy                   */
-                    audio.play().catch(function() {
-                        setTimeout(function() {
+                    audio.play().catch(function () {
+                        setTimeout(function () {
                             if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
-                            audio.play().catch(function() {
+                            audio.play().catch(function () {
                                 clearTimeout(hardCap);
                                 cleanup();
                                 fallbackRemaining();
@@ -2003,7 +1244,7 @@
                         }, 400);
                     });
                 })
-                .catch(function() {
+                .catch(function () {
                     if (!voiceAiTalking) { finish(); return; }
                     fallbackRemaining();
                 });
@@ -2012,78 +1253,173 @@
         playNext();
     }
 
-    /* ── UI state helpers ── */
-    function setVoiceState(state) {
-        var orb      = document.getElementById('dts-voice-orb');
-        var statusEl = document.getElementById('dts-voice-status');
-        var togBtn   = document.getElementById('dts-voice-toggle');
-        var micIcon  = document.getElementById('dts-voice-mic-icon');
-        var waveIcon = document.getElementById('dts-voice-wave-icon');
+    /* ═══════════════════════════════════════════════════════════
+       DOM INITIALISATION
+    ═══════════════════════════════════════════════════════════ */
 
-        var labels = {
-            idle:      'Tap "Start Listening" to begin',
-            listening: 'Listening… speak now',
-            thinking:  'XZILY is thinking…',
-            speaking:  'XZILY is speaking…',
-            error:     'Microphone error',
-            closed:    ''
-        };
-        var togLabels = {
-            idle:      'Start Listening',
-            listening: 'Stop Listening',
-            thinking:  'Please wait…',
-            speaking:  'Interrupt',
-            error:     'Retry',
-            closed:    ''
-        };
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY DRAWER
+    ═══════════════════════════════════════════════════════════ */
+    function openHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        renderHistoryList();
+        if (drawer)  { drawer.classList.add('open');  }
+        if (overlay) { overlay.classList.add('open'); }
+        document.body.style.overflow = 'hidden';
+    }
 
-        if (statusEl) statusEl.textContent = labels[state] || state;
-        if (orb)      orb.dataset.state    = state;
-        if (togBtn)   togBtn.textContent   = togLabels[state] || state;
+    function closeHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        if (drawer)  drawer.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
 
-        /* Swap icon: mic ↔ wave */
-        if (micIcon && waveIcon) {
-            micIcon.style.display  = state === 'speaking' ? 'none'  : '';
-            waveIcon.style.display = state === 'speaking' ? ''      : 'none';
+    document.addEventListener('DOMContentLoaded', function () {
+
+        newSession();
+        renderHistoryList();
+
+        /* ── Auto-resize textarea ── */
+        var inputEl = document.getElementById('dts-input');
+        if (inputEl) {
+            inputEl.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+
+            inputEl.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    doSend();
+                }
+            });
         }
-    }
 
-    function setVoiceTranscript(text) {
-        var el = document.getElementById('dts-voice-transcript');
-        if (el) el.textContent = text;
-    }
-
-    /* =========================================================
-       UTILITIES
-    ========================================================= */
-    function showTyping(show) {
-        var el   = document.getElementById('dts-typing');
-        var msgs = document.getElementById('dts-messages');
-        if (!el) return;
-        if (show) {
-            /* Move indicator INSIDE the scrollable messages container
-               so it appears directly below the last sent message */
-            if (msgs && el.parentNode !== msgs) msgs.appendChild(el);
-            el.style.display = 'flex';
-            scrollToBottom();
-        } else {
-            el.style.display = 'none';
+        /* ── Send button ── */
+        var sendBtn = document.getElementById('dts-send');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function () { doSend(); });
         }
-    }
-    function scrollToBottom() {
-          var msgs = document.getElementById('dts-messages');
-          if (!msgs) return;
-          /* Add extra buffer so newest message always clears the fixed footer
-             on iOS, Android, and desktop regardless of safe-area size */
-          requestAnimationFrame(function () {
-              msgs.scrollTop = msgs.scrollHeight + 200;
-          });
-      }
-    function escHtml(str) {
-        return String(str || '')
-            .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    }
-    function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+        function doSend() {
+            var val = inputEl ? inputEl.value : '';
+            sendMessage(val);
+        }
+
+        /* ── Suggestion buttons ── */
+        document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var prompt = this.dataset.prompt || this.textContent.trim();
+                if (inputEl) inputEl.value = prompt;
+                sendMessage(prompt);
+            });
+        });
+
+
+        /* ── History hamburger button ── */
+        var historyBtn = document.getElementById('dts-hist-open-btn') ||
+                        document.getElementById('dts-history-btn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
+        }
+
+        /* ── History drawer close button ── */
+        var historyClose = document.getElementById('dts-history-close');
+        if (historyClose) {
+            historyClose.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── History overlay backdrop click ── */
+        var historyOverlay = document.getElementById('dts-history-overlay');
+        if (historyOverlay) {
+            historyOverlay.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── New chat button ── */
+        var newChatBtn = document.getElementById('dts-new-chat');
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', function () { startNewChat(); });
+        }
+
+        /* ── History panel toggle ── */
+        var historyToggle = document.getElementById('dts-history-toggle');
+        var historyPanel  = document.getElementById('dts-history-panel');
+        var historyCaret  = document.getElementById('dts-history-caret');
+        if (historyToggle && historyPanel) {
+            historyToggle.addEventListener('click', function () {
+                var open = historyPanel.style.display !== 'none' && historyPanel.style.display !== '';
+                historyPanel.style.display = open ? 'none' : '';
+                if (historyCaret) historyCaret.textContent = open ? '\u25B8' : '\u25BE';
+            });
+        }
+
+        /* ── File input ── */
+        var fileInput = document.getElementById('dts-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleFileAttach(this.files[0]);
+            });
+        }
+
+        /* ── Voice button ── */
+        var voiceBtn = document.getElementById('dts-voice-btn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', function () { openVoiceModal(); });
+        }
+
+        /* ── Voice modal: close ── */
+        var voiceClose = document.getElementById('dts-voice-close');
+        if (voiceClose) {
+            voiceClose.addEventListener('click', function () { closeVoiceModal(); });
+        }
+
+        /* ── Voice modal: start/stop/interrupt toggle ── */
+        var voiceToggle = document.getElementById('dts-voice-toggle');
+        if (voiceToggle) {
+            voiceToggle.addEventListener('click', function () {
+                var orb   = document.getElementById('dts-voice-orb');
+                var state = orb ? orb.dataset.state : 'idle';
+                if (state === 'idle' || state === 'error') {
+                    startVoiceListening();
+                } else if (state === 'listening') {
+                    stopVoiceListening();
+                    setVoiceState('idle');
+                } else if (state === 'speaking') {
+                    stopAiSpeech();
+                    setVoiceState('idle');
+                }
+            });
+        }
+
+        /* ── Voice modal: end conversation ── */
+        var voiceEnd = document.getElementById('dts-voice-end');
+        if (voiceEnd) {
+            voiceEnd.addEventListener('click', function () { closeVoiceModal(); });
+        }
+
+        /* ── Close voice overlay on backdrop click ── */
+        var voiceOverlay = document.getElementById('dts-voice-overlay');
+        if (voiceOverlay) {
+            voiceOverlay.addEventListener('click', function (e) {
+                if (e.target === voiceOverlay) closeVoiceModal();
+            });
+        }
+
+        /* ── Restore last active session (optional) ── */
+        try {
+            var lastId = localStorage.getItem(ACTIVE_KEY);
+            if (lastId) {
+                var sessions = loadSessions();
+                if (sessions.some(function (s) { return s.id === lastId; })) {
+                    /* Uncomment to restore last session on load: */
+                    /* loadSessionById(lastId); */
+                }
+            }
+        } catch (e) {}
+
+    }); /* end DOMContentLoaded */
 
 })();
