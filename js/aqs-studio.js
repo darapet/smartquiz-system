@@ -460,6 +460,42 @@
         return html;
     }
 
+    function addCodeCopyButtons(containerEl) {
+        containerEl.querySelectorAll('pre').forEach(function (pre) {
+            if (pre.parentNode && pre.parentNode.classList.contains('dts-code-wrap')) return;
+            var wrap = document.createElement('div');
+            wrap.className = 'dts-code-wrap';
+            pre.parentNode.insertBefore(wrap, pre);
+            wrap.appendChild(pre);
+            var btn = document.createElement('button');
+            btn.className = 'dts-code-copy-btn';
+            btn.textContent = 'Copy';
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var codeEl = pre.querySelector('code');
+                var text   = codeEl ? (codeEl.innerText || codeEl.textContent) : (pre.innerText || pre.textContent);
+                function doFallback() {
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                    document.body.appendChild(ta);
+                    ta.focus(); ta.select();
+                    try { document.execCommand('copy'); btn.textContent = 'Copied!'; btn.classList.add('copied'); }
+                    catch (e2) { btn.textContent = 'Error'; }
+                    document.body.removeChild(ta);
+                    setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+                }
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(text).then(function () {
+                        btn.textContent = 'Copied!'; btn.classList.add('copied');
+                        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+                    }).catch(doFallback);
+                } else { doFallback(); }
+            });
+            wrap.appendChild(btn);
+        });
+    }
+
     function applyMathAndHighlight(containerEl) {
         try {
             if (typeof hljs !== 'undefined') {
@@ -467,6 +503,7 @@
                     hljs.highlightElement(block);
                 });
             }
+            addCodeCopyButtons(containerEl);
         } catch (e) {}
         try {
             if (typeof window.renderMathInElement !== 'undefined') {
