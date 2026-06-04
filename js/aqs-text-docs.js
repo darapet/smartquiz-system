@@ -201,7 +201,7 @@
         .then(function (html) {
           var clean = sanitizeHTML(html);
           if (editor) {
-            editor.innerHTML = clean || '<p>' + escapeHtml(text) + '</p>';
+            ttdLoadContent(clean || '<p>' + escapeHtml(text) + '</p>');
             var autoTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
             ttdSaveHistory(autoTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdUpdateStats();
@@ -226,7 +226,7 @@
       var src = document.getElementById('ttd-source');
       if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
       if (editor) {
-        editor.innerHTML = basicFormat(src.value.trim());
+        ttdLoadContent(basicFormat(src.value.trim()));
         ttdUpdateStats();
       }
     };
@@ -401,7 +401,7 @@
     ═══════════════════════════════════════════════════════════════ */
     window.ttdDL = function (fmt) {
       if (!editor) return;
-      var content = editor.innerHTML.trim();
+      var content = ttdGetFullContent().trim();
       if (!content || content === '' || editor.innerText.trim() === '') {
         alert('Nothing to download. Please add some content first.'); return;
       }
@@ -411,7 +411,8 @@
     };
 
     function getDocTitle() {
-      var h1 = editor.querySelector('h1');
+      var tmp=document.createElement('div');tmp.innerHTML=ttdGetFullContent();
+      var h1 = tmp.querySelector('h1');
       return (h1 ? h1.textContent.trim() : 'document') || 'document';
     }
 
@@ -839,8 +840,7 @@
           var clean = sanitizeHTML(result);
           if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
           if (editor) {
-            editor.innerHTML = clean;
-            ttdUpdateStats();
+            ttdLoadContent(clean);
             var wTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Doc';
             ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdSwitchTab('format');
@@ -913,4 +913,19 @@
         ttdRenderHistory();
       };
 
-  })();
+  
+      var ttdPages=[''],ttdCurrentPage=0,PAGE_CHAR_LIMIT=2800;
+      function ttdGetFullContent(){var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;return ttdPages.join('');}
+      function ttdUpdatePageNav(){var t=ttdPages.length,ind=document.getElementById('ttd-page-indicator'),p=document.getElementById('ttd-prev-btn'),n=document.getElementById('ttd-next-btn');if(ind)ind.textContent='Page '+(ttdCurrentPage+1)+' of '+t;if(p)p.disabled=ttdCurrentPage===0;if(n)n.disabled=ttdCurrentPage>=t-1;}
+      function ttdSetPage(n){var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;ttdCurrentPage=Math.max(0,Math.min(n,ttdPages.length-1));if(ed)ed.innerHTML=ttdPages[ttdCurrentPage]||'';ttdUpdatePageNav();ttdUpdateStats();var pa=document.getElementById('ttd-pages');if(pa)pa.scrollTop=0;}
+      window.ttdNavPage=function(d){ttdSetPage(ttdCurrentPage+d);};
+      window.ttdAddPageBreak=function(){var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;ttdPages.splice(ttdCurrentPage+1,0,'');ttdSetPage(ttdCurrentPage+1);};
+      function ttdSplitIntoPages(html){var tmp=document.createElement('div');tmp.innerHTML=html;var blocks=Array.from(tmp.childNodes).filter(function(n){return n.nodeType===1||(n.nodeType===3&&n.textContent.trim());});var pages=[],cur='',curC=0;blocks.forEach(function(b){var bh=b.outerHTML||('<p>'+b.textContent+'</p>'),bl=(b.textContent||'').length,isH1=b.tagName==='H1';if((isH1&&curC>100)||(curC+bl>PAGE_CHAR_LIMIT&&curC>0)){pages.push(cur);cur=bh;curC=bl;}else{cur+=bh;curC+=bl;}});if(cur)pages.push(cur);return pages.length?pages:[''];}
+      function ttdLoadContent(html){ttdPages=ttdSplitIntoPages(html);ttdCurrentPage=0;var ed=document.getElementById('ttd-editor');if(ed)ed.innerHTML=ttdPages[0]||'';ttdUpdatePageNav();ttdUpdateStats();}
+      function ttdShowUploadStatus(msg,isErr){var el=document.getElementById('ttd-upload-status');if(!el)return;el.textContent=msg;el.style.display='block';el.className='ttd-upload-status'+(isErr?' error':'');if(!isErr)setTimeout(function(){el.style.display='none';},4000);}
+      window.ttdHandleFileDrop=function(ev){ev.preventDefault();var f=ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files[0];if(f)window.ttdHandleFile(f);};
+      window.ttdHandleFile=function(file){if(!file)return;var name=file.name.toLowerCase();ttdShowUploadStatus('Reading '+file.name+'...',false);if(name.endsWith('.txt')){var r=new FileReader();r.onload=function(e){ttdLoadContent(ttdParseTxt(e.target.result));ttdShowUploadStatus('Loaded: '+file.name,false);ttdSwitchTab('format');};r.readAsText(file);}else if(name.endsWith('.html')||name.endsWith('.htm')){var r2=new FileReader();r2.onload=function(e){var tmp=document.createElement('div');tmp.innerHTML=e.target.result;tmp.querySelectorAll('script,style,head,meta,link').forEach(function(x){x.remove();});var body=tmp.querySelector('body');ttdLoadContent(body?body.innerHTML:tmp.innerHTML);ttdShowUploadStatus('Loaded: '+file.name,false);ttdSwitchTab('format');};r2.readAsText(file);}else if(name.endsWith('.docx')){if(typeof mammoth==='undefined'){ttdShowUploadStatus('DOCX parser not loaded — check internet.',true);return;}var r3=new FileReader();r3.onload=function(e){mammoth.convertToHtml({arrayBuffer:e.target.result}).then(function(res){ttdLoadContent(res.value);ttdShowUploadStatus('Loaded: '+file.name,false);ttdSwitchTab('format');}).catch(function(err){ttdShowUploadStatus('DOCX error: '+err.message,true);});};r3.readAsArrayBuffer(file);}else if(name.endsWith('.pdf')){var r4=new FileReader();r4.onload=function(e){ttdParsePdf(e.target.result,file.name);};r4.readAsArrayBuffer(file);}else{ttdShowUploadStatus('Unsupported type. Use TXT, DOCX, PDF or HTML.',true);}};
+      function ttdParseTxt(text){var lines=text.split(/\r?\n/),html='',inP=false;lines.forEach(function(l){var t=l.trim();if(!t){if(inP){html+='</p>';inP=false;}}else if(!inP){html+='<p>'+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');inP=true;}else{html+=' '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');}});if(inP)html+='</p>';return html||'<p></p>';}
+      function ttdParsePdf(buf,name){if(typeof pdfjsLib!=='undefined'){pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';pdfjsLib.getDocument({data:buf}).promise.then(function(pdf){var pages=[],total=pdf.numPages,fetched=0;for(var i=1;i<=total;i++){(function(pn){pdf.getPage(pn).then(function(pg){pg.getTextContent().then(function(c){pages[pn-1]=c.items.map(function(it){return it.str;}).join(' ');fetched++;if(fetched===total){var html=pages.map(function(p){return'<p>'+p.replace(/</g,'&lt;')+'</p>';}).join('');ttdLoadContent(html);ttdShowUploadStatus('Loaded: '+name+' ('+total+' pages)',false);ttdSwitchTab('format');}});});})(i);}}).catch(function(err){ttdShowUploadStatus('PDF error: '+err.message,true);});}else{ttdShowUploadStatus('PDF needs internet (PDF.js). Try TXT or DOCX.',true);}}
+  
+})();
