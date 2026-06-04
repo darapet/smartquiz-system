@@ -2,7 +2,7 @@
   "version": "1.129",
   "versionCode": 114,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Voice fix: AI now speaks via AudioContext (Android-compatible). Mic now uses MediaRecorder + Groq Whisper — no more crash or silent failure.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.129/daraquiz-v1.129.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.129/daraquiz-v1.129.apk"
 }
