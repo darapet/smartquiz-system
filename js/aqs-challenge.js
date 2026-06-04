@@ -512,7 +512,9 @@
         var overlay=document.createElement('div');
         overlay.id='aqs-ch-lobby-cd';
         overlay.className='aqs-hype-overlay';
-        document.body.appendChild(overlay);
+        /* Append to <html> root to escape any body overflow/transform stacking context
+           that can trap position:fixed on iOS/Android WebViews */
+        (document.documentElement||document.body).appendChild(overlay);
 
         /* Build hype screen with characters if AQS_AVATARS is loaded */
         var knownPlayers=players||CH._lastPlayers||[];
