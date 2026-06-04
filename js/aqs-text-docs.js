@@ -400,6 +400,79 @@
       }
     };
 
+    window.ttdWebModeSwitch = function(mode) {
+        var ua = document.getElementById('ttd-web-url-area');
+        var sa = document.getElementById('ttd-web-search-area');
+        var bu = document.getElementById('ttd-web-mode-url');
+        var bs = document.getElementById('ttd-web-mode-search');
+        if (ua) ua.style.display = mode === 'url' ? '' : 'none';
+        if (sa) sa.style.display = mode === 'search' ? '' : 'none';
+        if (bu) bu.classList.toggle('active', mode === 'url');
+        if (bs) bs.classList.toggle('active', mode === 'search');
+    };
+
+    window.ttdWebResearch = function() {
+        var urlEl   = document.getElementById('ttd-web-url');
+        var qEl     = document.getElementById('ttd-web-query');
+        var instrEl = document.getElementById('ttd-web-instruction');
+        var btn     = document.getElementById('ttd-web-btn');
+        var stEl    = document.getElementById('ttd-web-status');
+        var saArea  = document.getElementById('ttd-web-search-area');
+        var isSearch = !!(saArea && saArea.style.display !== 'none');
+        var input    = (isSearch ? (qEl && qEl.value.trim()) : (urlEl && urlEl.value.trim())) || '';
+        var instr    = instrEl ? instrEl.value.trim() : '';
+
+        if (!input) { alert(isSearch ? 'Please enter a search query.' : 'Please enter a URL.'); return; }
+        if (!instr) { alert('Please describe what you want from this page.'); return; }
+        if (!isSearch && !/^https?:\/\//i.test(input)) { input = 'https://' + input; }
+
+        var setStatus = function(msg, bg, col) {
+            if (!stEl) return;
+            stEl.style.display = 'block';
+            stEl.style.background = bg;
+            stEl.style.color = col;
+            stEl.textContent = msg;
+        };
+
+        btn.disabled = true;
+        setStatus(
+            isSearch ? '\uD83D\uDD0D Searching the web\u2026' : '\uD83C\uDF10 Fetching page content\u2026',
+            '#eff6ff', '#1d4ed8'
+        );
+        ttdSetAIStatus('working', isSearch ? 'Searching web\u2026' : 'Fetching page\u2026');
+
+        var jinaUrl = isSearch
+            ? 'https://s.jina.ai/' + encodeURIComponent(input)
+            : 'https://r.jina.ai/' + input;
+
+        fetch(jinaUrl, { headers: { 'Accept': 'text/plain', 'X-Respond-With': 'markdown' } })
+        .then(function(r) {
+            if (!r.ok) throw new Error('Could not fetch content (HTTP ' + r.status + ') \u2014 check the URL and try again.');
+            return r.text();
+        })
+        .then(function(pageText) {
+            if (!pageText || pageText.trim().length < 30) throw new Error('Page returned no readable content. Try a different URL.');
+            setStatus('\uD83E\uDD16 AI is reading and writing your document\u2026', '#fefce8', '#854d0e');
+            ttdSetAIStatus('working', 'AI is reading page\u2026');
+            var truncated = pageText.slice(0, 7000);
+            var prompt = 'Using the web content below, ' + instr + '\n\nWrite your response as clean HTML with headings (h1,h2), paragraphs (p), and lists (ul/ol) where useful. Do NOT include DOCTYPE, html, head or body tags.\n\n--- WEB CONTENT ---\n' + truncated;
+            return callAI(prompt);
+        })
+        .then(function(result) {
+            var html = sanitizeHTML(result);
+            ttdLoadContent(html || '<p>' + (result || '').replace(/</g, '&lt;') + '</p>');
+            ttdSwitchTab('format');
+            setStatus('\u2705 Done! Content added to your document.', '#f0fdf4', '#15803d');
+            ttdSetAIStatus('ready', 'Groq AI Ready');
+            setTimeout(function() { if (stEl) stEl.style.display = 'none'; }, 4000);
+        })
+        .catch(function(err) {
+            setStatus('\u26A0\uFE0F ' + (err.message || 'Something went wrong \u2014 please try again.'), '#fef2f2', '#dc2626');
+            ttdSetAIStatus('error', 'Web fetch failed \u2014 try again');
+        })
+        ['finally'](function() { btn.disabled = false; });
+    };
+
     /* ═══════════════════════════════════════════════════════════════
        DOWNLOAD FUNCTIONS
     ═══════════════════════════════════════════════════════════════ */
@@ -799,13 +872,14 @@
   
     /* ── Tab switcher ────────────────────────────────────────────── */
     window.ttdSwitchTab = function (tab) {
-        ['format','write','history'].forEach(function (t) {
+        ['format','write','history','web'].forEach(function (t) {
           var btn = document.getElementById('ttd-tab-' + t);
           var pan = document.getElementById('ttd-panel-' + t);
           if (btn) btn.classList.toggle('active', t === tab);
           if (pan) pan.classList.toggle('active', t === tab);
         });
         if (tab === 'history') ttdRenderHistory();
+        if (tab === 'web') { var wEl = document.getElementById('ttd-web-url'); if(wEl) wEl.focus(); }
       };
 
     /* ── AI Writer — write full document from a prompt ─────────── */
