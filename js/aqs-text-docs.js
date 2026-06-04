@@ -466,6 +466,11 @@
         .then(function(result) {
             var html = sanitizeHTML(result);
             ttdLoadContent(html || '<p>' + (result || '').replace(/</g, '&lt;') + '</p>');
+            // Apply user-chosen page count
+            var webPages = window.ttdGetPanelPages ? ttdGetPanelPages('web') : null;
+            if (webPages) ttdSetPageCount(webPages);
+            // Apply user-chosen format settings
+            if (window.ttdApplyPanelFormat) ttdApplyPanelFormat('web');
             ttdSwitchTab('format');
             setStatus('\u2705 Done! Content added to your document.', '#f0fdf4', '#15803d');
             ttdSetAIStatus('ready', 'Groq AI Ready');
@@ -924,6 +929,11 @@
           if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
           if (editor) {
             ttdLoadContent(clean);
+            // Apply user-chosen page count
+            var wPages = window.ttdGetPanelPages ? ttdGetPanelPages('w') : null;
+            if (wPages) ttdSetPageCount(wPages);
+            // Apply user-chosen format settings
+            if (window.ttdApplyPanelFormat) ttdApplyPanelFormat('w');
             var wTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Doc';
             ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdSwitchTab('format');
