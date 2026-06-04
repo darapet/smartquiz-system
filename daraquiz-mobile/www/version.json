@@ -1,8 +1,8 @@
 {
-  "version": "1.141",
-  "versionCode": 125,
+  "version": "1.142",
+  "versionCode": 126,
   "releaseDate": "2026-06-04",
-  "notes": "Fix: AI responses now show correct rate-limit message instead of 'Connection error'. Added per-key cooldown tracking to avoid burning through all Groq keys at once.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.141/daraquiz-v1.141.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.141/daraquiz-v1.141.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.142/daraquiz-v1.142.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.142/daraquiz-v1.142.apk"
 }
