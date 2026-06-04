@@ -1,8 +1,8 @@
 {
-  "version": "1.123",
-  "versionCode": 108,
+  "version": "1.124",
+  "versionCode": 109,
   "releaseDate": "2026-06-04",
-  "notes": "Voice AI mic enabled: tap 🎤 to speak, AI transcribes with Groq Whisper and replies with Pollinations TTS. Full conversation now works on Android.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.123/daraquiz-v1.123.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.123/daraquiz-v1.123.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.124/daraquiz-v1.124.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.124/daraquiz-v1.124.apk"
 }
