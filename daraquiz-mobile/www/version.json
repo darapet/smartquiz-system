@@ -1,8 +1,8 @@
 {
-  "version": "1.112",
-  "versionCode": 97,
+  "version": "1.113",
+  "versionCode": 98,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fix: take-quiz and challenge pages are now fully public — no login or sign-in required for anyone to access and participate.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.112/daraquiz-v1.112.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.112/daraquiz-v1.112.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.113/daraquiz-v1.113.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.113/daraquiz-v1.113.apk"
 }
