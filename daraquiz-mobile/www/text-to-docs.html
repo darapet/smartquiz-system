@@ -218,13 +218,20 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .ttd-pages-area{flex:1;overflow-y:auto;overflow-x:auto;background:#d1d5db;
   padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px;}
 /* ── Page ────────────────────────────────────── */
-.ttd-page{background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.18);border-radius:2px;flex-shrink:0;}
+.ttd-page{background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.18);border-radius:2px;flex-shrink:0;position:relative;}
 .ttd-page.sz-a4    {width:794px;min-height:1123px;}
 .ttd-page.sz-letter{width:816px;min-height:1056px;}
 .ttd-page.sz-legal {width:816px;min-height:1344px;}
+/* ── Page footer (page number) ───────────────── */
+.ttd-page-footer{
+  position:absolute;bottom:0;left:0;right:0;
+  text-align:center;font-size:9px;color:#b0b8c8;
+  padding:5px 0 6px;pointer-events:none;user-select:none;
+  letter-spacing:.04em;
+}
 /* ── Editor inside page ──────────────────────── */
 #ttd-editor,.ttd-page-editor{
-  min-height:700px;outline:none;
+  min-height:700px;outline:none;padding-bottom:22px;
   font-family:var(--ttd-bfont,'Georgia, serif');
   font-size:var(--ttd-bsize,12pt);
   line-height:var(--ttd-lh,1.6);
@@ -262,7 +269,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
   .ttd-print-root{display:block!important;position:fixed!important;inset:0;background:#fff;z-index:99999;overflow:visible;}
   .ttd-page,.ttd-page-item{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;outline:none!important;}
   .ttd-page-editor,#ttd-editor{min-height:0!important;}
-  .ttd-page-footer{display:none!important;}
+  .ttd-page-footer{display:none!important;}/* hide page number on print */
 }
 .ttd-print-root{display:none;}
 /* ── Spinner ──────────────────────────────────── */
@@ -908,6 +915,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
         <option value="10">10</option>
       </select>
       <button class="tb-btn" onclick="ttdAddPageBreak()" title="Add a blank page" style="font-size:11px;white-space:nowrap;">+ Page</button>
+      <span style="width:1px;background:#e2e8f0;align-self:stretch;margin:0 4px;flex-shrink:0;"></span>
+      <button id="ttd-pagelabel-btn" class="tb-btn" onclick="ttdTogglePageLabel()" title="Show or hide page name on each page" style="font-size:11px;white-space:nowrap;opacity:.55;" aria-pressed="false">&#128196; Label</button>
     </div>
 
     <!-- Pages area — stacked vertically -->
