@@ -1,8 +1,8 @@
 {
-  "version": "1.132",
-  "versionCode": 117,
+  "version": "1.133",
+  "versionCode": 118,
   "releaseDate": "2026-06-04",
-  "notes": "Web browsing upgraded: AI now visits bare domains (google.com, bbc.co.uk, any site.ng), bigger page content (8000 chars), clearer web source reporting.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.132/daraquiz-v1.132.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.132/daraquiz-v1.132.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.133/daraquiz-v1.133.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.133/daraquiz-v1.133.apk"
 }
