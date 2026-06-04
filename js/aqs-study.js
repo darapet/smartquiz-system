@@ -1406,41 +1406,100 @@ function summonFlushQueue(onAllDone) {
 function summonStopQueue() {
     VS.speakingQueue = false; VS._queueRunning = false;
     VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
-    /* Stop any Pollinations audio element currently playing */
+    /* Stop AudioBufferSourceNode (AudioContext path) or HTMLAudioElement (fallback) */
     if (VS._currentAudio) {
-        try { VS._currentAudio.pause(); VS._currentAudio.src = ''; } catch(e) {}
+        try {
+            if (typeof VS._currentAudio.stop === 'function') {
+                VS._currentAudio.stop(); /* AudioBufferSourceNode */
+            } else {
+                VS._currentAudio.pause(); VS._currentAudio.src = ''; /* HTMLAudioElement */
+            }
+        } catch(e) {}
         VS._currentAudio = null;
     }
     if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
 }
 
 /* ── POLLINATIONS TTS (mobile primary) ──────────────────────── */
+/*
+ * WHY AudioContext instead of new Audio(url).play():
+ * Android WebView blocks HTMLAudioElement.play() on remote URLs when called
+ * outside a user-gesture (i.e. after an async AI response).  An already-
+ * resumed AudioContext has no such restriction — it can decode + play audio
+ * at any point after the initial unlock gesture.
+ */
 function _summonPollTTS(text, onDone) {
     summonPickVoice();
     var voiceId = (VS.voice && VS.voice.id) ? VS.voice.id : 'alloy';
-    /* Pollinations works best with shorter chunks — cap at 200 chars */
     var chunk = text.slice(0, 200);
     var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
               '?model=openai-audio&voice=' + voiceId + '&seed=42';
-    var audio = new Audio(url);
-    audio.setAttribute('playsinline', '');
-    audio.setAttribute('webkit-playsinline', '');
-    VS._currentAudio = audio;
+
     VS.speaking = true;
-    audio.onended = function () {
-        VS._currentAudio = null; VS.speaking = false; if (onDone) onDone();
-    };
-    audio.onerror = function () {
-        VS._currentAudio = null; VS.speaking = false;
-        /* Fallback to speechSynthesis if Pollinations fails */
-        _summonSpeakSynth(text, onDone);
-    };
-    var p = audio.play();
-    if (p && typeof p.catch === 'function') {
-        p.catch(function () {
-            VS._currentAudio = null; VS.speaking = false;
-            _summonSpeakSynth(text, onDone);
-        });
+
+    var ctx = window._aqsAudioCtx;
+
+    if (ctx) {
+        /* ── PRIMARY: AudioContext path (no autoplay restriction) ── */
+        if (ctx.state === 'suspended') { try { ctx.resume(); } catch(e) {} }
+
+        fetch(url)
+            .then(function (r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.arrayBuffer();
+            })
+            .then(function (buf) { return ctx.decodeAudioData(buf); })
+            .then(function (decoded) {
+                /* Check we weren't stopped while fetching */
+                if (!VS.speaking) { if (onDone) onDone(); return; }
+                var src = ctx.createBufferSource();
+                src.buffer = decoded;
+                src.connect(ctx.destination);
+                VS._currentAudio = src;
+                src.onended = function () {
+                    VS._currentAudio = null; VS.speaking = false;
+                    if (onDone) onDone();
+                };
+                src.start(0);
+            })
+            .catch(function () {
+                VS._currentAudio = null; VS.speaking = false;
+                _summonSpeakSynth(text, onDone);
+            });
+
+    } else {
+        /* ── FALLBACK: blob-URL approach avoids direct remote-URL autoplay block ── */
+        fetch(url)
+            .then(function (r) { return r.blob(); })
+            .then(function (blob) {
+                var blobUrl = URL.createObjectURL(blob);
+                var audio = new Audio(blobUrl);
+                audio.setAttribute('playsinline', '');
+                audio.setAttribute('webkit-playsinline', '');
+                VS._currentAudio = audio;
+                audio.onended = function () {
+                    URL.revokeObjectURL(blobUrl);
+                    VS._currentAudio = null; VS.speaking = false;
+                    if (onDone) onDone();
+                };
+                audio.onerror = function () {
+                    URL.revokeObjectURL(blobUrl);
+                    VS._currentAudio = null; VS.speaking = false;
+                    _summonSpeakSynth(text, onDone);
+                };
+                var p = audio.play();
+                if (p && typeof p.catch === 'function') {
+                    p.catch(function () {
+                        URL.revokeObjectURL(blobUrl);
+                        VS._currentAudio = null; VS.speaking = false;
+                        _summonSpeakSynth(text, onDone);
+                    });
+                }
+            })
+            .catch(function () {
+                VS._currentAudio = null; VS.speaking = false;
+                _summonSpeakSynth(text, onDone);
+            });
     }
 }
 
