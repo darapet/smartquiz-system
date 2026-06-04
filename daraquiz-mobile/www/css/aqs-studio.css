@@ -246,6 +246,17 @@ html, body {
 .dts-msg-actions { display: flex; gap: 6px; margin-top: 6px; }
 .dts-copy-btn { background: none; border: 1px solid var(--dts-border); border-radius: 6px; padding: 3px 10px; font-size: 0.75rem; color: var(--dts-muted); cursor: pointer; transition: all 0.15s; }
 .dts-copy-btn:hover { border-color: var(--dts-primary); color: var(--dts-primary); }
+/* ── Per-code-block copy button ─────────────────────── */
+.dts-code-wrap { position: relative; }
+.dts-code-copy-btn {
+  position: absolute; top: 8px; right: 8px;
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 5px; padding: 3px 10px; font-size: 0.7rem; color: #94a3b8;
+  cursor: pointer; transition: all 0.15s; font-family: inherit; line-height: 1.5;
+  white-space: nowrap; z-index: 2;
+}
+.dts-code-copy-btn:hover { background: rgba(255,255,255,0.16); color: #e2e8f0; border-color: rgba(255,255,255,0.35); }
+.dts-code-copy-btn.copied { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.12); }
 
 /* Typing indicator */
 .dts-typing { display: flex; align-items: center; gap: 14px; padding: 8px 24px; max-width: 900px; margin: 0 auto; width: 100%; }
@@ -813,3 +824,54 @@ html {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* AQS-STUDIO-MOB-v9-START */
+@media (max-width: 768px) {
+
+    /* ── 1. Collapse the history topbar row to zero height ── */
+    #dts-hist-topbar {
+        padding: 0 !important;
+        min-height: 0 !important;
+        height: 0 !important;
+        border-bottom: none !important;
+        background: transparent !important;
+        /* overflow:visible so the fixed button is still visible */
+        overflow: visible !important;
+    }
+
+    /* ── 2. Pin History button top-right, same row as the left hamburger ──
+            Sidebar hamburger:  position:fixed; top:cdH+8px; left:8px
+            History button:     position:fixed; top:cdH+8px; right:8px        */
+    #dts-hist-open-btn {
+        position: fixed !important;
+        top: calc(var(--aqs-cd-bar-h, 0px) + 8px) !important;
+        right: 8px !important;
+        left: auto !important;
+        width: 40px !important;
+        height: 40px !important;
+        padding: 0 !important;
+        justify-content: center !important;
+        align-items: center !important;
+        border-radius: 10px !important;
+        z-index: 310 !important;
+        /* font-size:0 hides the "History" text while keeping SVG visible */
+        font-size: 0 !important;
+        letter-spacing: 0 !important;
+        gap: 0 !important;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.5) !important;
+    }
+    /* Keep the SVG icon at a readable size */
+    #dts-hist-open-btn > svg {
+        width: 18px !important;
+        height: 18px !important;
+        flex-shrink: 0;
+    }
+
+    /* ── 3. Remove phantom top-padding on messages area ──
+            The old aqs-studio.css added 56px here for a legacy
+            hamburger. .aqs-sidebar-body already gives 60px clearance. */
+    .dts-main {
+        padding-top: 0 !important;
+    }
+}
+/* AQS-STUDIO-MOB-v9-END */
