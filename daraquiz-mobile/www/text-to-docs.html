@@ -452,6 +452,22 @@
         <button class="tb-btn" onclick="ttdPrint()" title="Print" style="color:#0891b2;font-weight:700;">&#128424; Print</button>
       </div><!-- /toolbar -->
 
+      <!-- Page navigation bar -->
+      <div class="ttd-page-nav">
+        <button class="tb-btn" id="ttd-prev-btn" onclick="ttdNavPage(-1)" title="Previous page" disabled>&#9664;</button>
+        <span id="ttd-page-indicator" style="font-size:12px;font-weight:600;color:#374151;min-width:80px;text-align:center;">Page 1 of 1</span>
+        <button class="tb-btn" id="ttd-next-btn" onclick="ttdNavPage(1)" title="Next page" disabled>&#9654;</button>
+        <span style="width:1px;background:#e2e8f0;align-self:stretch;margin:0 4px;flex-shrink:0;"></span>
+        <label style="font-size:11px;color:#6b7280;font-weight:600;white-space:nowrap;">Pages:</label>
+        <select id="ttd-page-count" onchange="ttdSetPageCount(parseInt(this.value))" title="Choose number of pages (max 10)" style="font-size:12px;padding:3px 6px;border:1px solid #d1d5db;border-radius:5px;background:#fff;cursor:pointer;">
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+          <option value="10">10</option>
+        </select>
+        <button class="tb-btn" onclick="ttdAddPageBreak()" title="Add a blank page" style="font-size:11px;white-space:nowrap;">+ Page</button>
+      </div>
+
       <!-- Pages area -->
       <div class="ttd-pages-area" id="ttd-pages">
         <div class="ttd-page sz-a4" id="ttd-page">
