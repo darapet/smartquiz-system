@@ -202,6 +202,8 @@
           var clean = sanitizeHTML(html);
           if (editor) {
             editor.innerHTML = clean || '<p>' + escapeHtml(text) + '</p>';
+            var autoTitle=(clean.match(/<h1[^>]*>(.*?)<\/h1>/i)||[])[1]||text.slice(0,50)||'Formatted Doc';
+            ttdSaveHistory(autoTitle.replace(/<[^>]+>/g,''),editor.innerHTML);
             ttdUpdateStats();
           }
         })
@@ -789,13 +791,14 @@
   
     /* ── Tab switcher ────────────────────────────────────────────── */
     window.ttdSwitchTab = function (tab) {
-      ['format','write'].forEach(function (t) {
-        var btn = document.getElementById('ttd-tab-' + t);
-        var pan = document.getElementById('ttd-panel-' + t);
-        if (btn) btn.classList.toggle('active', t === tab);
-        if (pan) pan.classList.toggle('active', t === tab);
-      });
-    };
+        ['format','write','history'].forEach(function (t) {
+          var btn = document.getElementById('ttd-tab-' + t);
+          var pan = document.getElementById('ttd-panel-' + t);
+          if (btn) btn.classList.toggle('active', t === tab);
+          if (pan) pan.classList.toggle('active', t === tab);
+        });
+        if (tab === 'history') ttdRenderHistory();
+      };
 
     /* ── AI Writer — write full document from a prompt ─────────── */
     window.ttdAIWrite = function () {
@@ -836,6 +839,8 @@
             editor.innerHTML = clean;
             ttdUpdateStats();
             ttdSwitchTab('format');
+            var wTitle=(clean.match(/<h1[^>]*>(.*?)<\/h1>/i)||[])[1]||prompt.slice(0,50)||'AI Doc';
+            ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''),editor.innerHTML);
             var pages = document.getElementById('ttd-pages');
             if (pages) pages.scrollTop = 0;
           }
@@ -850,4 +855,39 @@
         });
     };
 
+  
+      var TTD_HIST_KEY='ttd_doc_history',TTD_MAX_HIST=10;
+      function ttdSaveHistory(title,content){
+        if(!content||content.length<20)return;
+        try{var h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');
+          h=h.filter(function(x){return x.title!==title;});
+          h.unshift({title:(title||'Untitled').slice(0,60),content:content,date:new Date().toLocaleString()});
+          if(h.length>TTD_MAX_HIST)h=h.slice(0,TTD_MAX_HIST);
+          localStorage.setItem(TTD_HIST_KEY,JSON.stringify(h));}catch(e){}
+      }
+      function ttdRenderHistory(){
+        var list=document.getElementById('ttd-hist-list');if(!list)return;
+        var h=[];try{h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');}catch(e){}
+        if(!h.length){list.innerHTML='<div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to auto-save it here.</div>';return;}
+        list.innerHTML=h.map(function(x,i){
+          return '<div class="ttd-hist-item" onclick="ttdRestoreDoc('+i+')">'+
+            '<button class="ttd-hist-del" onclick="event.stopPropagation();ttdDeleteHistory('+i+')" title="Remove">&#10005;</button>'+
+            '<div class="ttd-hist-title">'+(x.title||'Untitled')+'</div>'+
+            '<div class="ttd-hist-meta">&#128337; '+(x.date||'')+'</div></div>';
+        }).join('');
+      }
+      window.ttdRestoreDoc=function(i){
+        var h=[];try{h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');}catch(e){}
+        var item=h[i];if(!item)return;
+        var ed=document.getElementById('ttd-editor');
+        if(ed){ed.innerHTML=item.content;ttdUpdateStats();ttdSwitchTab('format');}
+      };
+      window.ttdDeleteHistory=function(i){
+        var h=[];try{h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');}catch(e){}
+        h.splice(i,1);localStorage.setItem(TTD_HIST_KEY,JSON.stringify(h));ttdRenderHistory();
+      };
+      window.ttdClearHistory=function(){
+        if(!confirm('Clear all document history?'))return;
+        localStorage.removeItem(TTD_HIST_KEY);ttdRenderHistory();
+      };
   })();
