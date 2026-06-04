@@ -202,6 +202,8 @@
           var clean = sanitizeHTML(html);
           if (editor) {
             editor.innerHTML = clean || '<p>' + escapeHtml(text) + '</p>';
+            var autoTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
+            ttdSaveHistory(autoTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdUpdateStats();
           }
         })
@@ -792,13 +794,14 @@
   
     /* ── Tab switcher ────────────────────────────────────────────── */
     window.ttdSwitchTab = function (tab) {
-      ['format','write'].forEach(function (t) {
-        var btn = document.getElementById('ttd-tab-' + t);
-        var pan = document.getElementById('ttd-panel-' + t);
-        if (btn) btn.classList.toggle('active', t === tab);
-        if (pan) pan.classList.toggle('active', t === tab);
-      });
-    };
+        ['format','write','history'].forEach(function (t) {
+          var btn = document.getElementById('ttd-tab-' + t);
+          var pan = document.getElementById('ttd-panel-' + t);
+          if (btn) btn.classList.toggle('active', t === tab);
+          if (pan) pan.classList.toggle('active', t === tab);
+        });
+        if (tab === 'history') ttdRenderHistory();
+      };
 
     /* ── AI Writer — write full document from a prompt ─────────── */
     window.ttdAIWrite = function () {
@@ -838,6 +841,8 @@
           if (editor) {
             editor.innerHTML = clean;
             ttdUpdateStats();
+            var wTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Doc';
+            ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdSwitchTab('format');
             var pages = document.getElementById('ttd-pages');
             if (pages) pages.scrollTop = 0;
@@ -852,5 +857,60 @@
           if (btn) { btn.disabled = false; btn.innerHTML = '&#9997;&#65039; Write with AI'; }
         });
     };
+
+  
+      /* ── Document History ──────────────────────────────────── */
+      var TTD_HIST_KEY = 'ttd_doc_history';
+      var TTD_MAX_HIST = 10;
+
+      function ttdSaveHistory(title, content) {
+        if (!content || content.length < 20) return;
+        try {
+          var hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]');
+          hist = hist.filter(function(h){ return h.title !== title; });
+          hist.unshift({ title: (title||'Untitled').slice(0,60), content: content, date: new Date().toLocaleString() });
+          if (hist.length > TTD_MAX_HIST) hist = hist.slice(0, TTD_MAX_HIST);
+          localStorage.setItem(TTD_HIST_KEY, JSON.stringify(hist));
+        } catch(e){}
+      }
+
+      function ttdRenderHistory() {
+        var list = document.getElementById('ttd-hist-list');
+        if (!list) return;
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
+        if (!hist.length) {
+          list.innerHTML = '<div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to auto-save it here.</div>';
+          return;
+        }
+        list.innerHTML = hist.map(function(h, i) {
+          return '<div class="ttd-hist-item" onclick="ttdRestoreDoc(' + i + ')">' +
+            '<button class="ttd-hist-del" onclick="event.stopPropagation();ttdDeleteHistory(' + i + ')" title="Remove">&#10005;</button>' +
+            '<div class="ttd-hist-title">' + (h.title||'Untitled') + '</div>' +
+            '<div class="ttd-hist-meta">&#128337; ' + (h.date||'') + '</div>' +
+          '</div>';
+        }).join('');
+      }
+
+      window.ttdRestoreDoc = function(index) {
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
+        var item = hist[index];
+        if (!item) return;
+        var editor = document.getElementById('ttd-editor');
+        if (editor) { editor.innerHTML = item.content; ttdUpdateStats(); ttdSwitchTab('format'); }
+      };
+      window.ttdDeleteHistory = function(index) {
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
+        hist.splice(index, 1);
+        localStorage.setItem(TTD_HIST_KEY, JSON.stringify(hist));
+        ttdRenderHistory();
+      };
+      window.ttdClearHistory = function() {
+        if (!confirm('Clear all document history?')) return;
+        localStorage.removeItem(TTD_HIST_KEY);
+        ttdRenderHistory();
+      };
 
   })();
