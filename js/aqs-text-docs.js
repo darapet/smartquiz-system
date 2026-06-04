@@ -9,21 +9,19 @@
     var editor, page, isProcessing = false;
 
     document.addEventListener('DOMContentLoaded', function () {
-      editor = document.getElementById('ttd-editor');
-      page   = document.getElementById('ttd-page');
-      if (!editor) return;
-      document.execCommand('defaultParagraphSeparator', false, 'p');
-      document.execCommand('styleWithCSS', false, true);
-      ttdApplyStyle();
-      // Sidebar toggle
-      var tog = document.getElementById('aqs-sidebar-toggle');
-      var ove = document.getElementById('aqs-sidebar-overlay');
-      var sb  = document.getElementById('aqs-sidebar');
-      if (tog && sb) {
-        tog.addEventListener('click', function () { sb.classList.toggle('open'); if(ove) ove.classList.toggle('open'); });
-        if (ove) ove.addEventListener('click', function () { sb.classList.remove('open'); ove.classList.remove('open'); });
-      }
-    });
+        document.execCommand('defaultParagraphSeparator', false, 'p');
+        document.execCommand('styleWithCSS', false, true);
+        ttdRenderPages();
+        editor = document.getElementById('ttd-editor-0') || document.querySelector('.ttd-page-editor');
+        // Sidebar toggle
+        var tog = document.getElementById('aqs-sidebar-toggle');
+        var ove = document.getElementById('aqs-sidebar-overlay');
+        var sb  = document.getElementById('aqs-sidebar');
+        if (tog && sb) {
+          tog.addEventListener('click', function () { sb.classList.toggle('open'); if(ove) ove.classList.toggle('open'); });
+          if (ove) ove.addEventListener('click', function () { sb.classList.remove('open'); ove.classList.remove('open'); });
+        }
+      });
 
     /* ── Char counter ───────────────────────────────────────────── */
     window.ttdCharCount = function () {
@@ -37,33 +35,35 @@
 
     /* ── Apply document style (CSS vars) ───────────────────────── */
     window.ttdApplyStyle = function () {
-      var hf  = val('ttd-hfont',  'Georgia, serif');
-      var bf  = val('ttd-bfont',  'Georgia, serif');
-      var h1  = val('ttd-h1',  24);
-      var h2  = val('ttd-h2',  18);
-      var h3  = val('ttd-h3',  14);
-      var bd  = val('ttd-body',12);
-      var mg  = val('ttd-margin', 20);
-      var lh  = val('ttd-lh',  '1.6');
-      var p   = document.getElementById('ttd-page');
-      if (!p) return;
-      p.style.setProperty('--ttd-hfont', hf);
-      p.style.setProperty('--ttd-bfont', bf);
-      p.style.setProperty('--ttd-h1',    h1 + 'pt');
-      p.style.setProperty('--ttd-h2',    h2 + 'pt');
-      p.style.setProperty('--ttd-h3',    h3 + 'pt');
-      p.style.setProperty('--ttd-h4',    Math.round(bd * 1.1) + 'pt');
-      p.style.setProperty('--ttd-bsize', bd + 'pt');
-      p.style.setProperty('--ttd-lh',    lh);
-      p.style.padding = mg + 'mm';
-    };
+        var hf  = val('ttd-hfont',  'Georgia, serif');
+        var bf  = val('ttd-bfont',  'Georgia, serif');
+        var h1  = val('ttd-h1',  24);
+        var h2  = val('ttd-h2',  18);
+        var h3  = val('ttd-h3',  14);
+        var bd  = val('ttd-body',12);
+        var mg  = val('ttd-margin', 20);
+        var lh  = val('ttd-lh',  '1.6');
+        var items = document.querySelectorAll('.ttd-page-item');
+        if (!items.length) { return; }
+        items.forEach(function(p) {
+          p.style.setProperty('--ttd-hfont', hf);
+          p.style.setProperty('--ttd-bfont', bf);
+          p.style.setProperty('--ttd-h1',    h1 + 'pt');
+          p.style.setProperty('--ttd-h2',    h2 + 'pt');
+          p.style.setProperty('--ttd-h3',    h3 + 'pt');
+          p.style.setProperty('--ttd-h4',    Math.round(bd * 1.1) + 'pt');
+          p.style.setProperty('--ttd-bsize', bd + 'pt');
+          p.style.setProperty('--ttd-lh',    lh);
+          p.style.padding = mg + 'mm';
+        });
+      };
 
-    window.ttdSetPaper = function () {
-      var pg = document.getElementById('ttd-page');
-      if (!pg) return;
-      var v = val('ttd-paper', 'a4');
-      pg.className = 'ttd-page sz-' + v;
-    };
+      window.ttdSetPaper = function () {
+        var v = val('ttd-paper', 'a4');
+        document.querySelectorAll('.ttd-page-item').forEach(function(pg) {
+          pg.className = 'ttd-page ttd-page-item sz-' + v;
+        });
+      };
 
     function val(id, def) {
       var el = document.getElementById(id);
@@ -157,17 +157,24 @@
     window.ttdEditorInput = function () { ttdUpdateToolbarState(); };
 
     /* ── Update doc stats ───────────────────────────────────────── */
-    function ttdUpdateStats() {
-      var text = editor ? (editor.innerText || '') : '';
-      var words = text.trim() ? text.trim().split(/\s+/).length : 0;
-      var chars = text.length;
-      var paras = (editor.querySelectorAll('p,h1,h2,h3,h4').length) || 1;
-      var readMin = Math.max(1, Math.round(words / 200));
-      var sec = document.getElementById('ttd-stats-sec');
-      var st  = document.getElementById('ttd-stats');
-      if (sec) sec.style.display = '';
-      if (st)  st.innerHTML = '<span class="ttd-stat">'+words+' words</span><span class="ttd-stat">'+chars+' chars</span><span class="ttd-stat">'+paras+' paras</span><span class="ttd-stat">~'+readMin+' min read</span>';
-    }
+      function ttdUpdateStats() {
+        var fullText = ttdPages.map(function(p, i) {
+          var ed = document.getElementById('ttd-editor-' + i);
+          return ed ? (ed.innerText || '') : p.replace(/<[^>]+>/g, '');
+        }).join(' ');
+        var words = fullText.trim() ? fullText.trim().split(/s+/).length : 0;
+        var chars = fullText.length;
+        var paras = 0;
+        document.querySelectorAll('.ttd-page-editor').forEach(function(ed) {
+          paras += ed.querySelectorAll('p,h1,h2,h3,h4').length;
+        });
+        paras = paras || 1;
+        var readMin = Math.max(1, Math.round(words / 200));
+        var sec = document.getElementById('ttd-stats-sec');
+        var st  = document.getElementById('ttd-stats');
+        if (sec) sec.style.display = '';
+        if (st)  st.innerHTML = '<span class="ttd-stat">'+words+' words</span><span class="ttd-stat">'+chars+' chars</span><span class="ttd-stat">'+paras+' paras</span><span class="ttd-stat">~'+readMin+' min read</span>';
+      }
 
     /* ── AI Format ──────────────────────────────────────────────── */
     window.ttdFormatAI = function () {
@@ -360,64 +367,43 @@
     }
 
     /* ── Print — works in browser AND Capacitor app ───────────── */
-    window.ttdPrint = function () {
-      var editor = document.getElementById('ttd-editor');
-      if (!editor || !editor.innerText.trim()) { alert('Nothing to print. Please add content first.'); return; }
-      var hfont = val('ttd-hfont','Georgia, serif');
-      var bfont = val('ttd-bfont','Georgia, serif');
-      var h1    = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
-      var bd    = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
-      var title = getDocTitle();
-      var printHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
-        '<style>' +
-        'html,body{margin:0;padding:0;background:#fff;}' +
-        'body{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';color:#1a1a1a;padding:' + mg + 'mm;box-sizing:border-box;}' +
-        'h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;page-break-after:avoid;}' +
-        'h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;page-break-after:avoid;}' +
-        'h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;page-break-after:avoid;}' +
-        'h4{font-family:' + hfont + ';font-size:' + Math.round(+bd*1.1) + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
-        'p{margin:0 0 .55em;}ul,ol{padding-left:1.8em;margin:.3em 0 .55em;}li{margin-bottom:.2em;}' +
-        'blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
-        '@page{margin:' + mg + 'mm;}' +
-        '@media print{body{padding:0;}html,body{height:auto;}}' +
-        '</style></head><body>' + editor.innerHTML + '</body></html>';
-
-      /* ── Capacitor app: open in new window → auto-print ── */
-      var isCapacitor = !!(window.Capacitor || window.cordova || navigator.userAgent.match(/wv|WebView/i));
-      var pw = window.open('', '_blank', 'width=900,height=700,toolbar=yes,scrollbars=yes');
-      if (pw) {
-        pw.document.open();
-        pw.document.write(printHTML);
-        pw.document.close();
-        pw.focus();
-        /* Small delay to ensure content renders before print dialog */
-        setTimeout(function () {
-          try {
-            pw.print();
-            /* On desktop browsers close after print; on mobile leave open */
-            if (!isCapacitor) {
-              pw.onafterprint = function () { try { pw.close(); } catch(e){} };
-              setTimeout(function () { try { pw.close(); } catch(e){} }, 5000);
-            }
-          } catch (e) {
-            /* Fallback if popup blocked: use data URI */
-            var blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
-            var url  = URL.createObjectURL(blob);
-            window.open(url, '_blank');
-          }
-        }, 600);
-      } else {
-        /* Popup blocked — download as HTML which user can open & print */
-        var blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement('a');
-        a.href = url; a.download = (safeName(title)||'document') + '-print.html';
-        document.body.appendChild(a); a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        alert('Print window was blocked. A print-ready HTML file was downloaded instead — open it and use Ctrl+P to print.');
-      }
-    };
+      /* ── Print — uses print-root approach: works in browser AND Capacitor/WebView ───────────── */
+      window.ttdPrint = function () {
+        var allContent = ttdGetFullContent().trim();
+        if (!allContent) { alert('Nothing to print. Please add content first.'); return; }
+        var hfont = val('ttd-hfont','Georgia, serif');
+        var bfont = val('ttd-bfont','Georgia, serif');
+        var h1    = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
+        var bd    = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
+        var printRoot = document.getElementById('ttd-print-root');
+        if (printRoot) {
+          var styleEl = document.createElement('style');
+          styleEl.textContent =
+            '.ttd-pr-wrap{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';color:#1a1a1a;padding:' + mg + 'mm;box-sizing:border-box;}' +
+            '.ttd-pr-wrap h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;page-break-after:avoid;}' +
+            '.ttd-pr-wrap h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;page-break-after:avoid;}' +
+            '.ttd-pr-wrap h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
+            '.ttd-pr-wrap h4{font-family:' + hfont + ';font-size:' + Math.round(+bd*1.1) + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
+            '.ttd-pr-wrap p{margin:0 0 .55em;}' +
+            '.ttd-pr-wrap ul,.ttd-pr-wrap ol{padding-left:1.8em;margin:.3em 0 .55em;}' +
+            '.ttd-pr-wrap li{margin-bottom:.2em;}' +
+            '.ttd-pr-wrap blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
+            '.ttd-pr-wrap table{border-collapse:collapse;width:100%;margin:.5em 0;}' +
+            '.ttd-pr-wrap td,.ttd-pr-wrap th{border:1px solid #d1d5db;padding:6px 10px;}' +
+            '.ttd-pr-wrap th{background:#f8fafc;font-weight:600;}' +
+            '@page{margin:' + mg + 'mm;}';
+          var wrap = document.createElement('div');
+          wrap.className = 'ttd-pr-wrap';
+          wrap.innerHTML = allContent;
+          printRoot.innerHTML = '';
+          printRoot.appendChild(styleEl);
+          printRoot.appendChild(wrap);
+          window.print();
+          setTimeout(function() { printRoot.innerHTML = ''; }, 4000);
+        } else {
+          window.print();
+        }
+      };
 
     window.ttdWebModeSwitch = function(mode) {
         var ua = document.getElementById('ttd-web-url-area');
@@ -1011,83 +997,229 @@
       };
 
   
-      var ttdPages=[''],ttdCurrentPage=0,PAGE_CHAR_LIMIT=2800,MAX_PAGES=10;
-      function ttdGetFullContent(){var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;return ttdPages.join('');}
-      function ttdUpdatePageNav(){var t=ttdPages.length,ind=document.getElementById('ttd-page-indicator'),p=document.getElementById('ttd-prev-btn'),n=document.getElementById('ttd-next-btn'),sel=document.getElementById('ttd-page-count');if(ind)ind.textContent='Page '+(ttdCurrentPage+1)+' of '+t;if(p)p.disabled=ttdCurrentPage===0;if(n)n.disabled=ttdCurrentPage>=t-1;if(sel&&sel.value!==String(t))sel.value=String(Math.min(t,MAX_PAGES));}
-      function ttdSetPage(n){var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;ttdCurrentPage=Math.max(0,Math.min(n,ttdPages.length-1));if(ed)ed.innerHTML=ttdPages[ttdCurrentPage]||'';ttdUpdatePageNav();ttdUpdateStats();var pa=document.getElementById('ttd-pages');if(pa)pa.scrollTop=0;}
-      window.ttdNavPage=function(d){ttdSetPage(ttdCurrentPage+d);};
-      window.ttdAddPageBreak=function(){if(ttdPages.length>=MAX_PAGES){alert('Maximum '+MAX_PAGES+' pages reached. Use the Pages selector to manage your pages.');return;}var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;ttdPages.splice(ttdCurrentPage+1,0,'');ttdSetPage(ttdCurrentPage+1);ttdUpdatePageNav();};
-      window.ttdSetPageCount=function(n){n=Math.max(1,Math.min(n,MAX_PAGES));var ed=document.getElementById('ttd-editor');if(ed)ttdPages[ttdCurrentPage]=ed.innerHTML;while(ttdPages.length<n)ttdPages.push('');while(ttdPages.length>n){if(ttdPages.length>1)ttdPages.splice(ttdPages.length-1,1);else break;}ttdCurrentPage=Math.min(ttdCurrentPage,ttdPages.length-1);if(ed)ed.innerHTML=ttdPages[ttdCurrentPage]||'';ttdUpdatePageNav();ttdUpdateStats();};
-      function ttdSplitIntoPages(html){var tmp=document.createElement('div');tmp.innerHTML=html;var blocks=Array.from(tmp.childNodes).filter(function(n){return n.nodeType===1||(n.nodeType===3&&n.textContent.trim());});var pages=[],cur='',curC=0;blocks.forEach(function(b){var bh=b.outerHTML||('<p>'+b.textContent+'</p>'),bl=(b.textContent||'').length,isH1=b.tagName==='H1';if((isH1&&curC>100)||(curC+bl>PAGE_CHAR_LIMIT&&curC>0)){pages.push(cur);cur=bh;curC=bl;}else{cur+=bh;curC+=bl;}});if(cur)pages.push(cur);return pages.length?pages:[''];}
-      function ttdLoadContent(html){ttdPages=ttdSplitIntoPages(html);ttdCurrentPage=0;var ed=document.getElementById('ttd-editor');if(ed)ed.innerHTML=ttdPages[0]||'';ttdUpdatePageNav();ttdUpdateStats();}
-      function ttdShowUploadStatus(msg,isErr,ms){var el=document.getElementById('ttd-upload-status');if(!el)return;el.style.whiteSpace='pre-line';el.textContent=msg;el.style.display='block';el.className='ttd-upload-status'+(isErr?' error':'');if(!isErr)setTimeout(function(){el.style.display='none';},ms||4000);}
-      window.ttdHandleFileDrop=function(ev){ev.preventDefault();var f=ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files[0];if(f)window.ttdHandleFile(f);};
-      window.ttdHandleFile=function(file){
-        if(!file)return;
-        var name=file.name.toLowerCase();
-        ttdShowUploadStatus('\uD83D\uDCE4 Reading '+file.name+'...',false);
-        var fillSource=function(plainText,pageCount){
-          var src=document.getElementById('ttd-source');
-          if(src){src.value=plainText.slice(0,10000);if(window.ttdCharCount)ttdCharCount();}
-          var words=plainText.trim().split(/\s+/).filter(Boolean).length;
-          var estimated=Math.max(1,Math.min(Math.ceil(words/300),MAX_PAGES));
-          var pages=pageCount?Math.min(pageCount,MAX_PAGES):estimated;
-          var preview=plainText.slice(0,130).replace(/\s+/g,' ').trim();
-          ttdShowUploadStatus(
-            '\u2705 '+file.name+' | '+pages+' page'+(pages!==1?'s':'')+' | '+words+' words\n\u201C'+preview+(plainText.length>130?'\u2026':'')+'\u201D',
-            false,8000
-          );
-          ttdSetPageCount(pages);
-          ttdSwitchTab('format');
-        };
-        if(name.endsWith('.txt')){
-          var r=new FileReader();
-          r.onload=function(e){fillSource(e.target.result);};
-          r.readAsText(file);
-        }else if(name.endsWith('.html')||name.endsWith('.htm')){
-          var r2=new FileReader();
-          r2.onload=function(e){
-            var tmp=document.createElement('div');
-            tmp.innerHTML=e.target.result;
-            tmp.querySelectorAll('script,style,head,meta,link').forEach(function(x){x.remove();});
-            fillSource((tmp.querySelector('body')||tmp).textContent||'');
-          };
-          r2.readAsText(file);
-        }else if(name.endsWith('.docx')){
-          if(typeof mammoth==='undefined'){ttdShowUploadStatus('DOCX parser not loaded \u2014 check internet.',true);return;}
-          var r3=new FileReader();
-          r3.onload=function(e){
-            mammoth.extractRawText({arrayBuffer:e.target.result})
-              .then(function(res){fillSource(res.value);})
-              .catch(function(err){ttdShowUploadStatus('DOCX error: '+err.message,true);});
-          };
-          r3.readAsArrayBuffer(file);
-        }else if(name.endsWith('.pdf')){
-          var r4=new FileReader();
-          r4.onload=function(e){ttdParsePdf(e.target.result,file.name,fillSource);};
-          r4.readAsArrayBuffer(file);
-        }else{
-          ttdShowUploadStatus('Unsupported type. Use TXT, DOCX, PDF or HTML.',true);
-        }
-      };
-      function ttdParseTxt(text){var lines=text.split(/\r?\n/),html='',inP=false;lines.forEach(function(l){var t=l.trim();if(!t){if(inP){html+='</p>';inP=false;}}else if(!inP){html+='<p>'+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');inP=true;}else{html+=' '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');}});if(inP)html+='</p>';return html||'<p></p>';}
-      function ttdParsePdf(buf,name,cb){
-        if(typeof pdfjsLib==='undefined'){ttdShowUploadStatus('PDF needs internet (PDF.js). Try TXT or DOCX.',true);return;}
-        pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        pdfjsLib.getDocument({data:buf}).promise.then(function(pdf){
-          var pages=[],total=pdf.numPages,fetched=0;
-          for(var i=1;i<=total;i++){
-            (function(pn){
-              pdf.getPage(pn).then(function(pg){
-                pg.getTextContent().then(function(c){
-                  pages[pn-1]=c.items.map(function(it){return it.str;}).join(' ');
-                  fetched++;
-                  if(fetched===total&&cb){cb(pages.join('\n\n'),total);}
-                });
+        /* ════════════════════════════════════════════════════
+           MULTI-PAGE ENGINE — word-processor style
+        ════════════════════════════════════════════════════ */
+        var ttdPages = [''], ttdCurrentPage = 0;
+        var PAGE_CHAR_LIMIT = 1800, MAX_PAGES = 10;
+
+        /* Render ALL pages simultaneously as visible white page boxes */
+        function ttdRenderPages() {
+          var container = document.getElementById('ttd-pages');
+          if (!container) return;
+          // Save current active page content first
+          var activeEd = document.getElementById('ttd-editor-' + ttdCurrentPage);
+          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
+
+          var paperVal = val('ttd-paper', 'a4');
+          var hf = val('ttd-hfont', 'Georgia, serif');
+          var bf = val('ttd-bfont', 'Georgia, serif');
+          var h1 = val('ttd-h1', 24); var h2 = val('ttd-h2', 18); var h3 = val('ttd-h3', 14);
+          var bd = val('ttd-body', 12); var mg = val('ttd-margin', 20); var lh = val('ttd-lh', '1.6');
+
+          container.innerHTML = '';
+
+          ttdPages.forEach(function(content, i) {
+            var pageDiv = document.createElement('div');
+            pageDiv.className = 'ttd-page ttd-page-item sz-' + paperVal;
+            pageDiv.id = 'ttd-page-' + i;
+            pageDiv.style.setProperty('--ttd-hfont', hf);
+            pageDiv.style.setProperty('--ttd-bfont', bf);
+            pageDiv.style.setProperty('--ttd-h1', h1 + 'pt');
+            pageDiv.style.setProperty('--ttd-h2', h2 + 'pt');
+            pageDiv.style.setProperty('--ttd-h3', h3 + 'pt');
+            pageDiv.style.setProperty('--ttd-h4', Math.round(bd * 1.1) + 'pt');
+            pageDiv.style.setProperty('--ttd-bsize', bd + 'pt');
+            pageDiv.style.setProperty('--ttd-lh', lh);
+            pageDiv.style.padding = mg + 'mm';
+
+            var edDiv = document.createElement('div');
+            edDiv.id = 'ttd-editor-' + i;
+            // Keep id="ttd-editor" on page 0 for backward compat
+            if (i === 0) edDiv.id = 'ttd-editor';
+            edDiv.setAttribute('data-editor-index', i);
+            edDiv.contentEditable = 'true';
+            edDiv.className = 'ttd-page-editor';
+            edDiv.setAttribute('data-placeholder', i === 0
+              ? 'Your formatted document will appear here. Paste text and click Format with AI.'
+              : 'Page ' + (i + 1) + ' — continue typing here.');
+            edDiv.innerHTML = content || '';
+
+            (function(idx, ed) {
+              ed.addEventListener('focus', function() {
+                ttdCurrentPage = idx;
+                editor = ed;
+                ttdUpdatePageNav();
+                ttdUpdateToolbarState();
               });
-            })(i);
+              ed.addEventListener('input', function() {
+                ttdPages[idx] = ed.innerHTML;
+                ttdUpdateToolbarState();
+              });
+              ed.addEventListener('keydown', function(e) { ttdKeydown(e); });
+              ed.addEventListener('mouseup', ttdUpdateToolbarState);
+              ed.addEventListener('keyup', ttdUpdateToolbarState);
+            })(i, edDiv);
+
+            pageDiv.appendChild(edDiv);
+
+            // Page footer with page number
+            var footer = document.createElement('div');
+            footer.className = 'ttd-page-footer';
+            footer.style.cssText = 'text-align:center;font-size:9px;color:#9ca3af;padding-top:8px;margin-top:10px;border-top:1px solid #f1f5f9;pointer-events:none;user-select:none;';
+            footer.textContent = 'Page ' + (i + 1) + ' of ' + ttdPages.length;
+            pageDiv.appendChild(footer);
+
+            container.appendChild(pageDiv);
+          });
+
+          // Update editor reference to active page
+          editor = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage)
+                   || document.querySelector('.ttd-page-editor');
+
+          ttdUpdatePageNav();
+        }
+
+        /* Update navigation bar and highlight active page */
+        function ttdUpdatePageNav() {
+          var t = ttdPages.length;
+          var ind = document.getElementById('ttd-page-indicator');
+          var p = document.getElementById('ttd-prev-btn');
+          var n = document.getElementById('ttd-next-btn');
+          var sel = document.getElementById('ttd-page-count');
+          if (ind) ind.textContent = 'Page ' + (ttdCurrentPage + 1) + ' of ' + t;
+          if (p) p.disabled = ttdCurrentPage === 0;
+          if (n) n.disabled = ttdCurrentPage >= t - 1;
+          if (sel && sel.value !== String(t)) sel.value = String(Math.min(t, MAX_PAGES));
+          // Highlight active page with a blue outline
+          document.querySelectorAll('.ttd-page-item').forEach(function(pg) {
+            pg.style.outline = '';
+          });
+          var activePg = document.getElementById('ttd-page-' + ttdCurrentPage);
+          if (activePg) activePg.style.outline = '2px solid #0891b2';
+        }
+
+        /* Navigate to page n — scroll it into view */
+        function ttdSetPage(n) {
+          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
+          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
+          ttdCurrentPage = Math.max(0, Math.min(n, ttdPages.length - 1));
+          editor = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage) || editor;
+          var target = document.getElementById('ttd-page-' + ttdCurrentPage);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            setTimeout(function() {
+              var ed = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
+              if (ed) ed.focus();
+            }, 300);
           }
-        }).catch(function(err){ttdShowUploadStatus('PDF error: '+err.message,true);});
-      }
-  
-})();
+          ttdUpdatePageNav();
+          ttdUpdateStats();
+        }
+
+        window.ttdNavPage = function(d) { ttdSetPage(ttdCurrentPage + d); };
+
+        window.ttdAddPageBreak = function() {
+          if (ttdPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
+          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
+          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
+          ttdPages.splice(ttdCurrentPage + 1, 0, '');
+          ttdCurrentPage = ttdCurrentPage + 1;
+          ttdRenderPages();
+          setTimeout(function() {
+            var target = document.getElementById('ttd-page-' + ttdCurrentPage);
+            if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+            var ed = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
+            if (ed) ed.focus();
+          }, 120);
+        };
+
+        window.ttdSetPageCount = function(n) {
+          n = Math.max(1, Math.min(n, MAX_PAGES));
+          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
+          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
+          while (ttdPages.length < n) ttdPages.push('');
+          while (ttdPages.length > n && ttdPages.length > 1) ttdPages.splice(ttdPages.length - 1, 1);
+          ttdCurrentPage = Math.min(ttdCurrentPage, ttdPages.length - 1);
+          ttdRenderPages();
+        };
+
+        /* Split HTML content into multiple pages by character count */
+        function ttdSplitIntoPages(html) {
+          var tmp = document.createElement('div');
+          tmp.innerHTML = html;
+          var blocks = Array.from(tmp.childNodes).filter(function(node) {
+            return node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim());
+          });
+          var pages = [], cur = '', curC = 0;
+          blocks.forEach(function(b) {
+            var bh = b.outerHTML || ('<p>' + b.textContent + '</p>');
+            var bl = (b.textContent || '').length;
+            var isH1 = b.tagName === 'H1';
+            if ((isH1 && curC > 100) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
+              pages.push(cur); cur = bh; curC = bl;
+            } else { cur += bh; curC += bl; }
+          });
+          if (cur) pages.push(cur);
+          return pages.length ? pages : [''];
+        }
+
+        /* Load content: split into pages and render all simultaneously */
+        function ttdLoadContent(html) {
+          ttdPages = ttdSplitIntoPages(html);
+          ttdCurrentPage = 0;
+          ttdRenderPages();
+          ttdUpdateStats();
+        }
+
+        /* Get full content across ALL pages */
+        function ttdGetFullContent() {
+          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
+          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
+          return ttdPages.join('');
+        }
+
+        function ttdShowUploadStatus(msg,isErr,ms){var el=document.getElementById('ttd-upload-status');if(!el)return;el.style.whiteSpace='pre-line';el.textContent=msg;el.style.display='block';el.className='ttd-upload-status'+(isErr?' error':'');if(!isErr)setTimeout(function(){el.style.display='none';},ms||4000);}
+        window.ttdHandleFileDrop=function(ev){ev.preventDefault();var f=ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files[0];if(f)window.ttdHandleFile(f);};
+        window.ttdHandleFile=function(file){
+          if(!file)return;
+          var name=file.name.toLowerCase();
+          ttdShowUploadStatus('\uD83D\uDCE4 Reading '+file.name+'...',false);
+          var fillSource=function(plainText,pageCount){
+            var src=document.getElementById('ttd-source');
+            if(src){src.value=plainText.slice(0,10000);if(window.ttdCharCount)ttdCharCount();}
+            var words=plainText.trim().split(/\s+/).filter(Boolean).length;
+            var estimated=Math.max(1,Math.min(Math.ceil(words/300),MAX_PAGES));
+            var pages=pageCount?Math.min(pageCount,MAX_PAGES):estimated;
+            var preview=plainText.slice(0,130).replace(/\s+/g,' ').trim();
+            ttdShowUploadStatus('\u2705 '+file.name+' | '+pages+' page'+(pages!==1?'s':'')+' | '+words+' words\n\u201C'+preview+(plainText.length>130?'\u2026':'')+'\u201D',false,8000);
+            ttdSetPageCount(pages);
+            ttdSwitchTab('format');
+          };
+          if(name.endsWith('.txt')){var r=new FileReader();r.onload=function(e){fillSource(e.target.result);};r.readAsText(file);}
+          else if(name.endsWith('.html')||name.endsWith('.htm')){var r2=new FileReader();r2.onload=function(e){var tmp=document.createElement('div');tmp.innerHTML=e.target.result;tmp.querySelectorAll('script,style,head,meta,link').forEach(function(x){x.remove();});fillSource((tmp.querySelector('body')||tmp).textContent||'');};r2.readAsText(file);}
+          else if(name.endsWith('.docx')){if(typeof mammoth==='undefined'){ttdShowUploadStatus('DOCX parser not loaded \u2014 check internet.',true);return;}var r3=new FileReader();r3.onload=function(e){mammoth.extractRawText({arrayBuffer:e.target.result}).then(function(res){fillSource(res.value);}).catch(function(err){ttdShowUploadStatus('DOCX error: '+err.message,true);});};r3.readAsArrayBuffer(file);}
+          else if(name.endsWith('.pdf')){var r4=new FileReader();r4.onload=function(e){ttdParsePdf(e.target.result,file.name,fillSource);};r4.readAsArrayBuffer(file);}
+          else{ttdShowUploadStatus('Unsupported type. Use TXT, DOCX, PDF or HTML.',true);}
+        };
+        function ttdParseTxt(text){var lines=text.split(/\r?\n/),html='',inP=false;lines.forEach(function(l){var t=l.trim();if(!t){if(inP){html+='</p>';inP=false;}}else if(!inP){html+='<p>'+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');inP=true;}else{html+=' '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');}});if(inP)html+='</p>';return html||'<p></p>';}
+        function ttdParsePdf(buf,name,cb){
+          if(typeof pdfjsLib==='undefined'){ttdShowUploadStatus('PDF needs internet (PDF.js). Try TXT or DOCX.',true);return;}
+          pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+          pdfjsLib.getDocument({data:buf}).promise.then(function(pdf){
+            var pages=[],total=pdf.numPages,fetched=0;
+            for(var i=1;i<=total;i++){
+              (function(pn){
+                pdf.getPage(pn).then(function(pg){
+                  pg.getTextContent().then(function(c){
+                    pages[pn-1]=c.items.map(function(it){return it.str;}).join(' ');
+                    fetched++;
+                    if(fetched===total&&cb){cb(pages.join('\n\n'),total);}
+                  });
+                });
+              })(i);
+            }
+          }).catch(function(err){ttdShowUploadStatus('PDF error: '+err.message,true);});
+        }
+
+  })();
