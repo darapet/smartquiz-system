@@ -1,8 +1,8 @@
 {
-  "version": "1.109",
-  "versionCode": 94,
+  "version": "1.110",
+  "versionCode": 95,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.109/daraquiz-v1.109.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.109/daraquiz-v1.109.apk"
+  "notes": "Text to Docs overhaul: mode selection screen, hamburger dropdown nav, full mobile settings panel fixed, format options (pages, font, heading sizes, margins) in all AI panels.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.110/daraquiz-v1.110.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.110/daraquiz-v1.110.apk"
 }
