@@ -271,7 +271,6 @@
   function getUrlParam(k){return new URLSearchParams(window.location.search).get(k)||'';}
   function setUrlCode(c){var u=new URL(window.location.href);u.searchParams.set('aqs_challenge',c);window.history.replaceState({},'',u.toString());}
   function challengeUrl(c){
-    /* In Capacitor (mobile) window.location is https://localhost/… — use the real website URL */
     var base=(typeof window!=='undefined'&&window.Capacitor)
         ?'https://darapet.github.io/smartquiz-system/challenge.html'
         :window.location.href.split('?')[0].split('#')[0];
@@ -513,7 +512,9 @@
         var overlay=document.createElement('div');
         overlay.id='aqs-ch-lobby-cd';
         overlay.className='aqs-hype-overlay';
-        document.body.appendChild(overlay);
+        /* Append to <html> root to escape any body overflow/transform stacking context
+           that can trap position:fixed on iOS/Android WebViews */
+        (document.documentElement||document.body).appendChild(overlay);
 
         /* Build hype screen with characters if AQS_AVATARS is loaded */
         var knownPlayers=players||CH._lastPlayers||[];
@@ -1076,11 +1077,6 @@
               window.speechSynthesis.cancel();
               var utt = new SpeechSynthesisUtterance(msg);
               utt.rate = 0.92; utt.pitch = 1;
-              /* FIX: Chrome silently pauses speechSynthesis — poll and resume */
-              var _rc = setInterval(function(){
-                  if(window.speechSynthesis.paused){try{window.speechSynthesis.resume();}catch(e2){}}
-              }, 250);
-              utt.onend = utt.onerror = function(){ clearInterval(_rc); };
               window.speechSynthesis.speak(utt);
           }catch(e){}
       }
