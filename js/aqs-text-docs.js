@@ -1073,11 +1073,13 @@
 
             pageDiv.appendChild(edDiv);
 
-            // Page footer with page number
+            // Page footer — absolute at very bottom, number only by default
             var footer = document.createElement('div');
             footer.className = 'ttd-page-footer';
-            footer.style.cssText = 'text-align:center;font-size:9px;color:#9ca3af;padding-top:8px;margin-top:10px;border-top:1px solid #f1f5f9;pointer-events:none;user-select:none;';
-            footer.textContent = 'Page ' + (i + 1) + ' of ' + ttdPages.length;
+            footer.setAttribute('data-page', i + 1);
+            footer.setAttribute('data-total', ttdPages.length);
+            var showLabel = window.ttdShowPageLabels || false;
+            footer.textContent = showLabel ? 'Page ' + (i + 1) + ' of ' + ttdPages.length : String(i + 1);
             pageDiv.appendChild(footer);
 
             container.appendChild(pageDiv);
@@ -1128,6 +1130,23 @@
         }
 
         window.ttdNavPage = function(d) { ttdSetPage(ttdCurrentPage + d); };
+
+        /* Toggle page-name label on page footers */
+        window.ttdShowPageLabels = false;
+        window.ttdTogglePageLabel = function() {
+          window.ttdShowPageLabels = !window.ttdShowPageLabels;
+          var btn = document.getElementById('ttd-pagelabel-btn');
+          if (btn) {
+            btn.style.opacity = window.ttdShowPageLabels ? '1' : '.55';
+            btn.style.color   = window.ttdShowPageLabels ? '#0891b2' : '';
+            btn.setAttribute('aria-pressed', String(window.ttdShowPageLabels));
+          }
+          document.querySelectorAll('.ttd-page-footer').forEach(function(f) {
+            var p = parseInt(f.getAttribute('data-page') || '1', 10);
+            var t = parseInt(f.getAttribute('data-total') || '1', 10);
+            f.textContent = window.ttdShowPageLabels ? 'Page ' + p + ' of ' + t : String(p);
+          });
+        };
 
         window.ttdAddPageBreak = function() {
           if (ttdPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
