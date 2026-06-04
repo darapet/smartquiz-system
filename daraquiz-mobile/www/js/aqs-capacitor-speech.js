@@ -73,7 +73,9 @@
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (AC) {
-        var ctx = new AC();
+        /* Save context globally so TTS can reuse it after async responses */
+        var ctx = window._aqsAudioCtx || new AC();
+        window._aqsAudioCtx = ctx;
         /* Create and immediately discard a zero-length silent buffer */
         var buf = ctx.createBuffer(1, 1, 22050);
         var src = ctx.createBufferSource();
