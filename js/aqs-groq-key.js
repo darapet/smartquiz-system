@@ -8,10 +8,11 @@
        becomes available again. Stored in memory only (resets on page load). */
     var _keyCooldowns = {};
 
-    /* Global inter-call throttle. Groq's free tier has ~30 RPM per key.
-       Enforcing a 2-second minimum between calls keeps usage well under that. */
+    /* Global inter-call throttle. A small gap prevents Groq from seeing
+       simultaneous bursts. Pollinations catches anything that still 429s,
+       so the gap can stay small. */
     var _lastCallTime = 0;
-    var MIN_CALL_GAP_MS = 2000;
+    var MIN_CALL_GAP_MS = 500;
 
     /* Master keys are loaded at runtime from Firestore (via aqs-firebase.js).
        They are NEVER hardcoded here so the file is safe to push to GitHub.
