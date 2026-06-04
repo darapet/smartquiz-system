@@ -98,7 +98,7 @@ window.AQS_HOME_URL='index.html';
 
   <!-- Scoring -->
   <div class="pz-card">
-    <div class="pz-card-title">💡 Scoring & Tips</div>
+    <div class="pz-card-title">💡 Scoring &amp; Tips</div>
     <div style="color:#94a3b8;font-size:.85rem;line-height:1.9;">
       ⚡ <strong style="color:#e2e8f0;">Speed bonus</strong> — correct answers earn up to +5 extra points if answered quickly<br>
       🔥 <strong style="color:#e2e8f0;">Combo bonus</strong> — 3 correct in a row earns +3 bonus points<br>
@@ -119,12 +119,12 @@ window.AQS_HOME_URL='index.html';
 <div id="pz-mode-intro" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(5,5,16,0.97);flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;transition:opacity .35s;">
   <div id="pz-intro-icon" style="font-size:4rem;margin-bottom:14px;filter:drop-shadow(0 0 24px rgba(99,102,241,0.6));">⚡</div>
   <div id="pz-intro-mode" style="font-size:1.6rem;font-weight:900;color:#e2e8f0;margin-bottom:10px;letter-spacing:-.5px;">Quiz Battle</div>
-  <div id="pz-intro-desc" style="color:#94a3b8;font-size:.92rem;line-height:1.75;max-width:300px;margin-bottom:28px;"></div>
+  <div id="pz-intro-desc" style="color:#94a3b8;font-size:.92rem;line-height:1.75;max-width:320px;margin-bottom:28px;"></div>
   <div style="width:220px;height:5px;background:rgba(255,255,255,0.1);border-radius:3px;margin-bottom:20px;overflow:hidden;">
     <div id="pz-intro-bar" style="width:0%;height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;transition:width 4.5s linear;"></div>
   </div>
   <button id="pz-intro-btn" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;border-radius:12px;padding:13px 32px;font-size:1rem;font-weight:700;cursor:pointer;letter-spacing:.3px;">▶ Start Playing!</button>
-  <p style="color:#475569;font-size:.75rem;margin-top:14px;">Auto-starts in 4 seconds · tap anywhere to dismiss</p>
+  <p style="color:#475569;font-size:.75rem;margin-top:14px;">Auto-starts in 4 seconds · click anywhere to dismiss</p>
 </div>
 
 <!-- ══════════════════════════════════════════════════
@@ -465,6 +465,12 @@ window.AQS_HOME_URL='index.html';
       <thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead>
       <tbody id="pz-results-table-body"></tbody>
     </table>
+  </div>
+
+  <!-- Answer Review -->
+  <div class="pz-card" id="pz-review-card" style="display:none;">
+    <div class="pz-card-title">📋 Answer Review</div>
+    <div id="pz-review-list"></div>
   </div>
 
   <!-- Actions -->

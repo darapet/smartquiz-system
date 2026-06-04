@@ -617,6 +617,29 @@ function renderWordQ(q){
     var fb = $('pz-word-feedback');
     if(fb){ fb.className='pz-word-feedback'; fb.textContent=''; }
 
+    /* Live letter-by-letter preview as user types */
+    inp && inp.addEventListener('input', function(){
+        var typed = (inp.value||'').toUpperCase();
+        for(var ci=0; ci<word.length; ci++){
+            var cell = $('pz-blank-'+ci);
+            if(!cell) continue;
+            if(cell.classList.contains('revealed')) continue; /* keep hint reveals */
+            if(ci < typed.length){
+                cell.textContent = typed[ci];
+                if(typed[ci] === word[ci]){
+                    cell.classList.add('typed-correct');
+                    cell.classList.remove('typed-wrong');
+                } else {
+                    cell.classList.add('typed-wrong');
+                    cell.classList.remove('typed-correct');
+                }
+            } else {
+                cell.textContent = '_';
+                cell.classList.remove('typed-correct','typed-wrong');
+            }
+        }
+    });
+
     /* Submit on enter or button */
     var sendFn = function(){
         if(G.myAnswers[G.currentQ] !== undefined) return;
@@ -967,6 +990,9 @@ function showResults(room){
         }).join('');
     }
 
+    /* Answer Review */
+    renderAnswerReview();
+
     /* Buttons */
     $('pz-results-play-again') && ($('pz-results-play-again').onclick = function(){
         showScreen('setup');
@@ -974,6 +1000,63 @@ function showResults(room){
     $('pz-results-home') && ($('pz-results-home').onclick = function(){
         window.location.href = 'index.html';
     });
+}
+
+function renderAnswerReview(){
+    var card = $('pz-review-card');
+    var list = $('pz-review-list');
+    if(!card || !list || !G.questions || !G.questions.length){ return; }
+
+    var qs = G.questions;
+    var html = '';
+
+    qs.forEach(function(q, i){
+        var myAns = G.myAnswers[i];
+        var answered = myAns !== undefined;
+
+        /* Derive display strings per mode */
+        var correctDisplay = '';
+        var myDisplay = '';
+        var correct = false;
+
+        if(G.mode === 'quiz'){
+            var opts = q.options || [];
+            var cIdx = Number(q.answer);
+            correctDisplay = opts[cIdx] || ('Option '+(cIdx+1));
+            if(answered){
+                var myIdx = Number(myAns);
+                myDisplay = opts[myIdx] || ('Option '+(myIdx+1));
+                correct = myIdx === cIdx;
+            }
+        } else {
+            correctDisplay = q.answer || q.word || '';
+            if(answered){
+                myDisplay = myAns;
+                correct = myAns.toString().toUpperCase() === correctDisplay.toString().toUpperCase();
+            }
+        }
+
+        var statusIcon = !answered ? '⏭️' : (correct ? '✅' : '❌');
+        var statusCls  = !answered ? 'skipped' : (correct ? 'correct' : 'wrong');
+
+        html += '<div class="pz-review-item '+statusCls+'">' +
+            '<div class="pz-review-header">' +
+                '<span class="pz-review-num">Q'+(i+1)+'</span>' +
+                '<span class="pz-review-icon">'+statusIcon+'</span>' +
+            '</div>' +
+            '<div class="pz-review-question">'+esc(q.q || q.clue || '')+'</div>' +
+            '<div class="pz-review-answers">' +
+                '<div class="pz-review-correct"><span class="pz-review-label">Correct:</span> '+esc(correctDisplay)+'</div>' +
+                (answered
+                    ? '<div class="pz-review-mine"><span class="pz-review-label">You:</span> '+esc(myDisplay)+'</div>'
+                    : '<div class="pz-review-mine skipped-text">You did not answer in time</div>'
+                ) +
+            '</div>' +
+        '</div>';
+    });
+
+    list.innerHTML = html;
+    card.style.display = '';
 }
 
 function renderPodium(sorted){
