@@ -979,6 +979,8 @@
 
     function stopAiSpeech() {
         voiceAiTalking = false;
+        /* Stop AudioContext source node if playing (Android/Capacitor fix) */
+        if (typeof window.aqsStopCurrentAudio === 'function') { window.aqsStopCurrentAudio(); }
         if (currentStudioAudio) {
             try { currentStudioAudio.pause(); } catch (e) {}
             currentStudioAudio = null;
@@ -991,8 +993,33 @@
     function startVoiceListening() {
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
+            /* ── Android/Capacitor: SpeechRecognition is disabled (crashes the WebView).
+               Use MediaRecorder + Groq Whisper for speech-to-text instead. ── */
+            if (typeof window.aqsStartMicRecording === 'function') {
+                stopVoiceListening();
+                setVoiceState('listening');
+                setVoiceTranscript('Listening\u2026 tap \u201cStop Listening\u201d when done speaking.');
+                /* Give stopVoiceListening() something to abort */
+                voiceRecognition = { abort: function () { window.aqsStopMicRecording(); } };
+                window.aqsStartMicRecording(
+                    function (text) {
+                        voiceRecognition = null;
+                        if (!voiceActive) return;
+                        setVoiceTranscript(text);
+                        setVoiceState('thinking');
+                        handleVoiceInput(text.trim());
+                    },
+                    function (errMsg) {
+                        voiceRecognition = null;
+                        setVoiceState('error');
+                        setVoiceTranscript(errMsg || 'Microphone error \u2014 check app permissions.');
+                    },
+                    15000
+                );
+                return;
+            }
             setVoiceState('error');
-            setVoiceTranscript('Speech recognition is not supported in this browser. Try Chrome or Edge.');
+            setVoiceTranscript('Speech recognition is not available. Please check your microphone permissions.');
             return;
         }
         stopVoiceListening();
@@ -1182,6 +1209,14 @@
             fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
                 .then(function (blob) {
                     if (!voiceAiTalking) { finish(); return; }
+                    /* Android/Capacitor: AudioContext route */
+                    if (typeof window.aqsPlayAudioBlob === 'function') {
+                        window.aqsPlayAudioBlob(blob,
+                            function () { idx = chunks.length; finish(); },
+                            function () { speakWithBrowserFallback(remaining, finish); }
+                        );
+                        return;
+                    }
                     var blobUrl = URL.createObjectURL(blob);
                     var audio2  = new Audio();
                     audio2.setAttribute('playsinline', '');
@@ -1212,6 +1247,17 @@
                     if (!voiceAiTalking) { finish(); return; }
 
                     var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
+
+                    /* ── Android/Capacitor: use AudioContext route (new Audio() silent-fails) ── */
+                    if (typeof window.aqsPlayAudioBlob === 'function') {
+                        currentStudioAudio = { _aqsCtx: true };
+                        window.aqsPlayAudioBlob(typedBlob,
+                            function () { currentStudioAudio = null; playNext(); },
+                            function () { currentStudioAudio = null; fallbackRemaining(); }
+                        );
+                        return;
+                    }
+
                     var blobUrl   = URL.createObjectURL(typedBlob);
                     var audio     = new Audio();
                     audio.setAttribute('playsinline', '');
