@@ -18,6 +18,8 @@
     var conversationId     = null;
     var attachedFileText   = null;
     var attachedFileName   = null;
+    var attachedImageData  = null;
+    var attachedImageName  = null;
     var isSending          = false;
 
     var STORAGE_KEY = 'dts_chat_sessions';
@@ -714,11 +716,15 @@
     ═══════════════════════════════════════════════════════════ */
     async function sendMessage(text) {
         text = (text || '').trim();
-        if (!text && !attachedFileText) return;
+        if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
 
         isSending = true;
         setSendState(true);
+
+        /* Snapshot and clear attachments before async work */
+        var snapImageData = attachedImageData;
+        var snapImageName = attachedImageName;
 
         /* Build user content */
         var userContent = text;
@@ -729,6 +735,62 @@
         }
 
         clearFileAttachment();
+
+        /* --- Image vision path --- */
+        if (snapImageData) {
+            /* Show user message with thumbnail */
+            var imgLabel = (text ? text + '\n\n' : '') + '\uD83D\uDDBC\uFE0F *Image: ' + (snapImageName || 'image') + '*';
+            chatHistory.push({ role: 'user', content: imgLabel });
+            appendMessage('user', imgLabel);
+            var input2 = document.getElementById('dts-input');
+            if (input2) { input2.value = ''; input2.style.height = 'auto'; }
+
+            showTyping(true, 'XZILY AI is analysing your image\u2026');
+
+            var visionMessages = [
+                { role: 'system', content: SYSTEM_PROMPT },
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'image_url', image_url: { url: snapImageData } },
+                        { type: 'text', text: text || 'Please describe and analyse this image in detail.' }
+                    ]
+                }
+            ];
+
+            if (typeof window.groqFetch !== 'function') {
+                showTyping(false);
+                appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
+                isSending = false; setSendState(false); return;
+            }
+
+            window.groqFetch({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                messages: visionMessages,
+                max_tokens: 2048,
+                temperature: 0.7
+            }).then(function(res) { return res.json(); })
+            .then(function(data) {
+                showTyping(false);
+                if (data.error) {
+                    var em = data.error.message || 'Vision API error.';
+                    appendMessage('assistant', '\u26A0\uFE0F ' + em);
+                } else {
+                    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                        ? data.choices[0].message.content
+                        : 'Sorry, I could not analyse the image. Please try again.';
+                    chatHistory.push({ role: 'assistant', content: reply });
+                    streamReply(reply, function() { saveSession(); renderHistoryList(); });
+                }
+                isSending = false; setSendState(false);
+            }).catch(function(err) {
+                showTyping(false);
+                appendMessage('assistant', '\u26A0\uFE0F Image analysis failed: ' + (err.message || 'Unknown error'));
+                isSending = false; setSendState(false);
+            });
+            return;
+        }
+        /* --- End image vision path --- */
 
         chatHistory.push({ role: 'user', content: userContent });
         appendMessage('user', userContent);
@@ -870,10 +932,36 @@
     function clearFileAttachment() {
         attachedFileText = null;
         attachedFileName = null;
+        attachedImageData = null;
+        attachedImageName = null;
         var status = document.getElementById('dts-file-status');
         if (status) { status.style.display = 'none'; status.textContent = ''; }
         var fi = document.getElementById('dts-file-input');
         if (fi) fi.value = '';
+        var ii = document.getElementById('dts-image-input');
+        if (ii) ii.value = '';
+    }
+
+    function handleImageAttach(file) {
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB.'); return; }
+        var name = file.name;
+        var setStatus = function(txt) {
+            var s = document.getElementById('dts-file-status');
+            if (s) { s.style.display = ''; s.textContent = txt; }
+        };
+        setStatus('\uD83D\uDDBC\uFE0F Reading image\u2026');
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            attachedImageData = e.target.result;
+            attachedImageName = name;
+            /* Clear any file attachment — image takes precedence */
+            attachedFileText = null;
+            attachedFileName = null;
+            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached — AI will analyse this image');
+        };
+        reader.onerror = function() { setStatus('\u274C Could not read image'); };
+        reader.readAsDataURL(file);
     }
 
     function handleFileAttach(file) {
@@ -1398,6 +1486,14 @@
         if (fileInput) {
             fileInput.addEventListener('change', function () {
                 if (this.files && this.files[0]) handleFileAttach(this.files[0]);
+            });
+        }
+
+        /* ── Image input ── */
+        var imageInput = document.getElementById('dts-image-input');
+        if (imageInput) {
+            imageInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
             });
         }
 

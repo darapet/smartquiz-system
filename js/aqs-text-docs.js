@@ -570,15 +570,41 @@
         );
         ttdSetAIStatus('working', isSearch ? 'Searching web\u2026' : 'Fetching page\u2026');
 
-        var jinaUrl = isSearch
-            ? 'https://s.jina.ai/' + encodeURIComponent(input)
-            : 'https://r.jina.ai/' + input;
+        /* Fetch via multiple proxy fallbacks to improve Cloudflare bypass */
+        function ttdFetchWithFallbacks(url, isSearchMode) {
+            var proxies = isSearchMode ? [
+                /* Search proxies */
+                { url: 'https://s.jina.ai/' + encodeURIComponent(url), headers: { 'Accept': 'text/plain', 'X-Respond-With': 'markdown' } },
+                { url: 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(url)), headers: {} }
+            ] : [
+                /* Page proxies — try in order until one works */
+                { url: 'https://r.jina.ai/' + url, headers: { 'Accept': 'text/plain', 'X-Respond-With': 'markdown' } },
+                { url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(url), headers: {} },
+                { url: 'https://corsproxy.io/?' + encodeURIComponent(url), headers: {} }
+            ];
 
-        fetch(jinaUrl, { headers: { 'Accept': 'text/plain', 'X-Respond-With': 'markdown' } })
-        .then(function(r) {
-            if (!r.ok) throw new Error('Could not fetch content (HTTP ' + r.status + ') \u2014 check the URL and try again.');
-            return r.text();
-        })
+            function tryNext(idx) {
+                if (idx >= proxies.length) return Promise.reject(new Error('All fetch proxies failed. The site may block external access.'));
+                var p = proxies[idx];
+                return fetch(p.url, { headers: p.headers })
+                    .then(function(r) {
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        return r.text();
+                    })
+                    .then(function(txt) {
+                        /* allorigins wraps in JSON: {contents: '...'} */
+                        if (p.url.indexOf('allorigins') !== -1) {
+                            try { var obj = JSON.parse(txt); txt = obj.contents || txt; } catch(e) {}
+                        }
+                        if (!txt || txt.trim().length < 30) throw new Error('No readable content');
+                        return txt;
+                    })
+                    .catch(function() { return tryNext(idx + 1); });
+            }
+            return tryNext(0);
+        }
+
+        ttdFetchWithFallbacks(input, isSearch)
         .then(function(pageText) {
             if (!pageText || pageText.trim().length < 30) throw new Error('Page returned no readable content. Try a different URL.');
             setStatus('\uD83E\uDD16 AI is reading and writing your document\u2026', '#fefce8', '#854d0e');

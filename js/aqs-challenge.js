@@ -1,4 +1,4 @@
-/* AQS Challenge Mode v2 — aqs-challenge.js */
+/* AQS Challenge Mode v3 — aqs-challenge.js */
   (function($){
   'use strict';
 
@@ -2147,7 +2147,21 @@
       var name=file.name.toLowerCase();
       if(name.endsWith('.pdf')) return chExtractPDF(file);
       if(name.endsWith('.docx')||name.endsWith('.doc')) return chExtractDocx(file);
-      return Promise.reject(new Error('Unsupported file type. Use PDF or DOCX.'));
+      /* Plain text files — read directly */
+      if(name.endsWith('.txt')||name.endsWith('.md')||name.endsWith('.csv')||
+         name.endsWith('.json')||name.endsWith('.xml')){
+          return new Promise(function(resolve,reject){
+              var reader=new FileReader();
+              reader.onload=function(e){
+                  var text=e.target.result;
+                  if(!text||!text.trim()) reject(new Error('File appears to be empty.'));
+                  else resolve(text);
+              };
+              reader.onerror=function(){ reject(new Error('Could not read file.')); };
+              reader.readAsText(file);
+          });
+      }
+      return Promise.reject(new Error('Unsupported file type. Use PDF, DOCX, or TXT.'));
   }
   function chExtractPDF(file){
       return new Promise(function(resolve,reject){
