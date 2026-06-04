@@ -283,24 +283,52 @@
     }
 
     function pollinationsAI(prompt) {
-      var encoded = encodeURIComponent(prompt.slice(0, 2000));
-      return fetch('https://text.pollinations.ai/' + encoded)
-        .then(function (r) { if (!r.ok) throw new Error('Pollinations HTTP ' + r.status); return r.text(); });
-    }
+        return fetch('https://text.pollinations.ai/openai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: 'openai-large',
+            messages: [{ role: 'user', content: prompt }],
+            seed: 42
+          })
+        })
+        .then(function (r) {
+          if (!r.ok) throw new Error('Pollinations HTTP ' + r.status);
+          return r.json();
+        })
+        .then(function (d) {
+          return d.choices[0].message.content.trim();
+        });
+      }
 
     /* ── HTML sanitizer (keep only safe formatting tags) ────────── */
     function sanitizeHTML(raw) {
-      // Remove code fences and explanatory text before the HTML
-      var html = raw;
-      var codeBlock = raw.match(/```html?\n?([\s\S]*?)```/i);
-      if (codeBlock) html = codeBlock[1];
-      // Remove any <!DOCTYPE>, <html>, <head>, <body> wrapper
-      html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g, '')
-                 .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi, '')
-                 .replace(/<style[\s\S]*?<\/style>/gi, '')
-                 .replace(/<script[\s\S]*?<\/script>/gi, '');
-      return html.trim();
-    }
+        if (!raw) return '';
+        var html = raw;
+        // Unwrap code fences
+        var fence = html.match(/```html?\n?([\s\S]*?)```/i);
+        if (fence) html = fence[1];
+        // Strip dangerous wrapper tags
+        html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g, '')
+                   .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi, '')
+                   .replace(/<style[\s\S]*?<\/style>/gi, '')
+                   .replace(/<script[\s\S]*?<\/script>/gi, '');
+        html = html.trim();
+        // If AI returned markdown instead of HTML, convert basic markdown → HTML
+        if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote)\b/.test(html)) {
+          html = html
+            .replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>')
+            .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
+            .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
+            .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
+            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.+?)\*/g, '<em>$1</em>')
+            .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
+            .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m){ return '<ul>' + m + '</ul>'; })
+            .replace(/^(?!<[hulo]|$)(.+)$/gm, '<p>$1</p>');
+        }
+        return html.trim();
+      }
 
     function escapeHtml(s) {
       return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
