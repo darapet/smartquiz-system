@@ -201,5 +201,187 @@
     }
   }, 250);
 
-  console.log('[AQS] Capacitor/mobile speech guard v2 active — SpeechRecognition disabled, TTS pre-unlock enabled.');
+  console.log('[AQS] Capacitor/mobile speech guard v3 active — SpeechRecognition disabled, TTS pre-unlock + AudioContext player + Whisper STT enabled.');
+
+  /* ── 6. AudioContext blob player ─────────────────────────────────────────
+   *
+   * Plays a Blob via the already-unlocked AudioContext (window._aqsAudioCtx).
+   * This bypasses new Audio().play() which silently fails on Android WebView
+   * even after the audio unlock, because the audio is not routed to the speaker.
+   *
+   * window.aqsPlayAudioBlob(blob, onEnd, onError)
+   * window.aqsStopCurrentAudio()
+   * ─────────────────────────────────────────────────────────────────────── */
+  window._aqsCurrentSource = null;
+
+  window.aqsStopCurrentAudio = function () {
+    if (window._aqsCurrentSource) {
+      try { window._aqsCurrentSource.stop(0); } catch (e) {}
+      window._aqsCurrentSource = null;
+    }
+  };
+
+  window.aqsPlayAudioBlob = function (blob, onEnd, onError) {
+    /* Ensure AudioContext exists and is running */
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) { if (onError) onError(new Error('no AudioContext')); return; }
+    if (!window._aqsAudioCtx) {
+      try { window._aqsAudioCtx = new AC(); } catch (e) {
+        if (onError) onError(e); return;
+      }
+    }
+    var ctx = window._aqsAudioCtx;
+    if (ctx.state === 'suspended') { ctx.resume().catch(function () {}); }
+
+    /* Stop any previous source */
+    window.aqsStopCurrentAudio();
+
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var arrBuf = e.target.result;
+      ctx.decodeAudioData(arrBuf, function (audioBuffer) {
+        if (ctx.state === 'suspended') { ctx.resume().catch(function () {}); }
+        var source = ctx.createBufferSource();
+        window._aqsCurrentSource = source;
+        source.buffer = audioBuffer;
+        source.connect(ctx.destination);
+        source.onended = function () {
+          if (window._aqsCurrentSource === source) window._aqsCurrentSource = null;
+          if (onEnd) onEnd();
+        };
+        try { source.start(0); } catch (startErr) {
+          if (onError) onError(startErr);
+        }
+      }, function (decodeErr) {
+        console.warn('[AQS] decodeAudioData failed:', decodeErr);
+        if (onError) onError(decodeErr);
+      });
+    };
+    reader.onerror = function () {
+      if (onError) onError(new Error('FileReader error'));
+    };
+    reader.readAsArrayBuffer(blob);
+  };
+
+  /* ── 7. MediaRecorder STT via Groq Whisper ──────────────────────────────
+   *
+   * Replaces the nullified SpeechRecognition API with a real-recording path:
+   *   1. getUserMedia → MediaRecorder → collect chunks → stop → Blob
+   *   2. POST blob to Groq /audio/transcriptions (whisper-large-v3-turbo)
+   *   3. Fire onResult(text) or onError(message)
+   *
+   * window.aqsStartMicRecording(onResult, onError, maxMs)
+   * window.aqsStopMicRecording()
+   * ─────────────────────────────────────────────────────────────────────── */
+  (function () {
+    var _mr      = null;   /* MediaRecorder instance */
+    var _chunks  = [];
+    var _active  = false;
+    var _stopTimer = null;
+
+    window.aqsStopMicRecording = function () {
+      _active = false;
+      clearTimeout(_stopTimer);
+      if (_mr && _mr.state !== 'inactive') {
+        try { _mr.stop(); } catch (e) {}
+      }
+    };
+
+    window.aqsStartMicRecording = function (onResult, onError, maxMs) {
+      if (_active) { window.aqsStopMicRecording(); }
+      _active = true;
+      _chunks = [];
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        _active = false;
+        if (onError) onError('Microphone not available on this device.');
+        return;
+      }
+
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(function (stream) {
+          if (!_active) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
+
+          /* Pick the best supported MIME type */
+          var mimeType = '';
+          var candidates = [
+            'audio/webm;codecs=opus', 'audio/webm',
+            'audio/ogg;codecs=opus',  'audio/ogg',
+            'audio/mp4',              'audio/wav'
+          ];
+          for (var i = 0; i < candidates.length; i++) {
+            if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(candidates[i])) {
+              mimeType = candidates[i]; break;
+            }
+          }
+
+          try {
+            _mr = mimeType ? new MediaRecorder(stream, { mimeType: mimeType })
+                           : new MediaRecorder(stream);
+          } catch (e) {
+            _mr = new MediaRecorder(stream);
+            mimeType = '';
+          }
+
+          _mr.ondataavailable = function (ev) {
+            if (ev.data && ev.data.size > 0) _chunks.push(ev.data);
+          };
+
+          _mr.onstop = function () {
+            stream.getTracks().forEach(function (t) { t.stop(); });
+            var finalType = mimeType || 'audio/webm';
+            var audioBlob = new Blob(_chunks, { type: finalType });
+            _chunks = [];
+            _transcribe(audioBlob, finalType, onResult, onError);
+          };
+
+          _mr.start(250); /* collect a chunk every 250 ms */
+
+          /* Auto-stop after maxMs (default 15 s) */
+          _stopTimer = setTimeout(function () {
+            if (_active) window.aqsStopMicRecording();
+          }, maxMs || 15000);
+        })
+        .catch(function (err) {
+          _active = false;
+          if (onError) onError('Microphone access denied: ' + (err.message || String(err)));
+        });
+    };
+
+    function _transcribe(blob, mimeType, onResult, onError) {
+      var key = typeof window.getGroqKey === 'function' ? window.getGroqKey() : '';
+      if (!key) { if (onError) onError('No API key — please add your Groq key in Settings.'); return; }
+
+      /* Pick file extension from MIME type so Groq accepts the file */
+      var ext = 'webm';
+      if (mimeType.includes('ogg')) ext = 'ogg';
+      else if (mimeType.includes('mp4')) ext = 'mp4';
+      else if (mimeType.includes('wav')) ext = 'wav';
+
+      var fd = new FormData();
+      fd.append('file', blob, 'voice.' + ext);
+      fd.append('model', 'whisper-large-v3-turbo');
+      fd.append('response_format', 'json');
+      fd.append('language', 'en');
+
+      fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+        method:  'POST',
+        headers: { 'Authorization': 'Bearer ' + key },
+        body:    fd
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var text = (data.text || '').trim();
+        if (text) {
+          if (onResult) onResult(text);
+        } else {
+          if (onError) onError('No speech detected — please try again.');
+        }
+      })
+      .catch(function (err) {
+        if (onError) onError('Transcription failed: ' + (err.message || String(err)));
+      });
+    }
+  })();
+
 })();
