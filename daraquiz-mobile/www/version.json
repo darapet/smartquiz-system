@@ -1,8 +1,8 @@
 {
-  "version": "1.142",
-  "versionCode": 126,
+  "version": "1.143",
+  "versionCode": 127,
   "releaseDate": "2026-06-04",
-  "notes": "Fix: Reduce max_tokens on all Groq calls to stay within per-minute token limits. Add 2s inter-call throttle. Stops AI from failing after 1-2 uses.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.142/daraquiz-v1.142.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.142/daraquiz-v1.142.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.143/daraquiz-v1.143.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.143/daraquiz-v1.143.apk"
 }
