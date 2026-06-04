@@ -1,4 +1,4 @@
-/* AQS Document Quiz Builder  v2.0
+/* AQS Document Quiz Builder  v2.1
    Two parser modes on one page:
      Mode A — Extract existing MCQ questions (numbered, A/B/C/D) from the document
      Mode B — Read plain text / notes and use AI to create fresh MCQ questions

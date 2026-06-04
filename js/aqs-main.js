@@ -1,4 +1,4 @@
-/* AI Quiz System - Main JS v1.4.1 */
+/* AI Quiz System - Main JS v1.5.0 */
 (function ($) {
     'use strict';
 

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-     Text → Docs  |  XZily AI  |  Full word-processor + AI formatter
+     Text → Docs  |  XZily AI  |  Full word-processor + AI formatter  v2.1
      Formats: PDF · DOCX · ODT · TXT · HTML · MD · RTF · JSON · CSV · LaTeX
   ═══════════════════════════════════════════════════════════════ */
   (function () {

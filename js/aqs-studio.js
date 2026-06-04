@@ -1,4 +1,4 @@
-/* aqs-studio.js — xzily AI Chat Studio v2
+/* aqs-studio.js — xzily AI Chat Studio v3
    Developed by Omomo Excellence in corporation with Darapet Technology
    Powered by Groq LLaMA-3.3 + Real-time Web Search (DuckDuckGo + Jina AI Reader)
    Requires: aqs-groq-key.js (groqFetch / getGroqKey), marked.js, katex, highlight.js
