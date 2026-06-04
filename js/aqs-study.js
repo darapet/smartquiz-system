@@ -2075,6 +2075,15 @@ function stdVoiceOpen() {
     if (!panel) return;
     panel.style.display = 'flex';
 
+    /* Unlock / create AudioContext on this user-gesture tap */
+    try {
+        var AC = window.AudioContext || window.webkitAudioContext;
+        if (AC) {
+            if (!window._aqsAudioCtx) window._aqsAudioCtx = new AC();
+            if (window._aqsAudioCtx.state === 'suspended') window._aqsAudioCtx.resume();
+        }
+    } catch (e) {}
+
     var msgs = document.getElementById('std-voice-msgs');
     if (msgs && !msgs.children.length) {
         var topicName = (S && S.title) ? S.title : 'your topic';
