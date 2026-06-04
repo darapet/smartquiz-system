@@ -1771,7 +1771,16 @@
           var excerpt = _chDocUploadText.substring(0, 8000);
 
           var BATCH = 15;
+          var MAX_BATCHES = 10; /* safety cap — prevents runaway API hammering */
+          var batchCount = 0;
           while(chQuestions.length < totalNeeded){
+              if(batchCount >= MAX_BATCHES){
+                  throw new Error('Generation limit reached ('+chQuestions.length+' questions saved). Restart to generate more.');
+              }
+              /* Small delay between batches to avoid rate-limit hammering */
+              if(batchCount > 0) await new Promise(function(r){ setTimeout(r, 600); });
+              batchCount++;
+
               var remaining  = totalNeeded - chQuestions.length;
               var batchSize  = Math.min(BATCH, remaining);
               var avoidBlock = chQuestions.length > 0
@@ -1791,8 +1800,8 @@
                   'Return ONLY a valid JSON array with NO markdown fences:\n'+
                   '[{"question":"...","options":["A","B","C","D"],"correct_answer_index":0,"explanation":"..."}]';
 
-              var batchNum     = Math.floor(chQuestions.length / BATCH) + 1;
-              var totalBatches = Math.ceil(totalNeeded / BATCH);
+              var batchNum     = batchCount;
+              var totalBatches = Math.min(MAX_BATCHES, Math.ceil(totalNeeded / BATCH));
               $('#aqs-ch-gen-status').text('AI generating batch '+batchNum+' of '+totalBatches+'…');
               $('#aqs-ch-gen-bar').css('width', Math.round(chQuestions.length / totalNeeded * 100)+'%');
               $('#aqs-ch-gen-count').text(chQuestions.length+' / '+totalNeeded);
@@ -1867,7 +1876,16 @@
 
       try{
           var BATCH=15;
+          var MAX_BATCHES=10; /* safety cap — prevents runaway API hammering */
+          var batchCount=0;
           while(chQuestions.length<totalNeeded){
+              if(batchCount>=MAX_BATCHES){
+                  throw new Error('Generation limit reached ('+chQuestions.length+' questions saved). Restart to generate more.');
+              }
+              /* Small delay between batches to avoid rate-limit hammering */
+              if(batchCount>0) await new Promise(function(r){ setTimeout(r,600); });
+              batchCount++;
+
               var remaining=totalNeeded-chQuestions.length;
               var batchSize=Math.min(BATCH,remaining);
               var avoid=chQuestions.length>0
@@ -1884,8 +1902,8 @@
                   'Return ONLY a valid JSON array. Example:\n'+
                   '[{"question":"What is 2+2?","options":["3","4","5","6"],"correct_answer_index":1,"explanation":"2+2 equals 4."}]';
 
-              var batchNum=Math.floor(chQuestions.length/BATCH)+1;
-              var totalBatches=Math.ceil(totalNeeded/BATCH);
+              var batchNum=batchCount;
+              var totalBatches=Math.min(MAX_BATCHES,Math.ceil(totalNeeded/BATCH));
               $('#aqs-ch-gen-status').text('Generating batch '+batchNum+' of '+totalBatches+'…');
               $('#aqs-ch-gen-bar').css('width',Math.round(chQuestions.length/totalNeeded*100)+'%');
               $('#aqs-ch-gen-count').text(chQuestions.length+' / '+totalNeeded);
@@ -1894,7 +1912,7 @@
               var batch=chParseJSON(text);
               if(!batch||!batch.length) throw new Error('AI returned no valid questions. Try rephrasing the topic.');
               chQuestions=chQuestions.concat(batch);
-              renderChQList(); /* show questions as each batch arrives */
+              renderChQList();
           }
           chGenDone(totalNeeded,'#aqs-ch-generate-btn');
       } catch(e){
