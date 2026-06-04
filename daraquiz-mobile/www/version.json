@@ -1,8 +1,8 @@
 {
-  "version": "1.112",
-  "versionCode": 97,
+  "version": "1.111",
+  "versionCode": 96,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.112/daraquiz-v1.112.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.112/daraquiz-v1.112.apk"
+  "notes": "Bug fixes: source tabs (Upload/Paste/Read Doc/Manual) now work correctly when Generate is clicked; challenge countdown overlay now shows on mobile WebViews.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.111/daraquiz-v1.111.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.111/daraquiz-v1.111.apk"
 }
