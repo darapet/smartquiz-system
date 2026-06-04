@@ -282,7 +282,12 @@
             signal: ctrl.signal,
             body: JSON.stringify({ messages: messages, model: 'openai', max_tokens: 2000, temperature: 0.5, private: true })
         })
-        .then(function (r) { clearTimeout(tid); return r.json(); })
+        .then(function (r) {
+            clearTimeout(tid);
+            if (r.status === 429) throw new Error('Pollinations rate-limited (429) — too many requests');
+            if (!r.ok) throw new Error('Pollinations HTTP ' + r.status);
+            return r.json();
+        })
         .then(function (d) {
             var t = (((d.choices || [])[0] || {}).message || {}).content || '';
             if (t.trim().length > 10) return t.trim();
