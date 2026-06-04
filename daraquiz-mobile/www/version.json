@@ -2,7 +2,7 @@
   "version": "1.115",
   "versionCode": 100,
   "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
+  "notes": "New feature: Copy button on every code block in the Studio — click Copy to copy just that code snippet. Button turns green and shows 'Copied!' confirmation. Works in both xzily AI Studio and Quiz AI Studio.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.115/daraquiz-v1.115.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.115/daraquiz-v1.115.apk"
 }
