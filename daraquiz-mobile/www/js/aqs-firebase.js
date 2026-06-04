@@ -1434,8 +1434,9 @@ async function actionAiGenerate(data) {
    ============================================================ */
 async function actionChCreate(data) {
     /* Challenge creation is public — no login required.
-       Use Firebase uid if logged in, else a generated anonymous host id. */
+       Ensure anonymous Firebase auth so RTDB rules are satisfied. */
     var firebaseUser = auth.currentUser || window._aqsFirebaseUser;
+    if (!firebaseUser) { try { firebaseUser = await getOrCreateGuestSession(); } catch(_) {} }
     var hostUid = firebaseUser ? firebaseUser.uid : ('anon_' + generateToken(12));
 
     var code       = generateToken(6);
@@ -1510,6 +1511,11 @@ async function actionChCreate(data) {
 }
 
 async function actionChJoin(data) {
+    /* Joining is public — ensure anonymous Firebase auth for RTDB rule satisfaction */
+    if (!auth.currentUser && !window._aqsFirebaseUser) {
+        try { await getOrCreateGuestSession(); } catch(_) {}
+    }
+
     var code       = (data.code || '').toUpperCase();
     var playerName = (data.player_name || '').trim();
 
@@ -2362,7 +2368,8 @@ function _updateAqsGlobals(user, profile) {
         'aqs-quiz-studio.html','tts.html','audio.html','ai-animate.html'
     ];
     /* Pages that are open to everyone (guests OK) */
-    var openPages = ['index.html','studio.html','login.html','register.html','unauthorized.html'];
+    var openPages = ['index.html','studio.html','login.html','register.html','unauthorized.html',
+                     'take-quiz.html','challenge.html'];
     var authPages = ['login.html', 'register.html'];
 
     /* Auth guard: redirect to register.html if not signed in with a real account */
