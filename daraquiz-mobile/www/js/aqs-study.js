@@ -70,8 +70,8 @@ function _stdInit() {
     setupFileUpload();
     setupEvents();
     renderHistory();
-    // injectSummonStyles(); // floating voice bot removed
-    // injectSummonUI(); // floating voice bot removed
+    injectSummonStyles();
+    injectSummonUI();
     initSummonVoices();
     /* Start AI badge check: try at 500 ms, 2 s, and 5 s to cover slow Firebase loads */
     setTimeout(checkAI, 500);
@@ -133,16 +133,36 @@ function setupFileUpload() {
     var wrap = document.createElement('div');
     wrap.id = 'std-upload-wrap';
     wrap.className = 'std-upload-wrap';
-    wrap.innerHTML =
-        '<label class="std-upload-btn" for="std-file-input">' +
-        '📎 Upload Textbook / Image' +
-        '<input type="file" id="std-file-input" accept=".txt,.md,.csv,.pdf,image/*" style="display:none">' +
-        '</label>' +
-        '<span id="std-upload-info" class="std-upload-info"></span>';
+
+    if (_IS_MOBILE_APP) {
+        /* Mobile: one button for any file/gallery, one for live camera */
+        wrap.innerHTML =
+            '<label class="std-upload-btn" for="std-file-input">' +
+            '📎 Upload File / Image' +
+            '<input type="file" id="std-file-input" accept=".txt,.md,.csv,.pdf,image/*" style="display:none">' +
+            '</label>' +
+            '<label class="std-upload-btn" for="std-camera-input">' +
+            '📷 Take Photo' +
+            '<input type="file" id="std-camera-input" accept="image/*" capture="environment" style="display:none">' +
+            '</label>' +
+            '<span id="std-upload-info" class="std-upload-info"></span>';
+    } else {
+        wrap.innerHTML =
+            '<label class="std-upload-btn" for="std-file-input">' +
+            '📎 Upload Textbook / Image' +
+            '<input type="file" id="std-file-input" accept=".txt,.md,.csv,.pdf,image/*" style="display:none">' +
+            '</label>' +
+            '<span id="std-upload-info" class="std-upload-info"></span>';
+    }
+
     searchSection.appendChild(wrap);
     var input = document.getElementById('std-file-input');
     if (input) input.addEventListener('change', function () {
         if (input.files[0]) { handleFileUpload(input.files[0]); input.value = ''; }
+    });
+    var camInput = document.getElementById('std-camera-input');
+    if (camInput) camInput.addEventListener('change', function () {
+        if (camInput.files[0]) { handleFileUpload(camInput.files[0]); camInput.value = ''; }
     });
 }
 
