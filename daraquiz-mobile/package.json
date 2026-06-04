@@ -1,6 +1,6 @@
 {
   "name": "darasmart",
-  "version": "1.123.0",
+  "version": "1.124.0",
   "description": "DaraSmart - AI-Powered Quiz & Study Platform by Darapet Technology",
   "main": "index.js",
   "scripts": {
