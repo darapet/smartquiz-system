@@ -1,5 +1,6 @@
 (function(){
     var GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
+    var POLL_URL    = 'https://text.pollinations.ai/openai';
     var STORAGE_KEY = 'aqs_groq_key';
     var IDX_KEY     = 'aqs_groq_key_idx';
 
@@ -44,7 +45,6 @@
             if (!isNaN(parsed) && parsed > 0) waitSec = Math.min(parsed, 300);
         }
         _keyCooldowns[idx] = Date.now() + waitSec * 1000;
-        console.warn('[groqFetch] key slot', idx, 'cooling down for', waitSec, 's');
     }
 
     /* Returns true if the key slot is still in cooldown. */
@@ -53,16 +53,58 @@
         return until && Date.now() < until;
     }
 
-    /* Returns how many ms until the soonest key becomes available (0 = now). */
-    function _msUntilNextKey(keys) {
-        var now = Date.now();
-        var soonest = Infinity;
-        for (var i = 0; i < keys.length; i++) {
-            var until = _keyCooldowns[i] || 0;
-            if (until <= now) return 0;
-            if (until < soonest) soonest = until;
+    /* ── Pollinations silent fallback ──────────────────────────────────────
+       Called automatically when all Groq keys are busy.
+       - always sends private:true and nologo:true (no ads, no branding)
+       - strips Groq-specific fields Pollinations doesn't understand
+       - tries three models in order: large → standard → fast
+       - returns a fetch Response so callers work identically to Groq path  */
+    var _POLL_MODELS = ['openai-large', 'openai', 'openai-fast'];
+
+    function _mapToPollModel(groqModel) {
+        if (!groqModel) return 'openai';
+        var g = String(groqModel).toLowerCase();
+        if (g.indexOf('70b') !== -1 || g.indexOf('large') !== -1 || g.indexOf('scout') !== -1) return 'openai-large';
+        if (g.indexOf('8b') !== -1  || g.indexOf('fast')  !== -1 || g.indexOf('instant') !== -1) return 'openai-fast';
+        return 'openai';
+    }
+
+    async function _pollFetch(bodyObj, signal) {
+        /* Build a clean body — remove Groq-only fields, force private mode */
+        var body = {
+            messages:    bodyObj.messages,
+            temperature: bodyObj.temperature || 0.7,
+            max_tokens:  Math.min(bodyObj.max_tokens || 1500, 2000),
+            private:     true,
+            nologo:      true
+        };
+
+        /* Try models in preference order, starting with the best match */
+        var preferred = _mapToPollModel(bodyObj.model);
+        var order = [preferred];
+        for (var i = 0; i < _POLL_MODELS.length; i++) {
+            if (_POLL_MODELS[i] !== preferred) order.push(_POLL_MODELS[i]);
         }
-        return soonest === Infinity ? 0 : Math.max(0, soonest - now);
+
+        for (var mi = 0; mi < order.length; mi++) {
+            try {
+                var res = await fetch(POLL_URL, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(Object.assign({}, body, { model: order[mi] })),
+                    signal:  signal || undefined
+                });
+                if (res.ok) return res;
+            } catch(e) {
+                /* AbortError or network issue — stop trying */
+                if (e && e.name === 'AbortError') throw e;
+            }
+        }
+
+        /* All Pollinations models failed — return a synthetic ok response
+           with an empty choices array so callers degrade gracefully */
+        var fallbackJson = JSON.stringify({ choices: [] });
+        return new Response(fallbackJson, { status: 200, headers: { 'Content-Type': 'application/json' } });
     }
 
     window.getGroqKey = function(){
@@ -77,6 +119,9 @@
     };
 
     window.groqFetch = async function(bodyObj, extraOpts) {
+        var signal = (extraOpts || {}).signal;
+
+        /* ── Personal key path (user's own Groq key stored in browser) ── */
         var personal = '';
         try { personal = (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch(e) {}
         if (personal && personal.startsWith('gsk_')) {
@@ -88,7 +133,11 @@
         }
 
         var keys = _getMasterKeys();
-        if (!keys.length) throw new Error('No Groq API keys configured. Ask the site admin to add keys in Settings.');
+
+        /* ── No Groq keys at all → go straight to Pollinations ── */
+        if (!keys.length) {
+            return _pollFetch(bodyObj, signal);
+        }
 
         /* Enforce minimum inter-call gap to stay within RPM limits. */
         var now = Date.now();
@@ -96,42 +145,40 @@
         if (gap > 0) await new Promise(function(r){ setTimeout(r, gap); });
         _lastCallTime = Date.now();
 
-        /* Try each key, skipping ones still in their cooldown window. */
+        /* ── Try each Groq key, skipping ones still in cooldown ── */
         var startIdx = _getIdx();
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
             var idx = (startIdx + attempt) % keys.length;
 
-            if (_isCooling(idx)) {
-                console.warn('[groqFetch] key slot', idx, 'still cooling — skipping');
-                continue;
-            }
+            if (_isCooling(idx)) continue;
 
             var key = keys[idx];
-            var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body:    JSON.stringify(bodyObj)
-            }));
+            try {
+                var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                    body:    JSON.stringify(bodyObj)
+                }));
 
-            if (res.status === 429) {
-                var retryAfter = res.headers ? res.headers.get('Retry-After') : null;
-                _markCooldown(idx, retryAfter);
+                if (res.status === 429) {
+                    var retryAfter = res.headers ? res.headers.get('Retry-After') : null;
+                    _markCooldown(idx, retryAfter);
+                    _setIdx(idx + 1);
+                    continue;
+                }
+
                 _setIdx(idx + 1);
+                return res;
+            } catch(e) {
+                if (e && e.name === 'AbortError') throw e;
+                /* Network error on this key — try next */
                 continue;
             }
-
-            _setIdx(idx + 1);
-            return res;
         }
 
-        /* All keys exhausted — report soonest available time */
-        var waitMs  = _msUntilNextKey(keys);
-        var waitSec = Math.ceil(waitMs / 1000);
-        var msg = waitSec > 0
-            ? 'All AI slots are busy right now. Please try again in ' + waitSec + ' seconds.'
-            : 'All AI slots are busy right now. Please try again in a moment.';
-        throw new Error(msg);
+        /* ── All Groq keys busy → silently fall back to Pollinations ── */
+        return _pollFetch(bodyObj, signal);
     };
 
     window.setGroqKey = function(k){
