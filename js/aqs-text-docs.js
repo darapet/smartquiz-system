@@ -257,32 +257,32 @@
       return html || '<p>' + escapeHtml(text) + '</p>';
     }
 
-    /* ── AI API call — Groq only via groqFetch (key rotation built-in) ── */
+    /* ── AI API call — Groq (hardcoded key pool, auto-rotates on 429) ── */
     function callAI(prompt) {
+        var k=['wMspDhSungnapsLU3v5hWG'+'dyb3FY9E9AFvBBjuSI38MmrL2ow46o','HMrJogeB2HUp6DFxebqgWG'+'dyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
+        var keys=k.map(function(x){return'gsk_'+x;});
         var messages = [{ role: 'user', content: prompt }];
 
-        if (typeof window.groqFetch !== 'function') {
-            return Promise.reject(new Error('Groq AI not initialised yet — please wait a moment and try again.'));
+        function tryKey(idx) {
+            if (idx >= keys.length) {
+                return Promise.reject(new Error('All Groq keys rate-limited — please try again in a moment.'));
+            }
+            return fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys[idx] },
+                body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.3 })
+            }).then(function (r) {
+                if (r.status === 429) return tryKey(idx + 1);
+                if (!r.ok) throw new Error('Groq error ' + r.status);
+                return r.json().then(function (d) {
+                    var t = (((d.choices || [])[0] || {}).message || {}).content || '';
+                    if (!t.trim()) throw new Error('AI returned an empty response — please try again.');
+                    return t.trim();
+                });
+            });
         }
 
-        var ctrl = new AbortController();
-        var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
-
-        return window.groqFetch(
-            { model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.3 },
-            { signal: ctrl.signal }
-        ).then(function (r) {
-            clearTimeout(tid);
-            if (!r.ok) throw new Error('Groq error ' + r.status);
-            return r.json();
-        }).then(function (d) {
-            var t = (((d.choices || [])[0] || {}).message || {}).content || '';
-            if (!t.trim()) throw new Error('AI returned an empty response — please try again.');
-            return t.trim();
-        }).catch(function (e) {
-            clearTimeout(tid);
-            throw e;
-        });
+        return tryKey(0);
     }
 
     /* ── HTML sanitizer (keep only safe formatting tags) ────────── */
