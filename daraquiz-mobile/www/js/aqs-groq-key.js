@@ -7,6 +7,11 @@
        becomes available again. Stored in memory only (resets on page load). */
     var _keyCooldowns = {};
 
+    /* Global inter-call throttle. Groq's free tier has ~30 RPM per key.
+       Enforcing a 2-second minimum between calls keeps usage well under that. */
+    var _lastCallTime = 0;
+    var MIN_CALL_GAP_MS = 2000;
+
     /* Master keys are loaded at runtime from Firestore (via aqs-firebase.js).
        They are NEVER hardcoded here so the file is safe to push to GitHub.
        window._AQS_GROQ_MASTER_KEYS is set by aqs-firebase.js after it loads
@@ -84,6 +89,12 @@
 
         var keys = _getMasterKeys();
         if (!keys.length) throw new Error('No Groq API keys configured. Ask the site admin to add keys in Settings.');
+
+        /* Enforce minimum inter-call gap to stay within RPM limits. */
+        var now = Date.now();
+        var gap = _lastCallTime + MIN_CALL_GAP_MS - now;
+        if (gap > 0) await new Promise(function(r){ setTimeout(r, gap); });
+        _lastCallTime = Date.now();
 
         /* Try each key, skipping ones still in their cooldown window. */
         var startIdx = _getIdx();
