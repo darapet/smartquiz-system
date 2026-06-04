@@ -306,18 +306,64 @@
       return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
     }
 
-    /* ── Print ──────────────────────────────────────────────────── */
+    /* ── Print — works in browser AND Capacitor app ───────────── */
     window.ttdPrint = function () {
-      var pr = document.getElementById('ttd-print-root');
-      var pg = document.getElementById('ttd-page');
-      if (!pr || !pg) { window.print(); return; }
-      pr.innerHTML = '';
-      var clone = pg.cloneNode(true);
-      clone.querySelector('#ttd-editor').removeAttribute('contenteditable');
-      pr.appendChild(clone);
-      pr.style.display = 'block';
-      window.print();
-      setTimeout(function () { pr.style.display = 'none'; pr.innerHTML = ''; }, 1000);
+      var editor = document.getElementById('ttd-editor');
+      if (!editor || !editor.innerText.trim()) { alert('Nothing to print. Please add content first.'); return; }
+      var hfont = val('ttd-hfont','Georgia, serif');
+      var bfont = val('ttd-bfont','Georgia, serif');
+      var h1    = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
+      var bd    = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
+      var title = getDocTitle();
+      var printHTML = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
+        '<style>' +
+        'html,body{margin:0;padding:0;background:#fff;}' +
+        'body{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';color:#1a1a1a;padding:' + mg + 'mm;box-sizing:border-box;}' +
+        'h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;page-break-after:avoid;}' +
+        'h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;page-break-after:avoid;}' +
+        'h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;page-break-after:avoid;}' +
+        'h4{font-family:' + hfont + ';font-size:' + Math.round(+bd*1.1) + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
+        'p{margin:0 0 .55em;}ul,ol{padding-left:1.8em;margin:.3em 0 .55em;}li{margin-bottom:.2em;}' +
+        'blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
+        '@page{margin:' + mg + 'mm;}' +
+        '@media print{body{padding:0;}html,body{height:auto;}}' +
+        '</style></head><body>' + editor.innerHTML + '</body></html>';
+
+      /* ── Capacitor app: open in new window → auto-print ── */
+      var isCapacitor = !!(window.Capacitor || window.cordova || navigator.userAgent.match(/wv|WebView/i));
+      var pw = window.open('', '_blank', 'width=900,height=700,toolbar=yes,scrollbars=yes');
+      if (pw) {
+        pw.document.open();
+        pw.document.write(printHTML);
+        pw.document.close();
+        pw.focus();
+        /* Small delay to ensure content renders before print dialog */
+        setTimeout(function () {
+          try {
+            pw.print();
+            /* On desktop browsers close after print; on mobile leave open */
+            if (!isCapacitor) {
+              pw.onafterprint = function () { try { pw.close(); } catch(e){} };
+              setTimeout(function () { try { pw.close(); } catch(e){} }, 5000);
+            }
+          } catch (e) {
+            /* Fallback if popup blocked: use data URI */
+            var blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
+            var url  = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+          }
+        }, 600);
+      } else {
+        /* Popup blocked — download as HTML which user can open & print */
+        var blob = new Blob([printHTML], { type: 'text/html;charset=utf-8' });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href = url; a.download = (safeName(title)||'document') + '-print.html';
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        alert('Print window was blocked. A print-ready HTML file was downloaded instead — open it and use Ctrl+P to print.');
+      }
     };
 
     /* ═══════════════════════════════════════════════════════════════
@@ -714,5 +760,69 @@
       var latex = '\\documentclass[12pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage{microtype}\n\\usepackage{ulem}\n\\usepackage{geometry}\n\\geometry{margin=' + val('ttd-margin',20) + 'mm}\n\\setlength{\\parskip}{0.6em}\n\\setlength{\\parindent}{0em}\n\\title{' + ltxEsc(title) + '}\n\\date{\\today}\n\\begin{document}\n\\maketitle\n' + body + '\n\\end{document}';
       saveText(latex, safeName(title) + '.tex', 'text/plain');
     }
+
+  
+    /* ── Tab switcher ────────────────────────────────────────────── */
+    window.ttdSwitchTab = function (tab) {
+      ['format','write'].forEach(function (t) {
+        var btn = document.getElementById('ttd-tab-' + t);
+        var pan = document.getElementById('ttd-panel-' + t);
+        if (btn) btn.classList.toggle('active', t === tab);
+        if (pan) pan.classList.toggle('active', t === tab);
+      });
+    };
+
+    /* ── AI Writer — write full document from a prompt ─────────── */
+    window.ttdAIWrite = function () {
+      var promptEl = document.getElementById('ttd-prompt');
+      var prompt   = promptEl ? promptEl.value.trim() : '';
+      if (!prompt) { alert('Please describe what you want the AI to write.'); return; }
+      var tone    = val('ttd-wtone',    'professional');
+      var dtype   = val('ttd-wdoctype', 'general document');
+      var length  = val('ttd-length',   'medium');
+      var btn     = document.getElementById('ttd-write-btn');
+      var lengthGuide = { short: '250-350 words', medium: '500-700 words', long: '900-1100 words', detailed: '1300-1700 words' };
+      var wTarget = lengthGuide[length] || '500-700 words';
+
+      if (isProcessing) return;
+      isProcessing = true;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ttd-spin">&#9696;</span> Writing...'; }
+
+      var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' based on the following request. Use a ' + tone + ' tone. Target length: ' + wTarget + '.\n\n' +
+        'REQUEST: ' + prompt + '\n\n' +
+        'OUTPUT FORMAT: Return ONLY clean HTML using these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br. NO html/head/body/style/script tags.\n\n' +
+        'STRUCTURE RULES:\n' +
+        '- Open with a clear <h1> title that matches the request\n' +
+        '- Use <h2> for major sections\n' +
+        '- Use <h3> for sub-sections\n' +
+        '- Use <strong> for key terms and important points\n' +
+        '- Use <ul>/<ol> for any lists or bullet points\n' +
+        '- Use <blockquote> for notable quotes or callout statements\n' +
+        '- ALL body text must be inside <p> tags\n' +
+        '- Write a proper conclusion or closing section\n' +
+        '- Be detailed, informative and complete -- do not truncate\n' +
+        '- Match the ' + tone + ' tone throughout the entire document';
+
+      callAI(aiPrompt)
+        .then(function (result) {
+          var clean = sanitizeHTML(result);
+          if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
+          if (editor) {
+            editor.innerHTML = clean;
+            ttdUpdateStats();
+            ttdSwitchTab('format');
+            var pages = document.getElementById('ttd-pages');
+            if (pages) pages.scrollTop = 0;
+          }
+        })
+        .catch(function (err) {
+          console.error('AI write error:', err);
+          alert('AI writing failed. Please try again.\nError: ' + err.message);
+        })
+        .finally(function () {
+          isProcessing = false;
+          if (btn) { btn.disabled = false; btn.innerHTML = '&#9997;&#65039; Write with AI'; }
+        });
+    };
 
   })();
