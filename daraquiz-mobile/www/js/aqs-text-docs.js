@@ -218,7 +218,7 @@
           if (trimmed.toUpperCase().startsWith('MISMATCH:')) {
             var reason = trimmed.slice(9).trim();
             showHint(
-              '⚠️ ' + reason + '<br><small style="opacity:.8;">Change the <strong>Document Type</strong> above, or paste content that suits a <strong>' + dtype + '</strong>.</small>',
+              '⚠️ ' + reason + '<br><small style="opacity:.8;">Change the <strong>Document Type</strong> above, or paste content that better suits a <strong>' + dtype + '</strong>.</small>',
               '#fefce8', '#854d0e'
             );
             isProcessing = false;
@@ -229,8 +229,8 @@
           var clean = sanitizeHTML(trimmed);
           if (editor) {
             ttdLoadContent(clean || '<p>' + escapeHtml(text) + '</p>');
-            var autoTitle=(clean.match(/<h1[^>]*>(.*?)<\/h1>/i)||[])[1]||text.slice(0,50)||'Formatted Doc';
-            ttdSaveHistory(autoTitle.replace(/<[^>]+>/g,''),editor.innerHTML);
+            var autoTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
+            ttdSaveHistory(autoTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdUpdateStats();
           }
         })
@@ -337,13 +337,16 @@
     function sanitizeHTML(raw) {
         if (!raw) return '';
         var html = raw;
+        // Unwrap code fences
         var fence = html.match(/```html?\n?([\s\S]*?)```/i);
         if (fence) html = fence[1];
+        // Strip dangerous wrapper tags
         html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g, '')
                    .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi, '')
                    .replace(/<style[\s\S]*?<\/style>/gi, '')
                    .replace(/<script[\s\S]*?<\/script>/gi, '');
         html = html.trim();
+        // If AI returned markdown instead of HTML, convert basic markdown → HTML
         if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote)\b/.test(html)) {
           html = html
             .replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>')
@@ -463,6 +466,11 @@
         .then(function(result) {
             var html = sanitizeHTML(result);
             ttdLoadContent(html || '<p>' + (result || '').replace(/</g, '&lt;') + '</p>');
+            // Apply user-chosen page count
+            var webPages = window.ttdGetPanelPages ? ttdGetPanelPages('web') : null;
+            if (webPages) ttdSetPageCount(webPages);
+            // Apply user-chosen format settings
+            if (window.ttdApplyPanelFormat) ttdApplyPanelFormat('web');
             ttdSwitchTab('format');
             setStatus('\u2705 Done! Content added to your document.', '#f0fdf4', '#15803d');
             ttdSetAIStatus('ready', 'Groq AI Ready');
@@ -920,11 +928,15 @@
           var clean = sanitizeHTML(result);
           if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
           if (editor) {
-            editor.innerHTML = clean;
-            ttdUpdateStats();
+            ttdLoadContent(clean);
+            // Apply user-chosen page count
+            var wPages = window.ttdGetPanelPages ? ttdGetPanelPages('w') : null;
+            if (wPages) ttdSetPageCount(wPages);
+            // Apply user-chosen format settings
+            if (window.ttdApplyPanelFormat) ttdApplyPanelFormat('w');
+            var wTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Doc';
+            ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
             ttdSwitchTab('format');
-            var wTitle=(clean.match(/<h1[^>]*>(.*?)<\/h1>/i)||[])[1]||prompt.slice(0,50)||'AI Doc';
-            ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''),editor.innerHTML);
             var pages = document.getElementById('ttd-pages');
             if (pages) pages.scrollTop = 0;
           }
@@ -940,40 +952,60 @@
     };
 
   
-      var TTD_HIST_KEY='ttd_doc_history',TTD_MAX_HIST=10;
-      function ttdSaveHistory(title,content){
-        if(!content||content.length<20)return;
-        try{var h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');
-          h=h.filter(function(x){return x.title!==title;});
-          h.unshift({title:(title||'Untitled').slice(0,60),content:content,date:new Date().toLocaleString()});
-          if(h.length>TTD_MAX_HIST)h=h.slice(0,TTD_MAX_HIST);
-          localStorage.setItem(TTD_HIST_KEY,JSON.stringify(h));}catch(e){}
+      /* ── Document History ──────────────────────────────────── */
+      var TTD_HIST_KEY = 'ttd_doc_history';
+      var TTD_MAX_HIST = 10;
+
+      function ttdSaveHistory(title, content) {
+        if (!content || content.length < 20) return;
+        try {
+          var hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]');
+          hist = hist.filter(function(h){ return h.title !== title; });
+          hist.unshift({ title: (title||'Untitled').slice(0,60), content: content, date: new Date().toLocaleString() });
+          if (hist.length > TTD_MAX_HIST) hist = hist.slice(0, TTD_MAX_HIST);
+          localStorage.setItem(TTD_HIST_KEY, JSON.stringify(hist));
+        } catch(e){}
       }
-      function ttdRenderHistory(){
-        var list=document.getElementById('ttd-hist-list');if(!list)return;
-        var h=[];try{h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');}catch(e){}
-        if(!h.length){list.innerHTML='<div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to auto-save it here.</div>';return;}
-        list.innerHTML=h.map(function(x,i){
-          return '<div class="ttd-hist-item" onclick="ttdRestoreDoc('+i+')">'+
-            '<button class="ttd-hist-del" onclick="event.stopPropagation();ttdDeleteHistory('+i+')" title="Remove">&#10005;</button>'+
-            '<div class="ttd-hist-title">'+(x.title||'Untitled')+'</div>'+
-            '<div class="ttd-hist-meta">&#128337; '+(x.date||'')+'</div></div>';
+
+      function ttdRenderHistory() {
+        var list = document.getElementById('ttd-hist-list');
+        if (!list) return;
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
+        if (!hist.length) {
+          list.innerHTML = '<div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to auto-save it here.</div>';
+          return;
+        }
+        list.innerHTML = hist.map(function(h, i) {
+          return '<div class="ttd-hist-item" onclick="ttdRestoreDoc(' + i + ')">' +
+            '<button class="ttd-hist-del" onclick="event.stopPropagation();ttdDeleteHistory(' + i + ')" title="Remove">&#10005;</button>' +
+            '<div class="ttd-hist-title">' + (h.title||'Untitled') + '</div>' +
+            '<div class="ttd-hist-meta">&#128337; ' + (h.date||'') + '</div>' +
+          '</div>';
         }).join('');
       }
-      window.ttdRestoreDoc=function(i){
-        var h=[];try{h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');}catch(e){}
-        var item=h[i];if(!item)return;
-        var ed=document.getElementById('ttd-editor');
-        if(ed){ed.innerHTML=item.content;ttdUpdateStats();ttdSwitchTab('format');}
+
+      window.ttdRestoreDoc = function(index) {
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
+        var item = hist[index];
+        if (!item) return;
+        var editor = document.getElementById('ttd-editor');
+        if (editor) { editor.innerHTML = item.content; ttdUpdateStats(); ttdSwitchTab('format'); }
       };
-      window.ttdDeleteHistory=function(i){
-        var h=[];try{h=JSON.parse(localStorage.getItem(TTD_HIST_KEY)||'[]');}catch(e){}
-        h.splice(i,1);localStorage.setItem(TTD_HIST_KEY,JSON.stringify(h));ttdRenderHistory();
+      window.ttdDeleteHistory = function(index) {
+        var hist = [];
+        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
+        hist.splice(index, 1);
+        localStorage.setItem(TTD_HIST_KEY, JSON.stringify(hist));
+        ttdRenderHistory();
       };
-      window.ttdClearHistory=function(){
-        if(!confirm('Clear all document history?'))return;
-        localStorage.removeItem(TTD_HIST_KEY);ttdRenderHistory();
+      window.ttdClearHistory = function() {
+        if (!confirm('Clear all document history?')) return;
+        localStorage.removeItem(TTD_HIST_KEY);
+        ttdRenderHistory();
       };
+
   
         /* ════════════════════════════════════════════════════
            MULTI-PAGE ENGINE — word-processor style
