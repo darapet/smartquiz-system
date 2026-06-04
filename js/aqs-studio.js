@@ -566,6 +566,10 @@
 
         var messages = document.getElementById('dts-messages');
         var welcome  = document.getElementById('dts-welcome');
+        var _typing  = document.getElementById('dts-typing');
+        if (_typing && messages && _typing.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing, messages.nextSibling);
+        }
         if (messages) messages.innerHTML = '';
         if (welcome)  welcome.style.display = 'none';
 
@@ -583,6 +587,10 @@
         newSession();
         var messages = document.getElementById('dts-messages');
         var welcome  = document.getElementById('dts-welcome');
+        var _typing2 = document.getElementById('dts-typing');
+        if (_typing2 && messages && _typing2.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing2, messages.nextSibling);
+        }
         if (messages) messages.innerHTML = '';
         if (welcome)  welcome.style.display = 'flex';
         clearFileAttachment();
