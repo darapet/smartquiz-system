@@ -154,6 +154,15 @@
 
     <!-- ══ LEFT SETTINGS PANEL ══ -->
     <div class="ttd-settings">
+    <!-- Tab bar -->
+    <div class="ttd-tabs">
+      <button class="ttd-tab active" id="ttd-tab-format" onclick="ttdSwitchTab('format')">&#128196; Format Text</button>
+      <button class="ttd-tab" id="ttd-tab-write" onclick="ttdSwitchTab('write')">&#9997;&#65039; AI Writer</button>
+    </div>
+
+    <!-- FORMAT PANEL (existing) -->
+    <div class="ttd-panel active" id="ttd-panel-format">
+  
 
       <!-- Source text -->
       <div class="ttd-sec">
@@ -235,7 +244,55 @@
         <div class="ttd-stat-row" id="ttd-stats"></div>
       </div>
 
-    </div><!-- /ttd-settings -->
+      </div>
+
+    <!-- AI WRITE PANEL (new) -->
+    <div class="ttd-panel" id="ttd-panel-write">
+      <div class="ttd-write-area">
+        <div class="ttd-sec-title" style="padding:10px 0 6px;">&#9997;&#65039; AI Document Writer</div>
+        <label class="ttd-lbl" style="font-size:12px;color:#374151;margin-bottom:4px;font-weight:600;">What do you want the AI to write?</label>
+        <textarea id="ttd-prompt" class="ttd-prompt-ta" placeholder="Example: Write a professional report about the benefits of renewable energy for a business audience. Include an introduction, 3 main sections with sub-points, and a conclusion."></textarea>
+        <div class="ttd-write-hint">&#128161; Be specific — mention the topic, purpose, audience, and key points you want covered.</div>
+
+        <label class="ttd-lbl">Document Length</label>
+        <select id="ttd-length" class="ttd-sel">
+          <option value="short">Short (~300 words)</option>
+          <option value="medium" selected>Medium (~600 words)</option>
+          <option value="long">Long (~1000 words)</option>
+          <option value="detailed">Detailed (~1500+ words)</option>
+        </select>
+
+        <label class="ttd-lbl">Writing Tone</label>
+        <select id="ttd-wtone" class="ttd-sel">
+          <option value="professional">Professional</option>
+          <option value="academic">Academic</option>
+          <option value="formal">Formal</option>
+          <option value="business">Business</option>
+          <option value="casual">Casual</option>
+          <option value="technical">Technical</option>
+        </select>
+
+        <label class="ttd-lbl">Document Type</label>
+        <select id="ttd-wdoctype" class="ttd-sel">
+          <option value="general document">General Document</option>
+          <option value="report">Report</option>
+          <option value="business letter">Business Letter</option>
+          <option value="essay">Essay / Article</option>
+          <option value="executive summary">Executive Summary</option>
+          <option value="proposal">Proposal</option>
+          <option value="memo">Memo</option>
+          <option value="research paper">Research Paper</option>
+        </select>
+
+        <button class="ttd-btn-primary" id="ttd-write-btn" onclick="ttdAIWrite()">&#9997;&#65039; Write with AI</button>
+
+        <div style="margin-top:12px;padding:8px;background:#f0f9ff;border-radius:6px;font-size:11px;color:#0369a1;line-height:1.6;">
+          <strong>&#128270; Tip:</strong> After AI writes the document, switch to the <strong>Format Text</strong> tab to adjust fonts, sizes, and styles before downloading or printing.
+        </div>
+      </div>
+    </div><!-- /ttd-panel-write -->
+
+  </div><!-- /ttd-settings -->
 
     <!-- ══ EDITOR AREA ══ -->
     <div class="ttd-editor-area">
