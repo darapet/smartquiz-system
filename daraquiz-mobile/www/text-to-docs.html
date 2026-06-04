@@ -9,6 +9,8 @@
   <link rel="stylesheet" href="css/aqs-sidebar.css">
   <link rel="manifest" href="manifest.json">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://unpkg.com/mammoth@1.6.0/mammoth.browser.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -145,6 +147,19 @@
       border:1px solid #fca5a5;color:#ef4444;border-radius:6px;cursor:pointer;}
     .ttd-hist-clear:hover{background:#fef2f2;}
   
+  
+    .ttd-upload-zone{border:2px dashed #cbd5e1;border-radius:8px;padding:12px;text-align:center;cursor:pointer;transition:all .2s;background:#fafafa;margin-bottom:6px;}
+    .ttd-upload-zone:hover,.ttd-upload-zone.drag{border-color:#0891b2;background:#e0f2fe;}
+    .ttd-upload-icon{font-size:22px;margin-bottom:4px;} .ttd-upload-label{font-size:12px;font-weight:600;color:#374151;} .ttd-upload-hint{font-size:10px;color:#9ca3af;margin-top:2px;}
+    .ttd-upload-status{font-size:11px;margin-top:5px;padding:5px 8px;border-radius:5px;background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;display:none;}
+    .ttd-upload-status.error{background:#fef2f2;color:#dc2626;border-color:#fecaca;}
+    .ttd-page-nav{display:flex;align-items:center;justify-content:center;gap:8px;padding:5px 10px;background:#fff;border-bottom:1px solid #e2e8f0;flex-shrink:0;}
+    .ttd-pnav-btn{background:none;border:1px solid #d1d5db;border-radius:5px;padding:3px 10px;font-size:12px;cursor:pointer;color:#374151;transition:all .15s;}
+    .ttd-pnav-btn:hover:not(:disabled){background:#e0f2fe;border-color:#7dd3fc;} .ttd-pnav-btn:disabled{opacity:.4;cursor:default;}
+    .ttd-pnav-info{font-size:12px;color:#374151;font-weight:500;min-width:90px;text-align:center;}
+    .ttd-pnav-add{font-size:11px;padding:3px 8px;border-radius:5px;background:#f1f5f9;border:1px solid #d1d5db;cursor:pointer;color:#374151;}
+    .ttd-pnav-add:hover{background:#dbeafe;}
+  
   </style>
   </head>
   <body class="aqs-full-page-body">
@@ -197,7 +212,24 @@
         <div class="ttd-count" id="ttd-count">0 / 10,000</div>
       </div>
 
-      <!-- AI settings -->
+      <!-- File Upload -->
+        <div class="ttd-sec">
+          <div class="ttd-sec-title">&#128193; Upload File</div>
+          <div class="ttd-upload-zone" id="ttd-upload-zone"
+               onclick="document.getElementById('ttd-file-input').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="this.classList.remove('drag');ttdHandleFileDrop(event)">
+            <input type="file" id="ttd-file-input" accept=".txt,.docx,.pdf,.html,.htm"
+                   style="display:none" onchange="ttdHandleFile(this.files[0]);this.value=''">
+            <div class="ttd-upload-icon">&#128196;</div>
+            <div class="ttd-upload-label">Click or drag &amp; drop</div>
+            <div class="ttd-upload-hint">TXT &nbsp;&#183;&nbsp; DOCX &nbsp;&#183;&nbsp; PDF &nbsp;&#183;&nbsp; HTML</div>
+          </div>
+          <div class="ttd-upload-status" id="ttd-upload-status"></div>
+        </div>
+
+        <!-- AI settings -->
       <div class="ttd-sec">
         <div class="ttd-sec-title">&#10024; AI Formatting</div>
         <label class="ttd-lbl">Writing Tone</label>
