@@ -1,8 +1,8 @@
 {
-  "version": "1.125",
-  "versionCode": 110,
+  "version": "1.126",
+  "versionCode": 111,
   "releaseDate": "2026-06-04",
-  "notes": "Fix: AI voice now plays sound reliably on Android. Root cause was autoplay policy blocking HTMLAudio after async responses — fixed by routing TTS through the pre-unlocked AudioContext.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.125/daraquiz-v1.125.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.125/daraquiz-v1.125.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.126/daraquiz-v1.126.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.126/daraquiz-v1.126.apk"
 }
