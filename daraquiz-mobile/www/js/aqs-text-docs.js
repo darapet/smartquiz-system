@@ -174,7 +174,7 @@
       var src = document.getElementById('ttd-source');
       if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
       if (isProcessing) return;
-      var text = src.value.trim();
+      var text = src.value.trim().slice(0,3800);
       var tone = val('ttd-tone', 'professional');
       var dtype= val('ttd-doctype', 'general document');
       var btn  = document.getElementById('ttd-ai-btn');
@@ -259,32 +259,21 @@
 
     /* ── AI API call (Groq → Pollinations fallback) ─────────────── */
     function callAI(prompt) {
-      var groqKey = '';
-      try { groqKey = localStorage.getItem('aqs_groq_key') || ''; } catch(e){}
-      if (groqKey) {
-        return fetch('https://api.groq.com/openai/v1/chat/completions', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + groqKey },
-          body: JSON.stringify({
-            model: 'llama-3.1-8b-instant',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 4096,
-            temperature: 0.3
-          })
-        })
-        .then(function (r) {
-          if (!r.ok) throw new Error('Groq HTTP ' + r.status);
-          return r.json();
-        })
-        .then(function (d) {
-          return d.choices[0].message.content.trim();
-        })
-        .catch(function () { return pollinationsAI(prompt); });
+        var groqKey = '';
+        try { groqKey = localStorage.getItem('aqs_groq_key') || ''; } catch(e){}
+        function groqReq(model) {
+          return fetch('https://api.groq.com/openai/v1/chat/completions', {method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+groqKey},body:JSON.stringify({model:model,messages:[{role:'user',content:prompt}],max_tokens:2000,temperature:0.3})})
+          .then(function(r){if(r.status===429)throw new Error('RATE_LIMIT');if(!r.ok)throw new Error('Groq '+r.status);return r.json();})
+          .then(function(d){return d.choices[0].message.content.trim();});
+        }
+        if (groqKey) {
+          return groqReq('llama-3.1-8b-instant')
+            .catch(function(e){if(e.message==='RATE_LIMIT')return groqReq('llama3-8b-8192');throw e;})
+            .catch(function(){return pollinationsAI(prompt);});
+        }
+        return pollinationsAI(prompt);
       }
-      return pollinationsAI(prompt);
-    }
-
-    function pollinationsAI(prompt) {
+      function pollinationsAI(prompt) {
         return fetch('https://text.pollinations.ai/openai', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
