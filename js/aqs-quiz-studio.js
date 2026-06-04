@@ -370,7 +370,13 @@
     function startNewChat() {
         messages      = [];
         currentChatId = null;
-        document.getElementById('dts-messages').innerHTML = '';
+        var _msgs   = document.getElementById('dts-messages');
+        var _typing = document.getElementById('dts-typing');
+        /* Rescue typing indicator before wiping innerHTML — otherwise it gets destroyed */
+        if (_typing && _msgs && _typing.parentNode === _msgs && _msgs.parentNode) {
+            _msgs.parentNode.insertBefore(_typing, _msgs.nextSibling);
+        }
+        if (_msgs) _msgs.innerHTML = '';
         var welcome = document.getElementById('dts-welcome');
         if (welcome) welcome.style.display = 'flex';
         /* Deselect history items */
@@ -1641,9 +1647,8 @@
         var msgs = document.getElementById('dts-messages');
         if (!el) return;
         if (show) {
-            /* Move indicator INSIDE the scrollable messages container
-               so it appears directly below the last sent message */
-            if (msgs && el.parentNode !== msgs) msgs.appendChild(el);
+            /* Always re-append to end so it stays below the LATEST message */
+            if (msgs) msgs.appendChild(el);
             el.style.display = 'flex';
             scrollToBottom();
         } else {
