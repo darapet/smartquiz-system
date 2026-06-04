@@ -36,8 +36,25 @@ var VS = {
     aiName:null, voiceIndex:-1, _setupDone:false, _inSetup:false, _setupStep:0,
     responseCount:0, waitingCheckpnt:false, lastExplanation:'',
     sentenceQueue:[], speakingQueue:false, _queueRunning:false,
-    _interimSnapshot:'', _pausedQueue:[],
+    _interimSnapshot:'', _pausedQueue:[], _currentAudio:null,
 };
+
+/* ── MOBILE DETECTION ────────────────────────────────────────── */
+/* True when running inside Capacitor (Android/iOS app) or any mobile WebView */
+var _IS_MOBILE_APP = !!(
+    (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) ||
+    /Android|iPhone|iPad/i.test(navigator.userAgent || '')
+);
+
+/* Pollinations neural voices — used for TTS on mobile (more reliable than speechSynthesis) */
+var POLL_VOICES = [
+    {id:'alloy',   name:'Alloy',   desc:'Balanced & clear'},
+    {id:'echo',    name:'Echo',    desc:'Friendly & warm'},
+    {id:'fable',   name:'Fable',   desc:'Storytelling tone'},
+    {id:'onyx',    name:'Onyx',    desc:'Deep & authoritative'},
+    {id:'nova',    name:'Nova',    desc:'Bright & engaging'},
+    {id:'shimmer', name:'Shimmer', desc:'Warm & expressive'},
+];
 
 /* ── INIT ───────────────────────────────────────────────────── */
 /* ROOT-CAUSE FIX: scripts at end of <body> run AFTER the DOM is built.
@@ -923,7 +940,10 @@ function summonLoadSettings() {
     VS.aiName     = localStorage.getItem(SUMMON_KEY_NAME)  || null;
     VS.voiceIndex = parseInt(localStorage.getItem(SUMMON_KEY_VOICE) || '-1', 10);
     VS.voice      = null;
-    VS._setupDone = !!(VS.aiName && VS.voiceIndex >= 0);
+    /* Mobile: voice picker skipped — only aiName is required */
+    VS._setupDone = _IS_MOBILE_APP
+        ? !!(VS.aiName)
+        : !!(VS.aiName && VS.voiceIndex >= 0);
 }
 
 function summonSaveSettings() {
@@ -932,11 +952,19 @@ function summonSaveSettings() {
 }
 
 function summonGetEnglishVoices() {
+    /* On mobile, return Pollinations neural voices (always available, no speechSynthesis needed) */
+    if (_IS_MOBILE_APP) return POLL_VOICES;
     var voices = VS.synth ? VS.synth.getVoices() : [];
     return voices.filter(function (v) { return v.lang && v.lang.startsWith('en'); }).slice(0, 10);
 }
 
 function summonPickVoice() {
+    if (_IS_MOBILE_APP) {
+        /* Pick from Pollinations voices — default index 0 (Alloy) */
+        var idx = (VS.voiceIndex >= 0 && VS.voiceIndex < POLL_VOICES.length) ? VS.voiceIndex : 0;
+        VS.voice = POLL_VOICES[idx];
+        return;
+    }
     var voices = summonGetEnglishVoices();
     if (VS.voiceIndex >= 0 && voices[VS.voiceIndex]) { VS.voice = voices[VS.voiceIndex]; return; }
     var all = VS.synth ? VS.synth.getVoices() : [];
@@ -950,16 +978,30 @@ function summonPickVoice() {
 }
 
 function initSummonVoices() {
+    summonLoadSettings();
+    summonPickVoice();
+    if (_IS_MOBILE_APP) return; /* Mobile uses Pollinations — no speechSynthesis voices needed */
     if (!VS.synth) return;
     VS.synth.getVoices();
     if (VS.synth.onvoiceschanged !== undefined) VS.synth.onvoiceschanged = function () { summonPickVoice(); };
-    summonLoadSettings();
-    summonPickVoice();
 }
 
 /* ── FIRST-RUN SETUP (voice picker + name) ──────────────────── */
 function summonStartSetup() {
-    VS._inSetup = true; VS._setupStep = 1; VS._setupDone = false;
+    VS._inSetup = true; VS._setupDone = false;
+    if (_IS_MOBILE_APP) {
+        /* Mobile: skip voice picker (use Pollinations), just ask for a name.
+           Microphone is disabled on Android WebView — user must type. */
+        VS._setupStep = 2;
+        VS.voiceIndex = 0; /* default voice: Alloy */
+        summonPickVoice();
+        var mobileIntro = 'Hello! I am your personal AI tutor powered by XZILY AI. ' +
+                          'What would you like to name me? Type your answer below and press Send.';
+        summonSetAiText(mobileIntro);
+        summonSpeak(mobileIntro, function () { summonSetState('listening'); });
+        return;
+    }
+    VS._setupStep = 1;
     var voices = summonGetEnglishVoices();
     if (!voices.length) { setTimeout(summonStartSetup, 800); return; }
     var list  = voices.map(function (v, i) { return (i+1) + ', ' + v.name; }).join('. ');
@@ -980,21 +1022,35 @@ function summonHandleSetup(q) {
             return summonSpeak(retry, function () { summonSetState('listening'); summonStartListening(); });
         }
         VS.voiceIndex = num - 1; VS.voice = voices[VS.voiceIndex]; VS._setupStep = 2;
-        var nameQ = 'Great choice! Now, what would you like to name me? You can call me anything you like.';
+        var nameQ = _IS_MOBILE_APP
+            ? 'Great choice! Now, what would you like to name me? Type your answer below.'
+            : 'Great choice! Now, what would you like to name me? You can call me anything you like.';
         summonSetAiText(nameQ);
+        if (_IS_MOBILE_APP) {
+            return summonSpeak(nameQ, function () { summonSetState('listening'); });
+        }
         return summonSpeak(nameQ, function () { summonSetState('listening'); summonStartListening(); });
     }
     if (VS._setupStep === 2) {
         var name = q.trim().replace(/[^a-zA-Z0-9\s\-_']/g,'').trim();
         if (!name) {
-            var retryName = 'I did not catch a name. Please say what you would like to call me.';
+            var retryName = _IS_MOBILE_APP
+                ? 'Please type a name for me in the box below and press Send.'
+                : 'I did not catch a name. Please say what you would like to call me.';
             summonSetAiText(retryName);
+            if (_IS_MOBILE_APP) {
+                return summonSpeak(retryName, function () { summonSetState('listening'); });
+            }
             return summonSpeak(retryName, function () { summonSetState('listening'); summonStartListening(); });
         }
         VS.aiName = name.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
         summonSaveSettings(); VS._inSetup = false; VS._setupDone = true;
-        var done = 'Perfect. From now on my name is ' + VS.aiName + '. I am ready to help you learn. What would you like to explore today?';
+        var done = 'Perfect. From now on my name is ' + VS.aiName + '. I am ready to help you learn. ' +
+                   (_IS_MOBILE_APP ? 'Type your question below!' : 'What would you like to explore today?');
         summonSetAiText(done);
+        if (_IS_MOBILE_APP) {
+            return summonSpeak(done, function () { summonSetState('listening'); });
+        }
         return summonSpeak(done, function () { summonSetState('listening'); summonStartListening(); });
     }
 }
@@ -1327,18 +1383,64 @@ function summonFlushQueue(onAllDone) {
 function summonStopQueue() {
     VS.speakingQueue = false; VS._queueRunning = false;
     VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
+    /* Stop any Pollinations audio element currently playing */
+    if (VS._currentAudio) {
+        try { VS._currentAudio.pause(); VS._currentAudio.src = ''; } catch(e) {}
+        VS._currentAudio = null;
+    }
     if (VS.synth) { try { VS.synth.cancel(); } catch(e) {} }
 }
 
-function summonSpeakOne(text, onDone) {
+/* ── POLLINATIONS TTS (mobile primary) ──────────────────────── */
+function _summonPollTTS(text, onDone) {
+    summonPickVoice();
+    var voiceId = (VS.voice && VS.voice.id) ? VS.voice.id : 'alloy';
+    /* Pollinations works best with shorter chunks — cap at 200 chars */
+    var chunk = text.slice(0, 200);
+    var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+              '?model=openai-audio&voice=' + voiceId + '&seed=42';
+    var audio = new Audio(url);
+    audio.setAttribute('playsinline', '');
+    audio.setAttribute('webkit-playsinline', '');
+    VS._currentAudio = audio;
+    VS.speaking = true;
+    audio.onended = function () {
+        VS._currentAudio = null; VS.speaking = false; if (onDone) onDone();
+    };
+    audio.onerror = function () {
+        VS._currentAudio = null; VS.speaking = false;
+        /* Fallback to speechSynthesis if Pollinations fails */
+        _summonSpeakSynth(text, onDone);
+    };
+    var p = audio.play();
+    if (p && typeof p.catch === 'function') {
+        p.catch(function () {
+            VS._currentAudio = null; VS.speaking = false;
+            _summonSpeakSynth(text, onDone);
+        });
+    }
+}
+
+function _summonSpeakSynth(text, onDone) {
     if (!VS.synth || !text) { if (onDone) onDone(); return; }
-    summonPickVoice(); VS.speaking = true;
+    VS.speaking = true;
     var u = new SpeechSynthesisUtterance(text);
     u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
-    if (VS.voice) u.voice = VS.voice;
+    /* Only assign a synth voice object (not a Pollinations plain object) */
+    if (VS.voice && VS.voice.lang) u.voice = VS.voice;
     u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
     u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
     VS.synth.speak(u);
+}
+
+function summonSpeakOne(text, onDone) {
+    if (!text) { if (onDone) onDone(); return; }
+    summonPickVoice();
+    if (_IS_MOBILE_APP) {
+        _summonPollTTS(text, onDone);
+    } else {
+        _summonSpeakSynth(text, onDone);
+    }
 }
 
 function summonSpeakStream(text, isCheckpoint) {
@@ -1357,14 +1459,18 @@ function summonSpeakStream(text, isCheckpoint) {
 }
 
 function summonSpeak(text, onDone) {
-    if (!VS.synth) { if (onDone) onDone(); return; }
-    try { VS.synth.cancel(); } catch(e) {}
-    summonPickVoice(); summonSetState('speaking'); VS.speaking = true;
-    var u = new SpeechSynthesisUtterance(text);
-    u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
-    if (VS.voice) u.voice = VS.voice;
-    u.onend = u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
-    VS.synth.speak(u);
+    /* Stop any previous audio before starting new speech */
+    if (VS._currentAudio) {
+        try { VS._currentAudio.pause(); VS._currentAudio.src = ''; } catch(e) {}
+        VS._currentAudio = null;
+    }
+    try { if (VS.synth) VS.synth.cancel(); } catch(e) {}
+    summonPickVoice(); summonSetState('speaking');
+    if (_IS_MOBILE_APP) {
+        _summonPollTTS(text, onDone);
+    } else {
+        _summonSpeakSynth(text, onDone);
+    }
 }
 
 /* ── INJECT STYLES ───────────────────────────────────────────── */
@@ -1489,7 +1595,7 @@ function injectSummonUI() {
         '<div id="std-summon-transcript"></div>',
         /* Type input row */
         '<div id="std-summon-input-row">',
-          '<input id="std-summon-text" type="text" placeholder="Or type here…" autocomplete="off">',
+          '<input id="std-summon-text" type="text" placeholder="' + (_IS_MOBILE_APP ? 'Type your question…' : 'Or type here…') + '" autocomplete="off">',
           '<button id="std-summon-send">&#x27A4;</button>',
         '</div>',
     ].join('');
@@ -1508,7 +1614,9 @@ function summonSetState(state) {
     var txt     = document.getElementById('std-summon-state-txt');
     if (!overlay) return;
     overlay.setAttribute('data-state', state);
-    var labels = {idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
+    var labels = _IS_MOBILE_APP
+        ? {idle:'XZILY AI', listening:'Type your question ↓', thinking:'Thinking…', speaking:'Speaking…'}
+        : {idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
     if (txt) txt.textContent = labels[state] || 'XZILY AI';
 }
 
@@ -1532,7 +1640,8 @@ function summonShow() {
         : 'Hello! I am ' + name + '. How can I help you study today?';
     summonSetAiText(greeting);
     summonSpeak(greeting, function () {
-        summonSetAiText(''); summonSetState('listening'); summonStartListening();
+        summonSetAiText(''); summonSetState('listening');
+        if (!_IS_MOBILE_APP) summonStartListening();
     });
 }
 
