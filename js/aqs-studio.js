@@ -107,9 +107,24 @@
         var urlMatch = text.match(/https?:\/\/[^\s"'<>]+/i);
         if (urlMatch) return { type: 'url', url: urlMatch[0] };
 
-        /* Domain without protocol */
-        var domainMatch = text.match(/\b(www\.[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
-        if (domainMatch) return { type: 'url', url: 'https://' + domainMatch[1] };
+        /* Domain with www (no protocol) */
+        var wwwMatch = text.match(/\b(www\.[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/i);
+        if (wwwMatch) return { type: 'url', url: 'https://' + wwwMatch[1] };
+
+        /* Bare domain without www or https — e.g. google.com, bbc.co.uk, example.ng */
+        var bareDomain = text.match(
+            /\b([a-z0-9][a-z0-9-]*\.(?:com|org|net|io|co\.uk|com\.ng|co\.ng|ng|gov|edu|info|biz|tv|fm|media|app|dev|ai|tech|news|africa|online|xyz|co|uk|ca|au|de|fr|gh|ke|za|rw|ug|tz|eg|ma|sn|ci|cm)(?:\/[^\s<>"']*)?)\b/i
+        );
+        if (bareDomain) {
+            /* Always fetch page if user used a "visit" verb */
+            var hasVisitVerb = /\b(visit|go to|browse|open|check out|read|fetch|get from|access|load|pull from|show me what.s on|navigate to)\b/i.test(text);
+            if (hasVisitVerb) return { type: 'url', url: 'https://' + bareDomain[1] };
+            /* Also fetch if domain is basically the whole message (short query) */
+            var stripped = text.replace(bareDomain[0], '').replace(/[^a-z0-9 ]/gi, ' ').trim();
+            if (stripped.split(/\s+/).filter(Boolean).length <= 6) {
+                return { type: 'url', url: 'https://' + bareDomain[1] };
+            }
+        }
 
         /* Year mentions → likely needs current info */
         if (/\b(202[3-9]|2030)\b/.test(text)) return { type: 'search', query: text };
@@ -167,7 +182,7 @@
             );
             if (!res.ok) throw new Error('HTTP ' + res.status);
             var text = await res.text();
-            if (text && text.trim().length > 100) return text.trim().slice(0, 5000);
+            if (text && text.trim().length > 100) return text.trim().slice(0, 8000);
             return null;
         } catch (e) { return null; }
     }
@@ -190,7 +205,7 @@
                 .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
                 .replace(/\s{2,}/g, ' ')
                 .trim();
-            if (text.length > 200) return text.slice(0, 5000);
+            if (text.length > 200) return text.slice(0, 8000);
             return null;
         } catch (e) { return null; }
     }
@@ -210,7 +225,7 @@
                 .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
                 .replace(/\s{2,}/g, ' ')
                 .trim();
-            if (text.length > 200) return text.slice(0, 5000);
+            if (text.length > 200) return text.slice(0, 8000);
             return null;
         } catch (e) { return null; }
     }
@@ -283,7 +298,7 @@
             );
             if (!res.ok) throw new Error('HTTP ' + res.status);
             var text = await res.text();
-            if (text && text.trim().length > 80) return { source: 'Web', content: text.trim().slice(0, 4500) };
+            if (text && text.trim().length > 80) return { source: 'Web', content: text.trim().slice(0, 7000) };
             return null;
         } catch (e) { return null; }
     }
@@ -835,7 +850,12 @@
         if (webContext) {
             dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
                              '\n===== END OF WEB DATA =====\n' +
-                             '\nIMPORTANT: Use the above live web data to answer the user\'s question accurately. Cite the source in your response.';
+                             '\nCRITICAL INSTRUCTIONS FOR WEB DATA:\n' +
+                             '1. You HAVE successfully visited/searched the web and the content above is the REAL live data from that page or search.\n' +
+                             '2. Extract and present the most relevant information from the web data clearly and comprehensively.\n' +
+                             '3. Always tell the user which website or source the information came from.\n' +
+                             '4. If the page content seems unrelated or insufficient, say so and offer to search differently.\n' +
+                             '5. NEVER say you cannot browse the internet — you just did.';
         }
 
         var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
