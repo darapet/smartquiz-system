@@ -1,224 +1,327 @@
 <!DOCTYPE html>
   <html lang="en">
   <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>Text to Docs — XZILY AI</title>
-      <link rel="preconnect" href="https://fonts.googleapis.com">
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
-      <link rel="stylesheet" href="css/aqs-style.css">
-      <link rel="stylesheet" href="css/aqs-sidebar.css">
-      <link rel="stylesheet" href="css/aqs-splash.css">
-      <style>
-          .ttd-page{max-width:820px;margin:0 auto;padding:28px 20px 60px;}
-          .ttd-title{font-size:1.65rem;font-weight:800;color:#1e293b;margin:0 0 4px;}
-          .ttd-subtitle{font-size:.9rem;color:#64748b;margin:0 0 28px;}
-          .ttd-card{background:#fff;border:1.5px solid #e8e8f0;border-radius:16px;padding:22px 22px 18px;margin-bottom:20px;box-shadow:0 2px 12px rgba(99,102,241,.05);}
-          .ttd-label{font-size:.82rem;font-weight:600;color:#374151;margin:0 0 8px;display:flex;align-items:center;gap:6px;}
-          .ttd-textarea{width:100%;box-sizing:border-box;border:1.5px solid #d1d5db;border-radius:10px;padding:14px;font-size:.93rem;font-family:inherit;line-height:1.65;color:#1e293b;resize:vertical;min-height:200px;transition:border-color .2s;outline:none;}
-          .ttd-textarea:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-          .ttd-counter-row{display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
-          .ttd-counter-track{height:4px;background:#e5e7eb;border-radius:2px;flex:1;margin-right:12px;overflow:hidden;}
-          .ttd-counter-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:2px;transition:width .2s;}
-          .ttd-counter-num{font-size:.79rem;color:#6b7280;white-space:nowrap;}
-          .ttd-counter-num span{font-weight:700;color:#374151;}
-          .ttd-field-row{display:flex;gap:12px;margin-bottom:16px;flex-wrap:wrap;}
-          .ttd-field{flex:1;min-width:160px;}
-          .ttd-field label{display:block;font-size:.8rem;font-weight:600;color:#374151;margin-bottom:5px;}
-          .ttd-field input,.ttd-field select{width:100%;box-sizing:border-box;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:.88rem;font-family:inherit;color:#1e293b;outline:none;transition:border-color .2s;}
-          .ttd-field input:focus,.ttd-field select:focus{border-color:#6366f1;}
-          .ttd-btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;}
-          .ttd-btn{display:inline-flex;align-items:center;gap:7px;padding:11px 22px;border-radius:10px;font-size:.9rem;font-weight:600;font-family:inherit;cursor:pointer;border:none;transition:all .17s;}
-          .ttd-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 3px 14px rgba(99,102,241,.35);}
-          .ttd-btn-primary:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 5px 20px rgba(99,102,241,.45);}
-          .ttd-btn-primary:disabled{opacity:.6;cursor:not-allowed;}
-          .ttd-btn-ghost{background:#f1f5f9;color:#374151;border:1.5px solid #e2e8f0;}
-          .ttd-btn-ghost:hover{background:#e8edf5;}
-          .ttd-progress{display:none;align-items:center;gap:12px;background:#f5f3ff;border:1.5px solid #c4b5fd;border-radius:12px;padding:14px 18px;margin-top:14px;}
-          .ttd-spinner{width:20px;height:20px;border:2.5px solid #c4b5fd;border-top-color:#6366f1;border-radius:50%;animation:ttd-spin .7s linear infinite;flex-shrink:0;}
-          @keyframes ttd-spin{to{transform:rotate(360deg)}}
-          .ttd-progress-msg{font-size:.88rem;color:#4f46e5;font-weight:500;}
-          .ttd-output-card{display:none;}
-          .ttd-output-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
-          .ttd-output-header h3{margin:0;font-size:1rem;font-weight:700;color:#1e293b;}
-          .ttd-output-body{background:#f8fafc;border:1.5px solid #e2e8f0;border-radius:10px;padding:18px;font-size:.9rem;line-height:1.75;color:#1e293b;white-space:pre-wrap;max-height:420px;overflow-y:auto;}
-          .ttd-output-stats{display:flex;gap:16px;margin-top:10px;flex-wrap:wrap;}
-          .ttd-stat{background:#f1f5f9;border-radius:8px;padding:7px 13px;font-size:.79rem;color:#475569;}
-          .ttd-stat strong{color:#1e293b;}
-          .ttd-dl-section{display:none;}
-          .ttd-dl-title{font-size:.88rem;font-weight:700;color:#374151;margin:0 0 12px;display:flex;align-items:center;gap:6px;}
-          .ttd-dl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;}
-          .ttd-dl-btn{display:flex;flex-direction:column;align-items:center;gap:5px;padding:14px 10px;border:1.5px solid #e2e8f0;border-radius:12px;background:#fff;cursor:pointer;font-family:inherit;transition:all .17s;text-align:center;}
-          .ttd-dl-btn:hover{border-color:#6366f1;background:#f5f3ff;transform:translateY(-2px);box-shadow:0 4px 14px rgba(99,102,241,.15);}
-          .ttd-dl-btn .ttd-dl-icon{font-size:1.5rem;line-height:1;}
-          .ttd-dl-btn .ttd-dl-name{font-size:.78rem;font-weight:700;color:#374151;}
-          .ttd-dl-btn .ttd-dl-desc{font-size:.69rem;color:#9ca3af;}
-          .ttd-notice{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:11px 14px;font-size:.83rem;color:#1d4ed8;margin-bottom:18px;display:flex;gap:8px;align-items:flex-start;}
-          .ttd-notice-icon{flex-shrink:0;font-size:1rem;margin-top:1px;}
-          @media(max-width:600px){.ttd-dl-grid{grid-template-columns:repeat(3,1fr);}.ttd-field-row{flex-direction:column;}}
-      </style>
-  <!-- Firebase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-  <script type="module" src="js/aqs-firebase.js"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Text &#8594; Docs | XZily AI</title>
+  <meta name="theme-color" content="#0891b2">
+  <link rel="stylesheet" href="css/aqs-style.css">
+  <link rel="manifest" href="manifest.json">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+  /* ── Page shell ─────────────────────────────── */
+  .ttd-layout{display:flex;height:calc(100vh - 0px);overflow:hidden;background:#e8edf3;}
+  /* ── Settings panel ─────────────────────────── */
+  .ttd-settings{width:270px;min-width:230px;background:#fff;border-right:1px solid #e2e8f0;
+    display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden;}
+  .ttd-sec{padding:10px 12px;border-bottom:1px solid #f1f5f9;}
+  .ttd-sec-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+    color:#6b7280;margin:0 0 7px;}
+  .ttd-textarea{width:100%;min-height:140px;border:1px solid #e2e8f0;border-radius:6px;
+    padding:8px;font-size:12.5px;resize:vertical;font-family:inherit;box-sizing:border-box;
+    line-height:1.5;}
+  .ttd-count{font-size:10px;color:#9ca3af;text-align:right;margin-top:2px;}
+  .ttd-count.warn{color:#f59e0b;} .ttd-count.full{color:#ef4444;}
+  .ttd-lbl{display:block;font-size:11px;color:#6b7280;margin-bottom:3px;}
+  .ttd-sel{width:100%;border:1px solid #e2e8f0;border-radius:5px;padding:5px 7px;
+    font-size:12px;background:#fff;margin-bottom:7px;box-sizing:border-box;}
+  .ttd-row{display:flex;gap:6px;align-items:center;margin-bottom:5px;}
+  .ttd-num{width:54px;border:1px solid #e2e8f0;border-radius:5px;padding:4px 6px;font-size:12px;}
+  .ttd-btn-primary{width:100%;padding:9px;background:linear-gradient(135deg,#0891b2,#0e7490);
+    color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;gap:6px;transition:opacity .2s;}
+  .ttd-btn-primary:hover{opacity:.9;} .ttd-btn-primary:disabled{opacity:.55;cursor:not-allowed;}
+  .ttd-btn-secondary{width:100%;padding:8px;background:#f1f5f9;color:#374151;border:1px solid #d1d5db;
+    border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;margin-top:5px;transition:background .2s;}
+  .ttd-btn-secondary:hover{background:#e2e8f0;}
+  /* ── Editor area ─────────────────────────────── */
+  .ttd-editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;}
+  /* ── Toolbar ─────────────────────────────────── */
+  .ttd-toolbar{background:#fff;border-bottom:1px solid #e2e8f0;padding:5px 10px;
+    display:flex;flex-wrap:wrap;gap:3px;align-items:center;flex-shrink:0;}
+  .tb-btn{background:none;border:1px solid transparent;border-radius:4px;padding:3px 7px;
+    cursor:pointer;font-size:13px;color:#374151;display:inline-flex;align-items:center;
+    gap:3px;transition:background .12s;line-height:1.4;}
+  .tb-btn:hover{background:#f1f5f9;border-color:#d1d5db;}
+  .tb-btn.on{background:#dbeafe;border-color:#93c5fd;color:#1d4ed8;}
+  .tb-sep{width:1px;height:22px;background:#e2e8f0;margin:0 3px;flex-shrink:0;}
+  .tb-sel{border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11.5px;
+    background:#fff;color:#374151;cursor:pointer;max-width:120px;}
+  .tb-num{border:1px solid #d1d5db;border-radius:4px;padding:3px 5px;font-size:11.5px;
+    width:48px;background:#fff;}
+  .tb-col-wrap{display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;}
+  .tb-col-wrap input[type=color]{width:26px;height:24px;padding:1px 2px;border:1px solid #d1d5db;
+    border-radius:4px;cursor:pointer;}
+  /* ── Pages area ──────────────────────────────── */
+  .ttd-pages-area{flex:1;overflow-y:auto;overflow-x:auto;background:#d1d5db;
+    padding:20px;display:flex;flex-direction:column;align-items:center;gap:20px;}
+  /* ── Page ────────────────────────────────────── */
+  .ttd-page{background:#fff;box-shadow:0 3px 14px rgba(0,0,0,.18);border-radius:2px;
+    flex-shrink:0;}
+  .ttd-page.sz-a4    {width:794px;min-height:1123px;}
+  .ttd-page.sz-letter{width:816px;min-height:1056px;}
+  .ttd-page.sz-legal {width:816px;min-height:1344px;}
+  /* ── Editor inside page ──────────────────────── */
+  #ttd-editor{
+    min-height:800px;outline:none;
+    font-family:var(--ttd-bfont,'Georgia, serif');
+    font-size:var(--ttd-bsize,12pt);
+    line-height:var(--ttd-lh,1.6);
+    color:#1a1a1a;word-break:break-word;
+  }
+  #ttd-editor:empty:before{content:attr(data-placeholder);color:#9ca3af;font-style:italic;}
+  #ttd-editor h1{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h1,24pt);
+    font-weight:700;margin:.7em 0 .3em;line-height:1.2;}
+  #ttd-editor h2{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h2,18pt);
+    font-weight:600;margin:.6em 0 .25em;line-height:1.25;}
+  #ttd-editor h3{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h3,14pt);
+    font-weight:600;margin:.5em 0 .2em;line-height:1.3;}
+  #ttd-editor h4{font-family:var(--ttd-hfont,'Georgia, serif');font-size:var(--ttd-h4,12pt);
+    font-weight:600;margin:.5em 0 .2em;}
+  #ttd-editor p{margin:0 0 .55em;}
+  #ttd-editor ul,#ttd-editor ol{margin:.3em 0 .55em;padding-left:1.8em;}
+  #ttd-editor li{margin-bottom:.2em;}
+  #ttd-editor blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;
+    color:#475569;font-style:italic;background:#f0f9ff;}
+  #ttd-editor table{border-collapse:collapse;width:100%;margin:.5em 0;}
+  #ttd-editor td,#ttd-editor th{border:1px solid #d1d5db;padding:6px 10px;}
+  #ttd-editor th{background:#f8fafc;font-weight:600;}
+  /* ── Download bar ────────────────────────────── */
+  .ttd-dl-bar{background:#fff;border-top:1px solid #e2e8f0;padding:7px 10px;
+    display:flex;flex-wrap:wrap;gap:5px;align-items:center;flex-shrink:0;}
+  .ttd-dl-bar-label{font-size:11px;font-weight:700;color:#6b7280;margin-right:2px;}
+  .dl-btn{font-size:11.5px;padding:4px 9px;border-radius:5px;border:1px solid #d1d5db;
+    background:#f9fafb;cursor:pointer;display:inline-flex;align-items:center;gap:4px;
+    transition:all .15s;color:#374151;font-weight:500;}
+  .dl-btn:hover{background:#e0f2fe;border-color:#7dd3fc;color:#0369a1;}
+  .dl-btn:disabled{opacity:.5;cursor:wait;}
+  /* ── Stats ───────────────────────────────────── */
+  .ttd-stat-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px;}
+  .ttd-stat{background:#f0f9ff;border-radius:5px;padding:3px 7px;font-size:11px;color:#0369a1;font-weight:600;}
+  /* ── Print ───────────────────────────────────── */
+  @media print{
+    body>*{display:none!important;}
+    .ttd-print-root{display:block!important;position:fixed!important;inset:0;background:#fff;z-index:99999;overflow:visible;}
+    .ttd-page{box-shadow:none!important;border-radius:0!important;width:100%!important;min-height:0!important;}
+    #ttd-editor{min-height:0!important;}
+  }
+  .ttd-print-root{display:none;}
+  /* ── Responsive ──────────────────────────────── */
+  @media(max-width:900px){
+    .ttd-layout{flex-direction:column;height:auto;}
+    .ttd-settings{width:100%;min-width:0;max-height:55vh;}
+    .ttd-editor-area{min-height:60vh;}
+    .ttd-page.sz-a4,.ttd-page.sz-letter,.ttd-page.sz-legal{width:100%!important;min-height:auto;}
+  }
+  /* ── Spinner ──────────────────────────────────── */
+  @keyframes ttd-spin{to{transform:rotate(360deg);}}
+  .ttd-spin{display:inline-block;animation:ttd-spin .8s linear infinite;}
+  </style>
   </head>
   <body class="aqs-full-page-body">
 
   <!-- ══ SIDEBAR ══ -->
   <button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
   <div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
   <nav class="aqs-sidebar" id="aqs-sidebar">
-      <div class="aqs-sidebar-logo">
-          <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
-          <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
-      </div>
-      <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
-      <nav class="aqs-sidebar-nav">
-          <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
-          <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio</a>
-          <a href="image-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
-          <a href="docs-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
-          <a href="text-to-docs.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Text → Docs</a>
-          <a href="study.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study</a>
-          <a href="tts.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech</a>
-          <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
-          <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge</a>
-      </nav>
-      <div class="aqs-sidebar-footer"><div class="aqs-sidebar-user"><div class="aqs-sidebar-avatar">U</div><div class="aqs-sidebar-user-name" id="aqs-sidebar-username">User</div></div></div>
+    <div class="aqs-sidebar-logo">
+      <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+      <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
+    <nav class="aqs-sidebar-nav">
+      <a href="index.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home</a>
+      <a href="studio.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio</a>
+      <a href="image-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>Image Creator</a>
+      <a href="text-to-docs.html" class="aqs-sidebar-link active"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></span>Text &#8594; Docs</a>
+      <a href="docs-gen.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator</a>
+      <a href="study.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study</a>
+      <a href="tts.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech</a>
+      <a href="create-quiz.html" class="aqs-sidebar-link"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz</a>
+      <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;"><span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/></svg></span>Challenge</a>
+    </nav>
   </nav>
 
-  <div class="aqs-sidebar-body">
-  <main class="aqs-page-main">
+  <!-- ══ MAIN LAYOUT ══ -->
+  <div class="aqs-full-page-layout">
+  <div class="aqs-full-page-main">
+  <div class="ttd-layout">
 
-  <div class="ttd-page">
-      <h1 class="ttd-title">&#9997;&#65039; Text to Docs</h1>
-      <p class="ttd-subtitle">Paste your text, let AI correct and polish it, then download in 10 document formats.</p>
+    <!-- ══ LEFT SETTINGS PANEL ══ -->
+    <div class="ttd-settings">
 
-      <div class="ttd-notice">
-          <span class="ttd-notice-icon">&#128161;</span>
-          <div>AI will fix grammar, improve clarity, and format your text professionally. You can also skip AI and download the raw text directly.</div>
+      <!-- Source text -->
+      <div class="ttd-sec">
+        <div class="ttd-sec-title">&#128196; Paste Your Text</div>
+        <textarea id="ttd-source" class="ttd-textarea" placeholder="Paste or type your raw text here (max 10,000 chars)..." maxlength="10000" oninput="ttdCharCount()"></textarea>
+        <div class="ttd-count" id="ttd-count">0 / 10,000</div>
       </div>
 
-      <!-- Input Card -->
-      <div class="ttd-card">
-          <div class="ttd-label">&#128196; Document Title &amp; Settings</div>
-          <div class="ttd-field-row">
-              <div class="ttd-field">
-                  <label>Document Title</label>
-                  <input type="text" id="ttd-title" placeholder="e.g. Research Report" value="My Document" />
-              </div>
-              <div class="ttd-field" style="max-width:180px;">
-                  <label>AI Tone</label>
-                  <select id="ttd-tone">
-                      <option value="professional">Professional</option>
-                      <option value="academic">Academic</option>
-                      <option value="casual">Casual / Friendly</option>
-                      <option value="formal">Formal / Legal</option>
-                      <option value="technical">Technical</option>
-                  </select>
-              </div>
-          </div>
-
-          <div class="ttd-label" style="margin-top:8px;">&#128221; Paste Your Text <span style="font-weight:400;color:#9ca3af;font-size:.76rem;">(max 10,000 characters)</span></div>
-          <textarea id="ttd-input" class="ttd-textarea" maxlength="10000" rows="10" placeholder="Paste or type your text here...&#10;&#10;The AI will correct grammar, fix spelling, improve sentence flow, and organize it into a clean, professional document.&#10;&#10;Supports up to 10,000 characters (approximately 1,500–2,000 words)."></textarea>
-          <div class="ttd-counter-row">
-              <div class="ttd-counter-track"><div class="ttd-counter-fill" id="ttd-counter-fill" style="width:0%"></div></div>
-              <div class="ttd-counter-num"><span id="ttd-char-count">0</span>&nbsp;/ 10,000</div>
-          </div>
-
-          <div class="ttd-btn-row" style="margin-top:16px;">
-              <button class="ttd-btn ttd-btn-primary" id="ttd-ai-btn">&#10024; AI Correct &amp; Format</button>
-              <button class="ttd-btn ttd-btn-ghost" id="ttd-raw-btn">&#8618; Use Text As-Is</button>
-              <button class="ttd-btn ttd-btn-ghost" id="ttd-clear-btn">&#128465;&#65039; Clear</button>
-          </div>
-
-          <div class="ttd-progress" id="ttd-progress">
-              <div class="ttd-spinner"></div>
-              <span class="ttd-progress-msg" id="ttd-progress-msg">Connecting to AI...</span>
-          </div>
+      <!-- AI settings -->
+      <div class="ttd-sec">
+        <div class="ttd-sec-title">&#10024; AI Formatting</div>
+        <label class="ttd-lbl">Writing Tone</label>
+        <select id="ttd-tone" class="ttd-sel">
+          <option value="professional">Professional</option>
+          <option value="academic">Academic</option>
+          <option value="formal">Formal</option>
+          <option value="business">Business</option>
+          <option value="casual">Casual</option>
+          <option value="technical">Technical</option>
+        </select>
+        <label class="ttd-lbl">Document Type</label>
+        <select id="ttd-doctype" class="ttd-sel">
+          <option value="general document">General Document</option>
+          <option value="report">Report</option>
+          <option value="business letter">Business Letter</option>
+          <option value="essay">Essay / Article</option>
+          <option value="executive summary">Executive Summary</option>
+          <option value="proposal">Proposal</option>
+          <option value="memo">Memo</option>
+          <option value="research paper">Research Paper</option>
+        </select>
+        <button class="ttd-btn-primary" id="ttd-ai-btn" onclick="ttdFormatAI()">&#10024; Format with AI</button>
+        <button class="ttd-btn-secondary" onclick="ttdUseAsIs()">Use Text As-Is</button>
       </div>
 
-      <!-- Output Card -->
-      <div class="ttd-card ttd-output-card" id="ttd-output-section">
-          <div class="ttd-output-header">
-              <h3>&#9989; Corrected &amp; Formatted Text</h3>
-              <button class="ttd-btn ttd-btn-ghost" id="ttd-copy-btn" style="padding:7px 14px;font-size:.8rem;">&#128203; Copy</button>
-          </div>
-          <div class="ttd-output-body" id="ttd-output-body"></div>
-          <div class="ttd-output-stats" id="ttd-output-stats"></div>
+      <!-- Document style -->
+      <div class="ttd-sec">
+        <div class="ttd-sec-title">&#127912; Document Style</div>
+        <label class="ttd-lbl">Heading Font</label>
+        <select id="ttd-hfont" class="ttd-sel" onchange="ttdApplyStyle()">
+          <option value="Georgia, serif">Georgia (Classic)</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="Inter, sans-serif">Inter (Modern)</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+        </select>
+        <label class="ttd-lbl">Body Font</label>
+        <select id="ttd-bfont" class="ttd-sel" onchange="ttdApplyStyle()">
+          <option value="Georgia, serif">Georgia (Classic)</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="Inter, sans-serif">Inter (Modern)</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Courier New', monospace">Courier New</option>
+          <option value="Verdana, sans-serif">Verdana</option>
+        </select>
+        <label class="ttd-lbl">Heading / Body Sizes (pt)</label>
+        <div class="ttd-row"><span class="ttd-lbl" style="margin:0;min-width:30px;">H1</span><input type="number" id="ttd-h1" value="24" min="14" max="48" class="ttd-num" onchange="ttdApplyStyle()"><span class="ttd-lbl" style="margin:0 8px 0 2px;">H2</span><input type="number" id="ttd-h2" value="18" min="10" max="36" class="ttd-num" onchange="ttdApplyStyle()"></div>
+        <div class="ttd-row"><span class="ttd-lbl" style="margin:0;min-width:30px;">H3</span><input type="number" id="ttd-h3" value="14" min="8" max="28" class="ttd-num" onchange="ttdApplyStyle()"><span class="ttd-lbl" style="margin:0 8px 0 2px;">Body</span><input type="number" id="ttd-body" value="12" min="8" max="18" class="ttd-num" onchange="ttdApplyStyle()"></div>
+        <label class="ttd-lbl">Paper Size</label>
+        <select id="ttd-paper" class="ttd-sel" onchange="ttdSetPaper()">
+          <option value="a4">A4 (210&#215;297 mm)</option>
+          <option value="letter">Letter (8.5&#215;11 in)</option>
+          <option value="legal">Legal (8.5&#215;14 in)</option>
+        </select>
+        <label class="ttd-lbl">Margins (mm)</label>
+        <div class="ttd-row"><input type="number" id="ttd-margin" value="20" min="5" max="50" class="ttd-num" onchange="ttdApplyStyle()"><span class="ttd-lbl" style="margin:0 0 0 4px;">all sides</span></div>
+        <label class="ttd-lbl">Line Spacing</label>
+        <select id="ttd-lh" class="ttd-sel" onchange="ttdApplyStyle()">
+          <option value="1.3">Single (1.3)</option>
+          <option value="1.6" selected>Normal (1.6)</option>
+          <option value="2.0">Double (2.0)</option>
+        </select>
       </div>
 
-      <!-- Download Card -->
-      <div class="ttd-card ttd-dl-section" id="ttd-dl-section">
-          <div class="ttd-dl-title">&#11015;&#65039; Download As&hellip; <span style="font-weight:400;color:#9ca3af;font-size:.76rem;">10 formats available</span></div>
-          <div class="ttd-dl-grid">
-              <button class="ttd-dl-btn" data-format="pdf">
-                  <span class="ttd-dl-icon">&#128196;</span>
-                  <span class="ttd-dl-name">PDF</span>
-                  <span class="ttd-dl-desc">Portable Document</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="docx">
-                  <span class="ttd-dl-icon">&#128196;</span>
-                  <span class="ttd-dl-name">DOCX</span>
-                  <span class="ttd-dl-desc">Word Document</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="odt">
-                  <span class="ttd-dl-icon">&#128196;</span>
-                  <span class="ttd-dl-name">ODT</span>
-                  <span class="ttd-dl-desc">OpenDocument</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="txt">
-                  <span class="ttd-dl-icon">&#128203;</span>
-                  <span class="ttd-dl-name">TXT</span>
-                  <span class="ttd-dl-desc">Plain Text</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="html">
-                  <span class="ttd-dl-icon">&#127760;</span>
-                  <span class="ttd-dl-name">HTML</span>
-                  <span class="ttd-dl-desc">Web Page</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="md">
-                  <span class="ttd-dl-icon">&#128196;</span>
-                  <span class="ttd-dl-name">Markdown</span>
-                  <span class="ttd-dl-desc">.md file</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="rtf">
-                  <span class="ttd-dl-icon">&#128203;</span>
-                  <span class="ttd-dl-name">RTF</span>
-                  <span class="ttd-dl-desc">Rich Text Format</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="json">
-                  <span class="ttd-dl-icon">&#128230;</span>
-                  <span class="ttd-dl-name">JSON</span>
-                  <span class="ttd-dl-desc">Structured Data</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="csv">
-                  <span class="ttd-dl-icon">&#128202;</span>
-                  <span class="ttd-dl-name">CSV</span>
-                  <span class="ttd-dl-desc">Spreadsheet</span>
-              </button>
-              <button class="ttd-dl-btn" data-format="latex">
-                  <span class="ttd-dl-icon">&#128300;</span>
-                  <span class="ttd-dl-name">LaTeX</span>
-                  <span class="ttd-dl-desc">.tex source</span>
-              </button>
-          </div>
+      <!-- Stats -->
+      <div class="ttd-sec" id="ttd-stats-sec" style="display:none;">
+        <div class="ttd-sec-title">&#128202; Stats</div>
+        <div class="ttd-stat-row" id="ttd-stats"></div>
       </div>
 
-  </div>
-  </main>
-  </div>
+    </div><!-- /ttd-settings -->
 
-  <!-- Library CDNs -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://unpkg.com/docx@8.5.0/build/index.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-  <script src="js/aqs-splash.js"></script>
-  <script src="js/aqs-main.js"></script>
+    <!-- ══ EDITOR AREA ══ -->
+    <div class="ttd-editor-area">
+
+      <!-- Toolbar -->
+      <div class="ttd-toolbar">
+        <select class="tb-sel" id="tb-block" onchange="ttdBlock(this.value)" title="Paragraph style">
+          <option value="p">Normal</option>
+          <option value="h1">Heading 1</option>
+          <option value="h2">Heading 2</option>
+          <option value="h3">Heading 3</option>
+          <option value="h4">Heading 4</option>
+          <option value="blockquote">Quote</option>
+        </select>
+        <select class="tb-sel" id="tb-font" onchange="ttdFont(this.value)" title="Font family" style="max-width:130px;">
+          <option value="">— Font —</option>
+          <option value="Georgia, serif">Georgia</option>
+          <option value="'Times New Roman',serif">Times New Roman</option>
+          <option value="Inter,sans-serif">Inter</option>
+          <option value="Arial,sans-serif">Arial</option>
+          <option value="'Courier New',monospace">Courier New</option>
+          <option value="Verdana,sans-serif">Verdana</option>
+          <option value="'Trebuchet MS',sans-serif">Trebuchet MS</option>
+        </select>
+        <input type="number" class="tb-num" id="tb-size" value="12" min="6" max="96" title="Font size (pt)" onchange="ttdSize(this.value)">
+        <span class="tb-sep"></span>
+        <button class="tb-btn" id="tb-bold" onclick="ttdFmt('bold')" title="Bold"><b>B</b></button>
+        <button class="tb-btn" id="tb-italic" onclick="ttdFmt('italic')" title="Italic"><i>I</i></button>
+        <button class="tb-btn" id="tb-under" onclick="ttdFmt('underline')" title="Underline"><u>U</u></button>
+        <button class="tb-btn" id="tb-strike" onclick="ttdFmt('strikeThrough')" title="Strikethrough"><s>S</s></button>
+        <span class="tb-sep"></span>
+        <label class="tb-col-wrap" title="Text Color">A<input type="color" id="tb-fgcol" value="#000000" oninput="ttdColor('foreColor',this.value)"></label>
+        <label class="tb-col-wrap" title="Highlight">&#9998;<input type="color" id="tb-bgcol" value="#ffffff" oninput="ttdColor('backColor',this.value)"></label>
+        <span class="tb-sep"></span>
+        <button class="tb-btn" onclick="ttdFmt('justifyLeft')" title="Left">&#8676;</button>
+        <button class="tb-btn" onclick="ttdFmt('justifyCenter')" title="Center">&#9868;</button>
+        <button class="tb-btn" onclick="ttdFmt('justifyRight')" title="Right">&#8677;</button>
+        <button class="tb-btn" onclick="ttdFmt('justifyFull')" title="Justify">&#9636;</button>
+        <span class="tb-sep"></span>
+        <button class="tb-btn" onclick="ttdFmt('insertUnorderedList')" title="Bullet list">&#8226; List</button>
+        <button class="tb-btn" onclick="ttdFmt('insertOrderedList')" title="Numbered list">1. List</button>
+        <button class="tb-btn" onclick="ttdFmt('indent')" title="Indent">&#8677;&#8677;</button>
+        <button class="tb-btn" onclick="ttdFmt('outdent')" title="Outdent">&#8676;&#8676;</button>
+        <span class="tb-sep"></span>
+        <button class="tb-btn" onclick="ttdFmt('undo')" title="Undo">&#8617;</button>
+        <button class="tb-btn" onclick="ttdFmt('redo')" title="Redo">&#8618;</button>
+        <span class="tb-sep"></span>
+        <button class="tb-btn" onclick="ttdPrint()" title="Print" style="color:#0891b2;font-weight:700;">&#128424; Print</button>
+      </div><!-- /toolbar -->
+
+      <!-- Pages area -->
+      <div class="ttd-pages-area" id="ttd-pages">
+        <div class="ttd-page sz-a4" id="ttd-page">
+          <div id="ttd-editor" contenteditable="true"
+            data-placeholder="Your formatted document will appear here. Paste text and click Format with AI."
+            onkeydown="ttdKeydown(event)"
+            oninput="ttdEditorInput()"></div>
+        </div>
+      </div>
+
+      <!-- Download bar -->
+      <div class="ttd-dl-bar">
+        <span class="ttd-dl-bar-label">Download:</span>
+        <button class="dl-btn" onclick="ttdDL('pdf')">&#128196; PDF</button>
+        <button class="dl-btn" onclick="ttdDL('docx')">&#128221; DOCX</button>
+        <button class="dl-btn" onclick="ttdDL('odt')">&#128196; ODT</button>
+        <button class="dl-btn" onclick="ttdDL('txt')">&#128195; TXT</button>
+        <button class="dl-btn" onclick="ttdDL('html')">&#127760; HTML</button>
+        <button class="dl-btn" onclick="ttdDL('md')">&#128209; MD</button>
+        <button class="dl-btn" onclick="ttdDL('rtf')">&#128203; RTF</button>
+        <button class="dl-btn" onclick="ttdDL('json')">&#128230; JSON</button>
+        <button class="dl-btn" onclick="ttdDL('csv')">&#128202; CSV</button>
+        <button class="dl-btn" onclick="ttdDL('latex')">&#128300; LaTeX</button>
+      </div>
+
+    </div><!-- /ttd-editor-area -->
+
+  </div><!-- /ttd-layout -->
+  </div><!-- /aqs-full-page-main -->
+  </div><!-- /aqs-full-page-layout -->
+
+  <!-- Print root (hidden except during print) -->
+  <div class="ttd-print-root" id="ttd-print-root"></div>
+
   <script src="js/aqs-groq-key.js"></script>
   <script src="js/aqs-text-docs.js"></script>
-  <script src="js/aqs-notifs-bar.js"></script>
   <script src="js/aqs-session.js"></script>
   </body>
   </html>
