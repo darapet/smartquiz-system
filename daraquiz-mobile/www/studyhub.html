@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0a0b14">
 <title>📚 AI Study Hub — xzily AI</title>
-<!-- App Version: 2.4.0 -->
+<!-- App Version: 2.5.0 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- MathJax for math rendering -->
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
@@ -366,7 +366,7 @@ a{text-decoration:none;color:inherit;}
 <header class="sh-hdr">
   <div style="display:flex;align-items:baseline;gap:4px;">
     <div class="sh-logo">📚 AI Study Hub</div>
-    <span class="sh-logo-ver">v2.4.0</span>
+    <span class="sh-logo-ver">v2.5.0</span>
   </div>
   <a href="index.html" class="sh-back">🏠 Back to Home</a>
 </header>
@@ -949,7 +949,7 @@ a{text-decoration:none;color:inherit;}
 <script src="js/aqs-groq-key.js"></script>
 <script>
 /* ══════════════════════════════════════════════════
-   AI STUDY HUB v2.4.0 — Complete Engine
+   AI STUDY HUB v2.5.0 — Complete Engine
 ══════════════════════════════════════════════════ */
 
 /* ── TABS ── */
@@ -1461,6 +1461,7 @@ let _ait = {
   autoListen:false,      /* true = auto-start mic when speech ends */
   _listenTimeout:null,   /* timeout id for auto-listen watchdog */
   _pendingSurnameCall:false,
+  _speechEndTime:0,      /* timestamp (ms) when AI last finished speaking — echo guard */
 };
 
 /* ─ Setup screens ─ */
@@ -1780,13 +1781,15 @@ function aitSpeak(text, onEnd){
   const _onFinish = ()=>{
     _ait.speaking = false;
     _ait.currentUtterance = null;
+    _ait._speechEndTime = Date.now(); /* record when AI audio finished — used by echo guard */
     if(glowEl)  glowEl.classList.remove('speaking');
     if(micBtn){ micBtn.disabled = false; micBtn.textContent = '🎤 My Turn'; }
     if(onEnd) onEnd();
     /* ── Auto-listen: switch to "waiting for student" mode ── */
     if(_ait.autoListen && !_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer){
       _ait.autoListen = false;
-      setTimeout(aitAutoStartListening, 500);
+      /* 1200ms delay: gives AI audio echo time to fully die out before mic opens */
+      setTimeout(aitAutoStartListening, 1200);
     } else {
       if(statusEl) statusEl.textContent = 'Ready';
     }
@@ -1848,7 +1851,7 @@ The student's first name is ${_ait.studentName}${_ait.studentSurname?' and their
 You are conducting a ${_ait.durationMins}-minute interactive teaching session on: "${_ait.topic}".
 TEACHING RULES:
 - Teach like a real classroom teacher: engaging, clear, patient, and motivating.
-- Address the student by their first name naturally mid-sentence.
+- IMPORTANT: Use the student's first name ONLY in the welcome greeting — do NOT use their name again in any subsequent response during the session.
 - Keep each response 3-5 sentences — short enough to be spoken clearly.
 - When you ask a comprehension question, write it as the LAST sentence and say nothing more. Wait for the student to reply.
 ${isMath ? `MATH FORMAT: For math responses, first write the plain-English explanation (no symbols), then write [DISPLAY] on a new line, then re-write the same content using proper LaTeX ($$...$$ for displayed, $...$ for inline). The student sees the board while hearing your voice.` : ''}${docCtx}`;
@@ -2027,10 +2030,10 @@ async function aitAskCheckIn(){
   if(_ait.paused || _ait.inQAMode) return;
   _ait.awaitingAnswer = true;
 
-  const qPrompt = `Ask ${_ait.studentName} a quick check-in question about something you just taught on "${_ait.topic}". 
+  const qPrompt = `Ask a quick check-in question about something you just taught on "${_ait.topic}". 
 Make it conversational — like a real teacher checking understanding mid-lesson. 
 Keep it to ONE question. Say something like "Quick check — " or "Let me test you quickly — ".
-End with: [QUESTION: <the actual question text>] on a new line.`;
+Do NOT use the student's name. End with: [QUESTION: <the actual question text>] on a new line.`;
 
   const reply = await aitMistral([..._ait.conversationHistory, {role:'user',content:qPrompt}], 300);
   if(!reply){ _ait.awaitingAnswer=false; return; }
@@ -2074,14 +2077,14 @@ async function aitSubmitAnswer(){
   wrap.scrollTop = wrap.scrollHeight;
 
   /* AI feedback */
-  const feedbackPrompt = `The student (${_ait.studentName}) answered your question about "${_ait.topic}".
+  const feedbackPrompt = `The student answered your question about "${_ait.topic}".
 Question: "${_ait.currentQuestion}"
 Student's answer: "${answer}"
 
 Give feedback:
 - If correct/mostly correct: praise specifically, confirm what's right, then continue teaching.
 - If wrong: be kind, explain the correct answer clearly, re-explain the concept, then ask the question again differently.
-Keep it to 3-5 sentences. Be encouraging like a good teacher.`;
+Keep it to 3-5 sentences. Be encouraging like a good teacher. Do NOT use the student's name.`;
 
   const feedback = await aitMistral([..._ait.conversationHistory, {role:'user',content:feedbackPrompt}], 400);
   if(!feedback){ _ait.awaitingAnswer=false; return; }
@@ -2154,7 +2157,7 @@ async function aitSendQA(){
 
   const reply = await aitMistral([
     ..._ait.conversationHistory,
-    {role:'user', content:`Student question about "${_ait.topic}": ${q}. Answer concisely and helpfully in 2-4 sentences. Address the student as ${_ait.studentName}.`}
+    {role:'user', content:`Student question about "${_ait.topic}": ${q}. Answer concisely and helpfully in 2-4 sentences. Do NOT use the student's name.`}
   ], 400);
 
   if(!reply) return;
@@ -2235,6 +2238,14 @@ function aitStopMic(){
 async function aitHandleVoiceInput(transcript){
   aitStopMic();
   clearTimeout(_ait._listenTimeout);
+
+  /* ── Echo guard: discard transcript if it arrived too soon after AI finished speaking.
+     This prevents the AI's own voice (echoing from speakers) from being transcribed
+     and fed back to itself, causing duplication/garbage loops. ── */
+  if(Date.now() - _ait._speechEndTime < 900){
+    /* Too soon — likely captured AI audio echo, not student speech */
+    return;
+  }
 
   /* Hide continue button */
   const contRow = document.getElementById('ait-continue-row');
