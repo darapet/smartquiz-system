@@ -1,8 +1,8 @@
 {
-  "version": "1.179",
-  "versionCode": 154,
+  "version": "1.180",
+  "versionCode": 155,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.179/daraquiz-v1.179.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.179/daraquiz-v1.179.apk"
+  "notes": "AI Teacher overhaul: 10-voice onboarding demo, structured teaching (definition→types→examples→full), stop AI on mic/send, 10-min surname calling, math LaTeX panel, hidden API keys, professional voice selection UI.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.180/daraquiz-v1.180.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.180/daraquiz-v1.180.apk"
 }

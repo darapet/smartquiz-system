@@ -714,9 +714,11 @@ a{text-decoration:none;color:inherit;}
         <label class="sh-label">Name Your AI Teacher (optional)</label>
         <input class="sh-input" id="ait-teacher-name" placeholder="e.g. Prof. Ada, Mr. Emeka, Dr. Sarah… (leave blank for default)" style="margin-bottom:16px;">
 
-        <label class="sh-label">Choose AI Voice — 5 Female, 5 Male</label>
-        <div class="ait-voice-grid" id="ait-voice-grid">
-          <!-- Populated by JS -->
+        <label class="sh-label">Choose AI Voice</label>
+        <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.18);border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:.75rem;color:#94a3b8;margin-bottom:10px;line-height:1.6;">Click <strong style="color:#a5b4fc">▶ Preview</strong> on any voice to hear a sample, then select the one you prefer.</div>
+          <div id="ait-voice-list" style="display:flex;flex-direction:column;gap:6px;"><!-- Populated by JS --></div>
+          <button onclick="aitDemoAllVoices()" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit;">▶ Demo All Voices in Order</button>
         </div>
 
         <label class="sh-label">Speech Speed</label>
@@ -792,8 +794,8 @@ a{text-decoration:none;color:inherit;}
         </div>
       </div>
 
-      <!-- API Keys Section -->
-      <div class="ait-keys-section">
+      <!-- API Keys Section — hidden from students, managed by admin -->
+      <div class="ait-keys-section" id="ait-keys-section" style="display:none">
         <div class="ait-keys-title">🔑 Mistral API Keys (paste up to 10 — they cycle automatically)</div>
         <div id="ait-key-slots">
           <!-- 10 key slots rendered by JS -->
@@ -931,7 +933,6 @@ a{text-decoration:none;color:inherit;}
   </div>
 </div>
 
-<script src="js/aqs-capacitor-speech.js"></script>
 <script src="js/aqs-groq-key.js"></script>
 <script>
 /* ══════════════════════════════════════════════════
@@ -1419,6 +1420,7 @@ const MATH_SUBJECTS = ['mathematics','maths','math','further math','calculus','a
 
 let _ait = {
   studentName:'',
+  studentSurname:'',
   teacherName:'AI Teacher',
   voiceId:'f1',
   speechRate:1.0,
@@ -1442,22 +1444,69 @@ let _ait = {
   teachingStepIdx:0,
   questionSchedule:[],
   warnedFiveMin:false,
+  lastSurnameCallSecs:0, /* track when surname was last used (in elapsed seconds) */
 };
 
 /* ─ Setup screens ─ */
-function aitRenderVoiceGrid(){
-  const grid = document.getElementById('ait-voice-grid');
-  grid.innerHTML = AIT_VOICES.map(v=>`
-    <button class="ait-voice-btn${v.id==='f1'?' selected':''}" data-vid="${v.id}" onclick="aitSelectVoice('${v.id}',this)">
-      <div class="v-icon">${v.icon}</div>
-      <div class="v-name">${v.label}</div>
-    </button>`).join('');
+function aitRenderVoiceList(){
+  const list = document.getElementById('ait-voice-list');
+  if(!list) return;
+  list.innerHTML = AIT_VOICES.map((v,i)=>`
+    <div id="ait-vrow-${v.id}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1.5px solid ${v.id==='f1'?'rgba(99,102,241,.5)':'rgba(255,255,255,.08)'};background:${v.id==='f1'?'rgba(99,102,241,.1)':'rgba(255,255,255,.02)'};cursor:pointer;transition:all .18s;" onclick="aitSelectVoiceRow('${v.id}',this)">
+      <div style="width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">${v.icon}</div>
+      <div style="font-size:.82rem;font-weight:700;color:var(--text);flex:1;">${i+1}. ${v.label} <span style="font-size:.7rem;color:var(--muted);font-weight:500;">(${v.gender})</span></div>
+      <button onclick="event.stopPropagation();aitPreviewVoice('${v.id}')" style="padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">▶ Preview</button>
+    </div>`).join('');
 }
 
-function aitSelectVoice(id, el){
-  document.querySelectorAll('.ait-voice-btn').forEach(b=>b.classList.remove('selected'));
-  el.classList.add('selected');
+function aitSelectVoiceRow(id, rowEl){
+  document.querySelectorAll('#ait-voice-list > div').forEach(r=>{
+    r.style.borderColor='rgba(255,255,255,.08)';
+    r.style.background='rgba(255,255,255,.02)';
+  });
+  rowEl.style.borderColor='rgba(99,102,241,.5)';
+  rowEl.style.background='rgba(99,102,241,.1)';
   _ait.voiceId = id;
+}
+
+/* Legacy alias used by old onclick handlers that may still exist */
+function aitSelectVoice(id, el){ aitSelectVoiceRow(id, el.closest('[id^="ait-vrow"]')||el); }
+
+function aitPreviewVoice(id){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const voiceDef = AIT_VOICES.find(v=>v.id===id);
+  const voices = window.speechSynthesis.getVoices();
+  const gFilter = voiceDef&&voiceDef.gender==='female'
+    ? ['female','woman','girl','zira','samantha','victoria','karen','moira','veena','fiona']
+    : ['male','man','guy','david','mark','daniel','alex','rishi','kyle'];
+  let picked = voices.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
+  if(!picked) picked = voices[0]||null;
+  const num = AIT_VOICES.findIndex(v=>v.id===id)+1;
+  const utt = new SpeechSynthesisUtterance(`Voice ${num}, ${voiceDef?voiceDef.label:id}. Hello, how are you doing?`);
+  utt.rate = _ait.speechRate; if(picked) utt.voice = picked;
+  window.speechSynthesis.speak(utt);
+}
+
+let _aitDemoIdx = 0, _aitDemoRunning = false;
+function aitDemoAllVoices(){
+  if(_aitDemoRunning){ window.speechSynthesis&&window.speechSynthesis.cancel(); _aitDemoRunning=false; return; }
+  _aitDemoRunning = true; _aitDemoIdx = 0;
+  _aitPlayNextDemo();
+}
+function _aitPlayNextDemo(){
+  if(!_aitDemoRunning || _aitDemoIdx >= AIT_VOICES.length){ _aitDemoRunning=false; return; }
+  const v = AIT_VOICES[_aitDemoIdx];
+  const rowEl = document.getElementById('ait-vrow-'+v.id);
+  /* Highlight current row */
+  document.querySelectorAll('#ait-voice-list > div').forEach(r=>{
+    r.style.borderColor='rgba(255,255,255,.08)'; r.style.background='rgba(255,255,255,.02)';
+  });
+  if(rowEl){ rowEl.style.borderColor='rgba(245,158,11,.5)'; rowEl.style.background='rgba(245,158,11,.06)'; }
+  aitPreviewVoice(v.id);
+  const utt = window.speechSynthesis&&window.speechSynthesis.utterances;
+  /* Advance after ~3 seconds per voice */
+  setTimeout(()=>{ _aitDemoIdx++; _aitPlayNextDemo(); }, 3200);
 }
 
 function aitSetSpeed(rate, el){
@@ -1483,10 +1532,13 @@ function aitRenderKeySlots(){
 function aitGoToSession(){
   const name = document.getElementById('ait-student-name').value.trim();
   if(!name){ shToast('⚠️ Please enter your name first'); document.getElementById('ait-student-name').focus(); return; }
-  _ait.studentName = name;
+  /* Extract first name and surname */
+  const parts = name.split(/\s+/).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase());
+  _ait.studentName = parts[0];
+  _ait.studentSurname = parts.length>1 ? parts[parts.length-1] : '';
   const tname = document.getElementById('ait-teacher-name').value.trim();
   _ait.teacherName = tname || AIT_VOICES.find(v=>v.id===_ait.voiceId)?.label || 'AI Teacher';
-  document.getElementById('ait-greet-name').textContent = name;
+  document.getElementById('ait-greet-name').textContent = _ait.studentName;
   document.getElementById('ait-screen-name').classList.remove('active');
   document.getElementById('ait-screen-setup').classList.add('active');
   aitRenderKeySlots();
@@ -1628,6 +1680,16 @@ function aitTick(){
       aitAskCheckIn();
     }
   }
+
+  /* Surname calling every 10 minutes of elapsed time */
+  if(_ait.studentSurname && !_ait.awaitingAnswer && !_ait.inQAMode){
+    const elapsed = _ait.totalSecs - _ait.remainingSecs;
+    if(elapsed - _ait.lastSurnameCallSecs >= 600){
+      _ait.lastSurnameCallSecs = elapsed;
+      /* Inject a surname mention into the next segment */
+      _ait._pendingSurnameCall = true;
+    }
+  }
 }
 
 function aitFmtTime(sec){
@@ -1722,26 +1784,25 @@ function aitIsMathSubject(sub){
 /* ─ Teaching ─ */
 async function aitBeginTeaching(){
   const isMath = aitIsMathSubject(_ait.subject);
-  const docCtx = _ait.docText ? `\n\nUse the following study document as context:\n"""${_ait.docText.slice(0,4000)}"""` : '';
+  const docCtx = _ait.docText ? `\n\nStudy document context:\n"""${_ait.docText.slice(0,4000)}"""` : '';
 
-  const sysPrompt = `You are ${_ait.teacherName}, a brilliant, warm, and engaging ${_ait.subject} teacher. 
-The student's name is ${_ait.studentName}. You are conducting a ${_ait.durationMins}-minute interactive teaching session on: "${_ait.topic}".
-${isMath ? 'This is a math/science topic — always show formulas clearly, work through calculations step-by-step, write equations explicitly.' : ''}
-Rules:
-- Address the student by name (${_ait.studentName}) naturally during teaching.
-- Teach progressively — build from foundation to advanced concepts.
-- Be conversational and enthusiastic like a real teacher.
-- Keep each teaching segment 2-4 sentences for voice readability.
-- For calculations/formulas: write them out clearly (e.g. F = ma, E = mc²).
-- Occasionally say things like "Are you following? Great!" or "Think about this…"
-${docCtx}`;
+  const sysPrompt = `You are ${_ait.teacherName}, a brilliant, warm, and engaging ${_ait.subject} teacher at Darapet Learning System.
+The student's first name is ${_ait.studentName}${_ait.studentSurname?' and their surname is '+_ait.studentSurname:''}.
+You are conducting a ${_ait.durationMins}-minute interactive teaching session on: "${_ait.topic}".
+${isMath ? 'This is a math/science topic — always write formulas explicitly (e.g. F = ma, E = mc²), work through calculations step by step.' : ''}
+TEACHING RULES:
+- Teach like a real classroom teacher: engaging, clear, patient, and motivating.
+- Address the student by their first name naturally mid-sentence.
+- For the very FIRST teaching segment: (1) open with a "Did you know that…" fact, (2) give the clear definition, (3) explain the main types or categories, (4) give 2-3 real-world examples, (5) deliver a full easy-to-understand explanation, (6) end with ONE comprehension question and STOP — wait for the student to answer before continuing.
+- For subsequent segments: build progressively from foundation to advanced.
+- Keep segments 3-5 sentences — short enough for voice.
+- After each comprehension question, ALWAYS pause and wait for the student's response before continuing.${docCtx}`;
 
   _ait.conversationHistory = [{role:'system', content:sysPrompt}];
+  _ait.lastSurnameCallSecs = 0;
 
-  /* Welcome message */
-  const welcomePrompt = `Give a warm, personalised welcome greeting to ${_ait.studentName}. 
-Introduce yourself as ${_ait.teacherName}. Say you'll be teaching "${_ait.topic}" in ${_ait.subject} for ${_ait.durationMins} minutes.
-Ask if they're ready to begin. Keep it to 3-4 sentences. Be enthusiastic!`;
+  /* Warm welcome before first lesson */
+  const welcomePrompt = `Give a very warm, personalised welcome to ${_ait.studentName}. Introduce yourself as ${_ait.teacherName}. Say you will be teaching "${_ait.topic}" in ${_ait.subject} today for ${_ait.durationMins} minutes. Tell them you will start from the very basics and build up. Be enthusiastic and encouraging. Keep it to 3 sentences.`;
 
   await aitSendToAI(welcomePrompt, true);
   
@@ -1755,15 +1816,21 @@ async function aitNextTeachingSegment(){
   _ait.teachingStepIdx++;
   const isMath = aitIsMathSubject(_ait.subject);
 
+  /* Consume pending surname-call flag */
+  const surnameNote = (_ait._pendingSurnameCall && _ait.studentSurname)
+    ? ` Address the student by their surname "${_ait.studentSurname}" at a natural point in this segment — e.g. "${_ait.studentSurname}, did you know…" or "Now ${_ait.studentSurname}, let us look at…"`
+    : '';
+  _ait._pendingSurnameCall = false;
+
   const teachPrompts = [
-    `Start teaching "${_ait.topic}". Begin with the fundamental definition and core concept. ${isMath?'State any key formulas clearly.':'Give a real-world example.'}`,
-    `Continue teaching "${_ait.topic}". Go deeper — explain the key mechanisms or how it works in detail. ${isMath?'Walk through a worked example step by step.':'Use an analogy to make it memorable.'}`,
-    `Continue teaching "${_ait.topic}". Cover important applications or sub-topics. ${isMath?'Introduce another type of problem.':'Connect to related concepts the student should know.'}`,
-    `Continue teaching "${_ait.topic}". Cover any advanced aspects, edge cases, or common misconceptions. ${isMath?'Tackle a more complex calculation.':'Discuss common exam mistakes.'}`,
-    `Give a concise summary of "${_ait.topic}" so far. Highlight the 3 most important points. ${isMath?'Write out the key formulas again.':'Connect everything together.'}`,
-    `Continue with deeper exploration of "${_ait.topic}". Add more examples or problem-solving strategies.`,
-    `Discuss practical applications and exam tips for "${_ait.topic}".`,
-    `Review and consolidate knowledge on "${_ait.topic}". Cover anything not yet discussed.`,
+    `Start teaching "${_ait.topic}". Follow the structured opening: (1) open with a "Did you know that…" fact, (2) give the clear definition, (3) explain the main types or categories, (4) give 2-3 real-world examples, (5) deliver a full easy-to-understand explanation. End with ONE comprehension question and STOP — wait for the student to answer.${surnameNote} ${isMath?'Show key formulas clearly.':''}`,
+    `Continue teaching "${_ait.topic}". Go deeper — explain the key mechanisms or how it works in detail. ${isMath?'Walk through a worked example step by step.':'Use an analogy to make it memorable.'}${surnameNote}`,
+    `Continue teaching "${_ait.topic}". Cover important applications or sub-topics. ${isMath?'Introduce another type of problem.':'Connect to related concepts the student should know.'}${surnameNote}`,
+    `Continue teaching "${_ait.topic}". Cover any advanced aspects, edge cases, or common misconceptions. ${isMath?'Tackle a more complex calculation.':'Discuss common exam mistakes.'}${surnameNote}`,
+    `Give a concise summary of "${_ait.topic}" so far. Highlight the 3 most important points. ${isMath?'Write out the key formulas again.':'Connect everything together.'}${surnameNote}`,
+    `Continue with deeper exploration of "${_ait.topic}". Add more examples or problem-solving strategies.${surnameNote}`,
+    `Discuss practical applications and exam tips for "${_ait.topic}".${surnameNote}`,
+    `Review and consolidate knowledge on "${_ait.topic}". Cover anything not yet discussed.${surnameNote}`,
   ];
 
   const idx = Math.min(_ait.teachingStepIdx-1, teachPrompts.length-1);
@@ -2202,7 +2269,7 @@ function aitCleanupOnLeave(){
 
 /* ── Init on load ── */
 window.addEventListener('load', ()=>{
-  aitRenderVoiceGrid();
+  aitRenderVoiceList();
   shGpaAddRow(); shGpaAddRow(); shGpaAddRow();
   shTimerUpdateUI();
   /* Load saved voices */

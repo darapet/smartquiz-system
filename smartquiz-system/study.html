@@ -92,7 +92,7 @@
                     Study It
                 </button>
             </form>
-            <div class="std-ai-status">
+            <div class="std-ai-status" style="display:none">
                 <span>AI Status:</span>
                 <span id="std-groq-badge" class="std-groq-badge">Checking…</span>
             </div>
@@ -134,10 +134,6 @@
                     style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:#10b981">
                     🎯 Practice Test
                 </button>
-                <button class="std-btn" id="std-voice-hdr-btn"
-                    style="background:rgba(245,158,11,.12);border-color:rgba(245,158,11,.4);color:#f59e0b">
-                    🎙 Voice Chat
-                </button>
             </div>
         </div>
 
@@ -159,7 +155,6 @@
                     <button class="std-act-btn" id="std-summary-btn">📋 Summarise</button>
                     <button class="std-act-btn" id="std-explain-btn">💡 Explanation</button>
                     <button class="std-act-btn test-btn" id="std-test-btn">🎯 Practice Test</button>
-                    <button class="std-act-btn voice-btn" id="std-voice-btn">🎙 Voice Chat</button>
                 </div>
 
                 <!-- AI output panel -->
@@ -181,22 +176,7 @@
 <!-- ══ PRACTICE TEST MODAL ══ -->
 <div id="std-test-modal" class="std-modal" style="display:none"></div>
 
-<!-- ══ VOICE CHAT PANEL ══ -->
-<div id="std-voice-panel" class="std-voice-panel" style="display:none">
-    <div class="std-voice-hdr">
-        <span style="font-size:1.2rem">🎙</span>
-        <span class="std-voice-hdr-title">AI Tutor — Voice Chat</span>
-        <button id="std-voice-stop-btn" class="std-voice-stop-btn" style="display:none">⏹ Stop</button>
-        <button id="std-voice-close-btn" style="background:none;border:none;color:var(--std-muted);cursor:pointer;font-size:1.1rem;padding:4px 8px;line-height:1" title="Close">✕</button>
-    </div>
-    <div id="std-voice-msgs" class="std-voice-msgs"></div>
-    <div class="std-voice-inp">
-        <textarea id="std-voice-text-input" class="std-voice-text-input" rows="1"
-            placeholder="Type your question or press Speak…"></textarea>
-        <button id="std-voice-send-btn" class="std-btn std-btn-primary" style="flex-shrink:0;padding:9px 14px">Send</button>
-        <button id="std-voice-mic-btn" class="std-voice-mic-btn">🎤 Speak</button>
-    </div>
-</div>
+<!-- Voice Chat Panel removed — AI Teacher now uses XZILY Summon overlay (FAB button) -->
 
 <!-- ══ GLOBAL ERROR TOAST ══ -->
 <div id="std-global-error" class="std-global-error"></div>

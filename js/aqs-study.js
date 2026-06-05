@@ -14,9 +14,15 @@ var WIKI_API  = 'https://en.wikipedia.org/w/api.php';
 var BOOKS_API = 'https://www.googleapis.com/books/v1/volumes';
 var HIST_KEY  = 'aqs_study_hist';
 var MAX_HIST  = 15;
-var CHECKPOINT_PHRASE = 'Does that make sense? Say yes to continue or no if you want me to explain again.';
-var SUMMON_KEY_NAME   = 'xzily_ai_name';
-var SUMMON_KEY_VOICE  = 'xzily_ai_voice_index';
+var CHECKPOINT_PHRASE   = 'Does that make sense? Say yes to continue, or no if you would like me to explain again.';
+var SUMMON_KEY_NAME     = 'xzily_ai_name';
+var SUMMON_KEY_VOICE    = 'xzily_ai_voice_index';
+var SUMMON_KEY_USER     = 'xzily_user_name';
+var SUMMON_KEY_SURNAME  = 'xzily_user_surname';
+var NAME_CALL_INTERVAL  = 600000; /* 10 minutes in ms */
+
+/* 10 friendly tutor names shown during voice demo */
+var DEMO_VOICE_NAMES = ['Sarah','James','Emily','Michael','Olivia','Daniel','Sophie','Alex','Grace','Nathan'];
 
 /* ── STUDY STATE ────────────────────────────────────────────── */
 var S = {
@@ -37,6 +43,12 @@ var VS = {
     responseCount:0, waitingCheckpnt:false, lastExplanation:'',
     sentenceQueue:[], speakingQueue:false, _queueRunning:false,
     _interimSnapshot:'', _pausedQueue:[], _currentAudio:null,
+    /* user identity */
+    userName:null, userSurname:null, lastNameCall:0,
+    /* voice demo */
+    _demoVoices:[], _demoIdx:0,
+    /* stream abort controller */
+    _streamAbort:null,
 };
 
 /* ── MOBILE DETECTION ────────────────────────────────────────── */
@@ -798,25 +810,14 @@ async function aiChatVision(messages, temp) {
     return d.choices[0].message.content || '';
 }
 
-/* FIX: checkAI now re-checks itself until the key is confirmed ready */
+/* checkAI — silently check AI readiness; badge is hidden from users */
 function checkAI() {
-    var badge = document.querySelector('.std-groq-badge');
-    if (!badge) return;
-    /* Check for Mistral keys (now primary AI — Groq removed) */
     var mistralCount = typeof window._aqsMistralKeyCount === 'function' ? window._aqsMistralKeyCount() : 0;
     var hasKey = mistralCount > 0 ||
         (Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) && window._AQS_MISTRAL_MASTER_KEYS.length > 0);
-    if (hasKey) {
-        badge.className = 'std-groq-badge ok';
-        badge.textContent = '✓ Mistral AI Ready';
-        S.aiReady = true;
-    } else {
-        badge.className = 'std-groq-badge warn';
-        badge.textContent = '⚠ No AI key — add Mistral keys in Admin Settings';
-        S.aiReady = false;
-        /* Re-check after 3 s — key may still be loading from Firebase */
-        setTimeout(checkAI, 3000);
-    }
+    S.aiReady = hasKey;
+    /* Silently retry until key loads — badge UI is hidden from students */
+    if (!hasKey) setTimeout(checkAI, 3000);
 }
 
 /* ── EVENTS ─────────────────────────────────────────────────── */
@@ -830,8 +831,6 @@ function setupEvents() {
     $('std-explain-btn')  && $('std-explain-btn').addEventListener('click', doExplain);
     $('std-test-btn')     && $('std-test-btn').addEventListener('click', openTest);
     $('std-test-hdr-btn') && $('std-test-hdr-btn').addEventListener('click', openTest);
-    $('std-voice-btn')    && $('std-voice-btn').addEventListener('click', stdVoiceOpen);
-    $('std-voice-hdr-btn')&& $('std-voice-hdr-btn').addEventListener('click', stdVoiceOpen);
 
     $('std-chapters-toggle') && $('std-chapters-toggle').addEventListener('click', function () {
         var panel = document.getElementById('std-chapters-panel');
@@ -946,18 +945,20 @@ function esc(s) {
 
 /* ── SETTINGS (saved to localStorage) ───────────────────────── */
 function summonLoadSettings() {
-    VS.aiName     = localStorage.getItem(SUMMON_KEY_NAME)  || null;
-    VS.voiceIndex = parseInt(localStorage.getItem(SUMMON_KEY_VOICE) || '-1', 10);
-    VS.voice      = null;
-    /* Mobile: voice picker skipped — only aiName is required */
-    VS._setupDone = _IS_MOBILE_APP
-        ? !!(VS.aiName)
-        : !!(VS.aiName && VS.voiceIndex >= 0);
+    VS.aiName      = localStorage.getItem(SUMMON_KEY_NAME)    || null;
+    VS.voiceIndex  = parseInt(localStorage.getItem(SUMMON_KEY_VOICE) || '-1', 10);
+    VS.userName    = localStorage.getItem(SUMMON_KEY_USER)    || null;
+    VS.userSurname = localStorage.getItem(SUMMON_KEY_SURNAME) || null;
+    VS.voice       = null;
+    /* Setup is complete when we have a voice AND the user's name */
+    VS._setupDone = !!(VS.voiceIndex >= 0 && VS.userName);
 }
 
 function summonSaveSettings() {
-    if (VS.aiName)          localStorage.setItem(SUMMON_KEY_NAME,  VS.aiName);
-    if (VS.voiceIndex >= 0) localStorage.setItem(SUMMON_KEY_VOICE, String(VS.voiceIndex));
+    if (VS.aiName)          localStorage.setItem(SUMMON_KEY_NAME,    VS.aiName);
+    if (VS.voiceIndex >= 0) localStorage.setItem(SUMMON_KEY_VOICE,   String(VS.voiceIndex));
+    if (VS.userName)        localStorage.setItem(SUMMON_KEY_USER,    VS.userName);
+    if (VS.userSurname)     localStorage.setItem(SUMMON_KEY_SURNAME, VS.userSurname);
 }
 
 function summonGetEnglishVoices() {
@@ -995,72 +996,191 @@ function initSummonVoices() {
     if (VS.synth.onvoiceschanged !== undefined) VS.synth.onvoiceschanged = function () { summonPickVoice(); };
 }
 
-/* ── FIRST-RUN SETUP (voice picker + name) ──────────────────── */
+/* ── FIRST-RUN SETUP (welcome → voice demos → pick voice → ask name) ── */
 function summonStartSetup() {
-    VS._inSetup = true; VS._setupDone = false;
+    VS._inSetup = true; VS._setupDone = false; VS._setupStep = 0;
+
+    /* Collect voices for demo */
     if (_IS_MOBILE_APP) {
-        /* Mobile: skip voice picker (use Pollinations), just ask for a name.
-           Microphone is disabled on Android WebView — user must type. */
+        VS._demoVoices = POLL_VOICES;
+    } else {
+        var bv = VS.synth ? VS.synth.getVoices().filter(function (v) {
+            return v.lang && v.lang.startsWith('en');
+        }).slice(0, 10) : [];
+        if (!bv.length) { setTimeout(summonStartSetup, 800); return; }
+        VS._demoVoices = bv;
+    }
+
+    var n = VS._demoVoices.length;
+
+    /* Welcome using a warm female voice (nova on mobile, first female on desktop) */
+    var savedIdx = VS.voiceIndex;
+    if (_IS_MOBILE_APP) {
+        /* nova is index 4 in POLL_VOICES */
+        VS.voiceIndex = 4; summonPickVoice();
+    } else {
+        /* Try to pick a female/warm voice for welcome */
+        var allVoices = VS.synth ? VS.synth.getVoices() : [];
+        var femaleNames = ['Samantha','Google US English Female','Zira','Microsoft Zira','Karen','Moira','Tessa','Victoria','Veena'];
+        var femaleVoice = null;
+        for (var fi = 0; fi < femaleNames.length; fi++) {
+            femaleVoice = allVoices.find(function (v) { return v.name.indexOf(femaleNames[fi]) !== -1; });
+            if (femaleVoice) break;
+        }
+        if (!femaleVoice) femaleVoice = allVoices.find(function (v) { return v.lang && v.lang.startsWith('en'); });
+        if (femaleVoice) VS.voice = femaleVoice;
+    }
+
+    var welcomeMsg =
+        'Welcome to Darapet Learning System. ' +
+        'I am your personal AI tutor. I am here to teach you from the very beginning — ' +
+        'starting with definitions, types, and real examples, just like a real classroom teacher. ' +
+        'I will now play ' + n + ' different voice samples. ' +
+        'Please listen carefully and choose the voice you would like me to use throughout your sessions.';
+
+    summonSetAiText(welcomeMsg);
+    summonSpeak(welcomeMsg, function () {
+        VS.voiceIndex = savedIdx;
+        VS._demoIdx = 0;
+        VS._setupStep = 1;
+        setTimeout(function () { _summonDemoNextVoice(0); }, 400);
+    });
+}
+
+function _summonDemoNextVoice(idx) {
+    var voices = VS._demoVoices;
+    if (!voices || idx >= voices.length) {
+        /* All voices played — ask user to pick */
         VS._setupStep = 2;
-        VS.voiceIndex = 0; /* default voice: Alloy */
-        summonPickVoice();
-        var mobileIntro = 'Hello! I am your personal AI tutor powered by XZILY AI. ' +
-                          'What would you like to name me? Type your answer below and press Send.';
-        summonSetAiText(mobileIntro);
-        summonSpeak(mobileIntro, function () { summonSetState('listening'); });
+        var pickMsg = 'That was all ' + voices.length + ' voices. ' +
+                      'Which voice would you prefer? Please say or type a number from 1 to ' + voices.length + '.';
+        summonSetAiText(pickMsg);
+        summonSpeak(pickMsg, function () {
+            summonSetState('listening');
+            if (!_IS_MOBILE_APP) summonStartListening();
+        });
         return;
     }
-    VS._setupStep = 1;
-    var voices = summonGetEnglishVoices();
-    if (!voices.length) { setTimeout(summonStartSetup, 800); return; }
-    var list  = voices.map(function (v, i) { return (i+1) + ', ' + v.name; }).join('. ');
-    var intro = 'Hello! Before we begin let me personalise your experience. ' +
-                'I have ' + voices.length + ' voice options available. ' + list + '. ' +
-                'Please say the number of the voice you would like me to use.';
-    summonSetAiText(intro);
-    summonSpeak(intro, function () { summonSetState('listening'); summonStartListening(); });
+    VS._demoIdx = idx;
+    var v = voices[idx];
+    var vLabel = DEMO_VOICE_NAMES[idx] || (v.name || v.id || ('Voice ' + (idx + 1)));
+    var fullText = 'Voice ' + (idx + 1) + ', ' + vLabel + '. Hello, how are you doing?';
+
+    summonSetAiText('🎙 Voice ' + (idx + 1) + ' — ' + vLabel + '\n\n"Hello, how are you doing?"');
+
+    _summonPlayDemoVoice(idx, fullText, function () {
+        setTimeout(function () { _summonDemoNextVoice(idx + 1); }, 700);
+    });
+}
+
+function _summonPlayDemoVoice(idx, text, onDone) {
+    var voices = VS._demoVoices;
+    var v = voices[idx];
+
+    if (_IS_MOBILE_APP) {
+        /* Use specific Pollinations voice for this demo slot */
+        var voiceId = (v && v.id) ? v.id : 'alloy';
+        VS.speaking = true;
+        var chunk = text.slice(0, 200);
+        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+                  '?model=openai-audio&voice=' + voiceId + '&seed=42';
+        var ctx = window._aqsAudioCtx;
+        if (ctx) {
+            if (ctx.state === 'suspended') { try { ctx.resume(); } catch (e) {} }
+            fetch(url)
+                .then(function (r) { return r.arrayBuffer(); })
+                .then(function (buf) { return ctx.decodeAudioData(buf); })
+                .then(function (decoded) {
+                    if (!VS.speaking) { if (onDone) onDone(); return; }
+                    var src = ctx.createBufferSource();
+                    src.buffer = decoded; src.connect(ctx.destination);
+                    VS._currentAudio = src;
+                    src.onended = function () {
+                        VS._currentAudio = null; VS.speaking = false; if (onDone) onDone();
+                    };
+                    src.start(0);
+                })
+                .catch(function () { VS.speaking = false; if (onDone) onDone(); });
+        } else {
+            _summonSpeakSynth(text, onDone);
+        }
+    } else {
+        /* Desktop: use specific browser voice at this index */
+        if (!VS.synth) { if (onDone) onDone(); return; }
+        VS.speaking = true;
+        var u = new SpeechSynthesisUtterance(text);
+        u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
+        if (v && v.lang) u.voice = v; /* SpeechSynthesisVoice object */
+        u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
+        u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+        VS.synth.speak(u);
+    }
 }
 
 function summonHandleSetup(q) {
-    var voices = summonGetEnglishVoices();
-    if (VS._setupStep === 1) {
-        var num = parseInt(q.replace(/[^0-9]/g,''), 10);
-        if (!num || num < 1 || num > voices.length) {
-            var retry = 'I did not catch a valid number. Please say a number between 1 and ' + voices.length + '.';
-            summonSetAiText(retry);
-            return summonSpeak(retry, function () { summonSetState('listening'); summonStartListening(); });
-        }
-        VS.voiceIndex = num - 1; VS.voice = voices[VS.voiceIndex]; VS._setupStep = 2;
-        var nameQ = _IS_MOBILE_APP
-            ? 'Great choice! Now, what would you like to name me? Type your answer below.'
-            : 'Great choice! Now, what would you like to name me? You can call me anything you like.';
-        summonSetAiText(nameQ);
-        if (_IS_MOBILE_APP) {
-            return summonSpeak(nameQ, function () { summonSetState('listening'); });
-        }
-        return summonSpeak(nameQ, function () { summonSetState('listening'); summonStartListening(); });
-    }
+    var voices = VS._demoVoices;
+
+    /* Step 2 — user picks a voice by number */
     if (VS._setupStep === 2) {
-        var name = q.trim().replace(/[^a-zA-Z0-9\s\-_']/g,'').trim();
-        if (!name) {
+        var num = parseInt(q.replace(/[^0-9]/g, ''), 10);
+        if (!num || num < 1 || num > voices.length) {
+            var retry = 'Please say or type a number between 1 and ' + voices.length + '.';
+            summonSetAiText(retry);
+            return summonSpeak(retry, function () {
+                summonSetState('listening');
+                if (!_IS_MOBILE_APP) summonStartListening();
+            });
+        }
+        VS.voiceIndex = num - 1;
+        VS.voice = voices[VS.voiceIndex];
+        summonPickVoice();
+        VS._setupStep = 3;
+        var nameQ = _IS_MOBILE_APP
+            ? 'Perfect choice! Now, what is your full name? Type it below and press Send.'
+            : 'Perfect choice! Now, what is your full name? You can say it or type it below.';
+        summonSetAiText(nameQ);
+        return summonSpeak(nameQ, function () {
+            summonSetState('listening');
+            if (!_IS_MOBILE_APP) summonStartListening();
+        });
+    }
+
+    /* Step 3 — user gives their name */
+    if (VS._setupStep === 3) {
+        var raw = q.trim().replace(/[^a-zA-Z0-9\s\-']/g, '').trim();
+        if (!raw) {
             var retryName = _IS_MOBILE_APP
-                ? 'Please type a name for me in the box below and press Send.'
-                : 'I did not catch a name. Please say what you would like to call me.';
+                ? 'Please type your full name below and press Send.'
+                : 'I did not catch your name. Please say or type your full name.';
             summonSetAiText(retryName);
-            if (_IS_MOBILE_APP) {
-                return summonSpeak(retryName, function () { summonSetState('listening'); });
-            }
-            return summonSpeak(retryName, function () { summonSetState('listening'); summonStartListening(); });
+            return summonSpeak(retryName, function () {
+                summonSetState('listening');
+                if (!_IS_MOBILE_APP) summonStartListening();
+            });
         }
-        VS.aiName = name.replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-        summonSaveSettings(); VS._inSetup = false; VS._setupDone = true;
-        var done = 'Perfect. From now on my name is ' + VS.aiName + '. I am ready to help you learn. ' +
-                   (_IS_MOBILE_APP ? 'Type your question below!' : 'What would you like to explore today?');
+
+        /* Capitalise each word; store first name and surname */
+        var parts = raw.trim().split(/\s+/).map(function (p) {
+            return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+        });
+        VS.userName    = parts[0];
+        VS.userSurname = parts.length > 1 ? parts[parts.length - 1] : '';
+        VS.aiName      = VS.aiName || 'Tutor';
+        VS.lastNameCall = 0;
+
+        summonSaveSettings();
+        VS._inSetup = false; VS._setupDone = true;
+
+        var topicLine = S.title
+            ? ' I can see you are studying "' + S.title + '". Excellent choice — let us dive right in!'
+            : ' Ask me anything you would like to learn about. I will teach you from the very basics.';
+        var done = 'Welcome, ' + VS.userName + '! I am so happy to have you here. ' +
+                   'I am your personal AI tutor for Darapet Learning System.' + topicLine;
         summonSetAiText(done);
-        if (_IS_MOBILE_APP) {
-            return summonSpeak(done, function () { summonSetState('listening'); });
-        }
-        return summonSpeak(done, function () { summonSetState('listening'); summonStartListening(); });
+        return summonSpeak(done, function () {
+            summonSetState('listening');
+            if (!_IS_MOBILE_APP) summonStartListening();
+        });
     }
 }
 
@@ -1180,8 +1300,19 @@ function summonSendText() {
     var q   = (inp ? inp.value : '').trim();
     if (!q) return;
     if (inp) inp.value = '';
+    /* Immediately stop any ongoing AI speech/stream when user sends */
+    summonStopQueue();
+    _summonAbortStream();
     if (!VS.active) { VS.active = true; }
     summonHandleQuery(q);
+}
+
+/* Abort any in-progress streaming fetch */
+function _summonAbortStream() {
+    if (VS._streamAbort) {
+        try { VS._streamAbort.abort(); } catch (e) {}
+        VS._streamAbort = null;
+    }
 }
 
 /* ── CHECKPOINT DETECTION ────────────────────────────────────── */
@@ -1225,11 +1356,34 @@ async function summonHandleQuery(q) {
 
     VS.responseCount = (VS.responseCount || 0) + 1;
     var addCheckpoint = (VS.responseCount % 3 === 0);
-    var aiDisplayName = VS.aiName || 'XZILY AI';
+
+    /* Structured first-lesson intro */
+    var isFirstLesson = (VS.responseCount === 1);
+    var activeChapterTitle = (S.chapters && S.chapters[S.activeIdx]) ? S.chapters[S.activeIdx].title : (S.title || '');
+
+    /* Surname calling at 10-min intervals */
+    var shouldCallSurname = !!(VS.userSurname && (Date.now() - VS.lastNameCall > NAME_CALL_INTERVAL));
+
+    var teachInst = isFirstLesson && activeChapterTitle
+        ? 'TEACHING STRUCTURE — follow this exact order for your first response:\n' +
+          '1. Open with: "Did you know that..." followed by a fascinating fact about "' + activeChapterTitle + '".\n' +
+          '2. Give the clear, simple definition of "' + activeChapterTitle + '".\n' +
+          '3. Explain the main types or categories with brief descriptions.\n' +
+          '4. Provide 2 to 3 relatable real-world examples.\n' +
+          '5. Deliver a full, rich, easy-to-understand explanation covering the key ideas.\n' +
+          '6. End by asking ONE comprehension question — then STOP and wait for the student to answer.\n\n'
+        : '';
+
+    var surnameInst = shouldCallSurname
+        ? 'At a natural point in your response address the student by their surname "' + VS.userSurname + '" — for example "' + VS.userSurname + ', did you know..." or "Now ' + VS.userSurname + ', let us explore...". Make it warm and natural, like a real teacher.\n\n'
+        : '';
 
     var sysPrompt =
-        'You are ' + aiDisplayName + ', a professional and thorough voice-based academic tutor. ' +
+        'You are a professional, encouraging, and thorough voice-based academic tutor for Darapet Learning System. ' +
+        'The student\'s name is ' + (VS.userName || 'Student') + '. ' +
         context +
+        teachInst +
+        surnameInst +
         'For ALL mathematics, physics, chemistry, or calculation questions you MUST use this exact two-part format:\n' +
         '1. Write a complete plain-English spoken explanation — natural sentences, no symbols, no LaTeX, no markdown. ' +
         'Say "square root of twenty-seven" not "sqrt(27)". Say "three times the square root of three" not "3√3". ' +
@@ -1238,8 +1392,9 @@ async function summonHandleQuery(q) {
         '2. Write the SAME explanation again, this time using proper LaTeX notation: ' +
         '$...$ for inline math (e.g. $\\sqrt{27}$, $3\\sqrt{3}$) and $$...$$ for displayed equations. ' +
         'Include every step and its explanation. Use clear paragraphs.\n' +
-        'For non-math topics: respond normally without the [DISPLAY] section — just clear spoken sentences. ' +
-        'Never truncate or rush an answer. Maintain a professional, warm, and patient tone throughout. ' +
+        'For non-math topics: respond naturally without the [DISPLAY] section — just clear, engaging spoken sentences. ' +
+        'Teach at a pace the student can follow. Use everyday language and relatable examples. ' +
+        'Be encouraging, patient, and motivating. Never truncate or rush. ' +
         (addCheckpoint ? 'At the very end of your response (after [DISPLAY] if present) add exactly: "' + CHECKPOINT_PHRASE + '"' : '');
 
     var messages = [{role:'system', content:sysPrompt}].concat(VS.history);
@@ -1252,6 +1407,8 @@ async function summonHandleQuery(q) {
            overwrite the real error with a misleading 'connection error'. */
         if (!fullText) return;
         VS.lastExplanation = fullText;
+        /* Update surname-call timestamp so we don't call it again too soon */
+        if (shouldCallSurname) VS.lastNameCall = Date.now();
         /* Strip [DISPLAY] section from history — keep spoken plain-English only */
         var dSplit = fullText.indexOf('[DISPLAY]');
         var historyText = (dSplit !== -1 ? fullText.slice(0, dSplit) : fullText)
@@ -1277,13 +1434,22 @@ async function summonStreamResponse(messages) {
         return;
     }
 
+    /* Create an AbortController so the user can stop the stream mid-response */
+    var abortCtrl = new AbortController();
+    VS._streamAbort = abortCtrl;
+    var signal = abortCtrl.signal;
+
     var res;
     try {
         res = await window.groqFetch(
             {model:GROQ_MODEL, messages:messages, temperature:0.7, max_tokens:1200, stream:true},
-            {signal:AbortSignal.timeout(45000)}
+            {signal:signal}
         );
     } catch(fetchErr) {
+        if (signal.aborted) {
+            VS._streamAbort = null;
+            return '';
+        }
         /* All providers exhausted — try non-streaming aiChat as last resort */
         try {
             var textFb = await aiChat(messages, 0.7);
@@ -1420,6 +1586,11 @@ function summonFlushQueue(onAllDone) {
 function summonStopQueue() {
     VS.speakingQueue = false; VS._queueRunning = false;
     VS.sentenceQueue = []; VS._pausedQueue = []; VS.speaking = false;
+    /* Abort any in-progress streaming fetch so no new sentences get queued */
+    if (VS._streamAbort) {
+        try { VS._streamAbort.abort(); } catch (e) {}
+        VS._streamAbort = null;
+    }
     /* Stop AudioBufferSourceNode (AudioContext path) or HTMLAudioElement (fallback) */
     if (VS._currentAudio) {
         try {
@@ -1720,8 +1891,9 @@ function summonMicToggle() {
 }
 
 function summonMicStart() {
-    /* Stop any ongoing speech first */
+    /* Immediately stop any ongoing AI speech and abort any streaming fetch */
     summonStopQueue();
+    _summonAbortStream();
 
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         summonSetTranscript('Microphone not supported on this device.');
@@ -1879,10 +2051,10 @@ function summonShow() {
         }, 300);
         return;
     }
-    var name = VS.aiName || 'XZILY AI';
+    var displayName = VS.userName ? ', ' + VS.userName : '';
     var greeting = S.title
-        ? 'Hello! I am ' + name + '. You are studying ' + S.title + '. Ask me anything!'
-        : 'Hello! I am ' + name + '. How can I help you study today?';
+        ? 'Welcome back' + displayName + '! We are studying "' + S.title + '". Ask me anything or say "teach me" and I will start from the beginning!'
+        : 'Welcome back' + displayName + '! I am your personal AI tutor. What would you like to learn today?';
     summonSetAiText(greeting);
     summonSpeak(greeting, function () {
         summonSetAiText(''); summonSetState('listening');
