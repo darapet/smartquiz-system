@@ -1424,6 +1424,9 @@
       })(i, edDiv);
 
       pageDiv.appendChild(edDiv);
+      pageDiv.addEventListener('click', function(e) {
+        if (e.target === pageDiv) { edDiv.focus(); }
+      });
       wpAddColResizeHandles(edDiv);
       wpSetupImageHandlers(edDiv);
 
