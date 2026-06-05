@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Take Quiz — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* === ANIMATED BACKGROUND === */
+  @keyframes aqs-orb-drift-1 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(40px, 30px) scale(1.1); }
+    100% { transform: translate(-20px, 50px) scale(0.95); }
+  }
+  @keyframes aqs-orb-drift-2 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(-30px, -20px) scale(1.08); }
+    100% { transform: translate(25px, -40px) scale(0.92); }
+  }
+  @keyframes aqs-orb-drift-3 {
+    0%   { transform: translate(0, 0) scale(1); }
+    50%  { transform: translate(20px, -30px) scale(1.05); }
+    100% { transform: translate(-35px, 20px) scale(1.02); }
+  }
+  @keyframes aqs-float-particle {
+    0%   { transform: translateY(100vh) scale(0); opacity: 0; }
+    10%  { opacity: 0.7; }
+    90%  { opacity: 0.3; }
+    100% { transform: translateY(-120px) scale(1.2); opacity: 0; }
+  }
+  @keyframes aqs-bg-shift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background: linear-gradient(-45deg, #0d0d1f, #0f1729, #0d1a2e, #12082a, #0a0f1e);
+    background-size: 400% 400%;
+    animation: aqs-bg-shift 18s ease infinite;
+    position: relative;
+  }
+
+  /* Grid overlay */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 44px 44px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Purple orb — top left */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 560px; height: 560px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(109,40,217,0.45), rgba(67,26,191,0.12) 60%, transparent 80%);
+    top: -140px; left: -100px;
+    filter: blur(70px);
+    animation: aqs-orb-drift-1 12s ease-in-out infinite alternate;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Orb container */
+  #aqs-ambient-bg {
+    display: block !important;
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    overflow: hidden;
+  }
+  /* Cyan orb — bottom right */
+  #aqs-ambient-bg::before {
+    content: '';
+    position: absolute;
+    width: 480px; height: 480px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(6,182,212,0.35), rgba(2,132,199,0.1) 60%, transparent 80%);
+    bottom: -100px; right: -80px;
+    filter: blur(80px);
+    animation: aqs-orb-drift-2 10s ease-in-out infinite alternate;
+  }
+  /* Pink orb — center */
+  #aqs-ambient-bg::after {
+    content: '';
+    position: absolute;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(236,72,153,0.22), rgba(190,24,93,0.06) 60%, transparent 80%);
+    top: 40%; left: 50%;
+    transform: translate(-50%, -50%);
+    filter: blur(90px);
+    animation: aqs-orb-drift-3 14s ease-in-out infinite alternate;
+  }
+
+  /* Floating particles */
+  .aqs-particle {
+    position: fixed;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.07);
+    pointer-events: none;
+    z-index: 0;
+    animation: aqs-float-particle linear infinite;
+  }
+
+  /* Push all content above bg layers */
+  .aqs-site-header, .aqs-page-main, .aqs-wrap, #aqs-take-quiz { position: relative; z-index: 1; }
+
+  /* Header — glassmorphism */
+  .aqs-site-header {
+    background: rgba(13,13,31,0.7) !important;
+    border-bottom: 1px solid rgba(255,255,255,0.09) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .aqs-site-logo { color: #c4b5fd !important; }
+  .aqs-site-header .aqs-btn { border-color: rgba(255,255,255,0.15); background: rgba(255,255,255,0.07); color: #e2e8f0; }
+  .aqs-site-header .aqs-btn:hover { background: rgba(255,255,255,0.13); }
+
+  /* Page bg transparent */
+  .aqs-page-main { background: transparent !important; }
+
+  /* === ENTRY / LOBBY SCREEN — glass card more visible === */
+  .aqs-quiz-cover {
+    background: rgba(255,255,255,0.09) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow: 0 0 0 1px rgba(109,40,217,0.22), 0 32px 80px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1) !important;
+  }
+  .aqs-quiz-cover h1,
+  .aqs-quiz-cover h2 { color: #fff !important; }
+  .aqs-quiz-cover p,
+  .aqs-quiz-subject { color: rgba(255,255,255,0.72) !important; }
+  .aqs-quiz-meta span { color: rgba(255,255,255,0.65) !important; }
+  .aqs-quiz-meta strong { color: #e2e8f0 !important; }
+  .aqs-mode-badge { color: #e2e8f0 !important; background: rgba(99,102,241,0.25) !important; border-radius: 6px; padding: 2px 8px !important; }
+
+  /* Loading spinner — visible on dark bg */
+  .aqs-loading-screen { text-align: center; padding: 60px 20px; }
+  .aqs-loading-screen p { color: rgba(255,255,255,0.65) !important; margin-top: 16px; }
+  .aqs-spinner {
+    border-color: rgba(255,255,255,0.12) !important;
+    border-top-color: #7c3aed !important;
+  }
+
+  /* Start button */
+  #aqs-start-quiz-btn {
+    background: linear-gradient(135deg,#6d28d9,#4f46e5) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    box-shadow: 0 4px 18px rgba(109,40,217,0.4) !important;
+  }
+  #aqs-start-quiz-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(109,40,217,0.55) !important; }
+
+  /* Input fields */
+  .aqs-field input,
+  .aqs-field select,
+  .aqs-field textarea { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.18) !important; color: #f1f5f9 !important; }
+  .aqs-field input::placeholder,
+  .aqs-field textarea::placeholder { color: rgba(255,255,255,0.38) !important; }
+  .aqs-field label { color: rgba(255,255,255,0.78) !important; }
+  .aqs-field input:focus,
+  .aqs-field select:focus,
+  .aqs-field textarea:focus { border-color: #7c3aed !important; box-shadow: 0 0 0 3px rgba(124,58,237,0.25) !important; }
+  .aqs-hint { color: rgba(255,255,255,0.48) !important; }
+  .aqs-req-star { color: #f87171 !important; }
+
+  /* Quiz note box */
+  .aqs-quiz-note-box { background: rgba(99,102,241,0.14) !important; border: 1px solid rgba(99,102,241,0.35) !important; color: rgba(255,255,255,0.8) !important; border-radius: 10px; padding: 14px 16px; }
+
+  /* Already-taken notice */
+  .aqs-already-taken-notice { background: rgba(248,113,113,0.1) !important; border: 1px solid rgba(248,113,113,0.3) !important; border-radius: 14px; padding: 20px; }
+  .aqs-already-taken-notice h3 { color: #fca5a5 !important; }
+  .aqs-already-taken-notice p,
+  .aqs-at-sub { color: rgba(252,165,165,0.72) !important; }
+
+  /* Not found / disabled screens */
+  .aqs-not-found { color: rgba(255,255,255,0.72) !important; }
+  .aqs-not-found h2 { color: #fcd34d !important; }
+  .aqs-not-found p { color: rgba(255,255,255,0.6) !important; }
+
+  /* Question area */
+  .aqs-question-area, .aqs-question-card, .aqs-quiz-question {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    backdrop-filter: blur(16px);
+    border-radius: 16px;
+  }
+  .aqs-question-text { color: #f1f5f9 !important; }
+  .aqs-question-num, .aqs-quiz-progress-label { color: rgba(255,255,255,0.45) !important; }
+  .aqs-section-label-tag { color: rgba(255,255,255,0.55) !important; background: rgba(99,102,241,0.2) !important; border-color: rgba(99,102,241,0.35) !important; }
+
+  /* Options */
+  .aqs-option {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    color: rgba(255,255,255,0.85) !important;
+    transition: all 0.22s ease !important;
+  }
+  .aqs-option:hover:not(.aqs-correct):not(.aqs-wrong):not(.aqs-selected) {
+    border-color: rgba(109,40,217,0.65) !important;
+    background: rgba(109,40,217,0.13) !important;
+    color: #fff !important;
+    transform: translateX(5px);
+  }
+  .aqs-option.aqs-correct { border-color: #4ade80 !important; background: rgba(74,222,128,0.12) !important; color: #4ade80 !important; }
+  .aqs-option.aqs-wrong, .aqs-option.aqs-selected-wrong { border-color: #f87171 !important; background: rgba(248,113,113,0.1) !important; color: #f87171 !important; }
+
+  /* Practice feedback */
+  .aqs-practice-feedback { background: rgba(255,255,255,0.06) !important; border-color: rgba(255,255,255,0.1) !important; color: rgba(255,255,255,0.8) !important; border-radius: 10px; padding: 12px 16px; }
+
+  /* Navigation buttons inside quiz */
+  #aqs-prev-btn, #aqs-next-btn { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.18) !important; color: #e2e8f0 !important; }
+  #aqs-prev-btn:hover, #aqs-next-btn:hover { background: rgba(255,255,255,0.15) !important; }
+  #aqs-submit-quiz-btn { background: linear-gradient(135deg,#059669,#10b981) !important; border-color: transparent !important; color: #fff !important; }
+  #aqs-sound-toggle { background: rgba(255,255,255,0.07) !important; border: 1px solid rgba(255,255,255,0.12) !important; color: #e2e8f0 !important; border-radius: 8px; padding: 6px 10px; }
+
+  /* Timer */
+  .aqs-timer-circle { color: #fff !important; border-color: rgba(109,40,217,0.6) !important; background: rgba(109,40,217,0.15) !important; }
+  .aqs-quiz-progress-bar { background: rgba(255,255,255,0.1) !important; }
+  .aqs-quiz-progress-fill { background: linear-gradient(90deg, #7c3aed, #38bdf8) !important; }
+
+  /* Dots */
+  #aqs-dots .aqs-dot { background: rgba(255,255,255,0.18) !important; border-color: rgba(255,255,255,0.12) !important; }
+  #aqs-dots .aqs-dot.answered { background: rgba(74,222,128,0.5) !important; border-color: #4ade80 !important; }
+  #aqs-dots .aqs-dot.current { border-color: #a78bfa !important; background: rgba(167,139,250,0.4) !important; }
+
+  /* Section intro / complete overlays */
+  .aqs-section-overlay { background: rgba(13,13,31,0.85) !important; backdrop-filter: blur(20px); }
+  .aqs-section-overlay-card { background: rgba(255,255,255,0.08) !important; border: 1px solid rgba(255,255,255,0.15) !important; border-radius: 20px; padding: 40px 32px; }
+  .aqs-sec-overlay-title { color: #fff !important; }
+  .aqs-sec-overlay-sub { color: rgba(255,255,255,0.68) !important; }
+  .aqs-sec-overlay-letter { background: linear-gradient(135deg,#6d28d9,#4f46e5) !important; color: #fff !important; }
+  .aqs-sec-done-score { color: #4ade80 !important; font-size: 1.4rem; font-weight: 700; }
+  .aqs-section-overlay-card .aqs-btn-primary { background: linear-gradient(135deg,#6d28d9,#4f46e5) !important; border-color: transparent !important; color: #fff !important; }
+
+  /* Progress section bar */
+  #aqs-section-progress { color: rgba(255,255,255,0.6) !important; }
+
+  /* === RESULTS SCREEN — all text visible on dark bg === */
+  .aqs-results-header { background: transparent !important; }
+  .aqs-results-header h2 { color: #fff !important; text-shadow: 0 2px 20px rgba(109,40,217,0.5); }
+  .aqs-score-text { color: #fff !important; }
+  .aqs-score-message { color: rgba(255,255,255,0.72) !important; }
+
+  /* Answer Review section */
+  .aqs-review-section { background: transparent !important; }
+  .aqs-review-section h3 { color: #e2e8f0 !important; border-bottom: 1px solid rgba(255,255,255,0.12); padding-bottom: 10px; }
+
+  /* Individual review items */
+  .aqs-review-item {
+    background: rgba(255,255,255,0.07) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 12px;
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    color: #e2e8f0 !important;
+  }
+  .aqs-review-item strong,
+  .aqs-review-item b { color: #fff !important; }
+  .aqs-review-item .aqs-correct-ans { color: #4ade80 !important; }
+  .aqs-review-item .aqs-wrong-ans,
+  .aqs-review-item .aqs-your-ans-wrong { color: #f87171 !important; }
+  .aqs-review-item .aqs-explanation,
+  .aqs-review-item em,
+  .aqs-review-item i { color: rgba(255,255,255,0.55) !important; font-style: italic; }
+
+  /* Results action buttons */
+  .aqs-results-actions { background: transparent !important; }
+  .aqs-results-actions .aqs-btn {
+    background: rgba(255,255,255,0.09) !important;
+    border: 1px solid rgba(255,255,255,0.2) !important;
+    color: #e2e8f0 !important;
+  }
+  .aqs-results-actions .aqs-btn:hover { background: rgba(255,255,255,0.16) !important; color: #fff !important; }
+  .aqs-results-actions .aqs-btn-primary {
+    background: linear-gradient(135deg,#6d28d9,#4f46e5) !important;
+    border-color: transparent !important;
+    color: #fff !important;
+    box-shadow: 0 4px 16px rgba(109,40,217,0.4) !important;
+  }
+
+  /* Leaderboard section */
+  .aqs-leaderboard-section {
+    background: rgba(255,255,255,0.06) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 14px;
+  }
+  .aqs-leaderboard-section h3 { color: #e2e8f0 !important; }
+  .aqs-leaderboard-section table { color: #e2e8f0 !important; }
+  .aqs-leaderboard-section th { color: rgba(255,255,255,0.55) !important; border-bottom-color: rgba(255,255,255,0.1) !important; }
+  .aqs-leaderboard-section td { color: #e2e8f0 !important; border-bottom-color: rgba(255,255,255,0.07) !important; }
+  .aqs-leaderboard-section tr.aqs-me td { background: rgba(109,40,217,0.2) !important; color: #fff !important; }
+
+  /* Topbar counter label */
+  .aqs-q-counter { color: rgba(255,255,255,0.7) !important; }
+
+  /* Mobile */
+  @media(max-width:640px){
+    .aqs-page-main{padding:12px 10px;}
+    .aqs-quiz-cover{padding:20px 14px!important;border-radius:14px!important;}
+    .aqs-quiz-cover h1{font-size:1.2rem!important;}
+    .aqs-quiz-meta{flex-direction:column;gap:6px!important;align-items:flex-start!important;}
+    .aqs-option{padding:12px 14px!important;font-size:.9rem!important;}
+    .aqs-question-text{font-size:1rem!important;line-height:1.6!important;}
+    .aqs-options-grid{grid-template-columns:1fr!important;gap:8px!important;}
+    .aqs-quiz-progress-bar{height:6px!important;}
+    .aqs-timer-circle{width:52px!important;height:52px!important;font-size:1.1rem!important;}
+    .aqs-result-header{padding:24px 16px!important;}
+    .aqs-result-stats{grid-template-columns:1fr 1fr!important;gap:8px!important;}
+    .aqs-result-card{padding:14px!important;}
+    .aqs-result-actions{flex-direction:column!important;}
+    .aqs-result-actions a,.aqs-result-actions button{width:100%;text-align:center;justify-content:center;}
+    .aqs-results-header h2{font-size:1.3rem!important;}
+    .aqs-review-section{padding:0 12px 20px!important;}
+    .aqs-review-item{padding:12px 14px!important;}
+    .aqs-results-actions{padding:16px 12px!important;gap:8px!important;display:flex!important;flex-direction:column!important;}
+    .aqs-results-actions .aqs-btn{width:100%!important;justify-content:center!important;}
+  }
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    auth_nonce: '',
+    home_url: 'index.html',
+    create_page_url: 'create-quiz.html',
+    studio_url: 'studio.html',
+    dashboard_url: 'dashboard.html',
+    is_logged_in: true,
+    is_host: false,
+    is_admin: false,
+    current_user_name: '',
+    groq_key: '',
+    quiz_bg_music_url: 'audio/quiz-background.mp3',
+    plugin_url: './'
+};
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+<div id="aqs-ambient-bg"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:0%;animation-duration:9s;animation-delay:0s;"></div>
+<div class="aqs-particle" style="width:13px;height:13px;left:6.3%;animation-duration:12s;animation-delay:0.8s;"></div>
+<div class="aqs-particle" style="width:18px;height:18px;left:12.6%;animation-duration:15s;animation-delay:1.6s;"></div>
+<div class="aqs-particle" style="width:23px;height:23px;left:18.9%;animation-duration:18s;animation-delay:2.4000000000000004s;"></div>
+<div class="aqs-particle" style="width:28px;height:28px;left:25.2%;animation-duration:21s;animation-delay:3.2s;"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:31.5%;animation-duration:9s;animation-delay:4s;"></div>
+<div class="aqs-particle" style="width:13px;height:13px;left:37.8%;animation-duration:12s;animation-delay:4.800000000000001s;"></div>
+<div class="aqs-particle" style="width:18px;height:18px;left:44.1%;animation-duration:15s;animation-delay:5.6000000000000005s;"></div>
+<div class="aqs-particle" style="width:23px;height:23px;left:50.4%;animation-duration:18s;animation-delay:6.4s;"></div>
+<div class="aqs-particle" style="width:28px;height:28px;left:56.699999999999996%;animation-duration:21s;animation-delay:7.2s;"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:63%;animation-duration:9s;animation-delay:0s;"></div>
+<div class="aqs-particle" style="width:13px;height:13px;left:69.3%;animation-duration:12s;animation-delay:0.8000000000000007s;"></div>
+<div class="aqs-particle" style="width:18px;height:18px;left:75.6%;animation-duration:15s;animation-delay:1.6000000000000014s;"></div>
+<div class="aqs-particle" style="width:23px;height:23px;left:81.89999999999999%;animation-duration:18s;animation-delay:2.4000000000000004s;"></div>
+<div class="aqs-particle" style="width:28px;height:28px;left:88.2%;animation-duration:21s;animation-delay:3.200000000000001s;"></div>
+<div class="aqs-particle" style="width:8px;height:8px;left:94.5%;animation-duration:9s;animation-delay:4s;"></div>
+<main class="aqs-page-main">
+
+<canvas id="aqs-particle-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;display:none;"></canvas>
+
+
+<div class="aqs-wrap aqs-quiz-wrap" id="aqs-take-quiz" style="position:relative;z-index:1;">
+
+    <!-- Entry Screen -->
+    <div id="aqs-entry-screen" class="aqs-screen">
+        <div id="aqs-quiz-loading" class="aqs-loading-screen">
+            <div class="aqs-spinner aqs-spinner-lg"></div>
+            <p>Loading quiz...</p>
+        </div>
+
+        <div id="aqs-quiz-info" style="display:none;">
+            <div class="aqs-quiz-cover">
+                <h1 id="take-quiz-title"></h1>
+                <p class="aqs-quiz-subject" id="take-quiz-subject"></p>
+                <div class="aqs-quiz-meta">
+                    <span>📋 <strong id="take-num-q"></strong> Questions</span>
+                    <span>⏱️ <strong id="take-time"></strong> Minutes</span>
+                    <span>📚 <span id="take-mode" class="aqs-mode-badge"></span></span>
+                </div>
+                <div id="aqs-quiz-note-box" style="display:none;" class="aqs-quiz-note-box"></div>
+                <div class="aqs-field">
+                    <label>Your Name</label>
+                    <input type="text" id="take-participant-name" placeholder="Enter your name" value="" />
+                </div>
+                <div class="aqs-field" id="aqs-email-field-wrap" style="display:none;">
+                    <label>Your Email <span class="aqs-req-star">*</span>
+                        <span class="aqs-hint" style="display:block;font-weight:400;margin-top:2px;">Required to verify your attempt. This quiz allows only one submission per email.</span>
+                    </label>
+                    <input type="email" id="take-taker-email" placeholder="yourname@example.com" />
+                </div>
+                <div id="aqs-already-taken-notice" style="display:none;" class="aqs-already-taken-notice">
+                    <div class="aqs-at-icon">🚫</div>
+                    <h3>You've Already Completed This Quiz</h3>
+                    <p id="aqs-at-message"></p>
+                    <p class="aqs-at-sub">Contact your host if you believe this is an error.</p>
+                </div>
+                <div id="aqs-custom-form-fields"></div>
+                <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="aqs-start-quiz-btn">Start Quiz →</button>
+            </div>
+        </div>
+
+        <div id="aqs-quiz-not-found" style="display:none;" class="aqs-not-found">
+            <p>❌ Quiz not found or not yet published.</p>
+        </div>
+
+        <div id="aqs-quiz-disabled" style="display:none;" class="aqs-not-found">
+            <div style="text-align:center;padding:32px 20px;">
+                <div style="font-size:3rem;margin-bottom:16px;">⛔</div>
+                <h2 style="color:#fcd34d;margin-bottom:10px;">Quiz Temporarily Unavailable</h2>
+                <p style="color:rgba(255,255,255,0.65);max-width:480px;margin:0 auto 20px;">This quiz has been temporarily disabled by the host.</p>
+                <button class="aqs-btn" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:#e2e8f0;" onclick="history.back()">← Go Back</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz Screen -->
+    <div id="aqs-quiz-screen" class="aqs-screen" style="display:none;">
+        <div id="aqs-section-progress" class="aqs-section-progress" style="display:none;"></div>
+        <div class="aqs-quiz-topbar">
+            <div class="aqs-quiz-topbar-left"><span id="aqs-q-num" class="aqs-q-counter"></span></div>
+            <div class="aqs-quiz-topbar-center">
+                <div id="aqs-timer" class="aqs-timer"><span id="aqs-timer-display"></span></div>
+            </div>
+            <div class="aqs-quiz-topbar-right">
+                <button id="aqs-sound-toggle" class="aqs-mute-btn" title="Toggle sound">🔊</button>
+            </div>
+        </div>
+        <div class="aqs-progress-bar-wrap" style="margin-bottom:10px;">
+            <div id="aqs-progress-bar" style="height:6px;background:var(--aqs-primary);border-radius:3px;width:0%;transition:width .3s;"></div>
+        </div>
+        <div id="aqs-dots" class="aqs-dots-wrap" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;justify-content:center;"></div>
+
+        <div id="aqs-section-intro" class="aqs-section-overlay" style="display:none;">
+            <div class="aqs-section-overlay-card">
+                <div class="aqs-sec-overlay-letter" id="aqs-sec-intro-letter">A</div>
+                <h2 class="aqs-sec-overlay-title" id="aqs-sec-intro-label">Section A</h2>
+                <p class="aqs-sec-overlay-sub" id="aqs-sec-intro-count"></p>
+                <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="aqs-sec-intro-start">Begin Section →</button>
+            </div>
+        </div>
+
+        <div id="aqs-section-complete" class="aqs-section-overlay" style="display:none;">
+            <div class="aqs-section-overlay-card aqs-sec-complete-card">
+                <div class="aqs-sec-overlay-letter" id="aqs-sec-done-letter">A</div>
+                <h2 class="aqs-sec-overlay-title">Section Complete!</h2>
+                <p class="aqs-sec-overlay-sub" id="aqs-sec-done-msg"></p>
+                <div class="aqs-sec-done-score" id="aqs-sec-done-score"></div>
+                <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="aqs-sec-done-btn">Next Section →</button>
+            </div>
+        </div>
+
+        <div id="aqs-question-card" class="aqs-question-card">
+            <div class="aqs-section-label-tag" id="aqs-q-section-label" style="display:none;"></div>
+            <p class="aqs-question-text" id="aqs-question-text"></p>
+            <div class="aqs-options-list" id="aqs-options-list"></div>
+            <div class="aqs-practice-feedback" id="aqs-answer-feedback" style="display:none;"></div>
+            <div class="aqs-quiz-nav aqs-nav-btns" id="aqs-nav-btns">
+                <button class="aqs-btn" id="aqs-prev-btn">← Prev</button>
+                <button class="aqs-btn" id="aqs-next-btn">Next →</button>
+                <div class="aqs-submit-wrap">
+                    <button class="aqs-btn aqs-btn-success" id="aqs-submit-quiz-btn" style="display:none;">Submit Quiz ✓</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results Screen -->
+    <div id="aqs-results-screen" class="aqs-screen" style="display:none;">
+        <div class="aqs-results-header">
+            <h2>Quiz Complete!</h2>
+            <div class="aqs-score-ring">
+                <svg viewBox="0 0 120 120">
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="12"/>
+                    <circle cx="60" cy="60" r="54" fill="none" stroke="#10b981" stroke-width="12"
+                        stroke-dasharray="339.3" id="aqs-score-circle" stroke-dashoffset="339.3"
+                        stroke-linecap="round" transform="rotate(-90 60 60)"/>
+                </svg>
+                <div class="aqs-score-text">
+                    <span id="aqs-final-score">0</span>/<span id="aqs-final-total">0</span>
+                </div>
+            </div>
+            <p id="aqs-score-message" class="aqs-score-message"></p>
+        </div>
+        <div id="aqs-review-section" style="display:none;" class="aqs-review-section">
+            <h3>Answer Review</h3>
+            <div id="aqs-review-list"></div>
+        </div>
+        <div class="aqs-results-actions">
+            <button class="aqs-btn" id="aqs-retake-btn">🔄 Retake Quiz</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-lb-btn">🏆 Leaderboard</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-cert-btn">🎓 Certificate</button>
+        </div>
+        <div id="aqs-leaderboard-section" class="aqs-leaderboard-section" style="display:none;"></div>
+    </div>
+</div>
+
+<!-- Certificate Modal -->
+<div id="aqs-cert-modal" class="aqs-modal aqs-cert-modal-wrap" style="display:none;">
+    <div class="aqs-cert-modal-inner">
+        <div class="aqs-cert-modal-toolbar no-print">
+            <button class="aqs-btn aqs-btn-success" id="aqs-download-cert-pdf-btn">⬇️ Download PDF</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-print-cert-btn">🖨️ Print</button>
+            <button class="aqs-modal-close" id="aqs-close-cert" style="font-size:1.4rem;line-height:1;">&times;</button>
+        </div>
+        <div class="aqs-certificate" id="aqs-certificate">
+            <div class="aqs-cert-corner-tl"></div>
+            <div class="aqs-cert-corner-tr"></div>
+            <div class="aqs-cert-corner-bl"></div>
+            <div class="aqs-cert-corner-br"></div>
+            <div class="aqs-cert-header">
+                <div class="aqs-cert-org">DARAPET TECHNOLOGY</div>
+                <div class="aqs-cert-ornament-row">❧&nbsp;&nbsp;✦&nbsp;&nbsp;❧</div>
+                <div class="aqs-cert-main-title" id="cert-main-title">Certificate of Achievement</div>
+            </div>
+            <div class="aqs-cert-hr"><div class="aqs-cert-hr-line"></div><span class="aqs-cert-hr-diamond">◆</span><div class="aqs-cert-hr-line"></div></div>
+            <p class="aqs-cert-to-text">This is to certify that</p>
+            <div class="aqs-cert-name" id="cert-name"></div>
+            <p class="aqs-cert-completed-text">has successfully completed</p>
+            <div class="aqs-cert-quiz-title" id="cert-quiz-title"></div>
+            <p class="aqs-cert-subject-line" id="cert-subject-line"></p>
+            <div class="aqs-cert-scores-row">
+                <div class="aqs-cert-score-cell">
+                    <div class="aqs-cert-score-val" id="cert-score"></div>
+                    <div class="aqs-cert-score-lbl">Score</div>
+                </div>
+                <div class="aqs-cert-center-seal">
+                    <div class="aqs-cert-seal-ring">
+                        <div class="aqs-cert-seal-pct" id="cert-pct"></div>
+                        <div class="aqs-cert-seal-lbl">Percentage</div>
+                    </div>
+                </div>
+                <div class="aqs-cert-score-cell">
+                    <div class="aqs-cert-score-val" id="cert-grade"></div>
+                    <div class="aqs-cert-score-lbl">Grade</div>
+                </div>
+            </div>
+            <div class="aqs-cert-hr"><div class="aqs-cert-hr-line"></div><span class="aqs-cert-hr-diamond">◆</span><div class="aqs-cert-hr-line"></div></div>
+            <div class="aqs-cert-footer-row">
+                <div class="aqs-cert-footer-cell">
+                    <div class="aqs-cert-footer-val" id="cert-date"></div>
+                    <div class="aqs-cert-footer-lbl">Date Issued</div>
+                </div>
+                <div class="aqs-cert-footer-cell">
+                    <div class="aqs-cert-footer-val aqs-cert-id" id="cert-id"></div>
+                    <div class="aqs-cert-footer-lbl">Certificate ID</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</main>
+<script>
+(function(){
+    var obs=new MutationObserver(function(){var qs=document.getElementById('aqs-quiz-screen'),cv=document.getElementById('aqs-particle-canvas'),bg=document.getElementById('aqs-ambient-bg');if(!qs||!cv||!bg)return;var show=qs.style.display!=='none';cv.style.display=show?'block':'none';bg.style.display=show?'block':'none';});
+    var qs=document.getElementById('aqs-quiz-screen');if(qs)obs.observe(qs,{attributes:true,attributeFilter:['style']});
+})();
+</script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

@@ -1,0 +1,361 @@
+/* aqs-tts.css — XZILY AI Text-to-Speech v2
+   Scoped dark theme matching the rest of the xzily app.
+   ─────────────────────────────────────────────────────── */
+
+/* ── Variables ──────────────────────────────────────────── */
+.tts-main, #tts-error, .tts-player, .tts-status {
+    --dts-bg:       #09091a;
+    --dts-surface:  #0e0c20;
+    --dts-surface2: #141128;
+    --dts-surface3: #1c1837;
+    --dts-border:   #252048;
+    --dts-border2:  #342d62;
+    --dts-text:     #eeeaff;
+    --dts-body:     #c8c2f0;
+    --dts-muted:    #8c84b8;
+    --dts-accent:   #d946ef;
+    --dts-accent-dk:#a21caf;
+    --dts-accent-lt:#f0abfc;
+    --dts-green:    #10b981;
+    --dts-red:      #ef4444;
+    --dts-amber:    #f59e0b;
+    --dts-radius:   12px;
+    --dts-radius-sm:8px;
+}
+
+/* ── Base ───────────────────────────────────────────────── */
+.tts-main {
+    min-height: 100dvh;
+    min-height: 100vh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    background: var(--dts-bg);
+    color: var(--dts-text);
+    font-family: inherit;
+    box-sizing: border-box;
+    padding-bottom: 60px;
+}
+.tts-main *, .tts-main *::before, .tts-main *::after { box-sizing: border-box; }
+
+/* ── Hero ───────────────────────────────────────────────── */
+.tts-hero {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--dts-border);
+    background: var(--dts-surface);
+}
+.tts-hero-icon {
+    width: 50px; height: 50px; flex-shrink: 0;
+    background: linear-gradient(135deg, #d946ef, #a21caf);
+    border-radius: 13px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff;
+}
+.tts-hero-title { font-size: 1.15rem; font-weight: 800; color: var(--dts-text); margin: 0 0 3px; letter-spacing: -.01em; }
+.tts-hero-sub   { font-size: .8rem;  color: var(--dts-muted); margin: 0; line-height: 1.5; max-width: 560px; }
+
+/* ── Grid ───────────────────────────────────────────────── */
+.tts-grid {
+    display: grid;
+    grid-template-columns: 1fr 310px;
+    gap: 18px;
+    padding: 18px 28px;
+    align-items: start;
+}
+@media (max-width: 900px) {
+    .tts-grid { grid-template-columns: 1fr; padding: 12px 14px; }
+    .tts-hero  { padding: 14px; }
+}
+
+/* ── Card ───────────────────────────────────────────────── */
+.tts-card {
+    background: var(--dts-surface);
+    border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius);
+    padding: 20px;
+    margin-bottom: 14px;
+}
+.tts-card-title {
+    font-size: .85rem; font-weight: 700; color: var(--dts-text);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 8px;
+}
+
+/* ── Textarea ───────────────────────────────────────────── */
+.tts-textarea {
+    width: 100%;
+    background: var(--dts-surface2);
+    border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius-sm);
+    padding: 13px 15px;
+    font-family: inherit;
+    font-size: .92rem;
+    color: var(--dts-text);
+    resize: vertical;
+    min-height: 160px;
+    line-height: 1.7;
+    transition: border-color .18s, box-shadow .18s;
+    outline: none;
+}
+.tts-textarea:focus { border-color: var(--dts-accent); box-shadow: 0 0 0 3px rgba(217,70,239,.1); }
+.tts-textarea::placeholder { color: var(--dts-muted); }
+
+.tts-char-count { font-size: .72rem; color: var(--dts-muted); text-align: right; margin-top: 5px; }
+.tts-char-count.warn { color: var(--dts-amber); font-weight: 600; }
+.tts-char-count.over { color: var(--dts-red);   font-weight: 700; }
+
+/* ── Translate note ─────────────────────────────────────── */
+.tts-translate-note {
+    display: flex; align-items: center; gap: 7px;
+    margin-top: 8px;
+    font-size: .75rem;
+    color: var(--dts-accent-lt);
+    background: rgba(217,70,239,.07);
+    border: 1px solid rgba(217,70,239,.2);
+    border-radius: var(--dts-radius-sm);
+    padding: 6px 11px;
+}
+
+/* ── Buttons ────────────────────────────────────────────── */
+.tts-actions { display: flex; gap: 9px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+
+.tts-btn {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 9px 18px;
+    border-radius: var(--dts-radius-sm);
+    font-size: .86rem; font-weight: 600;
+    cursor: pointer; border: 1.5px solid transparent;
+    font-family: inherit; transition: all .15s; white-space: nowrap;
+}
+.tts-btn-primary { background: var(--dts-accent); color: #fff; border-color: var(--dts-accent); }
+.tts-btn-primary:hover { background: var(--dts-accent-dk); border-color: var(--dts-accent-dk); }
+.tts-btn-primary:disabled { background: var(--dts-surface3); border-color: var(--dts-border2); color: var(--dts-muted); cursor: not-allowed; }
+.tts-btn-ghost { background: var(--dts-surface2); color: var(--dts-body); border-color: var(--dts-border); }
+.tts-btn-ghost:hover { border-color: var(--dts-accent); color: var(--dts-accent-lt); }
+.tts-btn-green { background: var(--dts-green); color: #fff; border-color: var(--dts-green); }
+.tts-btn-green:hover { background: #059669; }
+.tts-btn-sm { padding: 5px 11px; font-size: .78rem; }
+
+/* ── Status / Error ─────────────────────────────────────── */
+.tts-status {
+    display: none; align-items: center; gap: 12px;
+    margin: 10px 0;
+    padding: 11px 15px;
+    background: rgba(217,70,239,.07);
+    border: 1px solid rgba(217,70,239,.22);
+    border-radius: var(--dts-radius-sm);
+    font-size: .86rem; font-weight: 500; color: var(--dts-text);
+}
+.tts-status.visible { display: flex; }
+.tts-spinner-sm {
+    width: 18px; height: 18px; flex-shrink: 0;
+    border: 2px solid rgba(217,70,239,.2);
+    border-top-color: var(--dts-accent);
+    border-radius: 50%;
+    animation: tts-spin .7s linear infinite;
+}
+@keyframes tts-spin { to { transform: rotate(360deg); } }
+
+.tts-error {
+    margin: 10px 28px; padding: 11px 16px;
+    background: rgba(239,68,68,.1);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: var(--dts-radius-sm);
+    color: #fca5a5; font-size: .86rem; display: none;
+}
+.tts-error.visible { display: block; }
+
+/* ── Player ─────────────────────────────────────────────── */
+.tts-player {
+    display: none;
+    margin-top: 14px;
+    padding: 16px;
+    background: linear-gradient(135deg, rgba(217,70,239,.08), rgba(124,58,237,.05));
+    border: 1.5px solid rgba(217,70,239,.3);
+    border-radius: var(--dts-radius);
+}
+.tts-player.visible { display: block; }
+.tts-player-label {
+    font-size: .68rem; font-weight: 700; color: var(--dts-accent-lt);
+    text-transform: uppercase; letter-spacing: .08em;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+}
+.tts-player-voice-row {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 10px; font-size: .8rem;
+}
+.tts-pv-name   { font-weight: 700; color: var(--dts-text); }
+.tts-pv-region { color: var(--dts-muted); }
+.tts-pv-speed  { color: var(--dts-accent-lt); font-weight: 600; }
+.tts-pv-chars  { color: var(--dts-muted); }
+.tts-pv-gender { font-weight: 700; }
+.tts-pv-gender.male   { color: #60a5fa; }
+.tts-pv-gender.female { color: #f9a8d4; }
+
+.tts-player audio {
+    width: 100%; height: 38px; border-radius: 7px;
+    filter: invert(1) hue-rotate(180deg);
+}
+.tts-browser-player { display: flex; gap: 9px; padding: 8px 0; }
+.tts-player-actions { display: flex; gap: 9px; margin-top: 11px; flex-wrap: wrap; }
+.tts-player-info    { font-size: .74rem; color: var(--dts-muted); margin-top: 8px; }
+
+/* ── Voice Badge ────────────────────────────────────────── */
+.tts-voice-badge {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 13px;
+    background: var(--dts-surface2);
+    border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius-sm);
+    font-size: .84rem; color: var(--dts-muted);
+    min-height: 42px;
+    transition: all .2s;
+}
+.tts-voice-badge.selected {
+    background: rgba(217,70,239,.1);
+    border-color: var(--dts-accent);
+    color: var(--dts-text);
+}
+.tts-badge-icon   { font-size: 1rem; }
+.tts-badge-region { color: var(--dts-muted); font-size: .76rem; }
+.tts-badge-lang   {
+    margin-left: auto;
+    font-size: .65rem; font-weight: 700;
+    background: rgba(217,70,239,.18);
+    color: var(--dts-accent-lt);
+    padding: 2px 7px; border-radius: 4px;
+}
+
+/* ── Sidebar filters ────────────────────────────────────── */
+.tts-label {
+    font-size: .68rem; font-weight: 700; color: var(--dts-muted);
+    text-transform: uppercase; letter-spacing: .07em;
+    margin-bottom: 6px; margin-top: 14px; display: block;
+}
+
+.tts-lang-filter {
+    width: 100%;
+    padding: 8px 12px;
+    background: var(--dts-surface2);
+    border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius-sm);
+    color: var(--dts-text);
+    font-family: inherit; font-size: .84rem;
+    margin-bottom: 4px;
+    cursor: pointer; outline: none;
+    transition: border-color .15s;
+}
+.tts-lang-filter:focus { border-color: var(--dts-accent); }
+.tts-lang-filter option { background: #0e0c20; }
+
+/* Gender filter */
+.tts-gender-filter { display: flex; gap: 6px; margin-bottom: 12px; }
+.tts-gender-btn {
+    flex: 1; padding: 6px 8px;
+    background: var(--dts-surface2);
+    border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius-sm);
+    color: var(--dts-muted);
+    font-size: .77rem; font-weight: 600;
+    cursor: pointer; transition: all .15s; font-family: inherit;
+}
+.tts-gender-btn:hover { border-color: var(--dts-accent); color: var(--dts-accent-lt); }
+.tts-gender-btn.active { background: rgba(217,70,239,.15); border-color: var(--dts-accent); color: var(--dts-accent-lt); }
+
+/* ── Voice Grid ─────────────────────────────────────────── */
+.tts-voice-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 2px;
+    margin-bottom: 14px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--dts-border2) transparent;
+}
+.tts-voice-grid::-webkit-scrollbar       { width: 3px; }
+.tts-voice-grid::-webkit-scrollbar-thumb { background: var(--dts-border2); border-radius: 2px; }
+
+.tts-voice-card {
+    padding: 9px 10px;
+    background: var(--dts-surface2);
+    border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius-sm);
+    cursor: pointer; transition: all .15s; text-align: left;
+}
+.tts-voice-card:hover  { border-color: var(--dts-accent); background: rgba(217,70,239,.07); }
+.tts-voice-card.selected {
+    border-color: var(--dts-accent);
+    background: rgba(217,70,239,.14);
+    box-shadow: 0 0 0 2px rgba(217,70,239,.18);
+}
+.tts-voice-name  { font-size: .8rem;  font-weight: 700; color: var(--dts-text); }
+.tts-voice-meta  { font-size: .66rem; color: var(--dts-muted); margin-top: 1px; }
+.tts-voice-desc  { font-size: .64rem; color: var(--dts-muted); margin-top: 2px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tts-voice-gender {
+    display: inline-block; font-size: .62rem; font-weight: 700;
+    padding: 1px 5px; border-radius: 4px; margin-top: 4px;
+}
+.tts-voice-gender.male   { background: rgba(59,130,246,.15); color: #60a5fa; }
+.tts-voice-gender.female { background: rgba(244,114,182,.15); color: #f9a8d4; }
+
+/* ── Speed ──────────────────────────────────────────────── */
+.tts-speed-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.tts-speed-row input[type=range] { flex: 1; accent-color: var(--dts-accent); }
+.tts-speed-val { font-size: .84rem; font-weight: 700; color: var(--dts-accent-lt); min-width: 32px; text-align: right; }
+
+/* ── Translation toggle ─────────────────────────────────── */
+.tts-translate-toggle-row { margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--dts-border); }
+.tts-toggle-label {
+    display: flex; align-items: center; gap: 10px;
+    cursor: pointer; font-size: .84rem; color: var(--dts-body);
+    user-select: none;
+}
+.tts-toggle-label input[type=checkbox] { display: none; }
+.tts-toggle-switch {
+    position: relative; width: 38px; height: 22px;
+    background: var(--dts-surface3); border: 1.5px solid var(--dts-border2);
+    border-radius: 11px; flex-shrink: 0; transition: background .2s, border-color .2s;
+}
+.tts-toggle-switch::after {
+    content: ''; position: absolute;
+    top: 2px; left: 2px;
+    width: 14px; height: 14px;
+    background: var(--dts-muted); border-radius: 50%;
+    transition: transform .2s, background .2s;
+}
+.tts-toggle-label input:checked + .tts-toggle-switch { background: rgba(217,70,239,.4); border-color: var(--dts-accent); }
+.tts-toggle-label input:checked + .tts-toggle-switch::after { transform: translateX(16px); background: var(--dts-accent); }
+.tts-translate-help { font-size: .71rem; color: var(--dts-muted); margin-top: 5px; line-height: 1.5; }
+
+/* ── History ────────────────────────────────────────────── */
+.tts-history { margin-top: 6px; }
+.tts-history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.tts-history-header h3 { font-size: .95rem; font-weight: 700; color: var(--dts-text); }
+.tts-history-list { display: flex; flex-direction: column; gap: 7px; }
+.tts-history-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--dts-surface); border: 1.5px solid var(--dts-border);
+    border-radius: var(--dts-radius-sm); padding: 11px 14px;
+    transition: border-color .15s;
+}
+.tts-history-item:hover { border-color: var(--dts-accent); }
+.tts-history-icon  { font-size: 1.1rem; flex-shrink: 0; }
+.tts-history-info  { flex: 1; min-width: 0; }
+.tts-history-text  { font-size: .83rem; font-weight: 600; color: var(--dts-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tts-history-meta  { font-size: .7rem; color: var(--dts-muted); margin-top: 2px; }
+
+/* ── Responsive ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .tts-hero  { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .tts-main  { padding-top: 56px; }
+    .tts-voice-grid { grid-template-columns: 1fr 1fr; max-height: 280px; }
+}
+@media (max-width: 480px) {
+    .tts-grid  { padding: 10px; }
+    .tts-voice-grid { grid-template-columns: 1fr 1fr; }
+}

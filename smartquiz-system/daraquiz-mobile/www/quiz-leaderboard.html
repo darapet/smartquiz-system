@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Leaderboard — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.lb-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
+.lb-back{color:#6b7280;text-decoration:none;font-size:.85rem;display:flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;white-space:nowrap;}
+.lb-back:hover{background:#f9fafb;}
+.lb-header-title{font-weight:700;font-size:1rem;color:#0f172a;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lb-main{max-width:700px;margin:0 auto;padding:24px 18px;}
+
+/* Hero banner */
+.lb-hero{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);border-radius:20px;padding:28px 24px 20px;text-align:center;margin-bottom:24px;position:relative;overflow:hidden;}
+.lb-hero::before{content:'🏆';position:absolute;right:-10px;top:-10px;font-size:7rem;opacity:.12;}
+.lb-hero-subtitle{color:rgba(255,255,255,.75);font-size:.78rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.lb-hero-title{color:#fff;font-size:1.4rem;font-weight:800;margin-bottom:14px;line-height:1.3;}
+.lb-hero-stats{display:flex;justify-content:center;gap:24px;flex-wrap:wrap;}
+.lb-hero-stat{color:rgba(255,255,255,.9);}
+.lb-hero-stat-num{font-size:1.6rem;font-weight:800;line-height:1;display:block;}
+.lb-hero-stat-label{font-size:.72rem;opacity:.8;margin-top:2px;}
+
+/* Podium */
+.lb-podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;}
+.lb-podium-slot{display:flex;flex-direction:column;align-items:center;flex:1;max-width:180px;}
+.lb-podium-avatar{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;color:#fff;margin-bottom:6px;border:3px solid #fff;box-shadow:0 4px 14px rgba(0,0,0,.15);position:relative;}
+.lb-podium-avatar .lb-crown{position:absolute;top:-14px;left:50%;transform:translateX(-50%);font-size:1.1rem;}
+.lb-podium-name{font-size:.78rem;font-weight:700;color:#1e293b;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;}
+.lb-podium-score{font-size:.72rem;color:#64748b;font-weight:600;margin-top:2px;}
+.lb-podium-block{width:100%;border-radius:12px 12px 0 0;display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:900;color:#fff;padding:10px 0 8px;text-shadow:0 1px 3px rgba(0,0,0,.2);}
+.lb-p1 .lb-podium-avatar{background:linear-gradient(135deg,#f59e0b,#d97706);}
+.lb-p2 .lb-podium-avatar{background:linear-gradient(135deg,#94a3b8,#64748b);}
+.lb-p3 .lb-podium-avatar{background:linear-gradient(135deg,#d97706,#92400e);}
+.lb-p1 .lb-podium-block{background:linear-gradient(135deg,#f59e0b,#d97706);height:90px;}
+.lb-p2 .lb-podium-block{background:linear-gradient(135deg,#94a3b8,#64748b);height:70px;}
+.lb-p3 .lb-podium-block{background:linear-gradient(135deg,#cd7c37,#92400e);height:55px;}
+
+/* Table */
+.lb-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;overflow:hidden;margin-bottom:18px;}
+.lb-card-header{padding:16px 20px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.lb-card-title{font-size:.95rem;font-weight:700;color:#0f172a;}
+.lb-filter-row{display:flex;gap:6px;}
+.lb-filter-btn{padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:600;cursor:pointer;border:1px solid #e2e8f0;background:#fff;color:#64748b;}
+.lb-filter-btn.active{background:#4f46e5;border-color:#4f46e5;color:#fff;}
+.lb-table{width:100%;border-collapse:collapse;}
+.lb-table th{padding:10px 16px;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;text-align:left;background:#f8fafc;border-bottom:1px solid #e5e7eb;}
+.lb-table td{padding:11px 16px;border-bottom:1px solid #f8fafc;vertical-align:middle;}
+.lb-table tr:last-child td{border-bottom:none;}
+.lb-table tr:hover td{background:#fafafa;}
+.lb-rank{font-size:.9rem;font-weight:800;color:#94a3b8;width:36px;}
+.lb-rank-1{color:#f59e0b;}
+.lb-rank-2{color:#94a3b8;}
+.lb-rank-3{color:#cd7c37;}
+.lb-rank-icon{font-size:1.1rem;}
+.lb-participant{font-weight:600;font-size:.88rem;color:#1e293b;}
+.lb-score-bar-wrap{display:flex;align-items:center;gap:10px;}
+.lb-score-bar-bg{flex:1;background:#f1f5f9;border-radius:20px;height:7px;overflow:hidden;}
+.lb-score-bar{height:100%;border-radius:20px;background:linear-gradient(90deg,#4f46e5,#7c3aed);transition:width .5s ease;}
+.lb-score-pct{font-size:.82rem;font-weight:700;color:#374151;white-space:nowrap;min-width:42px;text-align:right;}
+.lb-badge-pass{background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;}
+.lb-badge-fail{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;padding:2px 9px;border-radius:20px;font-size:.72rem;font-weight:700;}
+.lb-date{font-size:.75rem;color:#94a3b8;white-space:nowrap;}
+.lb-empty{text-align:center;padding:48px 20px;color:#94a3b8;}
+.lb-empty-icon{font-size:3rem;margin-bottom:10px;}
+.lb-me-row td{background:#f5f3ff!important;border-left:3px solid #4f46e5;}
+.lb-share-bar{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:14px 18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px;}
+.lb-share-bar-label{font-size:.85rem;font-weight:600;color:#374151;flex:1;}
+.lb-share-input{flex:1;min-width:180px;padding:7px 11px;border:1px solid #e2e8f0;border-radius:8px;font-size:.83rem;background:#f8fafc;color:#374151;}
+.lb-btn{padding:8px 18px;border-radius:9px;font-size:.83rem;font-weight:600;cursor:pointer;border:none;display:inline-flex;align-items:center;gap:6px;}
+.lb-btn-primary{background:#4f46e5;color:#fff;}
+.lb-btn-primary:hover{background:#4338ca;}
+.lb-btn-outline{background:#fff;color:#374151;border:1px solid #e2e8f0;}
+.lb-btn-outline:hover{background:#f9fafb;}
+.loading-spinner{display:inline-block;width:20px;height:20px;border:3px solid #e2e8f0;border-top-color:#4f46e5;border-radius:50%;animation:spin .7s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:30px;font-size:.87rem;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast.show{opacity:1;}
+@media(max-width:600px){
+  .lb-podium{gap:8px;}
+  .lb-podium-avatar{width:44px;height:44px;font-size:1.1rem;}
+  .lb-p1 .lb-podium-block{height:70px;}
+  .lb-p2 .lb-podium-block{height:55px;}
+  .lb-p3 .lb-podium-block{height:42px;}
+  .lb-score-bar-bg{display:none;}
+  .lb-table th:nth-child(4),.lb-table td:nth-child(4){display:none;}
+  .lb-main{padding:14px 12px;}
+}
+@media print{
+  .no-print{display:none!important;}
+  .lb-header{position:static;}
+}
+</style>
+<script>
+window.AQS = {
+  ajax_url:'firebase', nonce:'', auth_nonce:'',
+  home_url:'index.html', create_page_url:'create-quiz.html',
+  is_logged_in:true, is_host:true, is_admin:false,
+  current_user_name:'User', plugin_url:'./'
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<header class="lb-header no-print">
+  <a href="#" class="lb-back" id="lb-back-link">← Back</a>
+  <div class="lb-header-title" id="lb-header-title">🏆 Leaderboard</div>
+  <button class="lb-btn lb-btn-outline" onclick="window.print()" style="font-size:.78rem;padding:6px 12px;flex-shrink:0;">🖨️ Print</button>
+</header>
+
+<main class="lb-main">
+  <div id="lb-content" style="text-align:center;padding:60px 0;">
+    <span class="loading-spinner"></span>
+    <div style="margin-top:14px;color:#94a3b8;font-size:.88rem;">Loading leaderboard…</div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var params   = new URLSearchParams(location.search);
+  var quizId   = params.get('id') || '';
+  var fromPage = params.get('from') || 'quiz-manage.html?id=' + quizId;
+
+  document.getElementById('lb-back-link').href = fromPage;
+
+  function toast(msg){
+    var el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(function(){ el.classList.remove('show'); }, 2400);
+  }
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function pct(score, total){ return total ? Math.round((score/total)*100) : 0; }
+  function initial(name){ return String(name||'?').trim().charAt(0).toUpperCase(); }
+
+  /* ── Wait for Firebase ── */
+  function waitReady(fn, t){
+    t = t || 0;
+    if(window._aqsFirebaseReady && typeof jQuery !== 'undefined'){ fn(); }
+    else if(t < 80){ setTimeout(function(){ waitReady(fn, t+1); }, 250); }
+    else { renderError('Firebase not ready. Please refresh.'); }
+  }
+
+  function renderError(msg){
+    document.getElementById('lb-content').innerHTML =
+      '<div style="color:#ef4444;text-align:center;padding:40px;">' + esc(msg) + '</div>';
+  }
+
+  /* ── Gradient color by rank ── */
+  var rankColors = [
+    'linear-gradient(135deg,#f59e0b,#d97706)',
+    'linear-gradient(135deg,#94a3b8,#64748b)',
+    'linear-gradient(135deg,#cd7c37,#92400e)',
+    'linear-gradient(135deg,#4f46e5,#7c3aed)',
+    'linear-gradient(135deg,#10b981,#059669)'
+  ];
+  function avatarStyle(rank){
+    return rankColors[Math.min(rank,4)];
+  }
+
+  /* ── Sort options ── */
+  var sortMode = 'score'; // score | time | recent
+  var allAttempts = [];
+  var quizTitle   = '';
+  var quizSubject = '';
+  var quizUrl     = '';
+
+  function getSorted(){
+    var list = allAttempts.slice();
+    if(sortMode === 'score'){
+      list.sort(function(a,b){
+        var pb = pct(b.score,b.total), pa = pct(a.score,a.total);
+        if(pb !== pa) return pb - pa;
+        // tie-break: faster time wins
+        return (a.time_taken_seconds||9999) - (b.time_taken_seconds||9999);
+      });
+    } else if(sortMode === 'time'){
+      // Sort by fastest completion (ascending), only for passing scores
+      list.sort(function(a,b){
+        var ta = a.time_taken_seconds||9999, tb = b.time_taken_seconds||9999;
+        return ta - tb;
+      });
+    } else {
+      // most recent
+      list.sort(function(a,b){ return (b.finished_at||'').localeCompare(a.finished_at||''); });
+    }
+    return list;
+  }
+
+  function render(){
+    var sorted = getSorted();
+    var container = document.getElementById('lb-content');
+    var attempts  = allAttempts;
+    var passCount = attempts.filter(function(a){ return pct(a.score,a.total)>=50; }).length;
+    var avgScore  = attempts.length ? Math.round(attempts.reduce(function(s,a){ return s+pct(a.score,a.total); },0)/attempts.length) : 0;
+    var topScore  = attempts.length ? Math.max.apply(null, attempts.map(function(a){ return pct(a.score,a.total); })) : 0;
+
+    /* ── Back link ── */
+    document.getElementById('lb-header-title').textContent = '🏆 ' + (quizTitle||'Leaderboard');
+
+    /* ── Build HTML ── */
+    var html = '';
+
+    /* Hero */
+    html += '<div class="lb-hero">' +
+      '<div class="lb-hero-subtitle">Quiz Leaderboard</div>' +
+      '<div class="lb-hero-title">' + esc(quizTitle) + '</div>' +
+      '<div class="lb-hero-stats">' +
+        '<div class="lb-hero-stat"><span class="lb-hero-stat-num">' + attempts.length + '</span><div class="lb-hero-stat-label">Participants</div></div>' +
+        '<div class="lb-hero-stat"><span class="lb-hero-stat-num">' + topScore + '%</span><div class="lb-hero-stat-label">Top Score</div></div>' +
+        '<div class="lb-hero-stat"><span class="lb-hero-stat-num">' + avgScore + '%</span><div class="lb-hero-stat-label">Avg Score</div></div>' +
+        '<div class="lb-hero-stat"><span class="lb-hero-stat-num">' + passCount + '</span><div class="lb-hero-stat-label">Passed</div></div>' +
+      '</div>' +
+    '</div>';
+
+    if(!attempts.length){
+      html += '<div class="lb-empty"><div class="lb-empty-icon">📭</div><div style="font-weight:700;color:#64748b;">No one has taken this quiz yet</div><div style="font-size:.85rem;margin-top:6px;">Share it to get your first participant!</div></div>';
+      container.innerHTML = html;
+      return;
+    }
+
+    /* Podium (top 3 by score sort) */
+    var podiumList = allAttempts.slice().sort(function(a,b){
+      var pb = pct(b.score,b.total), pa = pct(a.score,a.total);
+      return pb !== pa ? pb - pa : (a.time_taken_seconds||9999) - (b.time_taken_seconds||9999);
+    });
+    var p1 = podiumList[0], p2 = podiumList[1], p3 = podiumList[2];
+
+    function podiumSlot(entry, rankClass, rank, blockLabel){
+      if(!entry) return '<div class="lb-podium-slot ' + rankClass + '"><div class="lb-podium-block" style="height:' + (rank===1?90:rank===2?70:55) + 'px;opacity:.25;">' + blockLabel + '</div></div>';
+      var grad = avatarStyle(rank-1);
+      var crown = rank===1 ? '<span class="lb-crown">👑</span>' : '';
+      return '<div class="lb-podium-slot ' + rankClass + '">' +
+        '<div class="lb-podium-avatar" style="background:' + grad + ';">' + crown + esc(initial(entry.participant_name)) + '</div>' +
+        '<div class="lb-podium-name">' + esc((entry.participant_name||'Anonymous').split(' ')[0]) + '</div>' +
+        '<div class="lb-podium-score">' + pct(entry.score,entry.total) + '%</div>' +
+        '<div class="lb-podium-block" style="height:' + (rank===1?90:rank===2?70:55) + 'px;">' + blockLabel + '</div>' +
+      '</div>';
+    }
+
+    html += '<div class="lb-podium no-print">' +
+      podiumSlot(p2, 'lb-p2', 2, '🥈') +
+      podiumSlot(p1, 'lb-p1', 1, '🥇') +
+      podiumSlot(p3, 'lb-p3', 3, '🥉') +
+    '</div>';
+
+    /* Share bar */
+    if(quizUrl){
+      html += '<div class="lb-share-bar no-print">' +
+        '<div class="lb-share-bar-label">🔗 Share this quiz:</div>' +
+        '<input class="lb-share-input" id="lb-share-url" type="text" readonly value="' + esc(quizUrl) + '">' +
+        '<button class="lb-btn lb-btn-primary" onclick="copyShare()">Copy Link</button>' +
+      '</div>';
+    }
+
+    /* Table */
+    html += '<div class="lb-card">' +
+      '<div class="lb-card-header">' +
+        '<div class="lb-card-title">All Rankings</div>' +
+        '<div class="lb-filter-row">' +
+          '<button class="lb-filter-btn ' + (sortMode==='score'?'active':'') + '" onclick="setSortMode(\'score\')">🏆 By Score</button>' +
+          '<button class="lb-filter-btn ' + (sortMode==='time'?'active':'') + '" onclick="setSortMode(\'time\')">⚡ By Speed</button>' +
+          '<button class="lb-filter-btn ' + (sortMode==='recent'?'active':'') + '" onclick="setSortMode(\'recent\')">🕒 Recent</button>' +
+        '</div>' +
+      '</div>' +
+      '<div style="overflow-x:auto;">' +
+        '<table class="lb-table">' +
+          '<thead><tr>' +
+            '<th style="width:40px;">#</th>' +
+            '<th>Participant</th>' +
+            '<th>Score</th>' +
+            '<th>' + (sortMode==='time' ? 'Time' : 'Date') + '</th>' +
+            '<th>Result</th>' +
+          '</tr></thead>' +
+          '<tbody>' + sorted.map(function(a, i){
+            var p = pct(a.score, a.total);
+            var pass = p >= 50;
+            var rankNum = i + 1;
+            var rankIcon = rankNum === 1 ? '🥇' : rankNum === 2 ? '🥈' : rankNum === 3 ? '🥉' : rankNum;
+            var rankClass = rankNum <= 3 ? 'lb-rank-' + rankNum : '';
+            var timeStr = '';
+            if(sortMode === 'time' && a.time_taken_seconds){
+              var m = Math.floor(a.time_taken_seconds/60), s = a.time_taken_seconds%60;
+              timeStr = m + ':' + (s<10?'0':'') + s;
+            } else {
+              timeStr = (a.finished_at||'').substring(0,16);
+            }
+            return '<tr>' +
+              '<td class="lb-rank ' + rankClass + '">' + (typeof rankIcon === 'string' && rankIcon.length > 2 ? '<span class="lb-rank-icon">' + rankIcon + '</span>' : '<strong>' + rankNum + '</strong>') + '</td>' +
+              '<td>' +
+                '<div class="lb-participant">' +
+                  '<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:' + avatarStyle(i) + ';color:#fff;font-weight:800;font-size:.75rem;margin-right:8px;flex-shrink:0;">' + esc(initial(a.participant_name)) + '</span>' +
+                  esc(a.participant_name || 'Anonymous') +
+                '</div>' +
+              '</td>' +
+              '<td>' +
+                '<div class="lb-score-bar-wrap">' +
+                  '<div class="lb-score-bar-bg"><div class="lb-score-bar" style="width:' + p + '%;"></div></div>' +
+                  '<span class="lb-score-pct">' + a.score + '/' + a.total + ' <span style="color:#94a3b8;font-weight:400;">(' + p + '%)</span></span>' +
+                '</div>' +
+              '</td>' +
+              '<td class="lb-date">' + esc(timeStr) + '</td>' +
+              '<td>' + (pass ? '<span class="lb-badge-pass">Pass</span>' : '<span class="lb-badge-fail">Fail</span>') + '</td>' +
+            '</tr>';
+          }).join('') + '</tbody>' +
+        '</table>' +
+      '</div>' +
+    '</div>';
+
+    container.innerHTML = html;
+  }
+
+  window.setSortMode = function(mode){
+    sortMode = mode;
+    render();
+  };
+  window.copyShare = function(){
+    var inp = document.getElementById('lb-share-url');
+    if(inp){ inp.select(); document.execCommand('copy'); toast('Link copied!'); }
+  };
+
+  /* ── Init ── */
+  if(!quizId){
+    renderError('No quiz ID specified.');
+  } else {
+    waitReady(function(){
+      jQuery.post(AQS.ajax_url, {action:'aqs_get_attendance', quiz_id: quizId}).then(function(d){
+        if(!d){ renderError('Could not load data.'); return; }
+        allAttempts = d.attempts || [];
+        quizTitle   = d.quiz_title || 'Quiz';
+        quizSubject = d.quiz_subject || '';
+        quizUrl     = d.quiz_url || '';
+        document.title = '🏆 ' + quizTitle + ' — Leaderboard';
+        render();
+      }).catch(function(e){
+        renderError('Error: ' + (e.message||'Could not load leaderboard.'));
+      });
+    });
+  }
+})();
+</script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-auth.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

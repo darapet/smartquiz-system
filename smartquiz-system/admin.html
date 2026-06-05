@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex;}
+
+/* ── Gate ── */
+#admin-gate{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;position:fixed;inset:0;background:#0f0f1a;z-index:9999;}
+.gate-box{background:#1e1b4b;border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:48px 40px;text-align:center;max-width:360px;width:90%;}
+.gate-icon{font-size:3rem;margin-bottom:16px;}
+.gate-box h2{color:#e0e7ff;font-size:1.4rem;margin-bottom:8px;}
+.gate-box p{color:#94a3b8;font-size:.9rem;margin-bottom:24px;}
+
+/* ── Layout ── */
+#admin-panel{display:none;width:100%;min-height:100vh;}
+.adm-sidebar{width:230px;min-height:100vh;background:#13111f;border-right:1px solid rgba(255,255,255,.07);padding:24px 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;}
+.adm-main{margin-left:230px;flex:1;min-height:100vh;padding:0;}
+
+/* ── Sidebar ── */
+.adm-brand{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,.07);}
+.adm-brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.adm-brand-logo svg{flex-shrink:0;}
+.adm-brand-name{font-weight:800;font-size:1.1rem;color:#e0e7ff;}
+.adm-brand-tag{font-size:.72rem;color:#6366f1;font-weight:600;background:rgba(99,102,241,.15);padding:2px 8px;border-radius:20px;display:inline-block;margin-top:4px;}
+.adm-nav{padding:16px 0;flex:1;overflow-y:auto;}
+.adm-nav-link{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#94a3b8;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;cursor:pointer;border:none;background:none;width:100%;text-align:left;}
+.adm-nav-link:hover,.adm-nav-link.active{background:rgba(99,102,241,.12);color:#a5b4fc;}
+.adm-nav-link.active{border-right:3px solid #6366f1;}
+.adm-nav-link .adm-nav-icon{font-size:1.1rem;width:20px;text-align:center;}
+.adm-nav-section{padding:8px 20px 4px;font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;}
+.adm-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.07);}
+.adm-user-chip{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+.adm-user-dot{width:8px;height:8px;background:#10b981;border-radius:50%;flex-shrink:0;}
+.adm-user-email{font-size:.72rem;color:#6ee7b7;word-break:break-all;}
+
+/* ── Main area ── */
+.adm-topbar{background:#13111f;border-bottom:1px solid rgba(255,255,255,.07);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.adm-topbar-title{font-size:1.1rem;font-weight:700;color:#e0e7ff;}
+.adm-content{padding:28px;}
+
+/* ── Stats cards ── */
+.adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px;}
+.adm-stat-card{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;text-align:center;}
+.adm-stat-card .adm-stat-num{font-size:2rem;font-weight:800;color:#a5b4fc;display:block;}
+.adm-stat-card .adm-stat-label{font-size:.78rem;color:#64748b;margin-top:4px;display:block;}
+
+/* ── Sections ── */
+.adm-section{display:none;}
+.adm-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
+.adm-section-title{font-size:1.05rem;font-weight:700;color:#e0e7ff;}
+
+/* ── Search ── */
+.adm-search{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;color:#e2e8f0;font-size:.85rem;outline:none;width:240px;}
+.adm-search::placeholder{color:#475569;}
+.adm-search:focus{border-color:#6366f1;}
+
+/* ── Table ── */
+.adm-table{width:100%;border-collapse:collapse;font-size:.82rem;}
+.adm-table th{background:rgba(255,255,255,.04);color:#94a3b8;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07);}
+.adm-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
+.adm-table tr:hover td{background:rgba(255,255,255,.02);}
+.adm-table-wrap{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;overflow-x:auto;}
+
+/* ── Buttons ── */
+.adm-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;color:#e2e8f0;background:rgba(255,255,255,.08);}
+.adm-btn:hover{background:rgba(255,255,255,.14);}
+.adm-btn-primary{background:#6366f1;color:#fff;}
+.adm-btn-primary:hover{background:#4f46e5;}
+.adm-btn-danger{background:rgba(239,68,68,.15);color:#f87171;}
+.adm-btn-danger:hover{background:rgba(239,68,68,.3);}
+.adm-btn-success{background:rgba(16,185,129,.15);color:#6ee7b7;}
+.adm-btn-success:hover{background:rgba(16,185,129,.3);}
+.adm-btn-warn{background:rgba(245,158,11,.15);color:#fcd34d;}
+.adm-btn-warn:hover{background:rgba(245,158,11,.3);}
+.adm-btn-sm{padding:5px 10px;font-size:.75rem;border-radius:6px;}
+
+/* ── Badges ── */
+.adm-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600;}
+.adm-badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+.adm-badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
+.adm-badge-red{background:rgba(239,68,68,.15);color:#f87171;}
+.adm-badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
+.adm-badge-purple{background:rgba(139,92,246,.15);color:#c4b5fd;}
+.adm-badge-gray{background:rgba(255,255,255,.07);color:#94a3b8;}
+
+/* ── Cards (form) ── */
+.adm-card{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:24px;margin-bottom:20px;}
+.adm-card-title{font-size:.95rem;font-weight:700;color:#e0e7ff;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07);}
+.adm-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
+.adm-field{display:flex;flex-direction:column;gap:5px;}
+.adm-field label{font-size:.75rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;}
+.adm-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 13px;color:#e2e8f0;font-size:.85rem;outline:none;width:100%;font-family:'Inter',sans-serif;}
+.adm-input:focus{border-color:#6366f1;}
+.adm-input-color{padding:3px 6px;height:38px;cursor:pointer;}
+.adm-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+.adm-toggle{width:40px;height:22px;appearance:none;background:rgba(255,255,255,.1);border-radius:11px;cursor:pointer;position:relative;transition:background .2s;}
+.adm-toggle:checked{background:#6366f1;}
+.adm-toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
+.adm-toggle:checked::after{left:21px;}
+.adm-select-sm{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:.75rem;outline:none;}
+
+/* ── States ── */
+.adm-loading{padding:32px;text-align:center;color:#475569;}
+.adm-empty{padding:32px;text-align:center;color:#475569;}
+.adm-error{padding:16px;background:rgba(239,68,68,.1);color:#f87171;border-radius:8px;margin:8px 0;}
+.adm-save-msg{color:#6ee7b7;font-size:.82rem;font-weight:600;margin-left:10px;}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+    .adm-sidebar{width:100%;height:auto;min-height:unset;position:relative;flex-direction:row;flex-wrap:wrap;}
+    .adm-main{margin-left:0;}
+    .adm-nav{display:flex;flex-wrap:wrap;padding:8px;}
+    .adm-nav-link{width:auto;flex:1;min-width:80px;justify-content:center;font-size:.75rem;padding:8px 6px;}
+    .adm-nav-section{display:none;}
+    .adm-brand{width:100%;padding:14px 16px 10px;}
+    .adm-sidebar-footer{width:100%;padding:8px 16px;}
+}
+
+/* ── Date Filters ── */
+.adm-filters-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.adm-filters-row label{font-size:.72rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.adm-date-sel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 10px;color:#e2e8f0;font-size:.78rem;outline:none;cursor:pointer;}
+.adm-date-sel:focus{border-color:#6366f1;}
+.adm-date-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 8px;color:#e2e8f0;font-size:.78rem;outline:none;width:64px;text-align:center;}
+.adm-date-input:focus{border-color:#6366f1;}
+
+/* ── Activity Modal ── */
+#adm-activity-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;}
+.adm-modal-panel{background:#1a1730;border:1px solid rgba(99,102,241,.35);border-radius:16px;width:100%;max-width:960px;margin:auto;position:relative;}
+.adm-modal-header{padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.adm-modal-title{font-size:1.05rem;font-weight:700;color:#e0e7ff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm-modal-close{background:rgba(255,255,255,.08);border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:6px;line-height:1;flex-shrink:0;}
+.adm-modal-close:hover{background:rgba(239,68,68,.2);color:#f87171;}
+.adm-modal-body{padding:22px 24px;}
+.adm-modal-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;}
+.adm-modal-info-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:11px 14px;}
+.adm-modal-info-label{font-size:.65rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.adm-modal-info-val{font-size:.88rem;color:#e0e7ff;font-weight:600;word-break:break-all;}
+.adm-modal-section-title{font-size:.78rem;font-weight:700;color:#a5b4fc;margin:0 0 10px;text-transform:uppercase;letter-spacing:.07em;}
+.adm-modal-footer{padding:14px 24px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+/* ── Export dropdown ── */
+.adm-export-wrap{position:relative;display:inline-block;}
+.adm-export-menu{position:absolute;bottom:110%;left:0;background:#1e1b4b;border:1px solid rgba(99,102,241,.35);border-radius:10px;padding:6px;min-width:200px;z-index:10;display:none;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+.adm-export-menu.open{display:block;}
+.adm-export-item{display:block;width:100%;padding:8px 12px;background:none;border:none;color:#e2e8f0;font-size:.82rem;cursor:pointer;text-align:left;border-radius:6px;font-family:'Inter',sans-serif;}
+.adm-export-item:hover{background:rgba(99,102,241,.2);color:#a5b4fc;}
+.adm-export-divider{height:1px;background:rgba(255,255,255,.07);margin:4px 2px;}
+
+/* ── Print ── */
+@media print{
+    body > *{display:none!important;}
+    #adm-print-frame{display:block!important;}
+}
+#adm-print-frame{display:none;}
+</style>
+</head>
+<body>
+
+<!-- ── Access Gate (shown until auth check passes) ── -->
+<div id="admin-gate">
+    <div class="gate-box">
+        <div class="gate-icon">⏳</div>
+        <h2>Checking access…</h2>
+        <p>Verifying your admin credentials.</p>
+    </div>
+</div>
+
+<!-- ── Admin Panel ── -->
+<div id="admin-panel">
+
+    <!-- Sidebar -->
+    <aside class="adm-sidebar">
+        <div class="adm-brand">
+            <div class="adm-brand-logo">
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="white"/></svg>
+                <span class="adm-brand-name">xzily AI</span>
+            </div>
+            <span class="adm-brand-tag">Admin Panel</span>
+        </div>
+
+        <nav class="adm-nav">
+            <div class="adm-nav-section">Overview</div>
+            <a class="adm-nav-link active" data-section="quizzes">
+                <span class="adm-nav-icon">📋</span> Quizzes
+            </a>
+            <a class="adm-nav-link" data-section="users">
+                <span class="adm-nav-icon">👥</span> Users
+            </a>
+            <a class="adm-nav-link" data-section="attempts">
+                <span class="adm-nav-icon">📊</span> Results
+            </a>
+            <div class="adm-nav-section">Archive & Activity</div>
+            <a class="adm-nav-link" data-section="deleted">
+                <span class="adm-nav-icon">🗄️</span> Deleted Quizzes
+            </a>
+            <a class="adm-nav-link" data-section="hosts">
+                <span class="adm-nav-icon">🏠</span> Host Activity
+            </a>
+            <div class="adm-nav-section">Settings</div>
+            <a class="adm-nav-link" data-section="ads">
+                <span class="adm-nav-icon">📢</span> Ads
+            </a>
+            <a class="adm-nav-link" data-section="notifs">
+                <span class="adm-nav-icon">🔔</span> Notifications
+            </a>
+            <a class="adm-nav-link" href="admin-settings.html">
+                <span class="adm-nav-icon">⚙️</span> Admin Settings
+            </a>
+        </nav>
+
+        <div class="adm-sidebar-footer">
+            <div class="adm-user-chip">
+                <div class="adm-user-dot"></div>
+                <span class="adm-user-email" id="admin-email-badge">—</span>
+            </div>
+            <button class="adm-btn adm-btn-danger adm-btn-sm" id="adm-logout-btn" style="width:100%;justify-content:center;">Sign Out</button>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="adm-main">
+        <div class="adm-topbar">
+            <span class="adm-topbar-title" id="adm-section-title">All Quizzes</span>
+            <a href="index.html" class="adm-btn adm-btn-sm">← Back to Site</a>
+        </div>
+
+        <div class="adm-content">
+
+            <!-- Stats -->
+            <div class="adm-stats">
+                <div class="adm-stat-card">
+                    <span class="adm-stat-num" id="stat-quizzes">—</span>
+                    <span class="adm-stat-label">Total Quizzes</span>
+                </div>
+                <div class="adm-stat-card">
+                    <span class="adm-stat-num" id="stat-published">—</span>
+                    <span class="adm-stat-label">Published</span>
+                </div>
+                <div class="adm-stat-card">
+                    <span class="adm-stat-num" id="stat-users">—</span>
+                    <span class="adm-stat-label">Users</span>
+                </div>
+                <div class="adm-stat-card">
+                    <span class="adm-stat-num" id="stat-attempts">—</span>
+                    <span class="adm-stat-label">Total Attempts</span>
+                </div>
+            </div>
+
+            <!-- QUIZZES SECTION -->
+            <div class="adm-section" id="section-quizzes" style="display:block;">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">All Quizzes</span>
+                    <input type="text" class="adm-search" id="adm-quiz-search" placeholder="Search quizzes…">
+                </div>
+                <div class="adm-filters-row">
+                    <label>Filter:</label>
+                    <select class="adm-date-sel" id="adm-quiz-year"><option value="">All Years</option></select>
+                    <select class="adm-date-sel" id="adm-quiz-month">
+                        <option value="">All Months</option>
+                        <option value="1">January</option><option value="2">February</option>
+                        <option value="3">March</option><option value="4">April</option>
+                        <option value="5">May</option><option value="6">June</option>
+                        <option value="7">July</option><option value="8">August</option>
+                        <option value="9">September</option><option value="10">October</option>
+                        <option value="11">November</option><option value="12">December</option>
+                    </select>
+                    <select class="adm-date-sel" id="adm-quiz-day">
+                        <option value="">All Days</option>
+                        <script>for(var _d=1;_d<=31;_d++){document.write('<option value="'+_d+'">'+_d+'</option>');}</script>
+                    </select>
+                </div>
+                <div class="adm-table-wrap" style="margin-top:14px;">
+                    <div id="quizzes-list"><div class="adm-loading">Loading…</div></div>
+                </div>
+            </div>
+
+            <!-- USERS SECTION -->
+            <div class="adm-section" id="section-users">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">All Users</span>
+                    <input type="text" class="adm-search" id="adm-user-search" placeholder="Search users…">
+                </div>
+                <div class="adm-table-wrap">
+                    <div id="users-list"><div class="adm-loading">Loading…</div></div>
+                </div>
+            </div>
+
+            <!-- ATTEMPTS SECTION -->
+            <div class="adm-section" id="section-attempts">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">Quiz Results (last 100)</span>
+                </div>
+                <div class="adm-table-wrap">
+                    <div id="attempts-list"><div class="adm-loading">Loading…</div></div>
+                </div>
+            </div>
+
+            <!-- DELETED QUIZZES SECTION -->
+            <div class="adm-section" id="section-deleted">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">🗄️ Deleted Quizzes Archive</span>
+                    <input type="text" class="adm-search" id="adm-deleted-search" placeholder="Search deleted…">
+                </div>
+                <div class="adm-filters-row">
+                    <label>Filter:</label>
+                    <select class="adm-date-sel" id="adm-del-year"><option value="">All Years</option></select>
+                    <select class="adm-date-sel" id="adm-del-month">
+                        <option value="">All Months</option>
+                        <option value="1">January</option><option value="2">February</option>
+                        <option value="3">March</option><option value="4">April</option>
+                        <option value="5">May</option><option value="6">June</option>
+                        <option value="7">July</option><option value="8">August</option>
+                        <option value="9">September</option><option value="10">October</option>
+                        <option value="11">November</option><option value="12">December</option>
+                    </select>
+                    <select class="adm-date-sel" id="adm-del-day">
+                        <option value="">All Days</option>
+                        <script>for(var _d2=1;_d2<=31;_d2++){document.write('<option value="'+_d2+'">'+_d2+'</option>');}</script>
+                    </select>
+                </div>
+                <p style="color:#94a3b8;font-size:.82rem;margin:10px 0 14px;">Quizzes deleted by hosts or admin. Click <strong>👁 View</strong> to see full activity, then <strong>🖨️ Print</strong> or <strong>⬇️ Export</strong> before permanently removing.</p>
+                <div class="adm-table-wrap">
+                    <div id="deleted-list"><div class="adm-loading">Loading…</div></div>
+                </div>
+            </div>
+
+            <!-- HOST ACTIVITY SECTION -->
+            <div class="adm-section" id="section-hosts">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">🏠 Host Activity</span>
+                    <span style="color:#94a3b8;font-size:.82rem;">All hosts and their quizzes + attempt counts</span>
+                </div>
+                <div id="hosts-list"><div class="adm-loading">Loading…</div></div>
+            </div>
+
+            <!-- ADS SECTION -->
+            <div class="adm-section" id="section-ads">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">Ads Management</span>
+                </div>
+
+                <!-- Add Ad Form -->
+                <div class="adm-card" style="margin-bottom:20px;">
+                    <div class="adm-card-title">➕ Add New Ad</div>
+                    <div class="adm-form-grid">
+                        <div class="adm-field">
+                            <label>Ad Title</label>
+                            <input type="text" class="adm-input" id="ad-title" placeholder="e.g. Premium Course">
+                        </div>
+                        <div class="adm-field">
+                            <label>Image URL</label>
+                            <input type="url" class="adm-input" id="ad-image-url" placeholder="https://example.com/banner.jpg">
+                        </div>
+                        <div class="adm-field">
+                            <label>Click Link (optional)</label>
+                            <input type="url" class="adm-input" id="ad-link-url" placeholder="https://example.com">
+                        </div>
+                        <div class="adm-field">
+                            <label>Ad Type</label>
+                            <select class="adm-input" id="ad-type">
+                                <option value="banner">Banner</option>
+                                <option value="popup">Popup</option>
+                                <option value="sidebar">Sidebar</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="adm-btn adm-btn-primary" id="adm-add-ad-btn" style="margin-top:14px;">Add Ad</button>
+                </div>
+
+                <div class="adm-table-wrap">
+                    <div id="ads-list"><div class="adm-loading">Loading…</div></div>
+                </div>
+            </div>
+
+            <!-- NOTIFICATIONS SECTION -->
+            <div class="adm-section" id="section-notifs">
+                <div class="adm-section-header">
+                    <span class="adm-section-title">Notifications</span>
+                </div>
+
+                <!-- Countdown Bar -->
+                <div class="adm-card">
+                    <div class="adm-card-title">⏰ Countdown Bar</div>
+                    <div class="adm-toggle-row">
+                        <input type="checkbox" class="adm-toggle" id="notif-cd-enabled">
+                        <label for="notif-cd-enabled" style="font-size:.85rem;color:#94a3b8;">Enable countdown bar on all pages</label>
+                    </div>
+                    <div class="adm-form-grid">
+                        <div class="adm-field">
+                            <label>Label Text</label>
+                            <input type="text" class="adm-input" id="notif-cd-label" placeholder="e.g. Exam starts in">
+                        </div>
+                        <div class="adm-field">
+                            <label>Target Date & Time</label>
+                            <input type="datetime-local" class="adm-input" id="notif-cd-target">
+                        </div>
+                        <div class="adm-field">
+                            <label>Background Color</label>
+                            <input type="color" class="adm-input adm-input-color" id="notif-cd-bg" value="#1e1b4b">
+                        </div>
+                        <div class="adm-field">
+                            <label>Text Color</label>
+                            <input type="color" class="adm-input adm-input-color" id="notif-cd-color" value="#ffffff">
+                        </div>
+                        <div class="adm-field">
+                            <label>Accent Color</label>
+                            <input type="color" class="adm-input adm-input-color" id="notif-cd-accent" value="#6366f1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ticker Bar -->
+                <div class="adm-card">
+                    <div class="adm-card-title">📢 News Ticker Bar</div>
+                    <div class="adm-toggle-row">
+                        <input type="checkbox" class="adm-toggle" id="notif-tk-enabled">
+                        <label for="notif-tk-enabled" style="font-size:.85rem;color:#94a3b8;">Enable scrolling news ticker on all pages</label>
+                    </div>
+                    <div class="adm-form-grid">
+                        <div class="adm-field">
+                            <label>Label (e.g. "📢 News")</label>
+                            <input type="text" class="adm-input" id="notif-tk-label" placeholder="Announcement">
+                        </div>
+                        <div class="adm-field" style="grid-column:1/-1;">
+                            <label>Ticker Message</label>
+                            <input type="text" class="adm-input" id="notif-tk-text" placeholder="Exam portal opens Friday 9am — All students must register before Thursday midnight.">
+                        </div>
+                        <div class="adm-field">
+                            <label>Scroll Speed (10–120)</label>
+                            <input type="number" class="adm-input" id="notif-tk-speed" value="40" min="10" max="120">
+                        </div>
+                        <div class="adm-field">
+                            <label>Background Color</label>
+                            <input type="color" class="adm-input adm-input-color" id="notif-tk-bg" value="#1e1b4b">
+                        </div>
+                        <div class="adm-field">
+                            <label>Text Color</label>
+                            <input type="color" class="adm-input adm-input-color" id="notif-tk-color" value="#ffffff">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="adm-btn adm-btn-primary" id="adm-save-notifs-btn">💾 Save Notifications</button>
+                <span class="adm-save-msg" id="adm-notif-save-msg" style="display:none;">✓ Saved!</span>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+/* Safety net: if the ES module fails to load or Firebase takes too long,
+   show the Sign In button after 12 seconds so the page is never stuck. */
+(function() {
+    var _gateResolved = false;
+    /* Listen for the panel becoming visible — module resolved successfully */
+    var _observer = new MutationObserver(function() {
+        var panel = document.getElementById('admin-panel');
+        if (panel && panel.style.display !== 'none') { _gateResolved = true; _observer.disconnect(); }
+    });
+    _observer.observe(document.documentElement, { attributes: true, childList: true, subtree: true });
+    setTimeout(function() {
+        if (_gateResolved) return;
+        var gate = document.getElementById('admin-gate');
+        if (!gate) return;
+        var gateBox = gate.querySelector('.gate-box');
+        if (!gateBox) return;
+        /* Check if gate is still showing the initial "Verifying" state */
+        var h2 = gateBox.querySelector('h2');
+        if (h2 && (h2.textContent.indexOf('Checking') !== -1 || h2.textContent.indexOf('Verifying') !== -1)) {
+            gateBox.innerHTML =
+                '<div class="gate-icon">&#128274;</div>' +
+                '<h2>Admin Access</h2>' +
+                '<p>Sign in with your admin account to continue.</p>' +
+                '<a href="login.html?redirect=admin.html" class="adm-btn adm-btn-primary" style="margin-top:8px;">Sign In</a>';
+        }
+    }, 12000);
+})();
+</script>
+<!-- SheetJS for Excel/ODS export -->
+<script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+<!-- PptxGenJS for PowerPoint export -->
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.min.js"></script>
+
+<script type="module" src="js/aqs-admin.js"></script>
+
+<!-- ══════════════════════════════════════════
+     QUIZ ACTIVITY VIEW MODAL
+══════════════════════════════════════════ -->
+<div id="adm-activity-modal">
+    <div class="adm-modal-panel">
+
+        <div class="adm-modal-header">
+            <span class="adm-modal-title" id="adm-modal-title">Quiz Activity</span>
+            <button class="adm-modal-close" onclick="adminCloseModal()" title="Close">✕</button>
+        </div>
+
+        <div class="adm-modal-body">
+            <input type="hidden" id="adm-modal-doc-id" value="">
+            <div class="adm-modal-info-grid" id="adm-modal-info">
+                <div class="adm-loading">Loading…</div>
+            </div>
+            <div class="adm-modal-section-title">📋 Attendance &amp; Activity</div>
+            <div class="adm-table-wrap" id="adm-modal-table-wrap" style="max-height:360px;overflow-y:auto;">
+                <div class="adm-loading">Loading…</div>
+            </div>
+        </div>
+
+        <div class="adm-modal-footer">
+            <button class="adm-btn adm-btn-primary" onclick="adminPrintActivity()">🖨️ Print</button>
+
+            <div class="adm-export-wrap">
+                <button class="adm-btn" id="adm-modal-export-btn"
+                    onclick="document.getElementById('adm-export-menu').classList.toggle('open')">
+                    ⬇️ Export ▾
+                </button>
+                <div class="adm-export-menu" id="adm-export-menu">
+                    <button class="adm-export-item" onclick="adminExportActivity('csv')">📄 CSV (.csv)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('tsv')">📄 TSV (.tsv)</button>
+                    <div class="adm-export-divider"></div>
+                    <button class="adm-export-item" onclick="adminExportActivity('xlsx')">📊 Excel (.xlsx)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('ods')">📊 ODS (.ods)</button>
+                    <div class="adm-export-divider"></div>
+                    <button class="adm-export-item" onclick="adminExportActivity('pdf')">📕 PDF (via Print)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('pptx')">📽️ PowerPoint (.pptx)</button>
+                    <div class="adm-export-divider"></div>
+                    <button class="adm-export-item" onclick="adminExportActivity('json')">🔧 JSON (.json)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('xml')">🔧 XML (.xml)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('html')">🌐 HTML (.html)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('md')">📝 Markdown (.md)</button>
+                    <button class="adm-export-item" onclick="adminExportActivity('txt')">📝 Plain Text (.txt)</button>
+                </div>
+            </div>
+
+            <button class="adm-btn adm-btn-sm" onclick="adminCloseModal()" style="margin-left:auto;">✕ Close</button>
+        </div>
+
+    </div>
+</div>
+
+<script>
+  (function(){
+    var h=document.getElementById('aqs-admin-ham');
+    var s=document.querySelector('.aqs-admin-sidebar');
+    var o=document.getElementById('aqs-admin-overlay');
+    if(!h||!s||!o)return;
+    h.addEventListener('click',function(){s.classList.add('open');o.classList.add('open');});
+    o.addEventListener('click',function(){s.classList.remove('open');o.classList.remove('open');});
+  })();
+</script>
+</body>
+</html>
