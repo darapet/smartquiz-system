@@ -18,6 +18,27 @@
 </head>
 <body>
 
+<!-- ═══════════════ BROWSER/DEVICE REDIRECT OVERLAY ═══════════════ -->
+<div id="wp-browser-redirect" style="display:none;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0d1b6e 0%,#050510 100%);align-items:center;justify-content:center;padding:24px;flex-direction:column;">
+  <div style="font-size:1rem;font-weight:700;color:#6366f1;letter-spacing:.5px;margin-bottom:28px;">⚡ XZily AI</div>
+  <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:40px 32px;max-width:400px;width:100%;text-align:center;color:#e2e8f0;">
+    <div style="font-size:3rem;margin-bottom:16px;">💻</div>
+    <div style="display:inline-block;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:20px;padding:4px 16px;font-size:12px;font-weight:700;color:#a5b4fc;margin-bottom:16px;">Better Experience Available</div>
+    <h2 style="font-size:1.4rem;font-weight:800;color:#e2e8f0;margin-bottom:12px;line-height:1.3;">Text → Docs works best on Desktop</h2>
+    <p style="color:#94a3b8;font-size:0.9rem;line-height:1.7;margin-bottom:28px;">For the full editing experience with all features, open <strong style="color:#e2e8f0;">Google Chrome</strong> on a desktop or laptop, or use our web platform for the best visibility.</p>
+    <a href="https://darapet.github.io/smartquiz-system/text-to-docs.html" style="display:block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;border-radius:13px;padding:14px 24px;font-size:1rem;font-weight:700;margin-bottom:12px;transition:opacity .2s;">🚀 Open Full Website</a>
+    <button onclick="(function(){sessionStorage.setItem('wp_br_ok','1');document.getElementById('wp-browser-redirect').style.display='none';})()" style="display:block;width:100%;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:13px;padding:12px 24px;font-size:0.9rem;font-weight:600;color:#94a3b8;cursor:pointer;">Continue Anyway →</button>
+  </div>
+</div>
+<script>
+(function(){
+  if(!sessionStorage.getItem('wp_br_ok')){
+    var mob=/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)||window.innerWidth<768;
+    if(mob){var el=document.getElementById('wp-browser-redirect');if(el)el.style.display='flex';}
+  }
+})();
+</script>
+
 <!-- ═══════════════ MODE SELECTION OVERLAY ═══════════════ -->
 <div class="wp-mode-overlay hidden" id="wp-mode-overlay">
   <div class="wp-mode-brand">
@@ -25,7 +46,7 @@
     <span class="wp-mode-brand-name">XZily AI</span>
   </div>
   <div class="wp-mode-title">Text → Docs Word Processor</div>
-  <div class="wp-mode-sub">Professional document creation powered by AI — v3.1</div>
+  <div class="wp-mode-sub">Professional document creation powered by AI — v3.2</div>
   <div class="wp-mode-cards">
     <div class="wp-mode-card" onclick="wpChooseMode('format')">
       <span class="wp-mode-card-icon">✨</span>
@@ -84,7 +105,7 @@
     </button>
   </div>
   <div class="wp-appbar-right">
-    <span class="wp-ver-badge">v3.1</span>
+    <span class="wp-ver-badge">v3.2</span>
     <button class="wp-appbar-btn" onclick="wpToggleSidebar()" title="Toggle sidebar" style="padding:4px 8px;">
       <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
     </button>
@@ -101,10 +122,6 @@
   <a class="wp-nav-link" href="docs-gen.html">
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
     Doc Generator
-  </a>
-  <a class="wp-nav-link" href="image-gen.html">
-    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    Image Generator
   </a>
   <a class="wp-nav-link" href="tts.html">
     <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
@@ -825,6 +842,27 @@ May,610</textarea>
   </div>
 </div>
 
+<!-- ═══════════════ DOWNLOAD PREVIEW MODAL ═══════════════ -->
+<div class="wp-modal-backdrop hidden" id="wp-dl-preview-modal">
+  <div class="wp-modal lg">
+    <div class="wp-modal-header">
+      <span class="wp-modal-title">👁️ Preview Before Download</span>
+      <button class="wp-modal-close" onclick="wpHideModal('wp-dl-preview-modal')">✕</button>
+    </div>
+    <div class="wp-modal-body">
+      <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#374151;display:flex;gap:16px;flex-wrap:wrap;">
+        <span><strong>Format:</strong> <span id="wp-dl-prev-fmt" style="color:#4f46e5;font-weight:700;"></span></span>
+        <span><strong>Size:</strong> <span id="wp-dl-prev-size">calculating...</span></span>
+      </div>
+      <div id="wp-dl-prev-area" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:20px 28px;max-height:420px;overflow-y:auto;font-family:Georgia,serif;font-size:13px;line-height:1.7;color:#1a1a1a;"></div>
+    </div>
+    <div class="wp-modal-footer">
+      <button class="wp-btn secondary" onclick="wpHideModal('wp-dl-preview-modal')" style="width:auto;padding:8px 18px;">Cancel</button>
+      <button class="wp-btn primary" id="wp-dl-prev-confirm" style="width:auto;padding:8px 22px;">📥 Download Now</button>
+    </div>
+  </div>
+</div>
+
 <!-- Mobile helpers -->
 <div class="wp-mob-overlay" id="wp-mob-overlay" onclick="wpMobClose()"></div>
 <button class="wp-mob-toggle" id="wp-mob-toggle" onclick="wpMobToggle()">
@@ -905,6 +943,42 @@ document.addEventListener('DOMContentLoaded', function() {
   style.textContent = '.wp-web-mode-btn{padding:5px 14px;border:1px solid #d1d5db;border-radius:6px;background:#f9fafb;cursor:pointer;font-size:11.5px;font-weight:600;color:#374151;transition:all .2s;}.wp-web-mode-btn.active{background:#4f46e5;border-color:#4f46e5;color:#fff;}';
   document.head.appendChild(style);
 });
+// Download preview wrapper (v3.2)
+(function(){
+  function _showDLPreview(fmt, origFn){
+    var pages = document.querySelectorAll('.wp-page, [class*="wp-page"]');
+    var previewArea = document.getElementById('wp-dl-prev-area');
+    var fmtEl = document.getElementById('wp-dl-prev-fmt');
+    var sizeEl = document.getElementById('wp-dl-prev-size');
+    var confirmBtn = document.getElementById('wp-dl-prev-confirm');
+    if(!previewArea || pages.length === 0){ if(origFn) origFn(fmt); return; }
+    var html = '';
+    pages.forEach(function(p){ html += p.innerHTML; });
+    previewArea.innerHTML = html;
+    if(fmtEl) fmtEl.textContent = fmt.toUpperCase();
+    if(sizeEl){ var b = html.length*2; sizeEl.textContent = b>1048576 ? (b/1048576).toFixed(1)+'MB' : b>1024 ? Math.round(b/1024)+'KB' : b+'B'; }
+    if(confirmBtn){ confirmBtn.onclick = function(){ wpHideModal('wp-dl-preview-modal'); if(origFn) origFn(fmt); }; }
+    wpShowModal('wp-dl-preview-modal');
+  }
+  var _orig = window.wpDownload;
+  window.wpDownload = function(fmt){ _showDLPreview(fmt, _orig); };
+  // Also wrap wpPrint to show preview first
+  var _origPrint = window.wpPrint;
+  window.wpPrint = function(){
+    var pages = document.querySelectorAll('.wp-page, [class*="wp-page"]');
+    var previewArea = document.getElementById('wp-dl-prev-area');
+    if(!previewArea || pages.length===0){ if(_origPrint) _origPrint(); return; }
+    var html = ''; pages.forEach(function(p){ html+=p.innerHTML; });
+    previewArea.innerHTML = html;
+    var fmtEl = document.getElementById('wp-dl-prev-fmt');
+    var sizeEl = document.getElementById('wp-dl-prev-size');
+    if(fmtEl) fmtEl.textContent = 'PRINT';
+    if(sizeEl) sizeEl.textContent = pages.length+' page(s)';
+    var confirmBtn = document.getElementById('wp-dl-prev-confirm');
+    if(confirmBtn){ confirmBtn.textContent = '🖨️ Print Now'; confirmBtn.onclick = function(){ wpHideModal('wp-dl-preview-modal'); if(_origPrint) _origPrint(); }; }
+    wpShowModal('wp-dl-preview-modal');
+  };
+})();
 </script>
 </body>
 </html>

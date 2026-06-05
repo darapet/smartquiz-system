@@ -18,6 +18,19 @@
 </head>
 <body>
 
+<!-- ═══════════════ MOBILE REDIRECT OVERLAY ═══════════════ -->
+<div id="wp-mobile-redirect" style="display:flex;position:fixed;inset:0;z-index:99999;background:linear-gradient(135deg,#0d1b6e 0%,#050510 100%);align-items:center;justify-content:center;padding:20px;flex-direction:column;">
+  <div style="font-size:1rem;font-weight:700;color:#6366f1;letter-spacing:.5px;margin-bottom:24px;">⚡ XZily AI</div>
+  <div style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:36px 28px;max-width:380px;width:100%;text-align:center;color:#e2e8f0;">
+    <div style="font-size:3rem;margin-bottom:16px;">🌐</div>
+    <div style="display:inline-block;background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);border-radius:20px;padding:4px 16px;font-size:12px;font-weight:700;color:#a5b4fc;margin-bottom:16px;">Better Experience on Web</div>
+    <h2 style="font-size:1.3rem;font-weight:800;color:#e2e8f0;margin-bottom:10px;line-height:1.3;">Text → Docs</h2>
+    <p style="color:#94a3b8;font-size:0.875rem;line-height:1.7;margin-bottom:24px;">For the best document editing experience with full visibility and features, use <strong style="color:#e2e8f0;">Google Chrome on desktop</strong> or open our website.</p>
+    <a href="https://darapet.github.io/smartquiz-system/text-to-docs.html" style="display:block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;border-radius:13px;padding:14px 20px;font-size:0.95rem;font-weight:700;margin-bottom:10px;" target="_blank">🚀 Open Website</a>
+    <button onclick="document.getElementById('wp-mobile-redirect').style.display='none';" style="display:block;width:100%;background:none;border:1px solid rgba(255,255,255,0.15);border-radius:13px;padding:12px 20px;font-size:0.85rem;font-weight:600;color:#94a3b8;cursor:pointer;">Continue Anyway →</button>
+  </div>
+</div>
+
 <!-- ═══════════════ MODE SELECTION OVERLAY ═══════════════ -->
 <div class="wp-mode-overlay hidden" id="wp-mode-overlay">
   <div class="wp-mode-brand">
@@ -25,7 +38,7 @@
     <span class="wp-mode-brand-name">XZily AI</span>
   </div>
   <div class="wp-mode-title">Text → Docs</div>
-  <div class="wp-mode-sub">Professional AI document creation — v3.1</div>
+  <div class="wp-mode-sub">Professional AI document creation — v3.2</div>
   <div class="wp-mode-cards">
     <div class="wp-mode-card" onclick="wpChooseMode('format')">
       <span class="wp-mode-card-icon">✨</span>
@@ -84,7 +97,7 @@
     </button>
   </div>
   <div class="wp-appbar-right">
-    <span class="wp-ver-badge">v3.1</span>
+    <span class="wp-ver-badge">v3.2</span>
   </div>
 </header>
 
@@ -98,10 +111,6 @@
   <a class="wp-nav-link" href="docs-gen.html">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
     Doc Generator
-  </a>
-  <a class="wp-nav-link" href="image-gen.html">
-    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-    Image Generator
   </a>
   <a class="wp-nav-link" href="tts.html">
     <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
@@ -135,7 +144,6 @@
 <div class="wp-ribbon" id="wp-ribbon">
   <div class="wp-ribbon-tabs">
     <button class="wp-rtab active" onclick="wpRibbonTab('home')" id="wp-rtab-home">Home</button>
-    <button class="wp-rtab" onclick="wpRibbonTab('insert')" id="wp-rtab-insert">Insert</button>
     <button class="wp-rtab" onclick="wpRibbonTab('layout')" id="wp-rtab-layout">Layout</button>
     <button class="wp-rtab" onclick="wpRibbonTab('ai')" id="wp-rtab-ai">✨ AI</button>
     <button class="wp-rtab" onclick="wpRibbonTab('review')" id="wp-rtab-review">Review</button>
@@ -269,53 +277,6 @@
       <button class="tb" onclick="wpFmt('removeFormat')" title="Clear formatting" style="color:#ef4444;">
         <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 19L18 7"/><path d="M3.27 13H12l-1.45-1.45"/><path d="M20 8h-2.33L12 2 8 6l8 6h4z"/></svg>
         Clear
-      </button>
-    </div>
-  </div>
-
-  <!-- INSERT TAB -->
-  <div class="wp-ribbon-panel" id="wp-rpanel-insert">
-    <div class="wp-tg">
-      <div class="wp-dropdown" id="wp-tbl-dd">
-        <button class="tb" onclick="wpOpenTablePicker()" title="Insert table">
-          <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
-          Table
-          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
-        </button>
-        <div class="wp-tbl-picker" id="wp-tbl-picker">
-          <div class="wp-tbl-grid-lbl" id="wp-tbl-lbl">Insert Table</div>
-          <div class="wp-tbl-grid" id="wp-tbl-grid"></div>
-          <div class="wp-tbl-custom">
-            <span>Custom:</span>
-            <input type="number" id="wp-tbl-rows" value="3" min="1" max="30" title="Rows">
-            <span>×</span>
-            <input type="number" id="wp-tbl-cols" value="3" min="1" max="15" title="Cols">
-            <button onclick="wpInsertTable(parseInt(document.getElementById('wp-tbl-rows').value),parseInt(document.getElementById('wp-tbl-cols').value))">Insert</button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="wp-tg">
-      <button class="tb" onclick="document.getElementById('wp-img-file').click()" title="Insert image">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-        Image
-      </button>
-      <input type="file" id="wp-img-file" accept="image/*" style="display:none;" onchange="wpInsertImageFromFile(this)">
-      <button class="tb" onclick="wpShowLinkModal()" title="Insert link">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-        Link
-      </button>
-    </div>
-    <div class="wp-tg">
-      <button class="tb" onclick="wpAddPage()" title="Page break">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-        + Page
-      </button>
-    </div>
-    <div class="wp-tg">
-      <button class="tb" onclick="wpShowChartModal()" title="Insert chart">
-        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        Chart
       </button>
     </div>
   </div>
@@ -884,7 +845,7 @@ window.wpSidebarTab = function(tabName) {
 
 /* Ribbon tab switcher */
 window.wpRibbonTab = function(tab) {
-  ['home','insert','layout','ai','review'].forEach(function(t) {
+  ['home','layout','ai','review'].forEach(function(t) {
     var btn = document.getElementById('wp-rtab-'+t);
     var pan = document.getElementById('wp-rpanel-'+t);
     if (btn) btn.classList.toggle('active', t===tab);
@@ -940,6 +901,61 @@ document.addEventListener('DOMContentLoaded', function() {
     obs.observe(sb, { attributes: true, attributeFilter: ['class'] });
   }
 });
+</script>
+
+<!-- ═══════════════ DOWNLOAD PREVIEW MODAL ═══════════════ -->
+<div class="wp-modal-backdrop hidden" id="wp-dl-preview-modal">
+  <div class="wp-modal" style="max-width:500px;width:95%;">
+    <div class="wp-modal-header">
+      <div class="wp-modal-title">👁️ Preview Before Download</div>
+      <button class="wp-modal-close" onclick="document.getElementById('wp-dl-preview-modal').classList.add('hidden')">✕</button>
+    </div>
+    <div class="wp-modal-body">
+      <div style="background:#f0f4f8;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;color:#374151;display:flex;gap:16px;flex-wrap:wrap;">
+        <span><strong>Format:</strong> <span id="wp-mob-dl-fmt" style="color:#4f46e5;font-weight:700;"></span></span>
+        <span><strong>Est. size:</strong> <span id="wp-mob-dl-size">-</span></span>
+      </div>
+      <div id="wp-mob-dl-area" style="background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;max-height:360px;overflow-y:auto;font-family:Georgia,serif;font-size:13px;line-height:1.7;color:#1a1a1a;"></div>
+    </div>
+    <div class="wp-modal-footer">
+      <button class="wp-btn" onclick="document.getElementById('wp-dl-preview-modal').classList.add('hidden')" style="width:auto;padding:10px 18px;">Cancel</button>
+      <button class="wp-btn primary" id="wp-mob-dl-confirm" style="width:auto;padding:10px 20px;">📥 Download Now</button>
+    </div>
+  </div>
+</div>
+<script>
+// Download preview wrapper for mobile — v3.2
+(function(){
+  var _orig = window.wpDL;
+  window.wpDL = function(fmt){
+    var pages = document.querySelectorAll('#wp-pages-area .wp-page, #wp-pages-area [class*="wp-page"]');
+    var area = document.getElementById('wp-mob-dl-area');
+    var fmtEl = document.getElementById('wp-mob-dl-fmt');
+    var sizeEl = document.getElementById('wp-mob-dl-size');
+    var btn = document.getElementById('wp-mob-dl-confirm');
+    if(!area || pages.length === 0){ if(_orig) _orig(fmt); return; }
+    var html = ''; pages.forEach(function(p){ html += p.innerHTML; });
+    area.innerHTML = html;
+    if(fmtEl) fmtEl.textContent = fmt.toUpperCase();
+    if(sizeEl){ var b=html.length*2; sizeEl.textContent = b>1048576?(b/1048576).toFixed(1)+'MB':b>1024?Math.round(b/1024)+'KB':b+'B'; }
+    if(btn){ btn.onclick = function(){ document.getElementById('wp-dl-preview-modal').classList.add('hidden'); if(_orig) _orig(fmt); }; }
+    document.getElementById('wp-dl-preview-modal').classList.remove('hidden');
+  };
+  // Wrap wpPrint for mobile
+  var _origPrint = window.wpPrint;
+  window.wpPrint = function(){
+    var pages = document.querySelectorAll('#wp-pages-area .wp-page, #wp-pages-area [class*="wp-page"]');
+    var area = document.getElementById('wp-mob-dl-area');
+    if(!area || pages.length===0){ if(_origPrint) _origPrint(); return; }
+    var html = ''; pages.forEach(function(p){ html+=p.innerHTML; });
+    area.innerHTML = html;
+    var fmtEl = document.getElementById('wp-mob-dl-fmt'); if(fmtEl) fmtEl.textContent = 'PRINT';
+    var sizeEl = document.getElementById('wp-mob-dl-size'); if(sizeEl) sizeEl.textContent = pages.length+' page(s)';
+    var btn = document.getElementById('wp-mob-dl-confirm');
+    if(btn){ btn.textContent = '🖨️ Print Now'; btn.onclick = function(){ document.getElementById('wp-dl-preview-modal').classList.add('hidden'); if(_origPrint) _origPrint(); }; }
+    document.getElementById('wp-dl-preview-modal').classList.remove('hidden');
+  };
+})();
 </script>
 </body>
 </html>
