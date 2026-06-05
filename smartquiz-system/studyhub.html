@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0a0b14">
 <title>📚 AI Study Hub — xzily AI</title>
-<!-- App Version: 2.6.0 -->
+<!-- App Version: 2.7.0 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- MathJax for math rendering -->
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
@@ -335,6 +335,34 @@ a{text-decoration:none;color:inherit;}
 .ait-subj-bar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .6s ease;}
 .ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
 
+/* Math Board — right panel position */
+.ait-math-board-panel{flex-shrink:0;border-bottom:1px solid var(--border);padding:12px;display:none;}
+.ait-math-board-panel.visible{display:block;}
+.ait-math-board-panel-header{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;max-height:180px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
+
+/* Session Summary Overlay */
+#ait-summary-screen{display:none;position:fixed;inset:0;background:rgba(10,11,20,.97);z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#ait-summary-screen.active{display:flex;}
+.ait-summ-card{background:rgba(255,255,255,.04);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:28px 24px;max-width:480px;width:100%;text-align:center;box-shadow:0 0 60px rgba(99,102,241,.12);}
+.ait-summ-trophy{font-size:3rem;margin-bottom:10px;animation:ait-pop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes ait-pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.ait-summ-title{font-size:1.35rem;font-weight:900;color:var(--text);margin-bottom:4px;}
+.ait-summ-sub{font-size:.83rem;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+.ait-summ-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.ait-summ-stat{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:12px 6px;}
+.ait-summ-stat-val{font-size:1.45rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+.ait-summ-stat-lbl{font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.ait-summ-detail{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.12);border-radius:10px;padding:12px 14px;margin-bottom:18px;text-align:left;font-size:.8rem;color:#94a3b8;line-height:1.9;}
+.ait-summ-detail strong{color:#a5b4fc;}
+.ait-summ-encourage{font-size:.82rem;font-weight:700;color:#86efac;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);border-radius:8px;padding:10px 14px;margin-bottom:18px;}
+.ait-summ-btns{display:flex;gap:10px;}
+.ait-summ-btn{flex:1;padding:11px;border-radius:10px;font-size:.86rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;transition:all .2s;}
+.ait-summ-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;}
+.ait-summ-btn-primary:hover{opacity:.9;}
+.ait-summ-btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
+.ait-summ-btn-ghost:hover{border-color:rgba(255,255,255,.2);color:var(--text);}
+
 /* Mobile responsive */
 @media(max-width:640px){
   .ait-ses-body{flex-direction:column;}
@@ -366,7 +394,7 @@ a{text-decoration:none;color:inherit;}
 <header class="sh-hdr">
   <div style="display:flex;align-items:baseline;gap:4px;">
     <div class="sh-logo">📚 AI Study Hub</div>
-    <span class="sh-logo-ver">v2.6.0</span>
+    <span class="sh-logo-ver">v2.7.0</span>
   </div>
   <a href="index.html" class="sh-back">🏠 Back to Home</a>
 </header>
@@ -884,20 +912,20 @@ a{text-decoration:none;color:inherit;}
         <div class="ait-avatar-status" id="ait-avatar-status">Ready</div>
       </div>
 
-      <!-- Math Board — shown for math/science topics with LaTeX equations -->
-      <div id="ait-math-board" style="display:none;width:100%;background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(6,182,212,.07));border:1.5px solid rgba(20,184,166,.28);border-radius:12px;padding:14px 16px;margin-bottom:12px;flex-shrink:0;">
-        <div style="font-size:.65rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
-          📐 Math Board — <span id="ait-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span>
-        </div>
-        <div id="ait-math-board-body" style="font-size:.95rem;color:#e2e8f0;line-height:1.9;word-break:break-word;max-height:200px;overflow-y:auto;"></div>
-      </div>
-
-      <!-- Transcript bubbles -->
+      <!-- Transcript bubbles — no math board here any more -->
       <div class="ait-transcript-wrap" id="ait-transcript"></div>
     </div>
 
-    <!-- RIGHT: Controls + doc preview -->
+    <!-- RIGHT: Controls + math board + doc preview -->
     <div class="ait-ses-right">
+      <!-- Math Board — lives here so it never interrupts the transcript -->
+      <div class="ait-math-board-panel" id="ait-math-board">
+        <div class="ait-math-board-panel-header">
+          📐 Math Board — <span id="ait-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span>
+        </div>
+        <div class="ait-math-board-panel-body" id="ait-math-board-body"></div>
+      </div>
+
       <!-- Doc preview / notes area -->
       <div class="ait-ses-right-top" id="ait-ses-right-top">
         <div style="font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Study Material / Notes</div>
@@ -944,10 +972,39 @@ a{text-decoration:none;color:inherit;}
   </div>
 </div>
 
+<!-- SESSION SUMMARY OVERLAY -->
+<div id="ait-summary-screen">
+  <div class="ait-summ-card">
+    <div class="ait-summ-trophy" id="ait-summ-trophy">🏆</div>
+    <div class="ait-summ-title" id="ait-summ-title">Great session!</div>
+    <div class="ait-summ-sub" id="ait-summ-sub">Here's what you achieved today</div>
+    <div class="ait-summ-stats">
+      <div class="ait-summ-stat">
+        <div class="ait-summ-stat-val" id="ait-summ-time">—</div>
+        <div class="ait-summ-stat-lbl">Mins studied</div>
+      </div>
+      <div class="ait-summ-stat">
+        <div class="ait-summ-stat-val" id="ait-summ-steps">—</div>
+        <div class="ait-summ-stat-lbl">Topics covered</div>
+      </div>
+      <div class="ait-summ-stat">
+        <div class="ait-summ-stat-val" id="ait-summ-qa">—</div>
+        <div class="ait-summ-stat-lbl">Q&amp;A answered</div>
+      </div>
+    </div>
+    <div class="ait-summ-detail" id="ait-summ-detail"></div>
+    <div class="ait-summ-encourage" id="ait-summ-encourage"></div>
+    <div class="ait-summ-btns">
+      <button class="ait-summ-btn ait-summ-btn-ghost" onclick="aitCloseSummary()">🔄 Study Again</button>
+      <button class="ait-summ-btn ait-summ-btn-primary" onclick="aitCloseSummaryToHistory()">📊 View Progress</button>
+    </div>
+  </div>
+</div>
+
 <script src="js/aqs-groq-key.js"></script>
 <script>
 /* ══════════════════════════════════════════════════
-   AI STUDY HUB v2.6.0 — Complete Engine
+   AI STUDY HUB v2.7.0 — Complete Engine
 ══════════════════════════════════════════════════ */
 
 /* ── TABS ── */
@@ -1457,6 +1514,8 @@ let _ait = {
   warnedFiveMin:false,
   lastSurnameCallSecs:0,
   _pendingSurnameCall:false,
+  questionsAsked:0,
+  questionsAnswered:0,
 };
 
 /* ─ Setup screens ─ */
@@ -1636,6 +1695,8 @@ async function aitStartSession(){
   _ait.conversationHistory = [];
   _ait.teachingStepIdx = 0;
   _ait.questionSchedule = aitBuildQuestionSchedule(dur);
+  _ait.questionsAsked = 0;
+  _ait.questionsAnswered = 0;
 
   document.getElementById('ait-ses-subject-label').textContent = subject;
   document.getElementById('ait-ses-topic-label').textContent = topic;
@@ -1948,14 +2009,14 @@ function aitShowMathBoardContent(latex){
   const body     = document.getElementById('ait-math-board-body');
   const topicEl  = document.getElementById('ait-math-board-topic');
   if(!board || !body) return;
-  board.style.display = '';
+  board.classList.add('visible');
   if(topicEl) topicEl.textContent = _ait.topic;
   body.textContent = latex;
   if(window.MathJax) MathJax.typesetPromise([body]).catch(()=>{});
 }
 function aitHideMathBoardContent(){
   const board = document.getElementById('ait-math-board');
-  if(board) board.style.display = 'none';
+  if(board) board.classList.remove('visible');
 }
 
 /* ─ Continue Teaching button ─ */
@@ -1990,6 +2051,7 @@ async function aitSendToAI(userPrompt, onSpeechDone){
 async function aitAskCheckIn(){
   if(_ait.paused || _ait.inQAMode) return;
   _ait.awaitingAnswer = true;
+  _ait.questionsAsked++;
 
   const qPrompt = `Ask a quick check-in question about something you just taught on "${_ait.topic}". 
 Make it conversational — like a real teacher checking understanding mid-lesson. 
@@ -2026,6 +2088,7 @@ async function aitSubmitAnswer(){
   const answer = answerEl.value.trim();
   if(!answer){ shToast('⚠️ Please type your answer'); return; }
 
+  _ait.questionsAnswered++;
   document.getElementById('ait-type-answer-wrap').classList.remove('show');
   answerEl.value = '';
 
@@ -2165,12 +2228,62 @@ function aitEndSession(){
     topic: _ait.topic,
     durationMins: _ait.durationMins,
     studiedMins,
+    questionsAsked: _ait.questionsAsked,
+    questionsAnswered: _ait.questionsAnswered,
     hadDoc: !!_ait.docText,
     ts: Date.now()
   });
 
   document.getElementById('ait-session-screen').classList.remove('active');
-  shToast('📚 Session saved! Great work, '+_ait.studentName+'! ('+studiedMins+' min studied)');
+  aitShowSummary(studiedMins);
+}
+
+function aitShowSummary(studiedMins){
+  const pct = _ait.durationMins > 0 ? Math.round((studiedMins / _ait.durationMins) * 100) : 100;
+  const trophies = ['🏆','🌟','🎓','🚀','💪'];
+  const encouragements = [
+    'Every minute you study brings you closer to mastery. Keep going!',
+    'Consistency is the key to success. You showed up — that\'s what matters!',
+    'Great effort today! Each session builds on the last.',
+    'You\'re building real knowledge. Be proud of that!',
+    'Amazing dedication! Your hard work will pay off.'
+  ];
+  const trophy = trophies[Math.floor(Math.random() * trophies.length)];
+  const encourage = encouragements[Math.floor(Math.random() * encouragements.length)];
+
+  const titles = pct >= 90 ? ['Outstanding session! 🎉','You crushed it today!','Full session complete!'] :
+                 pct >= 60 ? ['Great work today!','Solid session!','Good progress!'] :
+                             ['Every bit counts!','Keep going!','Good start!'];
+  const title = titles[Math.floor(Math.random() * titles.length)];
+
+  document.getElementById('ait-summ-trophy').textContent = trophy;
+  document.getElementById('ait-summ-title').textContent = title;
+  document.getElementById('ait-summ-sub').textContent = _ait.subject + ' — ' + _ait.topic;
+  document.getElementById('ait-summ-time').textContent = studiedMins;
+  document.getElementById('ait-summ-steps').textContent = Math.max(_ait.teachingStepIdx, 1);
+  document.getElementById('ait-summ-qa').textContent =
+    _ait.questionsAsked > 0 ? (_ait.questionsAnswered + '/' + _ait.questionsAsked) : '—';
+  document.getElementById('ait-summ-detail').innerHTML =
+    '<strong>Teacher:</strong> ' + _ait.teacherName + '<br>' +
+    '<strong>Subject:</strong> ' + _ait.subject + '<br>' +
+    '<strong>Topic:</strong> ' + _ait.topic + '<br>' +
+    '<strong>Planned:</strong> ' + _ait.durationMins + ' min &nbsp;·&nbsp; ' +
+    '<strong>Studied:</strong> ' + studiedMins + ' min (' + pct + '%)' +
+    (_ait.docText ? '<br><strong>📎 Study material used</strong>' : '');
+  document.getElementById('ait-summ-encourage').textContent = encourage;
+  document.getElementById('ait-summary-screen').classList.add('active');
+}
+
+function aitCloseSummary(){
+  document.getElementById('ait-summary-screen').classList.remove('active');
+}
+
+function aitCloseSummaryToHistory(){
+  document.getElementById('ait-summary-screen').classList.remove('active');
+  /* Navigate to the AI Teacher tab which has the history section */
+  shTab('aitimer');
+  const btn = document.querySelector('.sh-tab.sh-tab-ai-timer');
+  if(btn) btn.classList.add('active');
 }
 
 /* ══════════════════════════════
