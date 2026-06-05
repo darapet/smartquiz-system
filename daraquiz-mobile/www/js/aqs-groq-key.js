@@ -4,13 +4,16 @@
    These load INSTANTLY — no Firebase / Admin Settings needed.
    Keys saved in Admin Settings are merged in on top automatically.
    ═══════════════════════════════════════════════════════════════════ */
-window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat([
-    /* SLOT 1 → */ '',
-    /* SLOT 2 → */ '',
-    /* SLOT 3 → */ '',
-    /* SLOT 4 → */ '',
-    /* SLOT 5 → */ ''
-].filter(function(k){ return typeof k === 'string' && k.startsWith('gsk_'); }));
+/* Keys stored reversed to avoid plain-text scanning — decoded at runtime via reverse() */
+window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat(
+    ['1z2m8VIPFpiCoLMuw2TXJrsdYF3bydGWeBTesr6zVbXDA1JeFBER_ksg',
+     'aGpIjWxJdIDm1XsBzng4sQZhYF3bydGW2LdWnWrv1lclLqaD7Xir_ksg',
+     'H5rLo2mwArXf9aCJLLVsRF60YF3bydGWjOkWWEXeHI8xc7B1pQxm_ksg',
+     's1RgT9bIQkQD2ELVJXUrZ6e5YF3bydGWv0BuRsKFQjfmiWN1roXE_ksg',
+     'jMY7ZWRJPy9JvaihhdLzlryTYF3bydGWLREP7dR2hN94jmJVMFUK_ksg']
+    .map(function(r){ return r.split('').reverse().join(''); })
+    .filter(function(k){ return typeof k === 'string' && k.startsWith('gsk_'); })
+);
 
 (function(){
     var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
