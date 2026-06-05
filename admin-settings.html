@@ -118,6 +118,10 @@ window.addEventListener('DOMContentLoaded', function() {
             var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : (s.groq_api_key ? [s.groq_api_key] : []);
             for (var gi = 1; gi <= 5; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
             setVal('aqs-groq-model', s.groq_model);
+            /* Load up to 5 Mistral keys */
+            var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
+            for (var mi = 1; mi <= 5; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
+            setVal('aqs-mistral-model', s.mistral_model || 'mistral-small-latest');
             setVal('aqs-music-url', s.bg_music_url);
             setChk('aqs-splash-enabled', s.splash_enabled);
             setVal('aqs-splash-template', s.splash_template || '1');
@@ -217,8 +221,8 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">🤖</span>
         <div>
-            <h2 class="aqs-settings-card-title">AI Provider (Groq)</h2>
-            <p class="aqs-settings-card-desc">Add up to 5 Groq API keys — they rotate automatically to spread load and avoid rate limits. Keys are stored securely in Firestore, never in your code. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>.</p>
+            <h2 class="aqs-settings-card-title">AI Providers — Groq + Mistral</h2>
+            <p class="aqs-settings-card-desc">Add up to 5 keys for each provider. They rotate automatically and fall back silently — if all Groq keys are busy, Mistral takes over instantly with no error shown. Get Groq keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a> · Mistral keys at <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
@@ -255,9 +259,51 @@ window.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <p style="font-size:.8rem;color:#6b7280;margin:0 0 14px;">⚠️ Leave extra slots blank if you only have 1 key. Empty slots are ignored.</p>
+
+        <!-- Mistral section -->
+        <div style="border-top:1px solid #e2e8f0;margin:8px 0 16px;padding-top:16px;">
+            <p style="font-size:.82rem;font-weight:700;color:#d97706;margin:0 0 12px;display:flex;align-items:center;gap:6px;">
+                <span>⚡</span> Mistral AI — Fast Fallback (mistral-small-latest)
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                <div class="aqs-field-group">
+                    <label for="aqs-mistral-key-1">Mistral Key 1 (Primary)</label>
+                    <input type="password" id="aqs-mistral-key-1" placeholder="Paste Mistral API key…" autocomplete="off" />
+                </div>
+                <div class="aqs-field-group">
+                    <label for="aqs-mistral-key-2">Mistral Key 2</label>
+                    <input type="password" id="aqs-mistral-key-2" placeholder="(optional)" autocomplete="off" />
+                </div>
+                <div class="aqs-field-group">
+                    <label for="aqs-mistral-key-3">Mistral Key 3</label>
+                    <input type="password" id="aqs-mistral-key-3" placeholder="(optional)" autocomplete="off" />
+                </div>
+                <div class="aqs-field-group">
+                    <label for="aqs-mistral-key-4">Mistral Key 4</label>
+                    <input type="password" id="aqs-mistral-key-4" placeholder="(optional)" autocomplete="off" />
+                </div>
+                <div class="aqs-field-group">
+                    <label for="aqs-mistral-key-5">Mistral Key 5</label>
+                    <input type="password" id="aqs-mistral-key-5" placeholder="(optional)" autocomplete="off" />
+                </div>
+                <div class="aqs-field-group">
+                    <label for="aqs-mistral-model">Mistral Model</label>
+                    <select id="aqs-mistral-model">
+                        <option value="mistral-small-latest">mistral-small-latest (Fastest ⚡)</option>
+                        <option value="open-mistral-7b">open-mistral-7b (Ultra fast)</option>
+                        <option value="mistral-medium-latest">mistral-medium-latest (Balanced)</option>
+                        <option value="mistral-large-latest">mistral-large-latest (Most capable)</option>
+                    </select>
+                </div>
+            </div>
+            <p style="font-size:.78rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:8px 12px;margin:0;">
+                💡 Mistral activates automatically when all Groq keys are rate-limited. No extra code needed — it works silently in the background.
+            </p>
+        </div>
+
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-ai-btn">💾 Save AI Settings</button>
-            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#0ea5e9;color:#fff;border-color:#0284c7;">🔌 Test AI Connection</button>
+            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#0ea5e9;color:#fff;border-color:#0284c7;">🔌 Test All Keys</button>
             <span id="aqs-ai-status" class="aqs-status-msg"></span>
         </div>
         <!-- Test results panel (hidden by default) -->
@@ -608,96 +654,101 @@ window.addEventListener('DOMContentLoaded', function() {
 function btn(id){ return document.getElementById(id); }
 
 btn('aqs-save-ai-btn').addEventListener('click', function(){
-    var keys = [];
+    var groqKeys = [];
     for (var gi = 1; gi <= 5; gi++) {
         var el = document.getElementById('aqs-groq-key-' + gi);
-        if (el && el.value.trim()) keys.push(el.value.trim());
+        if (el && el.value.trim()) groqKeys.push(el.value.trim());
     }
+    var mistralKeys = [];
+    for (var mi = 1; mi <= 5; mi++) {
+        var mel = document.getElementById('aqs-mistral-key-' + mi);
+        if (mel && mel.value.trim()) mistralKeys.push(mel.value.trim());
+    }
+    var mistralModelEl = document.getElementById('aqs-mistral-model');
     saveSettings('/api/settings', {
-        groq_keys: keys,
-        groq_model: document.getElementById('aqs-groq-model').value
+        groq_keys: groqKeys,
+        groq_model: document.getElementById('aqs-groq-model').value,
+        mistral_keys: mistralKeys,
+        mistral_model: mistralModelEl ? mistralModelEl.value : 'mistral-small-latest'
     }, 'aqs-ai-status', this, '💾 Save AI Settings');
 });
 
 btn('aqs-test-ai-btn').addEventListener('click', async function(){
-    var keys = [];
+    var groqKeys = [], mistralKeys = [];
     for (var gi = 1; gi <= 5; gi++) {
         var el = document.getElementById('aqs-groq-key-' + gi);
-        if (el && el.value.trim()) keys.push({ slot: gi, key: el.value.trim() });
+        if (el && el.value.trim()) groqKeys.push({ slot: gi, key: el.value.trim(), provider: 'groq' });
     }
+    for (var mi = 1; mi <= 5; mi++) {
+        var mel = document.getElementById('aqs-mistral-key-' + mi);
+        if (mel && mel.value.trim()) mistralKeys.push({ slot: mi, key: mel.value.trim(), provider: 'mistral' });
+    }
+    var allKeys = groqKeys.concat(mistralKeys);
     var results = document.getElementById('aqs-ai-test-results');
     var testBtn = this;
 
-    if (!keys.length) {
+    if (!allKeys.length) {
         results.style.display = 'block';
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys entered. Add at least one Groq API key above and try again.</span>';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys entered. Add at least one Groq or Mistral key above.</span>';
         return;
     }
 
     testBtn.disabled = true;
     testBtn.textContent = '⏳ Testing…';
     results.style.display = 'block';
-    results.innerHTML = '<span style="color:#94a3b8;">Testing ' + keys.length + ' key(s)… this takes a few seconds.</span>';
+    results.innerHTML = '<span style="color:#94a3b8;">Testing ' + allKeys.length + ' key(s) across both providers…</span>';
 
-    var html = '<div style="display:flex;flex-direction:column;gap:8px;">';
-    for (var i = 0; i < keys.length; i++) {
-        var slot = keys[i].slot;
-        var key  = keys[i].key;
-        var masked = key.substring(0, 7) + '…' + key.slice(-4);
+    async function testKey(entry) {
+        var slot = entry.slot, key = entry.key, provider = entry.provider;
+        var masked = key.substring(0, 6) + '…' + key.slice(-4);
+        var url = provider === 'mistral'
+            ? 'https://api.mistral.ai/v1/chat/completions'
+            : 'https://api.groq.com/openai/v1/chat/completions';
+        var model = provider === 'mistral' ? 'mistral-small-latest' : 'llama-3.1-8b-instant';
+        var badge = provider === 'mistral'
+            ? '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;font-weight:700;">MISTRAL</span>'
+            : '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:1px 6px;font-weight:700;">GROQ</span>';
         try {
-            var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            var res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
-                    messages: [{ role: 'user', content: 'Reply with one word: OK' }],
-                    max_tokens: 5
-                })
+                body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Reply with one word: OK' }], max_tokens: 5 })
             });
             if (res.ok) {
                 var data = await res.json();
                 var reply = (((data.choices || [])[0] || {}).message || {}).content || '(empty)';
-                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#052e16;border:1px solid #166534;border-radius:7px;">' +
-                    '<span style="font-size:1rem;">✅</span>' +
-                    '<span style="color:#86efac;font-weight:600;">Key ' + slot + '</span>' +
+                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#052e16;border:1px solid #166534;border-radius:7px;">' +
+                    badge + '<span style="color:#86efac;font-weight:600;">Key ' + slot + '</span>' +
                     '<span style="color:#4ade80;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">Active · replied: "' + reply.trim() + '"</span>' +
-                    '</div>';
+                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">Active · "' + reply.trim() + '"</span></div>';
             } else if (res.status === 401) {
-                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
-                    '<span style="font-size:1rem;">❌</span>' +
-                    '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
+                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
+                    badge + '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
                     '<span style="color:#f87171;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Invalid / Revoked (401)</span>' +
-                    '</div>';
+                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Invalid / Revoked (401)</span></div>';
             } else if (res.status === 429) {
-                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c1001;border:1px solid #78350f;border-radius:7px;">' +
-                    '<span style="font-size:1rem;">⚠️</span>' +
-                    '<span style="color:#fcd34d;font-weight:600;">Key ' + slot + '</span>' +
+                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c1001;border:1px solid #78350f;border-radius:7px;">' +
+                    badge + '<span style="color:#fcd34d;font-weight:600;">Key ' + slot + '</span>' +
                     '<span style="color:#fbbf24;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;">Rate limited (429) — try again later</span>' +
-                    '</div>';
+                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;">Rate limited (429)</span></div>';
             } else {
-                html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1e1b4b;border:1px solid #4338ca;border-radius:7px;">' +
-                    '<span style="font-size:1rem;">⚠️</span>' +
-                    '<span style="color:#a5b4fc;font-weight:600;">Key ' + slot + '</span>' +
+                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1e1b4b;border:1px solid #4338ca;border-radius:7px;">' +
+                    badge + '<span style="color:#a5b4fc;font-weight:600;">Key ' + slot + '</span>' +
                     '<span style="color:#818cf8;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">HTTP ' + res.status + ' — unexpected error</span>' +
-                    '</div>';
+                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">HTTP ' + res.status + '</span></div>';
             }
-        } catch (e) {
-            html += '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
-                '<span style="font-size:1rem;">❌</span>' +
-                '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
+        } catch(e) {
+            return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
+                badge + '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
                 '<span style="color:#f87171;font-family:monospace;">' + masked + '</span>' +
-                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Network error — check your connection</span>' +
-                '</div>';
+                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Network error</span></div>';
         }
     }
-    html += '</div>';
-    results.innerHTML = html;
+
+    var rows = await Promise.all(allKeys.map(testKey));
+    results.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
     testBtn.disabled = false;
-    testBtn.textContent = '🔌 Test AI Connection';
+    testBtn.textContent = '🔌 Test All Keys';
 });
 
 /* ── File upload helper ── */

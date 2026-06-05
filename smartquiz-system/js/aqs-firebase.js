@@ -423,9 +423,6 @@ async function handleAction(data) {
         case 'aqs_get_about_settings': return await actionGetAboutSettings();
         case 'aqs_save_about_settings':return await actionSaveAboutSettings(data);
 
-        /* ── CURRENT USER INFO ── */
-        case 'aqs_get_current_user':   return await actionGetCurrentUser();
-
         default:
             console.warn('[AQS Firebase] Unknown action:', action);
             return {};
@@ -2176,7 +2173,7 @@ async function actionSaveSettings(data) {
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
     var allowed = [
-        'groq_api_key','groq_model','groq_keys','bg_music_url',
+        'groq_api_key','groq_model','groq_keys','mistral_keys','mistral_model','bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
@@ -2191,10 +2188,20 @@ async function actionSaveSettings(data) {
     if (Array.isArray(payload.groq_keys)) {
         payload.groq_keys = payload.groq_keys.filter(function(k) { return k && k.startsWith('gsk_'); });
     }
+    /* If mistral_keys array is provided, keep it clean (any key longer than 20 chars) */
+    if (Array.isArray(payload.mistral_keys)) {
+        payload.mistral_keys = payload.mistral_keys.filter(function(k) { return k && k.trim().length > 20; });
+    }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
     /* Immediately expose the updated keys to aqs-groq-key.js */
     if (Array.isArray(payload.groq_keys)) {
         window._AQS_GROQ_MASTER_KEYS = payload.groq_keys;
+    }
+    if (Array.isArray(payload.mistral_keys)) {
+        window._AQS_MISTRAL_MASTER_KEYS = payload.mistral_keys;
+    }
+    if (payload.mistral_model) {
+        window._AQS_MISTRAL_MODEL = payload.mistral_model;
     }
     return { success: true, message: 'Settings saved.' };
 }
@@ -2461,6 +2468,12 @@ function _updateAqsGlobals(user, profile) {
             keys = [s.groq_api_key];
         }
         if (keys.length) window._AQS_GROQ_MASTER_KEYS = keys;
+        /* Load Mistral keys — used as silent fallback when all Groq keys are busy */
+        if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
+            var mkeys = s.mistral_keys.filter(function(k) { return k && k.trim().length > 20; });
+            if (mkeys.length) window._AQS_MISTRAL_MASTER_KEYS = mkeys;
+        }
+        if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
     }).catch(function() { /* silently ignore — no keys available */ });
     /* Note: _aqsFirebaseReady and aqs:firebase:ready are already set/dispatched
        by the patchJQuery IIFE above — no need to duplicate them here. */
@@ -2545,18 +2558,6 @@ async function actionGetRatings(data) {
     var ratings = [];
     snap3.forEach(function(d){ ratings.push(Object.assign({id:d.id},d.data())); });
     return { ratings: ratings };
-}
-
-async function actionGetCurrentUser() {
-    var user = auth.currentUser;
-    if (!user) return { logged_in: false };
-    return {
-        logged_in:   true,
-        uid:         user.uid,
-        email:       user.email || '',
-        displayName: user.displayName || '',
-        name:        user.displayName || ''
-    };
 }
 
 export { auth, db, rtdb, requireAuth, generateToken };

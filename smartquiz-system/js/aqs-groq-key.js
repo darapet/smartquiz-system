@@ -1,19 +1,16 @@
 (function(){
-    var GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
-    var STORAGE_KEY = 'aqs_groq_key';
-    var IDX_KEY     = 'aqs_groq_key_idx';
+    var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
+    var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';
+    var STORAGE_KEY     = 'aqs_groq_key';
+    var IDX_KEY         = 'aqs_groq_key_idx';
+    var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
 
-    /* Master keys are loaded at runtime from Firestore (via aqs-firebase.js).
-       They are NEVER hardcoded here so the file is safe to push to GitHub.
-       window._AQS_GROQ_MASTER_KEYS is set by aqs-firebase.js after it loads
-       the site settings. Until that happens the array is empty and the site
-       will use any personally-saved browser key instead. */
+    /* ── Groq helpers ─────────────────────────────────────────────────────── */
     function _getMasterKeys() {
         var wk = window._AQS_GROQ_MASTER_KEYS;
         if (Array.isArray(wk) && wk.length) return wk;
         return [];
     }
-
     function _getIdx() {
         var keys = _getMasterKeys();
         if (!keys.length) return 0;
@@ -27,6 +24,60 @@
         try { localStorage.setItem(IDX_KEY, String(i % Math.max(1, keys.length))); } catch(e) {}
     }
 
+    /* ── Mistral helpers ──────────────────────────────────────────────────── */
+    function _getMistralKeys() {
+        var wk = window._AQS_MISTRAL_MASTER_KEYS;
+        if (Array.isArray(wk) && wk.length) return wk;
+        return [];
+    }
+    function _getMistralIdx() {
+        var keys = _getMistralKeys();
+        if (!keys.length) return 0;
+        var i = 0;
+        try { i = parseInt(localStorage.getItem(MISTRAL_IDX_KEY) || '0') || 0; } catch(e) {}
+        if (isNaN(i) || i >= keys.length) i = 0;
+        return i;
+    }
+    function _setMistralIdx(i) {
+        var keys = _getMistralKeys();
+        try { localStorage.setItem(MISTRAL_IDX_KEY, String(i % Math.max(1, keys.length))); } catch(e) {}
+    }
+
+    /* ── Internal: try all Mistral keys silently ──────────────────────────── */
+    async function _mistralFetch(bodyObj, extraOpts) {
+        var mistralKeys = _getMistralKeys();
+        if (!mistralKeys.length) return null;
+
+        /* Use fastest Mistral model unless admin overrides */
+        var mistralModel = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
+        var mistralBody  = Object.assign({}, bodyObj, { model: mistralModel });
+
+        var startIdx = _getMistralIdx();
+        for (var attempt = 0; attempt < mistralKeys.length; attempt++) {
+            var idx = (startIdx + attempt) % mistralKeys.length;
+            var key = mistralKeys[idx];
+            try {
+                var res = await fetch(MISTRAL_URL, Object.assign({}, extraOpts || {}, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                    body:    JSON.stringify(mistralBody)
+                }));
+                if (res.status === 429) {
+                    console.warn('[mistralFetch] slot', idx, 'rate-limited — trying next…');
+                    _setMistralIdx(idx + 1);
+                    continue;
+                }
+                _setMistralIdx(idx + 1);
+                return res;
+            } catch(e) {
+                console.warn('[mistralFetch] slot', idx, 'error:', e.message || e);
+            }
+        }
+        return null;
+    }
+
+    /* ── Public API ───────────────────────────────────────────────────────── */
+
     window.getGroqKey = function(){
         var stored = '';
         try { stored = (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch(e) {}
@@ -38,42 +89,60 @@
         return keys[idx];
     };
 
+    /* groqFetch — tries Groq (all 5 keys), then silently falls back to
+       Mistral (all 5 keys). No visible error until both providers fail. */
     window.groqFetch = async function(bodyObj, extraOpts) {
+
+        /* Personal browser-saved key — priority, fall through if 429 */
         var personal = '';
         try { personal = (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch(e) {}
         if (personal && personal.startsWith('gsk_')) {
-            return fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + personal },
-                body:    JSON.stringify(bodyObj)
-            }));
+            try {
+                var pRes = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + personal },
+                    body:    JSON.stringify(bodyObj)
+                }));
+                if (pRes.status !== 429) return pRes;
+            } catch(e) { /* fall through */ }
         }
 
-        var keys = _getMasterKeys();
-        if (!keys.length) throw new Error('No Groq API keys configured. Ask the site admin to add keys in Settings.');
-
-        var startIdx = _getIdx();
-
-        for (var attempt = 0; attempt < keys.length; attempt++) {
-            var idx = (startIdx + attempt) % keys.length;
-            var key = keys[idx];
-            var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body:    JSON.stringify(bodyObj)
-            }));
-
-            if (res.status === 429) {
-                console.warn('[groqFetch] key slot', idx, 'rate-limited (429), trying next…');
-                _setIdx(idx + 1);
-                continue;
+        /* Try all Groq master keys (rotating) */
+        var groqKeys = _getMasterKeys();
+        if (groqKeys.length) {
+            var startIdx = _getIdx();
+            for (var attempt = 0; attempt < groqKeys.length; attempt++) {
+                var idx = (startIdx + attempt) % groqKeys.length;
+                var key = groqKeys[idx];
+                try {
+                    var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
+                        method:  'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                        body:    JSON.stringify(bodyObj)
+                    }));
+                    if (res.status === 429) {
+                        console.warn('[groqFetch] slot', idx, 'rate-limited — trying next…');
+                        _setIdx(idx + 1);
+                        continue;
+                    }
+                    _setIdx(idx + 1);
+                    return res;
+                } catch(e) {
+                    console.warn('[groqFetch] slot', idx, 'error:', e.message || e);
+                }
             }
-
-            _setIdx(idx + 1);
-            return res;
+            console.warn('[groqFetch] All Groq keys exhausted — switching to Mistral…');
         }
 
-        throw new Error('All Groq keys rate-limited (429). Try again in a moment.');
+        /* Silent Mistral fallback */
+        var mistralRes = await _mistralFetch(bodyObj, extraOpts);
+        if (mistralRes) return mistralRes;
+
+        /* Both providers failed — throw so callers can handle gracefully */
+        if (!groqKeys.length && !_getMistralKeys().length) {
+            throw new Error('No AI keys configured. Ask the admin to add keys in Settings.');
+        }
+        throw new Error('AI temporarily unavailable. Please try again in a moment.');
     };
 
     window.setGroqKey = function(k){
@@ -84,5 +153,10 @@
     window.setGroqKeys = function(arr){
         window._AQS_GROQ_MASTER_KEYS = (arr || []).filter(function(k){ return k && k.startsWith('gsk_'); });
         _setIdx(0);
+    };
+
+    window.setMistralKeys = function(arr){
+        window._AQS_MISTRAL_MASTER_KEYS = (arr || []).filter(function(k){ return k && k.trim().length > 20; });
+        _setMistralIdx(0);
     };
 })();
