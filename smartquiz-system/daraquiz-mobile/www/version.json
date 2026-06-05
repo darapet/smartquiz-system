@@ -1,8 +1,8 @@
 {
-  "version": "1.167",
-  "versionCode": 142,
+  "version": "1.168",
+  "versionCode": 143,
   "releaseDate": "2026-06-05",
-  "notes": "Route ALL AI calls (quiz gen, docs, puzzles, vision, text-docs) through Mistral. Fix checkAI badge. Remove Pollinations from aiChatVision. Kill hardcoded llama model in puzzle.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk"
+  "notes": "Replaced Football Quiz with Brain Battle — educational AI-powered trivia game with single and multiplayer modes.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.168/daraquiz-v1.168.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.168/daraquiz-v1.168.apk"
 }

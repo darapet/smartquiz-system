@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#06070f">
+<title>🧠 Brain Battle — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#06070f;color:#e2e8f0;min-height:100vh;overflow-x:hidden;}
+
+/* ── SCREENS ── */
+.bb-screen{display:none;min-height:100vh;}
+.bb-screen.active{display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+.bb-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.bb-logo{font-size:1rem;font-weight:800;background:linear-gradient(135deg,#a78bfa,#6366f1);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.bb-header a{color:#64748b;font-size:.8rem;text-decoration:none;font-weight:600;}
+.bb-header a:hover{color:#a78bfa;}
+
+/* ── SETUP ── */
+.bb-setup-main{max-width:580px;margin:0 auto;padding:24px 20px;flex:1;width:100%;}
+.bb-hero{text-align:center;margin-bottom:28px;}
+.bb-hero h1{font-size:clamp(1.9rem,5vw,2.7rem);font-weight:900;background:linear-gradient(135deg,#a78bfa,#6366f1,#38bdf8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;line-height:1.15;}
+.bb-hero p{color:#64748b;font-size:.92rem;line-height:1.6;}
+.bb-badge-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+.bb-badge{font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:20px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.1);color:#a78bfa;}
+
+.bb-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-bottom:16px;}
+.bb-card-title{font-size:.76rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.09em;margin-bottom:14px;}
+.bb-label{font-size:.82rem;font-weight:600;color:#94a3b8;margin-bottom:6px;display:block;}
+.bb-input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:.92rem;font-family:inherit;outline:none;transition:border-color .2s;}
+.bb-input:focus{border-color:rgba(99,102,241,.6);}
+
+.bb-seg{display:flex;gap:6px;flex-wrap:wrap;}
+.bb-seg-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:.83rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+.bb-seg-btn.active{background:rgba(99,102,241,.25);border-color:rgba(99,102,241,.6);color:#a78bfa;}
+
+.bb-player-inputs{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.bb-player-row{display:flex;align-items:center;gap:10px;}
+.bb-player-num{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:#fff;flex-shrink:0;}
+
+/* Subject grid */
+.bb-subject-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;}
+.bb-subj-btn{border:2px solid rgba(255,255,255,.08);border-radius:12px;padding:12px 8px;cursor:pointer;transition:all .2s;text-align:center;background:rgba(255,255,255,.03);font-family:inherit;}
+.bb-subj-btn:hover{border-color:rgba(99,102,241,.4);}
+.bb-subj-btn.active{border-color:rgba(99,102,241,.7);background:rgba(99,102,241,.15);}
+.bb-subj-icon{font-size:1.5rem;margin-bottom:4px;display:block;}
+.bb-subj-name{font-size:.78rem;font-weight:700;color:#e2e8f0;}
+
+/* Diff grid */
+.bb-diff-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.bb-diff-card{border:2px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 10px;cursor:pointer;transition:all .2s;text-align:center;background:rgba(255,255,255,.03);}
+.bb-diff-card:hover{border-color:rgba(99,102,241,.4);}
+.bb-diff-card.active{border-color:rgba(99,102,241,.7);background:rgba(99,102,241,.15);}
+.bb-diff-icon{font-size:1.4rem;margin-bottom:4px;}
+.bb-diff-name{font-size:.82rem;font-weight:800;color:#e2e8f0;margin-bottom:2px;}
+.bb-diff-desc{font-size:.7rem;color:#64748b;line-height:1.4;}
+
+/* How to play */
+.bb-howto-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;font-size:.83rem;color:#94a3b8;line-height:1.5;}
+.bb-howto-row strong{color:#c4b5fd;}
+
+/* Buttons */
+.bb-btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;}
+.bb-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 20px rgba(99,102,241,.3);}
+.bb-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.bb-btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;}
+.bb-btn-ghost:hover{border-color:rgba(255,255,255,.2);color:#e2e8f0;}
+
+/* ── QUESTION SCREEN ── */
+.bb-q-wrap{max-width:560px;margin:0 auto;padding:20px;flex:1;width:100%;display:flex;flex-direction:column;}
+.bb-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0;gap:12px;flex-wrap:wrap;}
+.bb-turn-pill{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border-radius:20px;padding:5px 14px;font-size:.83rem;font-weight:800;}
+.bb-round-label{font-size:.76rem;color:#64748b;font-weight:600;}
+.bb-score-chips{display:flex;gap:6px;flex-wrap:wrap;}
+.bb-score-chip{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px 10px;font-size:.76rem;font-weight:700;color:#94a3b8;}
+.bb-score-chip.active-player{border-color:rgba(139,92,246,.5);color:#c4b5fd;}
+
+/* Timer */
+.bb-timer-bar-wrap{height:5px;background:rgba(255,255,255,.07);border-radius:3px;margin-bottom:18px;overflow:hidden;}
+.bb-timer-bar{height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);border-radius:3px;transition:width 1s linear;}
+.bb-timer-bar.urgent{background:linear-gradient(90deg,#ef4444,#f87171);}
+.bb-timer-text{text-align:right;font-size:.72rem;color:#475569;font-weight:700;margin-bottom:6px;}
+
+/* Subject / round info */
+.bb-q-meta{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.bb-q-subject-tag{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a78bfa;}
+.bb-q-diff-tag{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;color:#94a3b8;border:1px solid rgba(255,255,255,.08);}
+.bb-q-num{font-size:.72rem;color:#475569;font-weight:600;margin-left:auto;}
+
+/* Question text */
+.bb-q-text{font-size:1.05rem;font-weight:700;color:#e2e8f0;line-height:1.65;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:18px 20px;margin-bottom:16px;}
+
+/* Options */
+.bb-options{display:flex;flex-direction:column;gap:9px;margin-bottom:14px;}
+.bb-option-btn{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.9rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;text-align:left;width:100%;}
+.bb-option-btn:hover:not(:disabled){border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.08);}
+.bb-option-btn:disabled{cursor:default;}
+.bb-option-btn.correct{border-color:#22c55e;background:rgba(34,197,94,.15);color:#86efac;}
+.bb-option-btn.wrong{border-color:#ef4444;background:rgba(239,68,68,.12);color:#fca5a5;}
+.bb-option-btn.reveal{border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.06);}
+.bb-option-letter{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800;flex-shrink:0;}
+.bb-option-btn.correct .bb-option-letter{background:rgba(34,197,94,.3);}
+.bb-option-btn.wrong .bb-option-letter{background:rgba(239,68,68,.3);}
+
+/* Lifelines */
+.bb-lifelines{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.bb-lifeline-btn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.05);color:#94a3b8;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.bb-lifeline-btn:hover:not(:disabled){border-color:rgba(251,191,36,.4);color:#fbbf24;}
+.bb-lifeline-btn:disabled{opacity:.3;cursor:not-allowed;}
+.bb-lifeline-btn.used{opacity:.25;cursor:not-allowed;}
+
+/* Explanation box */
+.bb-explanation{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:14px 16px;margin-top:10px;display:none;}
+.bb-explanation-label{font-size:.72rem;font-weight:800;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;}
+.bb-explanation-text{font-size:.84rem;color:#94a3b8;line-height:1.65;}
+.bb-next-btn{width:100%;padding:13px;border-radius:12px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.95rem;font-weight:800;cursor:pointer;font-family:inherit;margin-top:12px;display:none;}
+.bb-next-btn:hover{opacity:.9;}
+
+/* Loading spinner */
+.bb-loading{text-align:center;padding:40px 20px;color:#475569;}
+.bb-spinner{width:36px;height:36px;border:3px solid rgba(99,102,241,.2);border-top-color:#6366f1;border-radius:50%;animation:bb-spin .7s linear infinite;margin:0 auto 14px;}
+@keyframes bb-spin{to{transform:rotate(360deg)}}
+
+/* Single-player score display */
+.bb-sp-score{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:10px 16px;background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.06);}
+.bb-sp-stat{text-align:center;}
+.bb-sp-num{font-size:1.3rem;font-weight:900;color:#a78bfa;}
+.bb-sp-lbl{font-size:.68rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
+.bb-sp-timer-display{margin-left:auto;font-size:1.6rem;font-weight:900;color:#6366f1;font-variant-numeric:tabular-nums;}
+.bb-sp-timer-display.urgent{color:#ef4444;animation:bb-pulse .5s ease-in-out infinite;}
+@keyframes bb-pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+/* ── RECAP ── */
+.bb-recap-wrap{max-width:520px;margin:0 auto;padding:24px 20px;flex:1;width:100%;display:flex;flex-direction:column;gap:16px;}
+.bb-recap-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:24px;text-align:center;}
+.bb-recap-icon{font-size:3rem;margin-bottom:10px;}
+.bb-recap-player-name{font-size:.85rem;font-weight:700;color:#a78bfa;margin-bottom:6px;}
+.bb-recap-result{font-size:1.2rem;font-weight:900;color:#e2e8f0;margin-bottom:8px;}
+.bb-recap-answer-row{font-size:.84rem;color:#94a3b8;line-height:1.6;margin-bottom:8px;}
+.bb-recap-pts{font-size:1.5rem;font-weight:900;color:#fbbf24;}
+.bb-mini-scores{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;}
+.bb-mini-score-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:8px;font-size:.84rem;font-weight:700;color:#94a3b8;margin-bottom:4px;}
+.bb-mini-score-row.leader{background:rgba(99,102,241,.1);color:#c4b5fd;}
+.bb-mini-score-row:last-child{margin-bottom:0;}
+.bb-mini-avatar{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.78rem;font-weight:800;color:#fff;flex-shrink:0;}
+
+/* ── RESULTS ── */
+.bb-results-wrap{max-width:520px;margin:0 auto;padding:24px 20px;flex:1;width:100%;}
+.bb-winner-banner{background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:20px;padding:28px;text-align:center;margin-bottom:20px;}
+.bb-winner-trophy{font-size:2.5rem;display:block;margin-bottom:6px;}
+.bb-winner-name{font-size:1.5rem;font-weight:900;color:#1c1208;margin-bottom:4px;}
+.bb-winner-pts{font-size:.95rem;font-weight:700;color:rgba(28,18,8,.7);}
+.bb-podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin:18px 0;}
+.bb-podium-step{text-align:center;min-width:76px;}
+.bb-podium-block{border-radius:8px 8px 0 0;margin:0 auto;width:60px;}
+.bb-podium-step.rank-1 .bb-podium-block{background:linear-gradient(180deg,#fbbf24,#f59e0b);height:88px;}
+.bb-podium-step.rank-2 .bb-podium-block{background:linear-gradient(180deg,#94a3b8,#64748b);height:62px;}
+.bb-podium-step.rank-3 .bb-podium-block{background:linear-gradient(180deg,#d97706,#b45309);height:44px;}
+.bb-podium-avatar{width:40px;height:40px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:1rem;font-weight:900;background:rgba(255,255,255,.15);color:#fff;}
+.bb-podium-pname{font-size:.75rem;font-weight:700;color:#94a3b8;margin-top:4px;}
+.bb-results-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;margin-bottom:16px;}
+.bb-results-table{width:100%;border-collapse:collapse;font-size:.84rem;}
+.bb-results-table th{text-align:left;padding:10px 14px;color:#64748b;font-weight:700;font-size:.73rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.07);}
+.bb-results-table td{padding:11px 14px;border-bottom:1px solid rgba(255,255,255,.04);}
+.bb-results-table tr:last-child td{border-bottom:none;}
+.bb-results-table tr.highlight td{color:#c4b5fd;background:rgba(99,102,241,.05);}
+.bb-action-row{display:flex;gap:10px;margin-top:4px;}
+
+/* SP Results */
+.bb-sp-result-card{background:rgba(99,102,241,.08);border:2px solid rgba(99,102,241,.25);border-radius:20px;padding:28px;text-align:center;margin-bottom:18px;}
+.bb-sp-result-grade{font-size:4rem;margin-bottom:8px;}
+.bb-sp-result-score-big{font-size:2.8rem;font-weight:900;color:#a78bfa;margin-bottom:4px;}
+.bb-sp-result-label{font-size:1rem;font-weight:700;color:#94a3b8;margin-bottom:16px;}
+.bb-sp-result-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.bb-sp-result-stat{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;text-align:center;}
+.bb-sp-result-stat-num{font-size:1.4rem;font-weight:900;color:#e2e8f0;}
+.bb-sp-result-stat-lbl{font-size:.7rem;color:#64748b;font-weight:600;margin-top:2px;}
+
+/* Responsive */
+@media(max-width:480px){
+  .bb-subject-grid{grid-template-columns:repeat(2,1fr);}
+  .bb-diff-grid{grid-template-columns:1fr 1fr;gap:7px;}
+  .bb-action-row{flex-direction:column;}
+  .bb-sp-result-stats{grid-template-columns:1fr 1fr;}
+}
+
+/* Toast */
+#bb-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:center;}
+.bb-toast-item{background:rgba(30,30,46,.95);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;border-radius:10px;padding:10px 20px;font-size:.85rem;font-weight:600;backdrop-filter:blur(8px);}
+
+/* Streak indicator */
+.bb-streak{display:inline-flex;align-items:center;gap:5px;background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.25);border-radius:20px;padding:4px 12px;font-size:.76rem;font-weight:800;color:#fbbf24;}
+</style>
+</head>
+<body>
+
+<div id="bb-toast"></div>
+
+<!-- ══════════════════════════════════════════════════
+     SCREEN: SETUP
+══════════════════════════════════════════════════ -->
+<div id="bb-screen-setup" class="bb-screen active">
+  <header class="bb-header">
+    <div class="bb-logo">🧠 Brain Battle</div>
+    <a href="index.html">🏠 Home</a>
+  </header>
+  <div class="bb-setup-main">
+
+    <div class="bb-hero">
+      <h1>🧠 Brain Battle</h1>
+      <p>University-level knowledge game — answer fast, learn more, beat your friends!</p>
+      <div class="bb-badge-row">
+        <span class="bb-badge">📚 Educational</span>
+        <span class="bb-badge">👥 Up to 4 Players</span>
+        <span class="bb-badge">🤖 AI-Powered</span>
+        <span class="bb-badge">💡 Learn as you play</span>
+      </div>
+    </div>
+
+    <!-- Mode: Single / Multi -->
+    <div class="bb-card">
+      <div class="bb-card-title">🎮 Game Mode</div>
+      <div class="bb-seg" id="bb-seg-mode">
+        <button class="bb-seg-btn active" data-val="single">👤 Single Player</button>
+        <button class="bb-seg-btn" data-val="multi">👥 Multiplayer</button>
+      </div>
+    </div>
+
+    <!-- Player names (multiplayer) -->
+    <div class="bb-card" id="bb-mp-players-card" style="display:none;">
+      <div class="bb-card-title">👥 Players</div>
+      <div class="bb-seg" id="bb-seg-players" style="margin-bottom:12px;">
+        <button class="bb-seg-btn active" data-val="2">2</button>
+        <button class="bb-seg-btn" data-val="3">3</button>
+        <button class="bb-seg-btn" data-val="4">4</button>
+      </div>
+      <div class="bb-player-inputs" id="bb-player-inputs">
+        <div class="bb-player-row"><div class="bb-player-num">1</div><input class="bb-input" id="bb-pname-0" placeholder="Player 1 name" maxlength="20" value="Player 1"></div>
+        <div class="bb-player-row"><div class="bb-player-num">2</div><input class="bb-input" id="bb-pname-1" placeholder="Player 2 name" maxlength="20" value="Player 2"></div>
+      </div>
+    </div>
+
+    <!-- Single: your name -->
+    <div class="bb-card" id="bb-sp-name-card">
+      <div class="bb-card-title">👤 Your Name</div>
+      <input class="bb-input" id="bb-sp-name" placeholder="Enter your name…" maxlength="20" value="Player 1">
+    </div>
+
+    <!-- Subject -->
+    <div class="bb-card">
+      <div class="bb-card-title">📚 Subject</div>
+      <div class="bb-subject-grid" id="bb-subject-grid">
+        <button class="bb-subj-btn active" data-subj="General Knowledge"><span class="bb-subj-icon">🌍</span><span class="bb-subj-name">General Knowledge</span></button>
+        <button class="bb-subj-btn" data-subj="Mathematics"><span class="bb-subj-icon">➕</span><span class="bb-subj-name">Mathematics</span></button>
+        <button class="bb-subj-btn" data-subj="Science"><span class="bb-subj-icon">🔬</span><span class="bb-subj-name">Science</span></button>
+        <button class="bb-subj-btn" data-subj="History"><span class="bb-subj-icon">📜</span><span class="bb-subj-name">History</span></button>
+        <button class="bb-subj-btn" data-subj="Technology &amp; Computing"><span class="bb-subj-icon">💻</span><span class="bb-subj-name">Technology</span></button>
+        <button class="bb-subj-btn" data-subj="Literature &amp; English"><span class="bb-subj-icon">📖</span><span class="bb-subj-name">Literature</span></button>
+        <button class="bb-subj-btn" data-subj="Economics &amp; Business"><span class="bb-subj-icon">📈</span><span class="bb-subj-name">Economics</span></button>
+        <button class="bb-subj-btn" data-subj="Biology"><span class="bb-subj-icon">🧬</span><span class="bb-subj-name">Biology</span></button>
+        <button class="bb-subj-btn" data-subj="Custom"><span class="bb-subj-icon">✏️</span><span class="bb-subj-name">Custom</span></button>
+      </div>
+      <input class="bb-input" id="bb-custom-subj-input" placeholder="Enter your custom subject…" maxlength="60" style="margin-top:10px;display:none;">
+    </div>
+
+    <!-- Difficulty -->
+    <div class="bb-card">
+      <div class="bb-card-title">⚡ Difficulty</div>
+      <div class="bb-diff-grid">
+        <div class="bb-diff-card active" data-diff="easy" onclick="bbSelectDiff('easy')">
+          <div class="bb-diff-icon">🌱</div>
+          <div class="bb-diff-name">Easy</div>
+          <div class="bb-diff-desc">Year 1–2 undergraduate</div>
+        </div>
+        <div class="bb-diff-card" data-diff="medium" onclick="bbSelectDiff('medium')">
+          <div class="bb-diff-icon">🔥</div>
+          <div class="bb-diff-name">Medium</div>
+          <div class="bb-diff-desc">Year 2–3 undergraduate</div>
+        </div>
+        <div class="bb-diff-card" data-diff="hard" onclick="bbSelectDiff('hard')">
+          <div class="bb-diff-icon">💀</div>
+          <div class="bb-diff-name">Hard</div>
+          <div class="bb-diff-desc">Final year / postgrad</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rounds / SP Timer -->
+    <div class="bb-card" id="bb-rounds-card">
+      <div class="bb-card-title" id="bb-rounds-label">🔄 Questions per Player</div>
+      <div class="bb-seg" id="bb-seg-rounds">
+        <button class="bb-seg-btn active" data-val="5">5</button>
+        <button class="bb-seg-btn" data-val="8">8</button>
+        <button class="bb-seg-btn" data-val="10">10</button>
+        <button class="bb-seg-btn" data-val="15">15</button>
+      </div>
+    </div>
+
+    <!-- How to play -->
+    <div class="bb-card" style="background:rgba(99,102,241,.05);border-color:rgba(99,102,241,.15);">
+      <div class="bb-card-title">📋 How to Play</div>
+      <div class="bb-howto-row">🤖 <span><strong>AI generates</strong> questions fresh every game — no repeats, always relevant</span></div>
+      <div class="bb-howto-row">⏱️ <span><strong>30 seconds</strong> to answer each question before time is up</span></div>
+      <div class="bb-howto-row">💡 <span><strong>50/50 lifeline</strong> removes two wrong answers — use wisely</span></div>
+      <div class="bb-howto-row">🔍 <span><strong>Hint lifeline</strong> gives you a clue — but no points deducted!</span></div>
+      <div class="bb-howto-row">📖 <span><strong>Explanation</strong> shown after every answer — learn while you play</span></div>
+      <div class="bb-howto-row">🏆 <span><strong>Multiplayer:</strong> highest total score wins · <strong>Single:</strong> race against time</span></div>
+    </div>
+
+    <button class="bb-btn bb-btn-primary" id="bb-btn-start" style="margin-top:4px;">🧠 Start Brain Battle</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SCREEN: QUESTION
+══════════════════════════════════════════════════ -->
+<div id="bb-screen-question" class="bb-screen">
+  <!-- Multiplayer topbar -->
+  <div class="bb-topbar" id="bb-mp-topbar" style="display:none;">
+    <div class="bb-turn-pill" id="bb-turn-pill">Player 1</div>
+    <div class="bb-round-label" id="bb-round-label">Q 1 of 5</div>
+    <div class="bb-score-chips" id="bb-score-chips"></div>
+  </div>
+  <!-- Single-player topbar -->
+  <div class="bb-sp-score" id="bb-sp-topbar" style="display:none;">
+    <div class="bb-sp-stat"><div class="bb-sp-num" id="bb-sp-score-num">0</div><div class="bb-sp-lbl">Score</div></div>
+    <div class="bb-sp-stat"><div class="bb-sp-num" id="bb-sp-correct-num">0</div><div class="bb-sp-lbl">Correct</div></div>
+    <div class="bb-sp-stat"><div class="bb-sp-num" id="bb-sp-streak-num">0🔥</div><div class="bb-sp-lbl">Streak</div></div>
+    <div class="bb-sp-timer-display" id="bb-sp-timer-disp">90</div>
+  </div>
+
+  <div class="bb-q-wrap">
+    <!-- Loading -->
+    <div id="bb-loading-block" class="bb-loading">
+      <div class="bb-spinner"></div>
+      <div>Generating question…</div>
+    </div>
+
+    <!-- Question content (hidden while loading) -->
+    <div id="bb-q-content" style="display:none;">
+      <!-- Timer bar -->
+      <div class="bb-timer-text" id="bb-timer-text">30s</div>
+      <div class="bb-timer-bar-wrap"><div class="bb-timer-bar" id="bb-timer-bar" style="width:100%;"></div></div>
+
+      <!-- Meta -->
+      <div class="bb-q-meta">
+        <span class="bb-q-subject-tag" id="bb-q-subject-tag">Science</span>
+        <span class="bb-q-diff-tag" id="bb-q-diff-tag">Medium</span>
+        <span class="bb-q-num" id="bb-q-num">Q 1</span>
+      </div>
+
+      <!-- Question -->
+      <div class="bb-q-text" id="bb-q-text">Loading…</div>
+
+      <!-- Lifelines -->
+      <div class="bb-lifelines" id="bb-lifelines">
+        <button class="bb-lifeline-btn" id="bb-ll-fifty" onclick="bbUseFiftyFifty()">
+          <span>50/50</span>
+        </button>
+        <button class="bb-lifeline-btn" id="bb-ll-hint" onclick="bbUseHint()">
+          <span>💡 Hint</span>
+        </button>
+      </div>
+
+      <!-- Hint text -->
+      <div id="bb-hint-text" style="background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.2);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:.83rem;color:#fde68a;display:none;"></div>
+
+      <!-- Options -->
+      <div class="bb-options" id="bb-options"></div>
+
+      <!-- Explanation -->
+      <div class="bb-explanation" id="bb-explanation">
+        <div class="bb-explanation-label">📖 Explanation</div>
+        <div class="bb-explanation-text" id="bb-explanation-text"></div>
+      </div>
+
+      <!-- Next -->
+      <button class="bb-next-btn" id="bb-next-btn">▶ Next Question</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SCREEN: ROUND RECAP (multiplayer)
+══════════════════════════════════════════════════ -->
+<div id="bb-screen-recap" class="bb-screen">
+  <header class="bb-header">
+    <div class="bb-logo">📊 Round Recap</div>
+    <div style="font-size:.78rem;color:#64748b;" id="bb-recap-round-info"></div>
+  </header>
+  <div class="bb-recap-wrap">
+    <div class="bb-recap-card">
+      <div class="bb-recap-icon" id="bb-recap-icon">🧠</div>
+      <div class="bb-recap-player-name" id="bb-recap-player-name"></div>
+      <div class="bb-recap-result" id="bb-recap-result"></div>
+      <div class="bb-recap-answer-row" id="bb-recap-answer-row"></div>
+      <div class="bb-recap-pts" id="bb-recap-pts"></div>
+    </div>
+    <div class="bb-mini-scores" id="bb-mini-scores"></div>
+    <button class="bb-btn bb-btn-primary" id="bb-recap-next-btn">▶ Next Player's Turn</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     SCREEN: FINAL RESULTS
+══════════════════════════════════════════════════ -->
+<div id="bb-screen-results" class="bb-screen">
+  <header class="bb-header">
+    <div class="bb-logo">🏆 Final Results</div>
+  </header>
+
+  <!-- Multiplayer results -->
+  <div id="bb-mp-results" class="bb-results-wrap" style="display:none;">
+    <div class="bb-winner-banner">
+      <span class="bb-winner-trophy">🏆</span>
+      <div class="bb-winner-name" id="bb-winner-name">—</div>
+      <div class="bb-winner-pts" id="bb-winner-pts"></div>
+    </div>
+    <div class="bb-podium" id="bb-podium"></div>
+    <div class="bb-results-card">
+      <table class="bb-results-table">
+        <thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Correct</th><th>Accuracy</th></tr></thead>
+        <tbody id="bb-results-body"></tbody>
+      </table>
+    </div>
+    <div class="bb-action-row">
+      <button class="bb-btn bb-btn-primary" onclick="bbShowScreen('setup')" style="flex:1;">🔄 Play Again</button>
+      <a href="index.html" class="bb-btn bb-btn-ghost" style="flex:1;text-decoration:none;text-align:center;padding:14px;display:block;">🏠 Home</a>
+    </div>
+  </div>
+
+  <!-- Single-player results -->
+  <div id="bb-sp-results" class="bb-results-wrap" style="display:none;">
+    <div class="bb-sp-result-card">
+      <div class="bb-sp-result-grade" id="bb-sp-grade">🎓</div>
+      <div class="bb-sp-result-score-big" id="bb-sp-final-score">0</div>
+      <div class="bb-sp-result-label" id="bb-sp-final-label">points</div>
+      <div class="bb-sp-result-stats">
+        <div class="bb-sp-result-stat"><div class="bb-sp-result-stat-num" id="bb-sp-res-correct">0</div><div class="bb-sp-result-stat-lbl">Correct</div></div>
+        <div class="bb-sp-result-stat"><div class="bb-sp-result-stat-num" id="bb-sp-res-wrong">0</div><div class="bb-sp-result-stat-lbl">Wrong</div></div>
+        <div class="bb-sp-result-stat"><div class="bb-sp-result-stat-num" id="bb-sp-res-accuracy">0%</div><div class="bb-sp-result-stat-lbl">Accuracy</div></div>
+      </div>
+    </div>
+    <div class="bb-results-card" id="bb-sp-q-log"></div>
+    <div class="bb-action-row">
+      <button class="bb-btn bb-btn-primary" onclick="bbShowScreen('setup')" style="flex:1;">🔄 Play Again</button>
+      <a href="index.html" class="bb-btn bb-btn-ghost" style="flex:1;text-decoration:none;text-align:center;padding:14px;display:block;">🏠 Home</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/aqs-groq-key.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════
+   BRAIN BATTLE — Full Game Logic
+════════════════════════════════════════════════════════ */
+
+/* ── STATE ── */
+var BB = {
+  mode: 'single',          // 'single' | 'multi'
+  players: [],             // [{name, score, correct, wrong}]
+  currentPlayer: 0,
+  currentRound: 1,         // which question this player is on
+  totalRounds: 5,
+  difficulty: 'easy',
+  subject: 'General Knowledge',
+  lifelines: { fifty: false, hint: false }, // false = available
+  currentQ: null,          // {question, options:[{text,correct}], explanation, hint}
+  qTimerInterval: null,
+  qTimeLeft: 30,
+  answered: false,
+  lastRecap: null,
+  // Single player
+  spTimerInterval: null,
+  spTimeLeft: 90,
+  spStreak: 0,
+  spMaxStreak: 0,
+  spQAsked: 0,
+  spQLogs: [],
+};
+
+var LETTERS = ['A','B','C','D'];
+var POINT_MAP = { easy: 10, medium: 20, hard: 35 };
+var STREAK_BONUS = { 3:5, 5:10, 8:20, 10:30 };
+
+/* ══════════════════════════════════════
+   SETUP SCREEN
+══════════════════════════════════════ */
+var g_mode = 'single';
+var g_numPlayers = 2;
+var g_numRounds = 5;
+var g_diff = 'easy';
+var g_subject = 'General Knowledge';
+
+document.addEventListener('DOMContentLoaded', function(){
+  setupSeg('bb-seg-mode', function(v){
+    g_mode = v;
+    document.getElementById('bb-mp-players-card').style.display = v==='multi' ? '' : 'none';
+    document.getElementById('bb-sp-name-card').style.display   = v==='single' ? '' : 'none';
+    document.getElementById('bb-rounds-label').textContent = v==='multi' ? '🔄 Questions per Player' : '❓ Number of Questions';
+  });
+  setupSeg('bb-seg-players', function(v){
+    g_numPlayers = parseInt(v);
+    renderPlayerInputs();
+  });
+  setupSeg('bb-seg-rounds', function(v){ g_numRounds = parseInt(v); });
+
+  // Subject buttons
+  document.getElementById('bb-subject-grid').querySelectorAll('.bb-subj-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.getElementById('bb-subject-grid').querySelectorAll('.bb-subj-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      g_subject = btn.dataset.subj;
+      document.getElementById('bb-custom-subj-input').style.display = g_subject==='Custom' ? '' : 'none';
+    });
+  });
+
+  document.getElementById('bb-btn-start').addEventListener('click', bbStart);
+  document.getElementById('bb-recap-next-btn').addEventListener('click', bbNextTurn);
+  document.getElementById('bb-next-btn').addEventListener('click', bbAfterAnswer);
+});
+
+function setupSeg(id, onChange){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.querySelectorAll('.bb-seg-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      el.querySelectorAll('.bb-seg-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      onChange(btn.dataset.val);
+    });
+  });
+}
+
+function bbSelectDiff(d){
+  g_diff = d;
+  document.querySelectorAll('.bb-diff-card').forEach(function(c){ c.classList.remove('active'); });
+  document.querySelector('.bb-diff-card[data-diff="'+d+'"]').classList.add('active');
+}
+
+function renderPlayerInputs(){
+  var wrap = document.getElementById('bb-player-inputs');
+  wrap.innerHTML = '';
+  for(var i=0;i<g_numPlayers;i++){
+    var row = document.createElement('div');
+    row.className = 'bb-player-row';
+    row.innerHTML = '<div class="bb-player-num">'+(i+1)+'</div>'+
+      '<input class="bb-input" id="bb-pname-'+i+'" placeholder="Player '+(i+1)+' name" maxlength="20" value="Player '+(i+1)+'">';
+    wrap.appendChild(row);
+  }
+}
+
+function bbStart(){
+  var subj = g_subject;
+  if(subj==='Custom'){
+    subj = document.getElementById('bb-custom-subj-input').value.trim();
+    if(!subj){ bbToast('Enter a custom subject first!'); return; }
+  }
+
+  BB.mode = g_mode;
+  BB.difficulty = g_diff;
+  BB.subject = subj;
+  BB.totalRounds = g_numRounds;
+  BB.currentPlayer = 0;
+  BB.currentRound = 1;
+  BB.players = [];
+
+  if(g_mode === 'multi'){
+    for(var i=0;i<g_numPlayers;i++){
+      var inp = document.getElementById('bb-pname-'+i);
+      BB.players.push({ name: inp ? (inp.value.trim()||'Player '+(i+1)) : 'Player '+(i+1), score:0, correct:0, wrong:0, rounds:0 });
+    }
+  } else {
+    var spName = document.getElementById('bb-sp-name').value.trim() || 'Player 1';
+    BB.players = [{ name: spName, score:0, correct:0, wrong:0 }];
+    BB.spTimeLeft = 90;
+    BB.spStreak = 0;
+    BB.spMaxStreak = 0;
+    BB.spQAsked = 0;
+    BB.spQLogs = [];
+  }
+
+  BB.lifelines = { fifty: false, hint: false };
+  bbShowScreen('question');
+  bbLoadQuestion();
+}
+
+/* ══════════════════════════════════════
+   AI QUESTION GENERATION
+══════════════════════════════════════ */
+async function bbFetchQuestion(){
+  var diffLabel = { easy:'easy (year 1-2 undergraduate)', medium:'medium (year 2-3 undergraduate)', hard:'hard (final year / postgraduate)' }[BB.difficulty];
+  var prompt = 'Generate a ' + diffLabel + ' multiple-choice question about "' + BB.subject + '" suitable for a university student.\n'+
+    'Return ONLY a valid JSON object with this exact structure:\n'+
+    '{\n'+
+    '  "question": "The question text here",\n'+
+    '  "options": [\n'+
+    '    {"text":"Option A text","correct":false},\n'+
+    '    {"text":"Option B text","correct":true},\n'+
+    '    {"text":"Option C text","correct":false},\n'+
+    '    {"text":"Option D text","correct":false}\n'+
+    '  ],\n'+
+    '  "explanation": "A clear 1-2 sentence explanation of the correct answer",\n'+
+    '  "hint": "A helpful hint that does not give away the answer directly"\n'+
+    '}\n'+
+    'IMPORTANT: Exactly one option must have "correct":true. Shuffle the position of the correct answer randomly. Do not number the options. Return ONLY the JSON object.';
+
+  if(typeof window.groqFetch !== 'function'){
+    return bbFallbackQuestion();
+  }
+  try {
+    var res = await window.groqFetch({ messages:[{role:'user', content: prompt}], max_tokens:700, temperature:0.85 });
+    var raw = (res.choices[0].message.content||'').trim();
+    // Extract JSON
+    var match = raw.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('No JSON');
+    var obj = JSON.parse(match[0]);
+    if(!obj.question || !Array.isArray(obj.options) || obj.options.length < 2) throw new Error('Bad shape');
+    // Ensure exactly 4 options
+    while(obj.options.length < 4) obj.options.push({text:'None of the above', correct:false});
+    obj.options = obj.options.slice(0,4);
+    // Ensure exactly one correct
+    var corrects = obj.options.filter(function(o){ return o.correct; });
+    if(corrects.length !== 1){ obj.options[0].correct = true; obj.options.slice(1).forEach(function(o){ o.correct=false; }); }
+    return obj;
+  } catch(e){
+    return bbFallbackQuestion();
+  }
+}
+
+function bbFallbackQuestion(){
+  var banks = {
+    'General Knowledge':[
+      {question:'Which planet is known as the Red Planet?',options:[{text:'Venus',correct:false},{text:'Mars',correct:true},{text:'Jupiter',correct:false},{text:'Saturn',correct:false}],explanation:'Mars appears red because its surface is covered in iron oxide (rust).',hint:'It\'s named after the Roman god of war.'},
+      {question:'What is the capital city of Australia?',options:[{text:'Sydney',correct:false},{text:'Melbourne',correct:false},{text:'Canberra',correct:true},{text:'Brisbane',correct:false}],explanation:'Canberra has been Australia\'s capital since 1913, chosen as a compromise between Sydney and Melbourne.',hint:'It\'s not the largest city — it was purpose-built as a compromise.'},
+      {question:'How many bones are in the adult human body?',options:[{text:'196',correct:false},{text:'206',correct:true},{text:'216',correct:false},{text:'186',correct:false}],explanation:'Adults have 206 bones. Babies are born with around 270 bones which fuse together over time.',hint:'It\'s between 200 and 210.'},
+    ],
+    'Mathematics':[
+      {question:'What is the derivative of sin(x)?',options:[{text:'cos(x)',correct:true},{text:'-cos(x)',correct:false},{text:'tan(x)',correct:false},{text:'-sin(x)',correct:false}],explanation:'The derivative of sin(x) is cos(x), and the derivative of cos(x) is -sin(x).',hint:'Think about the unit circle and how the slope of sine changes.'},
+      {question:'What is the value of e (Euler\'s number) to 2 decimal places?',options:[{text:'2.71',correct:true},{text:'3.14',correct:false},{text:'1.61',correct:false},{text:'2.14',correct:false}],explanation:'e ≈ 2.71828… It is the base of the natural logarithm.',hint:'It\'s between 2.7 and 2.8.'},
+    ],
+    'Science':[
+      {question:'What is the chemical symbol for gold?',options:[{text:'Go',correct:false},{text:'Gd',correct:false},{text:'Au',correct:true},{text:'Ag',correct:false}],explanation:'Gold\'s symbol Au comes from the Latin "Aurum". Ag (silver) comes from "Argentum".',hint:'Think of the Latin name, not the English one.'},
+      {question:'What force keeps planets in orbit around the Sun?',options:[{text:'Electromagnetic force',correct:false},{text:'Gravity',correct:true},{text:'Nuclear force',correct:false},{text:'Centripetal thrust',correct:false}],explanation:'Gravity is the attractive force between masses. The Sun\'s gravity keeps planets in elliptical orbits.',hint:'Isaac Newton famously described this force after observing a falling apple.'},
+    ],
+  };
+  var subj = BB.subject;
+  var bank = banks[subj] || banks['General Knowledge'];
+  var q = bank[Math.floor(Math.random()*bank.length)];
+  return JSON.parse(JSON.stringify(q)); // deep clone
+}
+
+/* ══════════════════════════════════════
+   QUESTION SCREEN
+══════════════════════════════════════ */
+function bbLoadQuestion(){
+  bbShowScreen('question');
+  // Setup top bar
+  if(BB.mode === 'multi'){
+    document.getElementById('bb-mp-topbar').style.display = '';
+    document.getElementById('bb-sp-topbar').style.display = 'none';
+    var player = BB.players[BB.currentPlayer];
+    document.getElementById('bb-turn-pill').textContent = player.name + '\'s Turn';
+    document.getElementById('bb-round-label').textContent = 'Q ' + BB.currentRound + ' of ' + BB.totalRounds;
+    renderScoreChips();
+  } else {
+    document.getElementById('bb-mp-topbar').style.display = 'none';
+    document.getElementById('bb-sp-topbar').style.display = '';
+    if(BB.currentRound === 1){
+      bbStartSpTimer();
+    }
+    updateSpDisplay();
+  }
+
+  // Reset lifelines per question
+  BB.lifelines = { fifty: false, hint: false };
+  updateLifelineBtns();
+
+  // Show loading
+  document.getElementById('bb-loading-block').style.display = '';
+  document.getElementById('bb-q-content').style.display = 'none';
+  document.getElementById('bb-explanation').style.display = 'none';
+  document.getElementById('bb-next-btn').style.display = 'none';
+  document.getElementById('bb-hint-text').style.display = 'none';
+  BB.answered = false;
+
+  bbFetchQuestion().then(function(q){
+    BB.currentQ = q;
+    renderQuestion(q);
+    startQTimer();
+  });
+}
+
+function renderQuestion(q){
+  document.getElementById('bb-loading-block').style.display = 'none';
+  document.getElementById('bb-q-content').style.display = '';
+
+  document.getElementById('bb-q-subject-tag').textContent = BB.subject;
+  document.getElementById('bb-q-diff-tag').textContent = BB.difficulty.charAt(0).toUpperCase()+BB.difficulty.slice(1);
+  document.getElementById('bb-q-num').textContent = 'Q ' + BB.currentRound + (BB.mode==='single'?' of '+BB.totalRounds:'');
+  document.getElementById('bb-q-text').textContent = q.question;
+
+  var optWrap = document.getElementById('bb-options');
+  optWrap.innerHTML = '';
+  q.options.forEach(function(opt, i){
+    var btn = document.createElement('button');
+    btn.className = 'bb-option-btn';
+    btn.dataset.correct = opt.correct ? '1' : '0';
+    btn.innerHTML = '<span class="bb-option-letter">'+LETTERS[i]+'</span><span>'+opt.text+'</span>';
+    btn.addEventListener('click', function(){ bbAnswer(btn, opt.correct, q); });
+    optWrap.appendChild(btn);
+  });
+
+  resetQTimerBar();
+}
+
+function renderScoreChips(){
+  var wrap = document.getElementById('bb-score-chips');
+  wrap.innerHTML = '';
+  BB.players.forEach(function(p, i){
+    var chip = document.createElement('div');
+    chip.className = 'bb-score-chip' + (i===BB.currentPlayer?' active-player':'');
+    chip.textContent = p.name.split(' ')[0] + ': ' + p.score;
+    wrap.appendChild(chip);
+  });
+}
+
+/* ── ANSWER ── */
+function bbAnswer(btn, isCorrect, q){
+  if(BB.answered) return;
+  BB.answered = true;
+  stopQTimer();
+
+  var pts = 0;
+  var player = BB.players[BB.currentPlayer];
+
+  // Mark all buttons
+  document.querySelectorAll('.bb-option-btn').forEach(function(b){
+    b.disabled = true;
+    if(b.dataset.correct === '1') b.classList.add('correct');
+    else if(b === btn) b.classList.add('wrong');
+    else b.classList.add('reveal');
+  });
+
+  if(isCorrect){
+    pts = POINT_MAP[BB.difficulty] || 10;
+    player.correct++;
+    player.score += pts;
+    if(BB.mode === 'single'){
+      BB.spStreak++;
+      if(BB.spStreak > BB.spMaxStreak) BB.spMaxStreak = BB.spStreak;
+      var bonus = 0;
+      Object.keys(STREAK_BONUS).forEach(function(k){ if(BB.spStreak>=parseInt(k)) bonus=STREAK_BONUS[k]; });
+      if(bonus){ player.score += bonus; bbToast('🔥 '+BB.spStreak+' streak! +'+bonus+' bonus!'); }
+      BB.spQAsked++;
+      BB.spQLogs.push({ q: q.question, correct: true, answer: q.options.find(function(o){return o.correct;}).text });
+      updateSpDisplay();
+    }
+  } else {
+    player.wrong++;
+    if(BB.mode === 'single'){
+      BB.spStreak = 0;
+      BB.spQAsked++;
+      BB.spQLogs.push({ q: q.question, correct: false, answer: q.options.find(function(o){return o.correct;}).text });
+      updateSpDisplay();
+    }
+  }
+
+  // Show explanation
+  if(q.explanation){
+    var expEl = document.getElementById('bb-explanation');
+    document.getElementById('bb-explanation-text').textContent = q.explanation;
+    expEl.style.display = '';
+  }
+
+  // Recap data
+  BB.lastRecap = {
+    playerName: player.name,
+    correct: isCorrect,
+    pts: pts,
+    correctAnswerText: q.options.find(function(o){return o.correct;}).text,
+    chosenText: btn.querySelector('span:last-child').textContent,
+  };
+
+  // Show next button
+  document.getElementById('bb-next-btn').style.display = '';
+}
+
+function bbAfterAnswer(){
+  stopQTimer();
+  if(BB.mode === 'multi'){
+    // Show recap
+    bbShowRecap();
+  } else {
+    // Single player: next question or end
+    BB.currentRound++;
+    if(BB.currentRound > BB.totalRounds){
+      stopSpTimer();
+      bbShowSpResults();
+    } else {
+      bbLoadQuestion();
+    }
+  }
+}
+
+/* ── LIFELINES ── */
+function bbUseFiftyFifty(){
+  if(BB.lifelines.fifty || BB.answered) return;
+  BB.lifelines.fifty = true;
+  updateLifelineBtns();
+  var buttons = Array.from(document.querySelectorAll('.bb-option-btn'));
+  var wrongBtns = buttons.filter(function(b){ return b.dataset.correct !== '1' && !b.disabled; });
+  wrongBtns = wrongBtns.sort(function(){ return Math.random()-.5; }).slice(0,2);
+  wrongBtns.forEach(function(b){ b.style.opacity='.2'; b.disabled=true; });
+  bbToast('50/50 used — two wrong answers removed!');
+}
+
+function bbUseHint(){
+  if(BB.lifelines.hint || BB.answered || !BB.currentQ) return;
+  BB.lifelines.hint = true;
+  updateLifelineBtns();
+  var hintEl = document.getElementById('bb-hint-text');
+  hintEl.textContent = '💡 Hint: ' + (BB.currentQ.hint || 'Think carefully about the key concept in the question.');
+  hintEl.style.display = '';
+  bbToast('Hint revealed! No points deducted.');
+}
+
+function updateLifelineBtns(){
+  var f = document.getElementById('bb-ll-fifty');
+  var h = document.getElementById('bb-ll-hint');
+  f.disabled = BB.lifelines.fifty;
+  f.classList.toggle('used', BB.lifelines.fifty);
+  h.disabled = BB.lifelines.hint;
+  h.classList.toggle('used', BB.lifelines.hint);
+}
+
+/* ── Q TIMER ── */
+function startQTimer(){
+  BB.qTimeLeft = 30;
+  resetQTimerBar();
+  document.getElementById('bb-timer-text').textContent = '30s';
+  BB.qTimerInterval = setInterval(function(){
+    BB.qTimeLeft--;
+    var pct = (BB.qTimeLeft / 30) * 100;
+    var bar = document.getElementById('bb-timer-bar');
+    bar.style.width = pct + '%';
+    bar.classList.toggle('urgent', BB.qTimeLeft <= 8);
+    document.getElementById('bb-timer-text').textContent = BB.qTimeLeft + 's';
+    if(BB.qTimeLeft <= 0){
+      clearInterval(BB.qTimerInterval);
+      if(!BB.answered) bbTimeUp();
+    }
+  }, 1000);
+}
+
+function stopQTimer(){ clearInterval(BB.qTimerInterval); }
+
+function resetQTimerBar(){
+  var bar = document.getElementById('bb-timer-bar');
+  bar.style.width = '100%';
+  bar.classList.remove('urgent');
+}
+
+function bbTimeUp(){
+  BB.answered = true;
+  var player = BB.players[BB.currentPlayer];
+  player.wrong++;
+  if(BB.mode==='single'){
+    BB.spStreak=0;
+    BB.spQAsked++;
+    BB.spQLogs.push({ q: BB.currentQ.question, correct:false, answer: BB.currentQ.options.find(function(o){return o.correct;}).text, timedOut:true });
+    updateSpDisplay();
+  }
+  document.querySelectorAll('.bb-option-btn').forEach(function(b){
+    b.disabled = true;
+    if(b.dataset.correct === '1') b.classList.add('correct');
+  });
+  if(BB.currentQ && BB.currentQ.explanation){
+    document.getElementById('bb-explanation-text').textContent = BB.currentQ.explanation;
+    document.getElementById('bb-explanation').style.display = '';
+  }
+  BB.lastRecap = {
+    playerName: player.name, correct: false, pts: 0, timedOut: true,
+    correctAnswerText: BB.currentQ ? BB.currentQ.options.find(function(o){return o.correct;}).text : '—',
+    chosenText: '(time up)',
+  };
+  bbToast('⏱️ Time\'s up!');
+  document.getElementById('bb-next-btn').style.display = '';
+}
+
+/* ── SP TIMER ── */
+function bbStartSpTimer(){
+  BB.spTimerInterval = setInterval(function(){
+    BB.spTimeLeft--;
+    updateSpDisplay();
+    if(BB.spTimeLeft <= 0){
+      stopSpTimer();
+      bbShowSpResults();
+    }
+  }, 1000);
+}
+
+function stopSpTimer(){ clearInterval(BB.spTimerInterval); }
+
+function updateSpDisplay(){
+  document.getElementById('bb-sp-score-num').textContent = BB.players[0].score;
+  document.getElementById('bb-sp-correct-num').textContent = BB.players[0].correct;
+  document.getElementById('bb-sp-streak-num').textContent = BB.spStreak+'🔥';
+  var td = document.getElementById('bb-sp-timer-disp');
+  td.textContent = BB.spTimeLeft+'s';
+  td.classList.toggle('urgent', BB.spTimeLeft <= 15);
+}
+
+/* ══════════════════════════════════════
+   RECAP (Multiplayer)
+══════════════════════════════════════ */
+function bbShowRecap(){
+  bbShowScreen('recap');
+  var r = BB.lastRecap;
+  document.getElementById('bb-recap-round-info').textContent = 'Q '+BB.currentRound+' of '+BB.totalRounds;
+  document.getElementById('bb-recap-icon').textContent = r.correct ? '✅' : (r.timedOut ? '⏱️' : '❌');
+  document.getElementById('bb-recap-player-name').textContent = r.playerName;
+  document.getElementById('bb-recap-result').textContent = r.correct ? 'Correct! Well done!' : (r.timedOut ? 'Time\'s up!' : 'Wrong answer');
+  document.getElementById('bb-recap-answer-row').textContent = 'Correct answer: ' + r.correctAnswerText;
+  document.getElementById('bb-recap-pts').textContent = r.correct ? '+'+r.pts+' pts' : '+0 pts';
+
+  // Mini scoreboard
+  var mini = document.getElementById('bb-mini-scores');
+  var sorted = BB.players.slice().sort(function(a,b){ return b.score-a.score; });
+  mini.innerHTML = sorted.map(function(p){
+    var isLead = p === sorted[0];
+    return '<div class="bb-mini-score-row'+(isLead?' leader':'')+'">'+
+      '<div style="display:flex;align-items:center;gap:8px;">'+
+      '<div class="bb-mini-avatar">'+p.name.charAt(0).toUpperCase()+'</div>'+
+      p.name+'</div>'+
+      '<div>'+p.score+' pts</div></div>';
+  }).join('');
+
+  // Next btn label
+  var nextPlayerIdx = (BB.currentPlayer+1) % BB.players.length;
+  var isLastPlayerThisRound = BB.currentPlayer === BB.players.length - 1;
+  var isLastRound = BB.currentRound >= BB.totalRounds;
+  if(isLastPlayerThisRound && isLastRound){
+    document.getElementById('bb-recap-next-btn').textContent = '🏆 See Final Results';
+  } else if(isLastPlayerThisRound){
+    document.getElementById('bb-recap-next-btn').textContent = '▶ Next Round';
+  } else {
+    document.getElementById('bb-recap-next-btn').textContent = '▶ '+BB.players[nextPlayerIdx].name+'\'s Turn';
+  }
+}
+
+function bbNextTurn(){
+  var isLastPlayer = BB.currentPlayer === BB.players.length - 1;
+  if(isLastPlayer){
+    BB.currentRound++;
+    BB.currentPlayer = 0;
+    if(BB.currentRound > BB.totalRounds){
+      bbShowMpResults();
+      return;
+    }
+  } else {
+    BB.currentPlayer++;
+  }
+  BB.lifelines = { fifty: false, hint: false };
+  bbLoadQuestion();
+}
+
+/* ══════════════════════════════════════
+   MULTIPLAYER RESULTS
+══════════════════════════════════════ */
+function bbShowMpResults(){
+  bbShowScreen('results');
+  document.getElementById('bb-mp-results').style.display = '';
+  document.getElementById('bb-sp-results').style.display = 'none';
+
+  var sorted = BB.players.slice().sort(function(a,b){ return b.score-a.score; });
+  var winner = sorted[0];
+  document.getElementById('bb-winner-name').textContent = winner.name;
+  document.getElementById('bb-winner-pts').textContent = winner.score + ' points · ' + winner.correct + ' correct';
+
+  // Podium
+  var podium = document.getElementById('bb-podium');
+  podium.innerHTML = '';
+  var podiumOrder = sorted.length>=3 ? [sorted[1],sorted[0],sorted[2]] : [sorted[0]];
+  var heights = [62,90,44];
+  podiumOrder.forEach(function(p, i){
+    var rank = sorted.indexOf(p)+1;
+    var step = document.createElement('div');
+    step.className = 'bb-podium-step rank-'+rank;
+    step.innerHTML = '<div class="bb-podium-avatar">'+p.name.charAt(0).toUpperCase()+'</div>'+
+      '<div class="bb-podium-block" style="height:'+heights[i]+'px;"></div>'+
+      '<div class="bb-podium-pname">'+p.name.split(' ')[0]+'<br>'+p.score+'pts</div>';
+    podium.appendChild(step);
+  });
+
+  // Table
+  var tbody = document.getElementById('bb-results-body');
+  tbody.innerHTML = sorted.map(function(p, i){
+    var acc = p.correct+p.wrong > 0 ? Math.round((p.correct/(p.correct+p.wrong))*100) : 0;
+    return '<tr><td>'+(i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1))+'</td>'+
+      '<td>'+p.name+'</td><td><strong>'+p.score+' pts</strong></td><td>'+p.correct+'</td><td>'+acc+'%</td></tr>';
+  }).join('');
+}
+
+/* ══════════════════════════════════════
+   SINGLE PLAYER RESULTS
+══════════════════════════════════════ */
+function bbShowSpResults(){
+  bbShowScreen('results');
+  document.getElementById('bb-mp-results').style.display = 'none';
+  document.getElementById('bb-sp-results').style.display = '';
+
+  var p = BB.players[0];
+  var total = p.correct + p.wrong;
+  var acc = total > 0 ? Math.round((p.correct/total)*100) : 0;
+  var grade, gradeLabel;
+  if(acc >= 90){ grade='🎓'; gradeLabel='Outstanding!'; }
+  else if(acc >= 75){ grade='⭐'; gradeLabel='Excellent!'; }
+  else if(acc >= 60){ grade='👏'; gradeLabel='Good Job!'; }
+  else if(acc >= 40){ grade='📚'; gradeLabel='Keep Studying!'; }
+  else { grade='💪'; gradeLabel='Practice Makes Perfect!'; }
+
+  document.getElementById('bb-sp-grade').textContent = grade;
+  document.getElementById('bb-sp-final-score').textContent = p.score;
+  document.getElementById('bb-sp-final-label').textContent = gradeLabel + ' · ' + acc + '% accuracy';
+  document.getElementById('bb-sp-res-correct').textContent = p.correct;
+  document.getElementById('bb-sp-res-wrong').textContent = p.wrong;
+  document.getElementById('bb-sp-res-accuracy').textContent = acc+'%';
+
+  // Q log
+  var logCard = document.getElementById('bb-sp-q-log');
+  if(BB.spQLogs.length > 0){
+    logCard.innerHTML = '<table class="bb-results-table"><thead><tr><th>#</th><th>Question</th><th>Answer</th><th>Result</th></tr></thead>'+
+      '<tbody>'+BB.spQLogs.map(function(l, i){
+        return '<tr><td>'+(i+1)+'</td>'+
+          '<td style="font-size:.78rem;max-width:200px;">'+l.q+'</td>'+
+          '<td style="font-size:.78rem;color:#a78bfa;">'+l.answer+'</td>'+
+          '<td>'+(l.correct?'✅':l.timedOut?'⏱️':'❌')+'</td></tr>';
+      }).join('')+'</tbody></table>';
+    logCard.style.display = '';
+  } else {
+    logCard.style.display = 'none';
+  }
+}
+
+/* ══════════════════════════════════════
+   SCREEN NAVIGATION
+══════════════════════════════════════ */
+function bbShowScreen(name){
+  document.querySelectorAll('.bb-screen').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById('bb-screen-'+name).classList.add('active');
+}
+
+/* ── TOAST ── */
+function bbToast(msg, dur){
+  var wrap = document.getElementById('bb-toast');
+  var el = document.createElement('div');
+  el.className = 'bb-toast-item';
+  el.textContent = msg;
+  wrap.appendChild(el);
+  setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, dur||2800);
+}
+</script>
+</body>
+</html>
