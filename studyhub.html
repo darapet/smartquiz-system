@@ -934,7 +934,7 @@ a{text-decoration:none;color:inherit;}
 
       <!-- Q&A chat (shown in end mode) -->
       <div class="ait-qa-wrap" id="ait-qa-wrap" style="display:none;">
-        <div style="font-size:.68rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">⏰ 5 min left — Ask your questions!</div>
+        <div style="font-size:.68rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">⏰ 1 min left — Any last questions?</div>
         <div id="ait-qa-messages"></div>
       </div>
 
@@ -1734,10 +1734,10 @@ async function aitStartSession(){
 }
 
 function aitBuildQuestionSchedule(totalMins){
-  /* 2-3 check-in breaks max — spaced evenly, not in last 5 mins */
+  /* 2-3 check-in breaks max — spaced evenly, not in last 1 min */
   const schedule = [];
-  const usable = totalMins - 5;
-  if(usable <= 5) return schedule;
+  const usable = totalMins - 1;
+  if(usable <= 2) return schedule;
   const count = totalMins >= 45 ? 3 : 2;
   const interval = Math.floor(usable / (count + 1));
   for(let i=1; i<=count; i++) schedule.push(interval * i * 60);
@@ -1751,8 +1751,8 @@ function aitTick(){
   document.getElementById('ait-prog-fill').style.width = pct+'%';
   document.getElementById('ait-ses-timer').textContent = aitFmtTime(_ait.remainingSecs);
 
-  /* 5 min warning */
-  if(!_ait.warnedFiveMin && _ait.remainingSecs <= 300 && !_ait.inQAMode){
+  /* 1 min warning — switch to Q&A only when 1 minute remains */
+  if(!_ait.warnedFiveMin && _ait.remainingSecs <= 60 && !_ait.inQAMode){
     _ait.warnedFiveMin = true;
     document.getElementById('ait-ses-timer').classList.add('warning');
     aitSwitchToQA();
@@ -2151,7 +2151,7 @@ async function aitSwitchToQA(){
   _ait.synth?.cancel();
   document.getElementById('ait-avatar-glow').classList.remove('speaking');
 
-  const msg = `⏰ We have 5 minutes left, ${_ait.studentName}! I'll stop teaching now — please ask me any questions about "${_ait.topic}". I'm all yours!`;
+  const msg = `We're down to the last minute, ${_ait.studentName}! Great session — do you have any quick questions about "${_ait.topic}" before we finish?`;
   
   /* Switch UI */
   document.getElementById('ait-ses-right-top').style.display = 'none';
@@ -2164,12 +2164,12 @@ async function aitSwitchToQA(){
   const div = document.createElement('div');
   div.className = 'ait-transcript-bubble';
   div.style.borderColor = 'rgba(239,68,68,.3)';
-  div.innerHTML = `<div class="ait-tb-label" style="color:#fca5a5;">⏰ ${_ait.teacherName} — 5 min warning</div><div>${msg}</div>`;
+  div.innerHTML = `<div class="ait-tb-label" style="color:#fca5a5;">⏰ ${_ait.teacherName} — 1 min left</div><div>${msg}</div>`;
   wrap.appendChild(div);
   wrap.scrollTop = wrap.scrollHeight;
 
   aitSpeak(msg, null);
-  shToast('⏰ 5 minutes left — Q&A mode!');
+  shToast('⏰ 1 minute left — any last questions?');
 }
 
 async function aitSendQA(){
