@@ -2173,7 +2173,7 @@ async function actionSaveSettings(data) {
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
     var allowed = [
-        'groq_api_key','groq_model','groq_keys','bg_music_url',
+        'mistral_keys','mistral_model','bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
@@ -2184,15 +2184,22 @@ async function actionSaveSettings(data) {
         'yahoo_client_id','yahoo_client_secret'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
-    /* If groq_keys array is provided, keep it clean */
-    if (Array.isArray(payload.groq_keys)) {
-        payload.groq_keys = payload.groq_keys.filter(function(k) { return k && k.startsWith('gsk_'); });
+    /* Trim and validate Mistral keys (up to 10) before saving */
+    if (Array.isArray(payload.mistral_keys)) {
+        payload.mistral_keys = payload.mistral_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 10);
     }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately expose the updated keys to aqs-groq-key.js */
-    if (Array.isArray(payload.groq_keys)) {
-        window._AQS_GROQ_MASTER_KEYS = payload.groq_keys;
+    /* Immediately merge saved keys into in-memory pool (hardcoded keys stay as fallback) */
+    if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
+        var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
+        var _mMerged = payload.mistral_keys.slice();
+        _hcM.forEach(function(k){ if (_mMerged.indexOf(k) === -1) _mMerged.push(k); });
+        window._AQS_MISTRAL_MASTER_KEYS = _mMerged;
     }
+    if (payload.mistral_model) window._AQS_MISTRAL_MODEL = payload.mistral_model;
     return { success: true, message: 'Settings saved.' };
 }
 
@@ -2446,21 +2453,29 @@ function _updateAqsGlobals(user, profile) {
    so aqs-groq-key.js can use them without any hardcoded secrets.
    Settings/main is publicly readable per the Firestore rules.
    ============================================================ */
-(function _loadGroqKeys() {
+(function _loadMistralKeys() {
+    /* Load Mistral keys (now primary AI) from Firestore and merge with
+       any hardcoded keys in aqs-groq-key.js. Firebase keys come first
+       so admin-saved keys take priority over hardcoded fallbacks.     */
     getDoc(doc(db, 'settings', 'main')).then(function(snap) {
         if (!snap.exists()) return;
         var s = snap.data();
-        /* Support both the new groq_keys array AND the legacy single key field */
-        var keys = [];
-        if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-            keys = s.groq_keys.filter(function(k) { return k && k.startsWith('gsk_'); });
-        } else if (s.groq_api_key && s.groq_api_key.startsWith('gsk_')) {
-            keys = [s.groq_api_key];
+        /* Load up to 10 Mistral keys */
+        if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
+            var fbKeys = s.mistral_keys
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.length > 20; })
+                .slice(0, 10);
+            if (fbKeys.length) {
+                /* Merge: Firebase keys first, then any hardcoded fallbacks not already listed */
+                var hc = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
+                var merged = fbKeys.slice();
+                hc.forEach(function(k){ if (merged.indexOf(k) === -1) merged.push(k); });
+                window._AQS_MISTRAL_MASTER_KEYS = merged;
+            }
         }
-        if (keys.length) window._AQS_GROQ_MASTER_KEYS = keys;
-    }).catch(function() { /* silently ignore — no keys available */ });
-    /* Note: _aqsFirebaseReady and aqs:firebase:ready are already set/dispatched
-       by the patchJQuery IIFE above — no need to duplicate them here. */
+        if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+    }).catch(function() { /* silently ignore — keys stay as hardcoded fallbacks */ });
 })();
 
 /* ============================================================

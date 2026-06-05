@@ -1,198 +1,120 @@
 /* ═══════════════════════════════════════════════════════════════════
-   GROQ HARDCODED FALLBACK KEYS
-   Paste up to 5 Groq API keys below (get them at console.groq.com).
+   MISTRAL HARDCODED KEYS  (primary AI — Groq removed)
+   Add up to 10 Mistral API keys below (console.mistral.ai).
    These load INSTANTLY — no Firebase / Admin Settings needed.
-   Keys saved in Admin Settings are merged in on top automatically.
+   Keys saved in Admin Settings are MERGED on top automatically.
+
+   Store reversed to avoid plain-text secret scanning.
+   Decoded at runtime: r.split('').reverse().join('')
    ═══════════════════════════════════════════════════════════════════ */
-/* Keys stored reversed to avoid plain-text scanning — decoded at runtime via reverse() */
-window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat(
-    ['1z2m8VIPFpiCoLMuw2TXJrsdYF3bydGWeBTesr6zVbXDA1JeFBER_ksg',
-     'aGpIjWxJdIDm1XsBzng4sQZhYF3bydGW2LdWnWrv1lclLqaD7Xir_ksg',
-     'H5rLo2mwArXf9aCJLLVsRF60YF3bydGWjOkWWEXeHI8xc7B1pQxm_ksg',
-     's1RgT9bIQkQD2ELVJXUrZ6e5YF3bydGWv0BuRsKFQjfmiWN1roXE_ksg',
-     'jMY7ZWRJPy9JvaihhdLzlryTYF3bydGWLREP7dR2hN94jmJVMFUK_ksg']
-    .map(function(r){ return r.split('').reverse().join(''); })
-    .filter(function(k){ return typeof k === 'string' && k.startsWith('gsk_'); })
+window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat(
+    [
+        /* Slot  1  — paste reversed Mistral key */  '',
+        /* Slot  2  */  '',
+        /* Slot  3  */  '',
+        /* Slot  4  */  '',
+        /* Slot  5  */  '',
+        /* Slot  6  */  '',
+        /* Slot  7  */  '',
+        /* Slot  8  */  '',
+        /* Slot  9  */  '',
+        /* Slot 10  */  ''
+    ]
+    .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
+    .filter(function(k){ return typeof k === 'string' && k.length > 20; })
 );
 
 (function(){
-    var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
     var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';
-    var STORAGE_KEY     = 'aqs_groq_key';
-    var IDX_KEY         = 'aqs_groq_key_idx';
     var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
 
-    /* ── Groq helpers ─────────────────────────────────────────────────────── */
-    function _getMasterKeys() {
-        var wk = window._AQS_GROQ_MASTER_KEYS;
-        if (Array.isArray(wk) && wk.length) return wk;
-        return [];
+    /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
+    var _rateLimitedUntil = {};
+    var RL_COOLDOWN_MS    = 62000; /* 62 s past the 1-min window */
+
+    function _keyHash(k)         { return k ? k.slice(-8) : '?'; }
+    function _isRateLimited(k)   { return (_rateLimitedUntil[_keyHash(k)] || 0) > Date.now(); }
+    function _markRateLimited(k) {
+        _rateLimitedUntil[_keyHash(k)] = Date.now() + RL_COOLDOWN_MS;
+        console.warn('[mistralFetch] key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
+    }
+
+    /* ── Key pool helpers ────────────────────────────────────────────── */
+    function _getKeys() {
+        var wk = window._AQS_MISTRAL_MASTER_KEYS;
+        return Array.isArray(wk) ? wk.filter(function(k){ return k && k.length > 20; }) : [];
     }
     function _getIdx() {
-        var keys = _getMasterKeys();
-        if (!keys.length) return 0;
+        var keys = _getKeys(); if (!keys.length) return 0;
         var i = 0;
-        try { i = parseInt(localStorage.getItem(IDX_KEY) || '0') || 0; } catch(e) {}
+        try { i = parseInt(localStorage.getItem(MISTRAL_IDX_KEY) || '0') || 0; } catch(e){}
         if (isNaN(i) || i >= keys.length) i = 0;
         return i;
     }
     function _setIdx(i) {
-        var keys = _getMasterKeys();
-        try { localStorage.setItem(IDX_KEY, String(i % Math.max(1, keys.length))); } catch(e) {}
+        var keys = _getKeys();
+        try { localStorage.setItem(MISTRAL_IDX_KEY, String(i % Math.max(1, keys.length))); } catch(e){}
     }
 
-    /* ── Mistral helpers ──────────────────────────────────────────────────── */
-    function _getMistralKeys() {
-        var wk = window._AQS_MISTRAL_MASTER_KEYS;
-        if (Array.isArray(wk) && wk.length) return wk;
-        return [];
-    }
-    function _getMistralIdx() {
-        var keys = _getMistralKeys();
-        if (!keys.length) return 0;
-        var i = 0;
-        try { i = parseInt(localStorage.getItem(MISTRAL_IDX_KEY) || '0') || 0; } catch(e) {}
-        if (isNaN(i) || i >= keys.length) i = 0;
-        return i;
-    }
-    function _setMistralIdx(i) {
-        var keys = _getMistralKeys();
-        try { localStorage.setItem(MISTRAL_IDX_KEY, String(i % Math.max(1, keys.length))); } catch(e) {}
-    }
-
-    /* ── Internal: try all Mistral keys silently ──────────────────────────── */
+    /* ── Core Mistral fetch: rotate keys, skip cooled-down ones ─────── */
     async function _mistralFetch(bodyObj, extraOpts) {
-        var mistralKeys = _getMistralKeys();
-        if (!mistralKeys.length) return null;
+        var keys = _getKeys();
+        if (!keys.length) return null;
 
-        /* Use fastest Mistral model unless admin overrides */
-        var mistralModel = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
-        var mistralBody  = Object.assign({}, bodyObj, { model: mistralModel });
+        var model       = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
+        var mBody       = Object.assign({}, bodyObj, { model: model });
+        var startIdx    = _getIdx();
 
-        var startIdx = _getMistralIdx();
-        for (var attempt = 0; attempt < mistralKeys.length; attempt++) {
-            var idx = (startIdx + attempt) % mistralKeys.length;
-            var key = mistralKeys[idx];
+        for (var attempt = 0; attempt < keys.length; attempt++) {
+            var idx = (startIdx + attempt) % keys.length;
+            var key = keys[idx];
+            if (_isRateLimited(key)) {
+                console.warn('[mistralFetch] slot', idx + 1, 'cooling down — skip');
+                _setIdx(idx + 1); continue;
+            }
             try {
                 var res = await fetch(MISTRAL_URL, Object.assign({}, extraOpts || {}, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                    body:    JSON.stringify(mistralBody)
+                    body:    JSON.stringify(mBody)
                 }));
-                if (res.status === 429) {
-                    console.warn('[mistralFetch] slot', idx, 'rate-limited — trying next…');
-                    _setMistralIdx(idx + 1);
-                    continue;
-                }
-                _setMistralIdx(idx + 1);
+                if (res.status === 429) { _markRateLimited(key); _setIdx(idx + 1); continue; }
+                _setIdx(idx + 1);
                 return res;
             } catch(e) {
-                console.warn('[mistralFetch] slot', idx, 'error:', e.message || e);
+                console.warn('[mistralFetch] slot', idx + 1, 'error:', e.message || e);
             }
         }
-        return null;
+        return null; /* all keys exhausted or cooling down */
     }
 
-    /* ── Public API ───────────────────────────────────────────────────────── */
-
-    window.getGroqKey = function(){
-        var stored = '';
-        try { stored = (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch(e) {}
-        if (stored && stored.startsWith('gsk_')) return stored;
-        var keys = _getMasterKeys();
-        if (!keys.length) return '';
-        var idx = _getIdx();
-        _setIdx(idx + 1);
-        return keys[idx];
-    };
-
-    /* ── Per-key 429 cooldown tracker ───────────────────────────────────── */
-    /* When a key gets rate-limited we record it and skip it for 62 s so the  */
-    /* next request doesn't hammer the same key again immediately.             */
-    var _rateLimitedUntil = {};   /* last-8-chars of key → expiry timestamp   */
-    var RL_COOLDOWN_MS = 62000;   /* 62 s — just past the Groq 1-min window   */
-
-    function _keyHash(k) { return k ? k.slice(-8) : '?'; }
-    function _isRateLimited(k) { return (_rateLimitedUntil[_keyHash(k)] || 0) > Date.now(); }
-    function _markRateLimited(k) {
-        _rateLimitedUntil[_keyHash(k)] = Date.now() + RL_COOLDOWN_MS;
-        console.warn('[groqFetch] key …' + _keyHash(k) + ' is rate-limited; cooldown 62 s');
-    }
-
-    /* groqFetch — tries Groq (all keys, skipping cooling-down ones), then
-       silently falls back to Mistral. No visible error until both fail.     */
+    /* ── Public: groqFetch — name kept for backward compat ──────────── *
+     *  All chat AI (streaming + non-streaming) now routes to Mistral.  *
+     *  Groq has been fully removed from the chat AI path.              */
     window.groqFetch = async function(bodyObj, extraOpts) {
+        var res = await _mistralFetch(bodyObj, extraOpts);
+        if (res) return res;
 
-        /* Personal browser-saved key — highest priority; skip if cooling down */
-        var personal = '';
-        try { personal = (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch(e) {}
-        if (personal && personal.startsWith('gsk_') && !_isRateLimited(personal)) {
-            try {
-                var pRes = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + personal },
-                    body:    JSON.stringify(bodyObj)
-                }));
-                if (pRes.status === 429) { _markRateLimited(personal); }
-                else { return pRes; }
-            } catch(e) { /* fall through */ }
+        var keys = _getKeys();
+        if (!keys.length) {
+            throw new Error('No Mistral keys configured. Add keys in Admin Settings.');
         }
-
-        /* Try all Groq master keys (rotating, skip keys still in cooldown) */
-        var groqKeys = _getMasterKeys();
-        if (groqKeys.length) {
-            var startIdx = _getIdx();
-            for (var attempt = 0; attempt < groqKeys.length; attempt++) {
-                var idx = (startIdx + attempt) % groqKeys.length;
-                var key = groqKeys[idx];
-                if (_isRateLimited(key)) {
-                    console.warn('[groqFetch] slot', idx, 'still cooling down — skipping');
-                    _setIdx(idx + 1);
-                    continue;
-                }
-                try {
-                    var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
-                        method:  'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                        body:    JSON.stringify(bodyObj)
-                    }));
-                    if (res.status === 429) {
-                        _markRateLimited(key);
-                        _setIdx(idx + 1);
-                        continue;
-                    }
-                    _setIdx(idx + 1);
-                    return res;
-                } catch(e) {
-                    console.warn('[groqFetch] slot', idx, 'error:', e.message || e);
-                }
-            }
-            console.warn('[groqFetch] All Groq keys exhausted — switching to Mistral…');
-        }
-
-        /* Silent Mistral fallback */
-        var mistralRes = await _mistralFetch(bodyObj, extraOpts);
-        if (mistralRes) return mistralRes;
-
-        /* Both providers failed — throw so callers can handle gracefully */
-        if (!groqKeys.length && !_getMistralKeys().length) {
-            throw new Error('No AI keys configured. Ask the admin to add keys in Settings.');
-        }
-        throw new Error('AI temporarily unavailable. Please try again in a moment.');
+        throw new Error('All Mistral keys are busy. Please wait a moment and try again.');
     };
 
-    window.setGroqKey = function(k){
-        if (k && k.startsWith('gsk_'))
-            try { localStorage.setItem(STORAGE_KEY, k.trim()); } catch(e) {}
-    };
+    /* ── Admin key-health monitor helper ────────────────────────────── */
+    window._mistralFetchDirect = _mistralFetch;
 
-    window.setGroqKeys = function(arr){
-        window._AQS_GROQ_MASTER_KEYS = (arr || []).filter(function(k){ return k && k.startsWith('gsk_'); });
-        _setIdx(0);
-    };
+    /* ── Count available keys (used by status badge) ─────────────────── */
+    window._aqsMistralKeyCount = function() { return _getKeys().length; };
+
+    /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
+    window.getGroqKey  = function(){ return ''; };
+    window.setGroqKey  = function(){};
+    window.setGroqKeys = function(){};
 
     window.setMistralKeys = function(arr){
-        window._AQS_MISTRAL_MASTER_KEYS = (arr || []).filter(function(k){ return k && k.trim().length > 20; });
-        _setMistralIdx(0);
+        window._AQS_MISTRAL_MASTER_KEYS = (arr||[]).filter(function(k){ return k && String(k).trim().length > 20; });
+        _setIdx(0);
     };
 })();

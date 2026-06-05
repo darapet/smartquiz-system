@@ -1,8 +1,8 @@
 {
-  "version": "1.165",
-  "versionCode": 140,
+  "version": "1.166",
+  "versionCode": 141,
   "releaseDate": "2026-06-05",
-  "notes": "Fix second-call connection error: guard undefined fullText in summonGetAiTurn + wrap stream reader in try/catch in summonStreamResponse.",
+  "notes": "Switch to Mistral as primary AI (10 key slots, rotation + cooldown). Drop Groq from chat path. Kill admin auto-test that was burning quota on every page load.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk"
 }

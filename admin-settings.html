@@ -114,16 +114,11 @@ window.addEventListener('DOMContentLoaded', function() {
             var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
             var setVal = function(id, val){ var el=document.getElementById(id); if(el && val!==undefined && val!==null) el.value=val; };
             var setChk = function(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; };
-            /* Load up to 5 Groq keys — support both new array and legacy single-key */
-            var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : (s.groq_api_key ? [s.groq_api_key] : []);
-            /* Merge hardcoded fallback keys if Firebase has fewer */
-            var hcKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-            hcKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
-            for (var gi = 1; gi <= 5; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
-            setVal('aqs-groq-model', s.groq_model);
-            /* Load up to 5 Mistral keys */
+            /* Load up to 10 Mistral keys (Firebase first, then hardcoded fallbacks) */
             var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
-            for (var mi = 1; mi <= 5; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
+            var hcMKeys = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
+            hcMKeys.forEach(function(k){ if (mkeys.indexOf(k) === -1) mkeys.push(k); });
+            for (var mi = 1; mi <= 10; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
             setVal('aqs-mistral-model', s.mistral_model || 'mistral-small-latest');
             setVal('aqs-music-url', s.bg_music_url);
             setChk('aqs-splash-enabled', s.splash_enabled);
@@ -225,84 +220,62 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">🤖</span>
         <div>
-            <h2 class="aqs-settings-card-title">AI Providers — Groq + Mistral</h2>
-            <p class="aqs-settings-card-desc">Add up to 5 keys for each provider. They rotate automatically and fall back silently — if all Groq keys are busy, Mistral takes over instantly with no error shown. Get Groq keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a> · Mistral keys at <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>.</p>
+            <h2 class="aqs-settings-card-title">Mistral AI — Primary Provider (up to 10 keys)</h2>
+            <p class="aqs-settings-card-desc">Keys rotate automatically with a 62-second cooldown per key when rate-limited. Get Mistral keys at <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>. Leave extra slots blank — empty slots are ignored.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-1" style="display:flex;align-items:center;gap:6px;">Groq API Key 1 (Primary) <span id="aqs-gk-dot-1" title="Status unknown — click Test All Keys"></span></label>
-                <input type="password" id="aqs-groq-key-1" placeholder="gsk_…" autocomplete="off" />
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 1 (Primary) <span id="aqs-mk-dot-1"></span></label>
+                <input type="password" id="aqs-mistral-key-1" placeholder="Paste Mistral API key…" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-2" style="display:flex;align-items:center;gap:6px;">Groq API Key 2 <span id="aqs-gk-dot-2" title="Status unknown — click Test All Keys"></span></label>
-                <input type="password" id="aqs-groq-key-2" placeholder="gsk_… (optional)" autocomplete="off" />
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 2 <span id="aqs-mk-dot-2"></span></label>
+                <input type="password" id="aqs-mistral-key-2" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-3" style="display:flex;align-items:center;gap:6px;">Groq API Key 3 <span id="aqs-gk-dot-3" title="Status unknown — click Test All Keys"></span></label>
-                <input type="password" id="aqs-groq-key-3" placeholder="gsk_… (optional)" autocomplete="off" />
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 3 <span id="aqs-mk-dot-3"></span></label>
+                <input type="password" id="aqs-mistral-key-3" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-4" style="display:flex;align-items:center;gap:6px;">Groq API Key 4 <span id="aqs-gk-dot-4" title="Status unknown — click Test All Keys"></span></label>
-                <input type="password" id="aqs-groq-key-4" placeholder="gsk_… (optional)" autocomplete="off" />
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 4 <span id="aqs-mk-dot-4"></span></label>
+                <input type="password" id="aqs-mistral-key-4" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-5" style="display:flex;align-items:center;gap:6px;">Groq API Key 5 <span id="aqs-gk-dot-5" title="Status unknown — click Test All Keys"></span></label>
-                <input type="password" id="aqs-groq-key-5" placeholder="gsk_… (optional)" autocomplete="off" />
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 5 <span id="aqs-mk-dot-5"></span></label>
+                <input type="password" id="aqs-mistral-key-5" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-model">Default Model</label>
-                <select id="aqs-groq-model">
-                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended)</option>
-                    <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
-                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fast)</option>
-                    <option value="mixtral-8x7b-32768">Mixtral-8x7B</option>
-                    <option value="gemma2-9b-it">Gemma 2 9B</option>
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 6 <span id="aqs-mk-dot-6"></span></label>
+                <input type="password" id="aqs-mistral-key-6" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 7 <span id="aqs-mk-dot-7"></span></label>
+                <input type="password" id="aqs-mistral-key-7" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 8 <span id="aqs-mk-dot-8"></span></label>
+                <input type="password" id="aqs-mistral-key-8" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 9 <span id="aqs-mk-dot-9"></span></label>
+                <input type="password" id="aqs-mistral-key-9" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Mistral Key 10 <span id="aqs-mk-dot-10"></span></label>
+                <input type="password" id="aqs-mistral-key-10" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-mistral-model">Mistral Model</label>
+                <select id="aqs-mistral-model">
+                    <option value="mistral-small-latest">mistral-small-latest (Fastest ⚡)</option>
+                    <option value="open-mistral-7b">open-mistral-7b (Ultra fast)</option>
+                    <option value="mistral-medium-latest">mistral-medium-latest (Balanced)</option>
+                    <option value="mistral-large-latest">mistral-large-latest (Most capable)</option>
+                    <option value="mistral-large-2411">mistral-large-2411 (Most capable v2)</option>
                 </select>
             </div>
-        </div>
-        <p style="font-size:.8rem;color:#6b7280;margin:0 0 14px;">⚠️ Leave extra slots blank if you only have 1 key. Empty slots are ignored.</p>
-
-        <!-- Mistral section -->
-        <div style="border-top:1px solid #e2e8f0;margin:8px 0 16px;padding-top:16px;">
-            <p style="font-size:.82rem;font-weight:700;color:#d97706;margin:0 0 12px;display:flex;align-items:center;gap:6px;">
-                <span>⚡</span> Mistral AI — Fast Fallback (mistral-small-latest)
-            </p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-                <div class="aqs-field-group">
-                    <label for="aqs-mistral-key-1">Mistral Key 1 (Primary)</label>
-                    <input type="password" id="aqs-mistral-key-1" placeholder="Paste Mistral API key…" autocomplete="off" />
-                </div>
-                <div class="aqs-field-group">
-                    <label for="aqs-mistral-key-2">Mistral Key 2</label>
-                    <input type="password" id="aqs-mistral-key-2" placeholder="(optional)" autocomplete="off" />
-                </div>
-                <div class="aqs-field-group">
-                    <label for="aqs-mistral-key-3">Mistral Key 3</label>
-                    <input type="password" id="aqs-mistral-key-3" placeholder="(optional)" autocomplete="off" />
-                </div>
-                <div class="aqs-field-group">
-                    <label for="aqs-mistral-key-4">Mistral Key 4</label>
-                    <input type="password" id="aqs-mistral-key-4" placeholder="(optional)" autocomplete="off" />
-                </div>
-                <div class="aqs-field-group">
-                    <label for="aqs-mistral-key-5">Mistral Key 5</label>
-                    <input type="password" id="aqs-mistral-key-5" placeholder="(optional)" autocomplete="off" />
-                </div>
-                <div class="aqs-field-group">
-                    <label for="aqs-mistral-model">Mistral Model</label>
-                    <select id="aqs-mistral-model">
-                        <option value="mistral-small-latest">mistral-small-latest (Fastest ⚡)</option>
-                        <option value="open-mistral-7b">open-mistral-7b (Ultra fast)</option>
-                        <option value="mistral-medium-latest">mistral-medium-latest (Balanced)</option>
-                        <option value="mistral-large-latest">mistral-large-latest (Most capable)</option>
-                    </select>
-                </div>
-            </div>
-            <p style="font-size:.78rem;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:7px;padding:8px 12px;margin:0;">
-                💡 Mistral activates automatically when all Groq keys are rate-limited. No extra code needed — it works silently in the background.
-            </p>
         </div>
 
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
@@ -658,67 +631,37 @@ window.addEventListener('DOMContentLoaded', function() {
 function btn(id){ return document.getElementById(id); }
 
 btn('aqs-save-ai-btn').addEventListener('click', function(){
-    var groqKeys = [];
-    for (var gi = 1; gi <= 5; gi++) {
-        var el = document.getElementById('aqs-groq-key-' + gi);
-        if (el && el.value.trim()) groqKeys.push(el.value.trim());
-    }
     var mistralKeys = [];
-    for (var mi = 1; mi <= 5; mi++) {
+    for (var mi = 1; mi <= 10; mi++) {
         var mel = document.getElementById('aqs-mistral-key-' + mi);
-        if (mel && mel.value.trim()) mistralKeys.push(mel.value.trim());
+        if (mel && mel.value.trim().length > 20) mistralKeys.push(mel.value.trim());
     }
     var mistralModelEl = document.getElementById('aqs-mistral-model');
-    /* Validate Groq keys before saving — catch whitespace/format errors early */
-    var invalidGroq = groqKeys.filter(function(k){ return k && !k.startsWith('gsk_'); });
-    if (invalidGroq.length) {
-        var st = document.getElementById('aqs-ai-status');
-        if (st) { st.style.cssText='color:#991b1b;background:#fee2e2;padding:4px 10px;border-radius:6px;'; st.textContent = '✗ Key format error — Groq keys must start with gsk_'; setTimeout(function(){st.textContent='';st.style.cssText='';},5000); }
-        return;
-    }
     saveSettings('/api/settings', {
-        groq_keys: groqKeys,
-        groq_model: document.getElementById('aqs-groq-model').value,
         mistral_keys: mistralKeys,
         mistral_model: mistralModelEl ? mistralModelEl.value : 'mistral-small-latest'
     }, 'aqs-ai-status', this, '💾 Save AI Settings');
-    /* Clear dot status so they retest after save */
-    for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
+    /* Reset status dots after save */
+    for (var ci = 1; ci <= 10; ci++) { var d = document.getElementById('aqs-mk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
-/* ── AI Key Health Monitor ─────────────────────────────────────────────── */
+/* ── AI Key Health Monitor (manual only — never auto-fires) ─────────────── */
 async function _aqsTestAllKeys(auto) {
-    var groqMap = {};   // key → slot label
-    var mistralKeys = [];
+    var allKeys = [];
 
-    /* Read from form inputs (Firebase-loaded or manually typed) */
-    for (var gi = 1; gi <= 5; gi++) {
-        var el = document.getElementById('aqs-groq-key-' + gi);
-        if (el && el.value.trim().startsWith('gsk_')) {
-            groqMap[el.value.trim()] = 'Slot ' + gi;
-        }
-    }
-    /* Also include hardcoded fallback keys loaded from aqs-groq-key.js */
-    var hcKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-    hcKeys.forEach(function(k, i) {
-        if (k && k.startsWith('gsk_') && !groqMap[k]) {
-            groqMap[k] = 'Built-in ' + (i + 1);
-        }
-    });
-
-    for (var mi = 1; mi <= 5; mi++) {
+    /* Read all 10 Mistral key slots from form inputs */
+    for (var mi = 1; mi <= 10; mi++) {
         var mel = document.getElementById('aqs-mistral-key-' + mi);
-        if (mel && mel.value.trim()) mistralKeys.push({ slot: mi, key: mel.value.trim(), provider: 'mistral' });
+        if (mel && mel.value.trim().length > 20) {
+            allKeys.push({ slot: 'Key ' + mi, key: mel.value.trim(), provider: 'mistral' });
+        }
     }
-
-    var groqEntries = Object.keys(groqMap).map(function(k){ return { key: k, slot: groqMap[k], provider: 'groq' }; });
-    var allKeys = groqEntries.concat(mistralKeys);
     var results = document.getElementById('aqs-ai-test-results');
     var testBtn = document.getElementById('aqs-test-ai-btn');
 
     if (!allKeys.length) {
         results.style.display = 'block';
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys found. Add at least one Groq key above or paste in Admin Settings.</span>';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys found. Add at least one Mistral key in the fields above, then click Test.</span>';
         return;
     }
 
@@ -732,13 +675,9 @@ async function _aqsTestAllKeys(auto) {
     async function pingKey(entry) {
         var key = entry.key, slot = entry.slot, provider = entry.provider;
         var masked = key.slice(0, 7) + '…' + key.slice(-4);
-        var url = provider === 'mistral'
-            ? 'https://api.mistral.ai/v1/chat/completions'
-            : 'https://api.groq.com/openai/v1/chat/completions';
-        var model = provider === 'mistral' ? 'mistral-small-latest' : 'llama-3.1-8b-instant';
-        var badge = provider === 'mistral'
-            ? '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">MISTRAL</span>'
-            : '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">GROQ</span>';
+        var url   = 'https://api.mistral.ai/v1/chat/completions';
+        var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
+        var badge = '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">MISTRAL</span>';
 
         var tStart = Date.now();
         try {
@@ -809,22 +748,13 @@ async function _aqsTestAllKeys(auto) {
 
     var rows = await Promise.all(allKeys.map(pingKey));
 
-    /* Update inline dots on form inputs */
-    var groqFormKeys = [];
-    for (var fi = 1; fi <= 5; fi++) {
-        var fEl = document.getElementById('aqs-groq-key-' + fi);
-        groqFormKeys.push(fEl ? fEl.value.trim() : '');
-    }
-    rows.forEach(function(r) {
-        /* Find which form slot (1-5) this key corresponds to */
-        groqFormKeys.forEach(function(fk, idx) {
-            var dot = document.getElementById('aqs-gk-dot-' + (idx + 1));
-            if (!dot || !fk) return;
-            if (groqEntries.some(function(e){ return e.key === fk && e.slot === r.slot; })) {
-                dot.textContent = r.status === 'active' ? '✅' : (r.status === '429' ? '⚠️' : '❌');
-                dot.title = r.status === 'active' ? 'Working' : (r.status === '429' ? 'Rate limited' : 'Invalid / Error');
-            }
-        });
+    /* Update inline status dots next to each Mistral key label */
+    rows.forEach(function(r, ri) {
+        var dot = document.getElementById('aqs-mk-dot-' + (ri + 1));
+        if (!dot) return;
+        dot.textContent = r.status === 'active' ? '✅' : (r.status === '429' ? '⚠️' : '❌');
+        dot.title = r.status === 'active' ? 'Working' : (r.status === '429' ? 'Rate limited' : 'Invalid / Error');
+        dot.style.fontSize = '.9rem';
     });
 
     var activeCount = rows.filter(function(r){ return r.ok; }).length;
@@ -839,8 +769,8 @@ async function _aqsTestAllKeys(auto) {
 
 btn('aqs-test-ai-btn').addEventListener('click', function(){ _aqsTestAllKeys(false); });
 
-/* Auto-test once on page load after Firebase has time to populate keys */
-setTimeout(function(){ _aqsTestAllKeys(true); }, 2500);
+/* Auto-test REMOVED — was burning API quota every time admin page opened.
+   Click "Test All Keys" button to test manually. */
 
 /* ── File upload helper ── */
 function _aqsDoUpload(fileInputId, urlInputId, uploadBtnId, statusId, storagePath, onSuccess) {
