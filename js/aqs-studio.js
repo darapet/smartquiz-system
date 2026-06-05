@@ -677,6 +677,32 @@
 
         if (role === 'assistant') {
             applyMathAndHighlight(wrap);
+            var msgContent = wrap.querySelector('.dts-msg-content');
+            if (msgContent) {
+                var copyBtn = document.createElement('button');
+                copyBtn.className = 'dts-msg-copy-btn';
+                copyBtn.textContent = '📋 Copy';
+                copyBtn.addEventListener('click', function() {
+                    var bubble = wrap.querySelector('.dts-msg-bubble');
+                    var text = bubble ? (bubble.innerText || bubble.textContent || '') : content;
+                    function doFallback() {
+                        var ta = document.createElement('textarea');
+                        ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                        document.body.appendChild(ta); ta.focus(); ta.select();
+                        try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
+                        catch(e2) { copyBtn.textContent = '❌ Error'; }
+                        document.body.removeChild(ta);
+                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                    }
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        navigator.clipboard.writeText(text).then(function() {
+                            copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
+                            setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                        }).catch(doFallback);
+                    } else { doFallback(); }
+                });
+                msgContent.appendChild(copyBtn);
+            }
         }
 
         messages.appendChild(wrap);
@@ -718,6 +744,33 @@
                 setTimeout(tick,DELAY);
             } else {
                 applyMathAndHighlight(wrap);
+                /* Add copy button after streaming finishes */
+                var msgContent2 = wrap.querySelector('.dts-msg-content');
+                if (msgContent2 && !msgContent2.querySelector('.dts-msg-copy-btn')) {
+                    var copyBtn2 = document.createElement('button');
+                    copyBtn2.className = 'dts-msg-copy-btn';
+                    copyBtn2.textContent = '📋 Copy';
+                    copyBtn2.addEventListener('click', function() {
+                        var bubble2 = wrap.querySelector('.dts-msg-bubble');
+                        var text2 = bubble2 ? (bubble2.innerText || bubble2.textContent || '') : acc;
+                        function doFallback2() {
+                            var ta = document.createElement('textarea');
+                            ta.value = text2; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                            document.body.appendChild(ta); ta.focus(); ta.select();
+                            try { document.execCommand('copy'); copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied'); }
+                            catch(e2) { copyBtn2.textContent = '❌ Error'; }
+                            document.body.removeChild(ta);
+                            setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                        }
+                        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                            navigator.clipboard.writeText(text2).then(function() {
+                                copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied');
+                                setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                            }).catch(doFallback2);
+                        } else { doFallback2(); }
+                    });
+                    msgContent2.appendChild(copyBtn2);
+                }
                 scrollToBottom();
                 if (onDone) onDone();
             }
