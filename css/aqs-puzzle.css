@@ -158,16 +158,31 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 .pz-word-feedback.correct{background:rgba(16,185,129,.15);color:#6ee7b7;display:block}
 .pz-word-feedback.wrong{background:rgba(239,68,68,.12);color:#fca5a5;display:block}
 
+/* ── WORD HUNT – Point Guess button ──────────────────── */
+.pz-point-guess-btn{background:rgba(251,191,36,.12);border:1.5px solid rgba(251,191,36,.35);color:#fbbf24;border-radius:10px;padding:8px 18px;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit}
+.pz-point-guess-btn:hover{background:rgba(251,191,36,.22);border-color:rgba(251,191,36,.6)}
+.pz-point-guess-btn:disabled{opacity:.45;cursor:not-allowed}
+
 /* ── CROSSWORD mode ──────────────────────────────────── */
-.pz-cw-clues{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.pz-cw-grid{display:grid;gap:2px;margin:0 auto}
+.pz-cw-cell{width:34px;height:34px;position:relative;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:3px;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.pz-cw-cell.pz-cw-blocked{background:#0f0f1a;border-color:transparent;border-radius:2px}
+.pz-cw-cell-num{position:absolute;top:2px;left:3px;font-size:.5rem;font-weight:800;color:#8b5cf6;line-height:1;pointer-events:none;z-index:1}
+.pz-cw-cell-inp{width:100%;height:100%;background:transparent;border:none;outline:none;text-align:center;font-size:.95rem;font-weight:800;color:#e2e8f0;text-transform:uppercase;font-family:inherit;cursor:text;caret-color:transparent}
+.pz-cw-cell-inp.cw-inp-correct{color:#6ee7b7;background:rgba(16,185,129,.18)}
+.pz-cw-cell-inp.cw-inp-wrong{color:#fca5a5;background:rgba(239,68,68,.18);animation:cw-shake .3s}
+.pz-cw-cell-inp.cw-active-word{background:rgba(139,92,246,.18)}
+.pz-cw-cell-inp:read-only{cursor:default}
+@keyframes cw-shake{0%,100%{transform:translateX(0)}33%{transform:translateX(-3px)}66%{transform:translateX(3px)}}
+.pz-cw-clues{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;margin-top:4px}
 @media(max-width:500px){.pz-cw-clues{grid-template-columns:1fr}}
-.pz-cw-clue-group h4{font-size:.78rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
-.pz-cw-clue-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);cursor:pointer;transition:all .2s}
+.pz-cw-clues h4{font-size:.78rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+.pz-cw-clue-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);cursor:pointer;transition:all .2s}
 .pz-cw-clue-item.active{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.1)}
-.pz-cw-clue-item.solved{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.07)}
-.pz-cw-num{font-size:.8rem;font-weight:800;color:#8b5cf6;min-width:22px}
+.pz-cw-clue-item.solved{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.07);opacity:.7}
+.pz-cw-num{font-size:.78rem;font-weight:800;color:#8b5cf6;min-width:20px;flex-shrink:0}
 .pz-cw-clue-item.solved .pz-cw-num{color:#10b981}
-.pz-cw-clue-text{font-size:.82rem;color:#cbd5e1;line-height:1.45}
+.pz-cw-clue-text{font-size:.8rem;color:#cbd5e1;line-height:1.45}
 .pz-cw-answer-zone{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px;margin-bottom:16px}
 .pz-cw-active-clue{font-size:.92rem;color:#a5b4fc;font-weight:600;margin-bottom:12px}
 .pz-cw-answer-row{display:flex;gap:8px}
