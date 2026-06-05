@@ -5,7 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0a0b14">
 <title>📚 AI Study Hub — xzily AI</title>
+<!-- App Version: 2.4.0 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- MathJax for math rendering -->
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<!-- PDF.js for PDF rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
 :root{
@@ -19,6 +25,7 @@ a{text-decoration:none;color:inherit;}
 /* HEADER */
 .sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
 .sh-logo{font-size:1rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sh-logo-ver{font-size:.6rem;font-weight:700;color:var(--muted);margin-left:6px;background:none;-webkit-text-fill-color:var(--muted);}
 .sh-back{color:var(--muted);font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:all .18s;}
 .sh-back:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
 
@@ -28,6 +35,8 @@ a{text-decoration:none;color:inherit;}
 .sh-tab{padding:14px 18px;font-size:.83rem;font-weight:700;color:var(--muted);border:none;background:none;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap;}
 .sh-tab.active{color:var(--text);border-bottom-color:var(--accent);}
 .sh-tab:hover:not(.active){color:#94a3b8;}
+.sh-tab-ai-timer{position:relative;}
+.sh-tab-ai-timer::after{content:'NEW';position:absolute;top:6px;right:4px;font-size:.48rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;padding:1px 4px;border-radius:4px;letter-spacing:.06em;}
 
 /* PANELS */
 .sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
@@ -178,6 +187,122 @@ a{text-decoration:none;color:inherit;}
 .sh-result-q-item.sh-correct{border-left:3px solid var(--green);}
 .sh-result-q-item.sh-wrong{border-left:3px solid var(--red);}
 
+/* ══════════════════════════════
+   6. AI STUDY TIMER (NEW)
+══════════════════════════════ */
+
+/* Setup Screens */
+.ait-setup-screen{display:none;}
+.ait-setup-screen.active{display:block;}
+.ait-name-form{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06));border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:30px 24px;text-align:center;margin-bottom:0;}
+.ait-name-title{font-size:1.5rem;font-weight:900;color:var(--text);margin-bottom:6px;}
+.ait-name-sub{font-size:.88rem;color:var(--muted);margin-bottom:24px;line-height:1.6;}
+.ait-voice-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 20px;}
+.ait-voice-btn{background:rgba(255,255,255,.05);border:2px solid var(--border);border-radius:10px;padding:10px 6px;cursor:pointer;text-align:center;transition:all .2s;font-family:inherit;}
+.ait-voice-btn.selected{border-color:var(--accent);background:rgba(99,102,241,.12);}
+.ait-voice-btn .v-icon{font-size:1.4rem;margin-bottom:4px;}
+.ait-voice-btn .v-name{font-size:.62rem;font-weight:700;color:var(--muted);}
+.ait-voice-btn.selected .v-name{color:#a5b4fc;}
+.ait-session-form{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;}
+.ait-keys-section{background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.15);border-radius:12px;padding:16px;margin-bottom:16px;}
+.ait-keys-title{font-size:.75rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+.ait-key-row{display:flex;gap:8px;align-items:center;margin-bottom:7px;}
+.ait-key-label{font-size:.7rem;color:var(--muted);font-weight:700;min-width:40px;}
+.ait-key-input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:.78rem;font-family:monospace;outline:none;}
+.ait-key-input:focus{border-color:rgba(99,102,241,.4);}
+.ait-doc-upload{border:2px dashed rgba(99,102,241,.3);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(99,102,241,.03);}
+.ait-doc-upload:hover{border-color:rgba(99,102,241,.6);background:rgba(99,102,241,.06);}
+.ait-doc-name{font-size:.78rem;color:#a5b4fc;margin-top:8px;word-break:break-all;}
+.ait-speed-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.ait-speed-btn{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.ait-speed-btn.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
+
+/* Session Screen */
+#ait-session-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;overflow:hidden;}
+#ait-session-screen.active{display:flex;}
+.ait-ses-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);flex-shrink:0;}
+.ait-ses-subject{font-size:.85rem;font-weight:800;color:#a5b4fc;}
+.ait-ses-timer-badge{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:6px 14px;font-size:1rem;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);}
+.ait-ses-timer-badge.warning{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5;animation:ait-blink .8s infinite;}
+@keyframes ait-blink{0%,100%{opacity:1}50%{opacity:.6}}
+.ait-ses-body{display:flex;flex:1;overflow:hidden;gap:0;}
+.ait-ses-left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 16px;border-right:1px solid var(--border);overflow-y:auto;}
+.ait-ses-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;background:rgba(255,255,255,.015);overflow:hidden;}
+
+/* AI Avatar */
+.ait-avatar-wrap{position:relative;margin-bottom:16px;flex-shrink:0;}
+.ait-avatar-glow{width:120px;height:120px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;}
+.ait-avatar-glow::before{content:'';position:absolute;inset:-4px;border-radius:50%;background:conic-gradient(from 0deg, #6366f1, #8b5cf6, #a78bfa, #6366f1);animation:ait-spin 3s linear infinite;opacity:0;}
+.ait-avatar-glow.speaking::before{opacity:1;}
+.ait-avatar-glow::after{content:'';position:absolute;inset:-8px;border-radius:50%;background:conic-gradient(from 180deg, rgba(99,102,241,.3), rgba(139,92,246,.2), rgba(167,139,250,.3), rgba(99,102,241,.3));animation:ait-spin 2s linear infinite reverse;opacity:0;filter:blur(6px);}
+.ait-avatar-glow.speaking::after{opacity:1;}
+@keyframes ait-spin{100%{transform:rotate(360deg)}}
+.ait-avatar-inner{width:112px;height:112px;border-radius:50%;background:linear-gradient(135deg,#1a1b2e,#0f1124);border:2px solid rgba(99,102,241,.3);display:flex;align-items:center;justify-content:center;position:relative;z-index:1;overflow:hidden;}
+.ait-avatar-inner svg{width:64px;height:64px;}
+.ait-avatar-pulse{position:absolute;inset:-20px;border-radius:50%;border:2px solid rgba(99,102,241,.2);animation:ait-pulse-ring 2s ease-out infinite;opacity:0;}
+.ait-avatar-glow.speaking .ait-avatar-pulse{opacity:1;}
+@keyframes ait-pulse-ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.4);opacity:0}}
+.ait-avatar-status{font-size:.7rem;font-weight:800;color:var(--muted);text-align:center;margin-top:8px;text-transform:uppercase;letter-spacing:.1em;}
+.ait-ai-name{font-size:1rem;font-weight:900;color:var(--text);text-align:center;margin-bottom:2px;}
+
+/* Transcript / Content area */
+.ait-transcript-wrap{flex:1;overflow-y:auto;padding:8px 12px;width:100%;}
+.ait-transcript-bubble{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.18);border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:.88rem;line-height:1.8;color:#cbd5e1;}
+.ait-transcript-bubble.math-topic{background:rgba(20,184,166,.06);border-color:rgba(20,184,166,.2);}
+.ait-transcript-bubble .ait-tb-label{font-size:.62rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.ait-transcript-bubble.math-topic .ait-tb-label{color:#5eead4;}
+.ait-typing-cursor{display:inline-block;width:2px;height:1em;background:#a5b4fc;margin-left:2px;animation:ait-cursor-blink .7s step-end infinite;vertical-align:text-bottom;}
+@keyframes ait-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+.ait-q-bubble{background:rgba(245,158,11,.07);border:2px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.ait-q-bubble .ait-qb-label{font-size:.62rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.ait-q-bubble .ait-qb-text{font-size:.9rem;font-weight:700;color:var(--text);line-height:1.6;}
+.ait-user-answer{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem;color:#86efac;}
+.ait-user-answer .ait-ua-label{font-size:.6rem;font-weight:800;color:#86efac;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+
+/* Controls panel (right side) */
+.ait-ctrl-wrap{padding:12px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);}
+.ait-ctrl-row{display:flex;gap:8px;align-items:center;}
+.ait-ctrl-btn{flex:1;padding:10px 8px;border-radius:10px;border:none;font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.ait-ctrl-btn-pause{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fcd34d;}
+.ait-ctrl-btn-pause.paused{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:#86efac;}
+.ait-ctrl-btn-mic{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;}
+.ait-ctrl-btn-mic.listening{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fca5a5;animation:ait-mic-pulse .8s ease-in-out infinite;}
+@keyframes ait-mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+.ait-ctrl-btn-end{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.ait-ctrl-btn-ask{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;width:100%;}
+.ait-voice-notice{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:10px 12px;font-size:.72rem;color:#94a3b8;line-height:1.6;text-align:center;}
+.ait-type-answer-wrap{display:none;padding:0 12px 10px;}
+.ait-type-answer-wrap.show{display:block;}
+.ait-type-answer-input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.83rem;font-family:inherit;outline:none;resize:none;height:60px;}
+.ait-type-answer-input:focus{border-color:rgba(99,102,241,.4);}
+.ait-send-btn{width:100%;margin-top:6px;padding:8px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.8rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;}
+
+/* Right panel top: doc/notes preview */
+.ait-ses-right-top{flex:1;overflow-y:auto;padding:12px;}
+.ait-doc-preview{font-size:.78rem;color:#94a3b8;line-height:1.7;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;}
+.ait-progress-strip{height:3px;background:rgba(99,102,241,.12);width:100%;flex-shrink:0;}
+.ait-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width 1s linear;}
+
+/* Q&A End mode */
+.ait-qa-wrap{flex:1;overflow-y:auto;padding:12px;}
+.ait-qa-msg{padding:10px 14px;border-radius:10px;margin-bottom:8px;font-size:.85rem;line-height:1.6;}
+.ait-qa-msg.ai{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15);color:#cbd5e1;}
+.ait-qa-msg.user{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);color:#86efac;text-align:right;}
+.ait-qa-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);flex-shrink:0;}
+.ait-qa-input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.83rem;font-family:inherit;outline:none;}
+.ait-qa-input:focus{border-color:rgba(99,102,241,.4);}
+.ait-qa-send{padding:10px 14px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.85rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;}
+
+/* Mobile responsive */
+@media(max-width:640px){
+  .ait-ses-body{flex-direction:column;}
+  .ait-ses-right{width:100%;border-right:none;border-top:1px solid var(--border);max-height:260px;}
+  .ait-ses-left{padding:12px 10px;}
+  .ait-avatar-glow{width:90px;height:90px;}
+  .ait-avatar-inner{width:82px;height:82px;}
+  .ait-voice-grid{grid-template-columns:repeat(5,1fr);gap:5px;}
+}
+
 /* TOAST */
 #sh-toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
 .sh-toast{background:rgba(15,17,36,.95);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px 16px;font-size:.82rem;font-weight:600;backdrop-filter:blur(12px);}
@@ -188,6 +313,7 @@ a{text-decoration:none;color:inherit;}
   .sh-gpa-row{grid-template-columns:1fr 90px 80px 28px;}
   .sh-result-grid{grid-template-columns:repeat(2,1fr);}
   .sh-timer-display{font-size:2.4rem;}
+  .ait-voice-grid{grid-template-columns:repeat(3,1fr);}
 }
 </style>
 </head>
@@ -196,7 +322,10 @@ a{text-decoration:none;color:inherit;}
 
 <!-- HEADER -->
 <header class="sh-hdr">
-  <div class="sh-logo">📚 AI Study Hub</div>
+  <div style="display:flex;align-items:baseline;gap:4px;">
+    <div class="sh-logo">📚 AI Study Hub</div>
+    <span class="sh-logo-ver">v2.4.0</span>
+  </div>
   <a href="index.html" class="sh-back">🏠 Back to Home</a>
 </header>
 
@@ -208,6 +337,7 @@ a{text-decoration:none;color:inherit;}
     <button class="sh-tab" onclick="shTab('gpa')">📊 GPA Calculator</button>
     <button class="sh-tab" onclick="shTab('timer')">⏱️ Study Timer</button>
     <button class="sh-tab" onclick="shTab('exam')">📝 Mock Exam</button>
+    <button class="sh-tab sh-tab-ai-timer" onclick="shTab('aitimer')">🤖 AI Teacher</button>
   </div>
 </div>
 
@@ -351,54 +481,24 @@ a{text-decoration:none;color:inherit;}
   <div class="sh-section-sub">Nigerian university grading system (5-point scale). Add your courses, select grades, and calculate your semester GPA or cumulative CGPA instantly.</div>
 
   <div class="sh-card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-      <div style="font-size:.88rem;font-weight:700;color:var(--text);">Courses this Semester</div>
-      <select class="sh-select" id="gpa-scale" style="width:auto;" onchange="shCalcGPA()">
-        <option value="5">5-Point Scale (Nigerian)</option>
-        <option value="4">4-Point Scale (US)</option>
-      </select>
-    </div>
-    <div class="sh-gpa-row header">
-      <div>Course Name</div><div>Units</div><div>Grade</div><div></div>
-    </div>
-    <div id="gpa-rows"></div>
-    <button class="sh-gpa-add-btn" onclick="shGPA_addRow()">+ Add Course</button>
+    <div class="sh-gpa-row header"><span>Course Name</span><span>Credit Units</span><span>Grade</span><span></span></div>
+    <div id="gpa-courses"></div>
+    <button class="sh-gpa-add-btn" onclick="shGpaAddRow()">+ Add Course</button>
   </div>
 
-  <div class="sh-gpa-result" id="gpa-result" style="display:none;">
-    <div style="font-size:.72rem;font-weight:800;color:rgba(165,180,252,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Semester GPA</div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+    <button class="sh-btn sh-btn-primary" onclick="shCalcGPA()">📊 Calculate GPA</button>
+    <button class="sh-btn sh-btn-ghost" onclick="shGpaReset()">🔄 Reset</button>
+  </div>
+
+  <div id="gpa-result" style="display:none;" class="sh-gpa-result">
     <div class="sh-gpa-score" id="gpa-score">0.00</div>
     <div class="sh-gpa-class" id="gpa-class">—</div>
     <div class="sh-gpa-breakdown">
-      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-total-units">0</div><div class="sh-gpa-stat-lbl">Total Units</div></div>
-      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-grade-points">0</div><div class="sh-gpa-stat-lbl">Grade Points</div></div>
-      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-highest">—</div><div class="sh-gpa-stat-lbl">Best Course</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-total-cu">0</div><div class="sh-gpa-stat-lbl">Credit Units</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-total-qp">0</div><div class="sh-gpa-stat-lbl">Quality Points</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-courses-count">0</div><div class="sh-gpa-stat-lbl">Courses</div></div>
     </div>
-  </div>
-
-  <!-- CGPA Calculator -->
-  <div class="sh-card" style="margin-top:16px;">
-    <div style="font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:12px;">📈 CGPA Estimator</div>
-    <div class="sh-row">
-      <div style="flex:1;">
-        <label class="sh-label">Previous CGPA</label>
-        <input class="sh-input" id="cgpa-prev" type="number" step="0.01" min="0" max="5" placeholder="e.g. 3.75" oninput="shCalcCGPA()">
-      </div>
-      <div style="flex:1;">
-        <label class="sh-label">Total Previous Units</label>
-        <input class="sh-input" id="cgpa-prev-units" type="number" min="0" placeholder="e.g. 90" oninput="shCalcCGPA()">
-      </div>
-    </div>
-    <div id="cgpa-result" style="display:none;margin-top:14px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px;text-align:center;">
-      <div style="font-size:.72rem;font-weight:800;color:rgba(165,180,252,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Projected CGPA</div>
-      <div style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" id="cgpa-score">0.00</div>
-      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-top:4px;" id="cgpa-class">—</div>
-    </div>
-  </div>
-
-  <div style="background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:14px;font-size:.8rem;color:#94a3b8;line-height:1.8;margin-top:4px;">
-    📖 <strong style="color:#a5b4fc;">Nigerian Grade Reference (5-Point):</strong><br>
-    A (70–100) = 5.0 · B (60–69) = 4.0 · C (50–59) = 3.0 · D (45–49) = 2.0 · E (40–44) = 1.0 · F (0–39) = 0.0
   </div>
 </div>
 
@@ -486,34 +586,35 @@ a{text-decoration:none;color:inherit;}
       <input class="sh-input" id="exam-topic" placeholder="e.g. Organic Chemistry, Macroeconomics, Nigerian History…" style="margin-bottom:12px;">
       <div class="sh-row">
         <div style="flex:1;">
-          <label class="sh-label">No. of Questions</label>
+          <label class="sh-label">Questions</label>
           <select class="sh-select" id="exam-count">
-            <option value="5">5 Questions</option>
-            <option value="10" selected>10 Questions</option>
-            <option value="15">15 Questions</option>
-            <option value="20">20 Questions</option>
+            <option value="5">5 questions</option>
+            <option value="10" selected>10 questions</option>
+            <option value="15">15 questions</option>
+            <option value="20">20 questions</option>
           </select>
         </div>
         <div style="flex:1;">
           <label class="sh-label">Difficulty</label>
           <select class="sh-select" id="exam-diff">
-            <option value="easy">Easy (100 Level)</option>
-            <option value="medium" selected>Medium (200–300 Level)</option>
-            <option value="hard">Hard (400 Level+)</option>
+            <option value="easy">Easy (100 level)</option>
+            <option value="medium" selected>Medium (200–300)</option>
+            <option value="hard">Hard (400 level)</option>
           </select>
         </div>
         <div style="flex:1;">
-          <label class="sh-label">Time per Question</label>
+          <label class="sh-label">Time per Q</label>
           <select class="sh-select" id="exam-time">
-            <option value="0">No Limit</option>
+            <option value="0">No timer</option>
             <option value="30">30 seconds</option>
             <option value="60" selected>60 seconds</option>
             <option value="90">90 seconds</option>
+            <option value="120">2 minutes</option>
           </select>
         </div>
       </div>
     </div>
-    <button class="sh-btn sh-btn-primary" id="exam-start-btn" onclick="shStartExam()">
+    <button class="sh-btn sh-btn-primary" id="exam-start-btn" onclick="shStartExam()" style="margin-bottom:16px;">
       <span class="sh-spinner" id="exam-spinner" style="display:none;"></span>
       <span id="exam-btn-text">🚀 Generate & Start Exam</span>
     </button>
@@ -521,27 +622,27 @@ a{text-decoration:none;color:inherit;}
 
   <!-- Active Exam -->
   <div id="exam-active" class="sh-exam-active">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
-      <div style="font-size:.82rem;font-weight:700;color:var(--muted);" id="exam-subject-label">Subject</div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <span class="sh-badge sh-badge-purple" id="exam-q-badge">Q 1/10</span>
-        <button class="sh-exam-skip-btn" onclick="shExamSkip()">Skip →</button>
-      </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span class="sh-badge sh-badge-purple" id="exam-subject-label">Subject</span>
+      <span class="sh-badge sh-badge-gold" id="exam-q-badge">Q 1/10</span>
     </div>
-    <div class="sh-exam-progress-bar"><div class="sh-exam-progress-fill" id="exam-prog-fill" style="width:0%"></div></div>
-    <div class="sh-exam-timer-bar" id="exam-timer-bar-wrap" style="display:none;"><div class="sh-exam-timer-fill" id="exam-q-timer-fill" style="width:100%"></div></div>
+    <div class="sh-exam-progress-bar"><div class="sh-exam-progress-fill" id="exam-prog-fill" style="width:10%"></div></div>
+    <div id="exam-timer-bar-wrap" class="sh-exam-timer-bar"><div class="sh-exam-timer-fill" id="exam-q-timer-fill" style="width:100%"></div></div>
     <div class="sh-exam-q-num" id="exam-q-num">Question 1 of 10</div>
-    <div class="sh-exam-q-text" id="exam-q-text">Loading…</div>
+    <div class="sh-exam-q-text" id="exam-q-text">Loading question…</div>
     <div class="sh-exam-opts" id="exam-opts"></div>
     <div class="sh-exam-explanation" id="exam-explanation"></div>
-    <button class="sh-btn sh-btn-primary" id="exam-next-btn" style="display:none;" onclick="shExamNext()">Next Question →</button>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="sh-btn sh-btn-primary" id="exam-next-btn" onclick="shExamNext()" style="display:none;">Next Question →</button>
+      <button class="sh-exam-skip-btn" onclick="shExamSkip()">⏭ Skip</button>
+    </div>
   </div>
 
   <!-- Results -->
   <div id="exam-results" class="sh-exam-results">
-    <div class="sh-section-title" style="margin-bottom:16px;" id="exam-result-title">📝 Exam Complete!</div>
-    <div class="sh-result-grid" id="exam-result-stats"></div>
-    <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+    <div class="sh-section-title" id="exam-result-title">Results</div>
+    <div class="sh-result-grid" id="exam-result-stats" style="margin-top:14px;"></div>
+    <div class="sh-card" style="margin-top:14px;">
       <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Question Review</div>
       <div id="exam-result-qs"></div>
     </div>
@@ -552,18 +653,210 @@ a{text-decoration:none;color:inherit;}
   </div>
 </div>
 
+<!-- ═══════════════════════════════════
+     TAB 6: AI TEACHER (NEW)
+═══════════════════════════════════ -->
+<div id="sh-panel-aitimer" class="sh-panel">
+  <div class="sh-section-title">🤖 AI Teacher — Timed Study</div>
+  <div class="sh-section-sub">Your personal AI teacher that talks with you, teaches you like a real human teacher, asks you questions to test your understanding, and keeps time for your study session.</div>
+
+  <!-- SCREEN 1: NAME FORM -->
+  <div id="ait-screen-name" class="ait-setup-screen active">
+    <div class="ait-name-form">
+      <div style="font-size:2.5rem;margin-bottom:8px;">🎓</div>
+      <div class="ait-name-title">Welcome to AI Teacher</div>
+      <div class="ait-name-sub">Let's personalise your learning experience. First, tell me your name and choose your AI teacher's voice — you can name your teacher too!</div>
+
+      <div style="text-align:left;">
+        <label class="sh-label">Your Name (so the AI can address you)</label>
+        <input class="sh-input" id="ait-student-name" placeholder="e.g. Chukwuemeka, Fatima, Tunde…" style="margin-bottom:16px;">
+
+        <label class="sh-label">Name Your AI Teacher (optional)</label>
+        <input class="sh-input" id="ait-teacher-name" placeholder="e.g. Prof. Ada, Mr. Emeka, Dr. Sarah… (leave blank for default)" style="margin-bottom:16px;">
+
+        <label class="sh-label">Choose AI Voice — 5 Female, 5 Male</label>
+        <div class="ait-voice-grid" id="ait-voice-grid">
+          <!-- Populated by JS -->
+        </div>
+
+        <label class="sh-label">Speech Speed</label>
+        <div class="ait-speed-row" id="ait-speed-row">
+          <button class="ait-speed-btn" onclick="aitSetSpeed(0.7,this)">🐢 Slow</button>
+          <button class="ait-speed-btn active" onclick="aitSetSpeed(1.0,this)">🚶 Normal</button>
+          <button class="ait-speed-btn" onclick="aitSetSpeed(1.3,this)">🏃 Fast</button>
+          <button class="ait-speed-btn" onclick="aitSetSpeed(1.6,this)">⚡ Very Fast</button>
+        </div>
+
+        <div style="margin-top:20px;">
+          <button class="sh-btn sh-btn-primary" style="width:100%;justify-content:center;" onclick="aitGoToSession()">Continue →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: SESSION SETUP -->
+  <div id="ait-screen-setup" class="ait-setup-screen">
+    <div class="ait-session-form">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <button onclick="aitBack()" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">← Back</button>
+        <div>
+          <div style="font-size:.78rem;color:var(--muted);">Setting up your session,</div>
+          <div style="font-size:1rem;font-weight:900;color:var(--text);" id="ait-greet-name">Student</div>
+        </div>
+      </div>
+
+      <!-- API Keys Section -->
+      <div class="ait-keys-section">
+        <div class="ait-keys-title">🔑 Mistral API Keys (paste up to 10 — they cycle automatically)</div>
+        <div id="ait-key-slots">
+          <!-- 10 key slots rendered by JS -->
+        </div>
+        <div style="font-size:.7rem;color:#94a3b8;margin-top:6px;">Keys are saved in your browser. Never shared. If one fails, the next is used automatically.</div>
+      </div>
+
+      <label class="sh-label">Subject</label>
+      <input class="sh-input" id="ait-subject" placeholder="e.g. Further Mathematics, Physics, Chemistry, Biology…" style="margin-bottom:12px;">
+
+      <label class="sh-label">Topic to Study</label>
+      <input class="sh-input" id="ait-topic" placeholder="e.g. Integration by Parts, Newton's Laws, Organic Chemistry…" style="margin-bottom:12px;">
+
+      <label class="sh-label">Study Duration</label>
+      <select class="sh-select" id="ait-duration" style="margin-bottom:12px;">
+        <option value="10">10 minutes</option>
+        <option value="20">20 minutes</option>
+        <option value="30" selected>30 minutes</option>
+        <option value="45">45 minutes</option>
+        <option value="60">60 minutes</option>
+        <option value="90">90 minutes</option>
+      </select>
+
+      <label class="sh-label">Upload Study Material (optional — PDF, TXT, images)</label>
+      <div class="ait-doc-upload" id="ait-doc-drop" onclick="document.getElementById('ait-doc-file').click()">
+        <div style="font-size:1.5rem;margin-bottom:6px;">📎</div>
+        <div style="font-size:.83rem;font-weight:700;color:#a5b4fc;">Click to upload PDF, TXT, or image</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">AI will use your document to teach you</div>
+        <div class="ait-doc-name" id="ait-doc-name" style="display:none;"></div>
+      </div>
+      <input type="file" id="ait-doc-file" style="display:none;" accept=".pdf,.txt,.md,.png,.jpg,.jpeg" onchange="aitHandleDoc(this)">
+
+      <div style="margin-top:18px;">
+        <button class="sh-btn sh-btn-primary" style="width:100%;justify-content:center;" onclick="aitStartSession()">
+          🚀 Start AI Teaching Session
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     AI SESSION FULLSCREEN (Fixed overlay)
+═══════════════════════════════════ -->
+<div id="ait-session-screen">
+  <!-- Progress strip at very top -->
+  <div class="ait-progress-strip"><div class="ait-progress-fill" id="ait-prog-fill" style="width:100%"></div></div>
+
+  <!-- Header -->
+  <div class="ait-ses-header">
+    <div>
+      <div class="ait-ses-subject" id="ait-ses-subject-label">Subject</div>
+      <div style="font-size:.7rem;color:var(--muted);" id="ait-ses-topic-label">Topic</div>
+    </div>
+    <div class="ait-ses-timer-badge" id="ait-ses-timer">30:00</div>
+  </div>
+
+  <!-- Body: left = AI + transcript, right = controls -->
+  <div class="ait-ses-body">
+    <!-- LEFT: Avatar + transcript -->
+    <div class="ait-ses-left" id="ait-ses-left">
+      <div class="ait-avatar-wrap">
+        <div class="ait-avatar-glow" id="ait-avatar-glow">
+          <div class="ait-avatar-pulse"></div>
+          <div class="ait-avatar-inner">
+            <!-- Darapet-aligned AI avatar SVG -->
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="32" cy="32" r="28" fill="url(#ag)" opacity=".18"/>
+              <circle cx="32" cy="24" r="12" fill="url(#ag)"/>
+              <ellipse cx="32" cy="50" rx="18" ry="10" fill="url(#ag)" opacity=".7"/>
+              <circle cx="26" cy="22" r="2.5" fill="#fff" opacity=".9"/>
+              <circle cx="38" cy="22" r="2.5" fill="#fff" opacity=".9"/>
+              <path d="M26 30 Q32 35 38 30" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <defs>
+                <linearGradient id="ag" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#6366f1"/>
+                  <stop offset="100%" stop-color="#a78bfa"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+        <div class="ait-ai-name" id="ait-display-teacher-name">AI Teacher</div>
+        <div class="ait-avatar-status" id="ait-avatar-status">Ready</div>
+      </div>
+
+      <!-- Transcript bubbles -->
+      <div class="ait-transcript-wrap" id="ait-transcript"></div>
+    </div>
+
+    <!-- RIGHT: Controls + doc preview -->
+    <div class="ait-ses-right">
+      <!-- Doc preview / notes area -->
+      <div class="ait-ses-right-top" id="ait-ses-right-top">
+        <div style="font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Study Material / Notes</div>
+        <div class="ait-doc-preview" id="ait-doc-preview">Your study document content and AI teaching notes will appear here…</div>
+      </div>
+
+      <!-- Q&A chat (shown in end mode) -->
+      <div class="ait-qa-wrap" id="ait-qa-wrap" style="display:none;">
+        <div style="font-size:.68rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">⏰ 5 min left — Ask your questions!</div>
+        <div id="ait-qa-messages"></div>
+      </div>
+
+      <!-- Answer typing area (for AI questions) -->
+      <div class="ait-type-answer-wrap" id="ait-type-answer-wrap">
+        <textarea class="ait-type-answer-input" id="ait-type-answer" placeholder="Type your answer here…"></textarea>
+        <button class="ait-send-btn" onclick="aitSubmitAnswer()">Send Answer</button>
+      </div>
+
+      <!-- Q&A input (end mode) -->
+      <div id="ait-qa-input-row" class="ait-qa-input-row" style="display:none;">
+        <input class="ait-qa-input" id="ait-qa-input" placeholder="Ask your question…" onkeydown="if(event.key==='Enter')aitSendQA()">
+        <button class="ait-qa-send" onclick="aitSendQA()">Send</button>
+      </div>
+
+      <!-- Controls -->
+      <div class="ait-ctrl-wrap">
+        <div class="ait-voice-notice" id="ait-voice-notice">
+          🔊 Voice powered by Web Speech API.<br>
+          <strong style="color:#a5b4fc;">Make sure your browser sound is ON.</strong>
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-pause" id="ait-pause-btn" onclick="aitTogglePause()">⏸ Pause AI</button>
+          <button class="ait-ctrl-btn ait-ctrl-btn-mic" id="ait-mic-btn" onclick="aitToggleMic()">🎤 My Turn</button>
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()">💬 I Have a Question</button>
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-end" onclick="aitEndSession()">⏹ End Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="js/aqs-groq-key.js"></script>
 <script>
 /* ══════════════════════════════════════════════════
-   AI STUDY HUB — Complete Engine
+   AI STUDY HUB v2.4.0 — Complete Engine
 ══════════════════════════════════════════════════ */
 
 /* ── TABS ── */
 function shTab(name){
-  document.querySelectorAll('.sh-tab').forEach((t,i)=>t.classList.remove('active'));
+  document.querySelectorAll('.sh-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('sh-panel-'+name).classList.add('active');
   event.target.classList.add('active');
+  if(name !== 'aitimer') aitCleanupOnLeave();
 }
 
 /* ── TOAST ── */
@@ -574,12 +867,63 @@ function shToast(msg, dur=3000){
   setTimeout(()=>el.remove(), dur);
 }
 
-/* ── GROQ FETCH ── */
+/* ══════════════════════════════
+   MISTRAL AI — 10 key cycling
+══════════════════════════════ */
+const AIT_DEFAULT_KEYS = [
+  'lGPCWwSD9DdQXxZV1tpgvrOIfgjDqkcJ',
+  '34v1vccfwrobTIL8aqH69dxRa9xQFgIx',
+  '6B56rUaoF9VEHXm3ab4XDqzepo6Q7AfS',
+  'B3BcwVcnG1HAZ9OOvJKwC5VhKwEQ5fJR',
+  '9tTqL4XzmKHQEBwTLWqb8CVsGwV92crS',
+  'pZ6AJekEECnlQpQiKKMjSjTxERGemlF1',
+  'bDIWZlfhuwfHRSSWxUXOd8YJtt2TGPTG',
+  '9ytdl4fetK9wW459kImNSHkuUrTulw2w',
+  'xOGvfjNNC1wRq8zuw5p57FET3YhieWBu',
+  'Uyij77eMFADFoptpf2A65VCYc0ybjmlW'
+];
+let _mkeyIdx = 0;
+
+function aitGetKeys(){
+  const saved = [];
+  for(let i=0;i<10;i++){
+    const el = document.getElementById('ait-key-'+i);
+    if(el && el.value.trim()) saved.push(el.value.trim());
+  }
+  return saved.length ? saved : AIT_DEFAULT_KEYS.filter(k=>k.length>8);
+}
+
+async function aitMistral(messages, maxTokens=1200){
+  const keys = aitGetKeys();
+  if(!keys.length){ shToast('⚠️ No Mistral API keys found'); return null; }
+  for(let attempt=0; attempt<keys.length; attempt++){
+    const key = keys[_mkeyIdx % keys.length];
+    _mkeyIdx++;
+    try{
+      const res = await fetch('https://api.mistral.ai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({model:'mistral-small-latest',messages,max_tokens:maxTokens,temperature:0.75})
+      });
+      if(!res.ok){ console.warn('Mistral key failed:',res.status); continue; }
+      const d = await res.json();
+      return d.choices?.[0]?.message?.content || '';
+    }catch(e){ console.warn('Mistral fetch err',e); }
+  }
+  shToast('⚠️ All Mistral keys failed. Check your keys.');
+  return null;
+}
+
+/* ── Fallback: use groqFetch (original) for non-AI-timer features ── */
 async function shAI(prompt, maxTokens=1200){
+  /* Try Mistral first */
+  const r = await aitMistral([{role:'user',content:prompt}], maxTokens);
+  if(r) return r;
+  /* fallback to groq */
   if(typeof window.groqFetch==='function'){
     try{
-      const r=await window.groqFetch({messages:[{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7});
-      return r.choices[0].message.content||'';
+      const gr=await window.groqFetch({messages:[{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7});
+      return gr.choices[0].message.content||'';
     }catch(e){ console.warn('Groq error',e); }
   }
   return null;
@@ -605,7 +949,6 @@ async function shGenerateNotes(){
   document.getElementById('notes-print-btn').style.display='none';
 
   const depthMap={overview:'a concise overview with key definitions and 3 main points',standard:'comprehensive structured study notes covering all key concepts, definitions, mechanisms, examples, and applications',detailed:'extremely detailed exam-ready notes covering every subtopic, formulas, diagrams descriptions, worked examples, common misconceptions, and exam tips'};
-
   const prompt=`You are an expert university lecturer. Write ${depthMap[depth]} about "${topic}" for a Nigerian ${level} university student.
 
 Format the notes using Markdown with clear headings (## for sections, ### for subsections), bullet points, bold key terms, and numbered lists where appropriate. Include:
@@ -619,25 +962,24 @@ Format the notes using Markdown with clear headings (## for sections, ### for su
 Make it thorough, academically rigorous, and student-friendly.`;
 
   const raw = await shAI(prompt, 2000);
-
-  document.getElementById('notes-loading').style.display='none';
   document.getElementById('notes-gen-btn').disabled=false;
   document.getElementById('notes-spinner').style.display='none';
   document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
+  document.getElementById('notes-loading').style.display='none';
 
-  if(!raw){ shToast('⚠️ Could not generate notes. Check your connection.'); return; }
-
-  _notesRaw = raw;
-  const output = document.getElementById('notes-output');
-  output.innerHTML = shMD(raw);
-  output.style.display='block';
+  if(!raw){ shToast('⚠️ Could not generate notes. Check API keys.'); return; }
+  _notesRaw=raw;
+  const out=document.getElementById('notes-output');
+  out.innerHTML=shMarkdown(raw);
+  out.style.display='';
   document.getElementById('notes-copy-btn').style.display='';
   document.getElementById('notes-print-btn').style.display='';
-  output.scrollIntoView({behavior:'smooth',block:'start'});
+  if(window.MathJax) MathJax.typesetPromise([out]);
 }
 
-function shMD(md){
+function shMarkdown(md){
   return md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/^### (.+)$/gm,'<h3>$1</h3>')
     .replace(/^## (.+)$/gm,'<h2>$1</h2>')
     .replace(/^# (.+)$/gm,'<h1>$1</h1>')
@@ -645,360 +987,182 @@ function shMD(md){
     .replace(/\*(.+?)\*/g,'<em>$1</em>')
     .replace(/`(.+?)`/g,'<code>$1</code>')
     .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
-    .replace(/^\d+\. (.+)$/gm,'<li style="list-style:decimal">$1</li>')
-    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
-    .replace(/(<li.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`)
-    .replace(/\n\n/g,'</p><p>')
-    .replace(/^(?!<[hublp])(.+)$/gm,'<p>$1</p>')
+    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>')
+    .replace(/^[\-\*] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,m=>m.startsWith('<ol>')?m:'<ul>'+m+'</ul>')
+    .replace(/\n\n/g,'</p><p>').replace(/^(?!<[houlb])/gm,'<p>').replace(/$/gm,'</p>')
     .replace(/<p><\/p>/g,'');
 }
 
 function shCopyNotes(){
-  navigator.clipboard.writeText(_notesRaw).then(()=>shToast('✅ Notes copied to clipboard!'));
+  navigator.clipboard.writeText(_notesRaw).then(()=>shToast('✅ Copied to clipboard!'));
 }
-
 function shPrintNotes(){
-  const topic = document.getElementById('notes-topic').value.trim()||'Study Notes';
   const w=window.open('','_blank');
-  w.document.write(`<!DOCTYPE html><html><head><title>${topic} — Study Notes</title>
-<style>body{font-family:Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.8;color:#1a1a2e;}
-h1{font-size:1.6rem;border-bottom:3px solid #6366f1;padding-bottom:8px;color:#1a1a2e;}
-h2{font-size:1.2rem;color:#4338ca;margin-top:24px;}
-h3{font-size:1rem;color:#7c3aed;}
-strong{color:#d97706;}code{background:#f1f5f9;padding:2px 6px;border-radius:3px;font-size:.85rem;}
-blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#64748b;margin:12px 0;}
-ul{margin:8px 0 12px 20px;}li{margin-bottom:5px;}
-.footer{margin-top:40px;font-size:.75rem;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;}
-@media print{.footer{display:block;}}</style></head><body>
-<h1>${topic}</h1>
-<div>${shMD(_notesRaw).replace(/<p><\/p>/g,'')}</div>
-<div class="footer">Generated by xzily AI Study Hub · ${new Date().toLocaleDateString()}</div>
-</body></html>`);
-  w.document.close();
-  setTimeout(()=>w.print(), 500);
+  w.document.write('<html><head><title>Study Notes</title><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;line-height:1.8;color:#111;}h1,h2,h3{margin:20px 0 8px;}strong{color:#333;}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body>'+document.getElementById('notes-output').innerHTML+'</body></html>');
+  w.document.close(); w.print();
 }
 
 /* ══════════════════════════════
    2. FLASHCARDS
 ══════════════════════════════ */
-let _fc_cards = [], _fc_current = 0, _fc_status = [];
+let _fcCards=[],_fcIdx=0,_fcKnown=new Set(),_fcUnknown=new Set();
 
 async function shGenerateFlashcards(){
-  const topic = document.getElementById('fc-topic').value.trim();
-  if(!topic){ shToast('⚠️ Enter a topic first'); return; }
-  const count = parseInt(document.getElementById('fc-count').value)||10;
-
+  const topic=document.getElementById('fc-topic').value.trim();
+  if(!topic){ shToast('⚠️ Enter a topic'); return; }
+  const count=document.getElementById('fc-count').value;
   document.getElementById('fc-gen-btn').disabled=true;
   document.getElementById('fc-spinner').style.display='';
   document.getElementById('fc-btn-text').textContent='Generating…';
 
-  const prompt=`Generate exactly ${count} flashcards about "${topic}" for a university student.
-Return ONLY valid JSON array:
-[{"q":"Question text here","a":"Answer text here"},...]
-Questions should be clear and specific. Answers should be concise but complete (1-3 sentences). Return ONLY the JSON array.`;
+  const prompt=`Generate exactly ${count} flashcards about "${topic}" for university study.
+Return ONLY valid JSON:
+{"cards":[{"q":"Question text","a":"Answer text"},...]}}
+Make questions test key concepts, definitions, formulas, or applications. Keep answers concise but complete. Return ONLY JSON.`;
 
-  const raw = await shAI(prompt, 1500);
+  const raw=await shAI(prompt, 1500);
   document.getElementById('fc-gen-btn').disabled=false;
   document.getElementById('fc-spinner').style.display='none';
   document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
 
-  let cards=[];
-  if(raw){
-    try{
-      const match=raw.match(/\[[\s\S]*\]/);
-      if(match) cards=JSON.parse(match[0]);
-    }catch(e){}
-  }
+  if(!raw){ shToast('⚠️ Failed to generate flashcards'); return; }
+  try{
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(match){ const obj=JSON.parse(match[0]); _fcCards=obj.cards||[]; }
+  }catch(e){ shToast('⚠️ Parse error, try again'); return; }
 
-  if(!cards.length){
-    shToast('⚠️ Could not generate flashcards. Try again.');
-    return;
-  }
-
-  _fc_cards=cards;
-  _fc_current=0;
-  _fc_status=new Array(cards.length).fill(null);
+  if(!_fcCards.length){ shToast('⚠️ No cards generated'); return; }
+  _fcIdx=0; _fcKnown=new Set(); _fcUnknown=new Set();
   document.getElementById('fc-solo-mode').style.display='';
-  shFC_view('solo');
   shFC_render();
-  shToast('✅ '+cards.length+' flashcards generated!');
-}
-
-function shFC_view(mode){
-  document.getElementById('fc-solo-wrap').style.display=mode==='solo'?'':'none';
-  document.getElementById('fc-grid-wrap').style.display=mode==='grid'?'':'none';
-  if(mode==='grid') shFC_renderGrid();
 }
 
 function shFC_render(){
-  const card=_fc_cards[_fc_current]||{};
-  const soloCard=document.getElementById('fc-solo-card');
-  soloCard.classList.remove('flipped');
-  document.getElementById('fc-solo-q').textContent=card.q||'';
-  document.getElementById('fc-solo-a').textContent=card.a||'';
-  document.getElementById('fc-solo-progress').textContent='Card '+(  _fc_current+1)+' of '+_fc_cards.length;
-
-  // Dots
+  const c=_fcCards[_fcIdx];
+  document.getElementById('fc-solo-q').textContent=c.q;
+  document.getElementById('fc-solo-a').textContent=c.a;
+  document.getElementById('fc-solo-card').classList.remove('flipped');
+  document.getElementById('fc-solo-progress').textContent='Card '+(_fcIdx+1)+' of '+_fcCards.length;
+  document.getElementById('fc-known-count').textContent='Known: '+_fcKnown.size;
+  document.getElementById('fc-unknown-count').textContent='Study: '+_fcUnknown.size;
   const dots=document.getElementById('fc-dots');
-  dots.innerHTML=_fc_cards.map((_,i)=>{
-    const s=_fc_status[i];
-    const cls=i===_fc_current?'current':s===true?'known':s===false?'unknown':'';
-    return `<div class="sh-fc-dot ${cls}" onclick="shFC_goto(${i})"></div>`;
-  }).join('');
-
-  // Count badges
-  const known=_fc_status.filter(s=>s===true).length;
-  const unknown=_fc_status.filter(s=>s===false).length;
-  document.getElementById('fc-known-count').textContent='Known: '+known;
-  document.getElementById('fc-unknown-count').textContent='Study: '+unknown;
+  dots.innerHTML='';
+  _fcCards.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='sh-fc-dot'+(i===_fcIdx?' current':'')+(_fcKnown.has(i)?' known':'')+(_fcUnknown.has(i)?' unknown':'');
+    d.onclick=()=>{ _fcIdx=i; shFC_render(); };
+    dots.appendChild(d);
+  });
+  const grid=document.getElementById('fc-grid');
+  grid.innerHTML='';
+  _fcCards.forEach((c,i)=>{
+    grid.innerHTML+=`<div class="sh-fc-card" onclick="this.classList.toggle('flipped')"><div class="sh-fc-inner"><div class="sh-fc-front"><div class="sh-fc-label">Question</div><div class="sh-fc-text">${c.q}</div><div class="sh-fc-hint">Tap to flip</div></div><div class="sh-fc-back"><div class="sh-fc-label">Answer</div><div class="sh-fc-text">${c.a}</div></div></div></div>`;
+  });
 }
 
-function shFC_move(dir){
-  _fc_current=(_fc_current+dir+_fc_cards.length)%_fc_cards.length;
-  shFC_render();
-}
-
-function shFC_goto(i){ _fc_current=i; shFC_render(); }
-
-function shFC_mark(known){
-  _fc_status[_fc_current]=known;
-  shFC_render();
-  const all=_fc_status.filter(s=>s!==null).length;
-  if(all===_fc_cards.length){
-    const kn=_fc_status.filter(s=>s===true).length;
-    shToast(`📊 Done! You know ${kn}/${_fc_cards.length} cards!`);
-  } else {
-    shFC_move(1);
-  }
-}
-
-function shFC_renderGrid(){
-  document.getElementById('fc-grid').innerHTML=_fc_cards.map((c,i)=>
-    `<div class="sh-fc-card" onclick="this.classList.toggle('flipped')">
-      <div class="sh-fc-inner">
-        <div class="sh-fc-front">
-          <div class="sh-fc-label">Q${i+1}</div>
-          <div class="sh-fc-text">${c.q}</div>
-          <div class="sh-fc-hint">Tap to flip</div>
-        </div>
-        <div class="sh-fc-back">
-          <div class="sh-fc-label">Answer</div>
-          <div class="sh-fc-text">${c.a}</div>
-        </div>
-      </div>
-    </div>`).join('');
+function shFC_move(dir){ _fcIdx=(_fcIdx+dir+_fcCards.length)%_fcCards.length; shFC_render(); }
+function shFC_mark(known){ if(known){ _fcKnown.add(_fcIdx); _fcUnknown.delete(_fcIdx); } else { _fcUnknown.add(_fcIdx); _fcKnown.delete(_fcIdx); } shFC_move(1); }
+function shFC_view(v){
+  document.getElementById('fc-solo-wrap').style.display=v==='solo'?'':'none';
+  document.getElementById('fc-grid-wrap').style.display=v==='grid'?'':'none';
 }
 
 /* ══════════════════════════════
    3. GPA CALCULATOR
 ══════════════════════════════ */
-const GRADES_5 = {A:5,B:4,C:3,D:2,E:1,F:0};
-const GRADES_4 = {A:4,'A-':3.7,'B+':3.3,B:3,'B-':2.7,'C+':2.3,C:2,'C-':1.7,'D+':1.3,D:1,F:0};
+const GPA_GRADES={A:5,B:4,C:3,D:2,E:1,F:0};
+let _gpaCourses=[];
 
-function shGPA_addRow(name='',units=3,grade='A'){
-  const scale=document.getElementById('gpa-scale').value;
-  const gradeOpts=scale==='5'
-    ? ['A','B','C','D','E','F'].map(g=>`<option ${g===grade?'selected':''}>${g}</option>`).join('')
-    : ['A','A-','B+','B','B-','C+','C','C-','D+','D','F'].map(g=>`<option ${g===grade?'selected':''}>${g}</option>`).join('');
-
+function shGpaAddRow(){
+  const id=Date.now();
+  _gpaCourses.push(id);
   const row=document.createElement('div');
-  row.className='sh-gpa-row';
-  row.innerHTML=`
-    <input class="sh-input" placeholder="Course name" value="${name}" oninput="shCalcGPA()" style="font-size:.82rem;padding:9px 10px;">
-    <input class="sh-input" type="number" min="1" max="6" value="${units}" oninput="shCalcGPA()" style="font-size:.82rem;padding:9px 10px;">
-    <select class="sh-select" onchange="shCalcGPA()" style="font-size:.82rem;padding:9px 10px;">${gradeOpts}</select>
-    <button class="sh-gpa-del" onclick="this.parentElement.remove();shCalcGPA();">✕</button>`;
-  document.getElementById('gpa-rows').appendChild(row);
-  shCalcGPA();
+  row.className='sh-gpa-row'; row.id='gpa-row-'+id;
+  row.innerHTML=`<input class="sh-input" placeholder="Course name…" style="font-size:.82rem;padding:8px 10px;">
+<input class="sh-input" type="number" min="1" max="6" value="3" style="font-size:.82rem;padding:8px 10px;">
+<select class="sh-select" style="font-size:.82rem;padding:8px 10px;">${Object.keys(GPA_GRADES).map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+<button class="sh-gpa-del" onclick="shGpaDel(${id})">✕</button>`;
+  document.getElementById('gpa-courses').appendChild(row);
+}
+
+function shGpaDel(id){
+  document.getElementById('gpa-row-'+id)?.remove();
+  _gpaCourses=_gpaCourses.filter(i=>i!==id);
 }
 
 function shCalcGPA(){
-  const scale=parseInt(document.getElementById('gpa-scale').value);
-  const GRADES=scale===5?GRADES_5:GRADES_4;
-  const rows=document.querySelectorAll('#gpa-rows .sh-gpa-row');
-  let totalUnits=0, totalPoints=0, best={name:'—',pts:-1};
-
+  const rows=document.querySelectorAll('#gpa-courses .sh-gpa-row');
+  if(!rows.length){ shToast('⚠️ Add at least one course'); return; }
+  let totalCU=0,totalQP=0,count=0;
   rows.forEach(row=>{
     const inputs=row.querySelectorAll('input');
     const sel=row.querySelector('select');
-    if(!sel) return;
-    const units=parseFloat(inputs[1]?.value)||0;
-    const grade=sel.value;
-    const pts=GRADES[grade]??0;
-    if(units>0){
-      totalUnits+=units;
-      totalPoints+=units*pts;
-      const name=inputs[0]?.value||'Course';
-      if(pts>best.pts){ best={name,pts}; }
-    }
+    const cu=parseFloat(inputs[1]?.value)||0;
+    const grade=sel?.value||'F';
+    const gp=GPA_GRADES[grade]||0;
+    totalCU+=cu; totalQP+=cu*gp; count++;
   });
-
-  const gpa=totalUnits>0?(totalPoints/totalUnits).toFixed(2):0;
-  const result=document.getElementById('gpa-result');
-  if(totalUnits>0){
-    result.style.display='';
-    document.getElementById('gpa-score').textContent=gpa;
-    document.getElementById('gpa-class').textContent=shGPAClass(parseFloat(gpa),scale);
-    document.getElementById('gpa-total-units').textContent=totalUnits;
-    document.getElementById('gpa-grade-points').textContent=totalPoints.toFixed(1);
-    document.getElementById('gpa-highest').textContent=best.name.substring(0,12);
-  } else {
-    result.style.display='none';
-  }
-  shCalcCGPA();
+  const gpa=totalCU?totalQP/totalCU:0;
+  const cls=gpa>=4.5?'First Class Honours':gpa>=3.5?'Second Class Upper (2:1)':gpa>=2.4?'Second Class Lower (2:2)':gpa>=1.5?'Third Class Honours':gpa>=1.0?'Pass':'Fail';
+  document.getElementById('gpa-score').textContent=gpa.toFixed(2);
+  document.getElementById('gpa-class').textContent=cls;
+  document.getElementById('gpa-total-cu').textContent=totalCU;
+  document.getElementById('gpa-total-qp').textContent=totalQP.toFixed(1);
+  document.getElementById('gpa-courses-count').textContent=count;
+  document.getElementById('gpa-result').style.display='';
 }
 
-function shCalcCGPA(){
-  const prevGPA=parseFloat(document.getElementById('cgpa-prev').value)||0;
-  const prevUnits=parseFloat(document.getElementById('cgpa-prev-units').value)||0;
-  const scale=parseInt(document.getElementById('gpa-scale').value);
-  const GRADES=scale===5?GRADES_5:GRADES_4;
-  const rows=document.querySelectorAll('#gpa-rows .sh-gpa-row');
-  let curUnits=0, curPoints=0;
-
-  rows.forEach(row=>{
-    const inputs=row.querySelectorAll('input');
-    const sel=row.querySelector('select');
-    if(!sel) return;
-    const units=parseFloat(inputs[1]?.value)||0;
-    const grade=sel.value;
-    const pts=GRADES[grade]??0;
-    if(units>0){ curUnits+=units; curPoints+=units*pts; }
-  });
-
-  const cgpaEl=document.getElementById('cgpa-result');
-  if(prevUnits>0&&curUnits>0){
-    const cgpa=((prevGPA*prevUnits+curPoints)/(prevUnits+curUnits)).toFixed(2);
-    document.getElementById('cgpa-score').textContent=cgpa;
-    document.getElementById('cgpa-class').textContent=shGPAClass(parseFloat(cgpa),scale);
-    cgpaEl.style.display='';
-  } else {
-    cgpaEl.style.display='none';
-  }
+function shGpaReset(){
+  document.getElementById('gpa-courses').innerHTML='';
+  document.getElementById('gpa-result').style.display='none';
+  _gpaCourses=[];
+  shGpaAddRow(); shGpaAddRow(); shGpaAddRow();
 }
-
-function shGPAClass(gpa,scale){
-  if(scale===5){
-    if(gpa>=4.5) return '🏆 First Class Honours';
-    if(gpa>=3.5) return '🥇 Second Class Upper (2:1)';
-    if(gpa>=2.4) return '🥈 Second Class Lower (2:2)';
-    if(gpa>=1.5) return '🥉 Third Class';
-    if(gpa>=1.0) return 'Pass';
-    return '❌ Fail';
-  } else {
-    if(gpa>=3.7) return '🏆 Summa Cum Laude (A)';
-    if(gpa>=3.5) return '🥇 Magna Cum Laude (A-)';
-    if(gpa>=3.0) return '🥈 Cum Laude (B)';
-    if(gpa>=2.0) return '🥉 Satisfactory (C)';
-    return '❌ Below Average';
-  }
-}
-
-// Init GPA with some sample rows
-document.addEventListener('DOMContentLoaded',()=>{
-  shGPA_addRow('Course 1',3,'A');
-  shGPA_addRow('Course 2',2,'B');
-  shGPA_addRow('Course 3',3,'A');
-});
 
 /* ══════════════════════════════
    4. STUDY TIMER
 ══════════════════════════════ */
-let _timer = {
-  running:false, mode:'focus', focusMins:25, breakMins:5,
-  remaining:25*60, total:25*60, interval:null,
-  sessions:0, totalFocus:0
-};
 const CIRC=2*Math.PI*82;
+let _timer={running:false,mode:'focus',remaining:25*60,total:25*60,focusMins:25,breakMins:5,sessions:0,totalFocus:0,int:null};
 
-function shTimerSetMode(name,focus,brk){
+function shTimerSetMode(preset,focus,brk){
   document.querySelectorAll('.sh-timer-mode-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('tm-'+name).classList.add('active');
-  document.getElementById('timer-custom-row').style.display=name==='custom'?'':'none';
-  if(name!=='custom'){
+  event.target.classList.add('active');
+  shTimerReset();
+  document.getElementById('timer-custom-row').style.display=preset==='custom'?'':'none';
+  if(preset!=='custom'){
     _timer.focusMins=focus; _timer.breakMins=brk;
-    shTimerReset();
+    _timer.remaining=_timer.total=focus*60;
+    shTimerUpdateUI();
   }
 }
 
 function shTimerCustom(){
-  _timer.focusMins=parseInt(document.getElementById('timer-custom-focus').value)||25;
-  _timer.breakMins=parseInt(document.getElementById('timer-custom-break').value)||5;
-  shTimerReset();
+  const f=parseInt(document.getElementById('timer-custom-focus').value)||25;
+  const b=parseInt(document.getElementById('timer-custom-break').value)||5;
+  _timer.focusMins=f; _timer.breakMins=b;
+  _timer.remaining=_timer.total=f*60;
+  shTimerUpdateUI();
 }
 
 function shTimerToggle(){
-  if(_timer.running){ shTimerPause(); } else { shTimerStart(); }
-}
-
-function shTimerStart(){
-  if(_timer.running) return;
-  _timer.running=true;
-  document.getElementById('timer-main-btn').textContent='⏸';
-  _timer.interval=setInterval(shTimerTick, 1000);
-  document.title='⏱️ '+shTimerFmt(_timer.remaining)+' — Study Hub';
-}
-
-function shTimerPause(){
-  _timer.running=false;
-  clearInterval(_timer.interval);
-  document.getElementById('timer-main-btn').textContent='▶';
-  document.title='📚 AI Study Hub';
-}
-
-function shTimerReset(){
-  shTimerPause();
-  _timer.mode='focus';
-  _timer.remaining=_timer.focusMins*60;
-  _timer.total=_timer.focusMins*60;
-  shTimerUpdateUI();
-}
-
-function shTimerSkip(){
-  shTimerPause();
-  if(_timer.mode==='focus'){
-    _timer.sessions++;
-    _timer.totalFocus+=_timer.focusMins;
-    _timer.mode='break';
-    _timer.remaining=_timer.breakMins*60;
-    _timer.total=_timer.breakMins*60;
-  } else {
-    _timer.mode='focus';
-    _timer.remaining=_timer.focusMins*60;
-    _timer.total=_timer.focusMins*60;
-  }
-  shTimerUpdateUI();
+  if(_timer.running){ clearInterval(_timer.int); _timer.running=false; document.getElementById('timer-main-btn').textContent='▶'; }
+  else { _timer.running=true; document.getElementById('timer-main-btn').textContent='⏸'; _timer.int=setInterval(shTimerTick,1000); }
 }
 
 function shTimerTick(){
   _timer.remaining--;
   if(_timer.remaining<=0){
-    shTimerDone();
-  } else {
-    shTimerUpdateUI();
-    document.title='⏱️ '+shTimerFmt(_timer.remaining)+' — Study Hub';
-  }
-}
-
-function shTimerDone(){
-  shTimerPause();
-  if(_timer.mode==='focus'){
-    _timer.sessions++;
-    _timer.totalFocus+=_timer.focusMins;
-    shToast('✅ Focus session done! Take a '+ _timer.breakMins+'min break! 🧠');
-    try{new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3').play();}catch(e){}
-    _timer.mode='break';
-    _timer.remaining=_timer.breakMins*60;
-    _timer.total=_timer.breakMins*60;
-  } else {
-    shToast('☕ Break over! Time to focus again!');
-    _timer.mode='focus';
-    _timer.remaining=_timer.focusMins*60;
-    _timer.total=_timer.focusMins*60;
+    clearInterval(_timer.int); _timer.running=false;
+    document.getElementById('timer-main-btn').textContent='▶';
+    if(_timer.mode==='focus'){ _timer.sessions++; _timer.totalFocus+=_timer.focusMins; _timer.mode='break'; _timer.remaining=_timer.total=_timer.breakMins*60; shToast('🎉 Focus done! Take a break.'); }
+    else { _timer.mode='focus'; _timer.remaining=_timer.total=_timer.focusMins*60; shToast('💪 Break over! Time to focus.'); }
   }
   shTimerUpdateUI();
-  shTimerStart();
 }
+
+function shTimerSkip(){ clearInterval(_timer.int); _timer.running=false; document.getElementById('timer-main-btn').textContent='▶'; _timer.mode=_timer.mode==='focus'?'break':'focus'; _timer.remaining=_timer.total=(_timer.mode==='focus'?_timer.focusMins:_timer.breakMins)*60; shTimerUpdateUI(); }
+function shTimerReset(){ clearInterval(_timer.int); _timer.running=false; document.getElementById('timer-main-btn').textContent='▶'; _timer.mode='focus'; _timer.remaining=_timer.total=_timer.focusMins*60; shTimerUpdateUI(); }
 
 function shTimerUpdateUI(){
   const disp=document.getElementById('timer-display');
@@ -1006,17 +1170,13 @@ function shTimerUpdateUI(){
   const label=document.getElementById('timer-mode-label');
   const pct=_timer.remaining/_timer.total;
   const offset=CIRC*(1-pct);
-
   disp.textContent=shTimerFmt(_timer.remaining);
   fill.style.strokeDashoffset=offset;
   fill.style.stroke=_timer.mode==='focus'?'#6366f1':'#22c55e';
   label.textContent=_timer.mode==='focus'?'Focus Time 🧠':'Break Time ☕';
   document.getElementById('timer-mode-label').style.color=_timer.mode==='focus'?'#a5b4fc':'#86efac';
-
   document.getElementById('timer-stat-sessions').textContent=_timer.sessions;
   document.getElementById('timer-stat-total').textContent=_timer.totalFocus+' min';
-
-  // Session dots
   for(let i=0;i<4;i++){
     const dot=document.getElementById('ts'+i);
     if(dot) dot.className='sh-timer-session-dot'+(i<_timer.sessions%4||(_timer.sessions>=4&&i<4)?' done':'');
@@ -1040,35 +1200,21 @@ async function shStartExam(){
   const count=parseInt(document.getElementById('exam-count').value)||10;
   const diff=document.getElementById('exam-diff').value;
   const time=parseInt(document.getElementById('exam-time').value)||0;
-
   document.getElementById('exam-start-btn').disabled=true;
   document.getElementById('exam-spinner').style.display='';
   document.getElementById('exam-btn-text').textContent='Generating exam…';
-
   const diffLabel={easy:'100-level (basic)',medium:'200-300 level (intermediate)',hard:'400-level (advanced)'};
   const prompt=`Generate exactly ${count} multiple-choice exam questions about "${topic}" at ${diffLabel[diff]} university level.
 Return ONLY valid JSON:
 {"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}}
 Exactly one option per question must be correct. Shuffle option positions. Academic and rigorous. Return ONLY the JSON.`;
-
   const raw=await shAI(prompt, 2500);
   document.getElementById('exam-start-btn').disabled=false;
   document.getElementById('exam-spinner').style.display='none';
   document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
-
   let qs=[];
-  if(raw){
-    try{
-      const match=raw.match(/\{[\s\S]*\}/);
-      if(match){
-        const obj=JSON.parse(match[0]);
-        qs=obj.questions||[];
-      }
-    }catch(e){}
-  }
-
+  if(raw){ try{ const match=raw.match(/\{[\s\S]*\}/); if(match){ const obj=JSON.parse(match[0]); qs=obj.questions||[]; } }catch(e){} }
   if(!qs.length){ shToast('⚠️ Could not generate exam questions. Try again.'); return; }
-
   _exam={qs,current:0,answers:[],topic,timerInt:null,timeLeft:time,timerSecs:time};
   document.getElementById('exam-setup').style.display='none';
   document.getElementById('exam-active').style.display='block';
@@ -1082,14 +1228,12 @@ function shExamShowQ(){
   const total=_exam.qs.length;
   const n=_exam.current+1;
   const pct=(n/total*100)+'%';
-
   document.getElementById('exam-prog-fill').style.width=pct;
   document.getElementById('exam-q-num').textContent='Question '+n+' of '+total;
   document.getElementById('exam-q-badge').textContent='Q '+n+'/'+total;
   document.getElementById('exam-q-text').textContent=q.q;
   document.getElementById('exam-explanation').style.display='none';
   document.getElementById('exam-next-btn').style.display='none';
-
   const opts=document.getElementById('exam-opts');
   opts.innerHTML='';
   q.options.forEach((opt,i)=>{
@@ -1100,45 +1244,29 @@ function shExamShowQ(){
     btn.onclick=()=>shExamAnswer(btn, opt.correct, q.explanation);
     opts.appendChild(btn);
   });
-
-  // Question timer
   clearInterval(_exam.timerInt);
   const timerBar=document.getElementById('exam-timer-bar-wrap');
   if(_exam.timerSecs>0){
     timerBar.style.display='';
     _exam.timeLeft=_exam.timerSecs;
     const fill=document.getElementById('exam-q-timer-fill');
-    fill.style.width='100%';
-    fill.className='sh-exam-timer-fill';
+    fill.style.width='100%'; fill.className='sh-exam-timer-fill';
     _exam.timerInt=setInterval(()=>{
       _exam.timeLeft--;
       const pct2=(_exam.timeLeft/_exam.timerSecs*100);
       fill.style.width=pct2+'%';
       if(_exam.timeLeft<=10) fill.className='sh-exam-timer-fill low';
-      if(_exam.timeLeft<=0){
-        clearInterval(_exam.timerInt);
-        shExamTimeUp(q.explanation);
-      }
+      if(_exam.timeLeft<=0){ clearInterval(_exam.timerInt); shExamTimeUp(q.explanation); }
     },1000);
-  } else {
-    timerBar.style.display='none';
-  }
+  } else { timerBar.style.display='none'; }
 }
 
 function shExamAnswer(btn, correct, explanation){
   clearInterval(_exam.timerInt);
   const opts=document.querySelectorAll('.sh-exam-opt');
-  opts.forEach(b=>{
-    b.disabled=true;
-    if(b.dataset.correct==='1') b.classList.add('correct');
-    else if(b===btn&&!correct) b.classList.add('wrong');
-  });
+  opts.forEach(b=>{ b.disabled=true; if(b.dataset.correct==='1') b.classList.add('correct'); else if(b===btn&&!correct) b.classList.add('wrong'); });
   _exam.answers.push({q:_exam.qs[_exam.current].q,correct,chosen:btn.querySelector('span:last-child').textContent});
-  if(explanation){
-    const ex=document.getElementById('exam-explanation');
-    ex.textContent='💡 '+explanation;
-    ex.style.display='';
-  }
+  if(explanation){ const ex=document.getElementById('exam-explanation'); ex.textContent='💡 '+explanation; ex.style.display=''; }
   document.getElementById('exam-next-btn').style.display='';
 }
 
@@ -1146,45 +1274,28 @@ function shExamTimeUp(explanation){
   const opts=document.querySelectorAll('.sh-exam-opt');
   opts.forEach(b=>{ b.disabled=true; if(b.dataset.correct==='1') b.classList.add('correct'); });
   _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏱️ Timed out'});
-  if(explanation){
-    const ex=document.getElementById('exam-explanation');
-    ex.textContent='⏱️ Time up! '+explanation;
-    ex.style.display='';
-  }
+  if(explanation){ const ex=document.getElementById('exam-explanation'); ex.textContent='⏱️ Time up! '+explanation; ex.style.display=''; }
   document.getElementById('exam-next-btn').style.display='';
   shToast('⏱️ Time up for this question!');
 }
 
-function shExamSkip(){
-  clearInterval(_exam.timerInt);
-  _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏭️ Skipped'});
-  shExamNext();
-}
-
-function shExamNext(){
-  _exam.current++;
-  if(_exam.current>=_exam.qs.length){ shExamFinish(); return; }
-  shExamShowQ();
-}
-
+function shExamSkip(){ clearInterval(_exam.timerInt); _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏭️ Skipped'}); shExamNext(); }
+function shExamNext(){ _exam.current++; if(_exam.current>=_exam.qs.length){ shExamFinish(); return; } shExamShowQ(); }
 function shExamFinish(){
   clearInterval(_exam.timerInt);
   document.getElementById('exam-active').style.display='none';
   document.getElementById('exam-results').style.display='block';
-
   const total=_exam.answers.length;
   const correct=_exam.answers.filter(a=>a.correct).length;
   const pct=Math.round(correct/total*100);
   const grade=pct>=70?'A':pct>=60?'B':pct>=50?'C':pct>=45?'D':pct>=40?'E':'F';
   const remark=pct>=70?'🏆 Excellent!':pct>=60?'🥇 Good Pass':pct>=50?'🥈 Average':pct>=40?'🎯 Keep Studying':'📚 Needs More Work';
-
   document.getElementById('exam-result-title').textContent=remark+' — '+_exam.topic;
   document.getElementById('exam-result-stats').innerHTML=`
     <div class="sh-result-stat"><div class="sh-result-stat-val" style="color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</div><div class="sh-result-stat-lbl">Score</div></div>
     <div class="sh-result-stat"><div class="sh-result-stat-val" style="color:var(--gold)">${grade}</div><div class="sh-result-stat-lbl">Grade</div></div>
     <div class="sh-result-stat"><div class="sh-result-stat-val">${correct}/${total}</div><div class="sh-result-stat-lbl">Correct</div></div>
     <div class="sh-result-stat"><div class="sh-result-stat-val">${total-correct}</div><div class="sh-result-stat-lbl">Wrong</div></div>`;
-
   document.getElementById('exam-result-qs').innerHTML=_exam.answers.map((a,i)=>`
     <div class="sh-result-q-item ${a.correct?'sh-correct':'sh-wrong'}">
       <div style="width:24px;text-align:center;font-weight:800;color:${a.correct?'var(--green)':'var(--red)'};flex-shrink:0;">${i+1}</div>
@@ -1195,16 +1306,664 @@ function shExamFinish(){
     </div>`).join('');
 }
 
-function shExamRetry(){
-  document.getElementById('exam-topic').value=_exam.topic;
-  shStartExam();
+function shExamRetry(){ document.getElementById('exam-topic').value=_exam.topic; shStartExam(); }
+function shExamSetup(){ document.getElementById('exam-setup').style.display='block'; document.getElementById('exam-active').style.display='none'; document.getElementById('exam-results').style.display='none'; }
+
+/* ══════════════════════════════
+   6. AI TEACHER ENGINE
+══════════════════════════════ */
+
+/* Voice definitions */
+const AIT_VOICES = [
+  {id:'f1',label:'Ada',gender:'female',icon:'👩‍🏫'},
+  {id:'f2',label:'Sarah',gender:'female',icon:'👩‍💼'},
+  {id:'f3',label:'Amara',gender:'female',icon:'👩‍🔬'},
+  {id:'f4',label:'Ngozi',gender:'female',icon:'👩‍🎓'},
+  {id:'f5',label:'Grace',gender:'female',icon:'🧑‍🏫'},
+  {id:'m1',label:'Emeka',gender:'male',icon:'👨‍🏫'},
+  {id:'m2',label:'Chidi',gender:'male',icon:'👨‍💼'},
+  {id:'m3',label:'Victor',gender:'male',icon:'👨‍🔬'},
+  {id:'m4',label:'Seun',gender:'male',icon:'👨‍🎓'},
+  {id:'m5',label:'Kola',gender:'male',icon:'🧑‍💼'},
+];
+
+const MATH_SUBJECTS = ['mathematics','maths','math','further math','calculus','algebra','statistics','physics','chemistry','trigonometry','mechanics','vectors','integration','differentiation'];
+
+let _ait = {
+  studentName:'',
+  teacherName:'AI Teacher',
+  voiceId:'f1',
+  speechRate:1.0,
+  subject:'',
+  topic:'',
+  durationMins:30,
+  docText:'',
+  sessionInt:null,
+  remainingSecs:0,
+  totalSecs:0,
+  paused:false,
+  listening:false,
+  speaking:false,
+  inQAMode:false,
+  awaitingAnswer:false,
+  currentQuestion:'',
+  conversationHistory:[],
+  synth:null,
+  recognition:null,
+  currentUtterance:null,
+  teachingStepIdx:0,
+  questionSchedule:[],
+  warnedFiveMin:false,
+};
+
+/* ─ Setup screens ─ */
+function aitRenderVoiceGrid(){
+  const grid = document.getElementById('ait-voice-grid');
+  grid.innerHTML = AIT_VOICES.map(v=>`
+    <button class="ait-voice-btn${v.id==='f1'?' selected':''}" data-vid="${v.id}" onclick="aitSelectVoice('${v.id}',this)">
+      <div class="v-icon">${v.icon}</div>
+      <div class="v-name">${v.label}</div>
+    </button>`).join('');
 }
 
-function shExamSetup(){
-  document.getElementById('exam-setup').style.display='block';
-  document.getElementById('exam-active').style.display='none';
-  document.getElementById('exam-results').style.display='none';
+function aitSelectVoice(id, el){
+  document.querySelectorAll('.ait-voice-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  _ait.voiceId = id;
 }
+
+function aitSetSpeed(rate, el){
+  document.querySelectorAll('.ait-speed-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  _ait.speechRate = rate;
+}
+
+function aitRenderKeySlots(){
+  const container = document.getElementById('ait-key-slots');
+  let html = '';
+  for(let i=0;i<10;i++){
+    const saved = localStorage.getItem('ait_key_'+i)||'';
+    const def = AIT_DEFAULT_KEYS[i]||'';
+    html += `<div class="ait-key-row">
+      <span class="ait-key-label">Key ${i+1}</span>
+      <input class="ait-key-input" id="ait-key-${i}" type="password" placeholder="Paste Mistral API key ${i+1}…" value="${saved||def}" onchange="localStorage.setItem('ait_key_${i}',this.value)">
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function aitGoToSession(){
+  const name = document.getElementById('ait-student-name').value.trim();
+  if(!name){ shToast('⚠️ Please enter your name first'); document.getElementById('ait-student-name').focus(); return; }
+  _ait.studentName = name;
+  const tname = document.getElementById('ait-teacher-name').value.trim();
+  _ait.teacherName = tname || AIT_VOICES.find(v=>v.id===_ait.voiceId)?.label || 'AI Teacher';
+  document.getElementById('ait-greet-name').textContent = name;
+  document.getElementById('ait-screen-name').classList.remove('active');
+  document.getElementById('ait-screen-setup').classList.add('active');
+  aitRenderKeySlots();
+}
+
+function aitBack(){
+  document.getElementById('ait-screen-setup').classList.remove('active');
+  document.getElementById('ait-screen-name').classList.add('active');
+}
+
+async function aitHandleDoc(input){
+  const file = input.files[0];
+  if(!file) return;
+  const nameEl = document.getElementById('ait-doc-name');
+  nameEl.style.display='';
+  nameEl.textContent = '📄 '+file.name+' (loading…)';
+
+  if(file.type==='text/plain'||file.name.endsWith('.md')){
+    _ait.docText = await file.text();
+    nameEl.textContent = '✅ '+file.name+' ('+Math.round(_ait.docText.length/1000)+'k chars)';
+  } else if(file.type==='application/pdf'){
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const ab = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+      let text='';
+      for(let i=1;i<=Math.min(pdf.numPages,30);i++){
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        text += tc.items.map(s=>s.str).join(' ')+'\n';
+      }
+      _ait.docText = text.slice(0,12000);
+      nameEl.textContent = '✅ '+file.name+' ('+pdf.numPages+' pages)';
+    }catch(e){ nameEl.textContent='⚠️ Could not read PDF: '+e.message; }
+  } else if(file.type.startsWith('image/')){
+    nameEl.textContent = '🖼️ '+file.name+' (image — AI will describe from topic context)';
+    _ait.docText = '[Image uploaded: '+file.name+'. Teach based on topic only.]';
+  } else {
+    nameEl.textContent = '⚠️ Unsupported file type';
+  }
+  document.getElementById('ait-doc-preview').textContent = _ait.docText ? _ait.docText.slice(0,2000)+'…' : 'Preview not available';
+}
+
+async function aitStartSession(){
+  const subject = document.getElementById('ait-subject').value.trim();
+  const topic = document.getElementById('ait-topic').value.trim();
+  if(!subject||!topic){ shToast('⚠️ Please enter both subject and topic'); return; }
+  const dur = parseInt(document.getElementById('ait-duration').value)||30;
+
+  _ait.subject = subject;
+  _ait.topic = topic;
+  _ait.durationMins = dur;
+  _ait.remainingSecs = dur*60;
+  _ait.totalSecs = dur*60;
+  _ait.paused = false;
+  _ait.listening = false;
+  _ait.speaking = false;
+  _ait.inQAMode = false;
+  _ait.awaitingAnswer = false;
+  _ait.warnedFiveMin = false;
+  _ait.conversationHistory = [];
+  _ait.teachingStepIdx = 0;
+  _ait.questionSchedule = aitBuildQuestionSchedule(dur);
+
+  document.getElementById('ait-ses-subject-label').textContent = subject;
+  document.getElementById('ait-ses-topic-label').textContent = topic;
+  document.getElementById('ait-display-teacher-name').textContent = _ait.teacherName;
+  document.getElementById('ait-ses-timer').textContent = aitFmtTime(_ait.remainingSecs);
+  document.getElementById('ait-prog-fill').style.width = '100%';
+  document.getElementById('ait-transcript').innerHTML = '';
+  document.getElementById('ait-qa-messages').innerHTML = '';
+  document.getElementById('ait-qa-wrap').style.display = 'none';
+  document.getElementById('ait-qa-input-row').style.display = 'none';
+  document.getElementById('ait-ses-right-top').style.display = '';
+  document.getElementById('ait-type-answer-wrap').classList.remove('show');
+  document.getElementById('ait-pause-btn').textContent = '⏸ Pause AI';
+  document.getElementById('ait-pause-btn').classList.remove('paused');
+  document.getElementById('ait-mic-btn').textContent = '🎤 My Turn';
+  document.getElementById('ait-mic-btn').classList.remove('listening');
+
+  if(_ait.docText){
+    document.getElementById('ait-doc-preview').textContent = _ait.docText.slice(0,2000);
+  } else {
+    document.getElementById('ait-doc-preview').textContent = 'No document uploaded — AI teaching from topic knowledge.';
+  }
+
+  /* Show fullscreen session */
+  const screen = document.getElementById('ait-session-screen');
+  screen.classList.add('active');
+
+  /* Init speech synthesis */
+  _ait.synth = window.speechSynthesis;
+
+  /* Start countdown */
+  _ait.sessionInt = setInterval(aitTick, 1000);
+
+  /* Send welcome message + begin teaching */
+  await aitBeginTeaching();
+}
+
+function aitBuildQuestionSchedule(totalMins){
+  /* Plan when to ask check-in questions: roughly every 5-7 mins, not in last 5 */
+  const schedule = [];
+  const usable = totalMins - 5;
+  if(usable <= 5) return schedule;
+  const interval = Math.floor(usable / Math.max(2, Math.floor(usable/6)));
+  for(let m=interval; m<usable; m+=interval) schedule.push(m*60);
+  return schedule;
+}
+
+function aitTick(){
+  if(_ait.paused) return;
+  _ait.remainingSecs--;
+  const pct = (_ait.remainingSecs/_ait.totalSecs)*100;
+  document.getElementById('ait-prog-fill').style.width = pct+'%';
+  document.getElementById('ait-ses-timer').textContent = aitFmtTime(_ait.remainingSecs);
+
+  /* 5 min warning */
+  if(!_ait.warnedFiveMin && _ait.remainingSecs <= 300 && !_ait.inQAMode){
+    _ait.warnedFiveMin = true;
+    document.getElementById('ait-ses-timer').classList.add('warning');
+    aitSwitchToQA();
+    return;
+  }
+
+  /* Time up */
+  if(_ait.remainingSecs <= 0){
+    clearInterval(_ait.sessionInt);
+    aitEndSession();
+    return;
+  }
+
+  /* Scheduled check-in questions */
+  if(!_ait.awaitingAnswer && !_ait.inQAMode && !_ait.paused){
+    const elapsed = _ait.totalSecs - _ait.remainingSecs;
+    const nextQ = _ait.questionSchedule[0];
+    if(nextQ && elapsed >= nextQ){
+      _ait.questionSchedule.shift();
+      aitAskCheckIn();
+    }
+  }
+}
+
+function aitFmtTime(sec){
+  const m=Math.floor(sec/60).toString().padStart(2,'0');
+  const s=(sec%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+/* ─ AI Speaking ─ */
+function aitSpeak(text, onEnd){
+  if(!_ait.synth){ if(onEnd) onEnd(); return; }
+  _ait.synth.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = _ait.speechRate;
+
+  /* Pick voice by gender */
+  const voiceDef = AIT_VOICES.find(v=>v.id===_ait.voiceId);
+  const voices = _ait.synth.getVoices();
+  let picked = null;
+  if(voiceDef){
+    const gFilter = voiceDef.gender==='female' ? ['female','woman','girl','zira','samantha','victoria','karen','moira','veena','fiona'] : ['male','man','guy','david','mark','daniel','alex','rishi','kyle'];
+    picked = voices.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
+  }
+  if(!picked) picked = voices[0]||null;
+  if(picked) utt.voice = picked;
+
+  _ait.currentUtterance = utt;
+  _ait.speaking = true;
+  document.getElementById('ait-avatar-glow').classList.add('speaking');
+  document.getElementById('ait-avatar-status').textContent = 'Teaching…';
+  document.getElementById('ait-mic-btn').disabled = true;
+
+  utt.onend = ()=>{
+    _ait.speaking = false;
+    _ait.currentUtterance = null;
+    document.getElementById('ait-avatar-glow').classList.remove('speaking');
+    document.getElementById('ait-avatar-status').textContent = 'Listening…';
+    document.getElementById('ait-mic-btn').disabled = false;
+    if(onEnd) onEnd();
+  };
+  utt.onerror = ()=>{
+    _ait.speaking = false;
+    document.getElementById('ait-avatar-glow').classList.remove('speaking');
+    document.getElementById('ait-mic-btn').disabled = false;
+    if(onEnd) onEnd();
+  };
+
+  _ait.synth.speak(utt);
+}
+
+/* ─ Transcript ─ */
+function aitAddBubble(text, isMath, label){
+  const wrap = document.getElementById('ait-transcript');
+  const div = document.createElement('div');
+  div.className = 'ait-transcript-bubble'+(isMath?' math-topic':'');
+  div.innerHTML = `<div class="ait-tb-label">${label||_ait.teacherName}</div><div class="ait-tb-content"></div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div.querySelector('.ait-tb-content');
+}
+
+function aitTypeText(el, text, onDone){
+  /* For math topics type instantly (show LaTeX/text), for others animate */
+  const isMath = aitIsMathSubject(_ait.subject);
+  if(isMath){
+    el.textContent = text;
+    if(window.MathJax) MathJax.typesetPromise([el]).then(()=>{ if(onDone) onDone(); });
+    else if(onDone) onDone();
+    return;
+  }
+  /* Typing animation */
+  let i=0;
+  const cursor = document.createElement('span');
+  cursor.className='ait-typing-cursor';
+  el.appendChild(cursor);
+  const interval = setInterval(()=>{
+    if(i<text.length){
+      cursor.before(text[i]); i++;
+      el.closest('.ait-transcript-wrap').scrollTop = el.closest('.ait-transcript-wrap').scrollHeight;
+    } else {
+      clearInterval(interval);
+      cursor.remove();
+      if(onDone) onDone();
+    }
+  }, 18);
+}
+
+function aitIsMathSubject(sub){
+  return MATH_SUBJECTS.some(m=>sub.toLowerCase().includes(m));
+}
+
+/* ─ Teaching ─ */
+async function aitBeginTeaching(){
+  const isMath = aitIsMathSubject(_ait.subject);
+  const docCtx = _ait.docText ? `\n\nUse the following study document as context:\n"""${_ait.docText.slice(0,4000)}"""` : '';
+
+  const sysPrompt = `You are ${_ait.teacherName}, a brilliant, warm, and engaging ${_ait.subject} teacher. 
+The student's name is ${_ait.studentName}. You are conducting a ${_ait.durationMins}-minute interactive teaching session on: "${_ait.topic}".
+${isMath ? 'This is a math/science topic — always show formulas clearly, work through calculations step-by-step, write equations explicitly.' : ''}
+Rules:
+- Address the student by name (${_ait.studentName}) naturally during teaching.
+- Teach progressively — build from foundation to advanced concepts.
+- Be conversational and enthusiastic like a real teacher.
+- Keep each teaching segment 2-4 sentences for voice readability.
+- For calculations/formulas: write them out clearly (e.g. F = ma, E = mc²).
+- Occasionally say things like "Are you following? Great!" or "Think about this…"
+${docCtx}`;
+
+  _ait.conversationHistory = [{role:'system', content:sysPrompt}];
+
+  /* Welcome message */
+  const welcomePrompt = `Give a warm, personalised welcome greeting to ${_ait.studentName}. 
+Introduce yourself as ${_ait.teacherName}. Say you'll be teaching "${_ait.topic}" in ${_ait.subject} for ${_ait.durationMins} minutes.
+Ask if they're ready to begin. Keep it to 3-4 sentences. Be enthusiastic!`;
+
+  await aitSendToAI(welcomePrompt, true);
+  
+  /* After welcome, start first teaching segment */
+  setTimeout(()=> aitNextTeachingSegment(), 1500);
+}
+
+async function aitNextTeachingSegment(){
+  if(_ait.paused || _ait.awaitingAnswer || _ait.inQAMode) return;
+
+  _ait.teachingStepIdx++;
+  const isMath = aitIsMathSubject(_ait.subject);
+
+  const teachPrompts = [
+    `Start teaching "${_ait.topic}". Begin with the fundamental definition and core concept. ${isMath?'State any key formulas clearly.':'Give a real-world example.'}`,
+    `Continue teaching "${_ait.topic}". Go deeper — explain the key mechanisms or how it works in detail. ${isMath?'Walk through a worked example step by step.':'Use an analogy to make it memorable.'}`,
+    `Continue teaching "${_ait.topic}". Cover important applications or sub-topics. ${isMath?'Introduce another type of problem.':'Connect to related concepts the student should know.'}`,
+    `Continue teaching "${_ait.topic}". Cover any advanced aspects, edge cases, or common misconceptions. ${isMath?'Tackle a more complex calculation.':'Discuss common exam mistakes.'}`,
+    `Give a concise summary of "${_ait.topic}" so far. Highlight the 3 most important points. ${isMath?'Write out the key formulas again.':'Connect everything together.'}`,
+    `Continue with deeper exploration of "${_ait.topic}". Add more examples or problem-solving strategies.`,
+    `Discuss practical applications and exam tips for "${_ait.topic}".`,
+    `Review and consolidate knowledge on "${_ait.topic}". Cover anything not yet discussed.`,
+  ];
+
+  const idx = Math.min(_ait.teachingStepIdx-1, teachPrompts.length-1);
+  await aitSendToAI(teachPrompts[idx], false);
+
+  /* Schedule next teaching segment if not ending soon */
+  if(_ait.remainingSecs > 360 && !_ait.inQAMode){
+    const delay = 5000 + Math.random()*3000;
+    setTimeout(()=> aitNextTeachingSegment(), delay);
+  }
+}
+
+async function aitSendToAI(userPrompt, isInternal){
+  if(!isInternal){
+    _ait.conversationHistory.push({role:'user', content:userPrompt});
+  } else {
+    _ait.conversationHistory.push({role:'user', content:userPrompt});
+  }
+
+  const reply = await aitMistral(_ait.conversationHistory, 500);
+  if(!reply) return;
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+
+  const isMath = aitIsMathSubject(_ait.subject);
+  const contentEl = aitAddBubble(reply, isMath);
+  aitTypeText(contentEl, reply, null);
+  aitSpeak(reply, null);
+}
+
+async function aitAskCheckIn(){
+  if(_ait.paused || _ait.inQAMode) return;
+  _ait.awaitingAnswer = true;
+
+  const qPrompt = `Ask ${_ait.studentName} a quick check-in question about something you just taught on "${_ait.topic}". 
+Make it conversational — like a real teacher checking understanding mid-lesson. 
+Keep it to ONE question. Say something like "Quick check — " or "Let me test you quickly — ".
+End with: [QUESTION: <the actual question text>] on a new line.`;
+
+  const reply = await aitMistral([..._ait.conversationHistory, {role:'user',content:qPrompt}], 300);
+  if(!reply){ _ait.awaitingAnswer=false; return; }
+
+  const qMatch = reply.match(/\[QUESTION:\s*(.+?)\]/s);
+  _ait.currentQuestion = qMatch ? qMatch[1].trim() : reply;
+
+  const displayReply = reply.replace(/\[QUESTION:.*?\]/s,'').trim();
+
+  /* Show question bubble */
+  const wrap = document.getElementById('ait-transcript');
+  const qDiv = document.createElement('div');
+  qDiv.className = 'ait-q-bubble';
+  qDiv.innerHTML = `<div class="ait-qb-label">🎯 Quick Check — ${_ait.teacherName}</div><div class="ait-qb-text">${_ait.currentQuestion}</div>`;
+  wrap.appendChild(qDiv);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  aitSpeak((displayReply||_ait.currentQuestion), ()=>{
+    /* Enable typing answer */
+    document.getElementById('ait-type-answer-wrap').classList.add('show');
+    document.getElementById('ait-type-answer').value = '';
+    document.getElementById('ait-type-answer').focus();
+    document.getElementById('ait-avatar-status').textContent = 'Waiting for your answer…';
+  });
+}
+
+async function aitSubmitAnswer(){
+  const answerEl = document.getElementById('ait-type-answer');
+  const answer = answerEl.value.trim();
+  if(!answer){ shToast('⚠️ Please type your answer'); return; }
+
+  document.getElementById('ait-type-answer-wrap').classList.remove('show');
+  answerEl.value = '';
+
+  /* Show user answer */
+  const wrap = document.getElementById('ait-transcript');
+  const userDiv = document.createElement('div');
+  userDiv.className = 'ait-user-answer';
+  userDiv.innerHTML = `<div class="ait-ua-label">You — ${_ait.studentName}</div>${answer}`;
+  wrap.appendChild(userDiv);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  /* AI feedback */
+  const feedbackPrompt = `The student (${_ait.studentName}) answered your question about "${_ait.topic}".
+Question: "${_ait.currentQuestion}"
+Student's answer: "${answer}"
+
+Give feedback:
+- If correct/mostly correct: praise specifically, confirm what's right, then continue teaching.
+- If wrong: be kind, explain the correct answer clearly, re-explain the concept, then ask the question again differently.
+Keep it to 3-5 sentences. Be encouraging like a good teacher.`;
+
+  const feedback = await aitMistral([..._ait.conversationHistory, {role:'user',content:feedbackPrompt}], 400);
+  if(!feedback){ _ait.awaitingAnswer=false; return; }
+
+  _ait.conversationHistory.push({role:'assistant', content:feedback});
+  const isMath = aitIsMathSubject(_ait.subject);
+  const fbEl = aitAddBubble(feedback, isMath, '💬 '+_ait.teacherName);
+  aitTypeText(fbEl, feedback, null);
+  aitSpeak(feedback, ()=>{
+    _ait.awaitingAnswer = false;
+    /* Resume teaching after feedback */
+    setTimeout(()=>aitNextTeachingSegment(), 2000);
+  });
+}
+
+async function aitAskQuestion(){
+  /* User interrupts to ask a question */
+  if(_ait.speaking){
+    _ait.synth?.cancel();
+    _ait.speaking = false;
+    document.getElementById('ait-avatar-glow').classList.remove('speaking');
+  }
+  document.getElementById('ait-type-answer-wrap').classList.add('show');
+  document.getElementById('ait-type-answer').placeholder = 'Type your question for the AI teacher…';
+  document.getElementById('ait-type-answer').focus();
+  document.getElementById('ait-avatar-status').textContent = 'Ask your question…';
+  shToast('💬 Go ahead — type your question!');
+  /* Repurpose submit for free question */
+  _ait.awaitingAnswer = true;
+  _ait.currentQuestion = '__USER_QUESTION__';
+}
+
+async function aitSwitchToQA(){
+  _ait.inQAMode = true;
+  /* Stop AI teaching */
+  _ait.synth?.cancel();
+  document.getElementById('ait-avatar-glow').classList.remove('speaking');
+
+  const msg = `⏰ We have 5 minutes left, ${_ait.studentName}! I'll stop teaching now — please ask me any questions about "${_ait.topic}". I'm all yours!`;
+  
+  /* Switch UI */
+  document.getElementById('ait-ses-right-top').style.display = 'none';
+  document.getElementById('ait-qa-wrap').style.display = '';
+  document.getElementById('ait-qa-input-row').style.display = '';
+  document.getElementById('ait-type-answer-wrap').classList.remove('show');
+
+  /* Add message in transcript */
+  const wrap = document.getElementById('ait-transcript');
+  const div = document.createElement('div');
+  div.className = 'ait-transcript-bubble';
+  div.style.borderColor = 'rgba(239,68,68,.3)';
+  div.innerHTML = `<div class="ait-tb-label" style="color:#fca5a5;">⏰ ${_ait.teacherName} — 5 min warning</div><div>${msg}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  aitSpeak(msg, null);
+  shToast('⏰ 5 minutes left — Q&A mode!');
+}
+
+async function aitSendQA(){
+  const input = document.getElementById('ait-qa-input');
+  const q = input.value.trim();
+  if(!q) return;
+  input.value = '';
+
+  const msgs = document.getElementById('ait-qa-messages');
+  msgs.innerHTML += `<div class="ait-qa-msg user">${q}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const reply = await aitMistral([
+    ..._ait.conversationHistory,
+    {role:'user', content:`Student question about "${_ait.topic}": ${q}. Answer concisely and helpfully in 2-4 sentences. Address the student as ${_ait.studentName}.`}
+  ], 400);
+
+  if(!reply) return;
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+  msgs.innerHTML += `<div class="ait-qa-msg ai"><strong>${_ait.teacherName}:</strong> ${reply}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  aitSpeak(reply, null);
+}
+
+/* ─ Controls ─ */
+function aitTogglePause(){
+  _ait.paused = !_ait.paused;
+  const btn = document.getElementById('ait-pause-btn');
+  if(_ait.paused){
+    btn.textContent = '▶ Resume AI';
+    btn.classList.add('paused');
+    _ait.synth?.pause();
+    document.getElementById('ait-avatar-status').textContent = 'Paused';
+    document.getElementById('ait-avatar-glow').classList.remove('speaking');
+    /* Auto-enable mic */
+    if(!_ait.listening) aitStartMic();
+  } else {
+    btn.textContent = '⏸ Pause AI';
+    btn.classList.remove('paused');
+    _ait.synth?.resume();
+    document.getElementById('ait-avatar-status').textContent = 'Teaching…';
+    aitStopMic();
+    setTimeout(()=>aitNextTeachingSegment(), 1000);
+  }
+}
+
+function aitToggleMic(){
+  if(_ait.speaking){ shToast('⏸ Pause the AI first, then speak'); return; }
+  if(_ait.listening) aitStopMic(); else aitStartMic();
+}
+
+function aitStartMic(){
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SpeechRecognition){ shToast('⚠️ Speech recognition not supported in this browser'); return; }
+  if(_ait.recognition) _ait.recognition.stop();
+
+  const rec = new SpeechRecognition();
+  rec.continuous = false;
+  rec.interimResults = false;
+  rec.lang = 'en-NG';
+  rec.onresult = (e)=>{
+    const transcript = e.results[0][0].transcript;
+    aitHandleVoiceInput(transcript);
+  };
+  rec.onerror = (e)=>{ console.warn('mic error',e); aitStopMic(); };
+  rec.onend = ()=>{ aitStopMic(); };
+  rec.start();
+  _ait.recognition = rec;
+  _ait.listening = true;
+
+  const btn = document.getElementById('ait-mic-btn');
+  btn.textContent = '🔴 Listening…';
+  btn.classList.add('listening');
+  document.getElementById('ait-avatar-status').textContent = 'Listening to you…';
+}
+
+function aitStopMic(){
+  _ait.recognition?.stop();
+  _ait.recognition = null;
+  _ait.listening = false;
+  const btn = document.getElementById('ait-mic-btn');
+  btn.textContent = '🎤 My Turn';
+  btn.classList.remove('listening');
+}
+
+async function aitHandleVoiceInput(transcript){
+  aitStopMic();
+  shToast('🎤 You said: "'+transcript.slice(0,60)+'"');
+
+  /* Show in transcript */
+  const wrap = document.getElementById('ait-transcript');
+  const div = document.createElement('div');
+  div.className = 'ait-user-answer';
+  div.innerHTML = `<div class="ait-ua-label">🎤 ${_ait.studentName}</div>${transcript}`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  if(_ait.awaitingAnswer && _ait.currentQuestion !== '__USER_QUESTION__'){
+    /* Answer to AI question */
+    document.getElementById('ait-type-answer').value = transcript;
+    await aitSubmitAnswer();
+  } else {
+    /* Free question/comment */
+    const reply = await aitMistral([..._ait.conversationHistory,
+      {role:'user', content:`Student said (voice): "${transcript}". Respond helpfully as ${_ait.teacherName} teaching "${_ait.topic}". 2-3 sentences.`}
+    ], 300);
+    if(!reply) return;
+    _ait.conversationHistory.push({role:'assistant',content:reply});
+    const isMath = aitIsMathSubject(_ait.subject);
+    const el = aitAddBubble(reply, isMath);
+    aitTypeText(el, reply, null);
+    aitSpeak(reply, ()=>{
+      if(!_ait.paused) setTimeout(()=>aitNextTeachingSegment(), 1500);
+    });
+  }
+}
+
+function aitEndSession(){
+  clearInterval(_ait.sessionInt);
+  _ait.synth?.cancel();
+  aitStopMic();
+  document.getElementById('ait-session-screen').classList.remove('active');
+  shToast('📚 Session ended! Great work, '+_ait.studentName+'!');
+}
+
+function aitCleanupOnLeave(){
+  if(_ait.synth?.speaking) _ait.synth.cancel();
+  aitStopMic();
+}
+
+/* ── Init on load ── */
+window.addEventListener('load', ()=>{
+  aitRenderVoiceGrid();
+  shGpaAddRow(); shGpaAddRow(); shGpaAddRow();
+  shTimerUpdateUI();
+  /* Load saved voices */
+  const saved = speechSynthesis?.getVoices();
+  speechSynthesis?.addEventListener('voiceschanged', ()=>{});
+});
+
+/* Stop mic/speech when leaving page */
+window.addEventListener('beforeunload', ()=>{ aitCleanupOnLeave(); });
+window.addEventListener('visibilitychange', ()=>{ if(document.hidden) aitCleanupOnLeave(); });
 </script>
 </body>
 </html>
