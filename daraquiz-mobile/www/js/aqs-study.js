@@ -1053,7 +1053,7 @@ function _summonDemoNextVoice(idx) {
         /* All voices played — ask user to pick */
         VS._setupStep = 2;
         var pickMsg = 'That was all ' + voices.length + ' voices. ' +
-                      'Which voice would you prefer? Please say or type a number from 1 to ' + voices.length + '.';
+                      'Which number did you like best? Please say or type a number from 1 to ' + voices.length + '.';
         summonSetAiText(pickMsg);
         summonSpeak(pickMsg, function () {
             summonSetState('listening');
@@ -1063,22 +1063,24 @@ function _summonDemoNextVoice(idx) {
     }
     VS._demoIdx = idx;
     var v = voices[idx];
-    var vLabel = DEMO_VOICE_NAMES[idx] || (v.name || v.id || ('Voice ' + (idx + 1)));
-    var fullText = 'Voice ' + (idx + 1) + ', ' + vLabel + '. Hello, how are you doing?';
+    /* Use the actual voice name (browser voice name or Pollinations name), not made-up labels */
+    var vLabel = (v && (v.name || v.id)) ? (v.name || v.id) : ('Voice ' + (idx + 1));
+    /* Short spoken sample — number then name then demo phrase */
+    var fullText = 'Voice ' + (idx + 1) + '. ' + vLabel + '. Hello! I am your AI tutor. How are you doing today?';
 
-    summonSetAiText('🎙 Voice ' + (idx + 1) + ' — ' + vLabel + '\n\n"Hello, how are you doing?"');
+    summonSetAiText('🎙 Voice ' + (idx + 1) + ' — ' + vLabel);
 
     _summonPlayDemoVoice(idx, fullText, function () {
-        setTimeout(function () { _summonDemoNextVoice(idx + 1); }, 700);
+        /* Short gap between voices for a crisp fast demo */
+        setTimeout(function () { _summonDemoNextVoice(idx + 1); }, 300);
     });
 }
 
 function _summonPlayDemoVoice(idx, text, onDone) {
-    var voices = VS._demoVoices;
-    var v = voices[idx];
-
     if (_IS_MOBILE_APP) {
-        /* Use specific Pollinations voice for this demo slot */
+        /* Use specific Pollinations voice — fetch fresh list each time */
+        var voices = VS._demoVoices || POLL_VOICES;
+        var v = voices[idx] || voices[0];
         var voiceId = (v && v.id) ? v.id : 'alloy';
         VS.speaking = true;
         var chunk = text.slice(0, 200);
@@ -1105,14 +1107,24 @@ function _summonPlayDemoVoice(idx, text, onDone) {
             _summonSpeakSynth(text, onDone);
         }
     } else {
-        /* Desktop: use specific browser voice at this index */
+        /* Desktop: always get FRESH voice list to avoid stale references (Chrome issue) */
         if (!VS.synth) { if (onDone) onDone(); return; }
+        var freshAll = VS.synth.getVoices();
+        var freshEn  = freshAll.filter(function (vv) { return vv.lang && vv.lang.startsWith('en'); });
+        /* If no voices yet, retry once after 500ms */
+        if (!freshEn.length) {
+            setTimeout(function () { _summonPlayDemoVoice(idx, text, onDone); }, 500);
+            return;
+        }
+        /* Pick the Nth English voice (wraps if fewer than 10 voices) */
+        var picked = freshEn[idx % freshEn.length];
         VS.speaking = true;
         var u = new SpeechSynthesisUtterance(text);
-        u.rate = 1.0; u.pitch = 1.0; u.volume = 1.0;
-        if (v && v.lang) u.voice = v; /* SpeechSynthesisVoice object */
+        u.rate = 1.05; u.pitch = 1.0; u.volume = 1.0;
+        u.voice = picked;
         u.onend  = function () { VS.speaking = false; if (onDone) onDone(); };
         u.onerror = function () { VS.speaking = false; if (onDone) onDone(); };
+        VS.synth.cancel(); /* stop any previous utterance */
         VS.synth.speak(u);
     }
 }
@@ -1174,7 +1186,8 @@ function summonHandleSetup(q) {
         var topicLine = S.title
             ? ' I can see you are studying "' + S.title + '". Excellent choice — let us dive right in!'
             : ' Ask me anything you would like to learn about. I will teach you from the very basics.';
-        var done = 'Welcome, ' + VS.userName + '! I am so happy to have you here. ' +
+        var greetName = VS.userName + (VS.userSurname ? ' ' + VS.userSurname : '');
+        var done = 'Welcome ' + greetName + '! What a beautiful name. ' +
                    'I am your personal AI tutor for Darapet Learning System.' + topicLine;
         summonSetAiText(done);
         return summonSpeak(done, function () {
@@ -1293,6 +1306,46 @@ function summonResetSilence() {
 }
 
 function summonShowInterim(text) { summonSetTranscript(text); }
+
+/* ── MATH BOARD ──────────────────────────────────────────────── */
+function summonShowMathBoard(topic) {
+    var board = document.getElementById('std-math-board');
+    var tEl   = document.getElementById('std-math-board-topic');
+    if (!board) return;
+    board.style.display = '';
+    if (tEl && topic) tEl.textContent = topic;
+}
+
+function summonUpdateMathBoard(text) {
+    var body = document.getElementById('std-math-board-body');
+    if (!body) return;
+    body.textContent = text;
+}
+
+function summonRenderMathBoard() {
+    var body = document.getElementById('std-math-board-body');
+    if (!body) return;
+    /* Use KaTeX auto-render if available */
+    if (window.renderMathInElement) {
+        try {
+            renderMathInElement(body, {
+                delimiters: [
+                    {left:'$$', right:'$$', display:true},
+                    {left:'$', right:'$', display:false},
+                    {left:'\\(', right:'\\)', display:false},
+                    {left:'\\[', right:'\\]', display:true},
+                ],
+                throwOnError: false
+            });
+        } catch(e) {}
+    }
+    body.scrollTop = 0;
+}
+
+function summonHideMathBoard() {
+    var board = document.getElementById('std-math-board');
+    if (board) board.style.display = 'none';
+}
 
 /* ── TEXT SEND ───────────────────────────────────────────────── */
 function summonSendText() {
@@ -1502,9 +1555,12 @@ async function summonStreamResponse(messages) {
                             displayStart = dIdx + '[DISPLAY]'.length;
                             /* Stop buffering speak sentences */
                             sentenceBuf = '';
+                            /* Show & populate the math board */
+                            var topicLabel = (S.chapters && S.chapters[S.activeIdx]) ? S.chapters[S.activeIdx].title : (S.title || 'Formulas');
+                            summonShowMathBoard(topicLabel);
                             /* Show display portion accumulated so far */
                             var dispSoFar = full.slice(displayStart).replace(/^\s+/, '');
-                            if (dispSoFar) summonSetAiText(dispSoFar);
+                            if (dispSoFar) { summonUpdateMathBoard(dispSoFar); summonSetAiText(dispSoFar); }
                         } else {
                             /* Still in the spoken section — feed to TTS sentence queue */
                             /* Strip any leading [SPEAK] tag the model might output */
@@ -1519,8 +1575,9 @@ async function summonStreamResponse(messages) {
                             }
                         }
                     } else {
-                        /* Past [DISPLAY] — stream LaTeX text into the scrollable panel */
+                        /* Past [DISPLAY] — stream LaTeX text into math board AND ai-text panel */
                         var displayText = full.slice(displayStart).replace(/^\s+/, '');
+                        summonUpdateMathBoard(displayText);
                         summonSetAiText(displayText);
                     }
                 } catch(ex) {}
@@ -1545,8 +1602,10 @@ async function summonStreamResponse(messages) {
 
     /* Flush any remaining spoken sentence fragment */
     if (!seenDisplay && sentenceBuf.trim()) summonQueueSentence(sentenceBuf.trim());
-    /* If the AI skipped [DISPLAY] (non-math topic), show full text in panel */
-    if (!seenDisplay) summonSetAiText(full);
+    /* If the AI skipped [DISPLAY] (non-math topic), show full text in panel and hide board */
+    if (!seenDisplay) { summonSetAiText(full); summonHideMathBoard(); }
+    /* Final KaTeX render pass on the math board */
+    if (seenDisplay) summonRenderMathBoard();
     summonFlushQueue(function () {
         VS._speakEndTime = Date.now();
         VS.speakingQueue = false;
@@ -1829,6 +1888,14 @@ function injectSummonStyles() {
         '.std-vh-detail-a .katex-display{overflow-x:auto;padding:4px 0}',
         '.std-vh-empty{color:#6b6a8c;font-size:.8rem;text-align:center;padding:24px 0}',
 
+        /* ── MATH BOARD ── */
+        '#std-math-board{display:none;flex-shrink:0;background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(6,182,212,.07));border-top:2px solid rgba(20,184,166,.3);padding:12px 16px;max-height:220px;overflow-y:auto}',
+        '#std-math-board::-webkit-scrollbar{width:4px}#std-math-board::-webkit-scrollbar-track{background:transparent}#std-math-board::-webkit-scrollbar-thumb{background:rgba(20,184,166,.4);border-radius:2px}',
+        '#std-math-board-hdr{font-size:.65rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px}',
+        '#std-math-board-body{font-size:.92rem;color:#e2e8f0;line-height:1.9;word-break:break-word}',
+        '#std-math-board-body .katex-display{overflow-x:auto;padding:6px 0;margin:4px 0}',
+        '#std-math-board-body .katex{font-size:1.05em}',
+
         /* ── STREAMING CURSOR ── */
         '.std-stream-cursor{display:inline-block;animation:std-blink .65s step-end infinite;color:#8b5cf6;font-weight:900;margin-left:1px}',
         '@keyframes std-blink{0%,100%{opacity:1}50%{opacity:0}}',
@@ -1862,6 +1929,11 @@ function injectSummonUI() {
         '<div id="std-vh-panel" style="display:none"></div>',
         /* Scrollable AI response area */
         '<div id="std-summon-ai-text"></div>',
+        /* Math board — shown for math/science topics with LaTeX display */
+        '<div id="std-math-board" style="display:none">',
+          '<div id="std-math-board-hdr">📐 Math Board — <span id="std-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span></div>',
+          '<div id="std-math-board-body"></div>',
+        '</div>',
         /* "You said" strip */
         '<div id="std-summon-transcript"></div>',
         /* Type input row */

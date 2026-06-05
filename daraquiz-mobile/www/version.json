@@ -2,7 +2,7 @@
   "version": "1.181",
   "versionCode": 156,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Math Board panel with rendered LaTeX, voice demo speaks real voice names+numbers via onend callbacks, name confirmation, sysPrompt [DISPLAY] convention for studyhub math.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.181/daraquiz-v1.181.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.181/daraquiz-v1.181.apk"
 }

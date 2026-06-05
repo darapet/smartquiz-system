@@ -882,6 +882,14 @@ a{text-decoration:none;color:inherit;}
         <div class="ait-avatar-status" id="ait-avatar-status">Ready</div>
       </div>
 
+      <!-- Math Board — shown for math/science topics with LaTeX equations -->
+      <div id="ait-math-board" style="display:none;width:100%;background:linear-gradient(135deg,rgba(20,184,166,.09),rgba(6,182,212,.07));border:1.5px solid rgba(20,184,166,.28);border-radius:12px;padding:14px 16px;margin-bottom:12px;flex-shrink:0;">
+        <div style="font-size:.65rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;">
+          📐 Math Board — <span id="ait-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span>
+        </div>
+        <div id="ait-math-board-body" style="font-size:.95rem;color:#e2e8f0;line-height:1.9;word-break:break-word;max-height:200px;overflow-y:auto;"></div>
+      </div>
+
       <!-- Transcript bubbles -->
       <div class="ait-transcript-wrap" id="ait-transcript"></div>
     </div>
@@ -1476,15 +1484,18 @@ function aitPreviewVoice(id){
   if(!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const voiceDef = AIT_VOICES.find(v=>v.id===id);
-  const voices = window.speechSynthesis.getVoices();
-  const gFilter = voiceDef&&voiceDef.gender==='female'
-    ? ['female','woman','girl','zira','samantha','victoria','karen','moira','veena','fiona']
-    : ['male','man','guy','david','mark','daniel','alex','rishi','kyle'];
-  let picked = voices.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
-  if(!picked) picked = voices[0]||null;
-  const num = AIT_VOICES.findIndex(v=>v.id===id)+1;
-  const utt = new SpeechSynthesisUtterance(`Voice ${num}, ${voiceDef?voiceDef.label:id}. Hello, how are you doing?`);
-  utt.rate = _ait.speechRate; if(picked) utt.voice = picked;
+  const num      = AIT_VOICES.findIndex(v=>v.id===id)+1;
+  /* Always use fresh voice list */
+  const allVoices = window.speechSynthesis.getVoices();
+  const enVoices  = allVoices.filter(v=>v.lang&&v.lang.startsWith('en'));
+  /* Pick the Nth English voice (mod wrap) */
+  const picked = enVoices[(num-1) % Math.max(enVoices.length,1)] || allVoices[0] || null;
+  const voiceName = picked ? picked.name : (voiceDef ? voiceDef.label : id);
+  const utt = new SpeechSynthesisUtterance(
+    `Voice ${num}. ${voiceName}. Hello! I am your AI teacher. How are you doing today?`
+  );
+  utt.rate = _ait.speechRate;
+  if(picked) utt.voice = picked;
   window.speechSynthesis.speak(utt);
 }
 
@@ -1503,10 +1514,23 @@ function _aitPlayNextDemo(){
     r.style.borderColor='rgba(255,255,255,.08)'; r.style.background='rgba(255,255,255,.02)';
   });
   if(rowEl){ rowEl.style.borderColor='rgba(245,158,11,.5)'; rowEl.style.background='rgba(245,158,11,.06)'; }
-  aitPreviewVoice(v.id);
-  const utt = window.speechSynthesis&&window.speechSynthesis.utterances;
-  /* Advance after ~3 seconds per voice */
-  setTimeout(()=>{ _aitDemoIdx++; _aitPlayNextDemo(); }, 3200);
+
+  /* Always use fresh voice list to avoid stale refs (Chrome bug) */
+  if(!window.speechSynthesis){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 200); return; }
+  window.speechSynthesis.cancel();
+  const allVoices = window.speechSynthesis.getVoices();
+  const enVoices  = allVoices.filter(vv=>vv.lang&&vv.lang.startsWith('en'));
+  const picked    = enVoices[_aitDemoIdx % Math.max(enVoices.length,1)] || allVoices[0] || null;
+  const voiceNum  = _aitDemoIdx + 1;
+  const voiceName = picked ? picked.name : v.label;
+  const utt = new SpeechSynthesisUtterance(
+    `Voice ${voiceNum}. ${voiceName}. Hello! I am your AI teacher. How are you doing today?`
+  );
+  utt.rate = _ait.speechRate;
+  if(picked) utt.voice = picked;
+  utt.onend  = ()=>{ if(_aitDemoRunning){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
+  utt.onerror = ()=>{ if(_aitDemoRunning){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
+  window.speechSynthesis.speak(utt);
 }
 
 function aitSetSpeed(rate, el){
@@ -1789,14 +1813,18 @@ async function aitBeginTeaching(){
   const sysPrompt = `You are ${_ait.teacherName}, a brilliant, warm, and engaging ${_ait.subject} teacher at Darapet Learning System.
 The student's first name is ${_ait.studentName}${_ait.studentSurname?' and their surname is '+_ait.studentSurname:''}.
 You are conducting a ${_ait.durationMins}-minute interactive teaching session on: "${_ait.topic}".
-${isMath ? 'This is a math/science topic — always write formulas explicitly (e.g. F = ma, E = mc²), work through calculations step by step.' : ''}
 TEACHING RULES:
 - Teach like a real classroom teacher: engaging, clear, patient, and motivating.
 - Address the student by their first name naturally mid-sentence.
-- For the very FIRST teaching segment: (1) open with a "Did you know that…" fact, (2) give the clear definition, (3) explain the main types or categories, (4) give 2-3 real-world examples, (5) deliver a full easy-to-understand explanation, (6) end with ONE comprehension question and STOP — wait for the student to answer before continuing.
+- For the very FIRST teaching segment: (1) open with a "Did you know that…" fact, (2) give the clear definition, (3) explain the main types or categories, (4) give 2-3 real-world examples, (5) deliver a full easy-to-understand explanation, (6) end with ONE comprehension question and STOP — wait for the student to answer.
 - For subsequent segments: build progressively from foundation to advanced.
-- Keep segments 3-5 sentences — short enough for voice.
-- After each comprehension question, ALWAYS pause and wait for the student's response before continuing.${docCtx}`;
+- Keep each segment 3-5 sentences — short enough to be read aloud clearly.
+- After each comprehension question, ALWAYS pause and wait for the student's response.
+${isMath ? `MATH FORMAT — for every math/science response you MUST use this exact structure:
+1. First write your plain-English spoken explanation — no LaTeX, no symbols. Say "square root of x" not "√x". Say "x squared" not "x²".
+2. Then on a new line write exactly: [DISPLAY]
+3. Then write the SAME content again using proper LaTeX: use $...$ for inline math and $$...$$ for displayed equations. Show every step.
+This lets the student SEE the formulas on the Math Board while HEARING your clear explanation.` : ''}${docCtx}`;
 
   _ait.conversationHistory = [{role:'system', content:sysPrompt}];
   _ait.lastSurnameCallSecs = 0;
@@ -1844,20 +1872,52 @@ async function aitNextTeachingSegment(){
 }
 
 async function aitSendToAI(userPrompt, isInternal){
-  if(!isInternal){
-    _ait.conversationHistory.push({role:'user', content:userPrompt});
-  } else {
-    _ait.conversationHistory.push({role:'user', content:userPrompt});
-  }
+  _ait.conversationHistory.push({role:'user', content:userPrompt});
 
   const reply = await aitMistral(_ait.conversationHistory, 500);
   if(!reply) return;
   _ait.conversationHistory.push({role:'assistant', content:reply});
 
   const isMath = aitIsMathSubject(_ait.subject);
-  const contentEl = aitAddBubble(reply, isMath);
-  aitTypeText(contentEl, reply, null);
-  aitSpeak(reply, null);
+
+  /* Split on [DISPLAY] marker — spoken text before, visual LaTeX after */
+  const dispIdx = reply.indexOf('[DISPLAY]');
+  let spokenText = reply;
+  let displayText = '';
+
+  if(dispIdx !== -1){
+    spokenText  = reply.slice(0, dispIdx).trim();
+    displayText = reply.slice(dispIdx + '[DISPLAY]'.length).trim();
+  } else if(isMath && /\$\$[\s\S]+\$\$|\$[^$]+\$/.test(reply)){
+    /* Auto-detect inline LaTeX in math topics */
+    displayText = reply;
+    spokenText  = reply.replace(/\$\$[\s\S]+?\$\$/g, '(see board)').replace(/\$[^$]+?\$/g, '').trim();
+  }
+
+  /* Show Math Board if we have display content */
+  if(displayText){
+    const board = document.getElementById('ait-math-board');
+    const boardBody = document.getElementById('ait-math-board-body');
+    const boardTopic = document.getElementById('ait-math-board-topic');
+    if(board && boardBody){
+      board.style.display = '';
+      if(boardTopic) boardTopic.textContent = _ait.topic;
+      boardBody.textContent = displayText;
+      /* MathJax render */
+      if(window.MathJax) MathJax.typesetPromise([boardBody]).catch(()=>{});
+    }
+  } else {
+    /* Hide board for non-math responses */
+    const board = document.getElementById('ait-math-board');
+    if(board) board.style.display = 'none';
+  }
+
+  /* Add transcript bubble with spoken text */
+  const contentEl = aitAddBubble(spokenText || reply, isMath);
+  aitTypeText(contentEl, spokenText || reply, null);
+
+  /* Speak the plain-English portion only (not raw LaTeX) */
+  aitSpeak(spokenText || reply, null);
 }
 
 async function aitAskCheckIn(){
