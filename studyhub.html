@@ -293,6 +293,46 @@ a{text-decoration:none;color:inherit;}
 .ait-qa-input:focus{border-color:rgba(99,102,241,.4);}
 .ait-qa-send{padding:10px 14px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.85rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;}
 
+/* ══════════════════════════════
+   PROGRESS / HISTORY (localStorage)
+══════════════════════════════ */
+.ait-hist-wrap{max-width:780px;margin:0 auto;}
+.ait-hist-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.ait-hist-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.ait-hist-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
+.ait-hist-stat-val{font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+.ait-hist-stat-lbl{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.ait-hist-list{display:flex;flex-direction:column;gap:10px;}
+.ait-hist-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:flex-start;gap:14px;transition:border-color .18s;}
+.ait-hist-item:hover{border-color:rgba(99,102,241,.3);}
+.ait-hist-icon{width:42px;height:42px;border-radius:10px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.ait-hist-body{flex:1;min-width:0;}
+.ait-hist-subject{font-size:.72rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;letter-spacing:.06em;}
+.ait-hist-topic{font-size:.92rem;font-weight:800;color:var(--text);margin:2px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ait-hist-meta{display:flex;gap:8px;flex-wrap:wrap;}
+.ait-hist-tag{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:12px;}
+.ait-hist-tag-time{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#86efac;}
+.ait-hist-tag-date{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);}
+.ait-hist-tag-teacher{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);color:#c4b5fd;}
+.ait-hist-tag-doc{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;}
+.ait-hist-empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.ait-hist-empty-icon{font-size:3rem;margin-bottom:12px;}
+.ait-streak-bar{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06));border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.ait-streak-fire{font-size:2rem;}
+.ait-streak-text{flex:1;}
+.ait-streak-count{font-size:1.3rem;font-weight:900;color:var(--text);}
+.ait-streak-sub{font-size:.75rem;color:var(--muted);margin-top:2px;}
+.ait-cal-wrap{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px;}
+.ait-cal-day{width:14px;height:14px;border-radius:3px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.05);}
+.ait-cal-day.has-session{background:var(--accent);border-color:rgba(99,102,241,.5);}
+.ait-cal-day.today{outline:2px solid #fcd34d;outline-offset:1px;}
+.ait-subj-bar-wrap{margin-bottom:18px;}
+.ait-subj-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.ait-subj-name{font-size:.78rem;font-weight:700;color:var(--text);min-width:100px;}
+.ait-subj-bar-bg{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden;}
+.ait-subj-bar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .6s ease;}
+.ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
+
 /* Mobile responsive */
 @media(max-width:640px){
   .ait-ses-body{flex-direction:column;}
@@ -691,6 +731,53 @@ a{text-decoration:none;color:inherit;}
           <button class="sh-btn sh-btn-primary" style="width:100%;justify-content:center;" onclick="aitGoToSession()">Continue →</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Progress button (visible on name screen) -->
+  <div style="text-align:center;margin-top:12px;">
+    <button onclick="aitShowProgress()" style="background:none;border:none;color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:underline;">📊 View My Study Progress</button>
+  </div>
+
+  <!-- SCREEN 3: PROGRESS HISTORY -->
+  <div id="ait-screen-progress" class="ait-setup-screen">
+    <div class="ait-hist-wrap">
+      <div class="ait-hist-header">
+        <div>
+          <div class="sh-section-title" style="margin-bottom:2px;">📊 My Study Progress</div>
+          <div style="font-size:.8rem;color:var(--muted);">All sessions saved in your browser — no account needed.</div>
+        </div>
+        <button onclick="aitBackFromProgress()" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">← Back</button>
+      </div>
+
+      <!-- Streak -->
+      <div class="ait-streak-bar" id="ait-streak-bar">
+        <div class="ait-streak-fire">🔥</div>
+        <div class="ait-streak-text">
+          <div class="ait-streak-count" id="ait-streak-count">0 day streak</div>
+          <div class="ait-streak-sub" id="ait-streak-sub">Complete a session today to start your streak!</div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="ait-hist-stats" id="ait-hist-stats"></div>
+
+      <!-- 30-day activity calendar -->
+      <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Last 30 Days</div>
+      <div class="ait-cal-wrap" id="ait-cal-wrap"></div>
+
+      <!-- Subject breakdown -->
+      <div id="ait-subj-section" style="display:none;">
+        <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Time by Subject</div>
+        <div class="ait-subj-bar-wrap" id="ait-subj-bars"></div>
+      </div>
+
+      <!-- Session list -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Session History</div>
+        <button onclick="aitClearHistory()" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:4px 10px;color:#fca5a5;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;">🗑 Clear All</button>
+      </div>
+      <div class="ait-hist-list" id="ait-hist-list"></div>
     </div>
   </div>
 
@@ -1942,8 +2029,169 @@ function aitEndSession(){
   clearInterval(_ait.sessionInt);
   _ait.synth?.cancel();
   aitStopMic();
+
+  /* Calculate actual time studied */
+  const studiedSecs = _ait.totalSecs - Math.max(_ait.remainingSecs, 0);
+  const studiedMins = Math.max(1, Math.round(studiedSecs / 60));
+
+  /* Save session to localStorage */
+  aitSaveSession({
+    studentName: _ait.studentName,
+    teacherName: _ait.teacherName,
+    subject: _ait.subject,
+    topic: _ait.topic,
+    durationMins: _ait.durationMins,
+    studiedMins,
+    hadDoc: !!_ait.docText,
+    ts: Date.now()
+  });
+
   document.getElementById('ait-session-screen').classList.remove('active');
-  shToast('📚 Session ended! Great work, '+_ait.studentName+'!');
+  shToast('📚 Session saved! Great work, '+_ait.studentName+'! ('+studiedMins+' min studied)');
+}
+
+/* ══════════════════════════════
+   PROGRESS / HISTORY ENGINE
+══════════════════════════════ */
+const AIT_HISTORY_KEY = 'ait_sessions_v1';
+
+function aitLoadHistory(){
+  try{ return JSON.parse(localStorage.getItem(AIT_HISTORY_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+
+function aitSaveSession(session){
+  const hist = aitLoadHistory();
+  hist.unshift(session); /* newest first */
+  /* Keep max 200 entries to avoid storage issues (each entry ~200 bytes = ~40kb max) */
+  if(hist.length > 200) hist.splice(200);
+  localStorage.setItem(AIT_HISTORY_KEY, JSON.stringify(hist));
+}
+
+function aitClearHistory(){
+  if(!confirm('Clear all session history? This cannot be undone.')) return;
+  localStorage.removeItem(AIT_HISTORY_KEY);
+  aitRenderHistory();
+  shToast('🗑️ History cleared');
+}
+
+function aitShowProgress(){
+  document.querySelectorAll('.ait-setup-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ait-screen-progress').classList.add('active');
+  aitRenderHistory();
+}
+
+function aitBackFromProgress(){
+  document.querySelectorAll('.ait-setup-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ait-screen-name').classList.add('active');
+}
+
+function aitRenderHistory(){
+  const hist = aitLoadHistory();
+  const now = new Date();
+
+  /* ── Stats ── */
+  const totalSessions = hist.length;
+  const totalMins = hist.reduce((a,s)=>a+(s.studiedMins||s.durationMins||0), 0);
+  const subjects = [...new Set(hist.map(s=>s.subject).filter(Boolean))];
+  document.getElementById('ait-hist-stats').innerHTML = `
+    <div class="ait-hist-stat">
+      <div class="ait-hist-stat-val">${totalSessions}</div>
+      <div class="ait-hist-stat-lbl">Sessions</div>
+    </div>
+    <div class="ait-hist-stat">
+      <div class="ait-hist-stat-val">${totalMins}</div>
+      <div class="ait-hist-stat-lbl">Mins Studied</div>
+    </div>
+    <div class="ait-hist-stat">
+      <div class="ait-hist-stat-val">${subjects.length}</div>
+      <div class="ait-hist-stat-lbl">Subjects</div>
+    </div>`;
+
+  /* ── Streak ── */
+  const streak = aitCalcStreak(hist);
+  document.getElementById('ait-streak-count').textContent = streak + (streak===1?' day streak':' day streak');
+  document.getElementById('ait-streak-fire').textContent = streak>=7?'🔥':streak>=3?'⚡':'🌱';
+  document.getElementById('ait-streak-sub').textContent =
+    streak===0 ? 'Complete a session today to start your streak!' :
+    streak===1 ? 'Great start! Come back tomorrow to keep it going.' :
+    streak<7   ? `${streak} days in a row — keep it up!` :
+                 `🎉 ${streak} day streak! You're on fire!`;
+
+  /* ── 30-day calendar ── */
+  const cal = document.getElementById('ait-cal-wrap');
+  cal.innerHTML = '';
+  const daySet = new Set(hist.map(s=>new Date(s.ts).toDateString()));
+  for(let i=29; i>=0; i--){
+    const d = new Date(now); d.setDate(d.getDate()-i);
+    const div = document.createElement('div');
+    div.className = 'ait-cal-day' +
+      (daySet.has(d.toDateString()) ? ' has-session' : '') +
+      (i===0 ? ' today' : '');
+    div.title = d.toDateString() + (daySet.has(d.toDateString()) ? ' ✓' : '');
+    cal.appendChild(div);
+  }
+
+  /* ── Subject bars ── */
+  if(subjects.length){
+    document.getElementById('ait-subj-section').style.display='';
+    const subjMins = {};
+    hist.forEach(s=>{ const k=s.subject||'Unknown'; subjMins[k]=(subjMins[k]||0)+(s.studiedMins||s.durationMins||0); });
+    const maxMins = Math.max(...Object.values(subjMins));
+    document.getElementById('ait-subj-bars').innerHTML = Object.entries(subjMins)
+      .sort((a,b)=>b[1]-a[1]).slice(0,6)
+      .map(([subj,mins])=>`
+        <div class="ait-subj-row">
+          <div class="ait-subj-name">${subj.slice(0,18)}</div>
+          <div class="ait-subj-bar-bg"><div class="ait-subj-bar-fill" style="width:${Math.round(mins/maxMins*100)}%"></div></div>
+          <div class="ait-subj-mins">${mins} min</div>
+        </div>`).join('');
+  } else {
+    document.getElementById('ait-subj-section').style.display='none';
+  }
+
+  /* ── Session list ── */
+  const listEl = document.getElementById('ait-hist-list');
+  if(!hist.length){
+    listEl.innerHTML = `<div class="ait-hist-empty">
+      <div class="ait-hist-empty-icon">📚</div>
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px;">No sessions yet</div>
+      <div style="font-size:.82rem;">Complete your first AI Teacher session to see it here!</div>
+    </div>`;
+    return;
+  }
+
+  const SUBJ_ICONS = {mathematics:'📐',maths:'📐',physics:'⚛️',chemistry:'🧪',biology:'🔬',english:'📖',history:'🏛️',economics:'📈',geography:'🌍',default:'📚'};
+  function subjIcon(s){ const k=Object.keys(SUBJ_ICONS).find(k=>s?.toLowerCase().includes(k)); return SUBJ_ICONS[k]||SUBJ_ICONS.default; }
+
+  listEl.innerHTML = hist.slice(0,50).map((s,i)=>{
+    const date = new Date(s.ts);
+    const dateStr = date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+    const timeStr = date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const mins = s.studiedMins||s.durationMins||'?';
+    return `<div class="ait-hist-item">
+      <div class="ait-hist-icon">${subjIcon(s.subject)}</div>
+      <div class="ait-hist-body">
+        <div class="ait-hist-subject">${s.subject||'General'}</div>
+        <div class="ait-hist-topic" title="${s.topic||''}">${s.topic||'Untitled Session'}</div>
+        <div class="ait-hist-meta">
+          <span class="ait-hist-tag ait-hist-tag-time">⏱ ${mins} min</span>
+          <span class="ait-hist-tag ait-hist-tag-date">${dateStr} ${timeStr}</span>
+          <span class="ait-hist-tag ait-hist-tag-teacher">🤖 ${s.teacherName||'AI Teacher'}</span>
+          ${s.hadDoc?'<span class="ait-hist-tag ait-hist-tag-doc">📎 Doc</span>':''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function aitCalcStreak(hist){
+  if(!hist.length) return 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daySet = new Set(hist.map(s=>{ const d=new Date(s.ts); d.setHours(0,0,0,0); return d.getTime(); }));
+  let streak=0, cur=today.getTime();
+  while(daySet.has(cur)){ streak++; cur-=86400000; }
+  return streak;
 }
 
 function aitCleanupOnLeave(){
