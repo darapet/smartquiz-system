@@ -1,8 +1,8 @@
 {
-  "version": "1.163",
-  "versionCode": 138,
+  "version": "1.164",
+  "versionCode": 139,
   "releaseDate": "2026-06-05",
-  "notes": "Rebuild Groq AI call chain: groqFetch used everywhere (Groq rotation + Mistral fallback). Add 5 hardcoded key slots in aqs-groq-key.js. Fix Firebase key merge timing.",
+  "notes": "Fix Admin Settings key save/load: trim whitespace, merge not replace, validate gsk_ format before save.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk"
 }

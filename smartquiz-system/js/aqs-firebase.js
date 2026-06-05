@@ -2184,18 +2184,23 @@ async function actionSaveSettings(data) {
         'yahoo_client_id','yahoo_client_secret'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
-    /* If groq_keys array is provided, keep it clean */
+    /* If groq_keys array is provided, trim whitespace and validate */
     if (Array.isArray(payload.groq_keys)) {
-        payload.groq_keys = payload.groq_keys.filter(function(k) { return k && k.startsWith('gsk_'); });
+        payload.groq_keys = payload.groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.startsWith('gsk_') && k.length > 20; });
     }
     /* If mistral_keys array is provided, keep it clean (any key longer than 20 chars) */
     if (Array.isArray(payload.mistral_keys)) {
         payload.mistral_keys = payload.mistral_keys.filter(function(k) { return k && k.trim().length > 20; });
     }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately expose the updated keys to aqs-groq-key.js */
-    if (Array.isArray(payload.groq_keys)) {
-        window._AQS_GROQ_MASTER_KEYS = payload.groq_keys;
+    /* Immediately expose the updated keys — merge with hardcoded fallback keys */
+    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
+        var _hc2 = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+        var _merged2 = payload.groq_keys.slice();
+        _hc2.forEach(function(k){ if (_merged2.indexOf(k) === -1) _merged2.push(k); });
+        window._AQS_GROQ_MASTER_KEYS = _merged2;
     }
     if (Array.isArray(payload.mistral_keys)) {
         window._AQS_MISTRAL_MASTER_KEYS = payload.mistral_keys;
@@ -2463,8 +2468,10 @@ function _updateAqsGlobals(user, profile) {
         /* Support both the new groq_keys array AND the legacy single key field */
         var keys = [];
         if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-            keys = s.groq_keys.filter(function(k) { return k && k.startsWith('gsk_'); });
-        } else if (s.groq_api_key && s.groq_api_key.startsWith('gsk_')) {
+            keys = s.groq_keys
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.startsWith('gsk_') && k.length > 20; });
+        } else if (s.groq_api_key && s.groq_api_key.trim().startsWith('gsk_')) {
             keys = [s.groq_api_key];
         }
         if (keys.length) {

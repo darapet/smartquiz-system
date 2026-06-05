@@ -669,12 +669,21 @@ btn('aqs-save-ai-btn').addEventListener('click', function(){
         if (mel && mel.value.trim()) mistralKeys.push(mel.value.trim());
     }
     var mistralModelEl = document.getElementById('aqs-mistral-model');
+    /* Validate Groq keys before saving — catch whitespace/format errors early */
+    var invalidGroq = groqKeys.filter(function(k){ return k && !k.startsWith('gsk_'); });
+    if (invalidGroq.length) {
+        var st = document.getElementById('aqs-ai-status');
+        if (st) { st.style.cssText='color:#991b1b;background:#fee2e2;padding:4px 10px;border-radius:6px;'; st.textContent = '✗ Key format error — Groq keys must start with gsk_'; setTimeout(function(){st.textContent='';st.style.cssText='';},5000); }
+        return;
+    }
     saveSettings('/api/settings', {
         groq_keys: groqKeys,
         groq_model: document.getElementById('aqs-groq-model').value,
         mistral_keys: mistralKeys,
         mistral_model: mistralModelEl ? mistralModelEl.value : 'mistral-small-latest'
     }, 'aqs-ai-status', this, '💾 Save AI Settings');
+    /* Clear dot status so they retest after save */
+    for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
 /* ── AI Key Health Monitor ─────────────────────────────────────────────── */
