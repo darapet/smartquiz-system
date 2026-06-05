@@ -883,8 +883,13 @@
   function _tdMarkRL(k) { _tdGroqRL[_tdKeyHash(k)] = Date.now() + _tdGroqCooldown; }
 
   function callAI(prompt, maxTokens) {
-    var k = ['wMspDhSungnapsLU3v5hWGdyb3FY9E9AFvBBjuSI38MmrL2ow46o', 'HMrJogeB2HUp6DFxebqgWGdyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
-    var keys = k.map(function(x){ return 'gsk_' + x; });
+    var keys = [
+      '',  /* Slot 1 — paste your Groq key here (gsk_...) */
+      '',  /* Slot 2 */
+      '',  /* Slot 3 */
+      '',  /* Slot 4 */
+      ''   /* Slot 5 */
+    ].filter(function(k){ return k && k.length > 10; });
     var messages = [{ role: 'user', content: prompt }];
     var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
     var GROQ_MODEL = 'llama-3.1-8b-instant';
