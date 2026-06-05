@@ -1,8 +1,8 @@
 {
-  "version": "1.149",
-  "versionCode": 123,
+  "version": "1.150",
+  "versionCode": 124,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.149/daraquiz-v1.149.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.149/daraquiz-v1.149.apk"
+  "notes": "Fix update popup: app now correctly detects new versions.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.150/daraquiz-v1.150.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.150/daraquiz-v1.150.apk"
 }

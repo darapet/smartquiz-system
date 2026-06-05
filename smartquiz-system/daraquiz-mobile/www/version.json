@@ -1,8 +1,8 @@
 {
-  "version": "1.148",
-  "versionCode": 122,
+  "version": "1.150",
+  "versionCode": 124,
   "releaseDate": "2026-06-05",
-  "notes": "Remove voice button from Studio AI; study glowing orb → text-only; add TTS redirect page.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.148/daraquiz-v1.148.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.148/daraquiz-v1.148.apk"
+  "notes": "Fix update popup: app now correctly detects new versions.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.150/daraquiz-v1.150.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.150/daraquiz-v1.150.apk"
 }

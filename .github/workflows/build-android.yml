@@ -66,6 +66,11 @@ jobs:
       - name: Add Android platform
         run: npx cap add android
 
+      - name: Patch AQS_APP_VERSION_CODE before sync
+        run: |
+          sed -i "s/var AQS_APP_VERSION_CODE = [0-9]*/var AQS_APP_VERSION_CODE = ${{ steps.ver.outputs.new_code }}/" \
+            www/js/aqs-update-check.js
+
       - name: Sync Capacitor
         run: npx cap sync android
 
@@ -195,11 +200,6 @@ jobs:
             "${{ steps.ver.outputs.notes }}" \
             "$APK_URL" \
             "$APK_URL" > www/version.json
-
-      - name: Update AQS_APP_VERSION_CODE
-        run: |
-          sed -i "s/var AQS_APP_VERSION_CODE = [0-9]*/var AQS_APP_VERSION_CODE = ${{ steps.ver.outputs.new_code }}/" \
-            www/js/aqs-update-check.js
 
       - name: Commit and push version bumps
         run: |
