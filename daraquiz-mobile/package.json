@@ -1,6 +1,6 @@
 {
   "name": "darasmart",
-  "version": "1.126.0",
+  "version": "1.158.0",
   "description": "DaraSmart - AI-Powered Quiz & Study Platform by Darapet Technology",
   "main": "index.js",
   "scripts": {
@@ -31,7 +31,14 @@
     "@capacitor/cli": "^6.1.0",
     "@capacitor/assets": "^3.0.5"
   },
-  "keywords": ["capacitor", "android", "ios", "quiz", "firebase", "darasmart"],
+  "keywords": [
+    "capacitor",
+    "android",
+    "ios",
+    "quiz",
+    "firebase",
+    "darasmart"
+  ],
   "author": "Darapet Technology",
   "license": "MIT"
 }
