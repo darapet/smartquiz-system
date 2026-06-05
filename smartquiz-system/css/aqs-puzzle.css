@@ -123,6 +123,8 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 .pz-timer-ring-bg{stroke:rgba(255,255,255,.08)}
 .pz-timer-ring-fg{stroke:#8b5cf6;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .4s}
 .pz-timer-ring-fg.urgent{stroke:#ef4444}
+.pz-timer-ring-fg.done{stroke:#10b981;transition:stroke .3s,stroke-dashoffset .3s}
+.pz-timer-val.answered{color:#10b981;font-size:1rem}
 .pz-timer-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:#e2e8f0}
 
 /* ── QUESTION CARD (QUIZ mode) ───────────────────────── */
@@ -156,16 +158,31 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 .pz-word-feedback.correct{background:rgba(16,185,129,.15);color:#6ee7b7;display:block}
 .pz-word-feedback.wrong{background:rgba(239,68,68,.12);color:#fca5a5;display:block}
 
+/* ── WORD HUNT – Point Guess button ──────────────────── */
+.pz-point-guess-btn{background:rgba(251,191,36,.12);border:1.5px solid rgba(251,191,36,.35);color:#fbbf24;border-radius:10px;padding:8px 18px;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit}
+.pz-point-guess-btn:hover{background:rgba(251,191,36,.22);border-color:rgba(251,191,36,.6)}
+.pz-point-guess-btn:disabled{opacity:.45;cursor:not-allowed}
+
 /* ── CROSSWORD mode ──────────────────────────────────── */
-.pz-cw-clues{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+.pz-cw-grid{display:grid;gap:2px;margin:0 auto}
+.pz-cw-cell{width:34px;height:34px;position:relative;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:3px;box-sizing:border-box;display:flex;align-items:center;justify-content:center}
+.pz-cw-cell.pz-cw-blocked{background:#0f0f1a;border-color:transparent;border-radius:2px}
+.pz-cw-cell-num{position:absolute;top:2px;left:3px;font-size:.5rem;font-weight:800;color:#8b5cf6;line-height:1;pointer-events:none;z-index:1}
+.pz-cw-cell-inp{width:100%;height:100%;background:transparent;border:none;outline:none;text-align:center;font-size:.95rem;font-weight:800;color:#e2e8f0;text-transform:uppercase;font-family:inherit;cursor:text;caret-color:transparent}
+.pz-cw-cell-inp.cw-inp-correct{color:#6ee7b7;background:rgba(16,185,129,.18)}
+.pz-cw-cell-inp.cw-inp-wrong{color:#fca5a5;background:rgba(239,68,68,.18);animation:cw-shake .3s}
+.pz-cw-cell-inp.cw-active-word{background:rgba(139,92,246,.18)}
+.pz-cw-cell-inp:read-only{cursor:default}
+@keyframes cw-shake{0%,100%{transform:translateX(0)}33%{transform:translateX(-3px)}66%{transform:translateX(3px)}}
+.pz-cw-clues{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;margin-top:4px}
 @media(max-width:500px){.pz-cw-clues{grid-template-columns:1fr}}
-.pz-cw-clue-group h4{font-size:.78rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
-.pz-cw-clue-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px;padding:8px 10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);cursor:pointer;transition:all .2s}
+.pz-cw-clues h4{font-size:.78rem;font-weight:700;color:#8b5cf6;text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px}
+.pz-cw-clue-item{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;padding:7px 10px;border-radius:9px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);cursor:pointer;transition:all .2s}
 .pz-cw-clue-item.active{border-color:rgba(139,92,246,.5);background:rgba(139,92,246,.1)}
-.pz-cw-clue-item.solved{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.07)}
-.pz-cw-num{font-size:.8rem;font-weight:800;color:#8b5cf6;min-width:22px}
+.pz-cw-clue-item.solved{border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.07);opacity:.7}
+.pz-cw-num{font-size:.78rem;font-weight:800;color:#8b5cf6;min-width:20px;flex-shrink:0}
 .pz-cw-clue-item.solved .pz-cw-num{color:#10b981}
-.pz-cw-clue-text{font-size:.82rem;color:#cbd5e1;line-height:1.45}
+.pz-cw-clue-text{font-size:.8rem;color:#cbd5e1;line-height:1.45}
 .pz-cw-answer-zone{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:14px;padding:18px;margin-bottom:16px}
 .pz-cw-active-clue{font-size:.92rem;color:#a5b4fc;font-weight:600;margin-bottom:12px}
 .pz-cw-answer-row{display:flex;gap:8px}
@@ -173,13 +190,28 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 /* ── JIGSAW mode ─────────────────────────────────────── */
 .pz-jigsaw-layout{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
 @media(max-width:640px){.pz-jigsaw-layout{grid-template-columns:1fr}}
-.pz-jigsaw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;aspect-ratio:1}
-.pz-jigsaw-piece{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.08);border-radius:12px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;transition:all .4s;position:relative;overflow:hidden}
-.pz-jigsaw-piece.unlocked{border-color:rgba(139,92,246,.6);background:rgba(139,92,246,.15)}
-.pz-jigsaw-piece.unlocked::after{content:'✓';font-size:1.8rem;color:#a5b4fc}
-.pz-jigsaw-piece.locked::before{content:'🔒';font-size:1.4rem}
+.pz-jigsaw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;aspect-ratio:1;background:rgba(139,92,246,.12);border:2px solid rgba(139,92,246,.25);border-radius:6px;padding:2px}
+/* Jigsaw pieces — actual puzzle-cut shapes via clip-path */
+.pz-jigsaw-piece{aspect-ratio:1;display:flex;align-items:center;justify-content:center;transition:all .4s;position:relative;overflow:visible;background:rgba(30,28,60,.85);border:none}
+/* 9 unique puzzle piece clip-paths for a 3x3 grid (tab = bump, blank = indent) */
+.pz-jigsaw-piece:nth-child(1){clip-path:polygon(0% 0%,70% 0%,70% -8%,85% -8%,85% 0%,100% 0%,100% 70%,108% 70%,108% 85%,100% 85%,100% 100%,0% 100%)}
+.pz-jigsaw-piece:nth-child(2){clip-path:polygon(0% 0%,100% 0%,100% 70%,108% 70%,108% 85%,100% 85%,100% 100%,30% 100%,30% 108%,15% 108%,15% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%)}
+.pz-jigsaw-piece:nth-child(3){clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%)}
+.pz-jigsaw-piece:nth-child(4){clip-path:polygon(0% 0%,30% 0%,30% -8%,15% -8%,15% 0% /* notch top */,70% 0%,70% -8%,85% -8%,85% 0%,100% 0%,100% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%)}
+.pz-jigsaw-piece:nth-child(5){clip-path:polygon(0% 0%,100% 0%,100% 30%,108% 30%,108% 15%,100% 15%,100% 70%,108% 70%,108% 85%,100% 85%,100% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%,0% 30%,-8% 30%,-8% 15%,0% 15%)}
+.pz-jigsaw-piece:nth-child(6){clip-path:polygon(0% 0%,100% 0%,100% 100%,30% 100%,30% 108%,15% 108%,15% 100%,0% 100%,0% 30%,-8% 30%,-8% 15%,0% 15%)}
+.pz-jigsaw-piece:nth-child(7){clip-path:polygon(0% 0%,30% 0%,30% -8%,15% -8%,15% 0%,100% 0%,100% 100%,0% 100%)}
+.pz-jigsaw-piece:nth-child(8){clip-path:polygon(0% 0%,100% 0%,100% 100%,70% 100%,70% 108%,85% 108%,85% 100%,0% 100%,0% 15%,-8% 15%,-8% 30%,0% 30%)}
+.pz-jigsaw-piece:nth-child(9){clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%)}
+/* Piece states */
+.pz-jigsaw-piece.locked{background:rgba(15,12,40,.9)}
+.pz-jigsaw-piece.locked::before{content:'🔒';font-size:1.3rem;opacity:.6}
+.pz-jigsaw-piece.unlocked{background:linear-gradient(135deg,rgba(99,102,241,.55),rgba(139,92,246,.5));box-shadow:0 0 0 2px rgba(139,92,246,.7),inset 0 0 20px rgba(139,92,246,.2)}
+.pz-jigsaw-piece.unlocked::after{content:'✓';font-size:1.7rem;color:#c4b5fd;text-shadow:0 0 12px rgba(167,139,250,.8);font-weight:900}
 .pz-jigsaw-piece.new-unlock{animation:pz-pop .5s ease}
 @keyframes pz-pop{0%{transform:scale(.7);opacity:.5}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+/* Crossword prefilled cells */
+.pz-cw-cell-inp.cw-inp-prefilled{color:#fbbf24;background:rgba(251,191,36,.12);cursor:default;font-weight:900}
 
 /* ── QUESTION PROGRESS ───────────────────────────────── */
 .pz-q-progress{display:flex;gap:5px;margin-bottom:20px;flex-wrap:wrap}
@@ -254,6 +286,26 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 #pz-answer-overlay.show{display:flex}
 .pz-answer-overlay-inner{font-size:4rem;animation:pz-overlay-pop .6s ease forwards}
 @keyframes pz-overlay-pop{0%{transform:scale(.5);opacity:0}40%{transform:scale(1.2);opacity:1}80%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
+
+/* ── OPPONENT BAR ────────────────────────────────────── */
+.pz-opponent-bar{display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:14px 20px;margin-bottom:16px;flex-wrap:wrap}
+.pz-opp-player{display:flex;align-items:center;gap:10px}
+.pz-opp-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0;background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.pz-opp-avatar-me{background:linear-gradient(135deg,#10b981,#059669)!important;box-shadow:0 0 0 3px rgba(16,185,129,.3)}
+.pz-opp-info{display:flex;flex-direction:column}
+.pz-opp-name{font-size:.82rem;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:6px}
+.pz-opp-pts{font-size:.75rem;color:#64748b;font-weight:600;margin-top:1px;transition:color .3s}
+.pz-opp-me .pz-opp-pts{color:#10b981}
+.pz-opp-you-tag{font-size:.62rem;font-weight:800;background:rgba(16,185,129,.2);color:#6ee7b7;border:1px solid rgba(16,185,129,.35);border-radius:5px;padding:1px 5px;letter-spacing:.04em}
+.pz-vs-badge{font-size:.7rem;font-weight:900;color:#8b5cf6;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:4px 10px;letter-spacing:.1em;flex-shrink:0}
+
+/* ── NEXT QUESTION BUTTON ────────────────────────────── */
+.pz-next-btn{background:linear-gradient(135deg,#10b981,#059669)!important;box-shadow:0 4px 20px rgba(16,185,129,.35)!important;font-size:1rem;letter-spacing:.02em;animation:pz-next-pulse 2s ease-in-out infinite}
+.pz-next-btn:hover{transform:translateY(-2px)!important;box-shadow:0 8px 30px rgba(16,185,129,.45)!important}
+@keyframes pz-next-pulse{0%,100%{box-shadow:0 4px 20px rgba(16,185,129,.35)}50%{box-shadow:0 4px 28px rgba(16,185,129,.6)}}
+
+/* ── WAITING MESSAGE ─────────────────────────────────── */
+.pz-wait-msg{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:14px 20px;font-size:.88rem;font-weight:600;color:#64748b}
 
 /* ── UTILITY ─────────────────────────────────────────── */
 .pz-hide{display:none!important}

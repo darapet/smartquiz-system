@@ -168,6 +168,11 @@ window.AQS_HOME_URL='index.html';
       </div>
     </div>
   </div>
+  <div style="margin-top:14px;text-align:center;">
+    <a href="football.html" style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#15803d,#16a34a);color:#fff;text-decoration:none;border-radius:12px;padding:12px 24px;font-size:.92rem;font-weight:800;box-shadow:0 4px 16px rgba(21,128,61,.35);">
+      ⚽ Also try Football Quiz — shoot goals &amp; answer questions!
+    </a>
+  </div>
 
   <!-- SUBJECT & SETTINGS -->
   <div class="pz-card">
@@ -315,11 +320,15 @@ window.AQS_HOME_URL='index.html';
 <div id="pz-screen-game" class="pz-screen">
 <div class="pz-main">
 
+  <!-- Opponent Bar — who you're playing against -->
+  <div id="pz-opponent-bar" class="pz-opponent-bar" style="display:none;"></div>
+
   <!-- Top bar -->
-  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-    <div style="display:flex;align-items:center;gap:10px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <span class="pz-info-chip" id="pz-game-mode-lbl">⚡ Quiz Battle</span>
-      <span id="pz-q-num-label" style="font-size:.82rem;color:#64748b;font-weight:600;"></span>
+      <span id="pz-game-subject-lbl" style="font-size:.82rem;color:#94a3b8;font-weight:600;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></span>
+      <span id="pz-q-num-label" style="font-size:.78rem;color:#64748b;font-weight:600;"></span>
     </div>
     <div class="pz-timer-wrap" style="margin:0;">
       <div class="pz-timer-ring">
@@ -353,12 +362,15 @@ window.AQS_HOME_URL='index.html';
       <!-- ── WORD HUNT MODE ── -->
       <div id="pz-mode-word" style="display:none;">
         <div class="pz-q-card">
-          <div class="pz-q-num">🔤 Word Hunt — type the hidden word</div>
+          <div class="pz-q-num">🔤 Word Hunt — <span style="font-size:.8rem;color:#a5b4fc;">5 pts per correct letter</span></div>
           <div class="pz-word-clue" id="pz-word-clue">Clue goes here…</div>
           <div class="pz-blanks" id="pz-blanks"></div>
           <div class="pz-word-input-row">
             <input id="pz-word-input" class="pz-word-input" placeholder="Type your answer…" autocomplete="off" spellcheck="false">
             <button id="pz-word-send" class="pz-btn pz-btn-primary" style="padding:12px 18px;">→</button>
+          </div>
+          <div style="text-align:center;margin-top:10px;">
+            <button id="pz-word-point-guess" class="pz-point-guess-btn">💡 Point Guess <span style="font-size:.75rem;opacity:.8;">(-5 pts, reveals a letter)</span></button>
           </div>
           <div id="pz-word-feedback" class="pz-word-feedback"></div>
         </div>
@@ -366,8 +378,11 @@ window.AQS_HOME_URL='index.html';
 
       <!-- ── CROSSWORD MODE ── -->
       <div id="pz-mode-crossword" style="display:none;">
-        <div class="pz-q-card">
-          <div class="pz-q-num">📝 Crossword — select a clue and answer it</div>
+        <div class="pz-q-card" style="padding:16px;">
+          <div class="pz-q-num">📝 Crossword — <span style="font-size:.8rem;color:#a5b4fc;">5 pts per correct letter</span></div>
+          <div id="pz-cw-grid-wrap" style="overflow-x:auto;margin:14px 0;display:flex;justify-content:center;">
+            <div id="pz-cw-grid" class="pz-cw-grid"></div>
+          </div>
           <div class="pz-cw-clues">
             <div>
               <h4>ACROSS</h4>
@@ -378,7 +393,7 @@ window.AQS_HOME_URL='index.html';
               <div id="pz-cw-down"></div>
             </div>
           </div>
-          <div class="pz-cw-answer-zone">
+          <div class="pz-cw-answer-zone" id="pz-cw-answer-zone" style="display:none;">
             <div class="pz-cw-active-clue" id="pz-cw-active-clue">Select a clue above to answer it</div>
             <div class="pz-cw-answer-row">
               <input id="pz-cw-answer-inp" class="pz-input" placeholder="Type answer, press Enter…" autocomplete="off" spellcheck="false" style="text-transform:uppercase;">
@@ -409,6 +424,16 @@ window.AQS_HOME_URL='index.html';
               Complete all 9 pieces to win!
             </div>
           </div>
+        </div>
+      </div>
+
+      <!-- Post-answer zone: Next button (host) / Waiting msg (non-host) -->
+      <div id="pz-post-answer-zone" style="display:none;margin-top:14px;">
+        <button id="pz-next-btn" class="pz-btn pz-btn-primary pz-btn-full pz-next-btn" style="display:none;font-size:1rem;padding:15px;">
+          ⚡ Next Question →
+        </button>
+        <div id="pz-wait-msg" class="pz-wait-msg" style="display:none;">
+          <span class="pz-loading-spinner"></span>Waiting for host to advance…
         </div>
       </div>
 
