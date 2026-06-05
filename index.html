@@ -311,6 +311,57 @@ html,body{background:#ffffff;margin:0;padding:0}
         </div>
     </section>
 
+    <section id="aqs-app-download" style="background:#f8fafc;padding:64px 20px;">
+        <div style="max-width:680px;margin:0 auto;text-align:center;">
+            <p style="font-size:0.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6366f1;margin:0 0 10px;">Mobile App</p>
+            <h2 style="font-size:clamp(1.5rem,3vw,2rem);font-weight:800;color:#1e293b;margin:0 0 10px;letter-spacing:-.02em;">DaraQuiz AI — Android App</h2>
+            <p style="color:#64748b;font-size:0.97rem;line-height:1.7;margin:0 0 32px;">Get the full DaraQuiz AI experience on your phone. The download link below always points to the latest release — updated automatically after every build.</p>
+            <div id="aqs-dl-card" style="background:white;border:1px solid #e2e8f0;border-radius:18px;padding:28px 24px;box-shadow:0 4px 24px rgba(99,102,241,.08);display:flex;flex-direction:column;align-items:center;gap:16px;">
+                <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;">
+                    <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,#4f46e5,#7c3aed);display:flex;align-items:center;justify-content:center;font-size:1.6rem;flex-shrink:0;">📱</div>
+                    <div style="text-align:left;">
+                        <div style="font-weight:700;color:#1e293b;font-size:1rem;" id="aqs-dl-name">DaraQuiz AI</div>
+                        <div style="font-size:0.84rem;color:#64748b;margin-top:2px;">
+                            <span id="aqs-dl-ver" style="font-weight:600;color:#6366f1;">Loading…</span>
+                            &nbsp;·&nbsp;
+                            <span id="aqs-dl-date"></span>
+                        </div>
+                    </div>
+                </div>
+                <p id="aqs-dl-notes" style="font-size:0.88rem;color:#475569;background:#f1f5f9;border-radius:10px;padding:10px 14px;margin:0;line-height:1.6;width:100%;box-sizing:border-box;text-align:left;"></p>
+                <a id="aqs-dl-btn" href="#" download style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;border-radius:10px;padding:13px 28px;font-size:0.97rem;font-weight:700;text-decoration:none;box-shadow:0 4px 16px rgba(99,102,241,.35);transition:transform .15s,box-shadow .15s;pointer-events:none;opacity:.5;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <span id="aqs-dl-btn-text">Fetching latest…</span>
+                </a>
+                <p style="font-size:0.78rem;color:#94a3b8;margin:0;">Android only · Enable "Install from unknown sources" if prompted</p>
+            </div>
+        </div>
+    </section>
+    <script>
+    (function(){
+        var VERSION_URL='https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
+        fetch(VERSION_URL+'?_='+Date.now())
+            .then(function(r){return r.json();})
+            .then(function(d){
+                document.getElementById('aqs-dl-ver').textContent='v'+d.version;
+                document.getElementById('aqs-dl-date').textContent=d.releaseDate||'';
+                document.getElementById('aqs-dl-notes').textContent=d.notes||'Bug fixes and improvements.';
+                var btn=document.getElementById('aqs-dl-btn');
+                var url=d.apkUrl||d.downloadUrl||'';
+                if(url){
+                    btn.href=url;
+                    btn.style.pointerEvents='auto';
+                    btn.style.opacity='1';
+                    document.getElementById('aqs-dl-btn-text').textContent='Download APK (v'+d.version+')';
+                }
+            })
+            .catch(function(){
+                document.getElementById('aqs-dl-ver').textContent='Unavailable';
+                document.getElementById('aqs-dl-notes').textContent='Could not load version info. Please try again later.';
+            });
+    })();
+    </script>
+
     <section class="aqs-cta-bar">
         <h2>Ready to test your knowledge?</h2>
         <p>Create your first AI quiz in seconds — all powered by your local backend.</p>
