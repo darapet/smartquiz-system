@@ -1232,7 +1232,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TTS — CHUNKED PLAYBACK (Pollinations audio API)
+       TTS — CHUNKED PLAYBACK (browser speech synthesis)
     ═══════════════════════════════════════════════════════════ */
     function splitSpeechChunks(text, maxLen) {
         var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
@@ -1249,18 +1249,8 @@
         return chunks.filter(function (c) { return c.length > 0; });
     }
 
-    function fetchStudioAudioBlob(text, voices, timeout) {
-        var voice = (voices && voices[0]) || 'onyx';
-        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
-                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
-        return new Promise(function (resolve, reject) {
-            var ctrl  = new AbortController();
-            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
-            fetch(url, { signal: ctrl.signal })
-                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
-                .then(resolve)
-                .catch(function (e) { clearTimeout(timer); reject(e); });
-        });
+    function fetchStudioAudioBlob() {
+        return Promise.reject(new Error('External TTS not available'));
     }
 
     function speakWithBrowserFallback(text, onDone) {

@@ -388,6 +388,9 @@ async function handleAction(data) {
         case 'aqs_get_about_settings': return await actionGetAboutSettings();
         case 'aqs_save_about_settings':return await actionSaveAboutSettings(data);
 
+        /* ── CURRENT USER INFO ── */
+        case 'aqs_get_current_user':   return await actionGetCurrentUser();
+
         default:
             console.warn('[AQS Firebase] Unknown action:', action);
             return {};
@@ -2376,6 +2379,18 @@ async function actionChVoicePoll(data) {
         });
         return { chunks: chunks, server_time: Date.now() };
     } catch(e) { return { chunks: [] }; }
+}
+
+async function actionGetCurrentUser() {
+    var user = auth.currentUser;
+    if (!user) return { logged_in: false };
+    return {
+        logged_in:   true,
+        uid:         user.uid,
+        email:       user.email || '',
+        displayName: user.displayName || '',
+        name:        user.displayName || ''
+    };
 }
 
 export { auth, db, rtdb, requireAuth, generateToken };

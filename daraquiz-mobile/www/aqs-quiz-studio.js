@@ -102,13 +102,10 @@
          ─────────────────────────────────────────────────────────
            1. PRIMARY: Groq direct (fast, best quality) — used only
               when a Groq API key is configured in settings.
-           2. FALLBACK A: server proxy (aqs_studio_ai action).
-           3. FALLBACK B: Pollinations AI direct from browser —
-              completely free, NO API key needed. Always available.
-         Steps 2 & 3 race simultaneously so there is no wait delay.
+           2. FALLBACK: server proxy (aqs_studio_ai action).
       =========================================================== */
     var voiceKeepAlive    = null; /* interval that keeps Chrome from pausing mid-utterance */
-    var currentStudioAudio = null; /* Pollinations audio element for studio TTS */
+    var currentStudioAudio = null; /* active Audio element for studio TTS */
 
     /* ── Groq browser call — auto-retries with next key on 429 ── */
     async function callGroq(apiMessages) {
@@ -164,49 +161,13 @@
         }
     }
 
-    /* ── Pollinations direct (no key required — last resort fallback) ── */
-    async function callPollinations(apiMessages) {
-        var models = ['openai', 'mistral', 'llama'];
-        for (var mi = 0; mi < models.length; mi++) {
-            try {
-                var ctrl = new AbortController();
-                var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
-                var res  = await fetch('https://text.pollinations.ai/openai', {
-                    method:  'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    signal:  ctrl.signal,
-                    body: JSON.stringify({
-                        messages:    apiMessages,
-                        model:       models[mi],
-                        max_tokens:  1024,
-                        temperature: 0.7,
-                        private:     true
-                    })
-                });
-                clearTimeout(tid);
-                if (!res.ok) { console.warn('[daraquiz] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
-                var data = await res.json();
-                var text = (data.choices && data.choices[0] && data.choices[0].message)
-                           ? data.choices[0].message.content.trim() : '';
-                if (text) return text;
-            } catch (e) {
-                console.warn('[daraquiz] Pollinations model', models[mi], 'failed:', e.message || e);
-            }
-        }
-        return null;
-    }
-
-    /* ── AI call — sequential: Groq → Pollinations → proxy ── */
+    /* ── AI call — sequential: Groq → proxy ── */
     async function raceAI(apiMessages) {
         /* 1. Groq direct — fastest & best quality (key saved via 🔑 button) */
         var groqResult = await callGroq(apiMessages);
         if (groqResult) return groqResult;
 
-        /* 2. Pollinations direct — free, no key, works from browser immediately */
-        var pollResult = await callPollinations(apiMessages);
-        if (pollResult) return pollResult;
-
-        /* 3. Server proxy — last resort only */
+        /* 2. Server proxy — fallback */
         var proxyResult = await callViaProxy(apiMessages);
         if (proxyResult) return proxyResult;
 
@@ -1085,7 +1046,7 @@
          2. Start Listening button or auto-start
          3. User speaks; live interim transcript shown in overlay
          4. After natural pause (or 15 s max), recognition ends
-         5. Text sent to AI directly (Groq → proxy → Pollinations)
+         5. Text sent to AI directly (Groq → proxy)
          6. AI response read aloud via SpeechSynthesis
          7. Loop back to step 2 automatically
     ========================================================= */
@@ -1427,7 +1388,7 @@
             .substring(0, 1500);
     }
 
-    /* Browser TTS fallback — used only if Pollinations fails */
+    /* Browser TTS — voice synthesis for AI responses */
     function speakWithBrowserFallback(spoken, onDone) {
         if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
         window.speechSynthesis.cancel();
@@ -1477,31 +1438,9 @@
         return chunks.filter(function(c) { return c.length > 0; });
     }
 
-    /* ── Fetch one TTS chunk from Pollinations, trying voices in order ─ */
-    function fetchStudioAudioBlob(chunk, voices, timeoutMs) {
-        var voice = voices[0];
-        var rest  = voices.slice(1);
-        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
-                  '?model=openai-audio&voice=' + voice + '&nologo=true&v=' + cacheBust;
-        var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, timeoutMs || 12000);
-        return fetch(url, { signal: ctrl.signal, cache: 'no-store' })
-            .then(function(r) {
-                clearTimeout(tid);
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.blob();
-            })
-            .then(function(blob) {
-                /* Reject suspiciously tiny responses — API returned error body */
-                if (!blob || blob.size < 100) throw new Error('Empty blob');
-                return blob;
-            })
-            .catch(function(e) {
-                clearTimeout(tid);
-                if (rest.length) return fetchStudioAudioBlob(chunk, rest, timeoutMs);
-                throw e;
-            });
+    /* ── TTS: always use browser speech synthesis ── */
+    function fetchStudioAudioBlob() {
+        return Promise.reject(new Error('External TTS not available'));
     }
 
     function speakVoiceResponse(text, onDone) {
@@ -1545,8 +1484,7 @@
 
             var chunk = chunks[idx++];
 
-            /* Try onyx first (most reliable male voice on Pollinations),
-               then echo, then shimmer — ensures audio always plays      */
+            /* Try audio blob with fallback voices */
             fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 12000)
                 .then(function(blob) {
                     if (!voiceAiTalking) { finish(); return; }
@@ -1598,7 +1536,7 @@
                 })
                 .catch(function() {
                     if (!voiceAiTalking) { finish(); return; }
-                    /* All Pollinations voices failed — browser TTS for rest */
+                    /* Audio unavailable — browser TTS for rest */
                     fallbackRemaining();
                 });
         }

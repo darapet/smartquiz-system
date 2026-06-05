@@ -1,8 +1,8 @@
 {
-  "version": "1.136",
-  "versionCode": 120,
-  "releaseDate": "2026-06-04",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.136/daraquiz-v1.136.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.136/daraquiz-v1.136.apk"
+  "version": "1.147",
+  "versionCode": 121,
+  "releaseDate": "2026-06-05",
+  "notes": "Remove Pollinations from Studio AI; fix admin sidebar user display.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.147/daraquiz-v1.147.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.147/daraquiz-v1.147.apk"
 }
