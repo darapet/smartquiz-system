@@ -123,6 +123,8 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 .pz-timer-ring-bg{stroke:rgba(255,255,255,.08)}
 .pz-timer-ring-fg{stroke:#8b5cf6;stroke-linecap:round;transition:stroke-dashoffset .9s linear,stroke .4s}
 .pz-timer-ring-fg.urgent{stroke:#ef4444}
+.pz-timer-ring-fg.done{stroke:#10b981;transition:stroke .3s,stroke-dashoffset .3s}
+.pz-timer-val.answered{color:#10b981;font-size:1rem}
 .pz-timer-val{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:#e2e8f0}
 
 /* ── QUESTION CARD (QUIZ mode) ───────────────────────── */

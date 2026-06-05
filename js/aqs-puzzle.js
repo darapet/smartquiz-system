@@ -483,8 +483,21 @@ function updateTimer(t){
     var pct = Math.max(0, used/max);
     var fg = $('pz-timer-fg');
     if(fg){
+        fg.classList.remove('done');
         fg.style.strokeDashoffset = C - pct*C;
         if(t <= 5) fg.classList.add('urgent'); else fg.classList.remove('urgent');
+    }
+}
+
+function stopTimerNow(){
+    /* Stop countdown and visually show "done" state immediately */
+    if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+    var val = $('pz-timer-val'); if(val) val.textContent = '✓';
+    var fg = $('pz-timer-fg');
+    if(fg){
+        fg.classList.remove('urgent');
+        fg.classList.add('done');
+        fg.style.strokeDashoffset = '0'; /* full ring = "complete" */
     }
 }
 
@@ -596,8 +609,8 @@ function renderQuizQ(q){
                 if(ex){ ex.textContent = '💡 ' + q.explanation; ex.style.display = ''; }
             }
 
-            /* Stop the countdown — player already answered */
-            if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+            /* Immediately stop countdown — answer already checked */
+            stopTimerNow();
 
             /* Show Next Question button (host) or Waiting message (non-host) */
             showPostAnswerUI();
@@ -668,7 +681,7 @@ function renderWordQ(q){
             fb.className = 'pz-word-feedback correct';
             revealAllBlanks(word);
             showAnswerOverlay('✅');
-            if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+            stopTimerNow();
             showPostAnswerUI();
         } else {
             fb.textContent = '❌ Not quite — try again!';
@@ -840,7 +853,7 @@ function renderJigsawQ(q){
             renderJigsawGrid(G.myPos);
             showAnswerOverlay('🧩');
             updateMyScore();
-            if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+            stopTimerNow();
             showPostAnswerUI();
         } else {
             if(fb){ fb.textContent='❌ Not quite! Try again'; fb.className='pz-word-feedback wrong'; }
