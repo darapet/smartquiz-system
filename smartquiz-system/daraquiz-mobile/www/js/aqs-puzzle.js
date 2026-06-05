@@ -366,7 +366,7 @@ async function generateQuestions(){
 
     var prompt = prompts[G.mode] || prompts.quiz;
 
-    var res  = await window.groqFetch({ model: 'llama-3.3-70b-versatile', messages:[
+    var res  = await window.groqFetch({ messages:[
         {role:'system',content:'You are a quiz question generator. Output ONLY valid JSON arrays, no markdown, no explanation.'},
         {role:'user',  content: prompt}
     ], max_tokens: 3000, temperature: 0.7 });
@@ -414,7 +414,10 @@ function enterGame(room){
     showModeIntro();
     renderScoreboard();
     renderQProgress();
+    renderOpponentBar();
+    setupNextBtn();
     $('pz-game-mode-lbl') && ($('pz-game-mode-lbl').textContent = modeLabel(G.mode));
+    $('pz-game-subject-lbl') && ($('pz-game-subject-lbl').textContent = G.subject);
 
     /* Listen for question changes (host advances) */
     addListener('room_game', 'puzzle_rooms/'+G.roomCode, function(snap){
@@ -443,6 +446,7 @@ function enterGame(room){
 
 function renderQuestion(){
     if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+    hidePostAnswerUI();
     var q = G.questions[G.currentQ];
     if(!q){ return; }
 
@@ -479,24 +483,53 @@ function updateTimer(t){
     var pct = Math.max(0, used/max);
     var fg = $('pz-timer-fg');
     if(fg){
+        fg.classList.remove('done');
         fg.style.strokeDashoffset = C - pct*C;
         if(t <= 5) fg.classList.add('urgent'); else fg.classList.remove('urgent');
     }
 }
 
-function onTimerEnd(){
-    /* Show correct answer briefly, then advance if host */
-    revealAnswer();
-    if(G.isHost){
-        setTimeout(function(){
-            if(G.mode === 'crossword'){
-                /* Crossword has one timer for the whole puzzle - end the game */
-                update(rtRef('puzzle_rooms/'+G.roomCode), { status: 'results' }).catch(function(){});
-            } else {
-                advanceQuestion();
-            }
-        }, 2500);
+function stopTimerNow(){
+    /* Stop countdown and visually show "done" state immediately */
+    if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+    var val = $('pz-timer-val'); if(val) val.textContent = '✓';
+    var fg = $('pz-timer-fg');
+    if(fg){
+        fg.classList.remove('urgent');
+        fg.classList.add('done');
+        fg.style.strokeDashoffset = '0'; /* full ring = "complete" */
     }
+}
+
+function onTimerEnd(){
+    /* Reveal correct answer, then show Next button (host) or waiting msg (non-host) */
+    revealAnswer();
+    if(G.mode === 'crossword' && G.isHost){
+        /* Crossword uses one timer for the whole puzzle — end game */
+        update(rtRef('puzzle_rooms/'+G.roomCode), { status: 'results' }).catch(function(){});
+    } else {
+        showPostAnswerUI();
+    }
+}
+
+/* ─── POST-ANSWER UI ─────────────────────────────────── */
+function showPostAnswerUI(){
+    var nextBtn = $('pz-next-btn');
+    var waitMsg = $('pz-wait-msg');
+    var nextZone = $('pz-post-answer-zone');
+    if(nextZone) nextZone.style.display = '';
+    if(G.isHost){
+        if(nextBtn) nextBtn.style.display = '';
+        if(waitMsg) waitMsg.style.display = 'none';
+    } else {
+        if(nextBtn) nextBtn.style.display = 'none';
+        if(waitMsg) waitMsg.style.display = '';
+    }
+}
+
+function hidePostAnswerUI(){
+    var nextZone = $('pz-post-answer-zone');
+    if(nextZone) nextZone.style.display = 'none';
 }
 
 function revealAnswer(){
@@ -576,15 +609,11 @@ function renderQuizQ(q){
                 if(ex){ ex.textContent = '💡 ' + q.explanation; ex.style.display = ''; }
             }
 
-            /* Stop the countdown — player already answered */
-            if(G.qTimerInterval){ clearInterval(G.qTimerInterval); G.qTimerInterval = null; }
+            /* Immediately stop countdown — answer already checked */
+            stopTimerNow();
 
-            /* Host: advance to next question after 2 s so everyone can read the explanation */
-            if(G.isHost){
-                setTimeout(function(){
-                    if(G.myAnswers[G.currentQ] !== undefined) advanceQuestion();
-                }, 2000);
-            }
+            /* Show Next Question button (host) or Waiting message (non-host) */
+            showPostAnswerUI();
         });
     });
 }
@@ -652,6 +681,8 @@ function renderWordQ(q){
             fb.className = 'pz-word-feedback correct';
             revealAllBlanks(word);
             showAnswerOverlay('✅');
+            stopTimerNow();
+            showPostAnswerUI();
         } else {
             fb.textContent = '❌ Not quite — try again!';
             fb.className = 'pz-word-feedback wrong';
@@ -768,7 +799,7 @@ function renderCrosswordQ(){
             /* Check if all solved */
             if(Object.keys(G.cwSolved).length >= G.questions.length){
                 toast('🎉 You solved the crossword!');
-                if(G.isHost) setTimeout(advanceQuestion, 2000);
+                showPostAnswerUI();
             }
         } else {
             toast('❌ Wrong! Try another clue');
@@ -822,6 +853,8 @@ function renderJigsawQ(q){
             renderJigsawGrid(G.myPos);
             showAnswerOverlay('🧩');
             updateMyScore();
+            stopTimerNow();
+            showPostAnswerUI();
         } else {
             if(fb){ fb.textContent='❌ Not quite! Try again'; fb.className='pz-word-feedback wrong'; }
             inp.value='';
@@ -928,6 +961,72 @@ async function advanceQuestion(){
 }
 
 /* ══════════════════════════════════════════════════════════
+   OPPONENT BAR + NEXT BUTTON
+══════════════════════════════════════════════════════════ */
+function renderOpponentBar(){
+    var bar = $('pz-opponent-bar');
+    if(!bar) return;
+    var players = Object.values(G.players);
+    var me = G.players[G.myPos] || { name: G.myName };
+    var opponents = players.filter(function(p){ return p.pos !== G.myPos; });
+
+    if(!opponents.length){
+        bar.style.display = 'none';
+        return;
+    }
+    bar.style.display = '';
+
+    var opponentHtml = opponents.map(function(p){
+        return '<div class="pz-opp-player">' +
+               '<div class="pz-opp-avatar" style="background:linear-gradient(135deg,#ef4444,#dc2626);">'+avatar(p.name)+'</div>' +
+               '<div class="pz-opp-info">' +
+                   '<div class="pz-opp-name">'+esc(p.name)+'</div>' +
+                   '<div class="pz-opp-pts" id="pz-opp-pts-'+p.pos+'">'+((p.score||0))+' pts</div>' +
+               '</div>' +
+               '</div>';
+    }).join('<div class="pz-vs-badge">VS</div>');
+
+    bar.innerHTML =
+        '<div class="pz-opp-player pz-opp-me">' +
+            '<div class="pz-opp-avatar pz-opp-avatar-me">'+avatar(me.name)+'</div>' +
+            '<div class="pz-opp-info">' +
+                '<div class="pz-opp-name">'+esc(me.name)+' <span class="pz-opp-you-tag">YOU</span></div>' +
+                '<div class="pz-opp-pts" id="pz-opp-pts-me">'+(me.score||G.myScore)+' pts</div>' +
+            '</div>' +
+        '</div>' +
+        '<div class="pz-vs-badge">VS</div>' +
+        opponentHtml;
+}
+
+function updateOpponentBar(){
+    /* Lightweight score refresh — called from renderScoreboard */
+    var me = G.players[G.myPos];
+    var myEl = $('pz-opp-pts-me');
+    if(myEl) myEl.textContent = G.myScore + ' pts';
+    Object.values(G.players).forEach(function(p){
+        if(p.pos === G.myPos) return;
+        var el = $('pz-opp-pts-' + p.pos);
+        if(el) el.textContent = (p.score||0) + ' pts';
+    });
+}
+
+function setupNextBtn(){
+    var btn = $('pz-next-btn');
+    if(!btn) return;
+    var newBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', function(){
+        if(!G.isHost) return;
+        hidePostAnswerUI();
+        if(G.mode === 'crossword'){
+            update(rtRef('puzzle_rooms/'+G.roomCode), { status: 'results' }).catch(function(){});
+        } else {
+            advanceQuestion();
+        }
+    });
+}
+
+/* ══════════════════════════════════════════════════════════
    SCOREBOARD
 ══════════════════════════════════════════════════════════ */
 function renderScoreboard(){
@@ -944,6 +1043,7 @@ function renderScoreboard(){
             '<div class="pz-score-pts">'+(p.score||0)+'</div>' +
             '</div>';
     }).join('');
+    updateOpponentBar();
 }
 
 function renderQProgress(){

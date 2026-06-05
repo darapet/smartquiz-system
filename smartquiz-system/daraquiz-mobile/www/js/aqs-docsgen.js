@@ -313,9 +313,9 @@
         .catch(function (e) { clearTimeout(tid); throw e; });
     }
 
-    /* Groq direct — auto-retries with next key on 429 */
+    /* Mistral primary — auto-retries with next key on 429 */
     function callGroq(messages) {
-        if (typeof window.groqFetch !== 'function') return Promise.reject(new Error('no groq'));
+        if (typeof window.groqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
         var ctrl = new AbortController();
         var tid  = setTimeout(function () { ctrl.abort(); }, 25000);
         return window.groqFetch(
@@ -333,7 +333,7 @@
 
     /* Sequential: Groq first → Pollinations direct → proxy last resort */
     async function raceAI(messages) {
-        /* 1. Groq direct — fastest & best quality (groqFetch handles key rotation) */
+        /* 1. Mistral primary — fastest & best quality (groqFetch handles key rotation) */
         try {
             if (typeof window.groqFetch === 'function') {
                 var gt = await callGroq(messages);

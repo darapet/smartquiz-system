@@ -1984,7 +1984,7 @@
       'deepseek','command-r'
   ];
   function chCallGroqDirect(prompt){
-      if(typeof window.groqFetch !== 'function') return Promise.reject(new Error('No Groq key'));
+      if(typeof window.groqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
       return window.groqFetch({
           model:'llama-3.1-8b-instant',
           messages:[
@@ -2005,7 +2005,7 @@
 
   function chCallAI(prompt){
       /* Generation order:
-         1. Groq direct — fastest, best quality (groqFetch handles key rotation)
+         1. Mistral primary — fastest quality (groqFetch handles key rotation)
          2. Pollinations direct — free, no key needed, always available
          3. Server AJAX — last resort, only when proxy URL is configured       */
       var step1 = typeof window.groqFetch === 'function'

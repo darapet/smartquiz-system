@@ -785,12 +785,13 @@ async function aiChat(messages, temp) {
 }
 
 async function aiChatVision(messages, temp) {
-    var r = await fetch('https://text.pollinations.ai/openai', {
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({model:'openai', messages:messages, temperature:temp||0.7, max_tokens:2000}),
-        signal:AbortSignal.timeout(60000)
-    });
+    /* Use groqFetch (Mistral) — Mistral large models support vision via pixtral.
+       Falls back gracefully if no key configured. */
+    if (typeof window.groqFetch !== 'function') throw new Error('AI not ready — no keys configured.');
+    var r = await window.groqFetch(
+        { messages: messages, temperature: temp || 0.7, max_tokens: 2000 },
+        { signal: AbortSignal.timeout ? AbortSignal.timeout(60000) : undefined }
+    );
     if (!r.ok) throw new Error('Vision AI error ' + r.status);
     var d = await r.json();
     if (!d.choices || !d.choices[0]) throw new Error('No vision response');
@@ -801,14 +802,17 @@ async function aiChatVision(messages, temp) {
 function checkAI() {
     var badge = document.querySelector('.std-groq-badge');
     if (!badge) return;
-    var hasKey = typeof window.getGroqKey === 'function' ? !!window.getGroqKey() : false;
+    /* Check for Mistral keys (now primary AI — Groq removed) */
+    var mistralCount = typeof window._aqsMistralKeyCount === 'function' ? window._aqsMistralKeyCount() : 0;
+    var hasKey = mistralCount > 0 ||
+        (Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) && window._AQS_MISTRAL_MASTER_KEYS.length > 0);
     if (hasKey) {
         badge.className = 'std-groq-badge ok';
-        badge.textContent = '✓ Groq AI Ready';
+        badge.textContent = '✓ Mistral AI Ready';
         S.aiReady = true;
     } else {
         badge.className = 'std-groq-badge warn';
-        badge.textContent = '⚠ Using free AI (no Groq key)';
+        badge.textContent = '⚠ No AI key — add Mistral keys in Admin Settings';
         S.aiReady = false;
         /* Re-check after 3 s — key may still be loading from Firebase */
         setTimeout(checkAI, 3000);
@@ -1268,7 +1272,7 @@ async function summonStreamResponse(messages) {
     summonStopListening();
 
     if (typeof window.groqFetch !== 'function') {
-        summonSetAiText('⚠️ No AI key configured. Add a Groq key in Admin Settings.');
+        summonSetAiText('⚠️ No AI key configured. Add Mistral keys in Admin Settings.');
         summonSetState('listening'); summonStartListening();
         return;
     }

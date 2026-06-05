@@ -1912,7 +1912,21 @@
       var name=file.name.toLowerCase();
       if(name.endsWith('.pdf')) return chExtractPDF(file);
       if(name.endsWith('.docx')||name.endsWith('.doc')) return chExtractDocx(file);
-      return Promise.reject(new Error('Unsupported file type. Use PDF or DOCX.'));
+      /* Plain text files — read directly */
+      if(name.endsWith('.txt')||name.endsWith('.md')||name.endsWith('.csv')||
+         name.endsWith('.json')||name.endsWith('.xml')){
+          return new Promise(function(resolve,reject){
+              var reader=new FileReader();
+              reader.onload=function(e){
+                  var text=e.target.result;
+                  if(!text||!text.trim()) reject(new Error('File appears to be empty.'));
+                  else resolve(text);
+              };
+              reader.onerror=function(){ reject(new Error('Could not read file.')); };
+              reader.readAsText(file);
+          });
+      }
+      return Promise.reject(new Error('Unsupported file type. Use PDF, DOCX, or TXT.'));
   }
   function chExtractPDF(file){
       return new Promise(function(resolve,reject){
@@ -1970,7 +1984,7 @@
       'deepseek','command-r'
   ];
   function chCallGroqDirect(prompt){
-      if(typeof window.groqFetch !== 'function') return Promise.reject(new Error('No Groq key'));
+      if(typeof window.groqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
       return window.groqFetch({
           model:'llama-3.1-8b-instant',
           messages:[
@@ -1991,7 +2005,7 @@
 
   function chCallAI(prompt){
       /* Generation order:
-         1. Groq direct — fastest, best quality (groqFetch handles key rotation)
+         1. Mistral primary — fastest quality (groqFetch handles key rotation)
          2. Pollinations direct — free, no key needed, always available
          3. Server AJAX — last resort, only when proxy URL is configured       */
       var step1 = typeof window.groqFetch === 'function'

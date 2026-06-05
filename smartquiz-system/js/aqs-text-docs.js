@@ -881,27 +881,22 @@
     var keys = k.map(function(x){ return 'gsk_' + x; });
     var messages = [{ role: 'user', content: prompt }];
     wpSetAIStatus('working', 'AI is working…');
-    function tryKey(idx) {
-      if (idx >= keys.length) {
-        wpSetAIStatus('busy', 'AI is busy — wait and try again');
-        return Promise.reject(new Error('AI is busy right now — wait a moment and try again.'));
-      }
-      return fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys[idx] },
-        body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 })
-      }).then(function(r) {
-        if (r.status === 429) return tryKey(idx + 1);
-        if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
-        return r.json().then(function(d) {
-          var t = (((d.choices || [])[0] || {}).message || {}).content || '';
-          if (!t.trim()) { wpSetAIStatus('error', 'Empty response'); throw new Error('AI returned empty response.'); }
-          wpSetAIStatus('ready', 'AI Ready');
-          return t.trim();
-        });
-      });
+    /* Route through groqFetch (now Mistral-primary with key rotation) */
+    if (typeof window.groqFetch !== 'function') {
+      wpSetAIStatus('error', 'AI not ready');
+      return Promise.reject(new Error('AI not ready — no keys configured.'));
     }
-    return tryKey(0);
+    return window.groqFetch(
+      { messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 }
+    ).then(function(r) {
+      if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
+      return r.json();
+    }).then(function(d) {
+      var t = (((d.choices || [])[0] || {}).message || {}).content || '';
+      if (!t.trim()) { wpSetAIStatus('error', 'Empty response'); throw new Error('AI returned empty response.'); }
+      wpSetAIStatus('ready', 'AI Ready');
+      return t.trim();
+    });
   }
 
   function wpSetAIStatus(state, msg) {

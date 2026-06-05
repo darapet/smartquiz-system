@@ -366,7 +366,7 @@ async function generateQuestions(){
 
     var prompt = prompts[G.mode] || prompts.quiz;
 
-    var res  = await window.groqFetch({ model: 'llama-3.3-70b-versatile', messages:[
+    var res  = await window.groqFetch({ messages:[
         {role:'system',content:'You are a quiz question generator. Output ONLY valid JSON arrays, no markdown, no explanation.'},
         {role:'user',  content: prompt}
     ], max_tokens: 3000, temperature: 0.7 });
