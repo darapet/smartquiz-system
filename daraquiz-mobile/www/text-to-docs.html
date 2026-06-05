@@ -277,7 +277,7 @@
   <div class="wp-ribbon-panel" id="wp-rpanel-insert">
     <div class="wp-tg">
       <div class="wp-dropdown" id="wp-tbl-dd">
-        <button class="tb" onclick="wpToggleDropdown('wp-tbl-dd')" title="Insert table">
+        <button class="tb" onclick="wpOpenTablePicker()" title="Insert table">
           <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
           Table
           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
@@ -881,6 +881,53 @@ window.wpSidebarTab = function(tabName) {
   if (t) t.classList.add('active');
   if (p) p.classList.add('active');
 };
+
+/* Ribbon tab switcher */
+window.wpRibbonTab = function(tab) {
+  ['home','insert','layout','ai','review'].forEach(function(t) {
+    var btn = document.getElementById('wp-rtab-'+t);
+    var pan = document.getElementById('wp-rpanel-'+t);
+    if (btn) btn.classList.toggle('active', t===tab);
+    if (pan) pan.classList.toggle('active', t===tab);
+  });
+};
+
+/* Dropdown menus */
+window.wpToggleDropdown = function(id) {
+  var menu = document.getElementById(id+'-menu'); if (!menu) return;
+  var isOpen = menu.classList.contains('open');
+  document.querySelectorAll('.wp-dropdown-menu.open,.wp-tbl-picker.open').forEach(function(m){m.classList.remove('open');});
+  if (!isOpen) {
+    menu.classList.add('open');
+    setTimeout(function(){
+      document.addEventListener('click', function h(e) {
+        var dd = document.getElementById(id);
+        if (dd && !dd.contains(e.target)) { menu.classList.remove('open'); document.removeEventListener('click', h); }
+      });
+    }, 0);
+  }
+};
+
+/* Table picker (uses its own id 'wp-tbl-picker' not 'wp-tbl-dd-menu') */
+window.wpOpenTablePicker = function() {
+  var picker = document.getElementById('wp-tbl-picker');
+  if (!picker) return;
+  var isOpen = picker.classList.contains('open');
+  document.querySelectorAll('.wp-dropdown-menu.open,.wp-tbl-picker.open').forEach(function(m){m.classList.remove('open');});
+  if (!isOpen) {
+    picker.classList.add('open');
+    setTimeout(function(){
+      document.addEventListener('click', function h(e) {
+        var dd = document.getElementById('wp-tbl-dd');
+        if (dd && !dd.contains(e.target)) { picker.classList.remove('open'); document.removeEventListener('click', h); }
+      });
+    }, 0);
+  }
+};
+
+/* Modals */
+window.wpHideModal = function(id) { var el=document.getElementById(id); if(el) el.classList.add('hidden'); };
+window.wpShowModal = function(id) { var el=document.getElementById(id); if(el) el.classList.remove('hidden'); };
 
 /* FAB hide when sidebar open */
 document.addEventListener('DOMContentLoaded', function() {
