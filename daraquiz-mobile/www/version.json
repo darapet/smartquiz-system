@@ -1,8 +1,8 @@
 {
-  "version": "1.158",
-  "versionCode": 133,
+  "version": "1.159",
+  "versionCode": 134,
   "releaseDate": "2026-06-05",
-  "notes": "Text to Docs v3.1 upgrade: synced with web, 30+ fonts, AI Write/Format/Web Research, Charts, Find & Replace, Templates, Android-optimized bottom nav, bigger touch targets, bottom sheet sidebar.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.158/daraquiz-v1.158.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.158/daraquiz-v1.158.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.159/daraquiz-v1.159.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.159/daraquiz-v1.159.apk"
 }
