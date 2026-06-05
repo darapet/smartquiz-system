@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0a0b14">
 <title>📚 AI Study Hub — xzily AI</title>
-<!-- App Version: 2.7.0 -->
+<!-- App Version: 2.8.0 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- MathJax for math rendering -->
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
@@ -397,7 +397,7 @@ a{text-decoration:none;color:inherit;}
 <header class="sh-hdr">
   <div style="display:flex;align-items:baseline;gap:4px;">
     <div class="sh-logo">📚 AI Study Hub</div>
-    <span class="sh-logo-ver">v2.7.0</span>
+    <span class="sh-logo-ver">v2.8.0</span>
   </div>
   <a href="index.html" class="sh-back">🏠 Back to Home</a>
 </header>
@@ -1813,13 +1813,33 @@ function aitFmtTime(sec){
   return m+':'+s;
 }
 
+/* ─ Strip markdown/symbols so TTS speaks clean natural language ─ */
+function aitCleanForSpeech(text){
+  return text
+    .replace(/\[DISPLAY\][\s\S]*/i, '')   /* remove math display block */
+    .replace(/\*\*(.+?)\*\*/g, '$1')       /* **bold** → bold */
+    .replace(/\*(.+?)\*/g, '$1')           /* *italic* → italic */
+    .replace(/__(.+?)__/g, '$1')           /* __bold__ → bold */
+    .replace(/_(.+?)_/g, '$1')             /* _italic_ → italic */
+    .replace(/^#{1,6}\s+/gm, '')           /* # headings → plain */
+    .replace(/`{1,3}([^`]+)`{1,3}/g, '$1')/* `code` → code */
+    .replace(/\[(.+?)\]\(.+?\)/g, '$1')    /* [text](url) → text */
+    .replace(/^[-*+]\s+/gm, '')            /* - bullet → plain */
+    .replace(/^\d+\.\s+/gm, '')            /* 1. list → plain */
+    .replace(/^>\s+/gm, '')                /* > blockquote → plain */
+    .replace(/\n{2,}/g, '. ')              /* paragraph breaks → pause */
+    .replace(/\n/g, ' ')                   /* line breaks → space */
+    .replace(/\s{2,}/g, ' ')               /* collapse spaces */
+    .trim();
+}
+
 /* ─ AI Speaking ─ */
 function aitSpeak(text, onEnd){
   if(!_ait.synth){ if(onEnd) onEnd(); return; }
 
   _ait.synth.cancel();
 
-  const utt = new SpeechSynthesisUtterance(text);
+  const utt = new SpeechSynthesisUtterance(aitCleanForSpeech(text));
   utt.rate = _ait.speechRate;
 
   /* Smart voice picker — prefers neural/online voices */
@@ -1872,18 +1892,22 @@ function aitTypeText(el, text, onDone){
     else if(onDone) onDone();
     return;
   }
-  /* Typing animation */
+  /* Typing animation — animate stripped plain text, then render as HTML */
+  const cleanText = aitCleanForSpeech(text);
   let i=0;
   const cursor = document.createElement('span');
   cursor.className='ait-typing-cursor';
   el.appendChild(cursor);
   const interval = setInterval(()=>{
-    if(i<text.length){
-      cursor.before(text[i]); i++;
+    if(i<cleanText.length){
+      cursor.before(cleanText[i]); i++;
       el.closest('.ait-transcript-wrap').scrollTop = el.closest('.ait-transcript-wrap').scrollHeight;
     } else {
       clearInterval(interval);
       cursor.remove();
+      /* Replace plain text with properly formatted markdown HTML */
+      el.innerHTML = shMarkdown(text);
+      el.closest('.ait-transcript-wrap').scrollTop = el.closest('.ait-transcript-wrap').scrollHeight;
       if(onDone) onDone();
     }
   }, 18);
@@ -2208,7 +2232,7 @@ async function aitSendQA(){
 
   if(!reply) return;
   _ait.conversationHistory.push({role:'assistant', content:reply});
-  msgs.innerHTML += `<div class="ait-qa-msg ai"><strong>${_ait.teacherName}:</strong> ${reply}</div>`;
+  msgs.innerHTML += `<div class="ait-qa-msg ai"><strong>${_ait.teacherName}:</strong> ${shMarkdown(reply)}</div>`;
   msgs.scrollTop = msgs.scrollHeight;
   aitSpeak(reply, null);
 }
