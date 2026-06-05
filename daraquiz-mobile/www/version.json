@@ -1,8 +1,8 @@
 {
-  "version": "1.181",
-  "versionCode": 156,
+  "version": "1.182",
+  "versionCode": 157,
   "releaseDate": "2026-06-05",
-  "notes": "Math Board panel with rendered LaTeX, voice demo speaks real voice names+numbers via onend callbacks, name confirmation, sysPrompt [DISPLAY] convention for studyhub math.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.181/daraquiz-v1.181.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.181/daraquiz-v1.181.apk"
+  "notes": "Speech-driven teaching engine: AI speaks then waits for student (auto-listen), no more AI self-answering, two typing spaces fixed, mic disabled while AI talks, Continue Teaching button, voice demo skip fixed with version counter.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.182/daraquiz-v1.182.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.182/daraquiz-v1.182.apk"
 }

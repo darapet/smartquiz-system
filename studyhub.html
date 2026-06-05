@@ -270,6 +270,8 @@ a{text-decoration:none;color:inherit;}
 @keyframes ait-mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
 .ait-ctrl-btn-end{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
 .ait-ctrl-btn-ask{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;width:100%;}
+.ait-ctrl-btn-continue{background:rgba(20,184,166,.18);border:1.5px solid rgba(20,184,166,.45);color:#5eead4;width:100%;font-weight:800;animation:ait-cont-pulse 1.4s ease-in-out infinite;}
+@keyframes ait-cont-pulse{0%,100%{box-shadow:0 0 0 0 rgba(20,184,166,.0)}50%{box-shadow:0 0 10px 3px rgba(20,184,166,.4)}}
 .ait-voice-notice{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:10px 12px;font-size:.72rem;color:#94a3b8;line-height:1.6;text-align:center;}
 .ait-type-answer-wrap{display:none;padding:0 12px 10px;}
 .ait-type-answer-wrap.show{display:block;}
@@ -930,6 +932,9 @@ a{text-decoration:none;color:inherit;}
           <button class="ait-ctrl-btn ait-ctrl-btn-pause" id="ait-pause-btn" onclick="aitTogglePause()">⏸ Pause AI</button>
           <button class="ait-ctrl-btn ait-ctrl-btn-mic" id="ait-mic-btn" onclick="aitToggleMic()">🎤 My Turn</button>
         </div>
+        <div class="ait-ctrl-row" id="ait-continue-row" style="display:none;">
+          <button class="ait-ctrl-btn ait-ctrl-btn-continue" id="ait-continue-btn" onclick="aitContinueTeaching()">▶ Continue Teaching</button>
+        </div>
         <div class="ait-ctrl-row">
           <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()">💬 I Have a Question</button>
         </div>
@@ -1452,7 +1457,10 @@ let _ait = {
   teachingStepIdx:0,
   questionSchedule:[],
   warnedFiveMin:false,
-  lastSurnameCallSecs:0, /* track when surname was last used (in elapsed seconds) */
+  lastSurnameCallSecs:0,
+  autoListen:false,      /* true = auto-start mic when speech ends */
+  _listenTimeout:null,   /* timeout id for auto-listen watchdog */
+  _pendingSurnameCall:false,
 };
 
 /* ─ Setup screens ─ */
@@ -1499,7 +1507,7 @@ function aitPreviewVoice(id){
   window.speechSynthesis.speak(utt);
 }
 
-let _aitDemoIdx = 0, _aitDemoRunning = false;
+let _aitDemoIdx = 0, _aitDemoRunning = false, _aitDemoVer = 0;
 function aitDemoAllVoices(){
   if(_aitDemoRunning){ window.speechSynthesis&&window.speechSynthesis.cancel(); _aitDemoRunning=false; return; }
   _aitDemoRunning = true; _aitDemoIdx = 0;
@@ -1515,22 +1523,29 @@ function _aitPlayNextDemo(){
   });
   if(rowEl){ rowEl.style.borderColor='rgba(245,158,11,.5)'; rowEl.style.background='rgba(245,158,11,.06)'; }
 
-  /* Always use fresh voice list to avoid stale refs (Chrome bug) */
   if(!window.speechSynthesis){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 200); return; }
+
+  /* Version counter: prevents cancel() from triggering previous onend */
+  const myVer = ++_aitDemoVer;
   window.speechSynthesis.cancel();
-  const allVoices = window.speechSynthesis.getVoices();
-  const enVoices  = allVoices.filter(vv=>vv.lang&&vv.lang.startsWith('en'));
-  const picked    = enVoices[_aitDemoIdx % Math.max(enVoices.length,1)] || allVoices[0] || null;
-  const voiceNum  = _aitDemoIdx + 1;
-  const voiceName = picked ? picked.name : v.label;
-  const utt = new SpeechSynthesisUtterance(
-    `Voice ${voiceNum}. ${voiceName}. Hello! I am your AI teacher. How are you doing today?`
-  );
-  utt.rate = _ait.speechRate;
-  if(picked) utt.voice = picked;
-  utt.onend  = ()=>{ if(_aitDemoRunning){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
-  utt.onerror = ()=>{ if(_aitDemoRunning){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
-  window.speechSynthesis.speak(utt);
+
+  /* Short delay after cancel so stale onend fires before we attach new one */
+  setTimeout(()=>{
+    if(!_aitDemoRunning || _aitDemoVer !== myVer) return;
+    const allVoices = window.speechSynthesis.getVoices();
+    const enVoices  = allVoices.filter(vv=>vv.lang&&vv.lang.startsWith('en'));
+    const picked    = enVoices[_aitDemoIdx % Math.max(enVoices.length,1)] || allVoices[0] || null;
+    const voiceNum  = _aitDemoIdx + 1;
+    const voiceName = picked ? picked.name : v.label;
+    const utt = new SpeechSynthesisUtterance(
+      `Voice ${voiceNum}. ${voiceName}. Hello! I am your AI teacher. How are you doing today?`
+    );
+    utt.rate = _ait.speechRate;
+    if(picked) utt.voice = picked;
+    utt.onend  = ()=>{ if(_aitDemoRunning && _aitDemoVer===myVer){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
+    utt.onerror = ()=>{ if(_aitDemoRunning && _aitDemoVer===myVer){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
+    window.speechSynthesis.speak(utt);
+  }, 120);
 }
 
 function aitSetSpeed(rate, el){
@@ -1638,6 +1653,7 @@ async function aitStartSession(){
   document.getElementById('ait-qa-input-row').style.display = 'none';
   document.getElementById('ait-ses-right-top').style.display = '';
   document.getElementById('ait-type-answer-wrap').classList.remove('show');
+  document.getElementById('ait-continue-row').style.display = 'none';
   document.getElementById('ait-pause-btn').textContent = '⏸ Pause AI';
   document.getElementById('ait-pause-btn').classList.remove('paused');
   document.getElementById('ait-mic-btn').textContent = '🎤 My Turn';
@@ -1725,41 +1741,58 @@ function aitFmtTime(sec){
 /* ─ AI Speaking ─ */
 function aitSpeak(text, onEnd){
   if(!_ait.synth){ if(onEnd) onEnd(); return; }
+
+  /* ── Stop mic BEFORE speaking — prevents AI hearing itself ── */
+  if(_ait.listening) aitStopMic();
+  clearTimeout(_ait._listenTimeout);
   _ait.synth.cancel();
+
   const utt = new SpeechSynthesisUtterance(text);
   utt.rate = _ait.speechRate;
 
-  /* Pick voice by gender */
+  /* Always use fresh voice list to avoid Chrome stale-reference bug */
   const voiceDef = AIT_VOICES.find(v=>v.id===_ait.voiceId);
-  const voices = _ait.synth.getVoices();
+  const allVoices = _ait.synth.getVoices();
+  const enVoices  = allVoices.filter(v=>v.lang&&v.lang.startsWith('en'));
   let picked = null;
   if(voiceDef){
-    const gFilter = voiceDef.gender==='female' ? ['female','woman','girl','zira','samantha','victoria','karen','moira','veena','fiona'] : ['male','man','guy','david','mark','daniel','alex','rishi','kyle'];
-    picked = voices.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
+    const gFilter = voiceDef.gender==='female'
+      ? ['female','woman','girl','zira','samantha','victoria','karen','moira','veena','fiona']
+      : ['male','man','guy','david','mark','daniel','alex','rishi','kyle'];
+    picked = enVoices.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
   }
-  if(!picked) picked = voices[0]||null;
+  if(!picked) picked = enVoices[0] || allVoices[0] || null;
   if(picked) utt.voice = picked;
 
   _ait.currentUtterance = utt;
   _ait.speaking = true;
-  document.getElementById('ait-avatar-glow').classList.add('speaking');
-  document.getElementById('ait-avatar-status').textContent = 'Teaching…';
-  document.getElementById('ait-mic-btn').disabled = true;
 
-  utt.onend = ()=>{
+  const glowEl   = document.getElementById('ait-avatar-glow');
+  const statusEl = document.getElementById('ait-avatar-status');
+  const micBtn   = document.getElementById('ait-mic-btn');
+  const contRow  = document.getElementById('ait-continue-row');
+
+  if(glowEl)   glowEl.classList.add('speaking');
+  if(statusEl) statusEl.textContent = 'Teaching…';
+  if(micBtn){  micBtn.disabled = true; micBtn.textContent = '🔇 AI Talking…'; }
+  if(contRow)  contRow.style.display = 'none'; /* hide Continue while speaking */
+
+  const _onFinish = ()=>{
     _ait.speaking = false;
     _ait.currentUtterance = null;
-    document.getElementById('ait-avatar-glow').classList.remove('speaking');
-    document.getElementById('ait-avatar-status').textContent = 'Listening…';
-    document.getElementById('ait-mic-btn').disabled = false;
+    if(glowEl)  glowEl.classList.remove('speaking');
+    if(micBtn){ micBtn.disabled = false; micBtn.textContent = '🎤 My Turn'; }
     if(onEnd) onEnd();
+    /* ── Auto-listen: switch to "waiting for student" mode ── */
+    if(_ait.autoListen && !_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer){
+      _ait.autoListen = false;
+      setTimeout(aitAutoStartListening, 500);
+    } else {
+      if(statusEl) statusEl.textContent = 'Ready';
+    }
   };
-  utt.onerror = ()=>{
-    _ait.speaking = false;
-    document.getElementById('ait-avatar-glow').classList.remove('speaking');
-    document.getElementById('ait-mic-btn').disabled = false;
-    if(onEnd) onEnd();
-  };
+  utt.onend  = _onFinish;
+  utt.onerror = _onFinish;
 
   _ait.synth.speak(utt);
 }
@@ -1816,108 +1849,178 @@ You are conducting a ${_ait.durationMins}-minute interactive teaching session on
 TEACHING RULES:
 - Teach like a real classroom teacher: engaging, clear, patient, and motivating.
 - Address the student by their first name naturally mid-sentence.
-- For the very FIRST teaching segment: (1) open with a "Did you know that…" fact, (2) give the clear definition, (3) explain the main types or categories, (4) give 2-3 real-world examples, (5) deliver a full easy-to-understand explanation, (6) end with ONE comprehension question and STOP — wait for the student to answer.
-- For subsequent segments: build progressively from foundation to advanced.
-- Keep each segment 3-5 sentences — short enough to be read aloud clearly.
-- After each comprehension question, ALWAYS pause and wait for the student's response.
-${isMath ? `MATH FORMAT — for every math/science response you MUST use this exact structure:
-1. First write your plain-English spoken explanation — no LaTeX, no symbols. Say "square root of x" not "√x". Say "x squared" not "x²".
-2. Then on a new line write exactly: [DISPLAY]
-3. Then write the SAME content again using proper LaTeX: use $...$ for inline math and $$...$$ for displayed equations. Show every step.
-This lets the student SEE the formulas on the Math Board while HEARING your clear explanation.` : ''}${docCtx}`;
+- Keep each response 3-5 sentences — short enough to be spoken clearly.
+- When you ask a comprehension question, write it as the LAST sentence and say nothing more. Wait for the student to reply.
+${isMath ? `MATH FORMAT: For math responses, first write the plain-English explanation (no symbols), then write [DISPLAY] on a new line, then re-write the same content using proper LaTeX ($$...$$ for displayed, $...$ for inline). The student sees the board while hearing your voice.` : ''}${docCtx}`;
 
   _ait.conversationHistory = [{role:'system', content:sysPrompt}];
   _ait.lastSurnameCallSecs = 0;
+  _ait.autoListen = false;
 
-  /* Warm welcome before first lesson */
-  const welcomePrompt = `Give a very warm, personalised welcome to ${_ait.studentName}. Introduce yourself as ${_ait.teacherName}. Say you will be teaching "${_ait.topic}" in ${_ait.subject} today for ${_ait.durationMins} minutes. Tell them you will start from the very basics and build up. Be enthusiastic and encouraging. Keep it to 3 sentences.`;
+  /* Warm welcome — directly call API, then speak, THEN start teaching */
+  const welcomePrompt = `Give a very warm welcome to ${_ait.studentName}. Introduce yourself as ${_ait.teacherName}. Say you will teach "${_ait.topic}" in ${_ait.subject} for ${_ait.durationMins} minutes, starting from the basics. Be enthusiastic and encouraging. 3 sentences max.`;
+  _ait.conversationHistory.push({role:'user', content:welcomePrompt});
 
-  await aitSendToAI(welcomePrompt, true);
-  
-  /* After welcome, start first teaching segment */
-  setTimeout(()=> aitNextTeachingSegment(), 1500);
+  const statusEl = document.getElementById('ait-avatar-status');
+  if(statusEl) statusEl.textContent = 'Preparing welcome…';
+
+  const welcomeReply = await aitMistral(_ait.conversationHistory, 300);
+  if(!welcomeReply){
+    /* If API fails, go straight to teaching */
+    setTimeout(aitNextTeachingSegment, 500);
+    return;
+  }
+  _ait.conversationHistory.push({role:'assistant', content:welcomeReply});
+
+  const el = aitAddBubble(welcomeReply, false);
+  aitTypeText(el, welcomeReply, null);
+
+  /* When welcome speech ENDS → start first teaching segment */
+  aitSpeak(welcomeReply, ()=> setTimeout(aitNextTeachingSegment, 600));
 }
 
 async function aitNextTeachingSegment(){
-  if(_ait.paused || _ait.awaitingAnswer || _ait.inQAMode) return;
+  if(_ait.paused || _ait.awaitingAnswer || _ait.inQAMode || _ait.speaking) return;
+
+  /* Hide continue button, clear auto-listen watchdog */
+  const contRow = document.getElementById('ait-continue-row');
+  if(contRow) contRow.style.display = 'none';
+  clearTimeout(_ait._listenTimeout);
 
   _ait.teachingStepIdx++;
   const isMath = aitIsMathSubject(_ait.subject);
 
   /* Consume pending surname-call flag */
   const surnameNote = (_ait._pendingSurnameCall && _ait.studentSurname)
-    ? ` Address the student by their surname "${_ait.studentSurname}" at a natural point in this segment — e.g. "${_ait.studentSurname}, did you know…" or "Now ${_ait.studentSurname}, let us look at…"`
+    ? ` Address the student by their surname "${_ait.studentSurname}" naturally — e.g. "Now ${_ait.studentSurname}, let us look at…"`
     : '';
   _ait._pendingSurnameCall = false;
 
   const teachPrompts = [
-    `Start teaching "${_ait.topic}". Follow the structured opening: (1) open with a "Did you know that…" fact, (2) give the clear definition, (3) explain the main types or categories, (4) give 2-3 real-world examples, (5) deliver a full easy-to-understand explanation. End with ONE comprehension question and STOP — wait for the student to answer.${surnameNote} ${isMath?'Show key formulas clearly.':''}`,
-    `Continue teaching "${_ait.topic}". Go deeper — explain the key mechanisms or how it works in detail. ${isMath?'Walk through a worked example step by step.':'Use an analogy to make it memorable.'}${surnameNote}`,
-    `Continue teaching "${_ait.topic}". Cover important applications or sub-topics. ${isMath?'Introduce another type of problem.':'Connect to related concepts the student should know.'}${surnameNote}`,
-    `Continue teaching "${_ait.topic}". Cover any advanced aspects, edge cases, or common misconceptions. ${isMath?'Tackle a more complex calculation.':'Discuss common exam mistakes.'}${surnameNote}`,
-    `Give a concise summary of "${_ait.topic}" so far. Highlight the 3 most important points. ${isMath?'Write out the key formulas again.':'Connect everything together.'}${surnameNote}`,
-    `Continue with deeper exploration of "${_ait.topic}". Add more examples or problem-solving strategies.${surnameNote}`,
-    `Discuss practical applications and exam tips for "${_ait.topic}".${surnameNote}`,
-    `Review and consolidate knowledge on "${_ait.topic}". Cover anything not yet discussed.${surnameNote}`,
+    `Start teaching "${_ait.topic}" in ${_ait.subject}. Open with a "Did you know…" fact, give the clear definition, list the main types with real-world examples. End with ONE comprehension question as your last sentence — do NOT answer it yourself.${surnameNote}${isMath?' Use plain English for the spoken part, then [DISPLAY] for LaTeX.':''}`,
+    `Continue teaching "${_ait.topic}". Go deeper — explain how it works in detail. ${isMath?'Walk through a worked example step by step. Use [DISPLAY] for formulas.':'Use a memorable analogy.'}${surnameNote}`,
+    `Continue teaching "${_ait.topic}". Cover key applications and sub-topics. ${isMath?'Introduce another problem type. Use [DISPLAY] for working.':'Connect to related concepts.'}${surnameNote}`,
+    `Continue teaching "${_ait.topic}". Address common misconceptions and advanced aspects. ${isMath?'Tackle a harder calculation. Use [DISPLAY].':'Discuss common exam mistakes.'}${surnameNote}`,
+    `Summarise "${_ait.topic}" so far — the 3 most important points. ${isMath?'List the key formulas using [DISPLAY].':'Connect everything.'}${surnameNote}`,
+    `Explore practical applications and problem-solving strategies for "${_ait.topic}".${surnameNote}`,
+    `Discuss exam tips and higher-order thinking for "${_ait.topic}".${surnameNote}`,
+    `Review and consolidate all knowledge on "${_ait.topic}".${surnameNote}`,
   ];
 
-  const idx = Math.min(_ait.teachingStepIdx-1, teachPrompts.length-1);
-  await aitSendToAI(teachPrompts[idx], false);
+  const idx = Math.min(_ait.teachingStepIdx - 1, teachPrompts.length - 1);
+  _ait.conversationHistory.push({role:'user', content:teachPrompts[idx]});
 
-  /* Schedule next teaching segment if not ending soon */
-  if(_ait.remainingSecs > 360 && !_ait.inQAMode){
-    const delay = 5000 + Math.random()*3000;
-    setTimeout(()=> aitNextTeachingSegment(), delay);
+  const statusEl = document.getElementById('ait-avatar-status');
+  if(statusEl) statusEl.textContent = 'Preparing lesson…';
+
+  const reply = await aitMistral(_ait.conversationHistory, 700);
+  if(!reply){
+    if(statusEl) statusEl.textContent = 'Connection issue — click Continue to retry';
+    const row = document.getElementById('ait-continue-row');
+    if(row) row.style.display = '';
+    return;
+  }
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+
+  /* Parse [DISPLAY] split */
+  const {spokenText, displayText} = aitParseReply(reply, isMath);
+
+  /* Math board */
+  if(displayText) aitShowMathBoardContent(displayText);
+  else aitHideMathBoardContent();
+
+  /* Add transcript bubble */
+  const el = aitAddBubble(spokenText, isMath);
+  aitTypeText(el, spokenText, null);
+
+  /* Speak then auto-listen — student MUST respond or click Continue */
+  _ait.autoListen = true;
+  aitSpeak(spokenText, null);
+}
+
+/* ─ Parse [DISPLAY] split from AI reply ─ */
+function aitParseReply(text, isMath){
+  const dIdx = text.indexOf('[DISPLAY]');
+  if(dIdx !== -1){
+    return {
+      spokenText:  text.slice(0, dIdx).trim(),
+      displayText: text.slice(dIdx + 9).trim()
+    };
+  }
+  /* Auto-detect LaTeX in math topics */
+  if(isMath && /\$\$[\s\S]+?\$\$|\$[^$]+?\$/.test(text)){
+    return {
+      spokenText:  text.replace(/\$\$[\s\S]+?\$\$/g, '(see board)').replace(/\$[^$]+?\$/g, '').trim(),
+      displayText: text
+    };
+  }
+  return { spokenText: text, displayText: '' };
+}
+
+/* ─ Math Board helpers ─ */
+function aitShowMathBoardContent(latex){
+  const board    = document.getElementById('ait-math-board');
+  const body     = document.getElementById('ait-math-board-body');
+  const topicEl  = document.getElementById('ait-math-board-topic');
+  if(!board || !body) return;
+  board.style.display = '';
+  if(topicEl) topicEl.textContent = _ait.topic;
+  body.textContent = latex;
+  if(window.MathJax) MathJax.typesetPromise([body]).catch(()=>{});
+}
+function aitHideMathBoardContent(){
+  const board = document.getElementById('ait-math-board');
+  if(board) board.style.display = 'none';
+}
+
+/* ─ Auto-start listening after AI speech ─ */
+function aitAutoStartListening(){
+  if(_ait.paused || _ait.inQAMode || _ait.speaking || _ait.awaitingAnswer) return;
+
+  const statusEl = document.getElementById('ait-avatar-status');
+  const contRow  = document.getElementById('ait-continue-row');
+
+  /* Start speech recognition */
+  aitStartMic();
+
+  if(statusEl) statusEl.textContent = 'Your turn — speak or click Continue…';
+
+  /* Watchdog: if no speech in 20 seconds, show Continue button */
+  clearTimeout(_ait._listenTimeout);
+  _ait._listenTimeout = setTimeout(()=>{
+    if(_ait.listening){
+      aitStopMic();
+      if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+    }
+    if(contRow) contRow.style.display = '';
+  }, 20000);
+}
+
+/* ─ Continue Teaching button ─ */
+function aitContinueTeaching(){
+  const contRow = document.getElementById('ait-continue-row');
+  if(contRow) contRow.style.display = 'none';
+  clearTimeout(_ait._listenTimeout);
+  if(_ait.listening) aitStopMic();
+  if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer && !_ait.speaking){
+    setTimeout(aitNextTeachingSegment, 300);
   }
 }
 
-async function aitSendToAI(userPrompt, isInternal){
+/* ─ aitSendToAI (kept for QA/voice answer fallback) ─ */
+async function aitSendToAI(userPrompt, onSpeechDone){
   _ait.conversationHistory.push({role:'user', content:userPrompt});
-
   const reply = await aitMistral(_ait.conversationHistory, 500);
   if(!reply) return;
   _ait.conversationHistory.push({role:'assistant', content:reply});
-
   const isMath = aitIsMathSubject(_ait.subject);
-
-  /* Split on [DISPLAY] marker — spoken text before, visual LaTeX after */
-  const dispIdx = reply.indexOf('[DISPLAY]');
-  let spokenText = reply;
-  let displayText = '';
-
-  if(dispIdx !== -1){
-    spokenText  = reply.slice(0, dispIdx).trim();
-    displayText = reply.slice(dispIdx + '[DISPLAY]'.length).trim();
-  } else if(isMath && /\$\$[\s\S]+\$\$|\$[^$]+\$/.test(reply)){
-    /* Auto-detect inline LaTeX in math topics */
-    displayText = reply;
-    spokenText  = reply.replace(/\$\$[\s\S]+?\$\$/g, '(see board)').replace(/\$[^$]+?\$/g, '').trim();
-  }
-
-  /* Show Math Board if we have display content */
-  if(displayText){
-    const board = document.getElementById('ait-math-board');
-    const boardBody = document.getElementById('ait-math-board-body');
-    const boardTopic = document.getElementById('ait-math-board-topic');
-    if(board && boardBody){
-      board.style.display = '';
-      if(boardTopic) boardTopic.textContent = _ait.topic;
-      boardBody.textContent = displayText;
-      /* MathJax render */
-      if(window.MathJax) MathJax.typesetPromise([boardBody]).catch(()=>{});
-    }
-  } else {
-    /* Hide board for non-math responses */
-    const board = document.getElementById('ait-math-board');
-    if(board) board.style.display = 'none';
-  }
-
-  /* Add transcript bubble with spoken text */
-  const contentEl = aitAddBubble(spokenText || reply, isMath);
-  aitTypeText(contentEl, spokenText || reply, null);
-
-  /* Speak the plain-English portion only (not raw LaTeX) */
-  aitSpeak(spokenText || reply, null);
+  const {spokenText, displayText} = aitParseReply(reply, isMath);
+  if(displayText) aitShowMathBoardContent(displayText);
+  else aitHideMathBoardContent();
+  const el = aitAddBubble(spokenText || reply, isMath);
+  aitTypeText(el, spokenText || reply, null);
+  _ait.autoListen = !onSpeechDone; /* auto-listen unless caller handles it */
+  aitSpeak(spokenText || reply, onSpeechDone || null);
 }
 
 async function aitAskCheckIn(){
@@ -1989,8 +2092,9 @@ Keep it to 3-5 sentences. Be encouraging like a good teacher.`;
   aitTypeText(fbEl, feedback, null);
   aitSpeak(feedback, ()=>{
     _ait.awaitingAnswer = false;
-    /* Resume teaching after feedback */
-    setTimeout(()=>aitNextTeachingSegment(), 2000);
+    /* After feedback speech, auto-listen — student may ask follow-up */
+    _ait.autoListen = true;
+    /* autoListen flag will trigger aitAutoStartListening via aitSpeak._onFinish */
   });
 }
 
@@ -2083,7 +2187,14 @@ function aitTogglePause(){
 }
 
 function aitToggleMic(){
-  if(_ait.speaking){ shToast('⏸ Pause the AI first, then speak'); return; }
+  /* If AI is speaking — stop it and immediately start listening */
+  if(_ait.speaking){
+    _ait.synth?.cancel();
+    _ait.speaking = false;
+    _ait.autoListen = false;
+    const glow = document.getElementById('ait-avatar-glow');
+    if(glow) glow.classList.remove('speaking');
+  }
   if(_ait.listening) aitStopMic(); else aitStartMic();
 }
 
@@ -2123,9 +2234,13 @@ function aitStopMic(){
 
 async function aitHandleVoiceInput(transcript){
   aitStopMic();
-  shToast('🎤 You said: "'+transcript.slice(0,60)+'"');
+  clearTimeout(_ait._listenTimeout);
 
-  /* Show in transcript */
+  /* Hide continue button */
+  const contRow = document.getElementById('ait-continue-row');
+  if(contRow) contRow.style.display = 'none';
+
+  /* Show student speech in transcript */
   const wrap = document.getElementById('ait-transcript');
   const div = document.createElement('div');
   div.className = 'ait-user-answer';
@@ -2133,24 +2248,37 @@ async function aitHandleVoiceInput(transcript){
   wrap.appendChild(div);
   wrap.scrollTop = wrap.scrollHeight;
 
+  const trimmed = transcript.trim().toLowerCase();
+
   if(_ait.awaitingAnswer && _ait.currentQuestion !== '__USER_QUESTION__'){
-    /* Answer to AI question */
+    /* Student answering a comprehension question */
     document.getElementById('ait-type-answer').value = transcript;
     await aitSubmitAnswer();
-  } else {
-    /* Free question/comment */
-    const reply = await aitMistral([..._ait.conversationHistory,
-      {role:'user', content:`Student said (voice): "${transcript}". Respond helpfully as ${_ait.teacherName} teaching "${_ait.topic}". 2-3 sentences.`}
-    ], 300);
-    if(!reply) return;
-    _ait.conversationHistory.push({role:'assistant',content:reply});
-    const isMath = aitIsMathSubject(_ait.subject);
-    const el = aitAddBubble(reply, isMath);
-    aitTypeText(el, reply, null);
-    aitSpeak(reply, ()=>{
-      if(!_ait.paused) setTimeout(()=>aitNextTeachingSegment(), 1500);
-    });
+    return;
   }
+
+  /* "Continue" intent — student wants AI to keep teaching */
+  const isContinue = /^(continue|next|go on|ok|okay|yes|got it|understood|please continue|move on|sure|proceed|carry on|go ahead|yep|yeah|alright|let('s| us) continue)/i.test(trimmed);
+  if(isContinue && !_ait.awaitingAnswer){
+    _ait.autoListen = false;
+    setTimeout(aitNextTeachingSegment, 400);
+    return;
+  }
+
+  /* Free question or comment from student */
+  const isMath = aitIsMathSubject(_ait.subject);
+  const reply = await aitMistral([..._ait.conversationHistory,
+    {role:'user', content:`Student said: "${transcript}". Respond as ${_ait.teacherName} — answer their question or acknowledge their comment helpfully. 2-3 sentences. Then invite them to say "continue" when ready to proceed with the lesson.`}
+  ], 350);
+  if(!reply) return;
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+
+  const el = aitAddBubble(reply, isMath);
+  aitTypeText(el, reply, null);
+
+  /* After responding, auto-listen for "continue" or another question */
+  _ait.autoListen = true;
+  aitSpeak(reply, null);
 }
 
 function aitEndSession(){
