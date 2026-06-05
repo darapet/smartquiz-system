@@ -925,6 +925,7 @@ a{text-decoration:none;color:inherit;}
       <div class="ait-math-board-panel" id="ait-math-board">
         <div class="ait-math-board-panel-header">
           📐 Math Board — <span id="ait-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span>
+          <button onclick="aitCopyMathBoard(this)" style="margin-left:auto;padding:2px 9px;border-radius:5px;background:rgba(20,184,166,.12);border:1px solid rgba(20,184,166,.3);color:#5eead4;font-size:.65rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">📋 Copy</button>
         </div>
         <div class="ait-math-board-panel-body" id="ait-math-board-body"></div>
         <div class="ait-math-resize-handle" id="ait-math-resize" title="Drag to resize"></div>
@@ -2029,6 +2030,13 @@ function aitShowMathBoardContent(latex){
 function aitHideMathBoardContent(){
   const board = document.getElementById('ait-math-board');
   if(board) board.classList.remove('visible');
+}
+function aitCopyMathBoard(btn){
+  const body = document.getElementById('ait-math-board-body');
+  const text = body ? (body.innerText || body.textContent || '') : '';
+  if(!text.trim()){ btn.textContent='Nothing to copy'; setTimeout(()=>btn.textContent='📋 Copy',1500); return; }
+  function fallback(){ const ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;top:-9999px;opacity:0;'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); btn.textContent='✅ Copied!'; }catch(e){ btn.textContent='❌ Error'; } document.body.removeChild(ta); setTimeout(()=>btn.textContent='📋 Copy',2000); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>{ btn.textContent='✅ Copied!'; setTimeout(()=>btn.textContent='📋 Copy',2000); }).catch(fallback); } else fallback();
 }
 
 /* ─ Continue Teaching button ─ */
