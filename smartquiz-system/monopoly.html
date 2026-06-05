@@ -1,0 +1,1620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0a0b14">
+<title>🎓 Campus Monopoly — xzily AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0b14; --surface:rgba(255,255,255,.04); --border:rgba(255,255,255,.08);
+  --text:#e2e8f0; --muted:#64748b; --accent:#6366f1; --accent2:#8b5cf6;
+  --gold:#f59e0b; --green:#22c55e; --red:#ef4444;
+  --brown:#a16207; --lblue:#0ea5e9; --pink:#ec4899; --orange:#f97316;
+  --yellow:#eab308; --dark-green:#16a34a; --dblue:#1d4ed8;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ══ SCREENS ══ */
+.cm-screen{display:none;min-height:100vh;}
+.cm-screen.active{display:flex;flex-direction:column;}
+
+/* ══ HEADER ══ */
+.cm-hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 18px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);flex-shrink:0;}
+.cm-logo{font-size:.95rem;font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cm-hdr a{color:var(--muted);font-size:.78rem;text-decoration:none;font-weight:600;}
+
+/* ══ SETUP ══ */
+.cm-setup{max-width:600px;margin:0 auto;padding:24px 18px;flex:1;width:100%;}
+.cm-hero{text-align:center;margin-bottom:28px;}
+.cm-hero h1{font-size:clamp(2rem,6vw,3rem);font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b,#ef4444);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
+.cm-hero p{color:var(--muted);font-size:.9rem;line-height:1.6;}
+
+.cm-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px;}
+.cm-card-title{font-size:.73rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:12px;}
+.cm-seg{display:flex;gap:6px;flex-wrap:wrap;}
+.cm-seg-btn{padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:#94a3b8;font-size:.82rem;font-weight:700;cursor:pointer;transition:all .18s;font-family:inherit;}
+.cm-seg-btn.active{background:rgba(99,102,241,.22);border-color:rgba(99,102,241,.6);color:#a5b4fc;}
+.cm-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:9px;padding:10px 13px;color:var(--text);font-size:.9rem;font-family:inherit;outline:none;transition:border-color .2s;}
+.cm-input:focus{border-color:rgba(99,102,241,.5);}
+.cm-player-inputs{display:flex;flex-direction:column;gap:9px;margin-top:10px;}
+.cm-player-row{display:flex;align-items:center;gap:10px;}
+.cm-player-dot{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900;color:#fff;flex-shrink:0;}
+
+/* Level cards */
+.cm-level-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+.cm-level-card{border:2px solid var(--border);border-radius:12px;padding:16px 12px;cursor:pointer;transition:all .2s;text-align:center;background:rgba(255,255,255,.02);}
+.cm-level-card.active{border-color:rgba(251,191,36,.7);background:rgba(251,191,36,.08);}
+.cm-level-icon{font-size:2rem;margin-bottom:6px;}
+.cm-level-name{font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:4px;}
+.cm-level-desc{font-size:.7rem;color:var(--muted);line-height:1.5;}
+.cm-level-tag{display:inline-block;margin-top:6px;font-size:.66rem;font-weight:700;padding:2px 8px;border-radius:20px;background:rgba(251,191,36,.15);border:1px solid rgba(251,191,36,.3);color:#fbbf24;}
+
+.cm-btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;margin-top:4px;}
+.cm-btn-primary{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a0a00;box-shadow:0 4px 20px rgba(251,191,36,.3);}
+.cm-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.cm-btn-ghost{background:rgba(255,255,255,.05);border:1px solid var(--border);color:#94a3b8;}
+
+/* ══ GAME SCREEN ══ */
+#cm-screen-game.active{flex-direction:column;overflow:hidden;}
+.cm-game-layout{display:flex;flex:1;overflow:hidden;gap:0;}
+
+/* Board */
+.cm-board-wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:10px;overflow:auto;background:#0d1117;}
+.cm-board{display:grid;gap:0;border:2px solid rgba(255,255,255,.15);border-radius:4px;background:#0d1117;position:relative;}
+/* 11×11 grid */
+.cm-board.lv1{grid-template-columns:repeat(9,1fr);grid-template-rows:repeat(9,1fr);width:clamp(280px,min(65vw,55vh),500px);height:clamp(280px,min(65vw,55vh),500px);}
+.cm-board.lv2{grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);width:clamp(300px,min(70vw,60vh),540px);height:clamp(300px,min(70vw,60vh),540px);}
+.cm-board.lv3{grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);width:clamp(300px,min(75vw,62vh),580px);height:clamp(300px,min(75vw,62vh),580px);}
+
+/* Space cells */
+.cm-space{border:1px solid rgba(255,255,255,.09);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:2px;position:relative;cursor:default;overflow:hidden;transition:background .15s;}
+.cm-space:hover{background:rgba(255,255,255,.04);}
+.cm-space.corner{border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.04);}
+
+/* Color band */
+.cm-band{position:absolute;left:0;right:0;height:30%;max-height:16px;top:0;}
+.cm-band.brown{background:#a16207;}
+.cm-band.lblue{background:#0ea5e9;}
+.cm-band.pink{background:#ec4899;}
+.cm-band.orange{background:#f97316;}
+.cm-band.red{background:#ef4444;}
+.cm-band.yellow{background:#eab308;}
+.cm-band.dgreen{background:#16a34a;}
+.cm-band.dblue{background:#1d4ed8;}
+/* rotated bands for side cells */
+.cm-space.side-r .cm-band{top:0;bottom:0;height:auto;width:30%;max-width:12px;left:0;right:auto;}
+.cm-space.side-l .cm-band{top:0;bottom:0;height:auto;width:30%;max-width:12px;right:0;left:auto;}
+.cm-space.side-t .cm-band{bottom:0;top:auto;}
+
+.cm-space-name{font-size:.42rem;font-weight:700;color:var(--text);text-align:center;line-height:1.2;max-width:100%;overflow:hidden;word-break:break-word;margin-top:2px;}
+.cm-space-price{font-size:.38rem;color:var(--muted);font-weight:600;}
+.cm-space-icon{font-size:.7rem;margin-bottom:1px;}
+
+/* Pawns on board */
+.cm-pawns{display:flex;flex-wrap:wrap;gap:1px;position:absolute;bottom:2px;right:2px;}
+.cm-pawn{width:8px;height:8px;border-radius:50%;border:1px solid rgba(0,0,0,.5);flex-shrink:0;}
+
+/* Houses on board */
+.cm-houses{display:flex;flex-wrap:wrap;gap:1px;position:absolute;top:20%;left:2px;}
+.cm-house{width:5px;height:5px;border-radius:1px;flex-shrink:0;}
+.cm-hotel{width:7px;height:7px;border-radius:2px;background:#ef4444 !important;}
+
+/* Owner dot */
+.cm-owner-dot{width:6px;height:6px;border-radius:50%;position:absolute;top:20%;right:2px;border:1px solid rgba(0,0,0,.4);}
+
+/* Center of board */
+.cm-board-center{background:rgba(5,6,15,.9);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:4px;padding:6px;}
+.cm-center-title{font-size:clamp(.5rem,.9vw,.85rem);font-weight:900;background:linear-gradient(135deg,#fbbf24,#f59e0b);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cm-center-sub{font-size:clamp(.35rem,.6vw,.6rem);color:var(--muted);}
+.cm-center-dice{font-size:clamp(.8rem,2vw,1.8rem);margin:2px 0;}
+.cm-center-level{font-size:clamp(.3rem,.5vw,.55rem);background:rgba(251,191,36,.1);border:1px solid rgba(251,191,36,.3);border-radius:20px;padding:2px 8px;color:#fbbf24;font-weight:700;}
+
+/* ══ SIDE PANEL ══ */
+.cm-panel{width:240px;flex-shrink:0;background:rgba(255,255,255,.025);border-left:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;}
+.cm-panel-top{padding:12px;border-bottom:1px solid var(--border);}
+.cm-turn-badge{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a0a00;border-radius:20px;padding:5px 12px;font-size:.78rem;font-weight:800;display:inline-block;margin-bottom:8px;}
+.cm-player-money{font-size:1.4rem;font-weight:900;color:#4ade80;}
+.cm-player-money-lbl{font-size:.68rem;color:var(--muted);font-weight:600;margin-bottom:8px;}
+.cm-level-pill{display:inline-flex;align-items:center;gap:5px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:3px 10px;font-size:.7rem;font-weight:700;color:#a5b4fc;margin-bottom:8px;}
+.cm-xp-bar-wrap{height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin-bottom:10px;overflow:hidden;}
+.cm-xp-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:2px;transition:width .4s ease;}
+
+/* Dice */
+.cm-dice-row{display:flex;gap:8px;margin-bottom:10px;}
+.cm-die{width:40px;height:40px;border-radius:8px;background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:900;transition:all .2s;}
+.cm-die.rolling{animation:cm-shake .4s ease infinite;}
+@keyframes cm-shake{0%,100%{transform:rotate(0)}25%{transform:rotate(-8deg)}75%{transform:rotate(8deg)}}
+
+/* Action buttons */
+.cm-action-btn{width:100%;padding:10px;border-radius:9px;border:none;font-size:.85rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .18s;margin-bottom:7px;}
+.cm-action-primary{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a0a00;}
+.cm-action-primary:hover{opacity:.9;}
+.cm-action-secondary{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
+.cm-action-secondary:hover{border-color:rgba(255,255,255,.18);color:var(--text);}
+.cm-action-btn:disabled{opacity:.3;cursor:not-allowed;}
+
+/* Players list */
+.cm-players-list{padding:10px 12px;flex:1;}
+.cm-players-title{font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.cm-player-item{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;margin-bottom:5px;border:1px solid transparent;transition:all .18s;}
+.cm-player-item.active-player{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.08);}
+.cm-player-item.bankrupt{opacity:.35;}
+.cm-pi-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:900;color:#fff;flex-shrink:0;}
+.cm-pi-name{font-size:.78rem;font-weight:700;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.cm-pi-money{font-size:.75rem;font-weight:800;color:#4ade80;}
+.cm-pi-level{font-size:.6rem;font-weight:700;color:#a5b4fc;}
+.cm-pi-jail{font-size:.6rem;color:#f87171;font-weight:700;}
+
+/* Log */
+.cm-log{padding:8px 12px;border-top:1px solid var(--border);max-height:120px;overflow-y:auto;}
+.cm-log-title{font-size:.65rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.cm-log-item{font-size:.7rem;color:#94a3b8;line-height:1.5;padding:2px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.cm-log-item:last-child{border-bottom:none;}
+
+/* ══ MODAL ══ */
+.cm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:1000;display:none;align-items:center;justify-content:center;padding:16px;}
+.cm-modal-overlay.show{display:flex;}
+.cm-modal{background:#0f1124;border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:24px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto;}
+.cm-modal-title{font-size:1.1rem;font-weight:900;color:var(--text);margin-bottom:6px;}
+.cm-modal-sub{font-size:.83rem;color:var(--muted);margin-bottom:18px;line-height:1.5;}
+.cm-modal-btn{display:block;width:100%;padding:12px;border-radius:10px;border:none;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .18s;margin-bottom:8px;}
+.cm-modal-btn-primary{background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1a0a00;}
+.cm-modal-btn-secondary{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
+.cm-modal-btn-danger{background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.3);color:#fca5a5;}
+
+/* Property modal */
+.cm-prop-band{height:10px;border-radius:6px;margin-bottom:14px;}
+.cm-prop-price{font-size:1.6rem;font-weight:900;color:#4ade80;margin-bottom:4px;}
+.cm-rent-table{width:100%;font-size:.78rem;margin-bottom:14px;}
+.cm-rent-table td{padding:4px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.cm-rent-table td:last-child{text-align:right;font-weight:700;color:#4ade80;}
+.cm-rent-table tr:last-child td{border-bottom:none;}
+
+/* Question modal */
+.cm-q-timer-bar{height:4px;background:rgba(255,255,255,.07);border-radius:2px;margin-bottom:14px;overflow:hidden;}
+.cm-q-timer-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a5b4fc);border-radius:2px;transition:width 1s linear;}
+.cm-q-timer-fill.urgent{background:linear-gradient(90deg,#ef4444,#f87171);}
+.cm-q-text{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;padding:14px;font-size:.9rem;font-weight:600;line-height:1.6;margin-bottom:14px;color:var(--text);}
+.cm-q-options{display:flex;flex-direction:column;gap:8px;}
+.cm-q-opt{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:10px;border:2px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-size:.85rem;font-weight:600;cursor:pointer;font-family:inherit;transition:all .18s;text-align:left;width:100%;}
+.cm-q-opt:hover:not(:disabled){border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.08);}
+.cm-q-opt.correct{border-color:#22c55e;background:rgba(34,197,94,.15);color:#86efac;}
+.cm-q-opt.wrong{border-color:#ef4444;background:rgba(239,68,68,.12);color:#fca5a5;}
+.cm-q-opt:disabled{cursor:default;}
+.cm-q-opt-letter{width:24px;height:24px;border-radius:6px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:800;flex-shrink:0;}
+.cm-explanation{background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:10px 12px;font-size:.78rem;color:#94a3b8;line-height:1.55;margin-top:10px;display:none;}
+
+/* Card modal */
+.cm-card-icon{font-size:3rem;text-align:center;margin-bottom:10px;}
+.cm-card-effect{font-size:1.1rem;font-weight:700;text-align:center;margin-bottom:6px;}
+.cm-card-desc{font-size:.82rem;color:var(--muted);text-align:center;line-height:1.5;}
+
+/* Results */
+.cm-winner-banner{background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:18px;padding:26px;text-align:center;margin-bottom:18px;}
+.cm-winner-trophy{font-size:2.8rem;display:block;margin-bottom:6px;}
+.cm-winner-name{font-size:1.6rem;font-weight:900;color:#1a0a00;}
+.cm-winner-stat{font-size:.88rem;font-weight:700;color:rgba(26,10,0,.7);}
+.cm-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:16px 0;}
+.cm-podium-step{text-align:center;}
+.cm-podium-block{border-radius:6px 6px 0 0;margin:0 auto;width:56px;}
+.cm-podium-step.r1 .cm-podium-block{background:linear-gradient(180deg,#fbbf24,#f59e0b);height:80px;}
+.cm-podium-step.r2 .cm-podium-block{background:linear-gradient(180deg,#94a3b8,#64748b);height:58px;}
+.cm-podium-step.r3 .cm-podium-block{background:linear-gradient(180deg,#d97706,#b45309);height:40px;}
+.cm-podium-avatar{width:38px;height:38px;border-radius:50%;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;font-size:.9rem;font-weight:900;color:#fff;}
+.cm-podium-pname{font-size:.7rem;font-weight:700;color:#94a3b8;margin-top:4px;}
+.cm-results-tbl{width:100%;border-collapse:collapse;font-size:.82rem;}
+.cm-results-tbl th{text-align:left;padding:8px 10px;color:var(--muted);font-weight:700;font-size:.7rem;text-transform:uppercase;border-bottom:1px solid var(--border);}
+.cm-results-tbl td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.03);}
+.cm-results-tbl tr:last-child td{border-bottom:none;}
+.cm-results-wrap{max-width:520px;margin:0 auto;padding:24px 18px;flex:1;width:100%;}
+
+/* Toast */
+#cm-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:9999;pointer-events:none;display:flex;flex-direction:column;gap:6px;align-items:center;}
+.cm-toast-item{background:rgba(20,22,40,.95);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:9px;padding:9px 18px;font-size:.82rem;font-weight:600;backdrop-filter:blur(10px);white-space:nowrap;}
+
+/* Mobile */
+@media(max-width:700px){
+  .cm-game-layout{flex-direction:column;}
+  .cm-panel{width:100%;border-left:none;border-top:1px solid var(--border);max-height:220px;}
+  .cm-board-wrap{min-height:0;padding:6px;}
+  .cm-players-list{display:flex;gap:8px;flex-wrap:wrap;padding:8px;}
+  .cm-player-item{flex:1;min-width:120px;}
+  .cm-log{display:none;}
+}
+@media(max-width:480px){
+  .cm-level-grid{grid-template-columns:1fr;}
+  .cm-panel{max-height:200px;}
+}
+</style>
+</head>
+<body>
+
+<div id="cm-toast"></div>
+
+<!-- ═══════════════════════════════════
+     SCREEN: SETUP
+═══════════════════════════════════ -->
+<div id="cm-screen-setup" class="cm-screen active">
+  <header class="cm-hdr">
+    <div class="cm-logo">🎓 Campus Monopoly</div>
+    <a href="index.html">🏠 Home</a>
+  </header>
+  <div class="cm-setup">
+    <div class="cm-hero">
+      <h1>🎓 Campus Monopoly</h1>
+      <p>Buy university departments, collect rent, answer questions to level up & bankrupt your friends!</p>
+    </div>
+
+    <!-- Level Selection -->
+    <div class="cm-card">
+      <div class="cm-card-title">🏆 Select Game Level</div>
+      <div class="cm-level-grid" id="cm-level-grid">
+        <div class="cm-level-card active" data-level="1" onclick="cmSelectLevel(1)">
+          <div class="cm-level-icon">🌱</div>
+          <div class="cm-level-name">Level 1</div>
+          <div class="cm-level-desc">20 spaces, no houses, starter questions. Perfect for beginners!</div>
+          <div class="cm-level-tag">Freshman</div>
+        </div>
+        <div class="cm-level-card" data-level="2" onclick="cmSelectLevel(2)">
+          <div class="cm-level-icon">🔥</div>
+          <div class="cm-level-name">Level 2</div>
+          <div class="cm-level-desc">32 spaces, lecture halls, harder questions. Real challenge!</div>
+          <div class="cm-level-tag">Sophomore</div>
+        </div>
+        <div class="cm-level-card" data-level="3" onclick="cmSelectLevel(3)">
+          <div class="cm-level-icon">💀</div>
+          <div class="cm-level-name">Level 3</div>
+          <div class="cm-level-desc">Full 40 spaces, faculties, brutal questions. Legends only!</div>
+          <div class="cm-level-tag">Senior</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Players -->
+    <div class="cm-card">
+      <div class="cm-card-title">👥 Players</div>
+      <div class="cm-seg" id="cm-seg-players" style="margin-bottom:12px;">
+        <button class="cm-seg-btn active" data-val="2">2 Players</button>
+        <button class="cm-seg-btn" data-val="3">3 Players</button>
+        <button class="cm-seg-btn" data-val="4">4 Players</button>
+      </div>
+      <div class="cm-player-inputs" id="cm-player-inputs"></div>
+    </div>
+
+    <!-- Starting cash -->
+    <div class="cm-card">
+      <div class="cm-card-title">💰 Starting Cash</div>
+      <div class="cm-seg" id="cm-seg-cash">
+        <button class="cm-seg-btn active" data-val="15000">₦15,000</button>
+        <button class="cm-seg-btn" data-val="20000">₦20,000</button>
+        <button class="cm-seg-btn" data-val="30000">₦30,000</button>
+      </div>
+    </div>
+
+    <!-- How to play -->
+    <div class="cm-card" style="background:rgba(251,191,36,.04);border-color:rgba(251,191,36,.15);">
+      <div class="cm-card-title">📋 How to Play</div>
+      <div style="font-size:.82rem;color:#94a3b8;line-height:1.9;">
+        🎲 <strong style="color:#fbbf24;">Roll dice</strong> to move around the campus board<br>
+        🏛️ <strong style="color:#fbbf24;">Buy departments</strong> — owners collect rent when others land there<br>
+        📚 <strong style="color:#fbbf24;">Answer questions</strong> to earn XP and level up for bonuses<br>
+        🏠 <strong style="color:#fbbf24;">Build lecture halls</strong> (Level 2+) to multiply your rent income<br>
+        📖 <strong style="color:#fbbf24;">Library Cards</strong> and <strong style="color:#fbbf24;">Exam Day</strong> give surprise events<br>
+        💸 <strong style="color:#fbbf24;">Bankrupt your rivals</strong> — last player standing wins!
+      </div>
+    </div>
+
+    <button class="cm-btn cm-btn-primary" onclick="cmStartGame()">🎓 Start Game!</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     SCREEN: GAME
+═══════════════════════════════════ -->
+<div id="cm-screen-game" class="cm-screen">
+  <header class="cm-hdr">
+    <div class="cm-logo">🎓 Campus Monopoly</div>
+    <div style="display:flex;gap:8px;">
+      <button class="cm-seg-btn" onclick="cmShowQuitConfirm()" style="padding:5px 12px;font-size:.74rem;">✕ Quit</button>
+    </div>
+  </header>
+  <div class="cm-game-layout">
+    <!-- Board -->
+    <div class="cm-board-wrap">
+      <div class="cm-board" id="cm-board"></div>
+    </div>
+    <!-- Side Panel -->
+    <div class="cm-panel">
+      <div class="cm-panel-top">
+        <div class="cm-turn-badge" id="cm-turn-badge">Player 1's Turn</div>
+        <div class="cm-level-pill" id="cm-level-pill">🌱 Freshman · LV1</div>
+        <div class="cm-xp-bar-wrap"><div class="cm-xp-bar" id="cm-xp-bar" style="width:0%"></div></div>
+        <div style="display:flex;align-items:baseline;gap:4px;margin-bottom:2px;">
+          <div class="cm-player-money" id="cm-player-money">₦0</div>
+        </div>
+        <div class="cm-player-money-lbl">Current Balance</div>
+        <div class="cm-dice-row">
+          <div class="cm-die" id="cm-die1">🎲</div>
+          <div class="cm-die" id="cm-die2">🎲</div>
+          <div style="font-size:.72rem;color:var(--muted);font-weight:700;align-self:center;" id="cm-dice-total"></div>
+        </div>
+        <button class="cm-action-btn cm-action-primary" id="cm-roll-btn" onclick="cmRoll()">🎲 Roll Dice</button>
+        <button class="cm-action-btn cm-action-secondary" id="cm-end-btn" onclick="cmEndTurn()" style="display:none;">▶ End Turn</button>
+        <div id="cm-action-area"></div>
+      </div>
+      <!-- Players -->
+      <div class="cm-players-list">
+        <div class="cm-players-title">Players</div>
+        <div id="cm-players-list-inner"></div>
+      </div>
+      <!-- Log -->
+      <div class="cm-log">
+        <div class="cm-log-title">Game Log</div>
+        <div id="cm-log-items"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     SCREEN: RESULTS
+═══════════════════════════════════ -->
+<div id="cm-screen-results" class="cm-screen">
+  <header class="cm-hdr"><div class="cm-logo">🏆 Game Over!</div></header>
+  <div class="cm-results-wrap">
+    <div class="cm-winner-banner">
+      <span class="cm-winner-trophy">🏆</span>
+      <div class="cm-winner-name" id="cm-winner-name">—</div>
+      <div class="cm-winner-stat" id="cm-winner-stat"></div>
+    </div>
+    <div class="cm-podium" id="cm-podium"></div>
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:16px;">
+      <table class="cm-results-tbl"><thead><tr><th>Rank</th><th>Player</th><th>Level</th><th>Net Worth</th></tr></thead>
+      <tbody id="cm-results-body"></tbody></table>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="cm-btn cm-btn-primary" onclick="cmShowScreen('setup')" style="flex:1;">🔄 Play Again</button>
+      <a href="index.html" class="cm-btn cm-btn-ghost" style="flex:1;text-decoration:none;text-align:center;padding:14px;display:block;">🏠 Home</a>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     MODALS
+═══════════════════════════════════ -->
+
+<!-- Property Action Modal -->
+<div class="cm-modal-overlay" id="cm-prop-modal">
+  <div class="cm-modal">
+    <div class="cm-prop-band" id="cm-prop-band-color"></div>
+    <div class="cm-modal-title" id="cm-prop-modal-title">Buy Property?</div>
+    <div class="cm-modal-sub" id="cm-prop-modal-sub"></div>
+    <div class="cm-prop-price" id="cm-prop-modal-price"></div>
+    <table class="cm-rent-table" id="cm-prop-rent-table"></table>
+    <button class="cm-modal-btn cm-modal-btn-primary" id="cm-prop-buy-btn">🏛️ Buy at Full Price</button>
+    <button class="cm-modal-btn" id="cm-prop-question-btn" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;">📚 Answer Question (25% discount!)</button>
+    <button class="cm-modal-btn cm-modal-btn-secondary" id="cm-prop-skip-btn">Skip (No thanks)</button>
+  </div>
+</div>
+
+<!-- Rent Paid Modal -->
+<div class="cm-modal-overlay" id="cm-rent-modal">
+  <div class="cm-modal">
+    <div class="cm-card-icon" id="cm-rent-icon">💸</div>
+    <div class="cm-modal-title" id="cm-rent-title">Rent Due!</div>
+    <div class="cm-modal-sub" id="cm-rent-sub"></div>
+    <button class="cm-modal-btn cm-modal-btn-primary" id="cm-rent-ok-btn">OK</button>
+    <button class="cm-modal-btn" id="cm-rent-challenge-btn" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;display:none;">📚 Challenge! Answer to pay half</button>
+  </div>
+</div>
+
+<!-- Card Modal (Library Card / Exam Day) -->
+<div class="cm-modal-overlay" id="cm-card-modal">
+  <div class="cm-modal" style="text-align:center;">
+    <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;" id="cm-card-type-label">Library Card</div>
+    <div class="cm-card-icon" id="cm-card-icon">📚</div>
+    <div class="cm-card-effect" id="cm-card-effect">Collect ₦1000</div>
+    <div class="cm-card-desc" id="cm-card-desc"></div>
+    <button class="cm-modal-btn cm-modal-btn-primary" style="margin-top:16px;" onclick="cmCloseCardModal()">OK, continue</button>
+  </div>
+</div>
+
+<!-- Question Modal -->
+<div class="cm-modal-overlay" id="cm-q-modal">
+  <div class="cm-modal">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.1em;" id="cm-q-context-label">Exam Day</div>
+      <div style="font-size:.75rem;color:var(--muted);font-weight:700;" id="cm-q-timer-text">30s</div>
+    </div>
+    <div class="cm-q-timer-bar"><div class="cm-q-timer-fill" id="cm-q-timer-fill" style="width:100%"></div></div>
+    <div class="cm-q-text" id="cm-q-text">Loading…</div>
+    <div class="cm-q-options" id="cm-q-options"></div>
+    <div class="cm-explanation" id="cm-explanation"></div>
+    <button class="cm-modal-btn cm-modal-btn-primary" id="cm-q-done-btn" style="display:none;margin-top:12px;" onclick="cmCloseQModal()">Continue</button>
+  </div>
+</div>
+
+<!-- Build Modal -->
+<div class="cm-modal-overlay" id="cm-build-modal">
+  <div class="cm-modal">
+    <div class="cm-modal-title">🏛️ Build Lecture Hall</div>
+    <div class="cm-modal-sub" id="cm-build-sub"></div>
+    <div id="cm-build-props-list"></div>
+    <button class="cm-modal-btn cm-modal-btn-secondary" style="margin-top:8px;" onclick="cmCloseModal('cm-build-modal')">Cancel</button>
+  </div>
+</div>
+
+<!-- Jail Modal -->
+<div class="cm-modal-overlay" id="cm-jail-modal">
+  <div class="cm-modal">
+    <div class="cm-card-icon">⛓️</div>
+    <div class="cm-modal-title">Academic Probation!</div>
+    <div class="cm-modal-sub" id="cm-jail-sub">You are under academic probation. You can try to roll doubles to escape, or pay ₦500 to get out.</div>
+    <button class="cm-modal-btn cm-modal-btn-primary" id="cm-jail-roll-btn" onclick="cmJailRoll()">🎲 Roll for Doubles</button>
+    <button class="cm-modal-btn cm-modal-btn-secondary" id="cm-jail-pay-btn" onclick="cmJailPay()">💸 Pay ₦500 Fine</button>
+    <button class="cm-modal-btn" id="cm-jail-q-btn" onclick="cmJailQuestion()" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;">📚 Answer Question to Get Out Free</button>
+  </div>
+</div>
+
+<!-- Quit Confirm -->
+<div class="cm-modal-overlay" id="cm-quit-modal">
+  <div class="cm-modal">
+    <div class="cm-modal-title">Quit Game?</div>
+    <div class="cm-modal-sub">Are you sure you want to quit? Your progress will be lost.</div>
+    <button class="cm-modal-btn cm-modal-btn-danger" onclick="cmShowScreen('setup')">Yes, Quit</button>
+    <button class="cm-modal-btn cm-modal-btn-secondary" onclick="cmCloseModal('cm-quit-modal')">Keep Playing</button>
+  </div>
+</div>
+
+<script src="js/aqs-groq-key.js"></script>
+<script>
+/* ═══════════════════════════════════════════════════════════
+   CAMPUS MONOPOLY — Complete Game Engine
+═══════════════════════════════════════════════════════════ */
+
+/* ── BOARD DATA (40 spaces, 3 versions by level) ── */
+const ALL_SPACES = [
+  {id:0,  type:'go',       name:'START',        icon:'🚀', sub:'Collect ₦2000'},
+  {id:1,  type:'prop',     name:'Math Dept',    color:'brown',  price:600,  rent:[20,100,300,900,1600,2500],  hcost:500},
+  {id:2,  type:'chest',    name:'Library Card', icon:'📚'},
+  {id:3,  type:'prop',     name:'Physics Lab',  color:'brown',  price:800,  rent:[40,200,600,1800,3200,4500], hcost:500},
+  {id:4,  type:'tax',      name:'Tuition Fee',  icon:'📋', amount:200},
+  {id:5,  type:'railroad', name:'Campus Bus 1', icon:'🚌', price:2000},
+  {id:6,  type:'prop',     name:'Chemistry',    color:'lblue',  price:1000, rent:[60,300,900,2700,4000,5500], hcost:500},
+  {id:7,  type:'chance',   name:'Exam Day',     icon:'📝'},
+  {id:8,  type:'prop',     name:'Biology Lab',  color:'lblue',  price:1000, rent:[60,300,900,2700,4000,5500], hcost:500},
+  {id:9,  type:'prop',     name:'Comp Sci',     color:'lblue',  price:1200, rent:[80,400,1000,3000,4500,6000],hcost:500},
+  {id:10, type:'jail',     name:'Probation',    icon:'⛓️', sub:'Just Visiting'},
+  {id:11, type:'prop',     name:'History',      color:'pink',   price:1400, rent:[100,500,1500,4500,6250,7500],hcost:1000},
+  {id:12, type:'utility',  name:'Campus WiFi',  icon:'📡', price:1500},
+  {id:13, type:'prop',     name:'Literature',   color:'pink',   price:1400, rent:[100,500,1500,4500,6250,7500],hcost:1000},
+  {id:14, type:'prop',     name:'Philosophy',   color:'pink',   price:1600, rent:[120,600,1800,5000,7000,9000],hcost:1000},
+  {id:15, type:'railroad', name:'Campus Bus 2', icon:'🚌', price:2000},
+  {id:16, type:'prop',     name:'Economics',    color:'orange', price:1800, rent:[140,700,2000,5500,7500,9500],hcost:1000},
+  {id:17, type:'chest',    name:'Library Card', icon:'📚'},
+  {id:18, type:'prop',     name:'Business',     color:'orange', price:1800, rent:[140,700,2000,5500,7500,9500],hcost:1000},
+  {id:19, type:'prop',     name:'Law School',   color:'orange', price:2000, rent:[160,800,2200,6000,8000,10000],hcost:1000},
+  {id:20, type:'parking',  name:'Study Hall',   icon:'☕', sub:'Free Parking'},
+  {id:21, type:'prop',     name:'Medicine',     color:'red',    price:2200, rent:[180,900,2500,7000,8750,10500],hcost:1500},
+  {id:22, type:'chance',   name:'Exam Day',     icon:'📝'},
+  {id:23, type:'prop',     name:'Engineering',  color:'red',    price:2200, rent:[180,900,2500,7000,8750,10500],hcost:1500},
+  {id:24, type:'prop',     name:'Architecture', color:'red',    price:2400, rent:[200,1000,3000,7500,9250,11000],hcost:1500},
+  {id:25, type:'railroad', name:'Campus Bus 3', icon:'🚌', price:2000},
+  {id:26, type:'prop',     name:'Art & Design', color:'yellow', price:2600, rent:[220,1100,3300,8000,9750,11500],hcost:1500},
+  {id:27, type:'chest',    name:'Library Card', icon:'📚'},
+  {id:28, type:'prop',     name:'Mass Comm',    color:'yellow', price:2600, rent:[220,1100,3300,8000,9750,11500],hcost:1500},
+  {id:29, type:'prop',     name:'Music Dept',   color:'yellow', price:2800, rent:[240,1200,3600,8500,10250,12000],hcost:1500},
+  {id:30, type:'gotojail', name:'Suspended!',   icon:'🚨'},
+  {id:31, type:'prop',     name:'Psychology',   color:'dgreen', price:3000, rent:[260,1300,3900,9000,11000,12750],hcost:2000},
+  {id:32, type:'prop',     name:'Pol. Science', color:'dgreen', price:3000, rent:[260,1300,3900,9000,11000,12750],hcost:2000},
+  {id:33, type:'utility',  name:'Uni Power',    icon:'⚡', price:1500},
+  {id:34, type:'prop',     name:'Accounting',   color:'dgreen', price:3200, rent:[280,1500,4500,10000,12000,14000],hcost:2000},
+  {id:35, type:'railroad', name:'Campus Bus 4', icon:'🚌', price:2000},
+  {id:36, type:'chance',   name:'Exam Day',     icon:'📝'},
+  {id:37, type:'prop',     name:"VC's Office",  color:'dblue',  price:3500, rent:[350,1750,5000,11000,13000,15000],hcost:2000},
+  {id:38, type:'tax',      name:'Research Fee', icon:'🔬', amount:100},
+  {id:39, type:'prop',     name:'Senate Bldg',  color:'dblue',  price:4000, rent:[500,2000,6000,14000,17000,20000],hcost:2000},
+];
+
+// Level 1 = spaces 0-19 (20 spaces), Level 2 = 0-31 (32), Level 3 = all 40
+const LEVEL_SIZES = {1:20, 2:32, 3:40};
+const LEVEL_NAMES = {1:'Freshman', 2:'Sophomore', 3:'Senior'};
+const LEVEL_GRID  = {1:9, 2:11, 3:11}; // grid cols/rows
+
+// Groups per color
+const COLOR_GROUPS = {};
+ALL_SPACES.forEach(s=>{ if(s.type==='prop' && s.color){ if(!COLOR_GROUPS[s.color]) COLOR_GROUPS[s.color]=[]; COLOR_GROUPS[s.color].push(s.id); } });
+
+const PLAYER_COLORS = ['#ef4444','#3b82f6','#22c55e','#f59e0b'];
+const PLAYER_EMOJIS = ['🔴','🔵','🟢','🟡'];
+const LEVEL_LABELS  = ['🌱 Freshman','🔥 Sophomore','⚡ Junior','💀 Senior'];
+const XP_NEEDED     = [3, 5, 8]; // XP to go from level 1→2, 2→3, 3→4
+
+const LIBRARY_CARDS = [
+  {effect:'collect', amount:1000, text:'Scholarship awarded!', desc:'Collect ₦1,000 from the university fund.', icon:'🏅'},
+  {effect:'collect', amount:500,  text:'Bursary Payment!',    desc:'The government pays you ₦500 bursary.',   icon:'💰'},
+  {effect:'collect', amount:2000, text:'You Won a Grant!',    desc:'Research grant: collect ₦2,000.',          icon:'🎓'},
+  {effect:'collect', amount:1500, text:'Part-Time Job!',      desc:'Tutoring income: collect ₦1,500.',         icon:'📖'},
+  {effect:'pay',     amount:500,  text:'Library Fine!',       desc:'Pay ₦500 for overdue library books.',      icon:'📚'},
+  {effect:'pay',     amount:300,  text:'Printing Costs!',     desc:'Pay ₦300 for course materials.',           icon:'🖨️'},
+  {effect:'move',    to:0,        text:'Go to START!',        desc:'Advance to START and collect ₦2,000.',     icon:'🚀'},
+  {effect:'collect', amount:100,  text:'Study Group Bonus!',  desc:'Your group pooled resources: +₦100 each.',  icon:'👥'},
+  {effect:'pay',     amount:1000, text:'Exam Resit Fee!',     desc:'Pay ₦1,000 resit fee.',                    icon:'😰'},
+  {effect:'collect', amount:200,  text:'Referral Bonus!',     desc:'Friend joined your course: ₦200.',         icon:'🤝'},
+  {effect:'xp',      amount:1,    text:'Dean\'s List!',       desc:'Academic excellence: gain 1 XP!',          icon:'⭐'},
+  {effect:'collect', amount:800,  text:'Side Hustle Pays!',   desc:'Your side business earned ₦800.',          icon:'💼'},
+  {effect:'pay',     amount:200,  text:'Student Union Dues!', desc:'Pay ₦200 student union fee.',              icon:'🏛️'},
+  {effect:'collect', amount:600,  text:'Prize Money!',        desc:'Quiz competition winner: ₦600.',           icon:'🏆'},
+  {effect:'pay',     amount:400,  text:'Registration Fee!',   desc:'New semester registration: ₦400.',         icon:'📋'},
+  {effect:'collect', amount:1200, text:'NYSC Allowance!',     desc:'Early NYSC payment: collect ₦1,200.',      icon:'🎽'},
+];
+
+const EXAM_CARDS = [
+  {effect:'collect', amount:2000,  text:'Distinction Result!',    desc:'Top grade = ₦2,000 prize money!',      icon:'🌟'},
+  {effect:'pay',     amount:1500,  text:'Failed a Unit!',         desc:'Repeat unit fee: pay ₦1,500.',         icon:'😔'},
+  {effect:'move',    to:10,        text:'Academic Suspension!',   desc:'Go directly to Probation!',             icon:'⛓️'},
+  {effect:'collect', amount:500,   text:'Attendance Bonus!',      desc:'Perfect attendance: +₦500.',           icon:'✅'},
+  {effect:'move',    to:0,         text:'Dean Summons You!',      desc:'Go to START, collect ₦2,000.',         icon:'📞'},
+  {effect:'pay',     amount:800,   text:'Campus Trip!',           desc:'Study tour costs ₦800.',               icon:'✈️'},
+  {effect:'collect', amount:1000,  text:'Internship Pay!',        desc:'Internship stipend: +₦1,000.',         icon:'💼'},
+  {effect:'pay',     amount:300,   text:'Meal Card Expired!',     desc:'Replace meal card: ₦300.',             icon:'🍽️'},
+  {effect:'xp',      amount:2,     text:'Research Published!',    desc:'Journal acceptance: +2 XP!',           icon:'📄'},
+  {effect:'collect', amount:3000,  text:'Innovation Award!',      desc:'Best project wins ₦3,000!',            icon:'🚀'},
+  {effect:'move',    to:25,        text:'Shuttle Pass!',          desc:'Free bus advance to Campus Bus 3.',     icon:'🚌'},
+  {effect:'pay',     amount:500,   text:'Hostel Fine!',           desc:'Noise complaint: pay ₦500.',           icon:'🏠'},
+  {effect:'collect', amount:1500,  text:'Quiz Bowl Winner!',      desc:'Department champion: +₦1,500.',        icon:'🏆'},
+  {effect:'pay',     amount:1000,  text:'Laptop Repair!',         desc:'Tech issues: pay ₦1,000.',             icon:'💻'},
+  {effect:'xp',      amount:1,     text:'Extra Credit!',          desc:'Bonus assignment completed: +1 XP.',   icon:'⭐'},
+  {effect:'collect', amount:700,   text:'Part-Time Job!',         desc:'Campus job earnings: +₦700.',          icon:'💰'},
+];
+
+/* ── GAME STATE ── */
+let G = {};
+
+function cmInitState(numPlayers, level, startCash){
+  const size = LEVEL_SIZES[level];
+  const spaces = ALL_SPACES.slice(0, size);
+
+  G = {
+    level, size, spaces,
+    players: Array.from({length:numPlayers}, (_,i)=>({
+      id:i, name:'Player '+(i+1), color:PLAYER_COLORS[i],
+      money: startCash, position:0, jailed:false, jailTurns:0,
+      lvl:1, xp:0, properties:[], bankrupt:false
+    })),
+    props: {}, // id -> {owner, houses (0-5, 5=hotel)}
+    current: 0, // current player index
+    phase: 'roll', // roll | action | end
+    doubles: 0,
+    freeParking: 0, // money in pot
+    qContext: null, // what triggered the question
+    qCorrect: false,
+    activeBoardSpaces: spaces,
+  };
+  // Initialize property ownership
+  spaces.forEach(s=>{ if(s.type==='prop'||s.type==='railroad'||s.type==='utility') G.props[s.id]={owner:-1,houses:0}; });
+}
+
+/* ── PLAYER LEVEL ── */
+function cmAddXP(pidx, amount){
+  const p = G.players[pidx];
+  if(p.lvl >= 4) return;
+  p.xp += amount;
+  const needed = XP_NEEDED[p.lvl-1];
+  if(p.xp >= needed){
+    p.xp -= needed;
+    p.lvl++;
+    cmToast('🎉 '+p.name+' leveled up to '+LEVEL_LABELS[p.lvl-1]+'!');
+    cmLog('⬆️ '+p.name+' is now '+LEVEL_LABELS[p.lvl-1]);
+  }
+  cmRenderPanel();
+}
+
+function cmGoBonus(p){
+  // Higher level = more GO money
+  const bonus = [2000,2500,3000,4000][p.lvl-1];
+  return bonus;
+}
+
+function cmGetRentDiscount(p){
+  // Higher level = pay less rent (discount on rent paid)
+  return [0, 0.1, 0.15, 0.2][p.lvl-1];
+}
+
+function cmGetBuyDiscount(p){
+  // Higher level = buy cheaper
+  return [0, 0, 0.1, 0.2][p.lvl-1];
+}
+
+/* ── BOARD LAYOUT ── */
+function cmBuildBoard(){
+  const board = document.getElementById('cm-board');
+  const size = G.size;
+  const n = LEVEL_GRID[G.level]; // grid dimension (9 or 11)
+  board.className = 'cm-board lv'+G.level;
+  board.innerHTML = '';
+  board.style.gridTemplateColumns = `repeat(${n}, 1fr)`;
+  board.style.gridTemplateRows    = `repeat(${n}, 1fr)`;
+
+  // Map space id → grid position
+  // For 40-space (11x11): corners at (0,0),(0,10),(10,0),(10,10)
+  // Bottom row: spaces 10..0 at row=10, col=0..10 (left to right reversed → 10-9-8...0)
+  // Left col:   spaces 11..19 at row=9..1, col=0
+  // Top row:    spaces 20..30 at row=0, col=0..10
+  // Right col:  spaces 31..39 at row=1..9, col=10
+
+  // For 20-space (9x9): 4 per side + corners
+  // For 32-space (11x11) first 32 spaces (similar layout)
+
+  const positions = cmComputePositions(size, n);
+
+  // Create a 2D grid
+  const cells = Array.from({length:n}, ()=>Array(n).fill(null));
+
+  // Place spaces
+  G.spaces.forEach((sp, idx) => {
+    const {row, col, side} = positions[idx];
+    cells[row][col] = {sp, side};
+  });
+
+  // Center
+  const centerRow = Math.floor(n/2), centerCol = Math.floor(n/2);
+  const centerSpan = n - 2;
+
+  // Render grid cells
+  for(let r=0;r<n;r++){
+    for(let c=0;c<n;c++){
+      // Skip center area (inner cells)
+      if(r>0 && r<n-1 && c>0 && c<n-1){
+        if(r===1 && c===1){
+          // Create center div spanning inner area
+          const center = document.createElement('div');
+          center.className='cm-board-center';
+          center.style.cssText=`grid-column:2/${n};grid-row:2/${n};`;
+          center.innerHTML=`<div class="cm-center-title">🎓 Campus<br>Monopoly</div>
+            <div class="cm-center-sub" id="cm-center-sub">Level ${G.level} — ${LEVEL_NAMES[G.level]}</div>
+            <div class="cm-center-dice" id="cm-center-dice">🎲🎲</div>
+            <div class="cm-center-level" id="cm-center-lv">Board: ${G.size} spaces</div>`;
+          board.appendChild(center);
+        }
+        continue;
+      }
+
+      const cell = cells[r][c];
+      const div = document.createElement('div');
+
+      if(!cell){
+        div.className='cm-space';
+        div.style.opacity='0';
+        board.appendChild(div);
+        continue;
+      }
+
+      const {sp, side} = cell;
+      div.className='cm-space'+(sp.type==='corner'||['go','jail','parking','gotojail'].includes(sp.type)?' corner':'');
+      div.dataset.spid = sp.id;
+      if(side) div.classList.add('side-'+side);
+
+      // Color band
+      if(sp.type==='prop' && sp.color){
+        const band = document.createElement('div');
+        band.className='cm-band '+sp.color;
+        div.appendChild(band);
+      }
+
+      // Icon / name
+      const icon = document.createElement('div');
+      icon.className='cm-space-icon';
+      icon.textContent = sp.icon||cmColorEmoji(sp.color)||'';
+      div.appendChild(icon);
+
+      const name = document.createElement('div');
+      name.className='cm-space-name';
+      name.textContent = sp.name;
+      div.appendChild(name);
+
+      if(sp.price){
+        const price = document.createElement('div');
+        price.className='cm-space-price';
+        price.textContent = '₦'+cmFmt(sp.price);
+        div.appendChild(price);
+      }
+
+      // Houses container
+      const houses = document.createElement('div');
+      houses.className='cm-houses';
+      houses.id='cm-houses-'+sp.id;
+      div.appendChild(houses);
+
+      // Owner dot
+      const ownerDot = document.createElement('div');
+      ownerDot.className='cm-owner-dot';
+      ownerDot.id='cm-owner-'+sp.id;
+      ownerDot.style.display='none';
+      div.appendChild(ownerDot);
+
+      // Pawns container
+      const pawns = document.createElement('div');
+      pawns.className='cm-pawns';
+      pawns.id='cm-pawns-'+sp.id;
+      div.appendChild(pawns);
+
+      div.addEventListener('click', ()=>cmShowSpaceInfo(sp.id));
+      board.appendChild(div);
+    }
+  }
+
+  cmRenderPawns();
+}
+
+function cmComputePositions(size, n){
+  // Distribute `size` spaces around the perimeter of an n×n grid
+  // Bottom row: n spaces (right to left: col n-1 to 0)
+  // Left col:   n-2 inner spaces (bottom to top)
+  // Top row:    n spaces (left to right)
+  // Right col:  n-2 inner spaces (top to bottom)
+  // Total perimeter = 4*(n-1)
+
+  const perim = 4*(n-1);
+  const positions = [];
+
+  for(let i=0;i<size;i++){
+    const idx = Math.round(i * perim / size) % perim;
+    let row, col, side;
+
+    if(idx < n){ // bottom row, col: n-1 down to 0
+      row = n-1; col = n-1-idx; side = 'b';
+    } else if(idx < 2*n-1){ // left col, row: n-2 down to 0
+      row = n-1-(idx-n+1); col = 0; side = 'r';
+    } else if(idx < 3*n-2){ // top row, col: 0 to n-1
+      row = 0; col = idx-(2*n-2); side = 't';
+    } else { // right col, row: 1 to n-2
+      row = idx-(3*n-3); col = n-1; side = 'l';
+    }
+    positions.push({row, col, side});
+  }
+  return positions;
+}
+
+function cmColorEmoji(c){
+  const m = {brown:'🟫',lblue:'🔵',pink:'💗',orange:'🟠',red:'🔴',yellow:'🟡',dgreen:'🟢',dblue:'🔷'};
+  return m[c]||'';
+}
+
+/* ── RENDER PAWNS ── */
+function cmRenderPawns(){
+  // Clear all pawn containers
+  document.querySelectorAll('.cm-pawns').forEach(el=>el.innerHTML='');
+  G.players.forEach((p,i)=>{
+    if(p.bankrupt) return;
+    const container = document.getElementById('cm-pawns-'+p.position);
+    if(!container) return;
+    const pawn = document.createElement('div');
+    pawn.className='cm-pawn';
+    pawn.style.background = p.color;
+    container.appendChild(pawn);
+  });
+
+  // Update owner dots and houses
+  G.spaces.forEach(sp=>{
+    if(sp.type!=='prop'&&sp.type!=='railroad'&&sp.type!=='utility') return;
+    const prop = G.props[sp.id];
+    if(!prop) return;
+    const dot = document.getElementById('cm-owner-'+sp.id);
+    if(dot){
+      if(prop.owner>=0){
+        dot.style.display='block';
+        dot.style.background=G.players[prop.owner].color;
+      } else {
+        dot.style.display='none';
+      }
+    }
+    const houseEl = document.getElementById('cm-houses-'+sp.id);
+    if(houseEl){
+      houseEl.innerHTML='';
+      const h = prop.houses||0;
+      if(h>0){
+        if(h===5){
+          const hotel=document.createElement('div');
+          hotel.className='cm-house cm-hotel';
+          houseEl.appendChild(hotel);
+        } else {
+          for(let i=0;i<h;i++){
+            const hw=document.createElement('div');
+            hw.className='cm-house';
+            hw.style.background='#22c55e';
+            houseEl.appendChild(hw);
+          }
+        }
+      }
+    }
+  });
+}
+
+/* ── RENDER PANEL ── */
+function cmRenderPanel(){
+  const p = G.players[G.current];
+  document.getElementById('cm-turn-badge').textContent = p.name+"'s Turn";
+  document.getElementById('cm-turn-badge').style.background = `linear-gradient(135deg,${p.color},${p.color}bb)`;
+  document.getElementById('cm-player-money').textContent = '₦'+cmFmt(p.money);
+  document.getElementById('cm-level-pill').textContent = LEVEL_LABELS[p.lvl-1]+' · LV'+p.lvl;
+  const xpPct = p.lvl<4 ? (p.xp/XP_NEEDED[p.lvl-1]*100) : 100;
+  document.getElementById('cm-xp-bar').style.width = xpPct+'%';
+
+  // Players list
+  const inner = document.getElementById('cm-players-list-inner');
+  inner.innerHTML = G.players.map((pl,i)=>`
+    <div class="cm-player-item ${i===G.current?'active-player':''} ${pl.bankrupt?'bankrupt':''}">
+      <div class="cm-pi-dot" style="background:${pl.color}">${pl.name.charAt(0)}</div>
+      <div style="flex:1;min-width:0;">
+        <div class="cm-pi-name">${pl.name}</div>
+        <div class="cm-pi-level">${LEVEL_LABELS[pl.lvl-1]}</div>
+        ${pl.jailed?'<div class="cm-pi-jail">⛓️ Probation</div>':''}
+        ${pl.bankrupt?'<div class="cm-pi-jail">💀 Bankrupt</div>':''}
+      </div>
+      <div class="cm-pi-money">${pl.bankrupt?'—':'₦'+cmFmt(pl.money)}</div>
+    </div>`).join('');
+}
+
+/* ── ROLL DICE ── */
+function cmRoll(){
+  if(G.phase !== 'roll') return;
+  const p = G.players[G.current];
+  if(p.bankrupt){ cmNextPlayer(); return; }
+
+  document.getElementById('cm-roll-btn').disabled = true;
+  const d1el = document.getElementById('cm-die1');
+  const d2el = document.getElementById('cm-die2');
+  const DICE_FACES = ['⚀','⚁','⚂','⚃','⚄','⚅'];
+
+  d1el.classList.add('rolling'); d2el.classList.add('rolling');
+
+  let count=0;
+  const anim = setInterval(()=>{
+    d1el.textContent=DICE_FACES[Math.floor(Math.random()*6)];
+    d2el.textContent=DICE_FACES[Math.floor(Math.random()*6)];
+    if(++count>8){ clearInterval(anim); cmFinishRoll(p); }
+  },80);
+}
+
+function cmFinishRoll(p){
+  const d1 = Math.ceil(Math.random()*6);
+  const d2 = Math.ceil(Math.random()*6);
+  const DICE_FACES = ['','⚀','⚁','⚂','⚃','⚄','⚅'];
+  document.getElementById('cm-die1').textContent = DICE_FACES[d1];
+  document.getElementById('cm-die2').textContent = DICE_FACES[d2];
+  document.getElementById('cm-die1').classList.remove('rolling');
+  document.getElementById('cm-die2').classList.remove('rolling');
+  document.getElementById('cm-dice-total').textContent = 'Total: '+(d1+d2);
+  document.getElementById('cm-center-dice').textContent = DICE_FACES[d1]+DICE_FACES[d2];
+
+  const doubles = d1===d2;
+  if(doubles) G.doubles++; else G.doubles=0;
+
+  if(p.jailed){
+    cmOpenModal('cm-jail-modal');
+    G._pendingRoll = {d1,d2,doubles};
+    return;
+  }
+
+  if(doubles && G.doubles===3){
+    cmLog('⛓️ '+p.name+' rolled 3 doubles — Academic Probation!');
+    cmGoJail(p);
+    return;
+  }
+
+  const total = d1+d2;
+  cmMovePlayer(p, total, doubles);
+}
+
+function cmMovePlayer(p, steps, doubles){
+  const oldPos = p.position;
+  p.position = (p.position + steps) % G.size;
+
+  // Passed GO?
+  if(p.position < oldPos || (p.position === 0)){
+    if(!(oldPos===0 && steps===0)){
+      const bonus = cmGoBonus(p);
+      p.money += bonus;
+      cmLog('🚀 '+p.name+' passed START — collect ₦'+cmFmt(bonus));
+      cmToast('🚀 Passed START! +₦'+cmFmt(bonus));
+    }
+  }
+
+  cmRenderPawns();
+  cmRenderPanel();
+
+  setTimeout(()=>cmLandOn(p, doubles), 200);
+}
+
+/* ── LAND ON SPACE ── */
+function cmLandOn(p, doubles){
+  const sp = G.spaces[p.position];
+  cmLog('➤ '+p.name+' landed on '+sp.name);
+  G.phase='action';
+
+  document.getElementById('cm-end-btn').style.display='';
+  document.getElementById('cm-roll-btn').style.display= doubles ? '' : 'none';
+  document.getElementById('cm-roll-btn').disabled = !doubles;
+
+  const ac = document.getElementById('cm-action-area');
+  ac.innerHTML='';
+
+  switch(sp.type){
+    case 'go': cmLog('🚀 Already on START'); cmPhaseEnd(doubles); break;
+    case 'tax': cmLandTax(p, sp); break;
+    case 'chest': cmDrawCard(p, 'chest'); break;
+    case 'chance': cmDrawCard(p, 'chance'); break;
+    case 'jail': cmLog('🔍 Just visiting — no action.'); cmPhaseEnd(doubles); break;
+    case 'parking':
+      if(G.freeParking>0){
+        p.money+=G.freeParking;
+        cmToast('☕ Study Hall! Collected ₦'+cmFmt(G.freeParking)+' from the pot!');
+        cmLog('☕ '+p.name+' collected ₦'+cmFmt(G.freeParking)+' from parking pot');
+        G.freeParking=0;
+      } else {
+        cmToast('☕ Study Hall — free rest!');
+      }
+      cmRenderPanel();
+      cmPhaseEnd(doubles);
+      break;
+    case 'gotojail':
+      cmGoJail(p);
+      break;
+    case 'railroad':
+    case 'utility':
+    case 'prop':
+      cmLandProperty(p, sp, doubles);
+      break;
+    default:
+      cmPhaseEnd(doubles);
+  }
+}
+
+function cmLandTax(p, sp){
+  const amount = sp.amount || 200;
+  const actual = Math.min(p.money, amount);
+  p.money -= actual;
+  G.freeParking += actual;
+  cmToast('📋 '+sp.name+': Pay ₦'+cmFmt(amount));
+  cmLog('💸 '+p.name+' paid ₦'+cmFmt(actual)+' for '+sp.name);
+  cmRenderPanel();
+  cmPhaseEnd(false);
+}
+
+function cmGoJail(p){
+  p.position = G.size <= 20 ? 10 % G.size : 10;
+  p.jailed = true;
+  p.jailTurns = 0;
+  G.doubles = 0;
+  cmRenderPawns();
+  cmRenderPanel();
+  cmToast('⛓️ Academic Probation!');
+  cmLog('⛓️ '+p.name+' sent to Academic Probation');
+  G.phase='end';
+  document.getElementById('cm-roll-btn').style.display='none';
+  document.getElementById('cm-end-btn').style.display='';
+}
+
+/* ── PROPERTY LANDING ── */
+function cmLandProperty(p, sp, doubles){
+  const prop = G.props[sp.id];
+  if(!prop){ cmPhaseEnd(doubles); return; }
+
+  if(prop.owner === -1){
+    // Unowned — offer to buy
+    cmShowBuyModal(p, sp, doubles);
+  } else if(prop.owner === p.id){
+    cmToast('🏛️ Your own '+sp.name+'!');
+    cmPhaseEnd(doubles);
+  } else {
+    // Pay rent
+    cmPayRent(p, sp, prop, doubles);
+  }
+}
+
+function cmShowBuyModal(p, sp, doubles){
+  const modal = document.getElementById('cm-prop-modal');
+  const colorMap = {brown:'#a16207',lblue:'#0ea5e9',pink:'#ec4899',orange:'#f97316',red:'#ef4444',yellow:'#eab308',dgreen:'#16a34a',dblue:'#1d4ed8'};
+  document.getElementById('cm-prop-band-color').style.background = colorMap[sp.color]||'#6366f1';
+  document.getElementById('cm-prop-modal-title').textContent = sp.name;
+  document.getElementById('cm-prop-modal-sub').textContent = sp.type==='prop' ? 'University Department' : sp.type==='railroad' ? 'Campus Transport' : 'Campus Utility';
+
+  const disc = cmGetBuyDiscount(p);
+  const discPrice = Math.round(sp.price * (1-disc));
+  document.getElementById('cm-prop-modal-price').textContent = '₦'+cmFmt(sp.price);
+
+  // Rent table
+  let rentHtml = '';
+  if(sp.type==='prop' && sp.rent){
+    const labels = ['Rent','1 Hall','2 Halls','3 Halls','4 Halls','Faculty'];
+    sp.rent.forEach((r,i)=>{ rentHtml+=`<tr><td>${labels[i]}</td><td>₦${cmFmt(r)}</td></tr>`; });
+  } else if(sp.type==='railroad'){
+    rentHtml='<tr><td>1 Bus</td><td>₦250</td></tr><tr><td>2 Buses</td><td>₦500</td></tr><tr><td>3 Buses</td><td>₦1,000</td></tr><tr><td>4 Buses</td><td>₦2,000</td></tr>';
+  } else {
+    rentHtml='<tr><td>Rent</td><td>4× dice roll</td></tr>';
+  }
+  document.getElementById('cm-prop-rent-table').innerHTML=rentHtml;
+
+  const canAfford = p.money >= sp.price;
+  const buyBtn = document.getElementById('cm-prop-buy-btn');
+  buyBtn.textContent = '🏛️ Buy for ₦'+cmFmt(sp.price) + (disc>0?' (Base price)':'');
+  buyBtn.disabled = !canAfford;
+
+  const qBtn = document.getElementById('cm-prop-question-btn');
+  const discText = disc>0 ? Math.round(disc*100)+'% level discount' : '25% question discount';
+  qBtn.textContent = '📚 Answer Question (save ₦'+cmFmt(sp.price - discPrice)+')';
+
+  // Store for handlers
+  G._pendingProp = {sp, doubles};
+
+  buyBtn.onclick = ()=>{ cmBuyProperty(p, sp, sp.price); cmCloseModal('cm-prop-modal'); cmPhaseEnd(doubles); };
+  qBtn.onclick = ()=>{ cmCloseModal('cm-prop-modal'); cmAskQuestion('buy', ()=>{ const finalPrice=Math.round(sp.price*0.75*(1-disc)); cmBuyProperty(p, sp, finalPrice); cmPhaseEnd(doubles); }, ()=>{ cmBuyProperty(p, sp, sp.price); cmPhaseEnd(doubles); }); };
+  document.getElementById('cm-prop-skip-btn').onclick = ()=>{ cmCloseModal('cm-prop-modal'); cmPhaseEnd(doubles); };
+
+  cmOpenModal('cm-prop-modal');
+}
+
+function cmBuyProperty(p, sp, price){
+  const actual = Math.min(p.money, price);
+  p.money -= actual;
+  G.props[sp.id].owner = p.id;
+  p.properties.push(sp.id);
+  cmToast('🏛️ '+p.name+' bought '+sp.name+' for ₦'+cmFmt(actual)+'!');
+  cmLog('🏛️ '+p.name+' bought '+sp.name);
+  cmAddXP(p.id, 1);
+  cmRenderPanel();
+  cmRenderPawns();
+}
+
+/* ── RENT ── */
+function cmPayRent(p, sp, prop, doubles){
+  const owner = G.players[prop.owner];
+  let rent = 0;
+
+  if(sp.type==='railroad'){
+    const ownerBusCount = G.spaces.filter(s=>s.type==='railroad'&&G.props[s.id]&&G.props[s.id].owner===owner.id).length;
+    rent = [250,500,1000,2000][ownerBusCount-1]||250;
+  } else if(sp.type==='utility'){
+    const dice = (document.getElementById('cm-die1').textContent.charCodeAt(0)-9855);
+    const d2   = (document.getElementById('cm-die2').textContent.charCodeAt(0)-9855);
+    const ownerUtilCount = G.spaces.filter(s=>s.type==='utility'&&G.props[s.id]&&G.props[s.id].owner===owner.id).length;
+    rent = (ownerUtilCount===2?10:4)*(dice+d2)||400;
+  } else {
+    const houses = prop.houses||0;
+    rent = sp.rent ? sp.rent[houses] : 0;
+    // Double rent if owner has full set and no houses
+    if(houses===0){
+      const group = COLOR_GROUPS[sp.color]||[];
+      const ownsAll = group.filter(id=>id<G.size).every(id=>G.props[id]&&G.props[id].owner===owner.id);
+      if(ownsAll) rent*=2;
+    }
+  }
+
+  // Apply level discount for renter
+  const disc = cmGetRentDiscount(p);
+  rent = Math.round(rent*(1-disc));
+  rent = Math.max(0, rent);
+
+  // Set up rent modal
+  document.getElementById('cm-rent-icon').textContent='💸';
+  document.getElementById('cm-rent-title').textContent='Rent Due!';
+  document.getElementById('cm-rent-sub').textContent=`You landed on ${sp.name} owned by ${owner.name}. Rent: ₦${cmFmt(rent)}`;
+
+  const challengeBtn = document.getElementById('cm-rent-challenge-btn');
+  if(G.level>=2){
+    challengeBtn.style.display='';
+    challengeBtn.onclick=()=>{
+      cmCloseModal('cm-rent-modal');
+      cmAskQuestion('rent', ()=>{
+        const halfRent=Math.round(rent/2);
+        cmDoPayRent(p,owner,halfRent,sp,doubles);
+        cmToast('🎓 Correct! Only half rent: ₦'+cmFmt(halfRent));
+      }, ()=>{
+        cmDoPayRent(p,owner,rent,sp,doubles);
+      });
+    };
+  } else {
+    challengeBtn.style.display='none';
+  }
+
+  document.getElementById('cm-rent-ok-btn').onclick=()=>{
+    cmCloseModal('cm-rent-modal');
+    cmDoPayRent(p,owner,rent,sp,doubles);
+  };
+  cmOpenModal('cm-rent-modal');
+}
+
+function cmDoPayRent(p, owner, rent, sp, doubles){
+  const actual = Math.min(p.money, rent);
+  p.money -= actual;
+  owner.money += actual;
+  cmLog('💸 '+p.name+' paid ₦'+cmFmt(actual)+' rent to '+owner.name);
+  cmRenderPanel();
+  cmCheckBankruptcy(p, doubles);
+}
+
+function cmCheckBankruptcy(p, doubles){
+  if(p.money<=0){
+    p.bankrupt=true;
+    p.money=0;
+    cmLog('💀 '+p.name+' is bankrupt!');
+    cmToast('💀 '+p.name+' is bankrupt!');
+    cmRenderPanel();
+    const active = G.players.filter(pl=>!pl.bankrupt);
+    if(active.length===1){
+      cmShowResults();
+      return;
+    }
+  }
+  cmPhaseEnd(doubles);
+}
+
+/* ── CARDS ── */
+function cmDrawCard(p, type){
+  const deck = type==='chest' ? LIBRARY_CARDS : EXAM_CARDS;
+  const card = deck[Math.floor(Math.random()*deck.length)];
+  const label = type==='chest' ? '📚 Library Card' : '📝 Exam Day';
+
+  document.getElementById('cm-card-type-label').textContent=label;
+  document.getElementById('cm-card-icon').textContent=card.icon;
+  document.getElementById('cm-card-effect').textContent=card.text;
+  document.getElementById('cm-card-desc').textContent=card.desc;
+
+  G._pendingCard = {p, card, type};
+  cmOpenModal('cm-card-modal');
+}
+
+function cmCloseCardModal(){
+  const {p, card} = G._pendingCard;
+  cmCloseModal('cm-card-modal');
+  cmApplyCard(p, card);
+}
+
+function cmApplyCard(p, card){
+  switch(card.effect){
+    case 'collect':
+      p.money += card.amount;
+      cmLog('📚 '+p.name+' collected ₦'+cmFmt(card.amount)+' — '+card.text);
+      cmToast('✨ +₦'+cmFmt(card.amount));
+      break;
+    case 'pay':
+      p.money = Math.max(0, p.money-card.amount);
+      G.freeParking += card.amount;
+      cmLog('💸 '+p.name+' paid ₦'+cmFmt(card.amount)+' — '+card.text);
+      cmToast('💸 -₦'+cmFmt(card.amount));
+      break;
+    case 'move':
+      const dest = card.to % G.size;
+      if(dest===0 && p.position!==0){ p.money+=cmGoBonus(p); }
+      p.position=dest;
+      cmRenderPawns();
+      cmLog('🚀 '+p.name+' moved to space '+dest+' — '+card.text);
+      if(dest===10%G.size && G.size>10){ p.jailed=true; p.jailTurns=0; }
+      break;
+    case 'xp':
+      cmAddXP(p.id, card.amount);
+      cmLog('⭐ '+p.name+' gained '+card.amount+' XP!');
+      break;
+  }
+  cmRenderPanel();
+  cmCheckBankruptcy(p, false);
+}
+
+/* ── JAIL HANDLING ── */
+function cmJailRoll(){
+  const p = G.players[G.current];
+  const {d1,d2} = G._pendingRoll||{d1:Math.ceil(Math.random()*6),d2:Math.ceil(Math.random()*6)};
+  cmCloseModal('cm-jail-modal');
+  if(d1===d2){
+    p.jailed=false; p.jailTurns=0;
+    cmToast('🎉 Rolled doubles! Out of Probation!');
+    cmLog('🎉 '+p.name+' escaped probation with doubles!');
+    cmMovePlayer(p, d1+d2, true);
+  } else {
+    p.jailTurns++;
+    if(p.jailTurns>=3){
+      // Force pay
+      p.money=Math.max(0,p.money-500);
+      G.freeParking+=500;
+      p.jailed=false; p.jailTurns=0;
+      cmToast('⛓️ 3 turns in probation — paid ₦500 fine!');
+      cmMovePlayer(p, d1+d2, false);
+    } else {
+      cmLog('🎲 '+p.name+' still in probation (turn '+p.jailTurns+' of 3)');
+      cmRenderPanel();
+      G.phase='end';
+      document.getElementById('cm-end-btn').style.display='';
+      document.getElementById('cm-roll-btn').style.display='none';
+    }
+  }
+}
+
+function cmJailPay(){
+  const p = G.players[G.current];
+  if(p.money<500){ cmToast('Not enough money!'); return; }
+  p.money-=500; G.freeParking+=500;
+  p.jailed=false; p.jailTurns=0;
+  cmCloseModal('cm-jail-modal');
+  cmToast('💸 Paid ₦500 fine — free!');
+  const {d1,d2} = G._pendingRoll||{d1:Math.ceil(Math.random()*6),d2:Math.ceil(Math.random()*6)};
+  cmMovePlayer(p, d1+d2, d1===d2);
+}
+
+function cmJailQuestion(){
+  cmCloseModal('cm-jail-modal');
+  const p = G.players[G.current];
+  const {d1,d2} = G._pendingRoll||{d1:Math.ceil(Math.random()*6),d2:Math.ceil(Math.random()*6)};
+  cmAskQuestion('jail', ()=>{
+    p.jailed=false; p.jailTurns=0;
+    cmToast('🎓 Correct! Out of probation!');
+    cmMovePlayer(p, d1+d2, d1===d2);
+  }, ()=>{
+    p.jailTurns++;
+    cmLog('❌ Wrong answer — still in probation');
+    cmRenderPanel();
+    G.phase='end';
+    document.getElementById('cm-end-btn').style.display='';
+    document.getElementById('cm-roll-btn').style.display='none';
+  });
+}
+
+/* ── BUILD ── */
+function cmShowBuildModal(){
+  if(G.level<2){ cmToast('Build unlocks at Level 2!'); return; }
+  const p = G.players[G.current];
+  const buildSub = document.getElementById('cm-build-sub');
+  buildSub.textContent = 'Your balance: ₦'+cmFmt(p.money);
+
+  const propsList = document.getElementById('cm-build-props-list');
+  propsList.innerHTML='';
+
+  // Find properties where player owns full set
+  const buildable = p.properties.filter(id=>{
+    const sp=G.spaces.find(s=>s.id===id);
+    if(!sp||sp.type!=='prop') return false;
+    const prop=G.props[id];
+    if(!prop) return false;
+    const houses=prop.houses||0;
+    if(G.level<3&&houses>=4) return false; // No faculty on level 2
+    if(houses>=5) return false;
+    const group=COLOR_GROUPS[sp.color]||[];
+    return group.filter(gid=>gid<G.size).every(gid=>G.props[gid]&&G.props[gid].owner===p.id);
+  });
+
+  if(buildable.length===0){
+    propsList.innerHTML='<div style="color:var(--muted);font-size:.82rem;padding:10px 0;">No buildable properties. Own all departments of a color group to build!</div>';
+  } else {
+    buildable.forEach(id=>{
+      const sp=G.spaces.find(s=>s.id===id);
+      const prop=G.props[id];
+      const houses=prop.houses||0;
+      const cost=sp.hcost||1000;
+      const canAfford=p.money>=cost;
+      const label=houses===4?'Add Faculty (Hotel)':'Add Lecture Hall';
+      const icons=['','🏛️','🏛️🏛️','🏛️🏛️🏛️','🏛️🏛️🏛️🏛️','🏨'];
+
+      const row=document.createElement('div');
+      row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);';
+      row.innerHTML=`<div><div style="font-size:.85rem;font-weight:700;color:var(--text);">${sp.name}</div>
+        <div style="font-size:.72rem;color:var(--muted);">${icons[houses]} → ${icons[houses+1]} · Cost: ₦${cmFmt(cost)}</div></div>
+        <button class="cm-action-btn cm-action-primary" style="width:auto;padding:7px 14px;margin:0;font-size:.78rem;" ${canAfford?'':'disabled'}>Build</button>`;
+      row.querySelector('button').onclick=()=>{
+        p.money-=cost;
+        prop.houses=(prop.houses||0)+1;
+        cmLog('🏛️ '+p.name+' built on '+sp.name);
+        cmToast('🏛️ Built! Rent increased!');
+        cmRenderPanel();
+        cmRenderPawns();
+        cmCloseModal('cm-build-modal');
+      };
+      propsList.appendChild(row);
+    });
+  }
+  cmOpenModal('cm-build-modal');
+}
+
+/* ── QUESTIONS ── */
+let _qResolve=null, _qTimerInt=null;
+
+async function cmAskQuestion(context, onCorrect, onWrong){
+  const p = G.players[G.current];
+  const difficulty = ['easy','medium','hard'][G.level-1];
+  const subjects = ['General Knowledge','Mathematics','Science','History','Technology','Economics'];
+  const subj = subjects[Math.floor(Math.random()*subjects.length)];
+
+  const qModal = document.getElementById('cm-q-modal');
+  const contextLabels = {buy:'🏛️ Buy Challenge', rent:'⚔️ Rent Challenge', jail:'⛓️ Escape Question', exam:'📝 Exam Day', xp:'⭐ XP Question'};
+  document.getElementById('cm-q-context-label').textContent = contextLabels[context]||'Question';
+  document.getElementById('cm-q-text').textContent='Generating question…';
+  document.getElementById('cm-q-options').innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);">🔄 Loading…</div>';
+  document.getElementById('cm-q-done-btn').style.display='none';
+  document.getElementById('cm-explanation').style.display='none';
+  cmOpenModal('cm-q-modal');
+
+  const q = await cmFetchQuestion(difficulty, subj);
+  document.getElementById('cm-q-text').textContent=q.question;
+
+  const opts=document.getElementById('cm-q-options');
+  opts.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='cm-q-opt';
+    btn.innerHTML=`<span class="cm-q-opt-letter">${'ABCD'[i]}</span><span>${opt.text}</span>`;
+    btn.dataset.correct=opt.correct?'1':'0';
+    btn.onclick=()=>{
+      if(btn.disabled) return;
+      clearInterval(_qTimerInt);
+      opts.querySelectorAll('.cm-q-opt').forEach(b=>{
+        b.disabled=true;
+        if(b.dataset.correct==='1') b.classList.add('correct');
+        else if(b===btn) b.classList.add('wrong');
+      });
+      if(q.explanation){
+        const expEl=document.getElementById('cm-explanation');
+        expEl.textContent='💡 '+q.explanation;
+        expEl.style.display='';
+      }
+      document.getElementById('cm-q-done-btn').style.display='';
+      if(opt.correct){
+        cmAddXP(p.id,1);
+        _qResolve={correct:true,onCorrect,onWrong};
+      } else {
+        _qResolve={correct:false,onCorrect,onWrong};
+      }
+    };
+    opts.appendChild(btn);
+  });
+
+  // Timer
+  let timeLeft=30;
+  document.getElementById('cm-q-timer-text').textContent='30s';
+  document.getElementById('cm-q-timer-fill').style.width='100%';
+  document.getElementById('cm-q-timer-fill').className='cm-q-timer-fill';
+  _qTimerInt=setInterval(()=>{
+    timeLeft--;
+    const pct=(timeLeft/30)*100;
+    document.getElementById('cm-q-timer-fill').style.width=pct+'%';
+    document.getElementById('cm-q-timer-text').textContent=timeLeft+'s';
+    if(timeLeft<=8) document.getElementById('cm-q-timer-fill').className='cm-q-timer-fill urgent';
+    if(timeLeft<=0){
+      clearInterval(_qTimerInt);
+      opts.querySelectorAll('.cm-q-opt').forEach(b=>{ b.disabled=true; if(b.dataset.correct==='1') b.classList.add('correct'); });
+      document.getElementById('cm-q-done-btn').style.display='';
+      cmToast('⏱️ Time up!');
+      _qResolve={correct:false,onCorrect,onWrong};
+    }
+  },1000);
+}
+
+function cmCloseQModal(){
+  cmCloseModal('cm-q-modal');
+  clearInterval(_qTimerInt);
+  if(_qResolve){
+    const {correct,onCorrect,onWrong}=_qResolve;
+    _qResolve=null;
+    if(correct) onCorrect(); else onWrong();
+  }
+}
+
+async function cmFetchQuestion(difficulty, subject){
+  const fallback=cmFallbackQ(subject);
+  if(typeof window.groqFetch!=='function') return fallback;
+  try{
+    const prompt=`Generate a ${difficulty} multiple-choice question about "${subject}" for a university student.
+Return ONLY valid JSON:
+{"question":"...","options":[{"text":"...","correct":false},{"text":"...","correct":true},{"text":"...","correct":false},{"text":"...","correct":false}],"explanation":"..."}
+Exactly one option must have correct:true. Shuffle positions. Return ONLY the JSON.`;
+    const res=await window.groqFetch({messages:[{role:'user',content:prompt}],max_tokens:600,temperature:0.9});
+    const raw=(res.choices[0].message.content||'').trim();
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(!match) return fallback;
+    const obj=JSON.parse(match[0]);
+    if(!obj.question||!Array.isArray(obj.options)) return fallback;
+    while(obj.options.length<4) obj.options.push({text:'None of the above',correct:false});
+    return obj;
+  }catch(e){ return fallback; }
+}
+
+function cmFallbackQ(subject){
+  const qs=[
+    {question:'Which planet is closest to the Sun?',options:[{text:'Venus',correct:false},{text:'Mercury',correct:true},{text:'Earth',correct:false},{text:'Mars',correct:false}],explanation:'Mercury is the innermost planet of our solar system.'},
+    {question:'What is the chemical symbol for water?',options:[{text:'CO₂',correct:false},{text:'NaCl',correct:false},{text:'H₂O',correct:true},{text:'O₂',correct:false}],explanation:'Water is composed of two hydrogen atoms and one oxygen atom.'},
+    {question:'Who wrote "Things Fall Apart"?',options:[{text:'Wole Soyinka',correct:false},{text:'Chimamanda Adichie',correct:false},{text:'Chinua Achebe',correct:true},{text:'Ben Okri',correct:false}],explanation:'Chinua Achebe published Things Fall Apart in 1958.'},
+    {question:'What is the derivative of x²?',options:[{text:'x',correct:false},{text:'2x',correct:true},{text:'x³',correct:false},{text:'2',correct:false}],explanation:'Using the power rule: d/dx of x² = 2x.'},
+    {question:'What does CPU stand for?',options:[{text:'Computer Peripheral Unit',correct:false},{text:'Central Processing Unit',correct:true},{text:'Core Power Unit',correct:false},{text:'Control Processing Utility',correct:false}],explanation:'The CPU is the main processor that executes instructions in a computer.'},
+  ];
+  return qs[Math.floor(Math.random()*qs.length)];
+}
+
+/* ── PHASE MANAGEMENT ── */
+function cmPhaseEnd(doubles){
+  G.phase='action';
+  document.getElementById('cm-end-btn').style.display='';
+  if(doubles){
+    document.getElementById('cm-roll-btn').style.display='';
+    document.getElementById('cm-roll-btn').disabled=false;
+    document.getElementById('cm-roll-btn').textContent='🎲 Roll Again (Doubles!)';
+  } else {
+    document.getElementById('cm-roll-btn').style.display='none';
+  }
+  // Build button (if applicable)
+  const ac=document.getElementById('cm-action-area');
+  ac.innerHTML='';
+  if(G.level>=2){
+    const buildBtn=document.createElement('button');
+    buildBtn.className='cm-action-btn cm-action-secondary';
+    buildBtn.textContent='🏛️ Build Lecture Hall';
+    buildBtn.onclick=cmShowBuildModal;
+    ac.appendChild(buildBtn);
+  }
+}
+
+function cmEndTurn(){
+  G.doubles=0;
+  G.phase='roll';
+  document.getElementById('cm-roll-btn').style.display='';
+  document.getElementById('cm-roll-btn').disabled=false;
+  document.getElementById('cm-roll-btn').textContent='🎲 Roll Dice';
+  document.getElementById('cm-end-btn').style.display='none';
+  document.getElementById('cm-action-area').innerHTML='';
+  document.getElementById('cm-dice-total').textContent='';
+  document.getElementById('cm-die1').textContent='🎲';
+  document.getElementById('cm-die2').textContent='🎲';
+  document.getElementById('cm-center-dice').textContent='🎲🎲';
+  cmNextPlayer();
+}
+
+function cmNextPlayer(){
+  let next=(G.current+1)%G.players.length;
+  let loops=0;
+  while(G.players[next].bankrupt && loops<G.players.length){ next=(next+1)%G.players.length; loops++; }
+  G.current=next;
+  cmRenderPanel();
+  cmLog('--- '+G.players[next].name+"'s turn ---");
+}
+
+/* ── SHOW SPACE INFO ── */
+function cmShowSpaceInfo(spid){
+  const sp = G.spaces.find(s=>s.id===spid);
+  if(!sp) return;
+  if(sp.type==='prop'||sp.type==='railroad'||sp.type==='utility'){
+    const prop=G.props[spid];
+    if(!prop) return;
+    const ownerName = prop.owner>=0 ? G.players[prop.owner].name : 'Unowned';
+    cmToast(`${sp.name} — ${ownerName}`);
+  }
+}
+
+/* ── RESULTS ── */
+function cmShowResults(){
+  const sorted=[...G.players].sort((a,b)=>{
+    if(a.bankrupt&&!b.bankrupt) return 1;
+    if(!a.bankrupt&&b.bankrupt) return -1;
+    return cmNetWorth(b)-cmNetWorth(a);
+  });
+  const winner=sorted[0];
+  document.getElementById('cm-winner-name').textContent=winner.name;
+  document.getElementById('cm-winner-stat').textContent='Net Worth: ₦'+cmFmt(cmNetWorth(winner))+' · Level: '+LEVEL_LABELS[winner.lvl-1];
+
+  // Podium
+  const podium=document.getElementById('cm-podium');
+  podium.innerHTML='';
+  const po=sorted.length>=3?[sorted[1],sorted[0],sorted[2]]:[sorted[0]];
+  const heights=[58,80,40];
+  po.forEach((p,i)=>{
+    const rank=sorted.indexOf(p)+1;
+    const div=document.createElement('div');
+    div.className='cm-podium-step r'+rank;
+    div.innerHTML=`<div class="cm-podium-avatar" style="background:${p.color}">${p.name.charAt(0)}</div>
+      <div class="cm-podium-block" style="height:${heights[i]}px;background:${p.color}44;border:2px solid ${p.color};"></div>
+      <div class="cm-podium-pname">${p.name.split(' ')[0]}<br>₦${cmFmt(cmNetWorth(p))}</div>`;
+    podium.appendChild(div);
+  });
+
+  // Table
+  document.getElementById('cm-results-body').innerHTML=sorted.map((p,i)=>`
+    <tr><td>${['🥇','🥈','🥉','#4'][i]||'#'+(i+1)}</td>
+    <td><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${p.color};margin-right:6px;"></span>${p.name}</td>
+    <td>${LEVEL_LABELS[p.lvl-1]}</td>
+    <td><strong>₦${cmFmt(cmNetWorth(p))}</strong></td></tr>`).join('');
+
+  cmShowScreen('results');
+}
+
+function cmNetWorth(p){
+  let total=p.money||0;
+  (p.properties||[]).forEach(id=>{
+    const sp=G.spaces.find(s=>s.id===id);
+    if(sp) total+=(sp.price||0)*0.5;
+  });
+  return total;
+}
+
+/* ── UTILITY ── */
+function cmShowScreen(name){
+  document.querySelectorAll('.cm-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('cm-screen-'+name).classList.add('active');
+}
+function cmOpenModal(id){ document.getElementById(id).classList.add('show'); }
+function cmCloseModal(id){ document.getElementById(id).classList.remove('show'); }
+function cmShowQuitConfirm(){ cmOpenModal('cm-quit-modal'); }
+function cmFmt(n){ return Number(n).toLocaleString(); }
+function cmToast(msg,dur=2800){
+  const wrap=document.getElementById('cm-toast');
+  const el=document.createElement('div');
+  el.className='cm-toast-item';
+  el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>el.parentNode&&el.parentNode.removeChild(el),dur);
+}
+function cmLog(msg){
+  const items=document.getElementById('cm-log-items');
+  const el=document.createElement('div');
+  el.className='cm-log-item';
+  el.textContent=msg;
+  items.insertBefore(el,items.firstChild);
+  while(items.children.length>20) items.removeChild(items.lastChild);
+}
+
+/* ── SETUP SCREEN INIT ── */
+let g_level=1, g_numPlayers=2, g_startCash=15000;
+
+function cmSelectLevel(lv){
+  g_level=lv;
+  document.querySelectorAll('.cm-level-card').forEach(c=>c.classList.remove('active'));
+  document.querySelector('.cm-level-card[data-level="'+lv+'"]').classList.add('active');
+}
+
+function cmSetupSeg(id, onChange){
+  document.getElementById(id).querySelectorAll('.cm-seg-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.getElementById(id).querySelectorAll('.cm-seg-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      onChange(btn.dataset.val);
+    });
+  });
+}
+
+function cmRenderPlayerInputs(){
+  const wrap=document.getElementById('cm-player-inputs');
+  wrap.innerHTML='';
+  for(let i=0;i<g_numPlayers;i++){
+    const row=document.createElement('div');
+    row.className='cm-player-row';
+    row.innerHTML=`<div class="cm-player-dot" style="background:${PLAYER_COLORS[i]}">${PLAYER_EMOJIS[i]}</div>
+      <input class="cm-input" id="cm-pname-${i}" placeholder="Player ${i+1} name" maxlength="16" value="Player ${i+1}">`;
+    wrap.appendChild(row);
+  }
+}
+
+function cmStartGame(){
+  const names=[];
+  for(let i=0;i<g_numPlayers;i++){
+    const inp=document.getElementById('cm-pname-'+i);
+    names.push(inp?(inp.value.trim()||'Player '+(i+1)):'Player '+(i+1));
+  }
+  cmInitState(g_numPlayers, g_level, g_startCash);
+  G.players.forEach((p,i)=>p.name=names[i]);
+  cmShowScreen('game');
+  cmBuildBoard();
+  cmRenderPanel();
+  cmRenderPawns();
+  G.phase='roll';
+  document.getElementById('cm-roll-btn').disabled=false;
+  document.getElementById('cm-roll-btn').textContent='🎲 Roll Dice';
+  document.getElementById('cm-end-btn').style.display='none';
+  cmLog('🎓 Game started! Level '+g_level+' — '+LEVEL_NAMES[g_level]+' · '+g_numPlayers+' players · ₦'+cmFmt(g_startCash)+' each');
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  cmSetupSeg('cm-seg-players',v=>{ g_numPlayers=parseInt(v); cmRenderPlayerInputs(); });
+  cmSetupSeg('cm-seg-cash',v=>{ g_startCash=parseInt(v); });
+  cmRenderPlayerInputs();
+});
+</script>
+</body>
+</html>

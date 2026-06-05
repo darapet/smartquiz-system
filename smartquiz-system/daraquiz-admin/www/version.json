@@ -1,8 +1,8 @@
 {
-  "version": "1.0.6",
-  "versionCode": 6,
+  "version": "1.0.7",
+  "versionCode": 7,
   "releaseDate": "2026-06-05",
-  "notes": "Removed Football Quiz. Added Brain Battle educational AI trivia game with single and multiplayer modes.",
+  "notes": "Removed Brain Battle. Added Campus Monopoly — university-themed board game with 3 levels, buy departments, collect rent, answer questions, level up system.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk"
 }
