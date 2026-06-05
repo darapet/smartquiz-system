@@ -190,13 +190,28 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 /* ── JIGSAW mode ─────────────────────────────────────── */
 .pz-jigsaw-layout{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
 @media(max-width:640px){.pz-jigsaw-layout{grid-template-columns:1fr}}
-.pz-jigsaw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;aspect-ratio:1}
-.pz-jigsaw-piece{background:rgba(255,255,255,.04);border:2px solid rgba(255,255,255,.08);border-radius:12px;aspect-ratio:1;display:flex;align-items:center;justify-content:center;transition:all .4s;position:relative;overflow:hidden}
-.pz-jigsaw-piece.unlocked{border-color:rgba(139,92,246,.6);background:rgba(139,92,246,.15)}
-.pz-jigsaw-piece.unlocked::after{content:'✓';font-size:1.8rem;color:#a5b4fc}
-.pz-jigsaw-piece.locked::before{content:'🔒';font-size:1.4rem}
+.pz-jigsaw-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;aspect-ratio:1;background:rgba(139,92,246,.12);border:2px solid rgba(139,92,246,.25);border-radius:6px;padding:2px}
+/* Jigsaw pieces — actual puzzle-cut shapes via clip-path */
+.pz-jigsaw-piece{aspect-ratio:1;display:flex;align-items:center;justify-content:center;transition:all .4s;position:relative;overflow:visible;background:rgba(30,28,60,.85);border:none}
+/* 9 unique puzzle piece clip-paths for a 3x3 grid (tab = bump, blank = indent) */
+.pz-jigsaw-piece:nth-child(1){clip-path:polygon(0% 0%,70% 0%,70% -8%,85% -8%,85% 0%,100% 0%,100% 70%,108% 70%,108% 85%,100% 85%,100% 100%,0% 100%)}
+.pz-jigsaw-piece:nth-child(2){clip-path:polygon(0% 0%,100% 0%,100% 70%,108% 70%,108% 85%,100% 85%,100% 100%,30% 100%,30% 108%,15% 108%,15% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%)}
+.pz-jigsaw-piece:nth-child(3){clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%)}
+.pz-jigsaw-piece:nth-child(4){clip-path:polygon(0% 0%,30% 0%,30% -8%,15% -8%,15% 0% /* notch top */,70% 0%,70% -8%,85% -8%,85% 0%,100% 0%,100% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%)}
+.pz-jigsaw-piece:nth-child(5){clip-path:polygon(0% 0%,100% 0%,100% 30%,108% 30%,108% 15%,100% 15%,100% 70%,108% 70%,108% 85%,100% 85%,100% 100%,0% 100%,0% 85%,-8% 85%,-8% 70%,0% 70%,0% 30%,-8% 30%,-8% 15%,0% 15%)}
+.pz-jigsaw-piece:nth-child(6){clip-path:polygon(0% 0%,100% 0%,100% 100%,30% 100%,30% 108%,15% 108%,15% 100%,0% 100%,0% 30%,-8% 30%,-8% 15%,0% 15%)}
+.pz-jigsaw-piece:nth-child(7){clip-path:polygon(0% 0%,30% 0%,30% -8%,15% -8%,15% 0%,100% 0%,100% 100%,0% 100%)}
+.pz-jigsaw-piece:nth-child(8){clip-path:polygon(0% 0%,100% 0%,100% 100%,70% 100%,70% 108%,85% 108%,85% 100%,0% 100%,0% 15%,-8% 15%,-8% 30%,0% 30%)}
+.pz-jigsaw-piece:nth-child(9){clip-path:polygon(0% 0%,100% 0%,100% 100%,0% 100%)}
+/* Piece states */
+.pz-jigsaw-piece.locked{background:rgba(15,12,40,.9)}
+.pz-jigsaw-piece.locked::before{content:'🔒';font-size:1.3rem;opacity:.6}
+.pz-jigsaw-piece.unlocked{background:linear-gradient(135deg,rgba(99,102,241,.55),rgba(139,92,246,.5));box-shadow:0 0 0 2px rgba(139,92,246,.7),inset 0 0 20px rgba(139,92,246,.2)}
+.pz-jigsaw-piece.unlocked::after{content:'✓';font-size:1.7rem;color:#c4b5fd;text-shadow:0 0 12px rgba(167,139,250,.8);font-weight:900}
 .pz-jigsaw-piece.new-unlock{animation:pz-pop .5s ease}
 @keyframes pz-pop{0%{transform:scale(.7);opacity:.5}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+/* Crossword prefilled cells */
+.pz-cw-cell-inp.cw-inp-prefilled{color:#fbbf24;background:rgba(251,191,36,.12);cursor:default;font-weight:900}
 
 /* ── QUESTION PROGRESS ───────────────────────────────── */
 .pz-q-progress{display:flex;gap:5px;margin-bottom:20px;flex-wrap:wrap}

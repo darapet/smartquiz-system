@@ -902,6 +902,23 @@ function renderCrosswordQ(){
     var colCount = maxC - minC + 1;
     gridEl.style.gridTemplateColumns = 'repeat('+colCount+',34px)';
 
+    /* ── Pre-fill: reveal first letter of each word + every 4th cell in longer words
+          so players just complete the crossword rather than starting from blank ── */
+    var cwPrefilled = {}; /* 'row,col' -> true */
+    placements.forEach(function(p){
+        var q = G.questions[p.qIdx];
+        var word = (q.answer||q.word||'').toUpperCase();
+        for(var ii=0;ii<word.length;ii++){
+            var pr2 = p.dir==='down' ? p.row+ii : p.row;
+            var pc2 = p.dir==='across' ? p.col+ii : p.col;
+            var key2 = pr2+','+pc2;
+            /* Reveal: first letter of every word, and every 4th letter in words ≥5 */
+            if(ii === 0 || (word.length >= 5 && (ii+1) % 4 === 0)){
+                cwPrefilled[key2] = true;
+            }
+        }
+    });
+
     var html = '';
     for(r=minR;r<=maxR;r++){
         for(c=minC;c<=maxC;c++){
@@ -914,12 +931,18 @@ function renderCrosswordQ(){
                         startNum = placements[pi].num; break;
                     }
                 }
+                var cellKey = r+','+c;
+                var isPrefill = !!cwPrefilled[cellKey];
+                /* Mark prefilled cells as already scored so no double-points */
+                if(isPrefill) G.cwLetterScored[cellKey] = 'prefill';
+
                 html += '<div class="pz-cw-cell" id="pz-cwcell-'+r+'-'+c+'">' +
                     (startNum ? '<span class="pz-cw-cell-num">'+startNum+'</span>' : '') +
-                    '<input class="pz-cw-cell-inp" maxlength="1"' +
+                    '<input class="pz-cw-cell-inp'+(isPrefill?' cw-inp-prefilled':'')+'" maxlength="1"' +
                         ' id="pz-cwinp-'+r+'-'+c+'"' +
                         ' data-row="'+r+'" data-col="'+c+'"' +
                         ' data-letter="'+cell.letter+'" data-qidx="'+cell.qIdx+'"' +
+                        (isPrefill ? ' value="'+cell.letter+'" readonly' : '') +
                         ' autocomplete="off" spellcheck="false">' +
                     '</div>';
             } else {

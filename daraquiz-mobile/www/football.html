@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#050510">
+<title>⚽ Football Quiz — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Inter',sans-serif;background:#050510;color:#e2e8f0;min-height:100vh;overflow-x:hidden;}
+.fb-screen{display:none;min-height:100vh;}
+.fb-screen.active{display:flex;flex-direction:column;}
+
+/* ── HEADER ── */
+.fb-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
+.fb-logo{font-size:1rem;font-weight:800;background:linear-gradient(135deg,#a5b4fc,#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.fb-header a{color:#64748b;font-size:.8rem;text-decoration:none;font-weight:600;}
+
+/* ── SETUP SCREEN ── */
+.fb-setup-main{max-width:560px;margin:0 auto;padding:24px 20px;flex:1;}
+.fb-hero{text-align:center;margin-bottom:28px;}
+.fb-hero h1{font-size:clamp(1.8rem,5vw,2.6rem);font-weight:900;background:linear-gradient(135deg,#22c55e,#16a34a);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;}
+.fb-hero p{color:#64748b;font-size:.92rem;}
+.fb-card{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px;margin-bottom:16px;}
+.fb-card-title{font-size:.78rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:14px;}
+.fb-label{font-size:.82rem;font-weight:600;color:#94a3b8;margin-bottom:6px;display:block;}
+.fb-input{width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:.92rem;font-family:inherit;outline:none;transition:border-color .2s;}
+.fb-input:focus{border-color:rgba(99,102,241,.6);}
+.fb-seg{display:flex;gap:6px;flex-wrap:wrap;}
+.fb-seg-btn{padding:8px 16px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#94a3b8;font-size:.83rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:inherit;}
+.fb-seg-btn.active{background:rgba(99,102,241,.25);border-color:rgba(99,102,241,.6);color:#a5b4fc;}
+.fb-player-inputs{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+.fb-player-row{display:flex;align-items:center;gap:10px;}
+.fb-player-num{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#22c55e,#16a34a);display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:800;color:#fff;flex-shrink:0;}
+.fb-diff-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.fb-diff-card{border:2px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;text-align:center;}
+.fb-diff-card:hover{border-color:rgba(99,102,241,.4);}
+.fb-diff-card.active{border-color:rgba(99,102,241,.7);background:rgba(99,102,241,.15);}
+.fb-diff-icon{font-size:1.8rem;margin-bottom:6px;}
+.fb-diff-name{font-size:.88rem;font-weight:800;color:#e2e8f0;margin-bottom:4px;}
+.fb-diff-desc{font-size:.74rem;color:#64748b;line-height:1.5;}
+.fb-btn{display:block;width:100%;padding:14px;border-radius:12px;border:none;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;}
+.fb-btn-primary{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;}
+.fb-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.fb-btn-ghost{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#94a3b8;}
+.fb-form-group{margin-bottom:14px;}
+
+/* ── GAME SCREEN ── */
+#fb-screen-game{flex-direction:column;}
+.fb-game-topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;gap:12px;flex-wrap:wrap;}
+.fb-turn-badge{background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border-radius:20px;padding:6px 16px;font-size:.85rem;font-weight:800;}
+.fb-round-info{font-size:.78rem;color:#64748b;font-weight:600;}
+.fb-score-chips{display:flex;gap:8px;flex-wrap:wrap;}
+.fb-score-chip{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:4px 12px;font-size:.78rem;font-weight:700;color:#94a3b8;}
+.fb-score-chip.me{border-color:rgba(34,197,94,.5);color:#86efac;}
+.fb-game-body{display:flex;flex:1;gap:0;overflow:hidden;}
+.fb-canvas-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:12px;background:#0d1117;}
+#fb-canvas{max-width:100%;border-radius:12px;cursor:crosshair;touch-action:none;box-shadow:0 0 40px rgba(34,197,94,.15);}
+.fb-canvas-hint{font-size:.78rem;color:#475569;text-align:center;margin-top:8px;font-weight:600;}
+.fb-word-panel{width:200px;background:rgba(255,255,255,.03);border-left:1px solid rgba(255,255,255,.07);padding:14px;overflow-y:auto;flex-shrink:0;}
+.fb-word-panel-title{font-size:.72rem;font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px;}
+.fb-word-item{padding:8px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.08);font-size:.8rem;font-weight:700;color:#94a3b8;margin-bottom:6px;transition:all .2s;cursor:default;}
+.fb-word-item.used{opacity:.35;text-decoration:line-through;}
+.fb-word-item.highlighted{border-color:rgba(34,197,94,.6);color:#86efac;background:rgba(34,197,94,.1);}
+@media(max-width:640px){.fb-word-panel{display:none;}}
+.fb-goal-msg{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;font-size:3rem;font-weight:900;pointer-events:none;opacity:0;transition:opacity .2s;text-align:center;}
+.fb-goal-msg.show{opacity:1;}
+
+/* ── QUESTION SCREEN ── */
+.fb-q-main{max-width:540px;margin:0 auto;padding:24px 20px;flex:1;}
+.fb-q-header{text-align:center;margin-bottom:24px;}
+.fb-q-header .fb-q-player{font-size:.85rem;font-weight:700;color:#22c55e;margin-bottom:6px;}
+.fb-q-header h2{font-size:1.3rem;font-weight:900;color:#e2e8f0;margin-bottom:4px;}
+.fb-q-header p{font-size:.82rem;color:#64748b;}
+.fb-timer-bar-wrap{height:6px;background:rgba(255,255,255,.08);border-radius:3px;margin-bottom:20px;overflow:hidden;}
+.fb-timer-bar{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);border-radius:3px;transition:width .9s linear;}
+.fb-timer-bar.urgent{background:linear-gradient(90deg,#ef4444,#dc2626);}
+/* Easy mode: dash word */
+.fb-dash-word{display:flex;justify-content:center;flex-wrap:wrap;gap:6px;margin:20px 0 24px;}
+.fb-dash-letter{width:36px;height:42px;border-bottom:3px solid #a5b4fc;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:900;color:#e2e8f0;position:relative;}
+.fb-dash-sep{width:16px;display:flex;align-items:flex-end;justify-content:center;font-size:1rem;color:#475569;padding-bottom:6px;}
+.fb-word-choices{display:flex;flex-direction:column;gap:10px;}
+.fb-word-choice-btn{padding:12px 16px;border-radius:12px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.92rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;text-align:left;}
+.fb-word-choice-btn:hover{border-color:rgba(34,197,94,.5);background:rgba(34,197,94,.08);}
+.fb-word-choice-btn.correct{border-color:#22c55e;background:rgba(34,197,94,.2);color:#86efac;}
+.fb-word-choice-btn.wrong{border-color:#ef4444;background:rgba(239,68,68,.15);color:#fca5a5;}
+/* Medium mode: MCQ upside down */
+.fb-q-text{font-size:1.05rem;font-weight:700;color:#e2e8f0;line-height:1.65;text-align:center;margin-bottom:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px 20px;}
+.fb-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
+.fb-option-btn{padding:14px 12px;border-radius:12px;border:2px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#e2e8f0;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;transform:rotate(180deg);line-height:1.4;position:relative;}
+.fb-option-btn.flipped{transform:rotate(0deg);}
+.fb-option-btn:hover{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.1);}
+.fb-option-btn.correct{border-color:#22c55e;background:rgba(34,197,94,.2);color:#86efac;transform:rotate(0deg);}
+.fb-option-btn.wrong{border-color:#ef4444;background:rgba(239,68,68,.15);color:#fca5a5;transform:rotate(0deg);}
+.fb-option-letter{display:inline-block;background:rgba(139,92,246,.3);border-radius:4px;padding:1px 7px;font-size:.72rem;margin-right:6px;}
+.fb-upside-hint{text-align:center;font-size:.78rem;color:#475569;margin-bottom:12px;font-style:italic;}
+
+/* ── RECAP SCREEN ── */
+.fb-recap-main{max-width:500px;margin:0 auto;padding:24px 20px;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;}
+.fb-recap-card{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:20px;padding:28px;width:100%;text-align:center;}
+.fb-recap-icon{font-size:3.5rem;margin-bottom:12px;}
+.fb-recap-player{font-size:.85rem;font-weight:700;color:#22c55e;margin-bottom:6px;}
+.fb-recap-result{font-size:1.3rem;font-weight:900;color:#e2e8f0;margin-bottom:8px;}
+.fb-recap-detail{font-size:.88rem;color:#64748b;line-height:1.7;}
+.fb-recap-pts{font-size:1.6rem;font-weight:900;color:#fbbf24;margin-top:10px;}
+.fb-mini-scores{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px;}
+.fb-mini-score-row{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;border-radius:8px;font-size:.85rem;font-weight:700;}
+.fb-mini-score-row.leader{background:rgba(34,197,94,.1);color:#86efac;}
+.fb-mini-score-name{display:flex;align-items:center;gap:8px;}
+.fb-mini-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:800;color:#fff;}
+.fb-next-btn{width:100%;padding:14px;border-radius:12px;border:none;background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;font-size:1rem;font-weight:800;cursor:pointer;font-family:inherit;}
+
+/* ── RESULTS SCREEN ── */
+.fb-results-main{max-width:500px;margin:0 auto;padding:24px 20px;flex:1;}
+.fb-winner-banner{background:linear-gradient(135deg,#fbbf24,#f59e0b);border-radius:20px;padding:28px;text-align:center;margin-bottom:20px;}
+.fb-winner-crown{font-size:2.5rem;display:block;margin-bottom:8px;}
+.fb-winner-name{font-size:1.6rem;font-weight:900;color:#1c1208;margin-bottom:4px;}
+.fb-winner-pts{font-size:1rem;font-weight:700;color:rgba(28,18,8,.7);}
+.fb-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:20px 0;}
+.fb-podium-step{text-align:center;min-width:80px;}
+.fb-podium-block{border-radius:8px 8px 0 0;margin:0 auto;width:64px;}
+.fb-podium-step.rank-1 .fb-podium-block{background:linear-gradient(180deg,#fbbf24,#f59e0b);height:90px;}
+.fb-podium-step.rank-2 .fb-podium-block{background:linear-gradient(180deg,#94a3b8,#64748b);height:64px;}
+.fb-podium-step.rank-3 .fb-podium-block{background:linear-gradient(180deg,#d97706,#b45309);height:44px;}
+.fb-podium-avatar{width:44px;height:44px;border-radius:50%;margin:0 auto 6px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;background:rgba(255,255,255,.15);}
+.fb-results-table{width:100%;border-collapse:collapse;margin-top:16px;font-size:.85rem;}
+.fb-results-table th{text-align:left;padding:8px 12px;color:#64748b;font-weight:700;font-size:.75rem;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid rgba(255,255,255,.07);}
+.fb-results-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);}
+.fb-results-table tr.me td{color:#86efac;background:rgba(34,197,94,.05);}
+.fb-saved-banner{text-align:center;padding:16px;border-radius:12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;font-weight:700;font-size:.9rem;margin-bottom:12px;display:none;}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════
+     GOAL / SAVED flash overlay
+══════════════════════════════════════════════ -->
+<div class="fb-goal-msg" id="fb-goal-msg"></div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: SETUP
+══════════════════════════════════════════════ -->
+<div id="fb-screen-setup" class="fb-screen active">
+  <header class="fb-header">
+    <div class="fb-logo">⚽ Football Quiz</div>
+    <a href="index.html">🏠 Home</a>
+  </header>
+  <div class="fb-setup-main">
+    <div class="fb-hero">
+      <h1>⚽ Football Quiz</h1>
+      <p>Shoot into the goal, answer the question, score points!</p>
+    </div>
+
+    <div class="fb-card">
+      <div class="fb-card-title">👥 Number of Players</div>
+      <div class="fb-seg" id="fb-seg-players">
+        <button class="fb-seg-btn active" data-val="1">1 Player</button>
+        <button class="fb-seg-btn" data-val="2">2 Players</button>
+        <button class="fb-seg-btn" data-val="3">3 Players</button>
+        <button class="fb-seg-btn" data-val="4">4 Players</button>
+      </div>
+      <div class="fb-player-inputs" id="fb-player-inputs">
+        <div class="fb-player-row">
+          <div class="fb-player-num">1</div>
+          <input class="fb-input" id="fb-pname-0" placeholder="Player 1 name" maxlength="20" value="Player 1">
+        </div>
+      </div>
+    </div>
+
+    <div class="fb-card">
+      <div class="fb-card-title">🏆 Game Mode</div>
+      <div class="fb-diff-grid">
+        <div class="fb-diff-card active" data-diff="easy" onclick="fbSelectDiff('easy')">
+          <div class="fb-diff-icon">🔤</div>
+          <div class="fb-diff-name">Word Match</div>
+          <div class="fb-diff-desc">Score a goal → match the dash-format word to the word list</div>
+        </div>
+        <div class="fb-diff-card" data-diff="medium" onclick="fbSelectDiff('medium')">
+          <div class="fb-diff-icon">🧠</div>
+          <div class="fb-diff-name">Topic Quiz</div>
+          <div class="fb-diff-desc">Score a goal → answer a question about your chosen topic</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="fb-card" id="fb-topic-card" style="display:none;">
+      <div class="fb-card-title">📚 Topic (for Topic Quiz mode)</div>
+      <div class="fb-form-group">
+        <input class="fb-input" id="fb-topic-inp" placeholder="e.g. Biology, History, Mathematics…" maxlength="60">
+      </div>
+    </div>
+
+    <div class="fb-card">
+      <div class="fb-card-title">🔄 Number of Rounds</div>
+      <div class="fb-seg" id="fb-seg-rounds">
+        <button class="fb-seg-btn active" data-val="3">3</button>
+        <button class="fb-seg-btn" data-val="5">5</button>
+        <button class="fb-seg-btn" data-val="7">7</button>
+        <button class="fb-seg-btn" data-val="10">10</button>
+      </div>
+    </div>
+
+    <div class="fb-card" style="background:rgba(34,197,94,.06);border-color:rgba(34,197,94,.15);">
+      <div class="fb-card-title">📋 How to Play</div>
+      <div style="color:#94a3b8;font-size:.83rem;line-height:1.8;">
+        ⚽ <strong style="color:#86efac;">Drag to aim</strong> anywhere on the field to line up your shot<br>
+        🥅 <strong style="color:#86efac;">Release to shoot</strong> — the goalkeeper slides to block!<br>
+        🎯 <strong style="color:#86efac;">Score a goal</strong> → question appears — answer correctly for <strong style="color:#fbbf24;">5 points</strong><br>
+        🏆 <strong style="color:#86efac;">No bonus</strong> — highest total score wins!<br>
+        👀 <strong style="color:#86efac;">Everyone watches</strong> each player's question after they score
+      </div>
+    </div>
+
+    <button class="fb-btn fb-btn-primary" id="fb-btn-start" style="margin-top:4px;">⚽ Start Game</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: GAME (Canvas)
+══════════════════════════════════════════════ -->
+<div id="fb-screen-game" class="fb-screen">
+  <div class="fb-game-topbar">
+    <div>
+      <div class="fb-turn-badge" id="fb-turn-badge">Player 1's Turn</div>
+    </div>
+    <div class="fb-round-info" id="fb-round-info">Round 1 of 3</div>
+    <div class="fb-score-chips" id="fb-score-chips"></div>
+  </div>
+  <div class="fb-game-body">
+    <div class="fb-canvas-wrap">
+      <canvas id="fb-canvas" width="480" height="360"></canvas>
+      <div class="fb-canvas-hint" id="fb-canvas-hint">👆 Drag on the field to aim → release to shoot!</div>
+    </div>
+    <div class="fb-word-panel" id="fb-word-panel">
+      <div class="fb-word-panel-title">📋 Word List</div>
+      <div id="fb-word-list-items"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: QUESTION
+══════════════════════════════════════════════ -->
+<div id="fb-screen-question" class="fb-screen">
+  <header class="fb-header">
+    <div class="fb-logo">⚽ Goal Scored!</div>
+    <div id="fb-q-score-display" style="font-size:.82rem;color:#64748b;font-weight:700;"></div>
+  </header>
+  <div class="fb-q-main">
+    <div class="fb-q-header">
+      <div class="fb-q-player" id="fb-q-player-name"></div>
+      <h2>⚽ GOAL! Answer to earn points</h2>
+      <p>5 points for a correct answer — no deduction for wrong!</p>
+    </div>
+    <div class="fb-timer-bar-wrap">
+      <div class="fb-timer-bar" id="fb-timer-bar" style="width:100%;"></div>
+    </div>
+    <!-- EASY MODE: dash-word + word choices -->
+    <div id="fb-q-easy" style="display:none;">
+      <div style="text-align:center;font-size:.82rem;color:#94a3b8;margin-bottom:4px;font-weight:600;">Which word is shown below?</div>
+      <div class="fb-dash-word" id="fb-dash-word"></div>
+      <div class="fb-word-choices" id="fb-word-choices"></div>
+    </div>
+    <!-- MEDIUM MODE: MCQ upside down -->
+    <div id="fb-q-medium" style="display:none;">
+      <div class="fb-q-text" id="fb-q-text"></div>
+      <div class="fb-upside-hint">👀 Tap an option to reveal it — they're upside down!</div>
+      <div class="fb-options-grid" id="fb-options-grid"></div>
+      <div id="fb-q-feedback" style="text-align:center;font-size:.88rem;font-weight:700;min-height:28px;margin-top:4px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: RECAP (everyone sees result)
+══════════════════════════════════════════════ -->
+<div id="fb-screen-recap" class="fb-screen">
+  <header class="fb-header">
+    <div class="fb-logo">📊 Round Recap</div>
+    <div style="font-size:.8rem;color:#64748b;" id="fb-recap-round-label"></div>
+  </header>
+  <div class="fb-recap-main">
+    <div class="fb-recap-card" id="fb-recap-card">
+      <div class="fb-recap-icon" id="fb-recap-icon">⚽</div>
+      <div class="fb-recap-player" id="fb-recap-player"></div>
+      <div class="fb-recap-result" id="fb-recap-result"></div>
+      <div class="fb-recap-detail" id="fb-recap-detail"></div>
+      <div class="fb-recap-pts" id="fb-recap-pts"></div>
+    </div>
+    <div class="fb-mini-scores" id="fb-mini-scores"></div>
+    <button class="fb-next-btn" id="fb-recap-next-btn">▶ Next Player's Turn</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     SCREEN: RESULTS
+══════════════════════════════════════════════ -->
+<div id="fb-screen-results" class="fb-screen">
+  <header class="fb-header">
+    <div class="fb-logo">🏁 Final Results</div>
+  </header>
+  <div class="fb-results-main">
+    <div class="fb-winner-banner" id="fb-winner-banner">
+      <span class="fb-winner-crown">🏆</span>
+      <div class="fb-winner-name" id="fb-winner-name">—</div>
+      <div class="fb-winner-pts" id="fb-winner-pts"></div>
+    </div>
+    <div class="fb-podium" id="fb-podium"></div>
+    <div class="fb-card">
+      <div class="fb-card-title">📊 Full Leaderboard</div>
+      <table class="fb-results-table">
+        <thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Goals</th></tr></thead>
+        <tbody id="fb-results-body"></tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:16px;">
+      <button class="fb-btn fb-btn-primary" id="fb-play-again" style="flex:1;">🔄 Play Again</button>
+      <a href="index.html" class="fb-btn fb-btn-ghost" style="flex:1;text-decoration:none;text-align:center;padding:14px;display:block;">🏠 Home</a>
+    </div>
+  </div>
+</div>
+
+<script src="js/aqs-groq-key.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════
+   FOOTBALL QUIZ — complete game logic
+══════════════════════════════════════════════════════ */
+
+/* ── STATE ── */
+var FB = {
+  players: [],           /* [{name, score, goals, saves}] */
+  currentPlayer: 0,
+  currentRound: 1,
+  totalRounds: 3,
+  difficulty: 'easy',
+  topic: '',
+  wordList: [],          /* easy mode: words to display */
+  usedWordIndices: [],
+  currentWordIdx: -1,
+  currentQuestion: null, /* medium mode */
+  goalScored: false,
+  lastRecap: null,
+  qTimerInterval: null,
+  qTimeLeft: 30,
+  shooting: false,
+};
+
+/* ── CANVAS STATE ── */
+var CAN = {
+  el: null, ctx: null,
+  W: 480, H: 360,
+  ball: { x: 240, y: 315, vx: 0, vy: 0, phase: 'idle' },
+  drag: { active: false, sx: 0, sy: 0, ex: 0, ey: 0 },
+  gk:   { x: 165, dir: 1, speed: 1.8 },
+  animFrame: null,
+  time: 0,
+  resultMsg: '',
+  resultAlpha: 0,
+  savedBannerShown: false,
+};
+
+/* ── GOAL CONSTANTS ── */
+var GL = 96, GR = 384, GT = 38, GB = 108; /* left, right, top, bottom */
+var GK_W = 80, GK_H = 30;
+var BALL_R = 14;
+
+/* ────────────────────────────────────────────────────
+   SETUP SCREEN
+──────────────────────────────────────────────────── */
+var g_numPlayers = 1;
+var g_numRounds  = 3;
+
+document.addEventListener('DOMContentLoaded', function(){
+  /* Segment controls */
+  setupSeg('fb-seg-players', function(v){
+    g_numPlayers = parseInt(v);
+    renderPlayerInputs();
+  });
+  setupSeg('fb-seg-rounds', function(v){ g_numRounds = parseInt(v); });
+
+  /* Difficulty cards */
+  fbSelectDiff('easy');
+
+  /* Start button */
+  document.getElementById('fb-btn-start').addEventListener('click', fbStart);
+
+  /* Recap next button */
+  document.getElementById('fb-recap-next-btn').addEventListener('click', fbNextTurn);
+
+  /* Play again */
+  document.getElementById('fb-play-again').addEventListener('click', function(){
+    fbShowScreen('setup');
+  });
+
+  /* Canvas init */
+  CAN.el  = document.getElementById('fb-canvas');
+  CAN.ctx = CAN.el.getContext('2d');
+  setupCanvasEvents();
+});
+
+function setupSeg(segId, onChange){
+  var seg = document.getElementById(segId);
+  if(!seg) return;
+  seg.querySelectorAll('.fb-seg-btn').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      seg.querySelectorAll('.fb-seg-btn').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      onChange(btn.dataset.val);
+    });
+  });
+}
+
+function renderPlayerInputs(){
+  var wrap = document.getElementById('fb-player-inputs');
+  if(!wrap) return;
+  var colors = ['#22c55e','#6366f1','#f59e0b','#ec4899'];
+  var html = '';
+  for(var i=0;i<g_numPlayers;i++){
+    html += '<div class="fb-player-row">' +
+      '<div class="fb-player-num" style="background:'+colors[i]+';">'+(i+1)+'</div>' +
+      '<input class="fb-input" id="fb-pname-'+i+'" placeholder="Player '+(i+1)+' name" maxlength="20" value="Player '+(i+1)+'">' +
+      '</div>';
+  }
+  wrap.innerHTML = html;
+}
+
+function fbSelectDiff(diff){
+  FB.difficulty = diff;
+  document.querySelectorAll('.fb-diff-card').forEach(function(c){
+    c.classList.toggle('active', c.dataset.diff === diff);
+  });
+  var tc = document.getElementById('fb-topic-card');
+  if(tc) tc.style.display = diff === 'medium' ? '' : 'none';
+}
+
+async function fbStart(){
+  var names = [];
+  for(var i=0;i<g_numPlayers;i++){
+    var inp = document.getElementById('fb-pname-'+i);
+    var n = (inp ? inp.value.trim() : '') || ('Player '+(i+1));
+    names.push(n);
+  }
+  FB.players = names.map(function(n){ return {name:n, score:0, goals:0, saves:0}; });
+  FB.currentPlayer = 0;
+  FB.currentRound  = 1;
+  FB.totalRounds   = g_numRounds;
+  FB.topic         = (document.getElementById('fb-topic-inp')||{}).value.trim() || 'General Knowledge';
+  FB.usedWordIndices = [];
+  FB.wordList = [];
+
+  var btn = document.getElementById('fb-btn-start');
+  btn.disabled = true; btn.textContent = 'Preparing…';
+
+  /* Generate word list for easy mode */
+  if(FB.difficulty === 'easy'){
+    FB.wordList = await fbGenerateWordList(FB.topic);
+    renderWordPanel();
+  }
+
+  btn.disabled = false; btn.textContent = '⚽ Start Game';
+
+  fbShowScreen('game');
+  fbInitTurn();
+}
+
+/* ────────────────────────────────────────────────────
+   WORD LIST
+──────────────────────────────────────────────────── */
+async function fbGenerateWordList(topic){
+  var defaults = ['BIOLOGY','CELL','ATOM','ENERGY','ORBIT','WATER','BRAIN','FORCE',
+                  'LIGHT','GRAVITY','MUSCLE','BLOOD','PLANT','EARTH','OXYGEN'];
+  try {
+    if(typeof window.groqFetch !== 'function') return defaults;
+    var res = await window.groqFetch({ messages:[
+      {role:'system',content:'Return ONLY a JSON array of exactly 12 single English words (ALL CAPS, no spaces) related to the given topic.'},
+      {role:'user', content:'Topic: '+topic}
+    ], max_tokens:300, temperature:0.7 });
+    var data = await res.json();
+    var text = (((data.choices||[])[0]||{}).message||{}).content||'';
+    var match = text.match(/\[[\s\S]*\]/);
+    if(!match) return defaults;
+    var arr = JSON.parse(match[0]).filter(function(w){ return typeof w==='string' && w.length>=3 && w.length<=12; });
+    return arr.length >= 6 ? arr.slice(0,12) : defaults;
+  } catch(e){ return defaults; }
+}
+
+function renderWordPanel(){
+  var wrap = document.getElementById('fb-word-list-items');
+  if(!wrap) return;
+  wrap.innerHTML = FB.wordList.map(function(w, i){
+    var used = FB.usedWordIndices.indexOf(i) !== -1;
+    return '<div class="fb-word-item'+(used?' used':'')+'" id="fb-witem-'+i+'">'+w+'</div>';
+  }).join('');
+}
+
+/* ────────────────────────────────────────────────────
+   GAME SCREEN
+──────────────────────────────────────────────────── */
+function fbInitTurn(){
+  var p = FB.players[FB.currentPlayer];
+  document.getElementById('fb-turn-badge').textContent = p.name + "'s Turn ⚽";
+  document.getElementById('fb-round-info').textContent = 'Round '+FB.currentRound+' of '+FB.totalRounds;
+  renderScoreChips();
+
+  /* Reset canvas ball */
+  CAN.ball = { x: 240, y: 315, vx: 0, vy: 0, phase: 'idle' };
+  CAN.drag = { active: false, sx:0, sy:0, ex:0, ey:0 };
+  CAN.resultMsg = '';
+  CAN.resultAlpha = 0;
+  CAN.savedBannerShown = false;
+  FB.shooting = false;
+  FB.goalScored = false;
+
+  /* Goalkeeper reset */
+  CAN.gk.x   = GL + 10;
+  CAN.gk.dir  = 1;
+  CAN.gk.speed = FB.difficulty === 'medium' ? 2.2 : 1.6;
+
+  /* Show word panel for easy */
+  var wp = document.getElementById('fb-word-panel');
+  if(wp) wp.style.display = FB.difficulty === 'easy' ? '' : 'none';
+
+  document.getElementById('fb-canvas-hint').textContent = '👆 Drag anywhere to aim — release to shoot!';
+
+  /* Start animation loop */
+  if(CAN.animFrame) cancelAnimationFrame(CAN.animFrame);
+  CAN.time = 0;
+  fbGameLoop();
+}
+
+function renderScoreChips(){
+  var wrap = document.getElementById('fb-score-chips');
+  if(!wrap) return;
+  wrap.innerHTML = FB.players.map(function(p, i){
+    var me = i === FB.currentPlayer;
+    return '<div class="fb-score-chip'+(me?' me':'')+'">'+
+      (me?'👤 ':'')+p.name+': '+p.score+'pts'+
+      '</div>';
+  }).join('');
+}
+
+/* ────────────────────────────────────────────────────
+   CANVAS — EVENT HANDLERS
+──────────────────────────────────────────────────── */
+function setupCanvasEvents(){
+  var c = CAN.el;
+  function getPos(e){
+    var rect = c.getBoundingClientRect();
+    var scaleX = CAN.W / rect.width;
+    var scaleY = CAN.H / rect.height;
+    var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return { x:(clientX - rect.left)*scaleX, y:(clientY - rect.top)*scaleY };
+  }
+  function onDown(e){
+    e.preventDefault();
+    if(FB.shooting || CAN.ball.phase !== 'idle') return;
+    var pos = getPos(e);
+    CAN.drag.active = true;
+    CAN.drag.sx = pos.x; CAN.drag.sy = pos.y;
+    CAN.drag.ex = pos.x; CAN.drag.ey = pos.y;
+  }
+  function onMove(e){
+    e.preventDefault();
+    if(!CAN.drag.active) return;
+    var pos = getPos(e);
+    CAN.drag.ex = pos.x; CAN.drag.ey = pos.y;
+  }
+  function onUp(e){
+    e.preventDefault();
+    if(!CAN.drag.active) return;
+    CAN.drag.active = false;
+    fbShoot();
+  }
+  c.addEventListener('mousedown', onDown);
+  c.addEventListener('mousemove', onMove);
+  c.addEventListener('mouseup',   onUp);
+  c.addEventListener('touchstart',onDown,{passive:false});
+  c.addEventListener('touchmove', onMove,{passive:false});
+  c.addEventListener('touchend',  onUp,  {passive:false});
+}
+
+/* ────────────────────────────────────────────────────
+   SHOOT MECHANIC
+──────────────────────────────────────────────────── */
+function fbShoot(){
+  if(FB.shooting || CAN.ball.phase !== 'idle') return;
+  var dx = CAN.ball.x - CAN.drag.ex;
+  var dy = CAN.ball.y - CAN.drag.ey;
+  var dist = Math.sqrt(dx*dx + dy*dy);
+  if(dist < 8) return; /* too small — ignore */
+  var power = Math.min(dist / 90, 1.0);
+  var maxSpd = 14;
+  CAN.ball.vx = (dx / dist) * power * maxSpd;
+  CAN.ball.vy = (dy / dist) * power * maxSpd;
+  CAN.ball.phase = 'shooting';
+  FB.shooting = true;
+  document.getElementById('fb-canvas-hint').textContent = '';
+}
+
+/* ────────────────────────────────────────────────────
+   GAME LOOP
+──────────────────────────────────────────────────── */
+function fbGameLoop(){
+  CAN.animFrame = requestAnimationFrame(fbGameLoop);
+  CAN.time++;
+
+  var ctx = CAN.ctx;
+  ctx.clearRect(0, 0, CAN.W, CAN.H);
+
+  fbDrawField(ctx);
+  fbDrawGoal(ctx);
+  fbMoveGoalkeeper();
+  fbDrawGoalkeeper(ctx);
+  fbUpdateBall();
+  fbDrawBall(ctx);
+  fbDrawPlayer(ctx);
+  if(CAN.drag.active) fbDrawAimArrow(ctx);
+  if(CAN.resultAlpha > 0) fbDrawResultMsg(ctx);
+}
+
+function fbDrawField(ctx){
+  /* Sky gradient */
+  var sky = ctx.createLinearGradient(0,0,0,CAN.H*0.35);
+  sky.addColorStop(0,'#0a1628');
+  sky.addColorStop(1,'#0f2340');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0,0,CAN.W,CAN.H*0.35);
+  /* Stadium background arcs */
+  ctx.fillStyle='rgba(255,255,255,.015)';
+  ctx.beginPath(); ctx.arc(240,0,300,0,Math.PI); ctx.fill();
+  /* Pitch */
+  var pitch = ctx.createLinearGradient(0,CAN.H*0.35,0,CAN.H);
+  pitch.addColorStop(0,'#14532d');
+  pitch.addColorStop(0.5,'#166534');
+  pitch.addColorStop(1,'#14532d');
+  ctx.fillStyle=pitch;
+  ctx.fillRect(0,CAN.H*0.35,CAN.W,CAN.H*0.65);
+  /* Pitch stripes */
+  ctx.fillStyle='rgba(255,255,255,.03)';
+  for(var s=0;s<CAN.W;s+=40){
+    if(Math.floor(s/40)%2===0) ctx.fillRect(s,CAN.H*0.35,40,CAN.H*0.65);
+  }
+  /* Centre circle */
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(240,CAN.H*0.72,50,0,Math.PI*2); ctx.stroke();
+  /* Centre spot */
+  ctx.fillStyle='rgba(255,255,255,.18)';
+  ctx.beginPath(); ctx.arc(240,CAN.H*0.72,3,0,Math.PI*2); ctx.fill();
+  /* Penalty arc */
+  ctx.beginPath(); ctx.arc(240,260,80,0.2,Math.PI-0.2); ctx.stroke();
+}
+
+function fbDrawGoal(ctx){
+  /* Net */
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1;
+  for(var nx=GL;nx<=GR;nx+=20){
+    ctx.beginPath(); ctx.moveTo(nx,GT); ctx.lineTo(nx,GB); ctx.stroke();
+  }
+  for(var ny=GT;ny<=GB;ny+=14){
+    ctx.beginPath(); ctx.moveTo(GL,ny); ctx.lineTo(GR,ny); ctx.stroke();
+  }
+  /* Posts */
+  ctx.strokeStyle='#f0f0f0'; ctx.lineWidth=4; ctx.lineJoin='round';
+  ctx.beginPath();
+  ctx.moveTo(GL,GB); ctx.lineTo(GL,GT); ctx.lineTo(GR,GT); ctx.lineTo(GR,GB);
+  ctx.stroke();
+  /* Post depth lines */
+  ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(GL,GT); ctx.lineTo(GL-12,GT-10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(GR,GT); ctx.lineTo(GR+12,GT-10); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(GL-12,GT-10); ctx.lineTo(GR+12,GT-10); ctx.stroke();
+}
+
+function fbMoveGoalkeeper(){
+  var maxX = GR - GK_W - 10;
+  var minX = GL + 10;
+  CAN.gk.x += CAN.gk.dir * CAN.gk.speed;
+  if(CAN.gk.x >= maxX){ CAN.gk.x = maxX; CAN.gk.dir = -1; }
+  if(CAN.gk.x <= minX){ CAN.gk.x = minX; CAN.gk.dir  =  1; }
+}
+
+function fbDrawGoalkeeper(ctx){
+  /* Body */
+  var gx = CAN.gk.x, gy = GT + 4;
+  ctx.fillStyle='#f59e0b';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(gx, gy, GK_W, GK_H, 6) :
+    (function(){ ctx.rect(gx,gy,GK_W,GK_H); })();
+  ctx.fill();
+  /* Jersey stripes */
+  ctx.fillStyle='rgba(0,0,0,.2)';
+  for(var s=0;s<GK_W;s+=16){
+    ctx.fillRect(gx+s, gy, 8, GK_H);
+  }
+  /* Gloves */
+  ctx.fillStyle='#fde68a';
+  ctx.beginPath(); ctx.arc(gx-4, gy+GK_H/2, 7, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(gx+GK_W+4, gy+GK_H/2, 7, 0, Math.PI*2); ctx.fill();
+  /* Head */
+  ctx.fillStyle='#f59e0b';
+  ctx.beginPath(); ctx.arc(gx+GK_W/2, gy-8, 10, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1a1a2e';
+  ctx.beginPath(); ctx.arc(gx+GK_W/2, gy-8, 10, Math.PI,Math.PI*2); ctx.fill();
+}
+
+function fbUpdateBall(){
+  var b = CAN.ball;
+  if(b.phase !== 'shooting') return;
+
+  var gravity = 0.12;
+  b.x += b.vx;
+  b.y += b.vy;
+  b.vy += gravity;
+
+  /* Wall bounce (left/right) */
+  if(b.x < BALL_R){ b.x = BALL_R; b.vx = Math.abs(b.vx)*0.6; }
+  if(b.x > CAN.W-BALL_R){ b.x = CAN.W-BALL_R; b.vx = -Math.abs(b.vx)*0.6; }
+
+  /* Check if ball in goal area */
+  if(b.y - BALL_R <= GB && b.y - BALL_R >= GT - 10 && b.x >= GL && b.x <= GR){
+    /* Check goalkeeper collision */
+    var gkRect = { l: CAN.gk.x, r: CAN.gk.x+GK_W, t: GT+4, b: GT+4+GK_H };
+    var hit = b.x+BALL_R > gkRect.l && b.x-BALL_R < gkRect.r &&
+              b.y+BALL_R > gkRect.t && b.y-BALL_R < gkRect.b;
+    if(hit){
+      /* SAVED */
+      b.phase = 'saved';
+      fbOnSaved();
+      return;
+    }
+    /* Ball entered goal (top of goal) */
+    if(b.y - BALL_R <= GT + 10){
+      b.phase = 'scored';
+      fbOnGoal();
+      return;
+    }
+  }
+
+  /* Ball fell off bottom */
+  if(b.y > CAN.H + 30){
+    b.phase = 'idle';
+    b.x = 240; b.y = 315; b.vx = 0; b.vy = 0;
+    FB.shooting = false;
+    document.getElementById('fb-canvas-hint').textContent = '⚠️ Missed! Try again.';
+    setTimeout(function(){
+      if(document.getElementById('fb-canvas-hint'))
+        document.getElementById('fb-canvas-hint').textContent = '👆 Drag anywhere to aim — release to shoot!';
+    }, 1500);
+  }
+
+  /* Ball went above goal (missed) */
+  if(b.y < GT - 20 && (b.x < GL || b.x > GR)){
+    b.phase = 'idle';
+    b.x = 240; b.y = 315; b.vx = 0; b.vy = 0;
+    FB.shooting = false;
+    document.getElementById('fb-canvas-hint').textContent = '⚠️ Wide! Try again.';
+    setTimeout(function(){
+      if(document.getElementById('fb-canvas-hint'))
+        document.getElementById('fb-canvas-hint').textContent = '👆 Drag anywhere to aim — release to shoot!';
+    }, 1500);
+  }
+}
+
+function fbDrawBall(ctx){
+  var b = CAN.ball;
+  /* Shadow */
+  var shadowY = Math.min(b.y + 8, CAN.H - 5);
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath(); ctx.ellipse(b.x, shadowY, BALL_R, 4, 0, 0, Math.PI*2); ctx.fill();
+  /* Ball */
+  var ballGrad = ctx.createRadialGradient(b.x-4, b.y-4, 2, b.x, b.y, BALL_R);
+  ballGrad.addColorStop(0,'#ffffff');
+  ballGrad.addColorStop(1,'#d4d4d4');
+  ctx.fillStyle = ballGrad;
+  ctx.beginPath(); ctx.arc(b.x, b.y, BALL_R, 0, Math.PI*2); ctx.fill();
+  /* Black pentagons (simplified as lines) */
+  ctx.strokeStyle='#111'; ctx.lineWidth=1.2;
+  var ang = CAN.time * 0.06;
+  for(var p=0;p<5;p++){
+    var a = ang + p*(Math.PI*2/5);
+    var px = b.x + Math.cos(a)*(BALL_R*0.45);
+    var py = b.y + Math.sin(a)*(BALL_R*0.45);
+    ctx.beginPath();
+    for(var v=0;v<6;v++){
+      var va = a + v*(Math.PI*2/6);
+      var vx = px + Math.cos(va)*(BALL_R*0.3);
+      var vy = py + Math.sin(va)*(BALL_R*0.3);
+      if(v===0) ctx.moveTo(vx,vy); else ctx.lineTo(vx,vy);
+    }
+    ctx.closePath(); ctx.stroke();
+  }
+}
+
+function fbDrawPlayer(ctx){
+  var px = 240, py = 338;
+  /* Jersey */
+  ctx.fillStyle = '#6366f1';
+  ctx.beginPath(); ctx.roundRect ?
+    ctx.roundRect(px-14,py-18,28,26,4) :
+    ctx.rect(px-14,py-18,28,26);
+  ctx.fill();
+  /* Number */
+  ctx.fillStyle='#fff'; ctx.font='bold 10px Inter,sans-serif'; ctx.textAlign='center';
+  ctx.fillText(FB.players[FB.currentPlayer] ? FB.players[FB.currentPlayer].name.charAt(0).toUpperCase() : '1', px, py-2);
+  /* Legs */
+  ctx.strokeStyle='#4338ca'; ctx.lineWidth=6; ctx.lineCap='round';
+  ctx.beginPath(); ctx.moveTo(px-6,py+8); ctx.lineTo(px-8,py+22); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px+6,py+8); ctx.lineTo(px+8,py+22); ctx.stroke();
+  /* Boots */
+  ctx.fillStyle='#1e1b4b';
+  ctx.beginPath(); ctx.arc(px-8,py+22,5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(px+8,py+22,5,0,Math.PI*2); ctx.fill();
+  /* Head */
+  ctx.fillStyle='#f5d0a9';
+  ctx.beginPath(); ctx.arc(px,py-26,11,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='#1a1a2e';
+  ctx.beginPath(); ctx.arc(px,py-30,8,Math.PI,Math.PI*2); ctx.fill();
+  /* Arms */
+  ctx.strokeStyle='#6366f1'; ctx.lineWidth=5;
+  ctx.beginPath(); ctx.moveTo(px-14,py-12); ctx.lineTo(px-24,py-2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(px+14,py-12); ctx.lineTo(px+24,py-2); ctx.stroke();
+}
+
+function fbDrawAimArrow(ctx){
+  var bx = CAN.ball.x, by = CAN.ball.y;
+  var ex = CAN.drag.ex, ey = CAN.drag.ey;
+  /* Target circle */
+  ctx.strokeStyle='rgba(99,102,241,.6)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.arc(ex,ey,8,0,Math.PI*2); ctx.stroke();
+  /* Dotted trajectory line */
+  var dx = bx - ex, dy = by - ey;
+  var dist = Math.sqrt(dx*dx+dy*dy);
+  var steps = Math.min(Math.floor(dist/16), 8);
+  ctx.fillStyle='rgba(99,102,241,.5)';
+  for(var i=1;i<=steps;i++){
+    var t = i/steps;
+    var tx = bx + dx * t * -0.8;
+    var ty = by + dy * t * -0.8;
+    var r = 4 - i*0.35;
+    ctx.beginPath(); ctx.arc(tx,ty,Math.max(r,1),0,Math.PI*2); ctx.fill();
+  }
+  /* Power bar */
+  var power = Math.min(dist/90, 1);
+  var barW = 80, barX = bx - barW/2, barY = by + 26;
+  ctx.fillStyle='rgba(0,0,0,.5)';
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(barX,barY,barW,6,3) : ctx.rect(barX,barY,barW,6);
+  ctx.fill();
+  var pColor = power > 0.7 ? '#ef4444' : power > 0.4 ? '#f59e0b' : '#22c55e';
+  ctx.fillStyle = pColor;
+  ctx.beginPath(); ctx.roundRect ? ctx.roundRect(barX,barY,barW*power,6,3) : ctx.rect(barX,barY,barW*power,6);
+  ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.7)'; ctx.font='bold 9px Inter,sans-serif'; ctx.textAlign='center';
+  ctx.fillText('POWER',bx,barY+16);
+}
+
+function fbDrawResultMsg(ctx){
+  ctx.globalAlpha = Math.min(CAN.resultAlpha, 1);
+  ctx.font = 'bold 38px Inter,sans-serif'; ctx.textAlign='center';
+  ctx.fillStyle='#fbbf24';
+  ctx.strokeStyle='#1a1a2e'; ctx.lineWidth=4;
+  ctx.strokeText(CAN.resultMsg, CAN.W/2, CAN.H/2);
+  ctx.fillText(CAN.resultMsg, CAN.W/2, CAN.H/2);
+  ctx.globalAlpha = 1;
+  CAN.resultAlpha -= 0.018;
+}
+
+/* ────────────────────────────────────────────────────
+   GOAL / SAVED EVENTS
+──────────────────────────────────────────────────── */
+function fbOnGoal(){
+  cancelAnimationFrame(CAN.animFrame);
+  CAN.resultMsg = '⚽ GOAL!';
+  CAN.resultAlpha = 3;
+  FB.goalScored = true;
+  FB.players[FB.currentPlayer].goals++;
+
+  var gmsg = document.getElementById('fb-goal-msg');
+  gmsg.textContent = '⚽ GOAL!';
+  gmsg.style.color = '#22c55e';
+  gmsg.classList.add('show');
+  setTimeout(function(){ gmsg.classList.remove('show'); }, 1800);
+
+  setTimeout(function(){
+    fbShowQuestion();
+  }, 1800);
+}
+
+function fbOnSaved(){
+  cancelAnimationFrame(CAN.animFrame);
+  CAN.resultMsg = '🧤 SAVED!';
+  CAN.resultAlpha = 3;
+  FB.players[FB.currentPlayer].saves++;
+
+  var gmsg = document.getElementById('fb-goal-msg');
+  gmsg.textContent = '🧤 SAVED!';
+  gmsg.style.color = '#ef4444';
+  gmsg.classList.add('show');
+  setTimeout(function(){ gmsg.classList.remove('show'); }, 1600);
+
+  /* No question — go to recap showing saved */
+  FB.lastRecap = {
+    goalScored: false,
+    playerName: FB.players[FB.currentPlayer].name,
+    questionText: '',
+    answerText: '',
+    correct: false,
+    ptsEarned: 0,
+  };
+
+  setTimeout(function(){
+    fbShowRecap();
+  }, 1800);
+}
+
+/* ────────────────────────────────────────────────────
+   QUESTION SCREEN
+──────────────────────────────────────────────────── */
+async function fbShowQuestion(){
+  fbShowScreen('question');
+  var p = FB.players[FB.currentPlayer];
+  document.getElementById('fb-q-player-name').textContent = p.name + "'s Question";
+  document.getElementById('fb-q-score-display').textContent = p.score + ' pts so far';
+
+  clearInterval(FB.qTimerInterval);
+  FB.qTimeLeft = 30;
+
+  if(FB.difficulty === 'easy'){
+    await fbShowEasyQuestion();
+  } else {
+    await fbShowMediumQuestion();
+  }
+
+  /* Timer */
+  var bar = document.getElementById('fb-timer-bar');
+  if(bar){ bar.style.width='100%'; bar.classList.remove('urgent'); }
+  FB.qTimerInterval = setInterval(function(){
+    FB.qTimeLeft--;
+    var pct = (FB.qTimeLeft/30)*100;
+    if(bar){
+      bar.style.width = Math.max(0,pct)+'%';
+      if(FB.qTimeLeft <= 8) bar.classList.add('urgent');
+    }
+    if(FB.qTimeLeft <= 0){
+      clearInterval(FB.qTimerInterval);
+      fbOnTimeout();
+    }
+  }, 1000);
+}
+
+async function fbShowEasyQuestion(){
+  document.getElementById('fb-q-easy').style.display = '';
+  document.getElementById('fb-q-medium').style.display = 'none';
+
+  /* Pick a word from the list */
+  var available = [];
+  for(var i=0;i<FB.wordList.length;i++){
+    if(FB.usedWordIndices.indexOf(i)===-1) available.push(i);
+  }
+  if(available.length === 0){
+    FB.usedWordIndices = [];
+    for(var j=0;j<FB.wordList.length;j++) available.push(j);
+  }
+  var pick = available[Math.floor(Math.random()*available.length)];
+  FB.currentWordIdx = pick;
+  var word = FB.wordList[pick];
+
+  /* Build dash-word display */
+  var dashHtml = word.split('').map(function(ch, ci){
+    if(ci > 0) return '<div class="fb-dash-sep">—</div><div class="fb-dash-letter">'+ch+'</div>';
+    return '<div class="fb-dash-letter">'+ch+'</div>';
+  }).join('');
+  document.getElementById('fb-dash-word').innerHTML = dashHtml;
+
+  /* Show 4-5 word choices (correct + distractors) */
+  var distractors = [];
+  for(var k=0;k<FB.wordList.length;k++){
+    if(k !== pick) distractors.push(FB.wordList[k]);
+  }
+  distractors = fbShuffle(distractors).slice(0, 4);
+  var choices = fbShuffle([word].concat(distractors));
+
+  var choicesHtml = choices.map(function(ch){
+    return '<button class="fb-word-choice-btn" data-word="'+ch+'" onclick="fbEasyPick(this,\''+ch+'\',\''+word+'\')">'+ch+'</button>';
+  }).join('');
+  document.getElementById('fb-word-choices').innerHTML = choicesHtml;
+
+  FB.currentQuestion = { type:'easy', correctWord: word };
+}
+
+function fbEasyPick(btn, chosen, correct){
+  clearInterval(FB.qTimerInterval);
+  var allBtns = document.querySelectorAll('.fb-word-choice-btn');
+  allBtns.forEach(function(b){ b.disabled = true; });
+
+  var isCorrect = chosen === correct;
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    allBtns.forEach(function(b){ if(b.dataset.word === correct) b.classList.add('correct'); });
+  }
+
+  if(isCorrect){
+    FB.players[FB.currentPlayer].score += 5;
+    FB.usedWordIndices.push(FB.currentWordIdx);
+  }
+
+  FB.lastRecap = {
+    goalScored: true,
+    playerName: FB.players[FB.currentPlayer].name,
+    questionText: 'Word shown: ' + correct,
+    answerText: chosen,
+    correct: isCorrect,
+    ptsEarned: isCorrect ? 5 : 0,
+  };
+
+  setTimeout(function(){ fbShowRecap(); }, 1000);
+}
+
+async function fbShowMediumQuestion(){
+  document.getElementById('fb-q-easy').style.display = 'none';
+  document.getElementById('fb-q-medium').style.display = '';
+  document.getElementById('fb-q-text').textContent = 'Generating question…';
+  document.getElementById('fb-options-grid').innerHTML = '';
+  document.getElementById('fb-q-feedback').textContent = '';
+
+  var q = await fbGenerateMCQ(FB.topic);
+  FB.currentQuestion = q;
+
+  document.getElementById('fb-q-text').textContent = q.q;
+  var letters = ['A','B','C','D'];
+  var html = q.options.map(function(opt, i){
+    return '<button class="fb-option-btn" data-idx="'+i+'" onclick="fbMediumPick(this,'+i+','+q.answer+')">' +
+           '<span class="fb-option-letter">'+letters[i]+'</span>'+opt+'</button>';
+  }).join('');
+  document.getElementById('fb-options-grid').innerHTML = html;
+}
+
+async function fbGenerateMCQ(topic){
+  var fallback = {
+    q:'What is the most abundant gas in Earth\'s atmosphere?',
+    options:['Nitrogen','Oxygen','Carbon Dioxide','Hydrogen'],
+    answer:0
+  };
+  try {
+    if(typeof window.groqFetch !== 'function') return fallback;
+    var res = await window.groqFetch({ messages:[
+      {role:'system',content:'Generate 1 multiple-choice question. Return ONLY JSON: {"q":"question","options":["A","B","C","D"],"answer":0}. answer is 0-indexed.'},
+      {role:'user', content:'Topic: '+topic+'. Make it interesting and educational.'}
+    ], max_tokens:300, temperature:0.8 });
+    var data = await res.json();
+    var text = (((data.choices||[])[0]||{}).message||{}).content||'';
+    var match = text.match(/\{[\s\S]*\}/);
+    if(!match) return fallback;
+    var obj = JSON.parse(match[0]);
+    if(!obj.q || !Array.isArray(obj.options) || obj.options.length < 2) return fallback;
+    return { q: obj.q, options: obj.options.slice(0,4), answer: parseInt(obj.answer)||0 };
+  } catch(e){ return fallback; }
+}
+
+function fbMediumPick(btn, idx, correctIdx){
+  clearInterval(FB.qTimerInterval);
+  var allBtns = document.querySelectorAll('.fb-option-btn');
+  allBtns.forEach(function(b){ b.disabled=true; b.classList.add('flipped'); });
+
+  var isCorrect = idx === correctIdx;
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  if(!isCorrect){
+    allBtns.forEach(function(b){
+      if(parseInt(b.dataset.idx) === correctIdx) b.classList.add('correct');
+    });
+  }
+
+  var fb = document.getElementById('fb-q-feedback');
+  if(fb) fb.textContent = isCorrect ? '✅ Correct! +5 points' : '❌ Wrong! The correct answer is highlighted.';
+  if(fb) fb.style.color = isCorrect ? '#22c55e' : '#ef4444';
+
+  if(isCorrect) FB.players[FB.currentPlayer].score += 5;
+
+  var q = FB.currentQuestion;
+  FB.lastRecap = {
+    goalScored: true,
+    playerName: FB.players[FB.currentPlayer].name,
+    questionText: q ? q.q : '',
+    answerText: (q && q.options) ? q.options[idx] : '',
+    correct: isCorrect,
+    ptsEarned: isCorrect ? 5 : 0,
+    correctAnswerText: (q && q.options) ? q.options[correctIdx] : '',
+  };
+
+  setTimeout(function(){ fbShowRecap(); }, 1200);
+}
+
+function fbOnTimeout(){
+  clearInterval(FB.qTimerInterval);
+  var allBtns = document.querySelectorAll('.fb-word-choice-btn, .fb-option-btn');
+  allBtns.forEach(function(b){ b.disabled=true; if(b.classList.contains('fb-option-btn')) b.classList.add('flipped'); });
+
+  var q = FB.currentQuestion;
+  var correctIdx = q ? q.answer : 0;
+  if(FB.difficulty === 'medium'){
+    document.querySelectorAll('.fb-option-btn').forEach(function(b){
+      if(parseInt(b.dataset.idx)===correctIdx) b.classList.add('correct');
+    });
+  }
+
+  FB.lastRecap = {
+    goalScored: true,
+    playerName: FB.players[FB.currentPlayer].name,
+    questionText: q ? (q.q || ('Word: '+(FB.wordList[FB.currentWordIdx]||''))) : '',
+    answerText: 'Timed out',
+    correct: false,
+    ptsEarned: 0,
+  };
+
+  setTimeout(function(){ fbShowRecap(); }, 900);
+}
+
+/* ────────────────────────────────────────────────────
+   RECAP SCREEN
+──────────────────────────────────────────────────── */
+function fbShowRecap(){
+  fbShowScreen('recap');
+  var r = FB.lastRecap || {};
+  document.getElementById('fb-recap-round-label').textContent =
+    'Round '+FB.currentRound+' of '+FB.totalRounds;
+  document.getElementById('fb-recap-player').textContent = r.playerName || '';
+
+  if(!r.goalScored){
+    document.getElementById('fb-recap-icon').textContent  = '🧤';
+    document.getElementById('fb-recap-result').textContent = 'Saved! No question this turn.';
+    document.getElementById('fb-recap-detail').textContent = 'The goalkeeper blocked the shot.';
+    document.getElementById('fb-recap-pts').textContent    = '+0 pts';
+  } else {
+    document.getElementById('fb-recap-icon').textContent  = r.correct ? '✅' : '❌';
+    document.getElementById('fb-recap-result').textContent = r.correct ? 'Correct Answer! ⚽' : 'Wrong Answer';
+    var detail = r.questionText ? 'Q: '+r.questionText : '';
+    if(r.answerText) detail += '\nChose: '+r.answerText;
+    if(!r.correct && r.correctAnswerText) detail += '\nCorrect was: '+r.correctAnswerText;
+    document.getElementById('fb-recap-detail').textContent = detail;
+    document.getElementById('fb-recap-pts').textContent = (r.ptsEarned > 0 ? '+' : '')+r.ptsEarned+' pts';
+  }
+
+  /* Mini scoreboard */
+  var sorted = FB.players.slice().sort(function(a,b){ return b.score-a.score; });
+  var html = sorted.map(function(p, i){
+    var isLeader = i === 0;
+    var isMe = p === FB.players[FB.currentPlayer];
+    return '<div class="fb-mini-score-row'+(isLeader?' leader':'')+'">' +
+      '<div class="fb-mini-score-name">' +
+        '<div class="fb-mini-avatar">'+p.name.charAt(0).toUpperCase()+'</div>' +
+        p.name+(isMe?' (you)':'') +
+      '</div>' +
+      '<div style="font-weight:800;color:'+(isLeader?'#86efac':'#94a3b8')+'">'+p.score+' pts</div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('fb-mini-scores').innerHTML = html;
+
+  /* Update next button text */
+  var nextBtn = document.getElementById('fb-recap-next-btn');
+  var isLastTurn = fbIsLastTurn();
+  nextBtn.textContent = isLastTurn ? '🏁 See Final Results →' : '▶ Next Player\'s Turn';
+}
+
+function fbIsLastTurn(){
+  var nextPlayer = (FB.currentPlayer + 1) % FB.players.length;
+  var nextRound = FB.currentRound + (nextPlayer === 0 ? 1 : 0);
+  return nextRound > FB.totalRounds && nextPlayer === 0;
+}
+
+function fbNextTurn(){
+  FB.currentPlayer = (FB.currentPlayer + 1) % FB.players.length;
+  if(FB.currentPlayer === 0){
+    FB.currentRound++;
+  }
+  if(FB.currentRound > FB.totalRounds){
+    fbShowResults();
+  } else {
+    fbShowScreen('game');
+    fbInitTurn();
+  }
+}
+
+/* ────────────────────────────────────────────────────
+   RESULTS
+──────────────────────────────────────────────────── */
+function fbShowResults(){
+  fbShowScreen('results');
+  var sorted = FB.players.slice().sort(function(a,b){ return b.score-a.score; });
+  var winner = sorted[0];
+
+  document.getElementById('fb-winner-name').textContent = winner.name + ' 🏆';
+  document.getElementById('fb-winner-pts').textContent = winner.score + ' points · '+winner.goals+' goal'+(winner.goals!==1?'s':'');
+
+  /* Podium */
+  var podiumOrder = [sorted[1], sorted[0], sorted[2]];
+  var heights = ['64px','90px','44px'];
+  var crowns  = ['🥈','🥇','🥉'];
+  var rankCls = ['rank-2','rank-1','rank-3'];
+  var podiumHtml = podiumOrder.map(function(p, i){
+    if(!p) return '<div class="fb-podium-step '+rankCls[i]+'"></div>';
+    return '<div class="fb-podium-step '+rankCls[i]+'">' +
+      '<span style="font-size:1.4rem;display:block;margin-bottom:4px;">'+crowns[i]+'</span>' +
+      '<div class="fb-podium-avatar">'+p.name.charAt(0).toUpperCase()+'</div>' +
+      '<div class="fb-podium-block" style="height:'+heights[i]+';border-radius:8px 8px 0 0;margin:0 auto;width:56px;"></div>' +
+      '<div style="font-size:.8rem;font-weight:700;color:#e2e8f0;margin-top:4px;">'+p.name+'</div>' +
+      '<div style="font-size:.75rem;color:#64748b;">'+p.score+' pts</div>' +
+      '</div>';
+  }).join('');
+  document.getElementById('fb-podium').innerHTML = podiumHtml;
+
+  /* Full table */
+  var tbHtml = sorted.map(function(p, i){
+    var medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    return '<tr><td>'+medal+(i+1)+'</td><td>'+p.name+'</td><td><strong>'+p.score+'</strong></td><td>'+p.goals+'</td></tr>';
+  }).join('');
+  document.getElementById('fb-results-body').innerHTML = tbHtml;
+}
+
+/* ────────────────────────────────────────────────────
+   UTILITIES
+──────────────────────────────────────────────────── */
+function fbShowScreen(name){
+  document.querySelectorAll('.fb-screen').forEach(function(s){ s.classList.remove('active'); });
+  var sc = document.getElementById('fb-screen-'+name);
+  if(sc){ sc.classList.add('active'); window.scrollTo(0,0); }
+}
+
+function fbShuffle(arr){
+  var a = arr.slice();
+  for(var i=a.length-1;i>0;i--){
+    var j=Math.floor(Math.random()*(i+1));
+    var t=a[i]; a[i]=a[j]; a[j]=t;
+  }
+  return a;
+}
+</script>
+</body>
+</html>
