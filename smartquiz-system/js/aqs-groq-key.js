@@ -89,31 +89,50 @@
         return keys[idx];
     };
 
-    /* groqFetch — tries Groq (all 5 keys), then silently falls back to
-       Mistral (all 5 keys). No visible error until both providers fail. */
+    /* ── Per-key 429 cooldown tracker ───────────────────────────────────── */
+    /* When a key gets rate-limited we record it and skip it for 62 s so the  */
+    /* next request doesn't hammer the same key again immediately.             */
+    var _rateLimitedUntil = {};   /* last-8-chars of key → expiry timestamp   */
+    var RL_COOLDOWN_MS = 62000;   /* 62 s — just past the Groq 1-min window   */
+
+    function _keyHash(k) { return k ? k.slice(-8) : '?'; }
+    function _isRateLimited(k) { return (_rateLimitedUntil[_keyHash(k)] || 0) > Date.now(); }
+    function _markRateLimited(k) {
+        _rateLimitedUntil[_keyHash(k)] = Date.now() + RL_COOLDOWN_MS;
+        console.warn('[groqFetch] key …' + _keyHash(k) + ' is rate-limited; cooldown 62 s');
+    }
+
+    /* groqFetch — tries Groq (all keys, skipping cooling-down ones), then
+       silently falls back to Mistral. No visible error until both fail.     */
     window.groqFetch = async function(bodyObj, extraOpts) {
 
-        /* Personal browser-saved key — priority, fall through if 429 */
+        /* Personal browser-saved key — highest priority; skip if cooling down */
         var personal = '';
         try { personal = (localStorage.getItem(STORAGE_KEY) || '').trim(); } catch(e) {}
-        if (personal && personal.startsWith('gsk_')) {
+        if (personal && personal.startsWith('gsk_') && !_isRateLimited(personal)) {
             try {
                 var pRes = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
                     method:  'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + personal },
                     body:    JSON.stringify(bodyObj)
                 }));
-                if (pRes.status !== 429) return pRes;
+                if (pRes.status === 429) { _markRateLimited(personal); }
+                else { return pRes; }
             } catch(e) { /* fall through */ }
         }
 
-        /* Try all Groq master keys (rotating) */
+        /* Try all Groq master keys (rotating, skip keys still in cooldown) */
         var groqKeys = _getMasterKeys();
         if (groqKeys.length) {
             var startIdx = _getIdx();
             for (var attempt = 0; attempt < groqKeys.length; attempt++) {
                 var idx = (startIdx + attempt) % groqKeys.length;
                 var key = groqKeys[idx];
+                if (_isRateLimited(key)) {
+                    console.warn('[groqFetch] slot', idx, 'still cooling down — skipping');
+                    _setIdx(idx + 1);
+                    continue;
+                }
                 try {
                     var res = await fetch(GROQ_URL, Object.assign({}, extraOpts || {}, {
                         method:  'POST',
@@ -121,7 +140,7 @@
                         body:    JSON.stringify(bodyObj)
                     }));
                     if (res.status === 429) {
-                        console.warn('[groqFetch] slot', idx, 'rate-limited — trying next…');
+                        _markRateLimited(key);
                         _setIdx(idx + 1);
                         continue;
                     }

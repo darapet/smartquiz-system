@@ -1,8 +1,8 @@
 {
-  "version": "1.155",
-  "versionCode": 130,
+  "version": "1.161",
+  "versionCode": 136,
   "releaseDate": "2026-06-05",
-  "notes": "Fix Text→Docs v3.1: templates clickable, image resizing, table column resize handles, header overlap fixed, context menu fixed. Update checker fix for all app versions.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.155/daraquiz-v1.155.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.155/daraquiz-v1.155.apk"
+  "notes": "Fix Groq rate-limit handling: streaming 429s now skip Groq in the fallback (go straight to Pollinations) instead of hammering the same rate-limited key twice. Added per-key 62-second cooldown tracker so keys in cooldown are skipped automatically.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk"
 }

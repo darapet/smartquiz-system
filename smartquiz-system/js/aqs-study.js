@@ -495,6 +495,7 @@ async function streamToPanel(panelTitle, messages, temp) {
     var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
     var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
 
+    var _streamWas429 = false;
     if (key) {
         try {
             var res = await fetch(GROQ_STREAM_URL, {
@@ -503,7 +504,8 @@ async function streamToPanel(panelTitle, messages, temp) {
                 body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
                 signal: AbortSignal.timeout(60000)
             });
-            if (res.ok) {
+            if (res.status === 429) { _streamWas429 = true; }
+            else if (res.ok) {
                 var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
                 bE.innerHTML = '<div class="std-stream-body"></div>';
                 var bodyDiv = bE.querySelector('.std-stream-body');
@@ -533,9 +535,10 @@ async function streamToPanel(panelTitle, messages, temp) {
         } catch(e) { /* fall through */ }
     }
 
-    /* non-streaming fallback */
+    /* non-streaming fallback — if we got a 429 above, skip Groq to avoid
+       hammering the same rate-limited key again immediately               */
     try {
-        var txt = await aiChat(messages, temp);
+        var txt = await aiChat(messages, temp, _streamWas429);
         var bE2 = document.getElementById('std-ai-panel-body');
         if (bE2) { bE2.innerHTML = renderParagraphs(txt); setTimeout(function () { renderMath(bE2); }, 80); }
         var p2 = document.getElementById('std-ai-panel');
@@ -768,8 +771,9 @@ function showTestResults() {
 /* ── AI HELPERS ─────────────────────────────────────────────── */
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
-async function aiChat(messages, temp) {
-    if (typeof window.groqFetch === 'function') {
+async function aiChat(messages, temp, skipGroq) {
+    /* skipGroq=true: skip Groq entirely (e.g. streaming already got 429) */
+    if (!skipGroq && typeof window.groqFetch === 'function') {
         try {
             var rg = await window.groqFetch(
                 {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
@@ -1308,7 +1312,9 @@ async function summonStreamResponse(messages) {
     });
 
     if (!res.ok) {
-        var text2 = await aiChat(messages, 0.7);
+        /* If rate-limited (429), skip Groq in fallback to avoid double-hammering */
+        var _summonWas429 = res.status === 429;
+        var text2 = await aiChat(messages, 0.7, _summonWas429);
         summonSetAiText(text2); summonSpeakStream(text2, VS.waitingCheckpnt); return text2;
     }
 
