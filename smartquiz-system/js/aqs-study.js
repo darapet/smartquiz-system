@@ -1242,6 +1242,11 @@ async function summonHandleQuery(q) {
 
     try {
         var fullText = await summonStreamResponse(messages);
+        /* summonStreamResponse returns '' or undefined when it handled the error
+           internally (already showed a message to the user). Guard here so we
+           don't get a TypeError calling .indexOf on undefined, which would
+           overwrite the real error with a misleading 'connection error'. */
+        if (!fullText) return;
         VS.lastExplanation = fullText;
         /* Strip [DISPLAY] section from history — keep spoken plain-English only */
         var dSplit = fullText.indexOf('[DISPLAY]');
@@ -1351,6 +1356,21 @@ async function summonStreamResponse(messages) {
                 } catch(ex) {}
             }
         }
+    }
+
+    } catch(streamErr) {
+        /* Mid-stream network error — use whatever text arrived so far.
+           If nothing arrived, show a clear message and bail out. */
+        console.warn('[summonStreamResponse] stream error:', streamErr.message || streamErr);
+        try { reader.cancel(); } catch(e) {}
+        if (!full) {
+            summonSetAiText('⚠️ Connection interrupted. Please try again.');
+            summonSetState('listening');
+            var retryMs = (navigator.maxTouchPoints > 0) ? 1500 : 600;
+            setTimeout(function(){ summonStartListening(); }, retryMs);
+            return '';
+        }
+        /* partial content received — fall through and display what we have */
     }
 
     /* Flush any remaining spoken sentence fragment */

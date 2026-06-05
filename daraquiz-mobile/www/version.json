@@ -2,7 +2,7 @@
   "version": "1.165",
   "versionCode": 140,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.165/daraquiz-v1.165.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.165/daraquiz-v1.165.apk"
+  "notes": "Fix second-call connection error: guard undefined fullText in summonGetAiTurn + wrap stream reader in try/catch in summonStreamResponse.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk"
 }
