@@ -1579,16 +1579,9 @@ function injectSummonStyles() {
         '#std-vh-btn:hover{background:rgba(255,255,255,.15)}',
         '#std-vh-btn.active{background:rgba(139,92,246,.4);color:#fff}',
 
-        /* ── SMALL ORB ── */
-        '#std-summon-big-orb{position:relative;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;flex-shrink:0;transition:background .4s;animation:sorb-idle 3s ease-in-out infinite}',
+        /* ── STATE ICON (text-only, no glow) ── */
+        '#std-summon-big-orb{width:38px;height:38px;border-radius:8px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#a78bfa;flex-shrink:0}',
         '.sorb-ring{display:none}',
-        '@keyframes sorb-idle{0%,100%{box-shadow:0 0 8px 2px rgba(139,92,246,.5)}50%{box-shadow:0 0 18px 6px rgba(139,92,246,.8)}}',
-        '#std-summon-overlay[data-state=listening] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490);animation:sorb-listen 1s ease-in-out infinite}',
-        '@keyframes sorb-listen{0%,100%{box-shadow:0 0 8px 2px rgba(6,182,212,.5)}50%{box-shadow:0 0 22px 8px rgba(6,182,212,.9)}}',
-        '#std-summon-overlay[data-state=thinking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309);animation:sorb-think .8s ease-in-out infinite alternate}',
-        '@keyframes sorb-think{0%{box-shadow:0 0 8px 2px rgba(245,158,11,.4)}100%{box-shadow:0 0 20px 7px rgba(245,158,11,.8)}}',
-        '#std-summon-overlay[data-state=speaking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46);animation:sorb-speak .5s ease-in-out infinite alternate}',
-        '@keyframes sorb-speak{0%{box-shadow:0 0 8px 2px rgba(16,185,129,.4)}100%{box-shadow:0 0 22px 8px rgba(16,185,129,.85)}}',
 
         /* ── STATE LABEL & CLOSE ── */
         '#std-summon-state-txt{flex:1;font-size:.82rem;font-weight:700;color:#eeeaff;letter-spacing:.06em;text-transform:uppercase;opacity:.85}',
