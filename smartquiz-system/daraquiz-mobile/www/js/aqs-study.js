@@ -492,22 +492,13 @@ async function streamToPanel(panelTitle, messages, temp) {
     var bE = document.getElementById('std-ai-panel-body');
     if (!bE) return;
 
-    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
-
-    if (key) {
+    // groqFetch: Groq key rotation (62s cooldown) → Mistral fallback → throw
+    if (typeof window.groqFetch === 'function') {
         try {
-            var res = await fetch(GROQ_STREAM_URL, {
-                method: 'POST',
-                headers: {'Content-Type':'application/json','Authorization':'Bearer ' + key},
-                body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
-                signal: AbortSignal.timeout(60000)
-            });
-            if (res.status === 429) {
-                var bErl = document.getElementById('std-ai-panel-body');
-                if (bErl) bErl.textContent = '⏳ Groq is rate-limited. Please wait a moment and try again.';
-                return;
-            }
+            var res = await window.groqFetch(
+                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true},
+                {signal:AbortSignal.timeout(60000)}
+            );
             if (res.ok) {
                 var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
                 bE.innerHTML = '<div class="std-stream-body"></div>';
@@ -535,10 +526,11 @@ async function streamToPanel(panelTitle, messages, temp) {
                 if (p && p.scrollIntoView) p.scrollIntoView({behavior:'smooth', block:'start'});
                 return;
             }
-        } catch(e) { /* fall through */ }
+            // Non-OK from provider — fall through to non-streaming
+        } catch(streamErr) { /* all providers exhausted — try non-streaming */ }
     }
 
-    /* non-streaming fallback (only reached on network error, not 429) */
+    // Non-streaming fallback (also routes through groqFetch + Mistral)
     try {
         var txt = await aiChat(messages, temp);
         var bE2 = document.getElementById('std-ai-panel-body');
@@ -547,7 +539,7 @@ async function streamToPanel(panelTitle, messages, temp) {
         if (p2 && p2.scrollIntoView) p2.scrollIntoView({behavior:'smooth', block:'start'});
     } catch(e) {
         var bE3 = document.getElementById('std-ai-panel-body');
-        if (bE3) bE3.textContent = '⚠️ Error: ' + e.message;
+        if (bE3) bE3.textContent = '⚠️ ' + e.message;
     }
 }
 
@@ -774,22 +766,22 @@ function showTestResults() {
 function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 async function aiChat(messages, temp) {
-    if (typeof window.groqFetch === 'function') {
-        var rg = await window.groqFetch(
-            {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
-            {signal:AbortSignal.timeout(60000)}
-        );
-        if (!rg.ok) {
-            var errTxt = '';
-            try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e2) {}
-            if (rg.status === 429) throw new Error('Groq is rate-limited. Please wait a moment and try again.');
-            throw new Error('Groq error ' + rg.status + (errTxt ? ': ' + errTxt : ''));
-        }
-        var dg = await rg.json();
-        if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
-        return dg.choices[0].message.content || '';
+    // groqFetch handles: Groq rotation → Mistral fallback → throws if all fail
+    if (typeof window.groqFetch !== 'function') {
+        throw new Error('No AI key configured. Please add a Groq key in Settings.');
     }
-    throw new Error('No AI key configured. Please add a Groq key in Settings.');
+    var rg = await window.groqFetch(
+        {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
+        {signal:AbortSignal.timeout(60000)}
+    );
+    if (!rg.ok) {
+        var errTxt = '';
+        try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e2) {}
+        throw new Error('AI error ' + rg.status + (errTxt ? ': ' + errTxt : ''));
+    }
+    var dg = await rg.json();
+    if (!dg.choices || !dg.choices[0]) throw new Error('Empty AI response');
+    return dg.choices[0].message.content || '';
 }
 
 async function aiChatVision(messages, temp) {
@@ -1267,45 +1259,48 @@ async function summonHandleQuery(q) {
 
 /* ── STREAMING FETCH ─────────────────────────────────────────── */
 async function summonStreamResponse(messages) {
-    var GROQ_STREAM_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
+    /* groqFetch: Groq key rotation + Mistral fallback — no direct fetch */
+    summonStopListening();
 
-    if (!key) {
-        summonStopListening();
-        var text = await aiChat(messages, 0.7);
-        /* Split speak / display sections for the fallback path too */
-        var fIdx = text.indexOf('[DISPLAY]');
-        if (fIdx !== -1) {
-            var speakPart = text.slice(0, fIdx).replace(/^\[SPEAK\]\s*/i, '').trim();
-            var dispPart  = text.slice(fIdx + '[DISPLAY]'.length).trim();
-            summonSetAiText(dispPart);
-            summonSpeakStream(speakPart, VS.waitingCheckpnt);
-        } else {
-            summonSetAiText(text);
-            summonSpeakStream(text, VS.waitingCheckpnt);
-        }
-        return text;
+    if (typeof window.groqFetch !== 'function') {
+        summonSetAiText('⚠️ No AI key configured. Add a Groq key in Admin Settings.');
+        summonSetState('listening'); summonStartListening();
+        return;
     }
 
-    // Stop user mic before streaming (prevents AI speech being picked up)
-    summonStopListening();
-    var res = await fetch(GROQ_STREAM_URL, {
-        method:'POST',
-        headers:{'Content-Type':'application/json', 'Authorization':'Bearer ' + key},
-        body:JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:0.7, max_tokens:1200, stream:true}),
-        signal:AbortSignal.timeout(45000)
-    });
-
-    if (!res.ok) {
-        if (res.status === 429) {
-            summonSetAiText('⏳ Groq is rate-limited. Please wait a moment and try again.');
+    var res;
+    try {
+        res = await window.groqFetch(
+            {model:GROQ_MODEL, messages:messages, temperature:0.7, max_tokens:1200, stream:true},
+            {signal:AbortSignal.timeout(45000)}
+        );
+    } catch(fetchErr) {
+        /* All providers exhausted — try non-streaming aiChat as last resort */
+        try {
+            var textFb = await aiChat(messages, 0.7);
+            var fIdxFb = textFb.indexOf('[DISPLAY]');
+            if (fIdxFb !== -1) {
+                summonSetAiText(textFb.slice(fIdxFb + '[DISPLAY]'.length).trim());
+                summonSpeakStream(textFb.slice(0, fIdxFb).replace(/^\[SPEAK\]\s*/i,'').trim(), VS.waitingCheckpnt);
+            } else { summonSetAiText(textFb); summonSpeakStream(textFb, VS.waitingCheckpnt); }
+            return textFb;
+        } catch(e2) {
+            summonSetAiText('⚠️ ' + (e2.message || 'AI unavailable'));
             summonSetState('listening'); summonStartListening();
             return;
         }
-        var text2 = await aiChat(messages, 0.7);
-        summonSetAiText(text2); summonSpeakStream(text2, VS.waitingCheckpnt); return text2;
     }
 
+    if (!res.ok) {
+        try {
+            var text2 = await aiChat(messages, 0.7);
+            summonSetAiText(text2); summonSpeakStream(text2, VS.waitingCheckpnt); return text2;
+        } catch(e3) {
+            summonSetAiText('⚠️ ' + (e3.message || 'AI unavailable'));
+            summonSetState('listening'); summonStartListening();
+            return;
+        }
+    }
     var reader = res.body.getReader(), decoder = new TextDecoder();
     var full = '', sentenceBuf = '', seenDisplay = false, displayStart = -1;
     summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];

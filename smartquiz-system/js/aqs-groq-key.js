@@ -1,3 +1,17 @@
+/* ═══════════════════════════════════════════════════════════════════
+   GROQ HARDCODED FALLBACK KEYS
+   Paste up to 5 Groq API keys below (get them at console.groq.com).
+   These load INSTANTLY — no Firebase / Admin Settings needed.
+   Keys saved in Admin Settings are merged in on top automatically.
+   ═══════════════════════════════════════════════════════════════════ */
+window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat([
+    /* SLOT 1 → */ '',
+    /* SLOT 2 → */ '',
+    /* SLOT 3 → */ '',
+    /* SLOT 4 → */ '',
+    /* SLOT 5 → */ ''
+].filter(function(k){ return typeof k === 'string' && k.startsWith('gsk_'); }));
+
 (function(){
     var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
     var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';

@@ -2467,7 +2467,13 @@ function _updateAqsGlobals(user, profile) {
         } else if (s.groq_api_key && s.groq_api_key.startsWith('gsk_')) {
             keys = [s.groq_api_key];
         }
-        if (keys.length) window._AQS_GROQ_MASTER_KEYS = keys;
+        if (keys.length) {
+            /* Firebase keys take priority; merge with any hardcoded fallback keys */
+            var hc = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+            var merged = keys.slice();
+            hc.forEach(function(k){ if (merged.indexOf(k) === -1) merged.push(k); });
+            window._AQS_GROQ_MASTER_KEYS = merged;
+        }
         /* Load Mistral keys — used as silent fallback when all Groq keys are busy */
         if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
             var mkeys = s.mistral_keys.filter(function(k) { return k && k.trim().length > 20; });
