@@ -335,11 +335,14 @@ a{text-decoration:none;color:inherit;}
 .ait-subj-bar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .6s ease;}
 .ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
 
-/* Math Board — right panel position */
-.ait-math-board-panel{flex-shrink:0;border-bottom:1px solid var(--border);padding:12px;display:none;}
+/* Math Board — right panel position, resizable */
+.ait-math-board-panel{flex-shrink:0;border-bottom:1px solid var(--border);padding:12px 12px 0 12px;display:none;position:relative;}
 .ait-math-board-panel.visible{display:block;}
 .ait-math-board-panel-header{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
-.ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;max-height:180px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
+.ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;height:160px;min-height:80px;max-height:420px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
+.ait-math-resize-handle{height:10px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;margin-top:4px;margin-bottom:0;opacity:.5;transition:opacity .2s;}
+.ait-math-resize-handle:hover{opacity:1;}
+.ait-math-resize-handle::before{content:'';display:block;width:32px;height:3px;border-radius:2px;background:rgba(20,184,166,.5);}
 
 /* Session Summary Overlay */
 #ait-summary-screen{display:none;position:fixed;inset:0;background:rgba(10,11,20,.97);z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
@@ -924,6 +927,7 @@ a{text-decoration:none;color:inherit;}
           📐 Math Board — <span id="ait-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span>
         </div>
         <div class="ait-math-board-panel-body" id="ait-math-board-body"></div>
+        <div class="ait-math-resize-handle" id="ait-math-resize" title="Drag to resize"></div>
       </div>
 
       <!-- Doc preview / notes area -->
@@ -1472,17 +1476,39 @@ function shExamSetup(){ document.getElementById('exam-setup').style.display='blo
 
 /* Voice definitions */
 const AIT_VOICES = [
-  {id:'f1',label:'Ada',gender:'female',icon:'👩‍🏫'},
-  {id:'f2',label:'Sarah',gender:'female',icon:'👩‍💼'},
-  {id:'f3',label:'Amara',gender:'female',icon:'👩‍🔬'},
-  {id:'f4',label:'Ngozi',gender:'female',icon:'👩‍🎓'},
-  {id:'f5',label:'Grace',gender:'female',icon:'🧑‍🏫'},
-  {id:'m1',label:'Emeka',gender:'male',icon:'👨‍🏫'},
-  {id:'m2',label:'Chidi',gender:'male',icon:'👨‍💼'},
-  {id:'m3',label:'Victor',gender:'male',icon:'👨‍🔬'},
-  {id:'m4',label:'Seun',gender:'male',icon:'👨‍🎓'},
-  {id:'m5',label:'Kola',gender:'male',icon:'🧑‍💼'},
+  {id:'f1',label:'Ada',    gender:'female',icon:'👩‍🏫', prefer:['aria','jenny','libby','samantha','karen','google uk english female','zira']},
+  {id:'f2',label:'Sarah',  gender:'female',icon:'👩‍💼', prefer:['jenny','sonia','google us english','victoria','moira','emma']},
+  {id:'f3',label:'Amara',  gender:'female',icon:'👩‍🔬', prefer:['aria','fiona','veena','allison','ava']},
+  {id:'f4',label:'Ngozi',  gender:'female',icon:'👩‍🎓', prefer:['emma','google uk english female','libby','karen']},
+  {id:'f5',label:'Grace',  gender:'female',icon:'🧑‍🏫', prefer:['sonia','nova','google us english','samantha','susan']},
+  {id:'m1',label:'Emeka',  gender:'male',  icon:'👨‍🏫', prefer:['guy','google uk english male','daniel','alex','thomas']},
+  {id:'m2',label:'Chidi',  gender:'male',  icon:'👨‍💼', prefer:['eric','google us english','david','mark','james']},
+  {id:'m3',label:'Victor', gender:'male',  icon:'👨‍🔬', prefer:['brian','oliver','google uk english male','daniel']},
+  {id:'m4',label:'Seun',   gender:'male',  icon:'👨‍🎓', prefer:['christopher','rishi','jorge','frederico']},
+  {id:'m5',label:'Kola',   gender:'male',  icon:'🧑‍💼', prefer:['davis','ryan','lee','aaron','reed']},
 ];
+
+/* Smart voice picker — prefers named neural voices, falls back to gender */
+function aitPickVoice(voiceDef, allVoices){
+  const enVoices = allVoices.filter(v=>v.lang&&v.lang.startsWith('en'));
+  /* Rank: online/natural > local */
+  const ranked = [
+    ...enVoices.filter(v=>v.name.toLowerCase().includes('online')||v.name.toLowerCase().includes('natural')||v.name.toLowerCase().includes('neural')||!v.localService),
+    ...enVoices.filter(v=>v.localService && !v.name.toLowerCase().includes('online'))
+  ];
+  if(voiceDef?.prefer){
+    for(const keyword of voiceDef.prefer){
+      const match = ranked.find(v=>v.name.toLowerCase().includes(keyword.toLowerCase()));
+      if(match) return match;
+    }
+  }
+  /* Gender fallback */
+  const gFilter = voiceDef?.gender==='female'
+    ? ['female','woman','girl','zira','samantha','victoria','karen','moira','fiona','aria','jenny','sonia']
+    : ['male','man','guy','david','mark','daniel','alex','rishi','kyle','eric','brian'];
+  const gMatch = ranked.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
+  return gMatch || ranked[0] || allVoices[0] || null;
+}
 
 const MATH_SUBJECTS = ['mathematics','maths','math','further math','calculus','algebra','statistics','physics','chemistry','trigonometry','mechanics','vectors','integration','differentiation'];
 
@@ -1547,15 +1573,10 @@ function aitPreviewVoice(id){
   if(!window.speechSynthesis) return;
   window.speechSynthesis.cancel();
   const voiceDef = AIT_VOICES.find(v=>v.id===id);
-  const num      = AIT_VOICES.findIndex(v=>v.id===id)+1;
-  /* Always use fresh voice list */
   const allVoices = window.speechSynthesis.getVoices();
-  const enVoices  = allVoices.filter(v=>v.lang&&v.lang.startsWith('en'));
-  /* Pick the Nth English voice (mod wrap) */
-  const picked = enVoices[(num-1) % Math.max(enVoices.length,1)] || allVoices[0] || null;
-  const voiceName = picked ? picked.name : (voiceDef ? voiceDef.label : id);
+  const picked = aitPickVoice(voiceDef, allVoices);
   const utt = new SpeechSynthesisUtterance(
-    `Voice ${num}. ${voiceName}. Hello! I am your AI teacher. How are you doing today?`
+    `Hello! I'm ${voiceDef?.label||'your AI teacher'}. Ready to help you learn today!`
   );
   utt.rate = _ait.speechRate;
   if(picked) utt.voice = picked;
@@ -1588,12 +1609,10 @@ function _aitPlayNextDemo(){
   setTimeout(()=>{
     if(!_aitDemoRunning || _aitDemoVer !== myVer) return;
     const allVoices = window.speechSynthesis.getVoices();
-    const enVoices  = allVoices.filter(vv=>vv.lang&&vv.lang.startsWith('en'));
-    const picked    = enVoices[_aitDemoIdx % Math.max(enVoices.length,1)] || allVoices[0] || null;
-    const voiceNum  = _aitDemoIdx + 1;
+    const picked    = aitPickVoice(v, allVoices);
     const voiceName = picked ? picked.name : v.label;
     const utt = new SpeechSynthesisUtterance(
-      `Voice ${voiceNum}. ${voiceName}. Hello! I am your AI teacher. How are you doing today?`
+      `Hello! I'm ${v.label}, your AI teacher. Let's learn something amazing today!`
     );
     utt.rate = _ait.speechRate;
     if(picked) utt.voice = picked;
@@ -1802,18 +1821,10 @@ function aitSpeak(text, onEnd){
   const utt = new SpeechSynthesisUtterance(text);
   utt.rate = _ait.speechRate;
 
-  /* Always use fresh voice list to avoid Chrome stale-reference bug */
+  /* Smart voice picker — prefers neural/online voices */
   const voiceDef = AIT_VOICES.find(v=>v.id===_ait.voiceId);
   const allVoices = _ait.synth.getVoices();
-  const enVoices  = allVoices.filter(v=>v.lang&&v.lang.startsWith('en'));
-  let picked = null;
-  if(voiceDef){
-    const gFilter = voiceDef.gender==='female'
-      ? ['female','woman','girl','zira','samantha','victoria','karen','moira','veena','fiona']
-      : ['male','man','guy','david','mark','daniel','alex','rishi','kyle'];
-    picked = enVoices.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
-  }
-  if(!picked) picked = enVoices[0] || allVoices[0] || null;
+  const picked = aitPickVoice(voiceDef, allVoices);
   if(picked) utt.voice = picked;
 
   _ait.currentUtterance = utt;
@@ -2436,13 +2447,52 @@ function aitCleanupOnLeave(){
 }
 
 /* ── Init on load ── */
+/* ─ Math Board drag-to-resize ─ */
+function aitInitMathResize(){
+  const handle = document.getElementById('ait-math-resize');
+  const body   = document.getElementById('ait-math-board-body');
+  if(!handle || !body) return;
+  let startY = 0, startH = 0, dragging = false;
+
+  handle.addEventListener('mousedown', e=>{
+    e.preventDefault();
+    dragging = true;
+    startY = e.clientY;
+    startH = body.offsetHeight;
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+  });
+  /* Touch support */
+  handle.addEventListener('touchstart', e=>{
+    dragging = true;
+    startY = e.touches[0].clientY;
+    startH = body.offsetHeight;
+  }, {passive:true});
+
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const newH = Math.min(420, Math.max(80, startH + (e.clientY - startY)));
+    body.style.height = newH + 'px';
+  });
+  window.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    const newH = Math.min(420, Math.max(80, startH + (e.touches[0].clientY - startY)));
+    body.style.height = newH + 'px';
+  }, {passive:true});
+
+  const stopDrag = ()=>{ dragging=false; document.body.style.cursor=''; document.body.style.userSelect=''; };
+  window.addEventListener('mouseup', stopDrag);
+  window.addEventListener('touchend', stopDrag);
+}
+
 window.addEventListener('load', ()=>{
   aitRenderVoiceList();
   shGpaAddRow(); shGpaAddRow(); shGpaAddRow();
   shTimerUpdateUI();
-  /* Load saved voices */
-  const saved = speechSynthesis?.getVoices();
-  speechSynthesis?.addEventListener('voiceschanged', ()=>{});
+  aitInitMathResize();
+  /* Prime voice list */
+  speechSynthesis?.getVoices();
+  speechSynthesis?.addEventListener('voiceschanged', ()=>{ speechSynthesis.getVoices(); });
 });
 
 /* Stop mic/speech when leaving page */
