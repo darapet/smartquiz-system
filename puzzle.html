@@ -357,12 +357,15 @@ window.AQS_HOME_URL='index.html';
       <!-- ── WORD HUNT MODE ── -->
       <div id="pz-mode-word" style="display:none;">
         <div class="pz-q-card">
-          <div class="pz-q-num">🔤 Word Hunt — type the hidden word</div>
+          <div class="pz-q-num">🔤 Word Hunt — <span style="font-size:.8rem;color:#a5b4fc;">5 pts per correct letter</span></div>
           <div class="pz-word-clue" id="pz-word-clue">Clue goes here…</div>
           <div class="pz-blanks" id="pz-blanks"></div>
           <div class="pz-word-input-row">
             <input id="pz-word-input" class="pz-word-input" placeholder="Type your answer…" autocomplete="off" spellcheck="false">
             <button id="pz-word-send" class="pz-btn pz-btn-primary" style="padding:12px 18px;">→</button>
+          </div>
+          <div style="text-align:center;margin-top:10px;">
+            <button id="pz-word-point-guess" class="pz-point-guess-btn">💡 Point Guess <span style="font-size:.75rem;opacity:.8;">(-5 pts, reveals a letter)</span></button>
           </div>
           <div id="pz-word-feedback" class="pz-word-feedback"></div>
         </div>
@@ -370,8 +373,11 @@ window.AQS_HOME_URL='index.html';
 
       <!-- ── CROSSWORD MODE ── -->
       <div id="pz-mode-crossword" style="display:none;">
-        <div class="pz-q-card">
-          <div class="pz-q-num">📝 Crossword — select a clue and answer it</div>
+        <div class="pz-q-card" style="padding:16px;">
+          <div class="pz-q-num">📝 Crossword — <span style="font-size:.8rem;color:#a5b4fc;">5 pts per correct letter</span></div>
+          <div id="pz-cw-grid-wrap" style="overflow-x:auto;margin:14px 0;display:flex;justify-content:center;">
+            <div id="pz-cw-grid" class="pz-cw-grid"></div>
+          </div>
           <div class="pz-cw-clues">
             <div>
               <h4>ACROSS</h4>
@@ -382,7 +388,7 @@ window.AQS_HOME_URL='index.html';
               <div id="pz-cw-down"></div>
             </div>
           </div>
-          <div class="pz-cw-answer-zone">
+          <div class="pz-cw-answer-zone" id="pz-cw-answer-zone" style="display:none;">
             <div class="pz-cw-active-clue" id="pz-cw-active-clue">Select a clue above to answer it</div>
             <div class="pz-cw-answer-row">
               <input id="pz-cw-answer-inp" class="pz-input" placeholder="Type answer, press Enter…" autocomplete="off" spellcheck="false" style="text-transform:uppercase;">
