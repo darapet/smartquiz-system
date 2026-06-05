@@ -116,6 +116,9 @@ window.addEventListener('DOMContentLoaded', function() {
             var setChk = function(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; };
             /* Load up to 5 Groq keys — support both new array and legacy single-key */
             var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : (s.groq_api_key ? [s.groq_api_key] : []);
+            /* Merge hardcoded fallback keys if Firebase has fewer */
+            var hcKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+            hcKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
             for (var gi = 1; gi <= 5; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
             setVal('aqs-groq-model', s.groq_model);
             /* Load up to 5 Mistral keys */
@@ -162,6 +165,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
 </head>
 <body>
@@ -228,23 +232,23 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="aqs-settings-card-body">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-1">Groq API Key 1 (Primary)</label>
+                <label for="aqs-groq-key-1" style="display:flex;align-items:center;gap:6px;">Groq API Key 1 (Primary) <span id="aqs-gk-dot-1" title="Status unknown — click Test All Keys"></span></label>
                 <input type="password" id="aqs-groq-key-1" placeholder="gsk_…" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-2">Groq API Key 2</label>
+                <label for="aqs-groq-key-2" style="display:flex;align-items:center;gap:6px;">Groq API Key 2 <span id="aqs-gk-dot-2" title="Status unknown — click Test All Keys"></span></label>
                 <input type="password" id="aqs-groq-key-2" placeholder="gsk_… (optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-3">Groq API Key 3</label>
+                <label for="aqs-groq-key-3" style="display:flex;align-items:center;gap:6px;">Groq API Key 3 <span id="aqs-gk-dot-3" title="Status unknown — click Test All Keys"></span></label>
                 <input type="password" id="aqs-groq-key-3" placeholder="gsk_… (optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-4">Groq API Key 4</label>
+                <label for="aqs-groq-key-4" style="display:flex;align-items:center;gap:6px;">Groq API Key 4 <span id="aqs-gk-dot-4" title="Status unknown — click Test All Keys"></span></label>
                 <input type="password" id="aqs-groq-key-4" placeholder="gsk_… (optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label for="aqs-groq-key-5">Groq API Key 5</label>
+                <label for="aqs-groq-key-5" style="display:flex;align-items:center;gap:6px;">Groq API Key 5 <span id="aqs-gk-dot-5" title="Status unknown — click Test All Keys"></span></label>
                 <input type="password" id="aqs-groq-key-5" placeholder="gsk_… (optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
@@ -673,83 +677,161 @@ btn('aqs-save-ai-btn').addEventListener('click', function(){
     }, 'aqs-ai-status', this, '💾 Save AI Settings');
 });
 
-btn('aqs-test-ai-btn').addEventListener('click', async function(){
-    var groqKeys = [], mistralKeys = [];
+/* ── AI Key Health Monitor ─────────────────────────────────────────────── */
+async function _aqsTestAllKeys(auto) {
+    var groqMap = {};   // key → slot label
+    var mistralKeys = [];
+
+    /* Read from form inputs (Firebase-loaded or manually typed) */
     for (var gi = 1; gi <= 5; gi++) {
         var el = document.getElementById('aqs-groq-key-' + gi);
-        if (el && el.value.trim()) groqKeys.push({ slot: gi, key: el.value.trim(), provider: 'groq' });
+        if (el && el.value.trim().startsWith('gsk_')) {
+            groqMap[el.value.trim()] = 'Slot ' + gi;
+        }
     }
+    /* Also include hardcoded fallback keys loaded from aqs-groq-key.js */
+    var hcKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+    hcKeys.forEach(function(k, i) {
+        if (k && k.startsWith('gsk_') && !groqMap[k]) {
+            groqMap[k] = 'Built-in ' + (i + 1);
+        }
+    });
+
     for (var mi = 1; mi <= 5; mi++) {
         var mel = document.getElementById('aqs-mistral-key-' + mi);
         if (mel && mel.value.trim()) mistralKeys.push({ slot: mi, key: mel.value.trim(), provider: 'mistral' });
     }
-    var allKeys = groqKeys.concat(mistralKeys);
+
+    var groqEntries = Object.keys(groqMap).map(function(k){ return { key: k, slot: groqMap[k], provider: 'groq' }; });
+    var allKeys = groqEntries.concat(mistralKeys);
     var results = document.getElementById('aqs-ai-test-results');
-    var testBtn = this;
+    var testBtn = document.getElementById('aqs-test-ai-btn');
 
     if (!allKeys.length) {
         results.style.display = 'block';
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys entered. Add at least one Groq or Mistral key above.</span>';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No keys found. Add at least one Groq key above or paste in Admin Settings.</span>';
         return;
     }
 
-    testBtn.disabled = true;
-    testBtn.textContent = '⏳ Testing…';
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
-    results.innerHTML = '<span style="color:#94a3b8;">Testing ' + allKeys.length + ' key(s) across both providers…</span>';
+    results.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:#94a3b8;padding:4px 0;">' +
+        '<span style="animation:spin 1s linear infinite;display:inline-block;">⏳</span>' +
+        '<span>Testing ' + allKeys.length + ' key(s) — making real API calls…</span></div>';
 
-    async function testKey(entry) {
-        var slot = entry.slot, key = entry.key, provider = entry.provider;
-        var masked = key.substring(0, 6) + '…' + key.slice(-4);
+    /* Ping each key with a real but minimal API call */
+    async function pingKey(entry) {
+        var key = entry.key, slot = entry.slot, provider = entry.provider;
+        var masked = key.slice(0, 7) + '…' + key.slice(-4);
         var url = provider === 'mistral'
             ? 'https://api.mistral.ai/v1/chat/completions'
             : 'https://api.groq.com/openai/v1/chat/completions';
         var model = provider === 'mistral' ? 'mistral-small-latest' : 'llama-3.1-8b-instant';
         var badge = provider === 'mistral'
-            ? '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:1px 6px;font-weight:700;">MISTRAL</span>'
-            : '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:1px 6px;font-weight:700;">GROQ</span>';
+            ? '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">MISTRAL</span>'
+            : '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">GROQ</span>';
+
+        var tStart = Date.now();
         try {
             var res = await fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Reply with one word: OK' }], max_tokens: 5 })
+                body: JSON.stringify({
+                    model: model,
+                    messages: [{ role: 'user', content: 'Say exactly: OK' }],
+                    max_tokens: 3,
+                    temperature: 0
+                }),
+                signal: AbortSignal.timeout(12000)
             });
+            var ms = Date.now() - tStart;
             if (res.ok) {
                 var data = await res.json();
-                var reply = (((data.choices || [])[0] || {}).message || {}).content || '(empty)';
-                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#052e16;border:1px solid #166534;border-radius:7px;">' +
-                    badge + '<span style="color:#86efac;font-weight:600;">Key ' + slot + '</span>' +
-                    '<span style="color:#4ade80;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">Active · "' + reply.trim() + '"</span></div>';
+                var reply = (((data.choices || [])[0] || {}).message || {}).content || '✓';
+                return { ok: true, status: 'active', slot: slot, html:
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' +
+                    badge +
+                    '<span style="color:#86efac;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim().replace(/"/g,'') + '"</em></span>' +
+                    '</div>'
+                };
             } else if (res.status === 401) {
-                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
-                    badge + '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
-                    '<span style="color:#f87171;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Invalid / Revoked (401)</span></div>';
+                return { ok: false, status: '401', slot: slot, html:
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' +
+                    badge +
+                    '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span>' +
+                    '</div>'
+                };
             } else if (res.status === 429) {
-                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c1001;border:1px solid #78350f;border-radius:7px;">' +
-                    badge + '<span style="color:#fcd34d;font-weight:600;">Key ' + slot + '</span>' +
-                    '<span style="color:#fbbf24;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;">Rate limited (429)</span></div>';
+                var errBody = {}; try { errBody = await res.json(); } catch(ex){}
+                var errMsg = (errBody.error && errBody.error.message) ? errBody.error.message.slice(0, 80) : 'Rate limited';
+                return { ok: false, status: '429', slot: slot, html:
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' +
+                    badge +
+                    '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;max-width:200px;text-align:right;">⚠️ ' + errMsg + '</span>' +
+                    '</div>'
+                };
             } else {
-                return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1e1b4b;border:1px solid #4338ca;border-radius:7px;">' +
-                    badge + '<span style="color:#a5b4fc;font-weight:600;">Key ' + slot + '</span>' +
-                    '<span style="color:#818cf8;font-family:monospace;">' + masked + '</span>' +
-                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">HTTP ' + res.status + '</span></div>';
+                return { ok: false, status: 'http' + res.status, slot: slot, html:
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' +
+                    badge +
+                    '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span>' +
+                    '</div>'
+                };
             }
         } catch(e) {
-            return '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:#1c0101;border:1px solid #7f1d1d;border-radius:7px;">' +
-                badge + '<span style="color:#fca5a5;font-weight:600;">Key ' + slot + '</span>' +
-                '<span style="color:#f87171;font-family:monospace;">' + masked + '</span>' +
-                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">Network error</span></div>';
+            return { ok: false, status: 'err', slot: slot, html:
+                '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' +
+                badge +
+                '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span>' +
+                '<code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span>' +
+                '</div>'
+            };
         }
     }
 
-    var rows = await Promise.all(allKeys.map(testKey));
-    results.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
-    testBtn.disabled = false;
-    testBtn.textContent = '🔌 Test All Keys';
-});
+    var rows = await Promise.all(allKeys.map(pingKey));
+
+    /* Update inline dots on form inputs */
+    var groqFormKeys = [];
+    for (var fi = 1; fi <= 5; fi++) {
+        var fEl = document.getElementById('aqs-groq-key-' + fi);
+        groqFormKeys.push(fEl ? fEl.value.trim() : '');
+    }
+    rows.forEach(function(r) {
+        /* Find which form slot (1-5) this key corresponds to */
+        groqFormKeys.forEach(function(fk, idx) {
+            var dot = document.getElementById('aqs-gk-dot-' + (idx + 1));
+            if (!dot || !fk) return;
+            if (groqEntries.some(function(e){ return e.key === fk && e.slot === r.slot; })) {
+                dot.textContent = r.status === 'active' ? '✅' : (r.status === '429' ? '⚠️' : '❌');
+                dot.title = r.status === 'active' ? 'Working' : (r.status === '429' ? 'Rate limited' : 'Invalid / Error');
+            }
+        });
+    });
+
+    var activeCount = rows.filter(function(r){ return r.ok; }).length;
+    var total = rows.length;
+    var summary = activeCount === total
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + total + ' keys are working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + activeCount + '/' + total + ' keys active — rotate or replace the failed ones.</div>';
+
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){return r.html;}).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Keys'; }
+}
+
+btn('aqs-test-ai-btn').addEventListener('click', function(){ _aqsTestAllKeys(false); });
+
+/* Auto-test once on page load after Firebase has time to populate keys */
+setTimeout(function(){ _aqsTestAllKeys(true); }, 2500);
 
 /* ── File upload helper ── */
 function _aqsDoUpload(fileInputId, urlInputId, uploadBtnId, statusId, storagePath, onSuccess) {
