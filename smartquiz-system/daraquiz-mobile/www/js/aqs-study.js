@@ -503,6 +503,11 @@ async function streamToPanel(panelTitle, messages, temp) {
                 body: JSON.stringify({model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true}),
                 signal: AbortSignal.timeout(60000)
             });
+            if (res.status === 429) {
+                var bErl = document.getElementById('std-ai-panel-body');
+                if (bErl) bErl.textContent = '⏳ Groq is rate-limited. Please wait a moment and try again.';
+                return;
+            }
             if (res.ok) {
                 var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
                 bE.innerHTML = '<div class="std-stream-body"></div>';
@@ -533,7 +538,7 @@ async function streamToPanel(panelTitle, messages, temp) {
         } catch(e) { /* fall through */ }
     }
 
-    /* non-streaming fallback */
+    /* non-streaming fallback (only reached on network error, not 429) */
     try {
         var txt = await aiChat(messages, temp);
         var bE2 = document.getElementById('std-ai-panel-body');
@@ -770,37 +775,21 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 async function aiChat(messages, temp) {
     if (typeof window.groqFetch === 'function') {
-        try {
-            var rg = await window.groqFetch(
-                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
-                {signal:AbortSignal.timeout(60000)}
-            );
-            if (!rg.ok) {
-                var errTxt = '';
-                try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e) {}
-                throw new Error('Groq ' + rg.status + (errTxt ? ': ' + errTxt : ''));
-            }
-            var dg = await rg.json();
-            if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
-            return dg.choices[0].message.content || '';
-        } catch(e) { /* fall through to free fallback */ }
+        var rg = await window.groqFetch(
+            {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
+            {signal:AbortSignal.timeout(60000)}
+        );
+        if (!rg.ok) {
+            var errTxt = '';
+            try { var errJ = await rg.json(); errTxt = (errJ.error && errJ.error.message) || ''; } catch(e2) {}
+            if (rg.status === 429) throw new Error('Groq is rate-limited. Please wait a moment and try again.');
+            throw new Error('Groq error ' + rg.status + (errTxt ? ': ' + errTxt : ''));
+        }
+        var dg = await rg.json();
+        if (!dg.choices || !dg.choices[0]) throw new Error('Empty Groq response');
+        return dg.choices[0].message.content || '';
     }
-    for (var pa = 0; pa < 2; pa++) {
-        try {
-            var rp = await fetch('https://text.pollinations.ai/openai', {
-                method:'POST',
-                headers:{'Content-Type':'application/json'},
-                body:JSON.stringify({model:'openai', messages:messages, temperature:temp||0.7, max_tokens:2000}),
-                signal:AbortSignal.timeout(60000)
-            });
-            if (rp.status === 429) { await sleep((pa+1)*3000); continue; }
-            if (!rp.ok) throw new Error('AI error ' + rp.status);
-            var dp = await rp.json();
-            if (!dp.choices || !dp.choices[0]) throw new Error('No AI response');
-            return dp.choices[0].message.content || '';
-        } catch(e) { if (pa < 1) { await sleep(3000); continue; } throw e; }
-    }
-    throw new Error('AI unavailable. Please try again in a moment.');
+    throw new Error('No AI key configured. Please add a Groq key in Settings.');
 }
 
 async function aiChatVision(messages, temp) {
@@ -1308,6 +1297,11 @@ async function summonStreamResponse(messages) {
     });
 
     if (!res.ok) {
+        if (res.status === 429) {
+            summonSetAiText('⏳ Groq is rate-limited. Please wait a moment and try again.');
+            summonSetState('listening'); summonStartListening();
+            return;
+        }
         var text2 = await aiChat(messages, 0.7);
         summonSetAiText(text2); summonSpeakStream(text2, VS.waitingCheckpnt); return text2;
     }
@@ -1579,9 +1573,16 @@ function injectSummonStyles() {
         '#std-vh-btn:hover{background:rgba(255,255,255,.15)}',
         '#std-vh-btn.active{background:rgba(139,92,246,.4);color:#fff}',
 
-        /* ── STATE ICON (text-only, no glow) ── */
-        '#std-summon-big-orb{width:38px;height:38px;border-radius:8px;background:rgba(139,92,246,.18);border:1px solid rgba(139,92,246,.35);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#a78bfa;flex-shrink:0}',
+        /* ── SMALL ORB ── */
+        '#std-summon-big-orb{position:relative;width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);display:flex;align-items:center;justify-content:center;font-size:1.1rem;color:#fff;flex-shrink:0;transition:background .4s;animation:sorb-idle 3s ease-in-out infinite}',
         '.sorb-ring{display:none}',
+        '@keyframes sorb-idle{0%,100%{box-shadow:0 0 8px 2px rgba(139,92,246,.5)}50%{box-shadow:0 0 18px 6px rgba(139,92,246,.8)}}',
+        '#std-summon-overlay[data-state=listening] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#67e8f9,#06b6d4 60%,#0e7490);animation:sorb-listen 1s ease-in-out infinite}',
+        '@keyframes sorb-listen{0%,100%{box-shadow:0 0 8px 2px rgba(6,182,212,.5)}50%{box-shadow:0 0 22px 8px rgba(6,182,212,.9)}}',
+        '#std-summon-overlay[data-state=thinking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#fde68a,#f59e0b 60%,#b45309);animation:sorb-think .8s ease-in-out infinite alternate}',
+        '@keyframes sorb-think{0%{box-shadow:0 0 8px 2px rgba(245,158,11,.4)}100%{box-shadow:0 0 20px 7px rgba(245,158,11,.8)}}',
+        '#std-summon-overlay[data-state=speaking] #std-summon-big-orb{background:radial-gradient(circle at 35% 35%,#6ee7b7,#10b981 60%,#065f46);animation:sorb-speak .5s ease-in-out infinite alternate}',
+        '@keyframes sorb-speak{0%{box-shadow:0 0 8px 2px rgba(16,185,129,.4)}100%{box-shadow:0 0 22px 8px rgba(16,185,129,.85)}}',
 
         /* ── STATE LABEL & CLOSE ── */
         '#std-summon-state-txt{flex:1;font-size:.82rem;font-weight:700;color:#eeeaff;letter-spacing:.06em;text-transform:uppercase;opacity:.85}',

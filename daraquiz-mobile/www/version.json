@@ -2,7 +2,7 @@
   "version": "1.162",
   "versionCode": 137,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.162/daraquiz-v1.162.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.162/daraquiz-v1.162.apk"
+  "notes": "Fix Groq rate-limit: no Pollinations fallback — show clear rate-limit message instead. Keep 62s per-key cooldown.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.160/daraquiz-v1.160.apk"
 }
