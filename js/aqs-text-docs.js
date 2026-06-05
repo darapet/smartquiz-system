@@ -875,20 +875,47 @@
     wpSetStatus(count + ' replacements made');
   };
 
-  /* ── AI calls — Groq key pool ───────────────────────────────── */
+  /* ── AI calls — Groq key pool (direct) ─────────────────────── */
+  var _tdGroqRL = {};
+  var _tdGroqCooldown = 62000;
+  function _tdKeyHash(k) { return k ? k.slice(-8) : '?'; }
+  function _tdIsRL(k) { return (_tdGroqRL[_tdKeyHash(k)] || 0) > Date.now(); }
+  function _tdMarkRL(k) { _tdGroqRL[_tdKeyHash(k)] = Date.now() + _tdGroqCooldown; }
+
   function callAI(prompt, maxTokens) {
     var k = ['wMspDhSungnapsLU3v5hWGdyb3FY9E9AFvBBjuSI38MmrL2ow46o', 'HMrJogeB2HUp6DFxebqgWGdyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
     var keys = k.map(function(x){ return 'gsk_' + x; });
     var messages = [{ role: 'user', content: prompt }];
+    var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
+    var GROQ_MODEL = 'llama-3.1-8b-instant';
     wpSetAIStatus('working', 'AI is working…');
-    /* Route through groqFetch (now Mistral-primary with key rotation) */
-    if (typeof window.groqFetch !== 'function') {
-      wpSetAIStatus('error', 'AI not ready');
-      return Promise.reject(new Error('AI not ready — no keys configured.'));
+
+    function tryGroqKeys() {
+      var idx = 0;
+      function attempt() {
+        if (idx >= keys.length) return Promise.resolve(null);
+        var key = keys[idx++];
+        if (_tdIsRL(key)) return attempt();
+        return fetch(GROQ_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+          body: JSON.stringify({ model: GROQ_MODEL, messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 })
+        }).then(function(res) {
+          if (res.status === 429) { _tdMarkRL(key); return attempt(); }
+          return res;
+        }).catch(function() { return attempt(); });
+      }
+      return attempt();
     }
-    return window.groqFetch(
-      { messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 }
-    ).then(function(r) {
+
+    return tryGroqKeys().then(function(r) {
+      if (r) return r;
+      if (typeof window.groqFetch === 'function') {
+        return window.groqFetch({ messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 });
+      }
+      wpSetAIStatus('error', 'AI not ready');
+      return Promise.reject(new Error('AI not ready — no keys available.'));
+    }).then(function(r) {
       if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
       return r.json();
     }).then(function(d) {
