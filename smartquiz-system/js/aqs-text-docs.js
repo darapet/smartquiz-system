@@ -1,254 +1,754 @@
 /* ═══════════════════════════════════════════════════════════════
-     Text → Docs  |  XZily AI  |  Full word-processor + AI formatter  v2.1
-     Formats: PDF · DOCX · ODT · TXT · HTML · MD · RTF · JSON · CSV · LaTeX
-  ═══════════════════════════════════════════════════════════════ */
-  (function () {
-    'use strict';
+   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.0
+   Features: AI Format/Write/Translate/Summarize/Expand
+             30+ Google Fonts · Image Upload & Resize
+             Excel-Style Tables · Chart from Data
+             Find & Replace · Zoom · Templates · Multi-Page
+             PDF · DOCX · HTML · TXT · MD · RTF · LaTeX · JSON · CSV
+   ═══════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
 
-    /* ── Init ──────────────────────────────────────────────────── */
-    var editor, page, isProcessing = false;
+  /* ── State ─────────────────────────────────────────────────── */
+  var wpPages = [''], wpCurrentPage = 0, wpIsProcessing = false;
+  var wpZoom = 1, wpShowLabels = false;
+  var wpFindMatches = [], wpFindIndex = -1;
+  var wpCtxCell = null, wpCtxTable = null;
+  var wpChartType = 'bar', wpChartInstance = null;
+  var wpSavedSelection = null;
+  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 15;
 
-    document.addEventListener('DOMContentLoaded', function () {
-        document.execCommand('defaultParagraphSeparator', false, 'p');
-        document.execCommand('styleWithCSS', false, true);
-        ttdRenderPages();
-        editor = document.getElementById('ttd-editor-0') || document.querySelector('.ttd-page-editor');
-        // Sidebar toggle
-        var tog = document.getElementById('aqs-sidebar-toggle');
-        var ove = document.getElementById('aqs-sidebar-overlay');
-        var sb  = document.getElementById('aqs-sidebar');
-        if (tog && sb) {
-          tog.addEventListener('click', function () { sb.classList.toggle('open'); if(ove) ove.classList.toggle('open'); });
-          if (ove) ove.addEventListener('click', function () { sb.classList.remove('open'); ove.classList.remove('open'); });
+  /* ── Color palettes ─────────────────────────────────────────── */
+  var TEXT_COLORS = [
+    '#000000','#1a1a1a','#374151','#4b5563','#6b7280','#9ca3af','#ffffff',
+    '#dc2626','#ef4444','#f97316','#f59e0b','#eab308','#22c55e','#16a34a',
+    '#14b8a6','#0891b2','#3b82f6','#1d4ed8','#6366f1','#7c3aed','#8b5cf6',
+    '#a855f7','#ec4899','#db2777','#be185d','#9f1239'
+  ];
+  var HIGHLIGHT_COLORS = [
+    '#fde68a','#fef08a','#bbf7d0','#bfdbfe','#ddd6fe','#fecaca','#fed7aa',
+    '#e9d5ff','#99f6e4','#a7f3d0','#fce7f3','#f5f3ff','#eff6ff','transparent'
+  ];
+  var CELL_COLORS = [
+    '#ffffff','#f1f5f9','#fef3c7','#dbeafe','#dcfce7','#fce7f3','#ede9fe',
+    '#fee2e2','#ffedd5','#ecfdf5','#f0f9ff','#fdf4ff','#fff7ed','#f7fee7',
+    '#1e293b','#374151','#1d4ed8','#15803d','#9f1239','#6d28d9'
+  ];
+
+  /* ── Init ───────────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', function () {
+    document.execCommand('defaultParagraphSeparator', false, 'p');
+    document.execCommand('styleWithCSS', false, true);
+    wpRenderPages();
+    wpBuildColorPalettes();
+    wpBuildTablePicker();
+    wpBuildTemplates();
+    wpRenderHistory();
+    wpSetupKeyboardShortcuts();
+    wpSetupContextMenu();
+    wpSetupImageDrop();
+    wpUpdateStats();
+    wpSetStatus('Word Processor ready — v3.1');
+    wpAdjustHeaderOffset();
+  });
+
+  /* ── Dynamic header height offset ──────────────────────────── */
+  function wpAdjustHeaderOffset() {
+    var appbar = document.querySelector('.wp-appbar');
+    var ribbon  = document.getElementById('wp-ribbon');
+    if (!appbar || !ribbon) return;
+    var h = appbar.getBoundingClientRect().height + ribbon.getBoundingClientRect().height;
+    h = Math.ceil(h) + 1; // +1 to avoid sub-pixel gap
+    document.documentElement.style.setProperty('--wp-header-h', h + 'px');
+    var sidebar = document.getElementById('wp-sidebar');
+    if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
+    var layout = document.querySelector('.wp-layout');
+    if (layout) layout.style.marginTop = h + 'px';
+  }
+
+  /* ── Active editor ─────────────────────────────────────────── */
+  function wpGetEditor() {
+    return document.getElementById(wpCurrentPage === 0 ? 'wp-editor-0' : 'wp-editor-' + wpCurrentPage)
+           || document.querySelector('.wp-page-editor');
+  }
+
+  /* ── Mode selection ─────────────────────────────────────────── */
+  window.wpChooseMode = function (mode) {
+    sessionStorage.setItem('wp_mode_chosen', '1');
+    var overlay = document.getElementById('wp-mode-overlay');
+    if (overlay) overlay.classList.add('hidden');
+    if (mode === 'format') { wpSwitchTab('format'); focusSource(); }
+    else if (mode === 'write') { wpSwitchTab('write'); var p = document.getElementById('wp-prompt'); if(p) p.focus(); }
+    else if (mode === 'blank') { /* already ready */ }
+    else if (mode === 'template') { wpSwitchTab('template'); }
+    else if (mode === 'upload') { wpSwitchTab('format'); document.getElementById('wp-file-input').click(); }
+  };
+  function focusSource() { setTimeout(function(){ var el = document.getElementById('wp-source'); if(el) el.focus(); }, 100); }
+
+  /* ── Color palettes ─────────────────────────────────────────── */
+  function wpBuildColorPalettes() {
+    buildPalette('wp-txtcol-palette', TEXT_COLORS, function(c) { wpApplyTextColor(c); });
+    buildPalette('wp-hlcol-palette', HIGHLIGHT_COLORS, function(c) { wpApplyHighlight(c); });
+    buildPalette('wp-cell-color-palette', CELL_COLORS, function(c) { wpApplyCellBg(c); });
+  }
+  function buildPalette(containerId, colors, handler) {
+    var el = document.getElementById(containerId);
+    if (!el) return;
+    el.innerHTML = '';
+    colors.forEach(function(c) {
+      var sw = document.createElement('div');
+      sw.className = 'wp-color-swatch';
+      sw.style.background = c === 'transparent' ? 'repeating-conic-gradient(#ccc 0% 25%,#fff 0% 50%) 0 0/10px 10px' : c;
+      if (c === '#ffffff' || c === 'transparent') sw.style.border = '1.5px solid #d1d5db';
+      sw.title = c;
+      sw.onclick = function() { handler(c); };
+      el.appendChild(sw);
+    });
+  }
+
+  /* ── Apply text / highlight colors ─────────────────────────── */
+  window.wpApplyTextColor = function(color) {
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('foreColor', false, color);
+    var sw = document.getElementById('wp-txtcol-swatch'); if(sw) sw.style.background = color;
+    var menu = document.getElementById('wp-txtcol-dd-menu'); if(menu) menu.classList.remove('open');
+    wpFocusEditor();
+  };
+  window.wpApplyHighlight = function(color) {
+    document.execCommand('styleWithCSS', false, true);
+    if (color === 'transparent') {
+      document.execCommand('hiliteColor', false, 'transparent');
+    } else {
+      document.execCommand('hiliteColor', false, color);
+    }
+    var sw = document.getElementById('wp-hlcol-swatch'); if(sw) sw.style.background = color === 'transparent' ? '#fff' : color;
+    var menu = document.getElementById('wp-hlcol-dd-menu'); if(menu) menu.classList.remove('open');
+    wpFocusEditor();
+  };
+
+  /* ── Apply cell background ──────────────────────────────────── */
+  window.wpApplyCellBg = function(color) {
+    if (wpCtxCell) {
+      wpCtxCell.style.backgroundColor = color || '';
+      wpSavePageState();
+    }
+    wpHideModal('wp-cell-color-modal');
+    wpHideCtxMenu();
+  };
+  window.wpShowCellColorPicker = function() {
+    wpHideCtxMenu();
+    wpShowModal('wp-cell-color-modal');
+  };
+
+  /* ── Table picker ───────────────────────────────────────────── */
+  function wpBuildTablePicker() {
+    var grid = document.getElementById('wp-tbl-grid');
+    var lbl  = document.getElementById('wp-tbl-lbl');
+    if (!grid) return;
+    grid.innerHTML = '';
+    for (var r = 1; r <= 8; r++) {
+      for (var c = 1; c <= 8; c++) {
+        (function(row, col) {
+          var cell = document.createElement('div');
+          cell.className = 'wp-tbl-cell';
+          cell.dataset.row = row; cell.dataset.col = col;
+          cell.addEventListener('mouseover', function() {
+            if (lbl) lbl.textContent = row + ' × ' + col + ' table';
+            grid.querySelectorAll('.wp-tbl-cell').forEach(function(cl) {
+              cl.classList.toggle('hi', parseInt(cl.dataset.row) <= row && parseInt(cl.dataset.col) <= col);
+            });
+          });
+          cell.addEventListener('click', function() {
+            wpInsertTable(row, col);
+            var picker = document.getElementById('wp-tbl-picker'); if(picker) picker.classList.remove('open');
+          });
+          grid.appendChild(cell);
+        })(r, c);
+      }
+    }
+  }
+
+  /* ── Insert table ───────────────────────────────────────────── */
+  window.wpInsertTable = function(rows, cols) {
+    rows = Math.max(1, Math.min(rows || 3, 30));
+    cols = Math.max(1, Math.min(cols || 3, 15));
+    var picker = document.getElementById('wp-tbl-picker'); if(picker) picker.classList.remove('open');
+    var ed = wpGetEditor(); if (!ed) return;
+    ed.focus();
+
+    var html = '<table style="border-collapse:collapse;width:100%;table-layout:fixed;margin:.6em 0;">';
+    html += '<thead><tr>';
+    for (var c = 0; c < cols; c++) {
+      html += '<th contenteditable="true" style="border:1px solid #d1d5db;padding:6px 10px;background:#f1f5f9;font-weight:700;min-width:60px;">Col ' + (c + 1) + '</th>';
+    }
+    html += '</tr></thead><tbody>';
+    for (var rr = 0; rr < rows - 1; rr++) {
+      html += '<tr>';
+      for (var cc = 0; cc < cols; cc++) {
+        html += '<td contenteditable="true" style="border:1px solid #d1d5db;padding:6px 10px;min-width:60px;">&nbsp;</td>';
+      }
+      html += '</tr>';
+    }
+    html += '</tbody></table><p><br></p>';
+
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      var range = sel.getRangeAt(0);
+      var tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      var frag = document.createDocumentFragment();
+      while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+      range.collapse(false);
+      range.insertNode(frag);
+      range.collapse(false);
+      sel.removeAllRanges(); sel.addRange(range);
+    } else {
+      document.execCommand('insertHTML', false, html);
+    }
+    wpAddColResizeHandles(ed);
+    wpUpdateStats();
+    wpSavePageState();
+  };
+
+  /* ── Column resize handles ──────────────────────────────────── */
+  function wpAddColResizeHandles(ed) {
+    if (!ed) return;
+    ed.querySelectorAll('td, th').forEach(function(cell) {
+      if (cell.querySelector('.col-resize-handle')) return;
+      var handle = document.createElement('div');
+      handle.className = 'col-resize-handle';
+      handle.addEventListener('mousedown', function(e) {
+        e.preventDefault();
+        var startX = e.clientX, startW = cell.offsetWidth;
+        handle.classList.add('dragging');
+        function onMove(ev) { cell.style.width = Math.max(40, startW + ev.clientX - startX) + 'px'; }
+        function onUp() {
+          handle.classList.remove('dragging');
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          wpSavePageState();
         }
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+      cell.appendChild(handle);
+    });
+  }
+
+  /* ── Context menu for tables ────────────────────────────────── */
+  function wpSetupContextMenu() {
+    document.addEventListener('contextmenu', function(e) {
+      var cell = e.target.closest ? e.target.closest('td, th') : null;
+      if (!cell) { wpHideCtxMenu(); return; }
+      var ed = cell.closest ? cell.closest('.wp-page-editor') : null;
+      if (!ed) { wpHideCtxMenu(); return; }
+      e.preventDefault();
+      wpCtxCell  = cell;
+      wpCtxTable = cell.closest('table');
+      var menu = document.getElementById('wp-ctx-menu');
+      if (!menu) return;
+      menu.style.left = e.clientX + 'px';
+      menu.style.top  = (e.clientY + 2) + 'px';
+      menu.classList.add('open');
+    });
+    document.addEventListener('click', function() { wpHideCtxMenu(); });
+  }
+  function wpHideCtxMenu() {
+    var m = document.getElementById('wp-ctx-menu'); if(m) m.classList.remove('open');
+  }
+
+  /* ── Table commands ─────────────────────────────────────────── */
+  window.wpTableCmd = function(cmd) {
+    wpHideCtxMenu();
+    if (!wpCtxCell || !wpCtxTable) return;
+    var cell = wpCtxCell, tbl = wpCtxTable;
+    var row  = cell.parentNode;
+    var tbody = tbl.querySelector('tbody') || tbl;
+    var rows  = Array.from(tbl.querySelectorAll('tr'));
+    var cells = Array.from(row.children);
+    var colIdx = cells.indexOf(cell);
+
+    if (cmd === 'insertRowAbove') {
+      var newRow = row.cloneNode(false);
+      cells.forEach(function() { var td = document.createElement('td'); td.contentEditable = 'true'; td.style.cssText = 'border:1px solid #d1d5db;padding:6px 10px;min-width:60px;'; td.innerHTML = '&nbsp;'; newRow.appendChild(td); });
+      row.parentNode.insertBefore(newRow, row);
+    } else if (cmd === 'insertRowBelow') {
+      var newRow2 = row.cloneNode(false);
+      cells.forEach(function() { var td = document.createElement('td'); td.contentEditable = 'true'; td.style.cssText = 'border:1px solid #d1d5db;padding:6px 10px;min-width:60px;'; td.innerHTML = '&nbsp;'; newRow2.appendChild(td); });
+      if (row.nextSibling) row.parentNode.insertBefore(newRow2, row.nextSibling);
+      else row.parentNode.appendChild(newRow2);
+    } else if (cmd === 'insertColLeft') {
+      rows.forEach(function(tr, ri) {
+        var nc = document.createElement(ri === 0 && tbl.querySelector('thead') ? 'th' : 'td');
+        nc.contentEditable = 'true'; nc.style.cssText = 'border:1px solid #d1d5db;padding:6px 10px;min-width:60px;'; nc.innerHTML = '&nbsp;';
+        var c = tr.children[colIdx]; if(c) tr.insertBefore(nc, c); else tr.appendChild(nc);
+      });
+    } else if (cmd === 'insertColRight') {
+      rows.forEach(function(tr, ri) {
+        var nc = document.createElement(ri === 0 && tbl.querySelector('thead') ? 'th' : 'td');
+        nc.contentEditable = 'true'; nc.style.cssText = 'border:1px solid #d1d5db;padding:6px 10px;min-width:60px;'; nc.innerHTML = '&nbsp;';
+        var c = tr.children[colIdx + 1]; if(c) tr.insertBefore(nc, c); else tr.appendChild(nc);
+      });
+    } else if (cmd === 'deleteRow') {
+      if (rows.length <= 1) { tbl.remove(); } else { row.remove(); }
+    } else if (cmd === 'deleteCol') {
+      rows.forEach(function(tr) { var c = tr.children[colIdx]; if(c) c.remove(); });
+      var allRows = tbl.querySelectorAll('tr');
+      allRows.forEach(function(tr){ if(tr.children.length === 0) tr.remove(); });
+    } else if (cmd === 'deleteTable') {
+      if (confirm('Delete this table?')) tbl.remove();
+    } else if (cmd === 'sortAZ') { wpSortColumn(tbl, colIdx, true); }
+    else if (cmd === 'sortZA')  { wpSortColumn(tbl, colIdx, false); }
+    else if (cmd === 'mergeCells') { wpMergeCells(tbl); }
+    else if (cmd === 'sumCol') { wpSumColumn(tbl, colIdx, cell); }
+
+    wpAddColResizeHandles(tbl.closest('.wp-page-editor'));
+    wpSavePageState();
+    wpUpdateStats();
+  };
+
+  function wpSortColumn(tbl, colIdx, asc) {
+    var tbody = tbl.querySelector('tbody') || tbl;
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    rows.sort(function(a, b) {
+      var av = (a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '');
+      var bv = (b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '');
+      var an = parseFloat(av), bn = parseFloat(bv);
+      if (!isNaN(an) && !isNaN(bn)) return asc ? an - bn : bn - an;
+      return asc ? av.localeCompare(bv) : bv.localeCompare(av);
+    });
+    rows.forEach(function(r) { tbody.appendChild(r); });
+  }
+
+  function wpSumColumn(tbl, colIdx, targetCell) {
+    var tbody = tbl.querySelector('tbody') || tbl;
+    var rows = Array.from(tbody.querySelectorAll('tr'));
+    var sum = 0;
+    rows.forEach(function(r) {
+      var c = r.cells[colIdx]; if (!c) return;
+      var v = parseFloat(c.textContent.trim()); if (!isNaN(v)) sum += v;
+    });
+    var sumRow = document.createElement('tr');
+    for (var i = 0; i < (rows[0] ? rows[0].cells.length : 1); i++) {
+      var td = document.createElement('td');
+      td.contentEditable = 'true';
+      td.style.cssText = 'border:1px solid #d1d5db;padding:6px 10px;font-weight:700;background:#f0f9ff;';
+      td.textContent = i === colIdx ? 'Σ ' + sum.toLocaleString() : '';
+      sumRow.appendChild(td);
+    }
+    tbody.appendChild(sumRow);
+  }
+
+  function wpMergeCells(tbl) {
+    var selectedCells = tbl.querySelectorAll('[data-sel]');
+    if (selectedCells.length < 2) { alert('Select cells to merge first (hold Shift and click cells).'); return; }
+    var firstCell = selectedCells[0];
+    var combinedText = Array.from(selectedCells).map(function(c){ return c.textContent.trim(); }).filter(Boolean).join(' ');
+    firstCell.setAttribute('colspan', selectedCells.length);
+    firstCell.textContent = combinedText;
+    for (var i = 1; i < selectedCells.length; i++) { selectedCells[i].remove(); }
+    tbl.querySelectorAll('[data-sel]').forEach(function(c){ c.removeAttribute('data-sel'); });
+  }
+
+  /* ── Image insert & resize ──────────────────────────────────── */
+  window.wpInsertImageFromFile = function(input) {
+    var file = input.files[0]; if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      wpInsertImageSrc(e.target.result, file.name);
+    };
+    reader.readAsDataURL(file);
+    input.value = '';
+  };
+
+  function wpInsertImageSrc(src, name) {
+    var ed = wpGetEditor(); if (!ed) return;
+    ed.focus();
+    var html = '<div class="wp-img-wrap align-center" contenteditable="false" style="max-width:100%;display:block;margin:.5em auto;">' +
+      '<img src="' + src + '" alt="' + (name || 'image') + '" style="max-width:100%;height:auto;display:block;" draggable="true">' +
+      '<div class="wp-img-resize-handle" title="Drag to resize"></div>' +
+      '<div class="wp-img-caption" contenteditable="true" style="font-size:10px;color:#6b7280;text-align:center;font-style:italic;outline:none;" data-placeholder="Add caption…"></div>' +
+    '</div><p><br></p>';
+    document.execCommand('insertHTML', false, html);
+    wpSetupImageHandlers(ed);
+    wpUpdateStats();
+    wpSavePageState();
+  }
+
+  function wpSetupImageHandlers(ed) {
+    if (!ed) return;
+    ed.querySelectorAll('.wp-img-wrap').forEach(function(wrap) {
+      if (wrap._wpSetup) return;
+      wrap._wpSetup = true;
+      var img = wrap.querySelector('img');
+      var handle = wrap.querySelector('.wp-img-resize-handle');
+      if (!img) return;
+
+      img.addEventListener('click', function(e) {
+        e.stopPropagation();
+        ed.querySelectorAll('.wp-img-wrap').forEach(function(w){ w.classList.remove('selected'); });
+        ed.querySelectorAll('img').forEach(function(i){ i.classList.remove('wp-img-selected'); });
+        wrap.classList.add('selected');
+        img.classList.add('wp-img-selected');
+        // Show image toolbar
+        wpShowImageToolbar(wrap, img);
       });
 
-    /* ── Char counter ───────────────────────────────────────────── */
-    window.ttdCharCount = function () {
-      var el = document.getElementById('ttd-source');
-      var n  = el ? el.value.length : 0;
-      var cnt = document.getElementById('ttd-count');
-      if (!cnt) return;
-      cnt.textContent = n + ' / 10,000';
-      cnt.className   = 'ttd-count' + (n >= 10000 ? ' full' : n >= 8000 ? ' warn' : '');
-    };
-
-    /* ── Apply document style (CSS vars) ───────────────────────── */
-    window.ttdApplyStyle = function () {
-        var hf  = val('ttd-hfont',  'Georgia, serif');
-        var bf  = val('ttd-bfont',  'Georgia, serif');
-        var h1  = val('ttd-h1',  24);
-        var h2  = val('ttd-h2',  18);
-        var h3  = val('ttd-h3',  14);
-        var bd  = val('ttd-body',12);
-        var mg  = val('ttd-margin', 20);
-        var lh  = val('ttd-lh',  '1.6');
-        var items = document.querySelectorAll('.ttd-page-item');
-        if (!items.length) { return; }
-        items.forEach(function(p) {
-          p.style.setProperty('--ttd-hfont', hf);
-          p.style.setProperty('--ttd-bfont', bf);
-          p.style.setProperty('--ttd-h1',    h1 + 'pt');
-          p.style.setProperty('--ttd-h2',    h2 + 'pt');
-          p.style.setProperty('--ttd-h3',    h3 + 'pt');
-          p.style.setProperty('--ttd-h4',    Math.round(bd * 1.1) + 'pt');
-          p.style.setProperty('--ttd-bsize', bd + 'pt');
-          p.style.setProperty('--ttd-lh',    lh);
-          p.style.padding = mg + 'mm';
-        });
-      };
-
-      window.ttdSetPaper = function () {
-        var v = val('ttd-paper', 'a4');
-        document.querySelectorAll('.ttd-page-item').forEach(function(pg) {
-          pg.className = 'ttd-page ttd-page-item sz-' + v;
-        });
-      };
-
-    function val(id, def) {
-      var el = document.getElementById(id);
-      if (!el) return def;
-      return el.value || def;
-    }
-
-    /* ── Toolbar: execCommand ───────────────────────────────────── */
-    window.ttdFmt = function (cmd) {
-      document.execCommand('styleWithCSS', false, true);
-      document.execCommand(cmd, false, null);
-      focusEditor();
-      ttdUpdateToolbarState();
-    };
-
-    window.ttdBlock = function (tag) {
-      document.execCommand('styleWithCSS', false, true);
-      document.execCommand('formatBlock', false, '<' + tag + '>');
-      focusEditor();
-    };
-
-    window.ttdFont = function (family) {
-      if (!family) return;
-      document.execCommand('styleWithCSS', false, true);
-      // Wrap selection in span with font-family
-      wrapInlineStyle({ fontFamily: family });
-      document.getElementById('tb-font').value = '';
-      focusEditor();
-    };
-
-    window.ttdSize = function (pt) {
-      if (!pt) return;
-      wrapInlineStyle({ fontSize: pt + 'pt' });
-      focusEditor();
-    };
-
-    window.ttdColor = function (cmd, color) {
-      document.execCommand('styleWithCSS', false, true);
-      document.execCommand(cmd, false, color);
-      focusEditor();
-    };
-
-    /* wrap selection in a span with given styles (works across nodes) */
-    function wrapInlineStyle(styles) {
-      var sel = window.getSelection();
-      if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-      var range = sel.getRangeAt(0);
-      var span  = document.createElement('span');
-      Object.assign(span.style, styles);
-      try {
-        range.surroundContents(span);
-      } catch (e) {
-        // Cross-element selection: extract and re-insert
-        var fragment = range.extractContents();
-        span.appendChild(fragment);
-        range.insertNode(span);
-      }
-      // Restore selection
-      sel.removeAllRanges();
-      var newRange = document.createRange();
-      newRange.selectNodeContents(span);
-      sel.addRange(newRange);
-    }
-
-    function focusEditor() {
-      if (editor) editor.focus();
-    }
-
-    /* ── Table picker ───────────────────────────────────────────── */
-    window.ttdShowTablePicker = function (btn) {
-      var picker = document.getElementById('ttd-tbl-picker');
-      var grid   = document.getElementById('ttd-tbl-grid');
-      var lbl    = document.getElementById('ttd-tbl-lbl');
-      if (!picker) return;
-      if (picker.classList.contains('open')) { picker.classList.remove('open'); return; }
-      // Build 8×8 grid
-      grid.innerHTML = '';
-      for (var r = 1; r <= 8; r++) {
-        for (var c = 1; c <= 8; c++) {
-          (function(row, col) {
-            var cell = document.createElement('div');
-            cell.className = 'ttd-tbl-cell';
-            cell.title = row + ' × ' + col;
-            cell.addEventListener('mouseover', function () {
-              lbl.textContent = row + ' × ' + col + ' table';
-              grid.querySelectorAll('.ttd-tbl-cell').forEach(function(cl) {
-                var cr = parseInt(cl.dataset.row), cc = parseInt(cl.dataset.col);
-                cl.classList.toggle('hi', cr <= row && cc <= col);
-              });
-            });
-            cell.addEventListener('click', function () { ttdInsertTable(row, col); });
-            cell.dataset.row = r; cell.dataset.col = c;
-            grid.appendChild(cell);
-          })(r, c);
-        }
-      }
-      lbl.textContent = 'Insert Table';
-      picker.classList.add('open');
-      // Close on outside click
-      setTimeout(function () {
-        document.addEventListener('click', function handler(e) {
-          var wrap = document.getElementById('ttd-tbl-wrap');
-          if (wrap && !wrap.contains(e.target)) {
-            picker.classList.remove('open');
-            document.removeEventListener('click', handler);
+      if (handle) {
+        handle.addEventListener('mousedown', function(e) {
+          e.preventDefault();
+          var startX = e.clientX, startW = img.offsetWidth;
+          function onMove(ev) {
+            var w = Math.max(40, startW + ev.clientX - startX);
+            img.style.width = w + 'px'; img.style.height = 'auto';
           }
+          function onUp() {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            wpSavePageState();
+          }
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
         });
-      }, 0);
-    };
-
-    /* ── Insert table into editor ───────────────────────────────── */
-    window.ttdInsertTable = function (rows, cols) {
-      rows = Math.max(1, Math.min(rows || 3, 20));
-      cols = Math.max(1, Math.min(cols || 3, 10));
-      var picker = document.getElementById('ttd-tbl-picker');
-      if (picker) picker.classList.remove('open');
-      var activeEd = document.activeElement;
-      if (!activeEd || !activeEd.classList.contains('ttd-page-editor')) {
-        activeEd = document.querySelector('.ttd-page-editor') || editor;
       }
-      if (!activeEd) return;
-      activeEd.focus();
+    });
+  }
 
-      var html = '<table><thead><tr>';
-      for (var c = 0; c < cols; c++) html += '<th contenteditable="true">Header ' + (c + 1) + '</th>';
-      html += '</tr></thead><tbody>';
-      for (var r = 0; r < rows - 1; r++) {
-        html += '<tr>';
-        for (var cc = 0; cc < cols; cc++) html += '<td contenteditable="true">&nbsp;</td>';
-        html += '</tr>';
-      }
-      html += '</tbody></table><p><br></p>';
+  function wpShowImageToolbar(wrap, img) {
+    var old = document.getElementById('wp-img-toolbar');
+    if (old) old.remove();
+    var bar = document.createElement('div');
+    bar.id = 'wp-img-toolbar';
+    bar.style.cssText = 'position:fixed;z-index:650;background:#1e293b;border-radius:8px;padding:5px 8px;display:flex;gap:5px;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.3);';
+    var rect = img.getBoundingClientRect();
+    bar.style.top = (rect.top - 48) + 'px';
+    bar.style.left = rect.left + 'px';
 
-      var sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        var range = sel.getRangeAt(0);
-        // Walk up to find block-level ancestor inside editor
-        var node = range.startContainer;
-        while (node && node !== activeEd && node.parentNode !== activeEd) node = node.parentNode;
-        if (node && node !== activeEd) {
-          // Insert after current block
-          var after = node.nextSibling;
-          var tmp = document.createElement('div');
-          tmp.innerHTML = html;
-          var frag = document.createDocumentFragment();
-          while (tmp.firstChild) frag.appendChild(tmp.firstChild);
-          activeEd.insertBefore(frag, after);
-        } else {
-          document.execCommand('insertHTML', false, html);
+    function makeBtn(label, fn) {
+      var b = document.createElement('button');
+      b.textContent = label;
+      b.style.cssText = 'background:none;border:none;color:#e2e8f0;cursor:pointer;padding:3px 8px;border-radius:4px;font-size:11.5px;font-weight:600;';
+      b.onmouseenter = function(){ b.style.background='rgba(255,255,255,.15)'; };
+      b.onmouseleave = function(){ b.style.background='none'; };
+      b.onclick = fn;
+      bar.appendChild(b);
+    }
+    makeBtn('◀ Left',  function(){ wrap.classList.remove('align-center','align-right'); wrap.classList.add('align-left'); wrap.style.float='left'; wrap.style.marginRight='12px'; wrap.style.display='inline-block'; wpSavePageState(); });
+    makeBtn('⬛ Center', function(){ wrap.classList.remove('align-left','align-right'); wrap.classList.add('align-center'); wrap.style.float='none'; wrap.style.margin='.5em auto'; wrap.style.display='block'; wpSavePageState(); });
+    makeBtn('Right ▶', function(){ wrap.classList.remove('align-left','align-center'); wrap.classList.add('align-right'); wrap.style.float='right'; wrap.style.marginLeft='12px'; wrap.style.display='inline-block'; wpSavePageState(); });
+    var sep = document.createElement('span'); sep.style.cssText='width:1px;height:18px;background:rgba(255,255,255,.2);display:inline-block;'; bar.appendChild(sep);
+    makeBtn('🗑 Remove', function(){ wrap.remove(); bar.remove(); wpUpdateStats(); wpSavePageState(); });
+    makeBtn('✕', function(){ bar.remove(); img.classList.remove('wp-img-selected'); wrap.classList.remove('selected'); });
+    document.body.appendChild(bar);
+    setTimeout(function(){ document.addEventListener('click', function handler(e){ if (!bar.contains(e.target) && e.target !== img){ bar.remove(); img.classList.remove('wp-img-selected'); wrap.classList.remove('selected'); document.removeEventListener('click', handler); } }); }, 0);
+  }
+
+  /* ── Image drag-drop into editor ─────────────────────────────  */
+  function wpSetupImageDrop() {
+    document.addEventListener('drop', function(e) {
+      var ed = e.target.closest ? e.target.closest('.wp-page-editor') : null;
+      if (!ed) return;
+      var files = e.dataTransfer && e.dataTransfer.files;
+      if (!files || !files.length) return;
+      for (var i = 0; i < files.length; i++) {
+        if (files[i].type.startsWith('image/')) {
+          e.preventDefault();
+          var reader = new FileReader();
+          (function(file){ reader.onload = function(ev){ wpInsertImageSrc(ev.target.result, file.name); }; reader.readAsDataURL(file); })(files[i]);
         }
-      } else {
-        document.execCommand('insertHTML', false, html);
       }
-      ttdUpdateStats();
-    };
+    });
+  }
 
-    /* ── Update bold/italic/underline toggle state ──────────────── */
-    window.ttdUpdateToolbarState = function () {
-      setOn('tb-bold',   document.queryCommandState('bold'));
-      setOn('tb-italic', document.queryCommandState('italic'));
-      setOn('tb-under',  document.queryCommandState('underline'));
-      setOn('tb-strike', document.queryCommandState('strikeThrough'));
-    };
-    function setOn(id, on) { var b = document.getElementById(id); if (b) b.classList.toggle('on', on); }
+  /* ── Chart engine ───────────────────────────────────────────── */
+  window.wpSelectChartType = function(type, btn) {
+    wpChartType = type;
+    document.querySelectorAll('.wp-chart-type-btn').forEach(function(b){ b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+  };
 
-    /* ── Keydown handler ────────────────────────────────────────── */
-    window.ttdKeydown = function (e) {
-      // Ctrl/Cmd shortcuts
+  window.wpShowChartModal = function() {
+    var ed = wpGetEditor(); if (!ed) return;
+    var tbl = ed.querySelector('table');
+    if (tbl) {
+      var csv = wpTableToCSV(tbl);
+      var dataEl = document.getElementById('wp-chart-data'); if(dataEl) dataEl.value = csv;
+    }
+    wpShowModal('wp-chart-modal');
+    setTimeout(wpPreviewChart, 100);
+  };
+
+  function wpTableToCSV(tbl) {
+    var rows = Array.from(tbl.querySelectorAll('tr'));
+    return rows.map(function(r){ return Array.from(r.querySelectorAll('td,th')).map(function(c){ return '"'+c.textContent.trim().replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  }
+
+  window.wpPreviewChart = function() {
+    var dataEl = document.getElementById('wp-chart-data');
+    var titleEl = document.getElementById('wp-chart-title');
+    var canvas = document.getElementById('wp-chart-canvas');
+    if (!dataEl || !canvas) return;
+    var csv = dataEl.value.trim();
+    if (!csv) return;
+    var lines = csv.split('\n').map(function(l){ return l.split(',').map(function(v){ return v.trim().replace(/^"|"$/g,''); }); });
+    if (lines.length < 2) return;
+    var headers = lines[0];
+    var labels = lines.slice(1).map(function(l){ return l[0] || ''; });
+    var datasets = [];
+    var COLORS = ['#6366f1','#f59e0b','#10b981','#ef4444','#3b82f6','#ec4899','#8b5cf6','#f97316'];
+    for (var di = 1; di < headers.length; di++) {
+      var dvals = lines.slice(1).map(function(l){ return parseFloat(l[di]) || 0; });
+      datasets.push({
+        label: headers[di] || ('Series ' + di),
+        data: dvals,
+        backgroundColor: wpChartType === 'pie' || wpChartType === 'doughnut' || wpChartType === 'polarArea'
+          ? COLORS.slice(0, labels.length) : COLORS[(di - 1) % COLORS.length] + 'cc',
+        borderColor: wpChartType === 'line' ? COLORS[(di - 1) % COLORS.length] : undefined,
+        borderWidth: 2,
+        fill: false
+      });
+    }
+    if (wpChartInstance) { wpChartInstance.destroy(); wpChartInstance = null; }
+    try {
+      wpChartInstance = new Chart(canvas, {
+        type: wpChartType,
+        data: { labels: labels, datasets: datasets },
+        options: {
+          responsive: true, maintainAspectRatio: true,
+          plugins: {
+            title: { display: !!(titleEl && titleEl.value), text: titleEl ? titleEl.value : '' },
+            legend: { display: datasets.length > 1 || wpChartType === 'pie' || wpChartType === 'doughnut' }
+          }
+        }
+      });
+    } catch(e) { console.error('Chart error:', e); }
+  };
+
+  window.wpInsertChart = function() {
+    var canvas = document.getElementById('wp-chart-canvas');
+    if (!canvas || !wpChartInstance) { alert('Please preview the chart first.'); return; }
+    var dataUrl = canvas.toDataURL('image/png', 0.92);
+    var titleEl = document.getElementById('wp-chart-title');
+    var title = titleEl ? titleEl.value : 'Chart';
+    wpHideModal('wp-chart-modal');
+    wpInsertImageSrc(dataUrl, title || 'chart.png');
+    wpSetStatus('Chart inserted into document');
+  };
+
+  /* ── Analyze table data ─────────────────────────────────────── */
+  window.wpAnalyzeTable = function() {
+    var ed = wpGetEditor();
+    if (!ed) return;
+    var tbl = ed.querySelector('table');
+    if (!tbl) { alert('No table found. Insert a table with data first, then click Analyze Data.'); return; }
+    var csv = wpTableToCSV(tbl);
+    var dataEl = document.getElementById('wp-chart-data'); if(dataEl) dataEl.value = csv;
+    wpShowModal('wp-chart-modal');
+    setTimeout(wpPreviewChart, 150);
+    wpSetStatus('Table data loaded — choose chart type and insert');
+  };
+
+  /* ── Toolbar: execCommand wrappers ──────────────────────────── */
+  window.wpFmt = function(cmd) {
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand(cmd, false, null);
+    wpFocusEditor();
+    wpUpdateToolbarState();
+    wpSavePageState();
+  };
+
+  window.wpBlock = function(tag) {
+    document.execCommand('styleWithCSS', false, true);
+    document.execCommand('formatBlock', false, '<' + tag + '>');
+    wpFocusEditor();
+    wpSavePageState();
+  };
+
+  window.wpFont = function(family) {
+    if (!family) return;
+    wrapInlineStyle({ fontFamily: family });
+    var sel = document.getElementById('tb-font'); if(sel) sel.value = '';
+    wpFocusEditor();
+    wpSavePageState();
+  };
+
+  window.wpSize = function(pt) {
+    if (!pt) return;
+    wrapInlineStyle({ fontSize: pt + 'pt' });
+    wpFocusEditor();
+    wpSavePageState();
+  };
+
+  window.wpSetLineSpacing = function(lh) {
+    var ed = wpGetEditor(); if (!ed) return;
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      // Apply to selected paragraphs
+      var range = sel.getRangeAt(0);
+      var ancestor = range.commonAncestorContainer;
+      if (ancestor.nodeType === 3) ancestor = ancestor.parentNode;
+      ancestor.style.lineHeight = lh;
+    } else {
+      ed.style.lineHeight = lh;
+    }
+    var wpl = document.getElementById('wp-lh'); if(wpl) wpl.value = lh;
+    wpSavePageState();
+    var menu = document.getElementById('wp-lspace-dd-menu'); if(menu) menu.classList.remove('open');
+  };
+
+  function wrapInlineStyle(styles) {
+    var sel = window.getSelection();
+    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
+    var range = sel.getRangeAt(0);
+    var span  = document.createElement('span');
+    Object.assign(span.style, styles);
+    try { range.surroundContents(span); }
+    catch (e) {
+      var frag = range.extractContents();
+      span.appendChild(frag); range.insertNode(span);
+    }
+    sel.removeAllRanges();
+    var nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
+  }
+
+  /* ── Insert helpers ─────────────────────────────────────────── */
+  window.wpInsertHR = function() {
+    document.execCommand('insertHTML', false, '<hr style="border:none;border-top:2px solid #e2e8f0;margin:1em 0;"><p><br></p>');
+    wpFocusEditor(); wpSavePageState();
+  };
+
+  window.wpInsertPageBreak = function() {
+    wpAddPage();
+  };
+
+  window.wpInsertChar = function(ch) {
+    document.execCommand('insertText', false, ch);
+    wpFocusEditor();
+    var menu = document.getElementById('wp-special-dd-menu'); if(menu) menu.classList.remove('open');
+  };
+
+  /* ── Link ───────────────────────────────────────────────────── */
+  window.wpShowLinkModal = function() {
+    wpSavedSelection = wpSaveSelectionRange();
+    var sel = window.getSelection();
+    var lt = document.getElementById('wp-link-text');
+    if (sel && !sel.isCollapsed) { if(lt) lt.value = sel.toString(); }
+    else { if(lt) lt.value = ''; }
+    wpShowModal('wp-link-modal');
+    setTimeout(function(){ var el = document.getElementById('wp-link-url'); if(el) el.focus(); }, 100);
+  };
+
+  window.wpInsertLink = function() {
+    var url  = (document.getElementById('wp-link-url')  || {}).value || '';
+    var text = (document.getElementById('wp-link-text') || {}).value || '';
+    var target = (document.getElementById('wp-link-target') || {}).value || '_blank';
+    if (!url || url === 'https://') { alert('Please enter a URL.'); return; }
+    wpHideModal('wp-link-modal');
+    if (wpSavedSelection) wpRestoreSelectionRange(wpSavedSelection);
+    wpFocusEditor();
+    var display = text || url;
+    document.execCommand('insertHTML', false, '<a href="' + url + '" target="' + target + '" style="color:#4f46e5;text-decoration:underline;">' + escHtml(display) + '</a>');
+    wpSavePageState();
+  };
+
+  function wpSaveSelectionRange() {
+    var sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) return sel.getRangeAt(0).cloneRange();
+    return null;
+  }
+  function wpRestoreSelectionRange(range) {
+    var sel = window.getSelection();
+    if (!sel || !range) return;
+    sel.removeAllRanges(); sel.addRange(range);
+  }
+
+  /* ── Paper / style ──────────────────────────────────────────── */
+  window.wpSetPaper = function(v) {
+    document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      pg.className = 'wp-page wp-page-item sz-' + (v || 'a4');
+    });
+    var sel = document.getElementById('tb-paper'); if(sel) sel.value = v;
+  };
+
+  window.wpApplyStyle = function() {
+    var hf  = getV('wp-hfont',  'Georgia, serif');
+    var bf  = getV('wp-bfont',  'Georgia, serif');
+    var h1  = getV('wp-h1',  24);
+    var h2  = getV('wp-h2',  18);
+    var h3  = getV('wp-h3',  14);
+    var bd  = getV('wp-body', 12);
+    var mg  = getV('wp-margin', 20);
+    var lh  = getV('wp-lh',  '1.6');
+    document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      pg.style.setProperty('--wp-hfont', hf);
+      pg.style.setProperty('--wp-bfont', bf);
+      pg.style.setProperty('--wp-h1',    h1 + 'pt');
+      pg.style.setProperty('--wp-h2',    h2 + 'pt');
+      pg.style.setProperty('--wp-h3',    h3 + 'pt');
+      pg.style.setProperty('--wp-h4',    Math.round(Number(bd) * 1.1) + 'pt');
+      pg.style.setProperty('--wp-bsize', bd + 'pt');
+      pg.style.setProperty('--wp-lh',    lh);
+      pg.style.padding = mg + 'mm';
+    });
+    var tbm = document.getElementById('tb-margin'); if(tbm) tbm.value = mg;
+  };
+
+  function getV(id, def) {
+    var el = document.getElementById(id); if (!el) return def;
+    return el.value || def;
+  }
+
+  /* ── Zoom ───────────────────────────────────────────────────── */
+  window.wpSetZoom = function(z) {
+    wpZoom = parseFloat(z) || 1;
+    var area = document.getElementById('wp-pages');
+    if (area) { area.style.transformOrigin = 'top center'; }
+    document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      pg.style.transform = 'scale(' + wpZoom + ')';
+      pg.style.transformOrigin = 'top center';
+      pg.style.marginBottom = ((wpZoom - 1) * pg.offsetHeight / 2) + 'px';
+    });
+    var sel1 = document.getElementById('tb-zoom'); if(sel1) sel1.value = z;
+    var sel2 = document.getElementById('wp-zoom-sel'); if(sel2) sel2.value = z;
+    wpSetStatus('Zoom: ' + Math.round(wpZoom * 100) + '%');
+  };
+
+  /* ── Toolbar state ──────────────────────────────────────────── */
+  window.wpUpdateToolbarState = function() {
+    function setOn(id, on) { var b = document.getElementById(id); if(b) b.classList.toggle('on', on); }
+    setOn('tb-bold',   document.queryCommandState('bold'));
+    setOn('tb-italic', document.queryCommandState('italic'));
+    setOn('tb-under',  document.queryCommandState('underline'));
+    setOn('tb-strike', document.queryCommandState('strikeThrough'));
+  };
+
+  /* ── Keyboard shortcuts ──────────────────────────────────────── */
+  function wpSetupKeyboardShortcuts() {
+    document.addEventListener('keydown', function(e) {
+      var ed = document.activeElement ? document.activeElement.closest('.wp-page-editor') : null;
       if (e.ctrlKey || e.metaKey) {
-        if (e.key === 'b') { e.preventDefault(); ttdFmt('bold'); }
-        if (e.key === 'i') { e.preventDefault(); ttdFmt('italic'); }
-        if (e.key === 'u') { e.preventDefault(); ttdFmt('underline'); }
-        if (e.key === 'p') { e.preventDefault(); ttdPrint(); }
+        if (e.key === 'b') { e.preventDefault(); wpFmt('bold'); }
+        if (e.key === 'i') { e.preventDefault(); wpFmt('italic'); }
+        if (e.key === 'u') { e.preventDefault(); wpFmt('underline'); }
+        if (e.key === 'k') { e.preventDefault(); wpShowLinkModal(); }
+        if (e.key === 'h') { e.preventDefault(); wpShowFindReplace(); }
+        if (e.key === 'p') { e.preventDefault(); wpPrint(); }
+        if (e.key === ']') { e.preventDefault(); wpFmt('indent'); }
+        if (e.key === '[') { e.preventDefault(); wpFmt('outdent'); }
+        if (e.key === 'z') { e.preventDefault(); wpFmt('undo'); }
+        if ((e.key === 'y') || (e.key === 'z' && e.shiftKey)) { e.preventDefault(); wpFmt('redo'); }
       }
-      // Tab → navigate table cells, or indent
+      if (!ed) return;
+      // Tab in table
       if (e.key === 'Tab') {
         e.preventDefault();
         var sel = window.getSelection();
         if (sel && sel.rangeCount) {
           var node = sel.getRangeAt(0).startContainer;
-          // Walk up to find td or th
           var cell = node;
-          while (cell && cell.nodeName !== 'TD' && cell.nodeName !== 'TH' && cell.nodeName !== 'TABLE') cell = cell.parentNode;
+          while (cell && cell.nodeName !== 'TD' && cell.nodeName !== 'TH' && cell.nodeName !== 'TABLE' && cell !== ed) cell = cell.parentNode;
           if (cell && (cell.nodeName === 'TD' || cell.nodeName === 'TH')) {
-            var allCells = Array.prototype.slice.call(cell.closest('table').querySelectorAll('td,th'));
+            var allCells = Array.from(cell.closest('table').querySelectorAll('td,th'));
             var idx = allCells.indexOf(cell);
             var next = e.shiftKey ? allCells[idx - 1] : allCells[idx + 1];
             if (next) {
@@ -256,1199 +756,1167 @@
               var r = document.createRange(); r.selectNodeContents(next); r.collapse(false);
               sel.removeAllRanges(); sel.addRange(r);
             } else if (!e.shiftKey) {
-              // Add new row at end
-              var tbl = cell.closest('table');
-              var cols = allCells.length / tbl.querySelectorAll('tr').length || 1;
-              var newRow = tbl.insertRow(-1);
+              var tbl2 = cell.closest('table');
+              var cols = cell.closest('tr').cells.length;
+              var newRow = tbl2.insertRow(-1);
               for (var ci = 0; ci < cols; ci++) {
                 var td = newRow.insertCell(-1);
-                td.setAttribute('contenteditable', 'true');
+                td.setAttribute('contenteditable','true');
+                td.style.cssText = 'border:1px solid #d1d5db;padding:6px 10px;min-width:60px;';
                 td.innerHTML = '&nbsp;';
               }
-              var firstNew = newRow.cells[0];
-              firstNew.focus();
-              var nr = document.createRange(); nr.selectNodeContents(firstNew); nr.collapse(false);
-              sel.removeAllRanges(); sel.addRange(nr);
+              var firstNew = newRow.cells[0]; firstNew.focus();
+              var nr2 = document.createRange(); nr2.selectNodeContents(firstNew); nr2.collapse(false);
+              sel.removeAllRanges(); sel.addRange(nr2);
             }
             return;
           }
         }
         document.execCommand(e.shiftKey ? 'outdent' : 'indent', false, null);
       }
-    };
+      wpUpdateToolbarState();
+    });
+  }
 
-    window.ttdEditorInput = function () { ttdUpdateToolbarState(); };
+  /* ── Find & Replace ─────────────────────────────────────────── */
+  window.wpShowFindReplace = function() {
+    wpShowModal('wp-fnr-modal');
+    setTimeout(function(){ var el = document.getElementById('wp-fnr-find'); if(el){ el.focus(); el.select(); } }, 100);
+  };
 
-    /* ── Update doc stats ───────────────────────────────────────── */
-      function ttdUpdateStats() {
-        var fullText = ttdPages.map(function(p, i) {
-          var ed = document.getElementById('ttd-editor-' + i);
-          return ed ? (ed.innerText || '') : p.replace(/<[^>]+>/g, '');
-        }).join(' ');
-        var words = fullText.trim() ? fullText.trim().split(/s+/).length : 0;
-        var chars = fullText.length;
-        var paras = 0;
-        document.querySelectorAll('.ttd-page-editor').forEach(function(ed) {
-          paras += ed.querySelectorAll('p,h1,h2,h3,h4').length;
+  window.wpFindHighlight = function() {
+    var query = (document.getElementById('wp-fnr-find') || {}).value || '';
+    var ed = wpGetEditor();
+    if (!ed) return;
+    // Remove previous highlights
+    ed.querySelectorAll('.wp-find-highlight').forEach(function(h){ h.outerHTML = h.innerHTML; });
+    wpFindMatches = []; wpFindIndex = -1;
+    var countEl = document.getElementById('wp-fnr-count');
+    if (!query) { if(countEl) countEl.textContent = ''; return; }
+    var caseSensitive = document.getElementById('wp-fnr-case') && document.getElementById('wp-fnr-case').checked;
+    var wholeWord = document.getElementById('wp-fnr-whole') && document.getElementById('wp-fnr-whole').checked;
+    var flags = caseSensitive ? 'g' : 'gi';
+    var escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var pattern = wholeWord ? '\\b' + escapedQuery + '\\b' : escapedQuery;
+    var regex = new RegExp(pattern, flags);
+
+    function highlightIn(node) {
+      if (node.nodeType === 3) {
+        var text = node.textContent;
+        var match;
+        var matches = [];
+        while ((match = regex.exec(text)) !== null) matches.push(match);
+        if (!matches.length) return;
+        var frag = document.createDocumentFragment();
+        var lastIdx = 0;
+        matches.forEach(function(m) {
+          if (m.index > lastIdx) frag.appendChild(document.createTextNode(text.slice(lastIdx, m.index)));
+          var mark = document.createElement('mark');
+          mark.className = 'wp-find-highlight';
+          mark.textContent = m[0];
+          frag.appendChild(mark);
+          wpFindMatches.push(mark);
+          lastIdx = m.index + m[0].length;
         });
-        paras = paras || 1;
-        var readMin = Math.max(1, Math.round(words / 200));
-        var sec = document.getElementById('ttd-stats-sec');
-        var st  = document.getElementById('ttd-stats');
-        if (sec) sec.style.display = '';
-        if (st)  st.innerHTML = '<span class="ttd-stat">'+words+' words</span><span class="ttd-stat">'+chars+' chars</span><span class="ttd-stat">'+paras+' paras</span><span class="ttd-stat">~'+readMin+' min read</span>';
+        if (lastIdx < text.length) frag.appendChild(document.createTextNode(text.slice(lastIdx)));
+        node.parentNode.replaceChild(frag, node);
+      } else if (node.nodeType === 1 && !['SCRIPT','STYLE'].includes(node.tagName)) {
+        Array.from(node.childNodes).forEach(highlightIn);
       }
+    }
+    highlightIn(ed);
+    if (countEl) countEl.textContent = wpFindMatches.length + ' found';
+    if (wpFindMatches.length > 0) { wpFindIndex = 0; wpScrollToMatch(0); }
+  };
 
-    /* ── AI Format ──────────────────────────────────────────────── */
-    window.ttdFormatAI = function () {
-      var src = document.getElementById('ttd-source');
-      if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
-      if (isProcessing) return;
-      var text = src.value.trim().slice(0,3800);
-      var tone = val('ttd-tone', 'professional');
-      var dtype= val('ttd-doctype', 'general document');
-      var btn  = document.getElementById('ttd-ai-btn');
-      isProcessing = true;
-      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ttd-spin">&#9696;</span> Formatting...'; }
+  function wpScrollToMatch(idx) {
+    wpFindMatches.forEach(function(m){ m.classList.remove('current'); });
+    if (wpFindMatches[idx]) {
+      wpFindMatches[idx].classList.add('current');
+      wpFindMatches[idx].scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+    var countEl = document.getElementById('wp-fnr-count');
+    if (countEl) countEl.textContent = (idx + 1) + ' / ' + wpFindMatches.length;
+  }
 
-      var hintEl = document.getElementById('ttd-ai-hint');
-      var showHint = function(msg, bg, col) { if(!hintEl) return; hintEl.style.display='block'; hintEl.style.background=bg; hintEl.style.color=col; hintEl.innerHTML=msg; };
-      var hideHint = function() { if(hintEl) hintEl.style.display='none'; };
-      hideHint();
+  window.wpFindNext = function() {
+    if (!wpFindMatches.length) { wpFindHighlight(); return; }
+    wpFindIndex = (wpFindIndex + 1) % wpFindMatches.length;
+    wpScrollToMatch(wpFindIndex);
+  };
+  window.wpFindPrev = function() {
+    if (!wpFindMatches.length) return;
+    wpFindIndex = (wpFindIndex - 1 + wpFindMatches.length) % wpFindMatches.length;
+    wpScrollToMatch(wpFindIndex);
+  };
 
-      var prompt = 'You are a professional document formatter.\n\n' +
-        'STEP 1 — ALIGNMENT CHECK: Does the text below make sense as a "' + dtype + '"? ' +
-        'If the content clearly does not match (e.g. random chat as a research paper, a shopping list as a business letter), respond with ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
-        'STEP 2 — FORMAT: If content aligns (even loosely), format it as a well-structured ' + dtype + ' with ' + tone + ' tone.\n\n' +
-        'RETURN ONLY clean HTML using ONLY these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br, table, thead, tbody, tr, th, td. ABSOLUTELY NO html/head/body/style/script tags.\n\n' +
-        'RULES:\n' +
-        '1. Detect or create a clear main title → wrap in <h1>\n' +
-        '2. Major sections/topics → wrap in <h2>\n' +
-        '3. Sub-sections → wrap in <h3>\n' +
-        '4. Key terms, names, important facts → wrap in <strong>\n' +
-        '5. ALL body text → wrap in <p> tags (never leave text outside a tag)\n' +
-        '6. Bullet/unordered lists → <ul><li>...</li></ul>\n' +
-        '7. Numbered/ordered lists → <ol><li>...</li></ol>\n' +
-        '8. Quotes or highlighted text → <blockquote>\n' +
-        '9. Fix grammar, spelling, punctuation and improve clarity\n' +
-        '10. Match the ' + tone + ' tone throughout\n' +
-        '11. Detect paragraphs from blank lines or sentence groups\n' +
-        '12. When the content contains comparative, statistical, or multi-column data → use <table><thead><tr><th>...</th></tr></thead><tbody><tr><td>...</td></tr></tbody></table>\n\n' +
-        'TEXT:\n' + text;
+  window.wpReplace = function() {
+    if (!wpFindMatches.length) return;
+    var replaceText = (document.getElementById('wp-fnr-replace') || {}).value || '';
+    var current = wpFindMatches[wpFindIndex];
+    if (current) {
+      current.outerHTML = escHtml(replaceText);
+      wpFindMatches.splice(wpFindIndex, 1);
+      if (wpFindIndex >= wpFindMatches.length) wpFindIndex = 0;
+      if (wpFindMatches.length) wpScrollToMatch(wpFindIndex);
+      wpSavePageState();
+    }
+  };
 
-      callAI(prompt)
-        .then(function (html) {
-          var trimmed = html.trim();
-          if (trimmed.toUpperCase().startsWith('MISMATCH:')) {
-            var reason = trimmed.slice(9).trim();
-            showHint(
-              '⚠️ ' + reason + '<br><small style="opacity:.8;">Change the <strong>Document Type</strong> above, or paste content that better suits a <strong>' + dtype + '</strong>.</small>',
-              '#fefce8', '#854d0e'
-            );
-            isProcessing = false;
-            if (btn) { btn.disabled = false; btn.innerHTML = '&#10024; Format with AI'; }
-            return;
-          }
-          hideHint();
-          var clean = sanitizeHTML(trimmed);
-          if (editor) {
-            ttdLoadContent(clean || '<p>' + escapeHtml(text) + '</p>');
-            var autoTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
-            ttdSaveHistory(autoTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
-            ttdUpdateStats();
-          }
-        })
-        .catch(function (err) {
-          console.error('AI error:', err);
-          if (editor) { editor.innerHTML = basicFormat(text); ttdUpdateStats(); }
-          showHint(
-            '⚠️ ' + (err.message || 'AI is busy') + ' — basic formatting applied.<br><small style="opacity:.8;">Wait a moment and try again, or click <strong>Use Text As-Is</strong>.</small>',
-            '#fef2f2', '#dc2626'
-          );
-        })
-        .finally(function () {
-          isProcessing = false;
-          if (btn) { btn.disabled = false; btn.innerHTML = '&#10024; Format with AI'; }
+  window.wpReplaceAll = function() {
+    if (!wpFindMatches.length) wpFindHighlight();
+    var replaceText = (document.getElementById('wp-fnr-replace') || {}).value || '';
+    var count = wpFindMatches.length;
+    wpFindMatches.forEach(function(m){ m.outerHTML = escHtml(replaceText); });
+    wpFindMatches = []; wpFindIndex = -1;
+    wpSavePageState();
+    var countEl = document.getElementById('wp-fnr-count');
+    if (countEl) countEl.textContent = count + ' replaced';
+    wpSetStatus(count + ' replacements made');
+  };
+
+  /* ── AI calls — Groq key pool ───────────────────────────────── */
+  function callAI(prompt, maxTokens) {
+    var k = ['wMspDhSungnapsLU3v5hWGdyb3FY9E9AFvBBjuSI38MmrL2ow46o', 'HMrJogeB2HUp6DFxebqgWGdyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
+    var keys = k.map(function(x){ return 'gsk_' + x; });
+    var messages = [{ role: 'user', content: prompt }];
+    wpSetAIStatus('working', 'AI is working…');
+    function tryKey(idx) {
+      if (idx >= keys.length) {
+        wpSetAIStatus('busy', 'AI is busy — wait and try again');
+        return Promise.reject(new Error('AI is busy right now — wait a moment and try again.'));
+      }
+      return fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys[idx] },
+        body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 })
+      }).then(function(r) {
+        if (r.status === 429) return tryKey(idx + 1);
+        if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
+        return r.json().then(function(d) {
+          var t = (((d.choices || [])[0] || {}).message || {}).content || '';
+          if (!t.trim()) { wpSetAIStatus('error', 'Empty response'); throw new Error('AI returned empty response.'); }
+          wpSetAIStatus('ready', 'AI Ready');
+          return t.trim();
         });
-    };
-
-    window.ttdUseAsIs = function () {
-      var src = document.getElementById('ttd-source');
-      if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
-      if (editor) {
-        ttdLoadContent(basicFormat(src.value.trim()));
-        ttdUpdateStats();
-      }
-    };
-
-    /* ── Basic formatter (no AI fallback) ──────────────────────── */
-    function basicFormat(text) {
-      var lines = text.split(/\n/);
-      var html = '';
-      var inList = false;
-      for (var i = 0; i < lines.length; i++) {
-        var line = lines[i].trim();
-        if (!line) { if (inList) { html += '</ul>'; inList = false; } continue; }
-        if (/^[#]{3}\s/.test(line)) { html += '<h3>' + escapeHtml(line.replace(/^###\s*/, '')) + '</h3>'; continue; }
-        if (/^[#]{2}\s/.test(line)) { html += '<h2>' + escapeHtml(line.replace(/^##\s*/, ''))  + '</h2>'; continue; }
-        if (/^[#]{1}\s/.test(line)) { html += '<h1>' + escapeHtml(line.replace(/^#\s*/, ''))   + '</h1>'; continue; }
-        if (/^[-*•]\s/.test(line)) {
-          if (!inList) { html += '<ul>'; inList = true; }
-          html += '<li>' + escapeHtml(line.replace(/^[-*•]\s*/, '')) + '</li>'; continue;
-        }
-        if (inList) { html += '</ul>'; inList = false; }
-        // ALL CAPS line → treat as heading
-        if (line === line.toUpperCase() && line.length > 4 && line.length < 80 && /[A-Z]/.test(line)) {
-          html += '<h2>' + escapeHtml(line) + '</h2>'; continue;
-        }
-        html += '<p>' + escapeHtml(line) + '</p>';
-      }
-      if (inList) html += '</ul>';
-      return html || '<p>' + escapeHtml(text) + '</p>';
+      });
     }
+    return tryKey(0);
+  }
 
-    /* ── AI Status badge helper ── */
-    function ttdSetAIStatus(state, msg) {
-        var el = document.getElementById('ttd-ai-status');
-        var icon = document.getElementById('ttd-ai-status-icon');
-        var text = document.getElementById('ttd-ai-status-text');
-        if (!el) return;
-        el.className = 'st-' + state;
-        var icons = { ready:'&#9989;', working:'&#9201;&#65039;', busy:'&#9888;&#65039;', error:'&#9888;&#65039;' };
-        if (icon) icon.innerHTML = icons[state] || '&#9989;';
-        if (text) text.textContent = msg;
-    }
+  function wpSetAIStatus(state, msg) {
+    var els = [
+      { si: 'wp-ai-status-icon', st: 'wp-ai-status-text', el: document.getElementById('wp-ai-status') },
+      { si: 'wp-ai-si', st: 'wp-ai-st', el: document.getElementById('wp-ai-status') }
+    ];
+    var icons = { ready: '✅', working: '⏱️', busy: '⚠️', error: '❌' };
+    var icon = icons[state] || '✅';
+    ['wp-ai-status-icon','wp-ai-si'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = icon; });
+    ['wp-ai-status-text','wp-ai-st'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = msg; });
+    var stat = document.getElementById('wp-ai-status');
+    if (stat) stat.className = 'wp-ai-status ' + state;
+  }
 
-    /* ── AI API call — Groq (hardcoded key pool, auto-rotates on 429) ── */
-    function callAI(prompt) {
-        var k=['wMspDhSungnapsLU3v5hWG'+'dyb3FY9E9AFvBBjuSI38MmrL2ow46o','HMrJogeB2HUp6DFxebqgWG'+'dyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
-        var keys=k.map(function(x){return'gsk_'+x;});
-        var messages = [{ role: 'user', content: prompt }];
+  /* ── AI Format ──────────────────────────────────────────────── */
+  window.wpFormatAI = function() {
+    var src = document.getElementById('wp-source');
+    if (!src || !src.value.trim()) { showHint('wp-ai-hint', 'Please paste some text first.', 'warn'); return; }
+    if (wpIsProcessing) return;
+    var text  = src.value.trim().slice(0, 6000);
+    var tone  = getV('wp-tone',    'Professional');
+    var dtype = getV('wp-doctype', 'General Document');
+    var btn   = document.getElementById('wp-ai-btn');
+    wpIsProcessing = true;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
+    hideHint('wp-ai-hint');
 
-        ttdSetAIStatus('working', 'AI is working…');
+    var prompt = 'You are a professional document formatter.\n\n' +
+      'STEP 1 — ALIGNMENT CHECK: Does the text below fit a "' + dtype + '"? If clearly not, reply ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
+      'STEP 2 — FORMAT: If content aligns, format it as a well-structured ' + dtype + ' with ' + tone + ' tone.\n\n' +
+      'OUTPUT: Return ONLY clean HTML using ONLY: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, hr, table, thead, tbody, tr, th, td. ' +
+      'NO html/head/body/style/script tags.\n\n' +
+      'RULES:\n' +
+      '1. Main title → <h1>\n2. Major sections → <h2>\n3. Sub-sections → <h3>\n' +
+      '4. Key terms → <strong>\n5. ALL body text in <p> tags\n' +
+      '6. Bullets → <ul><li>\n7. Numbers → <ol><li>\n8. Quotes → <blockquote>\n' +
+      '9. Fix grammar/spelling\n10. Match ' + tone + ' tone throughout\n' +
+      '11. Data/comparison tables → use <table> with proper thead/tbody\n\n' +
+      'TEXT:\n' + text;
 
-        function tryKey(idx) {
-            if (idx >= keys.length) {
-                ttdSetAIStatus('busy', 'Groq is busy right now — wait a minute and try again');
-                return Promise.reject(new Error('Groq is busy right now — wait a minute and try again.'));
-            }
-            return fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + keys[idx] },
-                body: JSON.stringify({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.3 })
-            }).then(function (r) {
-                if (r.status === 429) return tryKey(idx + 1);
-                if (!r.ok) {
-                    ttdSetAIStatus('error', 'Something went wrong — please try again');
-                    throw new Error('Something went wrong — please try again.');
-                }
-                return r.json().then(function (d) {
-                    var t = (((d.choices || [])[0] || {}).message || {}).content || '';
-                    if (!t.trim()) {
-                        ttdSetAIStatus('error', 'AI returned nothing — please try again');
-                        throw new Error('AI returned nothing — please try again.');
-                    }
-                    ttdSetAIStatus('ready', 'Groq AI Ready');
-                    return t.trim();
-                });
-            });
-        }
-
-        return tryKey(0);
-    }
-
-    /* ── HTML sanitizer (keep only safe formatting tags) ────────── */
-    function sanitizeHTML(raw) {
-        if (!raw) return '';
-        var html = raw;
-        // Unwrap code fences
-        var fence = html.match(/```html?\n?([\s\S]*?)```/i);
-        if (fence) html = fence[1];
-        // Strip dangerous wrapper tags
-        html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g, '')
-                   .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi, '')
-                   .replace(/<style[\s\S]*?<\/style>/gi, '')
-                   .replace(/<script[\s\S]*?<\/script>/gi, '');
-        html = html.trim();
-        // If AI returned markdown instead of HTML, convert basic markdown → HTML
-        if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote)\b/.test(html)) {
-          html = html
-            .replace(/^#{4}\s+(.+)$/gm, '<h4>$1</h4>')
-            .replace(/^#{3}\s+(.+)$/gm, '<h3>$1</h3>')
-            .replace(/^#{2}\s+(.+)$/gm, '<h2>$1</h2>')
-            .replace(/^#\s+(.+)$/gm, '<h1>$1</h1>')
-            .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.+?)\*/g, '<em>$1</em>')
-            .replace(/^[\*\-]\s+(.+)$/gm, '<li>$1</li>')
-            .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m){ return '<ul>' + m + '</ul>'; })
-            .replace(/^(?!<[hulo]|$)(.+)$/gm, '<p>$1</p>');
-        }
-        return html.trim();
-      }
-
-    function escapeHtml(s) {
-      return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
-    /* ── Print — works in browser AND Capacitor app ───────────── */
-      /* ── Print — uses print-root approach: works in browser AND Capacitor/WebView ───────────── */
-      window.ttdPrint = function () {
-        var allContent = ttdGetFullContent().trim();
-        if (!allContent) { alert('Nothing to print. Please add content first.'); return; }
-        var hfont = val('ttd-hfont','Georgia, serif');
-        var bfont = val('ttd-bfont','Georgia, serif');
-        var h1    = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
-        var bd    = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
-        var printRoot = document.getElementById('ttd-print-root');
-        if (printRoot) {
-          var styleEl = document.createElement('style');
-          styleEl.textContent =
-            '.ttd-pr-wrap{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';color:#1a1a1a;padding:' + mg + 'mm;box-sizing:border-box;}' +
-            '.ttd-pr-wrap h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;page-break-after:avoid;}' +
-            '.ttd-pr-wrap h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;page-break-after:avoid;}' +
-            '.ttd-pr-wrap h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
-            '.ttd-pr-wrap h4{font-family:' + hfont + ';font-size:' + Math.round(+bd*1.1) + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
-            '.ttd-pr-wrap p{margin:0 0 .55em;}' +
-            '.ttd-pr-wrap ul,.ttd-pr-wrap ol{padding-left:1.8em;margin:.3em 0 .55em;}' +
-            '.ttd-pr-wrap li{margin-bottom:.2em;}' +
-            '.ttd-pr-wrap blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
-            '.ttd-pr-wrap table{border-collapse:collapse;width:100%;margin:.5em 0;}' +
-            '.ttd-pr-wrap td,.ttd-pr-wrap th{border:1px solid #d1d5db;padding:6px 10px;}' +
-            '.ttd-pr-wrap th{background:#f8fafc;font-weight:600;}' +
-            '@page{margin:' + mg + 'mm;}';
-          var wrap = document.createElement('div');
-          wrap.className = 'ttd-pr-wrap';
-          wrap.innerHTML = allContent;
-          printRoot.innerHTML = '';
-          printRoot.appendChild(styleEl);
-          printRoot.appendChild(wrap);
-          window.print();
-          setTimeout(function() { printRoot.innerHTML = ''; }, 4000);
-        } else {
-          window.print();
-        }
-      };
-
-    window.ttdWebModeSwitch = function(mode) {
-        var ua = document.getElementById('ttd-web-url-area');
-        var sa = document.getElementById('ttd-web-search-area');
-        var bu = document.getElementById('ttd-web-mode-url');
-        var bs = document.getElementById('ttd-web-mode-search');
-        if (ua) ua.style.display = mode === 'url' ? '' : 'none';
-        if (sa) sa.style.display = mode === 'search' ? '' : 'none';
-        if (bu) bu.classList.toggle('active', mode === 'url');
-        if (bs) bs.classList.toggle('active', mode === 'search');
-    };
-
-    window.ttdWebResearch = function() {
-        var urlEl   = document.getElementById('ttd-web-url');
-        var qEl     = document.getElementById('ttd-web-query');
-        var instrEl = document.getElementById('ttd-web-instruction');
-        var btn     = document.getElementById('ttd-web-btn');
-        var stEl    = document.getElementById('ttd-web-status');
-        var saArea  = document.getElementById('ttd-web-search-area');
-        var isSearch = !!(saArea && saArea.style.display !== 'none');
-        var input    = (isSearch ? (qEl && qEl.value.trim()) : (urlEl && urlEl.value.trim())) || '';
-        var instr    = instrEl ? instrEl.value.trim() : '';
-
-        if (!input) { alert(isSearch ? 'Please enter a search query.' : 'Please enter a URL.'); return; }
-        if (!instr) { alert('Please describe what you want from this page.'); return; }
-        if (!isSearch && !/^https?:\/\//i.test(input)) { input = 'https://' + input; }
-
-        var setStatus = function(msg, bg, col) {
-            if (!stEl) return;
-            stEl.style.display = 'block';
-            stEl.style.background = bg;
-            stEl.style.color = col;
-            stEl.textContent = msg;
-        };
-
-        btn.disabled = true;
-        setStatus(
-            isSearch ? '\uD83D\uDD0D Searching the web\u2026' : '\uD83C\uDF10 Fetching page content\u2026',
-            '#eff6ff', '#1d4ed8'
-        );
-        ttdSetAIStatus('working', isSearch ? 'Searching web\u2026' : 'Fetching page\u2026');
-
-        /* Fetch via multiple proxy fallbacks to improve Cloudflare bypass */
-        function ttdFetchWithFallbacks(url, isSearchMode) {
-            var proxies = isSearchMode ? [
-                /* Search proxies */
-                { url: 'https://s.jina.ai/' + encodeURIComponent(url), headers: { 'Accept': 'text/plain', 'X-Respond-With': 'markdown' } },
-                { url: 'https://api.allorigins.win/get?url=' + encodeURIComponent('https://html.duckduckgo.com/html/?q=' + encodeURIComponent(url)), headers: {} }
-            ] : [
-                /* Page proxies — try in order until one works */
-                { url: 'https://r.jina.ai/' + url, headers: { 'Accept': 'text/plain', 'X-Respond-With': 'markdown' } },
-                { url: 'https://api.allorigins.win/get?url=' + encodeURIComponent(url), headers: {} },
-                { url: 'https://corsproxy.io/?' + encodeURIComponent(url), headers: {} }
-            ];
-
-            function tryNext(idx) {
-                if (idx >= proxies.length) return Promise.reject(new Error('All fetch proxies failed. The site may block external access.'));
-                var p = proxies[idx];
-                return fetch(p.url, { headers: p.headers })
-                    .then(function(r) {
-                        if (!r.ok) throw new Error('HTTP ' + r.status);
-                        return r.text();
-                    })
-                    .then(function(txt) {
-                        /* allorigins wraps in JSON: {contents: '...'} */
-                        if (p.url.indexOf('allorigins') !== -1) {
-                            try { var obj = JSON.parse(txt); txt = obj.contents || txt; } catch(e) {}
-                        }
-                        if (!txt || txt.trim().length < 30) throw new Error('No readable content');
-                        return txt;
-                    })
-                    .catch(function() { return tryNext(idx + 1); });
-            }
-            return tryNext(0);
-        }
-
-        ttdFetchWithFallbacks(input, isSearch)
-        .then(function(pageText) {
-            if (!pageText || pageText.trim().length < 30) throw new Error('Page returned no readable content. Try a different URL.');
-            setStatus('\uD83E\uDD16 AI is reading and writing your document\u2026', '#fefce8', '#854d0e');
-            ttdSetAIStatus('working', 'AI is reading page\u2026');
-            var truncated = pageText.slice(0, 7000);
-            var prompt = 'Using the web content below, ' + instr + '\n\nWrite your response as clean HTML with headings (h1,h2), paragraphs (p), and lists (ul/ol) where useful. Do NOT include DOCTYPE, html, head or body tags.\n\n--- WEB CONTENT ---\n' + truncated;
-            return callAI(prompt);
-        })
-        .then(function(result) {
-            var html = sanitizeHTML(result);
-            ttdLoadContent(html || '<p>' + (result || '').replace(/</g, '&lt;') + '</p>');
-            // Apply user-chosen page count
-            var webPages = window.ttdGetPanelPages ? ttdGetPanelPages('web') : null;
-            if (webPages) ttdSetPageCount(webPages);
-            // Apply user-chosen format settings
-            if (window.ttdApplyPanelFormat) ttdApplyPanelFormat('web');
-            ttdSwitchTab('format');
-            setStatus('\u2705 Done! Content added to your document.', '#f0fdf4', '#15803d');
-            ttdSetAIStatus('ready', 'Groq AI Ready');
-            setTimeout(function() { if (stEl) stEl.style.display = 'none'; }, 4000);
-        })
-        .catch(function(err) {
-            setStatus('\u26A0\uFE0F ' + (err.message || 'Something went wrong \u2014 please try again.'), '#fef2f2', '#dc2626');
-            ttdSetAIStatus('error', 'Web fetch failed \u2014 try again');
-        })
-        ['finally'](function() { btn.disabled = false; });
-    };
-
-    /* ═══════════════════════════════════════════════════════════════
-       DOWNLOAD FUNCTIONS
-    ═══════════════════════════════════════════════════════════════ */
-    window.ttdDL = function (fmt) {
-      if (!editor) return;
-      var content = ttdGetFullContent().trim();
-      if (!content || content === '' || editor.innerText.trim() === '') {
-        alert('Nothing to download. Please add some content first.'); return;
-      }
-      var fns = { pdf: dlPDF, docx: dlDOCX, odt: dlODT, txt: dlTXT,
-                  html: dlHTML, md: dlMD, rtf: dlRTF, json: dlJSON, csv: dlCSV, latex: dlLaTeX };
-      if (fns[fmt]) fns[fmt]();
-    };
-
-    function getDocTitle() {
-      var tmp=document.createElement('div');tmp.innerHTML=ttdGetFullContent();
-      var h1 = tmp.querySelector('h1');
-      return (h1 ? h1.textContent.trim() : 'document') || 'document';
-    }
-
-    function safeName(title) {
-      return (title || 'document').replace(/[^a-zA-Z0-9_\-]/g, '_').slice(0, 40);
-    }
-
-    function saveBlob(blob, filename) {
-      var url = URL.createObjectURL(blob);
-      var a   = document.createElement('a');
-      a.href  = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 500);
-    }
-
-    function saveText(text, filename, mime) {
-      saveBlob(new Blob([text], { type: (mime || 'text/plain') + ';charset=utf-8' }), filename);
-    }
-
-    /* ── PDF ────────────────────────────────────────────────────── */
-    function dlPDF() {
-      var btn = event ? event.target : null;
-      if (btn) btn.disabled = true;
-      if (!window.jspdf || !window.html2canvas) {
-        alert('PDF library not loaded. Please check your internet connection and try again.');
-        if (btn) btn.disabled = false;
-        return;
-      }
-      var pg  = document.getElementById('ttd-page');
-      var paperVal = val('ttd-paper', 'a4');
-      var format   = paperVal === 'letter' ? [215.9,279.4] : paperVal === 'legal' ? [215.9,355.6] : [210,297];
-
-      html2canvas(pg, { scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false })
-        .then(function (canvas) {
-          var { jsPDF } = window.jspdf;
-          var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: format });
-          var pW  = pdf.internal.pageSize.getWidth();
-          var pH  = pdf.internal.pageSize.getHeight();
-          var cW  = canvas.width;
-          var cH  = canvas.height;
-          var ratio   = pW / (cW / 2);   // canvas is at scale:2 so divide by 2
-          var totalMM = cH / 2 * ratio;
-          var imgData = canvas.toDataURL('image/jpeg', 0.92);
-
-          if (totalMM <= pH) {
-            pdf.addImage(imgData, 'JPEG', 0, 0, pW, totalMM);
-          } else {
-            var pageH  = pH;
-            var sliceH = Math.round(pageH / ratio * 2); // px per page
-            var offset = 0;
-            var page   = 0;
-            while (offset < cH) {
-              if (page > 0) pdf.addPage();
-              var sliceCanvas = document.createElement('canvas');
-              sliceCanvas.width  = cW;
-              sliceCanvas.height = Math.min(sliceH, cH - offset);
-              sliceCanvas.getContext('2d').drawImage(canvas, 0, offset, cW, sliceCanvas.height, 0, 0, cW, sliceCanvas.height);
-              pdf.addImage(sliceCanvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pW, sliceCanvas.height / 2 * ratio);
-              offset += sliceH;
-              page++;
-            }
-          }
-          pdf.save(safeName(getDocTitle()) + '.pdf');
-        })
-        .catch(function (e) { alert('PDF generation failed: ' + e.message); })
-        .finally(function () { if (btn) btn.disabled = false; });
-    }
-
-    /* ── DOCX ───────────────────────────────────────────────────── */
-    function dlDOCX() {
-      if (!window.docx) { alert('DOCX library not loaded. Check internet and retry.'); return; }
-      var { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType,
-            UnderlineType, BorderStyle, Table, TableRow, TableCell, WidthType } = window.docx;
-      var paragraphs = htmlToDOCXParagraphs(editor.innerHTML, { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType, Table, TableRow, TableCell, WidthType });
-
-      var doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
-      Packer.toBlob(doc).then(function (blob) {
-        saveBlob(blob, safeName(getDocTitle()) + '.docx');
-      }).catch(function (e) { alert('DOCX error: ' + e.message); });
-    }
-
-    function htmlToDOCXParagraphs(html, docx) {
-      var { Paragraph, TextRun, HeadingLevel, AlignmentType, UnderlineType, Table, TableRow, TableCell, WidthType } = docx;
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(html, 'text/html');
-      var result = [];
-
-      function processInline(node) {
-        var runs = [];
-        if (node.nodeType === Node.TEXT_NODE) {
-          if (node.textContent) runs.push(new TextRun(node.textContent));
-          return runs;
-        }
-        var tag = (node.tagName || '').toUpperCase();
-        var style = node.getAttribute ? (node.getAttribute('style') || '') : '';
-        var bold   = tag === 'STRONG' || tag === 'B' || /font-weight:\s*(bold|700)/i.test(style);
-        var italic = tag === 'EM'     || tag === 'I' || /font-style:\s*italic/i.test(style);
-        var under  = tag === 'U' || /text-decoration[^;]*underline/i.test(style);
-        var strike = tag === 'S' || tag === 'DEL';
-        for (var c = 0; c < node.childNodes.length; c++) {
-          var childRuns = processInline(node.childNodes[c]);
-          childRuns.forEach(function (r) {
-            if (bold)   r = new TextRun({ text: r.text || '', bold: true,   italics: r.options && r.options.italics });
-            if (italic) r = new TextRun({ text: r.text || '', italics: true, bold: r.options && r.options.bold });
-            if (under)  r = new TextRun({ text: r.text || '', underline: {} });
-            if (strike) r = new TextRun({ text: r.text || '', strike: true });
-            runs.push(r);
-          });
-        }
-        return runs;
-      }
-
-      function processBlock(el) {
-        var tag = (el.tagName || '').toUpperCase();
-        if (tag === 'H1') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_1, children: [new TextRun({ text: el.textContent, bold: true })] })); }
-        else if (tag === 'H2') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun({ text: el.textContent, bold: true })] })); }
-        else if (tag === 'H3') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(el.textContent)] })); }
-        else if (tag === 'H4') { result.push(new Paragraph({ heading: HeadingLevel.HEADING_4, children: [new TextRun(el.textContent)] })); }
-        else if (tag === 'BLOCKQUOTE') { result.push(new Paragraph({ indent: { left: 720 }, children: [new TextRun({ text: el.textContent, italics: true })] })); }
-        else if (tag === 'UL') {
-          el.querySelectorAll('li').forEach(function (li) {
-            result.push(new Paragraph({ bullet: { level: 0 }, children: [new TextRun(li.textContent)] }));
-          });
-        } else if (tag === 'OL') {
-          var idx = 1;
-          el.querySelectorAll('li').forEach(function (li) {
-            result.push(new Paragraph({ children: [new TextRun(idx++ + '. ' + li.textContent)] }));
-          });
-        } else if (tag === 'TABLE') {
-          try {
-            if (Table && TableRow && TableCell) {
-              var trs = el.querySelectorAll('tr');
-              var docxRows = [];
-              trs.forEach(function (tr) {
-                var cells = tr.querySelectorAll('td,th');
-                var docxCells = [];
-                cells.forEach(function (td) {
-                  var isHdr = td.tagName.toUpperCase() === 'TH';
-                  var cellRuns = [];
-                  for (var ci = 0; ci < td.childNodes.length; ci++) cellRuns = cellRuns.concat(processInline(td.childNodes[ci]));
-                  if (!cellRuns.length) cellRuns.push(new TextRun({ text: td.textContent || '', bold: isHdr }));
-                  else if (isHdr) cellRuns = cellRuns.map(function(r){ return new TextRun({ text: (r.options && r.options.text) || r.text || td.textContent || '', bold: true }); });
-                  var cellOpts = { children: [new Paragraph({ children: cellRuns })] };
-                  if (isHdr) cellOpts.shading = { type: 'clear', color: 'auto', fill: 'F1F5F9' };
-                  docxCells.push(new TableCell(cellOpts));
-                });
-                if (docxCells.length) docxRows.push(new TableRow({ children: docxCells }));
-              });
-              if (docxRows.length) {
-                var tblOpts = { rows: docxRows };
-                if (WidthType) tblOpts.width = { size: 100, type: WidthType.PERCENTAGE };
-                result.push(new Table(tblOpts));
-              }
-            }
-          } catch (e) {
-            result.push(new Paragraph({ children: [new TextRun('[Table: ' + el.textContent.replace(/\s+/g,' ').trim().slice(0,120) + ']')] }));
-          }
-        } else if (tag === 'THEAD' || tag === 'TBODY' || tag === 'TFOOT') {
-          for (var ti = 0; ti < el.children.length; ti++) processBlock(el.children[ti]);
-        } else if (tag === 'P' || tag === 'DIV') {
-          var runs = [];
-          for (var c = 0; c < el.childNodes.length; c++) runs = runs.concat(processInline(el.childNodes[c]));
-          if (!runs.length) runs.push(new TextRun(''));
-          result.push(new Paragraph({ children: runs }));
-        }
-      }
-
-      var body = doc.body;
-      for (var i = 0; i < body.children.length; i++) processBlock(body.children[i]);
-      if (!result.length) result.push(new Paragraph({ children: [new TextRun(doc.body.textContent)] }));
-      return result;
-    }
-
-    /* ── ODT ────────────────────────────────────────────────────── */
-    function dlODT() {
-      if (!window.JSZip) { alert('JSZip not loaded. Check internet and retry.'); return; }
-      var text   = editor.innerText || '';
-      var title  = getDocTitle();
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
-      var body   = '';
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        var txt = escapeXml(el.textContent);
-        if (tag === 'H1') body += '<text:h text:style-name="Heading_20_1" text:outline-level="1">' + txt + '</text:h>';
-        else if (tag === 'H2') body += '<text:h text:style-name="Heading_20_2" text:outline-level="2">' + txt + '</text:h>';
-        else if (tag === 'H3') body += '<text:h text:style-name="Heading_20_3" text:outline-level="3">' + txt + '</text:h>';
-        else if (tag === 'BLOCKQUOTE') body += '<text:p text:style-name="Quotations">' + txt + '</text:p>';
-        else if (tag === 'UL' || tag === 'OL') {
-          var items = el.querySelectorAll('li');
-          body += '<text:list>';
-          items.forEach(function (li) { body += '<text:list-item><text:p>' + escapeXml(li.textContent) + '</text:p></text:list-item>'; });
-          body += '</text:list>';
-        } else if (tag === 'TABLE') {
-          var trs = el.querySelectorAll('tr');
-          if (trs.length) {
-            var firstRow = trs[0].querySelectorAll('td,th');
-            var numCols = firstRow.length;
-            body += '<table:table xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0">';
-            for (var tc = 0; tc < numCols; tc++) body += '<table:table-column/>';
-            trs.forEach(function (tr) {
-              body += '<table:table-row>';
-              var cells2 = tr.querySelectorAll('td,th');
-              cells2.forEach(function (td2) {
-                var isH2 = td2.tagName.toUpperCase() === 'TH';
-                var sn = isH2 ? 'Table_20_Heading' : 'Table_20_Contents';
-                body += '<table:table-cell table:style-name="' + sn + '"><text:p>' + escapeXml(td2.textContent) + '</text:p></table:table-cell>';
-              });
-              body += '</table:table-row>';
-            });
-            body += '</table:table>';
-          }
-        } else body += '<text:p text:style-name="Text_20_Body">' + txt + '</text:p>';
-      }
-      var content = '<?xml version="1.0" encoding="UTF-8"?>' +
-        '<office:document-content xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' +
-        ' xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' +
-        ' xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' +
-        ' office:version="1.3">' +
-        '<office:automatic-styles/><office:body><office:text>' + body + '</office:text></office:body></office:document-content>';
-      var manifest = '<?xml version="1.0" encoding="UTF-8"?><manifest:manifest xmlns:manifest="urn:oasis:names:tc:opendocument:xmlns:manifest:1.0"><manifest:file-entry manifest:full-path="/" manifest:media-type="application/vnd.oasis.opendocument.text"/><manifest:file-entry manifest:full-path="content.xml" manifest:media-type="text/xml"/></manifest:manifest>';
-      var mimetype = 'application/vnd.oasis.opendocument.text';
-      var zip = new JSZip();
-      zip.file('mimetype', mimetype, { compression: 'STORE' });
-      zip.file('content.xml', content);
-      zip.folder('META-INF').file('manifest.xml', manifest);
-      zip.generateAsync({ type: 'blob' }).then(function (b) { saveBlob(b, safeName(title) + '.odt'); });
-    }
-
-    function escapeXml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-    /* ── TXT ────────────────────────────────────────────────────── */
-    function dlTXT() {
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
-      var lines  = [];
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        var txt = el.textContent.trim();
-        if (!txt) continue;
-        if (tag === 'H1') { lines.push('\n' + txt.toUpperCase()); lines.push('='.repeat(Math.min(txt.length, 60))); }
-        else if (tag === 'H2') { lines.push('\n' + txt); lines.push('-'.repeat(Math.min(txt.length, 60))); }
-        else if (tag === 'H3') { lines.push('\n' + txt + ':'); }
-        else if (tag === 'BLOCKQUOTE') { lines.push('\n  "' + txt + '"'); }
-        else if (tag === 'UL') { el.querySelectorAll('li').forEach(function (li) { lines.push('  • ' + li.textContent.trim()); }); }
-        else if (tag === 'OL') { var n=1; el.querySelectorAll('li').forEach(function (li) { lines.push('  ' + n++ + '. ' + li.textContent.trim()); }); }
-        else { lines.push('\n' + txt); }
-      }
-      saveText(lines.join('\n'), safeName(getDocTitle()) + '.txt', 'text/plain');
-    }
-
-    /* ── HTML ───────────────────────────────────────────────────── */
-    function dlHTML() {
-      var hfont = val('ttd-hfont','Georgia, serif');
-      var bfont = val('ttd-bfont','Georgia, serif');
-      var h1 = val('ttd-h1',24); var h2 = val('ttd-h2',18); var h3 = val('ttd-h3',14);
-      var bd = val('ttd-body',12); var mg = val('ttd-margin',20); var lh = val('ttd-lh','1.6');
-      var title  = getDocTitle();
-      var full = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>' + escapeHtml(title) + '</title>' +
-        '<style>body{font-family:' + bfont + ';font-size:' + bd + 'pt;line-height:' + lh + ';max-width:800px;margin:auto;padding:' + mg + 'mm;color:#1a1a1a;}' +
-        'h1{font-family:' + hfont + ';font-size:' + h1 + 'pt;font-weight:700;margin:.7em 0 .3em;}' +
-        'h2{font-family:' + hfont + ';font-size:' + h2 + 'pt;font-weight:600;margin:.6em 0 .25em;}' +
-        'h3{font-family:' + hfont + ';font-size:' + h3 + 'pt;font-weight:600;margin:.5em 0 .2em;}' +
-        'p{margin:0 0 .6em;}ul,ol{padding-left:2em;margin:.3em 0 .6em;}li{margin-bottom:.2em;}' +
-        'blockquote{border-left:4px solid #0891b2;margin:.5em 0;padding:.4em .8em;color:#475569;font-style:italic;}' +
-        '@media print{body{max-width:100%;padding:15mm;}}' +
-        '</style></head><body>' + editor.innerHTML + '</body></html>';
-      saveText(full, safeName(title) + '.html', 'text/html');
-    }
-
-    /* ── Markdown ───────────────────────────────────────────────── */
-    function dlMD() {
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
-      var md     = [];
-      function inlineMD(node) {
-        var out = '';
-        if (node.nodeType === Node.TEXT_NODE) return node.textContent;
-        var tag = (node.tagName||'').toUpperCase();
-        var inner = Array.from(node.childNodes).map(inlineMD).join('');
-        if (tag === 'STRONG' || tag === 'B') return '**' + inner + '**';
-        if (tag === 'EM'     || tag === 'I') return '*'  + inner + '*';
-        if (tag === 'U')  return '__' + inner + '__';
-        if (tag === 'S')  return '~~' + inner + '~~';
-        return inner;
-      }
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        var txt = el.textContent.trim();
-        if (!txt) continue;
-        if (tag === 'H1') md.push('# ' + txt);
-        else if (tag === 'H2') md.push('## ' + txt);
-        else if (tag === 'H3') md.push('### ' + txt);
-        else if (tag === 'H4') md.push('#### ' + txt);
-        else if (tag === 'BLOCKQUOTE') md.push('> ' + txt);
-        else if (tag === 'UL') { el.querySelectorAll('li').forEach(function (li) { md.push('- ' + inlineMD(li).trim()); }); }
-        else if (tag === 'OL') { var n=1; el.querySelectorAll('li').forEach(function (li) { md.push(n++ + '. ' + inlineMD(li).trim()); }); }
-        else { md.push(Array.from(el.childNodes).map(inlineMD).join('').trim()); }
-        md.push('');
-      }
-      saveText(md.join('\n'), safeName(getDocTitle()) + '.md', 'text/markdown');
-    }
-
-    /* ── RTF ────────────────────────────────────────────────────── */
-    function dlRTF() {
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
-      function rtfEsc(s) { return (s||'').replace(/\\/g,'\\\\').replace(/{/g,'\\{').replace(/}/g,'\\}').replace(/[^\x00-\x7F]/g, function(c){ return '\\u'+c.charCodeAt(0)+'?'; }); }
-      var rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Georgia;}{\\f1 Arial;}}{\\colortbl;\\red0\\green0\\blue0;}\\widowctrl\\hyphauto\n';
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        var txt = rtfEsc(el.textContent.trim());
-        if (!txt) continue;
-        if (tag === 'H1') rtf += '\\pard\\f0\\fs48\\b ' + txt + '\\b0\\fs24\\par\n';
-        else if (tag === 'H2') rtf += '\\pard\\f0\\fs36\\b ' + txt + '\\b0\\fs24\\par\n';
-        else if (tag === 'H3') rtf += '\\pard\\f0\\fs28\\b ' + txt + '\\b0\\fs24\\par\n';
-        else if (tag === 'BLOCKQUOTE') rtf += '\\pard\\li720\\i ' + txt + '\\i0\\par\n';
-        else if (tag === 'UL') { el.querySelectorAll('li').forEach(function (li) { rtf += '\\pard\\li360\\bullet  ' + rtfEsc(li.textContent) + '\\par\n'; }); }
-        else if (tag === 'OL') { var n=1; el.querySelectorAll('li').forEach(function (li) { rtf += '\\pard\\li360 ' + n++ + '. ' + rtfEsc(li.textContent) + '\\par\n'; }); }
-        else rtf += '\\pard\\f0\\fs24 ' + txt + '\\par\n';
-      }
-      rtf += '}';
-      saveText(rtf, safeName(getDocTitle()) + '.rtf', 'application/rtf');
-    }
-
-    /* ── JSON ───────────────────────────────────────────────────── */
-    function dlJSON() {
-      var parser   = new DOMParser();
-      var doc      = parser.parseFromString(editor.innerHTML, 'text/html');
-      var blocks   = [];
-      var wordCount= (editor.innerText||'').trim().split(/\s+/).length;
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        var txt = el.textContent.trim();
-        if (!txt) continue;
-        if (tag === 'UL' || tag === 'OL') {
-          var items = [];
-          el.querySelectorAll('li').forEach(function (li) { items.push(li.textContent.trim()); });
-          blocks.push({ type: tag === 'UL' ? 'bullet_list' : 'numbered_list', items: items });
-        } else {
-          var typeMap = { H1:'heading1', H2:'heading2', H3:'heading3', H4:'heading4', BLOCKQUOTE:'quote', P:'paragraph', DIV:'paragraph' };
-          blocks.push({ type: typeMap[tag] || 'paragraph', content: txt });
-        }
-      }
-      var obj = {
-        title: getDocTitle(),
-        createdAt: new Date().toISOString(),
-        wordCount: wordCount,
-        settings: { tone: val('ttd-tone','professional'), docType: val('ttd-doctype','general document') },
-        content: blocks,
-        rawHtml: editor.innerHTML
-      };
-      saveText(JSON.stringify(obj, null, 2), safeName(getDocTitle()) + '.json', 'application/json');
-    }
-
-    /* ── CSV ────────────────────────────────────────────────────── */
-    function dlCSV() {
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
-      var rows   = [['type','content','level']];
-      var typeMap = { H1:'heading', H2:'heading', H3:'heading', H4:'heading', P:'paragraph', BLOCKQUOTE:'quote', UL:'list', OL:'list', DIV:'paragraph' };
-      var lvlMap  = { H1:'1', H2:'2', H3:'3', H4:'4' };
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        if (tag === 'UL' || tag === 'OL') {
-          el.querySelectorAll('li').forEach(function (li) { rows.push(['list_item', li.textContent.trim(), '']); });
-        } else {
-          var txt = el.textContent.trim();
-          if (txt) rows.push([typeMap[tag]||'paragraph', txt, lvlMap[tag]||'']);
-        }
-      }
-      var csv = rows.map(function (r) { return r.map(function (c) { return '"' + (c||'').replace(/"/g,'""') + '"'; }).join(','); }).join('\n');
-      saveText(csv, safeName(getDocTitle()) + '.csv', 'text/csv');
-    }
-
-    /* ── LaTeX ──────────────────────────────────────────────────── */
-    function dlLaTeX() {
-      function ltxEsc(s) {
-        return (s||'').replace(/\\/g,'\\textbackslash{}').replace(/[&%$#_{}~^]/g, function(c){ return '\\'+c; });
-      }
-      var parser = new DOMParser();
-      var doc    = parser.parseFromString(editor.innerHTML, 'text/html');
-      var title  = getDocTitle();
-      var body   = '';
-      var inList = false;
-      for (var i = 0; i < doc.body.children.length; i++) {
-        var el  = doc.body.children[i];
-        var tag = el.tagName.toUpperCase();
-        var txt = ltxEsc(el.textContent.trim());
-        if (!txt) continue;
-        if (tag === 'H1') { body += '\\section{' + txt + '}\n'; }
-        else if (tag === 'H2') { body += '\\subsection{' + txt + '}\n'; }
-        else if (tag === 'H3') { body += '\\subsubsection{' + txt + '}\n'; }
-        else if (tag === 'BLOCKQUOTE') { body += '\\begin{quote}\n' + txt + '\n\\end{quote}\n'; }
-        else if (tag === 'UL') {
-          body += '\\begin{itemize}\n';
-          el.querySelectorAll('li').forEach(function (li) { body += '  \\item ' + ltxEsc(li.textContent.trim()) + '\n'; });
-          body += '\\end{itemize}\n';
-        } else if (tag === 'OL') {
-          body += '\\begin{enumerate}\n';
-          el.querySelectorAll('li').forEach(function (li) { body += '  \\item ' + ltxEsc(li.textContent.trim()) + '\n'; });
-          body += '\\end{enumerate}\n';
-        } else { body += ltxInline(el) + '\n\n'; }
-      }
-
-      function ltxInline(node) {
-        var out = '';
-        if (node.nodeType === Node.TEXT_NODE) return ltxEsc(node.textContent);
-        var tag = (node.tagName||'').toUpperCase();
-        var inner = Array.from(node.childNodes).map(ltxInline).join('');
-        if (tag === 'STRONG'||tag==='B') return '\\textbf{'+inner+'}';
-        if (tag === 'EM'||tag==='I')     return '\\textit{'+inner+'}';
-        if (tag === 'U')                 return '\\underline{'+inner+'}';
-        if (tag === 'S')                 return '\\sout{'+inner+'}';
-        return inner;
-      }
-
-      var latex = '\\documentclass[12pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage{microtype}\n\\usepackage{ulem}\n\\usepackage{geometry}\n\\geometry{margin=' + val('ttd-margin',20) + 'mm}\n\\setlength{\\parskip}{0.6em}\n\\setlength{\\parindent}{0em}\n\\title{' + ltxEsc(title) + '}\n\\date{\\today}\n\\begin{document}\n\\maketitle\n' + body + '\n\\end{document}';
-      saveText(latex, safeName(title) + '.tex', 'text/plain');
-    }
-
-  
-    /* ── Tab switcher ────────────────────────────────────────────── */
-    window.ttdSwitchTab = function (tab) {
-        ['format','write','history','web'].forEach(function (t) {
-          var btn = document.getElementById('ttd-tab-' + t);
-          var pan = document.getElementById('ttd-panel-' + t);
-          if (btn) btn.classList.toggle('active', t === tab);
-          if (pan) pan.classList.toggle('active', t === tab);
-        });
-        if (tab === 'history') ttdRenderHistory();
-        if (tab === 'web') { var wEl = document.getElementById('ttd-web-url'); if(wEl) wEl.focus(); }
-      };
-
-    /* ── AI Writer — write full document from a prompt ─────────── */
-    window.ttdAIWrite = function () {
-      var promptEl = document.getElementById('ttd-prompt');
-      var prompt   = promptEl ? promptEl.value.trim() : '';
-      if (!prompt) { alert('Please describe what you want the AI to write.'); return; }
-      var tone    = val('ttd-wtone',    'professional');
-      var dtype   = val('ttd-wdoctype', 'general document');
-      var length  = val('ttd-length',   'medium');
-      var btn     = document.getElementById('ttd-write-btn');
-      var lengthGuide = { short: '250-350 words', medium: '500-700 words', long: '900-1100 words', detailed: '1300-1700 words' };
-      var wTarget = lengthGuide[length] || '500-700 words';
-
-      if (isProcessing) return;
-      isProcessing = true;
-      if (btn) { btn.disabled = true; btn.innerHTML = '<span class="ttd-spin">&#9696;</span> Writing...'; }
-
-      var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' based on the following request. Use a ' + tone + ' tone. Target length: ' + wTarget + '.\n\n' +
-        'REQUEST: ' + prompt + '\n\n' +
-        'OUTPUT FORMAT: Return ONLY clean HTML using these tags: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, br. NO html/head/body/style/script tags.\n\n' +
-        'STRUCTURE RULES:\n' +
-        '- Open with a clear <h1> title that matches the request\n' +
-        '- Use <h2> for major sections\n' +
-        '- Use <h3> for sub-sections\n' +
-        '- Use <strong> for key terms and important points\n' +
-        '- Use <ul>/<ol> for any lists or bullet points\n' +
-        '- Use <blockquote> for notable quotes or callout statements\n' +
-        '- ALL body text must be inside <p> tags\n' +
-        '- Write a proper conclusion or closing section\n' +
-        '- Be detailed, informative and complete -- do not truncate\n' +
-        '- Match the ' + tone + ' tone throughout the entire document';
-
-      callAI(aiPrompt)
-        .then(function (result) {
-          var clean = sanitizeHTML(result);
-          if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
-          if (editor) {
-            ttdLoadContent(clean);
-            // Apply user-chosen page count
-            var wPages = window.ttdGetPanelPages ? ttdGetPanelPages('w') : null;
-            if (wPages) ttdSetPageCount(wPages);
-            // Apply user-chosen format settings
-            if (window.ttdApplyPanelFormat) ttdApplyPanelFormat('w');
-            var wTitle = (clean.match(/<h1[^>]*>(.*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Doc';
-            ttdSaveHistory(wTitle.replace(/<[^>]+>/g,''), editor.innerHTML);
-            ttdSwitchTab('format');
-            var pages = document.getElementById('ttd-pages');
-            if (pages) pages.scrollTop = 0;
-          }
-        })
-        .catch(function (err) {
-          console.error('AI write error:', err);
-          alert('AI writing failed. Please try again.\nError: ' + err.message);
-        })
-        .finally(function () {
-          isProcessing = false;
-          if (btn) { btn.disabled = false; btn.innerHTML = '&#9997;&#65039; Write with AI'; }
-        });
-    };
-
-  
-      /* ── Document History ──────────────────────────────────── */
-      var TTD_HIST_KEY = 'ttd_doc_history';
-      var TTD_MAX_HIST = 10;
-
-      function ttdSaveHistory(title, content) {
-        if (!content || content.length < 20) return;
-        try {
-          var hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]');
-          hist = hist.filter(function(h){ return h.title !== title; });
-          hist.unshift({ title: (title||'Untitled').slice(0,60), content: content, date: new Date().toLocaleString() });
-          if (hist.length > TTD_MAX_HIST) hist = hist.slice(0, TTD_MAX_HIST);
-          localStorage.setItem(TTD_HIST_KEY, JSON.stringify(hist));
-        } catch(e){}
-      }
-
-      function ttdRenderHistory() {
-        var list = document.getElementById('ttd-hist-list');
-        if (!list) return;
-        var hist = [];
-        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
-        if (!hist.length) {
-          list.innerHTML = '<div class="ttd-hist-empty">&#128196; No saved documents yet.<br>Format or write a document to auto-save it here.</div>';
+    callAI(prompt, 2500)
+      .then(function(html) {
+        var trimmed = html.trim();
+        if (trimmed.toUpperCase().startsWith('MISMATCH:')) {
+          showHint('wp-ai-hint', '⚠️ ' + trimmed.slice(9).trim(), 'warn');
           return;
         }
-        list.innerHTML = hist.map(function(h, i) {
-          return '<div class="ttd-hist-item" onclick="ttdRestoreDoc(' + i + ')">' +
-            '<button class="ttd-hist-del" onclick="event.stopPropagation();ttdDeleteHistory(' + i + ')" title="Remove">&#10005;</button>' +
-            '<div class="ttd-hist-title">' + (h.title||'Untitled') + '</div>' +
-            '<div class="ttd-hist-meta">&#128337; ' + (h.date||'') + '</div>' +
-          '</div>';
-        }).join('');
+        hideHint('wp-ai-hint');
+        var clean = sanitizeHTML(trimmed);
+        if (clean) {
+          wpLoadContent(clean);
+          var title = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
+          wpSaveHistory(title.replace(/<[^>]+>/g,''), wpGetFullContent());
+          wpSetStatus('Document formatted ✅');
+        }
+      })
+      .catch(function(err) {
+        var ed = wpGetEditor();
+        if (ed) { ed.innerHTML = basicFormat(text); wpUpdateStats(); }
+        showHint('wp-ai-hint', '⚠️ ' + (err.message || 'AI busy') + ' — basic formatting applied.', 'error');
+        wpSetStatus('Basic formatting applied (AI unavailable)');
+      })
+      .finally(function() {
+        wpIsProcessing = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = '✨ Format with AI'; }
+      });
+  };
+
+  window.wpUseAsIs = function() {
+    var src = document.getElementById('wp-source');
+    if (!src || !src.value.trim()) { alert('Please paste some text first.'); return; }
+    wpLoadContent(basicFormat(src.value.trim()));
+    wpSetStatus('Text loaded as-is');
+  };
+
+  /* ── AI Write ────────────────────────────────────────────────── */
+  window.wpAIWrite = function() {
+    var promptEl = document.getElementById('wp-prompt');
+    var prompt   = promptEl ? promptEl.value.trim() : '';
+    if (!prompt) { showHint('wp-write-hint', 'Please describe what you want to write.', 'warn'); return; }
+    if (wpIsProcessing) return;
+    var tone   = getV('wp-wtone',    'Professional');
+    var dtype  = getV('wp-wdoctype', 'General Document');
+    var length = getV('wp-length',   'medium');
+    var btn    = document.getElementById('wp-write-btn');
+    var lengths = { short: '250-350 words', medium: '500-700 words', long: '900-1100 words', detailed: '1300-1700 words' };
+    var wTarget = lengths[length] || '500-700 words';
+
+    wpIsProcessing = true;
+    if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
+    hideHint('wp-write-hint');
+
+    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone. Target: ' + wTarget + '.\n\nREQUEST: ' + prompt + '\n\n' +
+      'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
+      'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
+      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate';
+
+    callAI(aiPrompt, 2500)
+      .then(function(result) {
+        var clean = sanitizeHTML(result);
+        if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
+        wpLoadContent(clean);
+        var wTitle = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Document';
+        wpSaveHistory(wTitle.replace(/<[^>]+>/g,''), wpGetFullContent());
+        wpSwitchTab('format');
+        wpSetStatus('Document written ✅');
+      })
+      .catch(function(err) {
+        showHint('wp-write-hint', '⚠️ ' + (err.message || 'AI failed') + ' — please try again.', 'error');
+        wpSetStatus('AI writing failed — please retry');
+      })
+      .finally(function() {
+        wpIsProcessing = false;
+        if (btn) { btn.disabled = false; btn.innerHTML = '✍️ Write with AI'; }
+      });
+  };
+
+  /* ── AI Summarize ────────────────────────────────────────────── */
+  window.wpAISummarize = function() {
+    var content = wpGetFullContent();
+    var text = stripHtml(content).slice(0, 4000);
+    if (!text.trim() || text.length < 50) { alert('Please add some content to summarize.'); return; }
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    wpSetStatus('Summarizing…');
+    callAI('Summarize the following document in a well-structured HTML format. Use h1 for title, h2 for key sections, bullet points for key findings. Be concise but comprehensive. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote):\n\n' + text, 1200)
+      .then(function(html) {
+        var clean = sanitizeHTML(html);
+        if (clean) { wpLoadContent(clean); wpSetStatus('Summary generated ✅'); }
+      })
+      .catch(function(e) { wpSetStatus('Summarize failed: ' + e.message); })
+      .finally(function() { wpIsProcessing = false; });
+  };
+
+  /* ── AI Expand ──────────────────────────────────────────────── */
+  window.wpAIExpand = function() {
+    var content = wpGetFullContent();
+    var text = stripHtml(content).slice(0, 3000);
+    if (!text.trim() || text.length < 20) { alert('Please add some content to expand.'); return; }
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    wpSetStatus('Expanding document…');
+    callAI('Expand and elaborate on the following document content. Add more detail, examples, context, and depth. Maintain the same structure but make it significantly more comprehensive. Return ONLY clean HTML (h1,h2,h3,h4,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td):\n\n' + text, 2500)
+      .then(function(html) {
+        var clean = sanitizeHTML(html);
+        if (clean) { wpLoadContent(clean); wpSetStatus('Document expanded ✅'); }
+      })
+      .catch(function(e) { wpSetStatus('Expand failed: ' + e.message); })
+      .finally(function() { wpIsProcessing = false; });
+  };
+
+  /* ── AI Translate ────────────────────────────────────────────── */
+  window.wpAITranslate = function() { wpShowModal('wp-translate-modal'); };
+  window.wpDoTranslate = function() {
+    var lang = getV('wp-trans-lang', 'Spanish');
+    var content = wpGetFullContent();
+    var text = content.slice(0, 4000);
+    if (!text.trim()) { alert('No content to translate.'); return; }
+    wpHideModal('wp-translate-modal');
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    wpSetStatus('Translating to ' + lang + '…');
+    callAI('Translate the following HTML document to ' + lang + '. Preserve all HTML tags exactly. Only translate the text content. Return ONLY the translated HTML:\n\n' + text, 2500)
+      .then(function(html) {
+        var clean = sanitizeHTML(html);
+        if (clean) { wpLoadContent(clean); wpSetStatus('Translated to ' + lang + ' ✅'); }
+      })
+      .catch(function(e) { wpSetStatus('Translation failed: ' + e.message); })
+      .finally(function() { wpIsProcessing = false; });
+  };
+
+  /* ── Web Research / Import ─────────────────────────────────── */
+  window.wpWebImport = function() {
+    var url   = (document.getElementById('wp-web-url') || {}).value || '';
+    var mode  = getV('wp-web-extract-as', 'Summary');
+    if (!url || !url.startsWith('http')) { wpWebStatus('Please enter a valid URL.', 'error'); return; }
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    wpWebStatus('Fetching webpage…', 'info');
+    // Use allorigins.win as a CORS proxy
+    var proxy = 'https://api.allorigins.win/get?url=' + encodeURIComponent(url);
+    fetch(proxy).then(function(r){ return r.json(); })
+      .then(function(data) {
+        var html = data.contents || '';
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.querySelectorAll('script,style,nav,header,footer,aside,iframe,noscript').forEach(function(el){ el.remove(); });
+        var text = (tmp.querySelector('article,main,[role="main"]') || tmp).textContent;
+        text = text.replace(/\s+/g,' ').trim().slice(0, 5000);
+        if (!text) throw new Error('Could not extract content from that page.');
+        wpWebStatus('Formatting with AI…', 'info');
+        return callAI('Extract and format the following web page content as a well-structured ' + mode + '. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td):\n\n' + text, 2000);
+      })
+      .then(function(html) {
+        var clean = sanitizeHTML(html);
+        if (clean) {
+          wpLoadContent(clean);
+          wpWebStatus('✅ Content imported and formatted!', 'ok');
+          wpSetStatus('Web content imported ✅');
+        }
+      })
+      .catch(function(e) { wpWebStatus('❌ ' + (e.message || 'Failed to fetch'), 'error'); })
+      .finally(function() { wpIsProcessing = false; });
+  };
+
+  window.wpWebResearch = function() {
+    var query = (document.getElementById('wp-web-query') || {}).value || '';
+    if (!query.trim()) { wpWebStatus('Please enter a research topic.', 'error'); return; }
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    wpWebStatus('AI researching…', 'info');
+    callAI('You are an expert researcher. Write a comprehensive, well-researched document about: "' + query + '". Include key facts, analysis, examples, and actionable insights. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td). No markdown, no code fences.', 2500)
+      .then(function(html) {
+        var clean = sanitizeHTML(html);
+        if (clean) { wpLoadContent(clean); wpWebStatus('✅ Research complete!', 'ok'); wpSetStatus('AI research complete ✅'); }
+      })
+      .catch(function(e) { wpWebStatus('❌ Research failed: ' + e.message, 'error'); })
+      .finally(function() { wpIsProcessing = false; });
+  };
+
+  function wpWebStatus(msg, type) {
+    var el = document.getElementById('wp-web-status');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'wp-hint show ' + (type === 'ok' ? 'info' : type === 'error' ? 'error' : 'info');
+    el.style.display = 'block';
+  }
+
+  /* ── Char counter ───────────────────────────────────────────── */
+  window.wpCharCount = function() {
+    var el  = document.getElementById('wp-source');
+    var n   = el ? el.value.length : 0;
+    var cnt = document.getElementById('wp-count');
+    if (!cnt) return;
+    cnt.textContent = n.toLocaleString() + ' / 12,000';
+    cnt.className   = 'wp-char-count' + (n >= 12000 ? ' full' : n >= 9000 ? ' warn' : '');
+  };
+
+  /* ── File upload ────────────────────────────────────────────── */
+  window.wpHandleFileDrop = function(ev) {
+    ev.preventDefault();
+    var f = ev.dataTransfer && ev.dataTransfer.files && ev.dataTransfer.files[0];
+    if (f) wpHandleFile(f);
+  };
+
+  window.wpHandleFile = function(file) {
+    if (!file) return;
+    var name = file.name.toLowerCase();
+    wpShowUploadStatus('📤 Reading ' + file.name + '…', false);
+    var fillSource = function(text) {
+      var src = document.getElementById('wp-source');
+      if (src) { src.value = text.slice(0, 12000); wpCharCount(); }
+      var words = text.trim().split(/\s+/).filter(Boolean).length;
+      var preview = text.slice(0, 100).replace(/\s+/g,' ').trim();
+      wpShowUploadStatus('✅ ' + file.name + ' — ' + words + ' words\n"' + preview + (text.length > 100 ? '…' : '') + '"', false);
+      wpSwitchTab('format');
+    };
+    if (name.endsWith('.txt') || name.endsWith('.md')) {
+      var r = new FileReader(); r.onload = function(e){ fillSource(e.target.result); }; r.readAsText(file);
+    } else if (name.endsWith('.html') || name.endsWith('.htm')) {
+      var r2 = new FileReader(); r2.onload = function(e){
+        var tmp = document.createElement('div'); tmp.innerHTML = e.target.result;
+        tmp.querySelectorAll('script,style,head,meta,link,nav,footer').forEach(function(x){ x.remove(); });
+        fillSource((tmp.querySelector('body') || tmp).textContent || '');
+      }; r2.readAsText(file);
+    } else if (name.endsWith('.docx')) {
+      if (typeof mammoth === 'undefined') { wpShowUploadStatus('DOCX parser unavailable.', true); return; }
+      var r3 = new FileReader(); r3.onload = function(e){
+        mammoth.extractRawText({arrayBuffer: e.target.result})
+          .then(function(res){ fillSource(res.value); })
+          .catch(function(err){ wpShowUploadStatus('DOCX error: ' + err.message, true); });
+      }; r3.readAsArrayBuffer(file);
+    } else if (name.endsWith('.pdf')) {
+      var r4 = new FileReader(); r4.onload = function(e){ wpParsePDF(e.target.result, fillSource); }; r4.readAsArrayBuffer(file);
+    } else {
+      wpShowUploadStatus('Unsupported format. Use TXT, DOCX, PDF, HTML, or MD.', true);
+    }
+  };
+
+  function wpParsePDF(buf, cb) {
+    if (typeof pdfjsLib === 'undefined') { wpShowUploadStatus('PDF.js not loaded. Try TXT/DOCX.', true); return; }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    pdfjsLib.getDocument({ data: buf }).promise.then(function(pdf) {
+      var pages = [], total = pdf.numPages, done = 0;
+      for (var i = 1; i <= total; i++) {
+        pdf.getPage(i).then(function(pg) {
+          return pg.getTextContent().then(function(tc) {
+            pages.push({ num: pg.pageNumber, text: tc.items.map(function(it){ return it.str; }).join(' ') });
+            done++;
+            if (done === total) {
+              pages.sort(function(a,b){ return a.num - b.num; });
+              cb(pages.map(function(p){ return p.text; }).join('\n\n'));
+            }
+          });
+        });
+      }
+    }).catch(function(e) { wpShowUploadStatus('PDF error: ' + e.message, true); });
+  }
+
+  function wpShowUploadStatus(msg, isErr) {
+    var el = document.getElementById('wp-upload-status');
+    if (!el) return;
+    el.style.whiteSpace = 'pre-line'; el.textContent = msg;
+    el.style.display = 'block';
+    el.className = 'wp-upload-status ' + (isErr ? 'err' : 'ok');
+    if (!isErr) setTimeout(function(){ el.style.display = 'none'; }, 8000);
+  }
+
+  /* ── Templates ──────────────────────────────────────────────── */
+  var TEMPLATES = [
+    { name: 'Blank', icon: '📄', desc: 'Clean start', content: '<h1>Document Title</h1><p>Start writing here…</p>' },
+    { name: 'Report', icon: '📊', desc: 'Business report', content: '<h1>Business Report</h1><h2>Executive Summary</h2><p>Brief overview of the report findings and recommendations.</p><h2>Background</h2><p>Context and background information for this report.</p><h2>Analysis</h2><p>Detailed analysis of the findings.</p><h2>Recommendations</h2><ul><li>Recommendation 1</li><li>Recommendation 2</li><li>Recommendation 3</li></ul><h2>Conclusion</h2><p>Summary and next steps.</p>' },
+    { name: 'Letter', icon: '✉️', desc: 'Formal letter', content: '<p>[Your Name]<br>[Address]<br>[Date]</p><p>[Recipient Name]<br>[Recipient Address]</p><p>Dear [Name],</p><p>I am writing to [purpose of the letter].</p><p>[Main body of the letter — explain your purpose in detail here.]</p><p>[Second paragraph with supporting information.]</p><p>I look forward to your response. Please do not hesitate to contact me if you require any further information.</p><p>Yours sincerely,</p><p><strong>[Your Name]</strong><br>[Title/Position]</p>' },
+    { name: 'Resume', icon: '👤', desc: 'CV template', content: '<h1>Your Full Name</h1><p style="text-align:center;color:#6b7280;">email@example.com | +1 234 567 8900 | LinkedIn: /yourprofile | City, Country</p><hr><h2>Professional Summary</h2><p>Motivated and results-driven professional with [X] years of experience in [field]. Proven track record of [key achievement]. Seeking to leverage expertise in [area] to contribute to [type of organization].</p><h2>Experience</h2><h3>Senior [Job Title] — Company Name (2021–Present)</h3><ul><li>Led [project/initiative] resulting in [measurable outcome]</li><li>Managed a team of [X] professionals across [departments]</li><li>Implemented [process/system] improving efficiency by [X]%</li></ul><h3>[Job Title] — Previous Company (2018–2021)</h3><ul><li>Responsible for [key duty]</li><li>Achieved [specific result]</li></ul><h2>Education</h2><p><strong>Bachelor of [Degree]</strong> — University Name (Year)<br>Relevant coursework: [Courses]</p><h2>Skills</h2><ul><li><strong>Technical:</strong> [Skill 1], [Skill 2], [Skill 3]</li><li><strong>Soft Skills:</strong> Leadership, Communication, Problem-solving</li><li><strong>Languages:</strong> English (Native), [Other] (Proficient)</li></ul><h2>Certifications</h2><ul><li>[Certification Name] — Issuing Organization (Year)</li></ul>' },
+    { name: 'Proposal', icon: '💼', desc: 'Project proposal', content: '<h1>Project Proposal</h1><h2>Project Overview</h2><p>This proposal outlines [brief description of the project and its objectives].</p><h2>Problem Statement</h2><p>Currently, [describe the problem]. This results in [consequences]. Our solution addresses this by [brief solution description].</p><h2>Proposed Solution</h2><p>We propose to [detailed solution]. This approach will [benefits].</p><h2>Scope of Work</h2><ul><li>Phase 1: [Deliverable] — [Timeline]</li><li>Phase 2: [Deliverable] — [Timeline]</li><li>Phase 3: [Deliverable] — [Timeline]</li></ul><h2>Timeline</h2><table><thead><tr><th>Phase</th><th>Activities</th><th>Duration</th><th>Deadline</th></tr></thead><tbody><tr><td>1</td><td>Research & Planning</td><td>2 weeks</td><td>Week 2</td></tr><tr><td>2</td><td>Development</td><td>4 weeks</td><td>Week 6</td></tr><tr><td>3</td><td>Testing & Launch</td><td>2 weeks</td><td>Week 8</td></tr></tbody></table><h2>Budget</h2><table><thead><tr><th>Item</th><th>Description</th><th>Cost</th></tr></thead><tbody><tr><td>Labor</td><td>Development team</td><td>$XX,XXX</td></tr><tr><td>Materials</td><td>Equipment and tools</td><td>$X,XXX</td></tr><tr><td>Total</td><td></td><td><strong>$XX,XXX</strong></td></tr></tbody></table><h2>Team</h2><p>This project will be led by [Name, Title] with support from [team description].</p><h2>Next Steps</h2><p>Upon approval of this proposal, we will [immediate next steps].</p>' },
+    { name: 'Meeting Notes', icon: '📝', desc: 'Meeting template', content: '<h1>Meeting Notes</h1><h2>Meeting Details</h2><table><thead><tr><th>Field</th><th>Details</th></tr></thead><tbody><tr><td>Date</td><td>' + new Date().toLocaleDateString() + '</td></tr><tr><td>Time</td><td>[Start Time] – [End Time]</td></tr><tr><td>Location</td><td>[Room / Video Call Link]</td></tr><tr><td>Facilitator</td><td>[Name]</td></tr><tr><td>Note Taker</td><td>[Name]</td></tr></tbody></table><h2>Attendees</h2><ul><li>[Name] — [Role]</li><li>[Name] — [Role]</li></ul><h2>Agenda</h2><ol><li>Welcome & Introductions</li><li>[Agenda Item 2]</li><li>[Agenda Item 3]</li><li>Action Items Review</li><li>Any Other Business</li></ol><h2>Discussion</h2><h3>Item 1: [Topic]</h3><p>[Summary of discussion points and key decisions made.]</p><h3>Item 2: [Topic]</h3><p>[Summary of discussion.]</p><h2>Action Items</h2><table><thead><tr><th>Action</th><th>Owner</th><th>Due Date</th><th>Status</th></tr></thead><tbody><tr><td>[Action item 1]</td><td>[Name]</td><td>[Date]</td><td>Open</td></tr><tr><td>[Action item 2]</td><td>[Name]</td><td>[Date]</td><td>Open</td></tr></tbody></table><h2>Next Meeting</h2><p>Date: [Date] | Time: [Time] | Location: [Location]</p>' },
+    { name: 'Invoice', icon: '🧾', desc: 'Invoice template', content: '<h1>INVOICE</h1><table><thead><tr><th>Field</th><th>Details</th></tr></thead><tbody><tr><td><strong>Invoice No.</strong></td><td>INV-001</td></tr><tr><td><strong>Date</strong></td><td>' + new Date().toLocaleDateString() + '</td></tr><tr><td><strong>Due Date</strong></td><td>[Due Date]</td></tr><tr><td><strong>From</strong></td><td>[Your Company Name]<br>[Address]<br>[Email]</td></tr><tr><td><strong>To</strong></td><td>[Client Name]<br>[Client Address]<br>[Client Email]</td></tr></tbody></table><h2>Invoice Items</h2><table><thead><tr><th>Description</th><th>Qty</th><th>Unit Price</th><th>Total</th></tr></thead><tbody><tr><td>[Service/Product 1]</td><td>1</td><td>$XXX.XX</td><td>$XXX.XX</td></tr><tr><td>[Service/Product 2]</td><td>2</td><td>$XXX.XX</td><td>$XXX.XX</td></tr><tr><td colspan="3"><strong>Subtotal</strong></td><td>$XXX.XX</td></tr><tr><td colspan="3"><strong>Tax (10%)</strong></td><td>$XX.XX</td></tr><tr><td colspan="3"><strong>Total Due</strong></td><td><strong>$XXX.XX</strong></td></tr></tbody></table><h2>Payment Details</h2><p>Payment Method: [Bank Transfer / PayPal / etc.]<br>Account: [Account details]<br>Reference: INV-001</p><p><em>Thank you for your business!</em></p>' },
+    { name: 'Newsletter', icon: '📰', desc: 'Newsletter', content: '<h1>Monthly Newsletter — [Month Year]</h1><h2>Welcome!</h2><p>Welcome to this month\'s newsletter! We have some exciting updates and news to share with you.</p><h2>Top Story</h2><p>[Main story content goes here. Write about the most important news or update of the month.]</p><h2>Updates & Announcements</h2><ul><li><strong>[Update 1]:</strong> Brief description</li><li><strong>[Update 2]:</strong> Brief description</li><li><strong>[Update 3]:</strong> Brief description</li></ul><h2>Featured Article</h2><h3>[Article Title]</h3><p>[Article content with relevant information, tips, or insights your audience would find valuable.]</p><h2>Upcoming Events</h2><table><thead><tr><th>Event</th><th>Date</th><th>Location</th></tr></thead><tbody><tr><td>[Event 1]</td><td>[Date]</td><td>[Location]</td></tr><tr><td>[Event 2]</td><td>[Date]</td><td>[Location]</td></tr></tbody></table><h2>Final Thoughts</h2><p>Thank you for reading this month\'s newsletter. We look forward to sharing more updates with you next month!</p>' },
+    { name: 'Research Paper', icon: '🔬', desc: 'Academic paper', content: '<h1>Research Paper Title</h1><p style="text-align:center;"><em>Author Name(s) | Institution | ' + new Date().getFullYear() + '</em></p><h2>Abstract</h2><blockquote>This paper examines [topic]. Using [methodology], we found that [key finding]. The results indicate [implication]. This research contributes to [field] by [contribution].</blockquote><h2>1. Introduction</h2><p>The study of [topic] is increasingly important due to [reasons]. Previous research has shown [prior findings] (Citation, Year). However, [gap in knowledge]. This paper addresses this gap by [approach].</p><h3>1.1 Research Questions</h3><ol><li>Research question 1</li><li>Research question 2</li></ol><h2>2. Literature Review</h2><p>A substantial body of work has investigated [topic]. [Author (Year)] demonstrated that [finding]. Building upon this, [Author (Year)] found [related finding].</p><h2>3. Methodology</h2><p>This study employs a [qualitative/quantitative/mixed] research approach. Data was collected through [method] from [participants/sources]. Analysis was conducted using [analysis method].</p><h2>4. Results</h2><p>The analysis revealed the following key findings:</p><ol><li>[Finding 1]: [Description]</li><li>[Finding 2]: [Description]</li></ol><h2>5. Discussion</h2><p>These findings suggest that [interpretation]. This aligns with [prior research], but contrasts with [other research] because [reason].</p><h2>6. Conclusion</h2><p>This research investigated [topic] and found [key conclusions]. The implications for practice include [implications]. Future research should explore [future directions].</p><h2>References</h2><ul><li>Author, A. (Year). <em>Title of work</em>. Publisher.</li><li>Author, B. (Year). Title of article. <em>Journal Name</em>, <em>Vol</em>(Issue), pages.</li></ul>' }
+  ];
+
+  function wpBuildTemplates() {
+    var grid = document.getElementById('wp-templates-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    TEMPLATES.forEach(function(tpl, i) {
+      var card = document.createElement('div');
+      card.className = 'wp-tmpl-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.innerHTML = '<span class="wp-tmpl-icon">' + tpl.icon + '</span>' +
+        '<div><div class="wp-tmpl-name">' + tpl.name + '</div>' +
+        '<div class="wp-tmpl-desc">' + tpl.desc + '</div></div>';
+      card.onclick = function() { wpLoadTemplate(i); };
+      card.onkeydown = function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wpLoadTemplate(i); } };
+      grid.appendChild(card);
+    });
+  }
+
+  window.wpLoadTemplate = function(idx) {
+    var tpl = TEMPLATES[idx]; if (!tpl) return;
+    if (wpGetFullContent().replace(/<[^>]+>/g,'').trim().length > 50) {
+      if (!confirm('Load template "' + tpl.name + '"? Current content will be replaced.')) return;
+    }
+    wpLoadContent(tpl.content);
+    wpSwitchTab('format');
+    wpSetStatus('Template "' + tpl.name + '" loaded');
+  };
+
+  /* ── Sidebar tab switching ──────────────────────────────────── */
+  window.wpSwitchTab = function(tab) {
+    ['format','write','history','template','web'].forEach(function(t) {
+      var btn = document.getElementById('wp-stab-' + t);
+      var pan = document.getElementById('wp-spanel-' + t);
+      if (btn) btn.classList.toggle('active', t === tab);
+      if (pan) pan.classList.toggle('active', t === tab);
+    });
+    if (tab === 'history') wpRenderHistory();
+    if (window.innerWidth <= 820) {
+      var sb = document.getElementById('wp-sidebar');
+      if (sb && !sb.classList.contains('mob-open')) wpMobOpen && wpMobOpen();
+    }
+  };
+
+  /* ── Document History ───────────────────────────────────────── */
+  var WP_HIST_KEY = 'wp_doc_history_v3', WP_MAX_HIST = 15;
+
+  function wpSaveHistory(title, content) {
+    if (!content || content.replace(/<[^>]+>/g,'').trim().length < 20) return;
+    try {
+      var hist = JSON.parse(localStorage.getItem(WP_HIST_KEY) || '[]');
+      hist = hist.filter(function(h){ return h.title !== title; });
+      hist.unshift({ title: (title || 'Untitled').slice(0, 70), content: content, date: new Date().toLocaleString() });
+      if (hist.length > WP_MAX_HIST) hist = hist.slice(0, WP_MAX_HIST);
+      localStorage.setItem(WP_HIST_KEY, JSON.stringify(hist));
+    } catch(e) {}
+  }
+
+  function wpRenderHistory() {
+    var list = document.getElementById('wp-hist-list'); if (!list) return;
+    var hist = [];
+    try { hist = JSON.parse(localStorage.getItem(WP_HIST_KEY) || '[]'); } catch(e) {}
+    if (!hist.length) {
+      list.innerHTML = '<div class="wp-hist-empty">📄 No saved documents yet.<br>Format or write a document to auto-save here.</div>';
+      return;
+    }
+    list.innerHTML = hist.map(function(h, i) {
+      return '<div class="wp-hist-item" onclick="wpRestoreDoc(' + i + ')">' +
+        '<button class="wp-hist-del" onclick="event.stopPropagation();wpDeleteHistory(' + i + ')" title="Remove">✕</button>' +
+        '<div class="wp-hist-title">' + escHtml(h.title || 'Untitled') + '</div>' +
+        '<div class="wp-hist-meta">🕐 ' + escHtml(h.date || '') + '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  window.wpRestoreDoc = function(index) {
+    var hist = []; try { hist = JSON.parse(localStorage.getItem(WP_HIST_KEY) || '[]'); } catch(e) {}
+    var item = hist[index]; if (!item) return;
+    if (wpGetFullContent().replace(/<[^>]+>/g,'').trim().length > 50) {
+      if (!confirm('Restore "' + item.title + '"? Current content will be replaced.')) return;
+    }
+    wpLoadContent(item.content);
+    wpSwitchTab('format');
+    wpSetStatus('Document restored: ' + item.title);
+  };
+  window.wpDeleteHistory = function(index) {
+    var hist = []; try { hist = JSON.parse(localStorage.getItem(WP_HIST_KEY) || '[]'); } catch(e) {}
+    hist.splice(index, 1);
+    localStorage.setItem(WP_HIST_KEY, JSON.stringify(hist));
+    wpRenderHistory();
+  };
+  window.wpClearHistory = function() {
+    if (!confirm('Clear all document history?')) return;
+    localStorage.removeItem(WP_HIST_KEY); wpRenderHistory();
+  };
+
+  /* ── Multi-page engine ──────────────────────────────────────── */
+  function wpRenderPages() {
+    var container = document.getElementById('wp-pages');
+    if (!container) return;
+
+    // Save current page content first
+    var activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
+    if (activeEd) wpPages[wpCurrentPage] = activeEd.innerHTML;
+
+    var paperVal = getV('tb-paper', 'a4');
+    var hf  = getV('wp-hfont', 'Georgia, serif');
+    var bf  = getV('wp-bfont', 'Georgia, serif');
+    var h1  = getV('wp-h1', 24); var h2 = getV('wp-h2', 18); var h3 = getV('wp-h3', 14);
+    var bd  = getV('wp-body', 12); var mg = getV('wp-margin', 20); var lh = getV('wp-lh', '1.6');
+
+    container.innerHTML = '';
+    wpPages.forEach(function(content, i) {
+      var pageDiv = document.createElement('div');
+      pageDiv.className = 'wp-page wp-page-item sz-' + paperVal;
+      pageDiv.id = 'wp-page-' + i;
+      pageDiv.style.setProperty('--wp-hfont', hf);
+      pageDiv.style.setProperty('--wp-bfont', bf);
+      pageDiv.style.setProperty('--wp-h1',    h1 + 'pt');
+      pageDiv.style.setProperty('--wp-h2',    h2 + 'pt');
+      pageDiv.style.setProperty('--wp-h3',    h3 + 'pt');
+      pageDiv.style.setProperty('--wp-h4',    Math.round(Number(bd) * 1.1) + 'pt');
+      pageDiv.style.setProperty('--wp-bsize', bd + 'pt');
+      pageDiv.style.setProperty('--wp-lh',    lh);
+      pageDiv.style.padding = mg + 'mm';
+
+      var edDiv = document.createElement('div');
+      edDiv.id = 'wp-editor-' + i;
+      edDiv.setAttribute('data-editor-index', i);
+      edDiv.contentEditable = 'true';
+      edDiv.spellcheck = true;
+      edDiv.className = 'wp-page-editor';
+      edDiv.setAttribute('data-placeholder', i === 0
+        ? 'Your document will appear here. Paste text and click Format with AI, or start typing…'
+        : 'Page ' + (i + 1) + ' — continue your document here…');
+      edDiv.innerHTML = content || '';
+
+      (function(idx, ed) {
+        ed.addEventListener('focus', function() {
+          wpCurrentPage = idx;
+          wpUpdatePageNav();
+          wpUpdateToolbarState();
+          document.querySelectorAll('.wp-page-item').forEach(function(pg){ pg.classList.remove('active'); });
+          pageDiv.classList.add('active');
+        });
+        ed.addEventListener('input', function() {
+          wpPages[idx] = ed.innerHTML;
+          wpUpdateToolbarState();
+          wpUpdateStats();
+        });
+        ed.addEventListener('keydown', function(e) {
+          // Already handled via document keydown handler
+        });
+        ed.addEventListener('mouseup', wpUpdateToolbarState);
+        ed.addEventListener('keyup', wpUpdateToolbarState);
+        ed.addEventListener('paste', function(e) {
+          // Handle image paste
+          var items = e.clipboardData && e.clipboardData.items;
+          if (!items) return;
+          for (var i = 0; i < items.length; i++) {
+            if (items[i].type.startsWith('image/')) {
+              e.preventDefault();
+              var file = items[i].getAsFile();
+              var reader = new FileReader();
+              reader.onload = function(ev){ wpInsertImageSrc(ev.target.result, 'pasted-image'); };
+              reader.readAsDataURL(file);
+              return;
+            }
+          }
+        });
+      })(i, edDiv);
+
+      pageDiv.appendChild(edDiv);
+      wpAddColResizeHandles(edDiv);
+      wpSetupImageHandlers(edDiv);
+
+      var footer = document.createElement('div');
+      footer.className = 'wp-page-footer';
+      footer.dataset.page = i + 1; footer.dataset.total = wpPages.length;
+      footer.textContent = wpShowLabels ? 'Page ' + (i + 1) + ' of ' + wpPages.length : String(i + 1);
+      pageDiv.appendChild(footer);
+      container.appendChild(pageDiv);
+    });
+
+    wpUpdatePageNav();
+    wpUpdateStats();
+  }
+
+  function wpSavePageState() {
+    var activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
+    if (activeEd) { wpPages[wpCurrentPage] = activeEd.innerHTML; wpUpdateStats(); }
+  }
+
+  function wpUpdatePageNav() {
+    var t   = wpPages.length;
+    var ind = document.getElementById('wp-page-indicator');
+    var p   = document.getElementById('wp-prev-btn');
+    var n   = document.getElementById('wp-next-btn');
+    var pcEl= document.getElementById('tb-page-count');
+    if (ind) ind.textContent = 'Page ' + (wpCurrentPage + 1) + ' of ' + t;
+    if (p)   p.disabled = wpCurrentPage === 0;
+    if (n)   n.disabled = wpCurrentPage >= t - 1;
+    var sbp = document.getElementById('wp-sb-pages'); if(sbp) sbp.textContent = t;
+  }
+
+  window.wpNavPage = function(d) {
+    var newPage = wpCurrentPage + d;
+    if (newPage < 0 || newPage >= wpPages.length) return;
+    wpSavePageState();
+    wpCurrentPage = newPage;
+    var target = document.getElementById('wp-page-' + wpCurrentPage);
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setTimeout(function() {
+      var ed = document.getElementById('wp-editor-' + wpCurrentPage); if (ed) ed.focus();
+    }, 300);
+    wpUpdatePageNav();
+  };
+
+  window.wpAddPage = function() {
+    if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
+    wpSavePageState();
+    wpPages.splice(wpCurrentPage + 1, 0, '');
+    wpCurrentPage++;
+    wpRenderPages();
+    setTimeout(function() {
+      var target = document.getElementById('wp-page-' + wpCurrentPage);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      var ed = document.getElementById('wp-editor-' + wpCurrentPage); if (ed) ed.focus();
+    }, 100);
+    wpSetStatus('New page added');
+  };
+
+  window.wpSetPageCount = function(n) {
+    n = Math.max(1, Math.min(n, MAX_PAGES));
+    wpSavePageState();
+    while (wpPages.length < n) wpPages.push('');
+    while (wpPages.length > n && wpPages.length > 1) wpPages.pop();
+    wpCurrentPage = Math.min(wpCurrentPage, wpPages.length - 1);
+    wpRenderPages();
+    var pcEl = document.getElementById('tb-page-count'); if(pcEl) pcEl.value = String(n);
+  };
+
+  window.wpTogglePageLabels = function() {
+    wpShowLabels = !wpShowLabels;
+    var btn = document.getElementById('tb-pagelabel');
+    if (btn) { btn.classList.toggle('on', wpShowLabels); }
+    document.querySelectorAll('.wp-page-footer').forEach(function(f) {
+      var pg = parseInt(f.dataset.page || '1'), tot = parseInt(f.dataset.total || '1');
+      f.textContent = wpShowLabels ? 'Page ' + pg + ' of ' + tot : String(pg);
+    });
+  };
+
+  function wpSplitIntoPages(html) {
+    var tmp = document.createElement('div'); tmp.innerHTML = html;
+    var blocks = Array.from(tmp.childNodes).filter(function(n){ return n.nodeType === 1 || (n.nodeType === 3 && n.textContent.trim()); });
+    var pages = [], cur = '', curC = 0;
+    blocks.forEach(function(b) {
+      var bh = b.outerHTML || ('<p>' + b.textContent + '</p>');
+      var bl = (b.textContent || '').length;
+      var isH1 = b.tagName === 'H1';
+      if ((isH1 && curC > 150) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
+        pages.push(cur); cur = bh; curC = bl;
+      } else { cur += bh; curC += bl; }
+    });
+    if (cur) pages.push(cur);
+    return pages.length ? pages : [''];
+  }
+
+  function wpLoadContent(html) {
+    wpPages = wpSplitIntoPages(html);
+    wpCurrentPage = 0;
+    wpRenderPages();
+    var pcEl = document.getElementById('tb-page-count');
+    if (pcEl) pcEl.value = String(Math.min(wpPages.length, MAX_PAGES));
+    setTimeout(function() {
+      var pagesArea = document.getElementById('wp-pages'); if(pagesArea) pagesArea.scrollTop = 0;
+      var ed = document.getElementById('wp-editor-0'); if(ed) { wpAddColResizeHandles(ed); wpSetupImageHandlers(ed); }
+    }, 100);
+    wpUpdateStats();
+  }
+
+  function wpGetFullContent() {
+    wpSavePageState();
+    return wpPages.join('');
+  }
+
+  /* ── Document stats ─────────────────────────────────────────── */
+  window.wpUpdateStats = function() {
+    var fullText = wpPages.map(function(p, i) {
+      var ed = document.getElementById('wp-editor-' + i);
+      return ed ? (ed.innerText || '') : p.replace(/<[^>]+>/g,'');
+    }).join(' ');
+    var words = fullText.trim() ? fullText.trim().split(/\s+/).filter(Boolean).length : 0;
+    var chars = fullText.length;
+    var paras = 0;
+    document.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+      paras += ed.querySelectorAll('p,h1,h2,h3,h4').length;
+    });
+    paras = Math.max(paras, 1);
+    var readMin = Math.max(1, Math.round(words / 200));
+
+    var sbw = document.getElementById('wp-sb-words'); if(sbw) sbw.textContent = words.toLocaleString();
+    var sbc = document.getElementById('wp-sb-chars'); if(sbc) sbc.textContent = chars.toLocaleString();
+    var sbp = document.getElementById('wp-sb-pages'); if(sbp) sbp.textContent = wpPages.length;
+    var sbr = document.getElementById('wp-sb-read');  if(sbr) sbr.textContent = readMin + ' min';
+
+    var sec = document.getElementById('wp-stats-sec');
+    var st  = document.getElementById('wp-stats');
+    if (sec) sec.style.display = '';
+    if (st) st.innerHTML =
+      '<span style="background:#e0f2fe;border-radius:4px;padding:2px 7px;font-size:11px;color:#0369a1;font-weight:600;">' + words.toLocaleString() + ' words</span>' +
+      '<span style="background:#f0fdf4;border-radius:4px;padding:2px 7px;font-size:11px;color:#15803d;font-weight:600;">' + chars.toLocaleString() + ' chars</span>' +
+      '<span style="background:#fef3c7;border-radius:4px;padding:2px 7px;font-size:11px;color:#92400e;font-weight:600;">' + paras + ' paras</span>' +
+      '<span style="background:#f5f3ff;border-radius:4px;padding:2px 7px;font-size:11px;color:#6d28d9;font-weight:600;">~' + readMin + ' min read</span>';
+  };
+
+  function wpSetStatus(msg) {
+    var el = document.getElementById('wp-sb-msg'); if (!el) return;
+    el.textContent = msg;
+    setTimeout(function(){ if(el.textContent === msg) el.textContent = ''; }, 4000);
+  }
+
+  /* ── Print ──────────────────────────────────────────────────── */
+  window.wpPrint = function() {
+    var printRoot = document.getElementById('wp-print-root');
+    if (!printRoot) { window.print(); return; }
+    var container = document.getElementById('wp-pages');
+    if (container) printRoot.innerHTML = container.innerHTML;
+    printRoot.style.display = 'block';
+    setTimeout(function() {
+      window.print();
+      setTimeout(function(){ printRoot.style.display = 'none'; printRoot.innerHTML = ''; }, 500);
+    }, 200);
+  };
+
+  /* ── New document ───────────────────────────────────────────── */
+  window.wpNewDocument = function() {
+    if (wpGetFullContent().replace(/<[^>]+>/g,'').trim().length > 50) {
+      if (!confirm('Start a new document? Current content will be cleared.')) return;
+    }
+    wpPages = [''];  wpCurrentPage = 0;
+    wpRenderPages();
+    var src = document.getElementById('wp-source'); if(src) { src.value = ''; wpCharCount(); }
+    wpSetStatus('New document created');
+  };
+
+  /* ── Downloads ──────────────────────────────────────────────── */
+  window.wpDownload = function(format) {
+    var content = wpGetFullContent();
+    var title   = wpGetDocTitle(content);
+    var fname   = wpSafeName(title);
+
+    if (format === 'pdf') { wpDownloadPDF(content, title); return; }
+    if (format === 'docx') { wpDownloadDOCX(content, title); return; }
+    if (format === 'html') {
+      var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a;}h1{font-size:24pt;}h2{font-size:18pt;}h3{font-size:14pt;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;}</style></head><body>' + content + '</body></html>';
+      wpSaveText(fullHtml, fname + '.html', 'text/html');
+    } else if (format === 'txt') {
+      wpSaveText(stripHtml(content), fname + '.txt', 'text/plain');
+    } else if (format === 'md') {
+      wpSaveText(htmlToMarkdown(content), fname + '.md', 'text/markdown');
+    } else if (format === 'rtf') {
+      wpSaveText(htmlToRTF(content, title), fname + '.rtf', 'application/rtf');
+    } else if (format === 'latex') {
+      wpSaveText(htmlToLaTeX(content, title), fname + '.tex', 'text/plain');
+    } else if (format === 'json') {
+      wpSaveText(htmlToJSON(content, title), fname + '.json', 'application/json');
+    } else if (format === 'csv') {
+      wpSaveText(htmlToCSV(content), fname + '.csv', 'text/csv');
+    }
+    wpSetStatus('Downloaded as ' + format.toUpperCase());
+  };
+
+  function wpDownloadPDF(content, title) {
+    if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
+      // Fallback: print-based PDF
+      var printWin = window.open('', '_blank');
+      printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;margin:20mm;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:5px 8px;}@media print{body{margin:0;}}</style></head><body>' + content + '</body></html>');
+      printWin.document.close();
+      setTimeout(function(){ printWin.print(); printWin.close(); }, 500);
+      return;
+    }
+    // Try jsPDF with html2canvas
+    var container = document.getElementById('wp-pages');
+    if (!container) return;
+    wpSetStatus('Generating PDF…');
+    html2canvas(container, { scale: 1.5, useCORS: true, allowTaint: true }).then(function(canvas) {
+      var imgData = canvas.toDataURL('image/jpeg', 0.85);
+      var jsPDF = (window.jspdf || window.jsPDF || {}).jsPDF;
+      if (!jsPDF) { alert('PDF library error. Try the Print button to save as PDF.'); return; }
+      var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      var pW = pdf.internal.pageSize.getWidth();
+      var pH = pdf.internal.pageSize.getHeight();
+      var imgH = (canvas.height * pW) / canvas.width;
+      var y = 0;
+      while (y < imgH) {
+        if (y > 0) pdf.addPage();
+        pdf.addImage(imgData, 'JPEG', 0, -y, pW, imgH);
+        y += pH;
+      }
+      pdf.save(wpSafeName(title) + '.pdf');
+      wpSetStatus('PDF downloaded ✅');
+    }).catch(function(e) {
+      alert('PDF generation failed: ' + e.message + '\n\nTip: Use the Print button and select "Save as PDF".');
+    });
+  }
+
+  function wpDownloadDOCX(content, title) {
+    if (typeof docx === 'undefined') { wpSaveText(stripHtml(content), wpSafeName(title) + '.txt', 'text/plain'); wpSetStatus('DOCX library not loaded — saved as TXT'); return; }
+    wpSetStatus('Generating DOCX…');
+    try {
+      var parser = new DOMParser();
+      var doc2   = parser.parseFromString(content, 'text/html');
+      var children = [];
+      doc2.body.childNodes.forEach(function(node) {
+        if (node.nodeType !== 1) return;
+        var tag = node.tagName.toUpperCase();
+        var txt = node.textContent.trim();
+        if (!txt && tag !== 'TABLE' && tag !== 'HR') return;
+        var headingMap = { H1: 'Heading1', H2: 'Heading2', H3: 'Heading3', H4: 'Heading4' };
+        if (headingMap[tag]) {
+          children.push(new docx.Paragraph({ text: txt, heading: docx.HeadingLevel[headingMap[tag].toUpperCase()] }));
+        } else if (tag === 'P') {
+          var runs = parseInline(node);
+          children.push(new docx.Paragraph({ children: runs }));
+        } else if (tag === 'BLOCKQUOTE') {
+          children.push(new docx.Paragraph({ text: txt, style: 'IntenseQuote' }));
+        } else if (tag === 'UL' || tag === 'OL') {
+          node.querySelectorAll('li').forEach(function(li, li_i) {
+            children.push(new docx.Paragraph({
+              text: li.textContent.trim(),
+              bullet: tag === 'UL' ? { level: 0 } : undefined,
+              numbering: tag === 'OL' ? { reference: 'default-numbering', level: 0 } : undefined
+            }));
+          });
+        } else if (tag === 'HR') {
+          children.push(new docx.Paragraph({ text: '', border: { bottom: { color: 'CCCCCC', size: 6, space: 1, style: docx.BorderStyle.SINGLE } } }));
+        } else if (tag === 'TABLE') {
+          var tableRows = [];
+          node.querySelectorAll('tr').forEach(function(tr) {
+            var tCells = [];
+            tr.querySelectorAll('td,th').forEach(function(tc) {
+              tCells.push(new docx.TableCell({ children: [new docx.Paragraph({ text: tc.textContent.trim() })], shading: tc.tagName === 'TH' ? { fill: 'F1F5F9' } : undefined }));
+            });
+            if (tCells.length) tableRows.push(new docx.TableRow({ children: tCells }));
+          });
+          if (tableRows.length) children.push(new docx.Table({ rows: tableRows, width: { size: 100, type: docx.WidthType.PERCENTAGE } }));
+        }
+      });
+
+      function parseInline(el) {
+        var runs = [];
+        el.childNodes.forEach(function(n) {
+          if (n.nodeType === 3) { if(n.textContent) runs.push(new docx.TextRun({ text: n.textContent })); return; }
+          var t = (n.tagName || '').toUpperCase();
+          var txt2 = n.textContent;
+          runs.push(new docx.TextRun({ text: txt2, bold: t==='STRONG'||t==='B', italics: t==='EM'||t==='I', underline: t==='U' ? {} : undefined }));
+        });
+        return runs.length ? runs : [new docx.TextRun({ text: el.textContent })];
       }
 
-      window.ttdRestoreDoc = function(index) {
-        var hist = [];
-        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
-        var item = hist[index];
-        if (!item) return;
-        var editor = document.getElementById('ttd-editor');
-        if (editor) { editor.innerHTML = item.content; ttdUpdateStats(); ttdSwitchTab('format'); }
-      };
-      window.ttdDeleteHistory = function(index) {
-        var hist = [];
-        try { hist = JSON.parse(localStorage.getItem(TTD_HIST_KEY) || '[]'); } catch(e){}
-        hist.splice(index, 1);
-        localStorage.setItem(TTD_HIST_KEY, JSON.stringify(hist));
-        ttdRenderHistory();
-      };
-      window.ttdClearHistory = function() {
-        if (!confirm('Clear all document history?')) return;
-        localStorage.removeItem(TTD_HIST_KEY);
-        ttdRenderHistory();
-      };
+      var docFile = new docx.Document({ title: title, creator: 'XZily AI Word Processor', sections: [{ properties: {}, children: children }] });
+      docx.Packer.toBlob(docFile).then(function(blob) {
+        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = wpSafeName(title) + '.docx'; a.click();
+        wpSetStatus('DOCX downloaded ✅');
+      });
+    } catch(e) {
+      console.error('DOCX error:', e);
+      wpSaveText(stripHtml(content), wpSafeName(title) + '.txt', 'text/plain');
+      wpSetStatus('DOCX failed — saved as TXT');
+    }
+  }
 
-  
-        /* ════════════════════════════════════════════════════
-           MULTI-PAGE ENGINE — word-processor style
-        ════════════════════════════════════════════════════ */
-        var ttdPages = [''], ttdCurrentPage = 0;
-        var PAGE_CHAR_LIMIT = 1800, MAX_PAGES = 10;
+  function htmlToMarkdown(html) {
+    var doc2 = new DOMParser().parseFromString(html, 'text/html');
+    var md = '';
+    function convertNode(node) {
+      if (node.nodeType === 3) return node.textContent;
+      var tag = (node.tagName || '').toUpperCase();
+      var inner = Array.from(node.childNodes).map(convertNode).join('');
+      var txt = node.textContent.trim();
+      if (tag === 'H1') return '\n# ' + txt + '\n\n';
+      if (tag === 'H2') return '\n## ' + txt + '\n\n';
+      if (tag === 'H3') return '\n### ' + txt + '\n\n';
+      if (tag === 'H4') return '\n#### ' + txt + '\n\n';
+      if (tag === 'P')  return inner + '\n\n';
+      if (tag === 'STRONG'||tag==='B') return '**' + inner + '**';
+      if (tag === 'EM'||tag==='I')     return '*' + inner + '*';
+      if (tag === 'U')  return '__' + inner + '__';
+      if (tag === 'S')  return '~~' + inner + '~~';
+      if (tag === 'CODE') return '`' + inner + '`';
+      if (tag === 'PRE')  return '\n```\n' + txt + '\n```\n\n';
+      if (tag === 'BLOCKQUOTE') return '\n> ' + txt.replace(/\n/g,'\n> ') + '\n\n';
+      if (tag === 'HR') return '\n---\n\n';
+      if (tag === 'A')  return '[' + inner + '](' + (node.href || '') + ')';
+      if (tag === 'LI') return '- ' + inner + '\n';
+      if (tag === 'UL'||tag==='OL') return inner + '\n';
+      if (tag === 'IMG') return '![' + (node.alt||'image') + '](' + (node.src||'') + ')';
+      if (tag === 'TABLE') {
+        var rows = Array.from(node.querySelectorAll('tr'));
+        if (!rows.length) return '';
+        var lines = rows.map(function(r, ri) {
+          var cols = Array.from(r.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim().replace(/\|/g,'\\|'); });
+          var line = '| ' + cols.join(' | ') + ' |';
+          if (ri === 0) line += '\n|' + cols.map(function(){ return ' --- |'; }).join('');
+          return line;
+        });
+        return '\n' + lines.join('\n') + '\n\n';
+      }
+      return inner;
+    }
+    Array.from(doc2.body.childNodes).forEach(function(n){ md += convertNode(n); });
+    return md.trim();
+  }
 
-        /* Render ALL pages simultaneously as visible white page boxes */
-        function ttdRenderPages() {
-          var container = document.getElementById('ttd-pages');
-          if (!container) return;
-          // Save current active page content first
-          var activeEd = document.getElementById('ttd-editor-' + ttdCurrentPage);
-          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
+  function htmlToRTF(html, title) {
+    var txt = stripHtml(html);
+    var rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}{\\f1 Arial;}{\\f2 Courier New;}}\n';
+    rtf += '{\\colortbl ;\\red0\\green0\\blue0;\\red79\\green70\\blue229;}\n';
+    rtf += '\\pard\\f0\\fs24\\b ' + rtfEscape(title) + '\\b0\\par\\par\n';
+    var lines = txt.split('\n');
+    lines.forEach(function(line) {
+      var l = line.trim();
+      if (!l) { rtf += '\\par\n'; return; }
+      rtf += '\\pard\\f0\\fs22 ' + rtfEscape(l) + '\\par\n';
+    });
+    rtf += '}';
+    return rtf;
+  }
+  function rtfEscape(s) {
+    return (s||'').replace(/\\/g,'\\\\').replace(/\{/g,'\\{').replace(/\}/g,'\\}').replace(/[^\x00-\x7F]/g, function(c){ return '\\u'+c.charCodeAt(0)+'?'; });
+  }
 
-          var paperVal = val('ttd-paper', 'a4');
-          var hf = val('ttd-hfont', 'Georgia, serif');
-          var bf = val('ttd-bfont', 'Georgia, serif');
-          var h1 = val('ttd-h1', 24); var h2 = val('ttd-h2', 18); var h3 = val('ttd-h3', 14);
-          var bd = val('ttd-body', 12); var mg = val('ttd-margin', 20); var lh = val('ttd-lh', '1.6');
+  function htmlToLaTeX(html, title) {
+    function ltxEsc(s) { return (s||'').replace(/\\/g,'\\textbackslash{}').replace(/[&%$#_{}~^]/g, function(c){ return '\\'+c; }); }
+    var doc2 = new DOMParser().parseFromString(html, 'text/html');
+    var body = '';
+    function node2ltx(node) {
+      if (node.nodeType === 3) return ltxEsc(node.textContent);
+      var tag = (node.tagName||'').toUpperCase();
+      var inner = Array.from(node.childNodes).map(node2ltx).join('');
+      var txt = ltxEsc(node.textContent.trim());
+      if (tag==='H1') return '\n\\section{' + txt + '}\n';
+      if (tag==='H2') return '\n\\subsection{' + txt + '}\n';
+      if (tag==='H3') return '\n\\subsubsection{' + txt + '}\n';
+      if (tag==='P')  return inner + '\n\n';
+      if (tag==='STRONG'||tag==='B') return '\\textbf{'+inner+'}';
+      if (tag==='EM'||tag==='I')     return '\\textit{'+inner+'}';
+      if (tag==='U')  return '\\underline{'+inner+'}';
+      if (tag==='BLOCKQUOTE') return '\\begin{quote}\n'+txt+'\n\\end{quote}\n';
+      if (tag==='HR') return '\n\\noindent\\rule{\\linewidth}{0.4pt}\n\n';
+      if (tag==='UL') return '\\begin{itemize}\n'+inner+'\\end{itemize}\n';
+      if (tag==='OL') return '\\begin{enumerate}\n'+inner+'\\end{enumerate}\n';
+      if (tag==='LI') return '  \\item '+inner+'\n';
+      if (tag==='TABLE') {
+        var rows = Array.from(node.querySelectorAll('tr'));
+        if (!rows.length) return '';
+        var cols = (rows[0].querySelectorAll('td,th').length) || 1;
+        var colSpec = Array(cols).fill('l').join(' | ');
+        var ltxRows = rows.map(function(r){ return Array.from(r.querySelectorAll('td,th')).map(function(c){ return ltxEsc(c.textContent.trim()); }).join(' & ') + ' \\\\'; }).join('\n\\hline\n');
+        return '\n\\begin{tabular}{|' + colSpec + '|}\n\\hline\n' + ltxRows + '\n\\hline\n\\end{tabular}\n\n';
+      }
+      return inner;
+    }
+    Array.from(doc2.body.childNodes).forEach(function(n){ body += node2ltx(n); });
+    var mg = getV('wp-margin', 20);
+    return '\\documentclass[12pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage{microtype}\n\\usepackage{ulem}\n\\usepackage{geometry}\n\\geometry{margin=' + mg + 'mm}\n\\setlength{\\parskip}{0.6em}\n\\setlength{\\parindent}{0em}\n\\title{' + ltxEsc(title) + '}\n\\date{\\today}\n\\begin{document}\n\\maketitle\n' + body + '\n\\end{document}';
+  }
 
-          container.innerHTML = '';
+  function htmlToJSON(html, title) {
+    var doc2 = new DOMParser().parseFromString(html, 'text/html');
+    var blocks = [];
+    var wordCount = stripHtml(html).trim().split(/\s+/).filter(Boolean).length;
+    Array.from(doc2.body.children).forEach(function(el) {
+      var tag = el.tagName.toUpperCase();
+      var txt = el.textContent.trim();
+      if (!txt) return;
+      var typeMap = { H1:'heading1',H2:'heading2',H3:'heading3',H4:'heading4',P:'paragraph',BLOCKQUOTE:'quote',UL:'unordered_list',OL:'ordered_list',TABLE:'table',HR:'divider' };
+      if (tag === 'UL' || tag === 'OL') {
+        var items = Array.from(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
+        blocks.push({ type: typeMap[tag] || 'list', items: items });
+      } else if (tag === 'TABLE') {
+        var trows = Array.from(el.querySelectorAll('tr')).map(function(tr){ return Array.from(tr.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim(); }); });
+        blocks.push({ type: 'table', rows: trows });
+      } else {
+        blocks.push({ type: typeMap[tag] || 'paragraph', content: txt, html: el.innerHTML });
+      }
+    });
+    return JSON.stringify({ title: title, createdAt: new Date().toISOString(), wordCount: wordCount, version: '3.0', blocks: blocks, rawHtml: html }, null, 2);
+  }
 
-          ttdPages.forEach(function(content, i) {
-            var pageDiv = document.createElement('div');
-            pageDiv.className = 'ttd-page ttd-page-item sz-' + paperVal;
-            pageDiv.id = 'ttd-page-' + i;
-            pageDiv.style.setProperty('--ttd-hfont', hf);
-            pageDiv.style.setProperty('--ttd-bfont', bf);
-            pageDiv.style.setProperty('--ttd-h1', h1 + 'pt');
-            pageDiv.style.setProperty('--ttd-h2', h2 + 'pt');
-            pageDiv.style.setProperty('--ttd-h3', h3 + 'pt');
-            pageDiv.style.setProperty('--ttd-h4', Math.round(bd * 1.1) + 'pt');
-            pageDiv.style.setProperty('--ttd-bsize', bd + 'pt');
-            pageDiv.style.setProperty('--ttd-lh', lh);
-            pageDiv.style.padding = mg + 'mm';
+  function htmlToCSV(html) {
+    var doc2 = new DOMParser().parseFromString(html, 'text/html');
+    var rows = [['type','content','level']];
+    var lvlMap = { H1:'1',H2:'2',H3:'3',H4:'4' };
+    Array.from(doc2.body.children).forEach(function(el) {
+      var tag = el.tagName.toUpperCase();
+      if (tag === 'TABLE') {
+        el.querySelectorAll('tr').forEach(function(tr){ rows.push(['table_row', Array.from(tr.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim(); }).join(' | '), '']); });
+      } else if (tag === 'UL' || tag === 'OL') {
+        el.querySelectorAll('li').forEach(function(li){ rows.push(['list_item', li.textContent.trim(), '']); });
+      } else {
+        var txt = el.textContent.trim(); if (!txt) return;
+        var typeMap = { H1:'heading',H2:'heading',H3:'heading',H4:'heading',P:'paragraph',BLOCKQUOTE:'quote',HR:'divider' };
+        rows.push([typeMap[tag]||'paragraph', txt, lvlMap[tag]||'']);
+      }
+    });
+    return rows.map(function(r){ return r.map(function(c){ return '"'+(c||'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+  }
 
-            var edDiv = document.createElement('div');
-            edDiv.id = 'ttd-editor-' + i;
-            // Keep id="ttd-editor" on page 0 for backward compat
-            if (i === 0) edDiv.id = 'ttd-editor';
-            edDiv.setAttribute('data-editor-index', i);
-            edDiv.contentEditable = 'true';
-            edDiv.className = 'ttd-page-editor';
-            edDiv.setAttribute('data-placeholder', i === 0
-              ? 'Your formatted document will appear here. Paste text and click Format with AI.'
-              : 'Page ' + (i + 1) + ' — continue typing here.');
-            edDiv.innerHTML = content || '';
+  function wpSaveText(text, filename, mimeType) {
+    var blob = new Blob([text], { type: mimeType });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }
 
-            (function(idx, ed) {
-              ed.addEventListener('focus', function() {
-                ttdCurrentPage = idx;
-                editor = ed;
-                ttdUpdatePageNav();
-                ttdUpdateToolbarState();
-              });
-              ed.addEventListener('input', function() {
-                ttdPages[idx] = ed.innerHTML;
-                ttdUpdateToolbarState();
-              });
-              ed.addEventListener('keydown', function(e) { ttdKeydown(e); });
-              ed.addEventListener('mouseup', ttdUpdateToolbarState);
-              ed.addEventListener('keyup', ttdUpdateToolbarState);
-            })(i, edDiv);
+  /* ── Helpers ────────────────────────────────────────────────── */
+  function wpGetDocTitle(html) {
+    var m = (html||'').match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+    if (m) return m[1].replace(/<[^>]+>/g,'').trim();
+    var ed = document.getElementById('wp-editor-0');
+    if (ed) return (ed.innerText || '').trim().split('\n')[0].slice(0,60) || 'XZily Document';
+    return 'XZily Document';
+  }
 
-            pageDiv.appendChild(edDiv);
+  function wpSafeName(name) {
+    return (name || 'document').replace(/[^a-z0-9_\-\s]/gi,'').trim().replace(/\s+/g,'_').slice(0,60) || 'document';
+  }
 
-            // Page footer — absolute at very bottom, number only by default
-            var footer = document.createElement('div');
-            footer.className = 'ttd-page-footer';
-            footer.setAttribute('data-page', i + 1);
-            footer.setAttribute('data-total', ttdPages.length);
-            var showLabel = window.ttdShowPageLabels || false;
-            footer.textContent = showLabel ? 'Page ' + (i + 1) + ' of ' + ttdPages.length : String(i + 1);
-            pageDiv.appendChild(footer);
+  function wpFocusEditor() {
+    var ed = wpGetEditor(); if(ed) ed.focus();
+  }
 
-            container.appendChild(pageDiv);
-          });
+  function stripHtml(html) {
+    var tmp = document.createElement('div'); tmp.innerHTML = html || '';
+    return tmp.textContent || '';
+  }
 
-          // Update editor reference to active page
-          editor = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage)
-                   || document.querySelector('.ttd-page-editor');
+  function escHtml(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
 
-          ttdUpdatePageNav();
-        }
+  function sanitizeHTML(raw) {
+    if (!raw) return '';
+    var html = raw;
+    var fence = html.match(/```html?\n?([\s\S]*?)```/i); if (fence) html = fence[1];
+    html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g,'')
+               .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi,'')
+               .replace(/<style[\s\S]*?<\/style>/gi,'')
+               .replace(/<script[\s\S]*?<\/script>/gi,'');
+    html = html.trim();
+    if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote|table)\b/.test(html)) {
+      html = html
+        .replace(/^#{4}\s+(.+)$/gm,'<h4>$1</h4>')
+        .replace(/^#{3}\s+(.+)$/gm,'<h3>$1</h3>')
+        .replace(/^#{2}\s+(.+)$/gm,'<h2>$1</h2>')
+        .replace(/^#\s+(.+)$/gm,'<h1>$1</h1>')
+        .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g,'<em>$1</em>')
+        .replace(/^[\*\-]\s+(.+)$/gm,'<li>$1</li>')
+        .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m){ return '<ul>'+m+'</ul>'; })
+        .replace(/^(?!<[hulob]|$)(.+)$/gm,'<p>$1</p>');
+    }
+    return html.trim();
+  }
 
-        /* Update navigation bar and highlight active page */
-        function ttdUpdatePageNav() {
-          var t = ttdPages.length;
-          var ind = document.getElementById('ttd-page-indicator');
-          var p = document.getElementById('ttd-prev-btn');
-          var n = document.getElementById('ttd-next-btn');
-          var sel = document.getElementById('ttd-page-count');
-          if (ind) ind.textContent = 'Page ' + (ttdCurrentPage + 1) + ' of ' + t;
-          if (p) p.disabled = ttdCurrentPage === 0;
-          if (n) n.disabled = ttdCurrentPage >= t - 1;
-          if (sel && sel.value !== String(t)) sel.value = String(Math.min(t, MAX_PAGES));
-          // Highlight active page with a blue outline
-          document.querySelectorAll('.ttd-page-item').forEach(function(pg) {
-            pg.style.outline = '';
-          });
-          var activePg = document.getElementById('ttd-page-' + ttdCurrentPage);
-          if (activePg) activePg.style.outline = '2px solid #0891b2';
-        }
+  function basicFormat(text) {
+    var lines = text.split(/\n/), html = '', inList = false;
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i].trim();
+      if (!line) { if(inList){ html += '</ul>'; inList = false; } continue; }
+      if (/^#{3}\s/.test(line)) { html += '<h3>'+escHtml(line.replace(/^###\s*/,''))+'</h3>'; continue; }
+      if (/^#{2}\s/.test(line)) { html += '<h2>'+escHtml(line.replace(/^##\s*/,''))+'</h2>'; continue; }
+      if (/^#{1}\s/.test(line)) { html += '<h1>'+escHtml(line.replace(/^#\s*/,''))+'</h1>'; continue; }
+      if (/^[-*•]\s/.test(line)) { if(!inList){ html += '<ul>'; inList = true; } html += '<li>'+escHtml(line.replace(/^[-*•]\s*/,''))+'</li>'; continue; }
+      if (inList) { html += '</ul>'; inList = false; }
+      if (line === line.toUpperCase() && line.length > 4 && line.length < 80 && /[A-Z]/.test(line)) { html += '<h2>'+escHtml(line)+'</h2>'; continue; }
+      html += '<p>'+escHtml(line)+'</p>';
+    }
+    if (inList) html += '</ul>';
+    return html || '<p>'+escHtml(text)+'</p>';
+  }
 
-        /* Navigate to page n — scroll it into view */
-        function ttdSetPage(n) {
-          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
-          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
-          ttdCurrentPage = Math.max(0, Math.min(n, ttdPages.length - 1));
-          editor = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage) || editor;
-          var target = document.getElementById('ttd-page-' + ttdCurrentPage);
-          if (target) {
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setTimeout(function() {
-              var ed = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
-              if (ed) ed.focus();
-            }, 300);
-          }
-          ttdUpdatePageNav();
-          ttdUpdateStats();
-        }
+  function showHint(id, msg, type) {
+    var el = document.getElementById(id); if (!el) return;
+    el.textContent = msg;
+    el.className = 'wp-hint show ' + (type || 'info');
+    el.style.display = 'block';
+  }
+  function hideHint(id) {
+    var el = document.getElementById(id); if (!el) return;
+    el.style.display = 'none'; el.className = 'wp-hint';
+  }
 
-        window.ttdNavPage = function(d) { ttdSetPage(ttdCurrentPage + d); };
-
-        /* Toggle page-name label on page footers */
-        window.ttdShowPageLabels = false;
-        window.ttdTogglePageLabel = function() {
-          window.ttdShowPageLabels = !window.ttdShowPageLabels;
-          var btn = document.getElementById('ttd-pagelabel-btn');
-          if (btn) {
-            btn.style.opacity = window.ttdShowPageLabels ? '1' : '.55';
-            btn.style.color   = window.ttdShowPageLabels ? '#0891b2' : '';
-            btn.setAttribute('aria-pressed', String(window.ttdShowPageLabels));
-          }
-          document.querySelectorAll('.ttd-page-footer').forEach(function(f) {
-            var p = parseInt(f.getAttribute('data-page') || '1', 10);
-            var t = parseInt(f.getAttribute('data-total') || '1', 10);
-            f.textContent = window.ttdShowPageLabels ? 'Page ' + p + ' of ' + t : String(p);
-          });
-        };
-
-        window.ttdAddPageBreak = function() {
-          if (ttdPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
-          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
-          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
-          ttdPages.splice(ttdCurrentPage + 1, 0, '');
-          ttdCurrentPage = ttdCurrentPage + 1;
-          ttdRenderPages();
-          setTimeout(function() {
-            var target = document.getElementById('ttd-page-' + ttdCurrentPage);
-            if (target) { target.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
-            var ed = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
-            if (ed) ed.focus();
-          }, 120);
-        };
-
-        window.ttdSetPageCount = function(n) {
-          n = Math.max(1, Math.min(n, MAX_PAGES));
-          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
-          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
-          while (ttdPages.length < n) ttdPages.push('');
-          while (ttdPages.length > n && ttdPages.length > 1) ttdPages.splice(ttdPages.length - 1, 1);
-          ttdCurrentPage = Math.min(ttdCurrentPage, ttdPages.length - 1);
-          ttdRenderPages();
-        };
-
-        /* Split HTML content into multiple pages by character count */
-        function ttdSplitIntoPages(html) {
-          var tmp = document.createElement('div');
-          tmp.innerHTML = html;
-          var blocks = Array.from(tmp.childNodes).filter(function(node) {
-            return node.nodeType === 1 || (node.nodeType === 3 && node.textContent.trim());
-          });
-          var pages = [], cur = '', curC = 0;
-          blocks.forEach(function(b) {
-            var bh = b.outerHTML || ('<p>' + b.textContent + '</p>');
-            var bl = (b.textContent || '').length;
-            var isH1 = b.tagName === 'H1';
-            if ((isH1 && curC > 100) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
-              pages.push(cur); cur = bh; curC = bl;
-            } else { cur += bh; curC += bl; }
-          });
-          if (cur) pages.push(cur);
-          return pages.length ? pages : [''];
-        }
-
-        /* Load content: split into pages and render all simultaneously */
-        function ttdLoadContent(html) {
-          ttdPages = ttdSplitIntoPages(html);
-          ttdCurrentPage = 0;
-          ttdRenderPages();
-          ttdUpdateStats();
-        }
-
-        /* Get full content across ALL pages */
-        function ttdGetFullContent() {
-          var activeEd = document.getElementById(ttdCurrentPage === 0 ? 'ttd-editor' : 'ttd-editor-' + ttdCurrentPage);
-          if (activeEd) ttdPages[ttdCurrentPage] = activeEd.innerHTML;
-          return ttdPages.join('');
-        }
-
-        function ttdShowUploadStatus(msg,isErr,ms){var el=document.getElementById('ttd-upload-status');if(!el)return;el.style.whiteSpace='pre-line';el.textContent=msg;el.style.display='block';el.className='ttd-upload-status'+(isErr?' error':'');if(!isErr)setTimeout(function(){el.style.display='none';},ms||4000);}
-        window.ttdHandleFileDrop=function(ev){ev.preventDefault();var f=ev.dataTransfer&&ev.dataTransfer.files&&ev.dataTransfer.files[0];if(f)window.ttdHandleFile(f);};
-        window.ttdHandleFile=function(file){
-          if(!file)return;
-          var name=file.name.toLowerCase();
-          ttdShowUploadStatus('\uD83D\uDCE4 Reading '+file.name+'...',false);
-          var fillSource=function(plainText,pageCount){
-            var src=document.getElementById('ttd-source');
-            if(src){src.value=plainText.slice(0,10000);if(window.ttdCharCount)ttdCharCount();}
-            var words=plainText.trim().split(/\s+/).filter(Boolean).length;
-            var estimated=Math.max(1,Math.min(Math.ceil(words/300),MAX_PAGES));
-            var pages=pageCount?Math.min(pageCount,MAX_PAGES):estimated;
-            var preview=plainText.slice(0,130).replace(/\s+/g,' ').trim();
-            ttdShowUploadStatus('\u2705 '+file.name+' | '+pages+' page'+(pages!==1?'s':'')+' | '+words+' words\n\u201C'+preview+(plainText.length>130?'\u2026':'')+'\u201D',false,8000);
-            ttdSetPageCount(pages);
-            ttdSwitchTab('format');
-          };
-          if(name.endsWith('.txt')){var r=new FileReader();r.onload=function(e){fillSource(e.target.result);};r.readAsText(file);}
-          else if(name.endsWith('.html')||name.endsWith('.htm')){var r2=new FileReader();r2.onload=function(e){var tmp=document.createElement('div');tmp.innerHTML=e.target.result;tmp.querySelectorAll('script,style,head,meta,link').forEach(function(x){x.remove();});fillSource((tmp.querySelector('body')||tmp).textContent||'');};r2.readAsText(file);}
-          else if(name.endsWith('.docx')){if(typeof mammoth==='undefined'){ttdShowUploadStatus('DOCX parser not loaded \u2014 check internet.',true);return;}var r3=new FileReader();r3.onload=function(e){mammoth.extractRawText({arrayBuffer:e.target.result}).then(function(res){fillSource(res.value);}).catch(function(err){ttdShowUploadStatus('DOCX error: '+err.message,true);});};r3.readAsArrayBuffer(file);}
-          else if(name.endsWith('.pdf')){var r4=new FileReader();r4.onload=function(e){ttdParsePdf(e.target.result,file.name,fillSource);};r4.readAsArrayBuffer(file);}
-          else{ttdShowUploadStatus('Unsupported type. Use TXT, DOCX, PDF or HTML.',true);}
-        };
-        function ttdParseTxt(text){var lines=text.split(/\r?\n/),html='',inP=false;lines.forEach(function(l){var t=l.trim();if(!t){if(inP){html+='</p>';inP=false;}}else if(!inP){html+='<p>'+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');inP=true;}else{html+=' '+t.replace(/</g,'&lt;').replace(/>/g,'&gt;');}});if(inP)html+='</p>';return html||'<p></p>';}
-        function ttdParsePdf(buf,name,cb){
-          if(typeof pdfjsLib==='undefined'){ttdShowUploadStatus('PDF needs internet (PDF.js). Try TXT or DOCX.',true);return;}
-          pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-          pdfjsLib.getDocument({data:buf}).promise.then(function(pdf){
-            var pages=[],total=pdf.numPages,fetched=0;
-            for(var i=1;i<=total;i++){
-              (function(pn){
-                pdf.getPage(pn).then(function(pg){
-                  pg.getTextContent().then(function(c){
-                    pages[pn-1]=c.items.map(function(it){return it.str;}).join(' ');
-                    fetched++;
-                    if(fetched===total&&cb){cb(pages.join('\n\n'),total);}
-                  });
-                });
-              })(i);
-            }
-          }).catch(function(err){ttdShowUploadStatus('PDF error: '+err.message,true);});
-        }
-
-  })();
+})();

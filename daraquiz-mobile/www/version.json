@@ -1,8 +1,8 @@
 {
-  "version": "1.152",
-  "versionCode": 126,
+  "version": "1.153",
+  "versionCode": 127,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.152/daraquiz-v1.152.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.152/daraquiz-v1.152.apk"
+  "notes": "Fix Text→Docs: templates clickable, image resizing, table column resize handles, header overlap, context menu. Version bump.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.153/daraquiz-v1.153.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.153/daraquiz-v1.153.apk"
 }

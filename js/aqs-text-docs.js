@@ -48,8 +48,23 @@
     wpSetupContextMenu();
     wpSetupImageDrop();
     wpUpdateStats();
-    wpSetStatus('Word Processor ready — v3.0');
+    wpSetStatus('Word Processor ready — v3.1');
+    wpAdjustHeaderOffset();
   });
+
+  /* ── Dynamic header height offset ──────────────────────────── */
+  function wpAdjustHeaderOffset() {
+    var appbar = document.querySelector('.wp-appbar');
+    var ribbon  = document.getElementById('wp-ribbon');
+    if (!appbar || !ribbon) return;
+    var h = appbar.getBoundingClientRect().height + ribbon.getBoundingClientRect().height;
+    h = Math.ceil(h) + 1; // +1 to avoid sub-pixel gap
+    document.documentElement.style.setProperty('--wp-header-h', h + 'px');
+    var sidebar = document.getElementById('wp-sidebar');
+    if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
+    var layout = document.querySelector('.wp-layout');
+    if (layout) layout.style.marginTop = h + 'px';
+  }
 
   /* ── Active editor ─────────────────────────────────────────── */
   function wpGetEditor() {
@@ -371,7 +386,9 @@
 
       img.addEventListener('click', function(e) {
         e.stopPropagation();
+        ed.querySelectorAll('.wp-img-wrap').forEach(function(w){ w.classList.remove('selected'); });
         ed.querySelectorAll('img').forEach(function(i){ i.classList.remove('wp-img-selected'); });
+        wrap.classList.add('selected');
         img.classList.add('wp-img-selected');
         // Show image toolbar
         wpShowImageToolbar(wrap, img);
@@ -421,9 +438,9 @@
     makeBtn('Right ▶', function(){ wrap.classList.remove('align-left','align-center'); wrap.classList.add('align-right'); wrap.style.float='right'; wrap.style.marginLeft='12px'; wrap.style.display='inline-block'; wpSavePageState(); });
     var sep = document.createElement('span'); sep.style.cssText='width:1px;height:18px;background:rgba(255,255,255,.2);display:inline-block;'; bar.appendChild(sep);
     makeBtn('🗑 Remove', function(){ wrap.remove(); bar.remove(); wpUpdateStats(); wpSavePageState(); });
-    makeBtn('✕', function(){ bar.remove(); img.classList.remove('wp-img-selected'); });
+    makeBtn('✕', function(){ bar.remove(); img.classList.remove('wp-img-selected'); wrap.classList.remove('selected'); });
     document.body.appendChild(bar);
-    setTimeout(function(){ document.addEventListener('click', function handler(e){ if (!bar.contains(e.target) && e.target !== img){ bar.remove(); img.classList.remove('wp-img-selected'); document.removeEventListener('click', handler); } }); }, 0);
+    setTimeout(function(){ document.addEventListener('click', function handler(e){ if (!bar.contains(e.target) && e.target !== img){ bar.remove(); img.classList.remove('wp-img-selected'); wrap.classList.remove('selected'); document.removeEventListener('click', handler); } }); }, 0);
   }
 
   /* ── Image drag-drop into editor ─────────────────────────────  */
@@ -1213,11 +1230,14 @@
     grid.innerHTML = '';
     TEMPLATES.forEach(function(tpl, i) {
       var card = document.createElement('div');
-      card.className = 'wp-tpl-card';
-      card.innerHTML = '<span class="wp-tpl-card-icon">' + tpl.icon + '</span>' +
-        '<div class="wp-tpl-card-name">' + tpl.name + '</div>' +
-        '<div class="wp-tpl-card-desc">' + tpl.desc + '</div>';
+      card.className = 'wp-tmpl-card';
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.innerHTML = '<span class="wp-tmpl-icon">' + tpl.icon + '</span>' +
+        '<div><div class="wp-tmpl-name">' + tpl.name + '</div>' +
+        '<div class="wp-tmpl-desc">' + tpl.desc + '</div></div>';
       card.onclick = function() { wpLoadTemplate(i); };
+      card.onkeydown = function(e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wpLoadTemplate(i); } };
       grid.appendChild(card);
     });
   }

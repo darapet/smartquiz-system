@@ -1,8 +1,8 @@
 {
-  "version": "1.0.4",
-  "versionCode": 4,
-  "releaseDate": "2026-06-04",
-  "notes": "Fix challenge document button crashes; add quiz Prev button repick support.",
+  "version": "1.0.5",
+  "versionCode": 5,
+  "releaseDate": "2026-06-05",
+  "notes": "Fix Text→Docs: templates now clickable, image resize works, table column handles visible, header overlap fixed, context menu fixed. Version bump.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk"
 }
