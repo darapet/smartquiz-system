@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0b14">
+<title>📚 AI Study Hub — xzily AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0b14;--surface:rgba(255,255,255,.04);--border:rgba(255,255,255,.08);
+  --text:#e2e8f0;--muted:#64748b;--accent:#6366f1;--accent2:#8b5cf6;
+  --green:#22c55e;--red:#ef4444;--gold:#f59e0b;--blue:#3b82f6;--teal:#14b8a6;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+a{text-decoration:none;color:inherit;}
+
+/* HEADER */
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
+.sh-logo{font-size:1rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sh-back{color:var(--muted);font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:all .18s;}
+.sh-back:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
+
+/* TABS */
+.sh-tabs-wrap{background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.sh-tabs{display:flex;padding:0 16px;gap:0;min-width:max-content;}
+.sh-tab{padding:14px 18px;font-size:.83rem;font-weight:700;color:var(--muted);border:none;background:none;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap;}
+.sh-tab.active{color:var(--text);border-bottom-color:var(--accent);}
+.sh-tab:hover:not(.active){color:#94a3b8;}
+
+/* PANELS */
+.sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
+.sh-panel.active{display:block;}
+
+/* SHARED COMPONENTS */
+.sh-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:16px;}
+.sh-label{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:block;}
+.sh-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.92rem;font-family:inherit;outline:none;transition:border-color .2s;resize:none;}
+.sh-input:focus{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.04);}
+.sh-select{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:inherit;outline:none;cursor:pointer;-webkit-appearance:none;}
+.sh-select option{background:#0f1124;color:var(--text);}
+.sh-row{display:flex;gap:12px;flex-wrap:wrap;}
+.sh-row .sh-input,.sh-row .sh-select{flex:1;min-width:140px;}
+.sh-btn{padding:12px 24px;border-radius:10px;border:none;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+.sh-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 18px rgba(99,102,241,.3);}
+.sh-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.sh-btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.sh-btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
+.sh-btn-ghost:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
+.sh-btn-danger{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.sh-section-title{font-size:1.3rem;font-weight:900;color:var(--text);margin-bottom:6px;}
+.sh-section-sub{font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.sh-divider{height:1px;background:var(--border);margin:20px 0;}
+.sh-badge{display:inline-block;font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.sh-badge-purple{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;}
+.sh-badge-green{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac;}
+.sh-badge-gold{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:#fcd34d;}
+.sh-badge-red{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.sh-skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:sh-shimmer 1.4s infinite;border-radius:6px;height:16px;margin-bottom:8px;}
+@keyframes sh-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sh-spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:sh-spin .8s linear infinite;}
+@keyframes sh-spin{100%{transform:rotate(360deg)}}
+
+/* ══════════════════════════════
+   1. AI STUDY NOTES
+══════════════════════════════ */
+.sh-notes-output{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:20px;font-size:.88rem;line-height:1.9;color:#cbd5e1;min-height:200px;display:none;position:relative;}
+.sh-notes-output h1,.sh-notes-output h2,.sh-notes-output h3{color:var(--text);font-weight:800;margin:18px 0 8px;line-height:1.3;}
+.sh-notes-output h1{font-size:1.2rem;border-bottom:2px solid rgba(99,102,241,.3);padding-bottom:8px;}
+.sh-notes-output h2{font-size:1rem;color:#a5b4fc;}
+.sh-notes-output h3{font-size:.92rem;color:#86efac;}
+.sh-notes-output p{margin-bottom:10px;}
+.sh-notes-output ul,.sh-notes-output ol{margin:8px 0 12px 20px;}
+.sh-notes-output li{margin-bottom:6px;}
+.sh-notes-output strong{color:#fcd34d;font-weight:700;}
+.sh-notes-output em{color:#a5b4fc;font-style:normal;font-weight:600;}
+.sh-notes-output code{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:.83rem;color:#c4b5fd;}
+.sh-notes-output blockquote{border-left:3px solid var(--accent);padding-left:14px;color:var(--muted);margin:12px 0;font-style:italic;}
+.sh-notes-toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap;}
+
+/* ══════════════════════════════
+   2. FLASHCARDS
+══════════════════════════════ */
+.sh-fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:16px;}
+.sh-fc-card{height:180px;perspective:1000px;cursor:pointer;}
+.sh-fc-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1);}
+.sh-fc-card.flipped .sh-fc-inner{transform:rotateY(180deg);}
+.sh-fc-front,.sh-fc-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;text-align:center;}
+.sh-fc-front{background:rgba(99,102,241,.08);border:2px solid rgba(99,102,241,.25);}
+.sh-fc-back{background:rgba(34,197,94,.06);border:2px solid rgba(34,197,94,.2);transform:rotateY(180deg);}
+.sh-fc-label{font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.sh-fc-front .sh-fc-label{color:rgba(165,180,252,.6);}
+.sh-fc-back .sh-fc-label{color:rgba(134,239,172,.6);}
+.sh-fc-text{font-size:.88rem;font-weight:700;color:var(--text);line-height:1.5;}
+.sh-fc-back .sh-fc-text{font-size:.82rem;font-weight:500;color:#cbd5e1;}
+.sh-fc-hint{font-size:.7rem;color:var(--muted);margin-top:8px;}
+.sh-fc-nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px;}
+.sh-fc-solo{height:220px;max-width:460px;margin:0 auto;}
+.sh-fc-progress{text-align:center;font-size:.82rem;color:var(--muted);font-weight:600;margin-top:8px;}
+.sh-fc-counter{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+.sh-fc-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:all .18s;}
+.sh-fc-dot.known{background:var(--green);border-color:var(--green);}
+.sh-fc-dot.unknown{background:var(--red);border-color:var(--red);}
+.sh-fc-dot.current{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ══════════════════════════════
+   3. GPA CALCULATOR
+══════════════════════════════ */
+.sh-gpa-row{display:grid;grid-template-columns:1fr 100px 90px 28px;gap:8px;align-items:center;margin-bottom:8px;}
+.sh-gpa-row.header{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.sh-gpa-add-btn{display:flex;align-items:center;gap:8px;background:rgba(99,102,241,.08);border:1px dashed rgba(99,102,241,.3);border-radius:10px;padding:10px 16px;color:#a5b4fc;font-size:.85rem;font-weight:700;cursor:pointer;width:100%;margin-top:4px;font-family:inherit;transition:all .18s;}
+.sh-gpa-add-btn:hover{background:rgba(99,102,241,.15);}
+.sh-gpa-result{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.1));border:1px solid rgba(99,102,241,.25);border-radius:14px;padding:20px;text-align:center;margin-top:16px;}
+.sh-gpa-score{font-size:3rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+.sh-gpa-class{font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px;}
+.sh-gpa-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.sh-gpa-stat{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;text-align:center;}
+.sh-gpa-stat-val{font-size:1.1rem;font-weight:800;color:var(--text);}
+.sh-gpa-stat-lbl{font-size:.68rem;color:var(--muted);font-weight:600;margin-top:3px;}
+.sh-gpa-del{width:28px;height:28px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;}
+.sh-gpa-del:hover{background:rgba(239,68,68,.2);}
+
+/* ══════════════════════════════
+   4. STUDY TIMER
+══════════════════════════════ */
+.sh-timer-wrap{text-align:center;padding:20px 0;}
+.sh-timer-ring{position:relative;display:inline-block;margin-bottom:20px;}
+.sh-timer-svg{transform:rotate(-90deg);}
+.sh-timer-track{fill:none;stroke:rgba(255,255,255,.05);stroke-width:8;}
+.sh-timer-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .8s linear,stroke .5s;}
+.sh-timer-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.sh-timer-display{font-size:3rem;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;line-height:1;}
+.sh-timer-mode{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-top:4px;}
+.sh-timer-controls{display:flex;gap:12px;justify-content:center;margin-bottom:20px;}
+.sh-timer-btn{width:56px;height:56px;border-radius:50%;border:none;font-size:1.3rem;cursor:pointer;font-family:inherit;transition:all .18s;display:flex;align-items:center;justify-content:center;}
+.sh-timer-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 18px rgba(99,102,241,.35);}
+.sh-timer-btn-main:hover{transform:scale(1.05);}
+.sh-timer-btn-sm{background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--muted);}
+.sh-timer-btn-sm:hover{background:rgba(255,255,255,.12);color:var(--text);}
+.sh-timer-modes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;}
+.sh-timer-mode-btn{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.sh-timer-mode-btn.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
+.sh-timer-sessions{display:flex;gap:6px;justify-content:center;margin-bottom:16px;}
+.sh-timer-session-dot{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);}
+.sh-timer-session-dot.done{background:var(--accent);}
+.sh-timer-tips{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:14px;font-size:.8rem;color:#94a3b8;line-height:1.7;}
+.sh-timer-task-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.sh-timer-task-input{flex:1;background:none;border:none;color:var(--text);font-size:.88rem;font-family:inherit;outline:none;}
+
+/* ══════════════════════════════
+   5. MOCK EXAM
+══════════════════════════════ */
+.sh-exam-setup{display:block;}
+.sh-exam-active{display:none;}
+.sh-exam-results{display:none;}
+.sh-exam-progress-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-bottom:20px;overflow:hidden;}
+.sh-exam-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;transition:width .4s ease;}
+.sh-exam-q-num{font-size:.78rem;font-weight:800;color:var(--muted);margin-bottom:8px;}
+.sh-exam-q-text{font-size:1rem;font-weight:700;color:var(--text);line-height:1.6;background:rgba(255,255,255,.04);border-radius:10px;padding:16px;margin-bottom:16px;}
+.sh-exam-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.sh-exam-opt{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;border:2px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .18s;}
+.sh-exam-opt:hover:not(:disabled){border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.06);}
+.sh-exam-opt.correct{border-color:#22c55e;background:rgba(34,197,94,.1);color:#86efac;}
+.sh-exam-opt.wrong{border-color:#ef4444;background:rgba(239,68,68,.1);color:#fca5a5;}
+.sh-exam-opt:disabled{cursor:default;}
+.sh-exam-opt-letter{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;}
+.sh-exam-timer-bar{height:4px;background:rgba(245,158,11,.12);border-radius:2px;margin-bottom:16px;overflow:hidden;}
+.sh-exam-timer-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#fcd34d);border-radius:2px;transition:width 1s linear;}
+.sh-exam-timer-fill.low{background:linear-gradient(90deg,#ef4444,#f87171);}
+.sh-exam-explanation{background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:12px;font-size:.8rem;color:#94a3b8;line-height:1.6;display:none;margin-top:-6px;margin-bottom:14px;}
+.sh-exam-skip-btn{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-size:.8rem;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:inherit;}
+.sh-result-stat{text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:18px 12px;}
+.sh-result-stat-val{font-size:1.8rem;font-weight:900;}
+.sh-result-stat-lbl{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.sh-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.sh-result-q-item{display:flex;gap:10px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:8px;}
+.sh-result-q-item.sh-correct{border-left:3px solid var(--green);}
+.sh-result-q-item.sh-wrong{border-left:3px solid var(--red);}
+
+/* TOAST */
+#sh-toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.sh-toast{background:rgba(15,17,36,.95);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px 16px;font-size:.82rem;font-weight:600;backdrop-filter:blur(12px);}
+
+/* Responsive */
+@media(max-width:600px){
+  .sh-panel{padding:16px 14px;}
+  .sh-gpa-row{grid-template-columns:1fr 90px 80px 28px;}
+  .sh-result-grid{grid-template-columns:repeat(2,1fr);}
+  .sh-timer-display{font-size:2.4rem;}
+}
+</style>
+</head>
+<body>
+<div id="sh-toast"></div>
+
+<!-- HEADER -->
+<header class="sh-hdr">
+  <div class="sh-logo">📚 AI Study Hub</div>
+  <a href="index.html" class="sh-back">🏠 Back to Home</a>
+</header>
+
+<!-- TABS -->
+<div class="sh-tabs-wrap">
+  <div class="sh-tabs">
+    <button class="sh-tab active" onclick="shTab('notes')">📄 AI Notes</button>
+    <button class="sh-tab" onclick="shTab('flashcards')">🗂️ Flashcards</button>
+    <button class="sh-tab" onclick="shTab('gpa')">📊 GPA Calculator</button>
+    <button class="sh-tab" onclick="shTab('timer')">⏱️ Study Timer</button>
+    <button class="sh-tab" onclick="shTab('exam')">📝 Mock Exam</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 1: AI STUDY NOTES
+═══════════════════════════════════ -->
+<div id="sh-panel-notes" class="sh-panel active">
+  <div class="sh-section-title">📄 AI Study Notes Generator</div>
+  <div class="sh-section-sub">Enter any course topic and get comprehensive, structured study notes instantly — key concepts, definitions, examples and exam tips included.</div>
+
+  <div class="sh-card">
+    <label class="sh-label">Topic / Course</label>
+    <input class="sh-input" id="notes-topic" placeholder="e.g. Krebs Cycle, Supply and Demand, Newton's Laws of Motion…" style="margin-bottom:12px;">
+    <div class="sh-row">
+      <div style="flex:1;">
+        <label class="sh-label">Depth</label>
+        <select class="sh-select" id="notes-depth">
+          <option value="overview">Overview (Quick Summary)</option>
+          <option value="standard" selected>Standard (Comprehensive)</option>
+          <option value="detailed">Detailed (Exam-Ready)</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label class="sh-label">Level</label>
+        <select class="sh-select" id="notes-level">
+          <option value="100 level">100 Level</option>
+          <option value="200 level" selected>200 Level</option>
+          <option value="300 level">300 Level</option>
+          <option value="400 level">400 Level</option>
+          <option value="postgraduate">Postgraduate</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="sh-btn sh-btn-primary" id="notes-gen-btn" onclick="shGenerateNotes()">
+      <span class="sh-spinner" id="notes-spinner" style="display:none;"></span>
+      <span id="notes-btn-text">✨ Generate Notes</span>
+    </button>
+    <button class="sh-btn sh-btn-ghost" onclick="shCopyNotes()" id="notes-copy-btn" style="display:none;">📋 Copy</button>
+    <button class="sh-btn sh-btn-ghost" onclick="shPrintNotes()" id="notes-print-btn" style="display:none;">🖨️ Print / Save PDF</button>
+  </div>
+
+  <div id="notes-loading" style="display:none;">
+    <div class="sh-skeleton" style="width:60%;height:22px;"></div>
+    <div class="sh-skeleton" style="width:90%;margin-top:12px;"></div>
+    <div class="sh-skeleton" style="width:85%;"></div>
+    <div class="sh-skeleton" style="width:80%;"></div>
+    <div class="sh-skeleton" style="width:40%;height:18px;margin-top:16px;"></div>
+    <div class="sh-skeleton" style="width:95%;"></div>
+    <div class="sh-skeleton" style="width:88%;"></div>
+  </div>
+
+  <div class="sh-notes-output" id="notes-output"></div>
+
+  <div style="background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:14px;font-size:.8rem;color:#94a3b8;line-height:1.8;">
+    💡 <strong style="color:#fcd34d;">Pro tips:</strong> Use specific topic names for better notes. You can generate notes for any subject — science, arts, social science, engineering, law and more. Print or copy to paste into your notebook!
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 2: FLASHCARDS
+═══════════════════════════════════ -->
+<div id="sh-panel-flashcards" class="sh-panel">
+  <div class="sh-section-title">🗂️ Smart Flashcards</div>
+  <div class="sh-section-sub">Generate AI-powered flashcards for any topic. Tap each card to reveal the answer. Mark what you know — track your mastery progress.</div>
+
+  <div class="sh-card">
+    <div class="sh-row" style="margin-bottom:12px;">
+      <div style="flex:2;">
+        <label class="sh-label">Topic</label>
+        <input class="sh-input" id="fc-topic" placeholder="e.g. Organic Chemistry, African History, Calculus…">
+      </div>
+      <div style="flex:1;">
+        <label class="sh-label">Cards</label>
+        <select class="sh-select" id="fc-count">
+          <option value="6">6 cards</option>
+          <option value="10" selected>10 cards</option>
+          <option value="15">15 cards</option>
+        </select>
+      </div>
+    </div>
+    <button class="sh-btn sh-btn-primary" id="fc-gen-btn" onclick="shGenerateFlashcards()">
+      <span class="sh-spinner" id="fc-spinner" style="display:none;"></span>
+      <span id="fc-btn-text">🃏 Generate Flashcards</span>
+    </button>
+  </div>
+
+  <div id="fc-solo-mode" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;gap:8px;">
+        <span class="sh-badge sh-badge-green" id="fc-known-count">Known: 0</span>
+        <span class="sh-badge sh-badge-red" id="fc-unknown-count">Study: 0</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="sh-btn sh-btn-ghost" style="padding:8px 14px;font-size:.8rem;" onclick="shFC_view('solo')">🔍 One at a Time</button>
+        <button class="sh-btn sh-btn-ghost" style="padding:8px 14px;font-size:.8rem;" onclick="shFC_view('grid')">📋 Grid View</button>
+      </div>
+    </div>
+
+    <!-- Solo View -->
+    <div id="fc-solo-wrap">
+      <div class="sh-fc-card sh-fc-solo" id="fc-solo-card" onclick="this.classList.toggle('flipped')">
+        <div class="sh-fc-inner">
+          <div class="sh-fc-front">
+            <div class="sh-fc-label">Question</div>
+            <div class="sh-fc-text" id="fc-solo-q">—</div>
+            <div class="sh-fc-hint">Tap to reveal answer</div>
+          </div>
+          <div class="sh-fc-back">
+            <div class="sh-fc-label">Answer</div>
+            <div class="sh-fc-text" id="fc-solo-a">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="sh-fc-progress" id="fc-solo-progress">Card 1 of 10</div>
+      <div class="sh-fc-counter" id="fc-dots"></div>
+      <div class="sh-fc-nav" style="margin-top:16px;">
+        <button class="sh-btn sh-btn-ghost" onclick="shFC_move(-1)">← Prev</button>
+        <div style="display:flex;gap:8px;">
+          <button class="sh-btn" onclick="shFC_mark(false)" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;padding:10px 16px;font-size:.82rem;">✕ Still Learning</button>
+          <button class="sh-btn" onclick="shFC_mark(true)" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac;padding:10px 16px;font-size:.82rem;">✓ Got It!</button>
+        </div>
+        <button class="sh-btn sh-btn-ghost" onclick="shFC_move(1)">Next →</button>
+      </div>
+    </div>
+
+    <!-- Grid View -->
+    <div id="fc-grid-wrap" style="display:none;">
+      <div class="sh-fc-grid" id="fc-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 3: GPA CALCULATOR
+═══════════════════════════════════ -->
+<div id="sh-panel-gpa" class="sh-panel">
+  <div class="sh-section-title">📊 GPA / CGPA Calculator</div>
+  <div class="sh-section-sub">Nigerian university grading system (5-point scale). Add your courses, select grades, and calculate your semester GPA or cumulative CGPA instantly.</div>
+
+  <div class="sh-card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:.88rem;font-weight:700;color:var(--text);">Courses this Semester</div>
+      <select class="sh-select" id="gpa-scale" style="width:auto;" onchange="shCalcGPA()">
+        <option value="5">5-Point Scale (Nigerian)</option>
+        <option value="4">4-Point Scale (US)</option>
+      </select>
+    </div>
+    <div class="sh-gpa-row header">
+      <div>Course Name</div><div>Units</div><div>Grade</div><div></div>
+    </div>
+    <div id="gpa-rows"></div>
+    <button class="sh-gpa-add-btn" onclick="shGPA_addRow()">+ Add Course</button>
+  </div>
+
+  <div class="sh-gpa-result" id="gpa-result" style="display:none;">
+    <div style="font-size:.72rem;font-weight:800;color:rgba(165,180,252,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:6px;">Semester GPA</div>
+    <div class="sh-gpa-score" id="gpa-score">0.00</div>
+    <div class="sh-gpa-class" id="gpa-class">—</div>
+    <div class="sh-gpa-breakdown">
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-total-units">0</div><div class="sh-gpa-stat-lbl">Total Units</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-grade-points">0</div><div class="sh-gpa-stat-lbl">Grade Points</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-highest">—</div><div class="sh-gpa-stat-lbl">Best Course</div></div>
+    </div>
+  </div>
+
+  <!-- CGPA Calculator -->
+  <div class="sh-card" style="margin-top:16px;">
+    <div style="font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:12px;">📈 CGPA Estimator</div>
+    <div class="sh-row">
+      <div style="flex:1;">
+        <label class="sh-label">Previous CGPA</label>
+        <input class="sh-input" id="cgpa-prev" type="number" step="0.01" min="0" max="5" placeholder="e.g. 3.75" oninput="shCalcCGPA()">
+      </div>
+      <div style="flex:1;">
+        <label class="sh-label">Total Previous Units</label>
+        <input class="sh-input" id="cgpa-prev-units" type="number" min="0" placeholder="e.g. 90" oninput="shCalcCGPA()">
+      </div>
+    </div>
+    <div id="cgpa-result" style="display:none;margin-top:14px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:14px;text-align:center;">
+      <div style="font-size:.72rem;font-weight:800;color:rgba(165,180,252,.6);text-transform:uppercase;letter-spacing:.1em;margin-bottom:4px;">Projected CGPA</div>
+      <div style="font-size:2rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;" id="cgpa-score">0.00</div>
+      <div style="font-size:.88rem;font-weight:700;color:var(--text);margin-top:4px;" id="cgpa-class">—</div>
+    </div>
+  </div>
+
+  <div style="background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:14px;font-size:.8rem;color:#94a3b8;line-height:1.8;margin-top:4px;">
+    📖 <strong style="color:#a5b4fc;">Nigerian Grade Reference (5-Point):</strong><br>
+    A (70–100) = 5.0 · B (60–69) = 4.0 · C (50–59) = 3.0 · D (45–49) = 2.0 · E (40–44) = 1.0 · F (0–39) = 0.0
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 4: STUDY TIMER
+═══════════════════════════════════ -->
+<div id="sh-panel-timer" class="sh-panel">
+  <div class="sh-section-title">⏱️ Pomodoro Study Timer</div>
+  <div class="sh-section-sub">Stay focused with structured study sessions. Work in deep focus sprints, take proper breaks, and track your productivity.</div>
+
+  <div class="sh-card">
+    <div class="sh-timer-task-wrap">
+      <span style="font-size:1rem;">📚</span>
+      <input class="sh-timer-task-input" id="timer-task" placeholder="What are you studying? (optional)…">
+    </div>
+
+    <div class="sh-timer-modes">
+      <button class="sh-timer-mode-btn active" onclick="shTimerSetMode('pomodoro',25,5)" id="tm-pomodoro">🍅 Pomodoro 25min</button>
+      <button class="sh-timer-mode-btn" onclick="shTimerSetMode('deep',50,10)" id="tm-deep">🧠 Deep Work 50min</button>
+      <button class="sh-timer-mode-btn" onclick="shTimerSetMode('quick',15,3)" id="tm-quick">⚡ Quick 15min</button>
+      <button class="sh-timer-mode-btn" onclick="shTimerSetMode('custom',0,0)" id="tm-custom">⚙️ Custom</button>
+    </div>
+
+    <div id="timer-custom-row" style="display:none;margin-bottom:14px;">
+      <div class="sh-row">
+        <div style="flex:1;"><label class="sh-label">Focus (min)</label><input class="sh-input" id="timer-custom-focus" type="number" value="25" min="1" max="120" oninput="shTimerCustom()"></div>
+        <div style="flex:1;"><label class="sh-label">Break (min)</label><input class="sh-input" id="timer-custom-break" type="number" value="5" min="1" max="30" oninput="shTimerCustom()"></div>
+      </div>
+    </div>
+
+    <div class="sh-timer-wrap">
+      <div class="sh-timer-ring">
+        <svg class="sh-timer-svg" width="180" height="180" viewBox="0 0 180 180">
+          <circle class="sh-timer-track" cx="90" cy="90" r="82"/>
+          <circle class="sh-timer-fill" id="timer-ring-fill" cx="90" cy="90" r="82"
+            stroke="#6366f1" stroke-dasharray="515.2" stroke-dashoffset="0"/>
+        </svg>
+        <div class="sh-timer-text">
+          <div class="sh-timer-display" id="timer-display">25:00</div>
+          <div class="sh-timer-mode" id="timer-mode-label">Focus Time</div>
+        </div>
+      </div>
+
+      <div class="sh-timer-sessions" id="timer-session-dots">
+        <div class="sh-timer-session-dot" id="ts0"></div>
+        <div class="sh-timer-session-dot" id="ts1"></div>
+        <div class="sh-timer-session-dot" id="ts2"></div>
+        <div class="sh-timer-session-dot" id="ts3"></div>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-bottom:14px;">Sessions completed today</div>
+
+      <div class="sh-timer-controls">
+        <button class="sh-timer-btn sh-timer-btn-sm" onclick="shTimerSkip()" title="Skip">⏭️</button>
+        <button class="sh-timer-btn sh-timer-btn-main" id="timer-main-btn" onclick="shTimerToggle()">▶</button>
+        <button class="sh-timer-btn sh-timer-btn-sm" onclick="shTimerReset()" title="Reset">🔄</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;font-size:.8rem;color:var(--muted);margin-bottom:14px;flex-wrap:wrap;">
+      <span>✅ Sessions: <strong style="color:var(--text);" id="timer-stat-sessions">0</strong></span>
+      <span>⏱️ Total Focus: <strong style="color:var(--text);" id="timer-stat-total">0 min</strong></span>
+    </div>
+  </div>
+
+  <div class="sh-timer-tips">
+    <strong style="color:#a5b4fc;">📌 Pomodoro Technique:</strong><br>
+    ① Work focused for 25 minutes — no distractions, no phone<br>
+    ② Take a 5-minute break — stand up, stretch, breathe<br>
+    ③ After 4 sessions, take a longer 15–30 minute break<br>
+    ④ Repeat — your brain will thank you during exams! 🧠
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 5: MOCK EXAM
+═══════════════════════════════════ -->
+<div id="sh-panel-exam" class="sh-panel">
+
+  <!-- Setup -->
+  <div id="exam-setup" class="sh-exam-setup">
+    <div class="sh-section-title">📝 AI Mock Exam</div>
+    <div class="sh-section-sub">Generate a timed mock exam on any subject. Get your score, see explanations for every answer, and identify where to improve.</div>
+    <div class="sh-card">
+      <label class="sh-label">Subject / Topic</label>
+      <input class="sh-input" id="exam-topic" placeholder="e.g. Organic Chemistry, Macroeconomics, Nigerian History…" style="margin-bottom:12px;">
+      <div class="sh-row">
+        <div style="flex:1;">
+          <label class="sh-label">No. of Questions</label>
+          <select class="sh-select" id="exam-count">
+            <option value="5">5 Questions</option>
+            <option value="10" selected>10 Questions</option>
+            <option value="15">15 Questions</option>
+            <option value="20">20 Questions</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="sh-label">Difficulty</label>
+          <select class="sh-select" id="exam-diff">
+            <option value="easy">Easy (100 Level)</option>
+            <option value="medium" selected>Medium (200–300 Level)</option>
+            <option value="hard">Hard (400 Level+)</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="sh-label">Time per Question</label>
+          <select class="sh-select" id="exam-time">
+            <option value="0">No Limit</option>
+            <option value="30">30 seconds</option>
+            <option value="60" selected>60 seconds</option>
+            <option value="90">90 seconds</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <button class="sh-btn sh-btn-primary" id="exam-start-btn" onclick="shStartExam()">
+      <span class="sh-spinner" id="exam-spinner" style="display:none;"></span>
+      <span id="exam-btn-text">🚀 Generate & Start Exam</span>
+    </button>
+  </div>
+
+  <!-- Active Exam -->
+  <div id="exam-active" class="sh-exam-active">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="font-size:.82rem;font-weight:700;color:var(--muted);" id="exam-subject-label">Subject</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span class="sh-badge sh-badge-purple" id="exam-q-badge">Q 1/10</span>
+        <button class="sh-exam-skip-btn" onclick="shExamSkip()">Skip →</button>
+      </div>
+    </div>
+    <div class="sh-exam-progress-bar"><div class="sh-exam-progress-fill" id="exam-prog-fill" style="width:0%"></div></div>
+    <div class="sh-exam-timer-bar" id="exam-timer-bar-wrap" style="display:none;"><div class="sh-exam-timer-fill" id="exam-q-timer-fill" style="width:100%"></div></div>
+    <div class="sh-exam-q-num" id="exam-q-num">Question 1 of 10</div>
+    <div class="sh-exam-q-text" id="exam-q-text">Loading…</div>
+    <div class="sh-exam-opts" id="exam-opts"></div>
+    <div class="sh-exam-explanation" id="exam-explanation"></div>
+    <button class="sh-btn sh-btn-primary" id="exam-next-btn" style="display:none;" onclick="shExamNext()">Next Question →</button>
+  </div>
+
+  <!-- Results -->
+  <div id="exam-results" class="sh-exam-results">
+    <div class="sh-section-title" style="margin-bottom:16px;" id="exam-result-title">📝 Exam Complete!</div>
+    <div class="sh-result-grid" id="exam-result-stats"></div>
+    <div style="background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:14px;">
+      <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Question Review</div>
+      <div id="exam-result-qs"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="sh-btn sh-btn-primary" onclick="shExamRetry()">🔄 Retry Same Topic</button>
+      <button class="sh-btn sh-btn-ghost" onclick="shExamSetup()">📝 New Exam</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/aqs-groq-key.js"></script>
+<script>
+/* ══════════════════════════════════════════════════
+   AI STUDY HUB — Complete Engine
+══════════════════════════════════════════════════ */
+
+/* ── TABS ── */
+function shTab(name){
+  document.querySelectorAll('.sh-tab').forEach((t,i)=>t.classList.remove('active'));
+  document.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('sh-panel-'+name).classList.add('active');
+  event.target.classList.add('active');
+}
+
+/* ── TOAST ── */
+function shToast(msg, dur=3000){
+  const el=document.createElement('div');
+  el.className='sh-toast'; el.textContent=msg;
+  document.getElementById('sh-toast').appendChild(el);
+  setTimeout(()=>el.remove(), dur);
+}
+
+/* ── GROQ FETCH ── */
+async function shAI(prompt, maxTokens=1200){
+  if(typeof window.groqFetch==='function'){
+    try{
+      const r=await window.groqFetch({messages:[{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7});
+      return r.choices[0].message.content||'';
+    }catch(e){ console.warn('Groq error',e); }
+  }
+  return null;
+}
+
+/* ══════════════════════════════
+   1. AI STUDY NOTES
+══════════════════════════════ */
+let _notesRaw = '';
+
+async function shGenerateNotes(){
+  const topic = document.getElementById('notes-topic').value.trim();
+  if(!topic){ shToast('⚠️ Please enter a topic first'); document.getElementById('notes-topic').focus(); return; }
+  const depth  = document.getElementById('notes-depth').value;
+  const level  = document.getElementById('notes-level').value;
+
+  document.getElementById('notes-gen-btn').disabled=true;
+  document.getElementById('notes-spinner').style.display='';
+  document.getElementById('notes-btn-text').textContent='Generating…';
+  document.getElementById('notes-loading').style.display='';
+  document.getElementById('notes-output').style.display='none';
+  document.getElementById('notes-copy-btn').style.display='none';
+  document.getElementById('notes-print-btn').style.display='none';
+
+  const depthMap={overview:'a concise overview with key definitions and 3 main points',standard:'comprehensive structured study notes covering all key concepts, definitions, mechanisms, examples, and applications',detailed:'extremely detailed exam-ready notes covering every subtopic, formulas, diagrams descriptions, worked examples, common misconceptions, and exam tips'};
+
+  const prompt=`You are an expert university lecturer. Write ${depthMap[depth]} about "${topic}" for a Nigerian ${level} university student.
+
+Format the notes using Markdown with clear headings (## for sections, ### for subsections), bullet points, bold key terms, and numbered lists where appropriate. Include:
+- A brief introduction
+- All major concepts clearly explained
+- Key definitions highlighted in **bold**
+- Relevant examples or case studies
+- A "Key Points to Remember" summary section
+- "Likely Exam Questions" section with 3 probable exam questions
+
+Make it thorough, academically rigorous, and student-friendly.`;
+
+  const raw = await shAI(prompt, 2000);
+
+  document.getElementById('notes-loading').style.display='none';
+  document.getElementById('notes-gen-btn').disabled=false;
+  document.getElementById('notes-spinner').style.display='none';
+  document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
+
+  if(!raw){ shToast('⚠️ Could not generate notes. Check your connection.'); return; }
+
+  _notesRaw = raw;
+  const output = document.getElementById('notes-output');
+  output.innerHTML = shMD(raw);
+  output.style.display='block';
+  document.getElementById('notes-copy-btn').style.display='';
+  document.getElementById('notes-print-btn').style.display='';
+  output.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function shMD(md){
+  return md
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/^\d+\. (.+)$/gm,'<li style="list-style:decimal">$1</li>')
+    .replace(/^[-*] (.+)$/gm,'<li>$1</li>')
+    .replace(/(<li.*<\/li>\n?)+/g,m=>`<ul>${m}</ul>`)
+    .replace(/\n\n/g,'</p><p>')
+    .replace(/^(?!<[hublp])(.+)$/gm,'<p>$1</p>')
+    .replace(/<p><\/p>/g,'');
+}
+
+function shCopyNotes(){
+  navigator.clipboard.writeText(_notesRaw).then(()=>shToast('✅ Notes copied to clipboard!'));
+}
+
+function shPrintNotes(){
+  const topic = document.getElementById('notes-topic').value.trim()||'Study Notes';
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><title>${topic} — Study Notes</title>
+<style>body{font-family:Georgia,serif;max-width:760px;margin:40px auto;padding:0 20px;line-height:1.8;color:#1a1a2e;}
+h1{font-size:1.6rem;border-bottom:3px solid #6366f1;padding-bottom:8px;color:#1a1a2e;}
+h2{font-size:1.2rem;color:#4338ca;margin-top:24px;}
+h3{font-size:1rem;color:#7c3aed;}
+strong{color:#d97706;}code{background:#f1f5f9;padding:2px 6px;border-radius:3px;font-size:.85rem;}
+blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#64748b;margin:12px 0;}
+ul{margin:8px 0 12px 20px;}li{margin-bottom:5px;}
+.footer{margin-top:40px;font-size:.75rem;color:#94a3b8;border-top:1px solid #e2e8f0;padding-top:10px;}
+@media print{.footer{display:block;}}</style></head><body>
+<h1>${topic}</h1>
+<div>${shMD(_notesRaw).replace(/<p><\/p>/g,'')}</div>
+<div class="footer">Generated by xzily AI Study Hub · ${new Date().toLocaleDateString()}</div>
+</body></html>`);
+  w.document.close();
+  setTimeout(()=>w.print(), 500);
+}
+
+/* ══════════════════════════════
+   2. FLASHCARDS
+══════════════════════════════ */
+let _fc_cards = [], _fc_current = 0, _fc_status = [];
+
+async function shGenerateFlashcards(){
+  const topic = document.getElementById('fc-topic').value.trim();
+  if(!topic){ shToast('⚠️ Enter a topic first'); return; }
+  const count = parseInt(document.getElementById('fc-count').value)||10;
+
+  document.getElementById('fc-gen-btn').disabled=true;
+  document.getElementById('fc-spinner').style.display='';
+  document.getElementById('fc-btn-text').textContent='Generating…';
+
+  const prompt=`Generate exactly ${count} flashcards about "${topic}" for a university student.
+Return ONLY valid JSON array:
+[{"q":"Question text here","a":"Answer text here"},...]
+Questions should be clear and specific. Answers should be concise but complete (1-3 sentences). Return ONLY the JSON array.`;
+
+  const raw = await shAI(prompt, 1500);
+  document.getElementById('fc-gen-btn').disabled=false;
+  document.getElementById('fc-spinner').style.display='none';
+  document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
+
+  let cards=[];
+  if(raw){
+    try{
+      const match=raw.match(/\[[\s\S]*\]/);
+      if(match) cards=JSON.parse(match[0]);
+    }catch(e){}
+  }
+
+  if(!cards.length){
+    shToast('⚠️ Could not generate flashcards. Try again.');
+    return;
+  }
+
+  _fc_cards=cards;
+  _fc_current=0;
+  _fc_status=new Array(cards.length).fill(null);
+  document.getElementById('fc-solo-mode').style.display='';
+  shFC_view('solo');
+  shFC_render();
+  shToast('✅ '+cards.length+' flashcards generated!');
+}
+
+function shFC_view(mode){
+  document.getElementById('fc-solo-wrap').style.display=mode==='solo'?'':'none';
+  document.getElementById('fc-grid-wrap').style.display=mode==='grid'?'':'none';
+  if(mode==='grid') shFC_renderGrid();
+}
+
+function shFC_render(){
+  const card=_fc_cards[_fc_current]||{};
+  const soloCard=document.getElementById('fc-solo-card');
+  soloCard.classList.remove('flipped');
+  document.getElementById('fc-solo-q').textContent=card.q||'';
+  document.getElementById('fc-solo-a').textContent=card.a||'';
+  document.getElementById('fc-solo-progress').textContent='Card '+(  _fc_current+1)+' of '+_fc_cards.length;
+
+  // Dots
+  const dots=document.getElementById('fc-dots');
+  dots.innerHTML=_fc_cards.map((_,i)=>{
+    const s=_fc_status[i];
+    const cls=i===_fc_current?'current':s===true?'known':s===false?'unknown':'';
+    return `<div class="sh-fc-dot ${cls}" onclick="shFC_goto(${i})"></div>`;
+  }).join('');
+
+  // Count badges
+  const known=_fc_status.filter(s=>s===true).length;
+  const unknown=_fc_status.filter(s=>s===false).length;
+  document.getElementById('fc-known-count').textContent='Known: '+known;
+  document.getElementById('fc-unknown-count').textContent='Study: '+unknown;
+}
+
+function shFC_move(dir){
+  _fc_current=(_fc_current+dir+_fc_cards.length)%_fc_cards.length;
+  shFC_render();
+}
+
+function shFC_goto(i){ _fc_current=i; shFC_render(); }
+
+function shFC_mark(known){
+  _fc_status[_fc_current]=known;
+  shFC_render();
+  const all=_fc_status.filter(s=>s!==null).length;
+  if(all===_fc_cards.length){
+    const kn=_fc_status.filter(s=>s===true).length;
+    shToast(`📊 Done! You know ${kn}/${_fc_cards.length} cards!`);
+  } else {
+    shFC_move(1);
+  }
+}
+
+function shFC_renderGrid(){
+  document.getElementById('fc-grid').innerHTML=_fc_cards.map((c,i)=>
+    `<div class="sh-fc-card" onclick="this.classList.toggle('flipped')">
+      <div class="sh-fc-inner">
+        <div class="sh-fc-front">
+          <div class="sh-fc-label">Q${i+1}</div>
+          <div class="sh-fc-text">${c.q}</div>
+          <div class="sh-fc-hint">Tap to flip</div>
+        </div>
+        <div class="sh-fc-back">
+          <div class="sh-fc-label">Answer</div>
+          <div class="sh-fc-text">${c.a}</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+/* ══════════════════════════════
+   3. GPA CALCULATOR
+══════════════════════════════ */
+const GRADES_5 = {A:5,B:4,C:3,D:2,E:1,F:0};
+const GRADES_4 = {A:4,'A-':3.7,'B+':3.3,B:3,'B-':2.7,'C+':2.3,C:2,'C-':1.7,'D+':1.3,D:1,F:0};
+
+function shGPA_addRow(name='',units=3,grade='A'){
+  const scale=document.getElementById('gpa-scale').value;
+  const gradeOpts=scale==='5'
+    ? ['A','B','C','D','E','F'].map(g=>`<option ${g===grade?'selected':''}>${g}</option>`).join('')
+    : ['A','A-','B+','B','B-','C+','C','C-','D+','D','F'].map(g=>`<option ${g===grade?'selected':''}>${g}</option>`).join('');
+
+  const row=document.createElement('div');
+  row.className='sh-gpa-row';
+  row.innerHTML=`
+    <input class="sh-input" placeholder="Course name" value="${name}" oninput="shCalcGPA()" style="font-size:.82rem;padding:9px 10px;">
+    <input class="sh-input" type="number" min="1" max="6" value="${units}" oninput="shCalcGPA()" style="font-size:.82rem;padding:9px 10px;">
+    <select class="sh-select" onchange="shCalcGPA()" style="font-size:.82rem;padding:9px 10px;">${gradeOpts}</select>
+    <button class="sh-gpa-del" onclick="this.parentElement.remove();shCalcGPA();">✕</button>`;
+  document.getElementById('gpa-rows').appendChild(row);
+  shCalcGPA();
+}
+
+function shCalcGPA(){
+  const scale=parseInt(document.getElementById('gpa-scale').value);
+  const GRADES=scale===5?GRADES_5:GRADES_4;
+  const rows=document.querySelectorAll('#gpa-rows .sh-gpa-row');
+  let totalUnits=0, totalPoints=0, best={name:'—',pts:-1};
+
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const sel=row.querySelector('select');
+    if(!sel) return;
+    const units=parseFloat(inputs[1]?.value)||0;
+    const grade=sel.value;
+    const pts=GRADES[grade]??0;
+    if(units>0){
+      totalUnits+=units;
+      totalPoints+=units*pts;
+      const name=inputs[0]?.value||'Course';
+      if(pts>best.pts){ best={name,pts}; }
+    }
+  });
+
+  const gpa=totalUnits>0?(totalPoints/totalUnits).toFixed(2):0;
+  const result=document.getElementById('gpa-result');
+  if(totalUnits>0){
+    result.style.display='';
+    document.getElementById('gpa-score').textContent=gpa;
+    document.getElementById('gpa-class').textContent=shGPAClass(parseFloat(gpa),scale);
+    document.getElementById('gpa-total-units').textContent=totalUnits;
+    document.getElementById('gpa-grade-points').textContent=totalPoints.toFixed(1);
+    document.getElementById('gpa-highest').textContent=best.name.substring(0,12);
+  } else {
+    result.style.display='none';
+  }
+  shCalcCGPA();
+}
+
+function shCalcCGPA(){
+  const prevGPA=parseFloat(document.getElementById('cgpa-prev').value)||0;
+  const prevUnits=parseFloat(document.getElementById('cgpa-prev-units').value)||0;
+  const scale=parseInt(document.getElementById('gpa-scale').value);
+  const GRADES=scale===5?GRADES_5:GRADES_4;
+  const rows=document.querySelectorAll('#gpa-rows .sh-gpa-row');
+  let curUnits=0, curPoints=0;
+
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const sel=row.querySelector('select');
+    if(!sel) return;
+    const units=parseFloat(inputs[1]?.value)||0;
+    const grade=sel.value;
+    const pts=GRADES[grade]??0;
+    if(units>0){ curUnits+=units; curPoints+=units*pts; }
+  });
+
+  const cgpaEl=document.getElementById('cgpa-result');
+  if(prevUnits>0&&curUnits>0){
+    const cgpa=((prevGPA*prevUnits+curPoints)/(prevUnits+curUnits)).toFixed(2);
+    document.getElementById('cgpa-score').textContent=cgpa;
+    document.getElementById('cgpa-class').textContent=shGPAClass(parseFloat(cgpa),scale);
+    cgpaEl.style.display='';
+  } else {
+    cgpaEl.style.display='none';
+  }
+}
+
+function shGPAClass(gpa,scale){
+  if(scale===5){
+    if(gpa>=4.5) return '🏆 First Class Honours';
+    if(gpa>=3.5) return '🥇 Second Class Upper (2:1)';
+    if(gpa>=2.4) return '🥈 Second Class Lower (2:2)';
+    if(gpa>=1.5) return '🥉 Third Class';
+    if(gpa>=1.0) return 'Pass';
+    return '❌ Fail';
+  } else {
+    if(gpa>=3.7) return '🏆 Summa Cum Laude (A)';
+    if(gpa>=3.5) return '🥇 Magna Cum Laude (A-)';
+    if(gpa>=3.0) return '🥈 Cum Laude (B)';
+    if(gpa>=2.0) return '🥉 Satisfactory (C)';
+    return '❌ Below Average';
+  }
+}
+
+// Init GPA with some sample rows
+document.addEventListener('DOMContentLoaded',()=>{
+  shGPA_addRow('Course 1',3,'A');
+  shGPA_addRow('Course 2',2,'B');
+  shGPA_addRow('Course 3',3,'A');
+});
+
+/* ══════════════════════════════
+   4. STUDY TIMER
+══════════════════════════════ */
+let _timer = {
+  running:false, mode:'focus', focusMins:25, breakMins:5,
+  remaining:25*60, total:25*60, interval:null,
+  sessions:0, totalFocus:0
+};
+const CIRC=2*Math.PI*82;
+
+function shTimerSetMode(name,focus,brk){
+  document.querySelectorAll('.sh-timer-mode-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tm-'+name).classList.add('active');
+  document.getElementById('timer-custom-row').style.display=name==='custom'?'':'none';
+  if(name!=='custom'){
+    _timer.focusMins=focus; _timer.breakMins=brk;
+    shTimerReset();
+  }
+}
+
+function shTimerCustom(){
+  _timer.focusMins=parseInt(document.getElementById('timer-custom-focus').value)||25;
+  _timer.breakMins=parseInt(document.getElementById('timer-custom-break').value)||5;
+  shTimerReset();
+}
+
+function shTimerToggle(){
+  if(_timer.running){ shTimerPause(); } else { shTimerStart(); }
+}
+
+function shTimerStart(){
+  if(_timer.running) return;
+  _timer.running=true;
+  document.getElementById('timer-main-btn').textContent='⏸';
+  _timer.interval=setInterval(shTimerTick, 1000);
+  document.title='⏱️ '+shTimerFmt(_timer.remaining)+' — Study Hub';
+}
+
+function shTimerPause(){
+  _timer.running=false;
+  clearInterval(_timer.interval);
+  document.getElementById('timer-main-btn').textContent='▶';
+  document.title='📚 AI Study Hub';
+}
+
+function shTimerReset(){
+  shTimerPause();
+  _timer.mode='focus';
+  _timer.remaining=_timer.focusMins*60;
+  _timer.total=_timer.focusMins*60;
+  shTimerUpdateUI();
+}
+
+function shTimerSkip(){
+  shTimerPause();
+  if(_timer.mode==='focus'){
+    _timer.sessions++;
+    _timer.totalFocus+=_timer.focusMins;
+    _timer.mode='break';
+    _timer.remaining=_timer.breakMins*60;
+    _timer.total=_timer.breakMins*60;
+  } else {
+    _timer.mode='focus';
+    _timer.remaining=_timer.focusMins*60;
+    _timer.total=_timer.focusMins*60;
+  }
+  shTimerUpdateUI();
+}
+
+function shTimerTick(){
+  _timer.remaining--;
+  if(_timer.remaining<=0){
+    shTimerDone();
+  } else {
+    shTimerUpdateUI();
+    document.title='⏱️ '+shTimerFmt(_timer.remaining)+' — Study Hub';
+  }
+}
+
+function shTimerDone(){
+  shTimerPause();
+  if(_timer.mode==='focus'){
+    _timer.sessions++;
+    _timer.totalFocus+=_timer.focusMins;
+    shToast('✅ Focus session done! Take a '+ _timer.breakMins+'min break! 🧠');
+    try{new Audio('https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3').play();}catch(e){}
+    _timer.mode='break';
+    _timer.remaining=_timer.breakMins*60;
+    _timer.total=_timer.breakMins*60;
+  } else {
+    shToast('☕ Break over! Time to focus again!');
+    _timer.mode='focus';
+    _timer.remaining=_timer.focusMins*60;
+    _timer.total=_timer.focusMins*60;
+  }
+  shTimerUpdateUI();
+  shTimerStart();
+}
+
+function shTimerUpdateUI(){
+  const disp=document.getElementById('timer-display');
+  const fill=document.getElementById('timer-ring-fill');
+  const label=document.getElementById('timer-mode-label');
+  const pct=_timer.remaining/_timer.total;
+  const offset=CIRC*(1-pct);
+
+  disp.textContent=shTimerFmt(_timer.remaining);
+  fill.style.strokeDashoffset=offset;
+  fill.style.stroke=_timer.mode==='focus'?'#6366f1':'#22c55e';
+  label.textContent=_timer.mode==='focus'?'Focus Time 🧠':'Break Time ☕';
+  document.getElementById('timer-mode-label').style.color=_timer.mode==='focus'?'#a5b4fc':'#86efac';
+
+  document.getElementById('timer-stat-sessions').textContent=_timer.sessions;
+  document.getElementById('timer-stat-total').textContent=_timer.totalFocus+' min';
+
+  // Session dots
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById('ts'+i);
+    if(dot) dot.className='sh-timer-session-dot'+(i<_timer.sessions%4||(_timer.sessions>=4&&i<4)?' done':'');
+  }
+}
+
+function shTimerFmt(sec){
+  const m=Math.floor(sec/60).toString().padStart(2,'0');
+  const s=(sec%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+/* ══════════════════════════════
+   5. MOCK EXAM
+══════════════════════════════ */
+let _exam={qs:[],current:0,answers:[],topic:'',timerInt:null,timeLeft:0,timerSecs:60};
+
+async function shStartExam(){
+  const topic=document.getElementById('exam-topic').value.trim();
+  if(!topic){ shToast('⚠️ Enter a subject first'); document.getElementById('exam-topic').focus(); return; }
+  const count=parseInt(document.getElementById('exam-count').value)||10;
+  const diff=document.getElementById('exam-diff').value;
+  const time=parseInt(document.getElementById('exam-time').value)||0;
+
+  document.getElementById('exam-start-btn').disabled=true;
+  document.getElementById('exam-spinner').style.display='';
+  document.getElementById('exam-btn-text').textContent='Generating exam…';
+
+  const diffLabel={easy:'100-level (basic)',medium:'200-300 level (intermediate)',hard:'400-level (advanced)'};
+  const prompt=`Generate exactly ${count} multiple-choice exam questions about "${topic}" at ${diffLabel[diff]} university level.
+Return ONLY valid JSON:
+{"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}}
+Exactly one option per question must be correct. Shuffle option positions. Academic and rigorous. Return ONLY the JSON.`;
+
+  const raw=await shAI(prompt, 2500);
+  document.getElementById('exam-start-btn').disabled=false;
+  document.getElementById('exam-spinner').style.display='none';
+  document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
+
+  let qs=[];
+  if(raw){
+    try{
+      const match=raw.match(/\{[\s\S]*\}/);
+      if(match){
+        const obj=JSON.parse(match[0]);
+        qs=obj.questions||[];
+      }
+    }catch(e){}
+  }
+
+  if(!qs.length){ shToast('⚠️ Could not generate exam questions. Try again.'); return; }
+
+  _exam={qs,current:0,answers:[],topic,timerInt:null,timeLeft:time,timerSecs:time};
+  document.getElementById('exam-setup').style.display='none';
+  document.getElementById('exam-active').style.display='block';
+  document.getElementById('exam-results').style.display='none';
+  document.getElementById('exam-subject-label').textContent='📚 '+topic;
+  shExamShowQ();
+}
+
+function shExamShowQ(){
+  const q=_exam.qs[_exam.current];
+  const total=_exam.qs.length;
+  const n=_exam.current+1;
+  const pct=(n/total*100)+'%';
+
+  document.getElementById('exam-prog-fill').style.width=pct;
+  document.getElementById('exam-q-num').textContent='Question '+n+' of '+total;
+  document.getElementById('exam-q-badge').textContent='Q '+n+'/'+total;
+  document.getElementById('exam-q-text').textContent=q.q;
+  document.getElementById('exam-explanation').style.display='none';
+  document.getElementById('exam-next-btn').style.display='none';
+
+  const opts=document.getElementById('exam-opts');
+  opts.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='sh-exam-opt';
+    btn.dataset.correct=opt.correct?'1':'0';
+    btn.innerHTML=`<span class="sh-exam-opt-letter">${'ABCD'[i]}</span><span>${opt.text}</span>`;
+    btn.onclick=()=>shExamAnswer(btn, opt.correct, q.explanation);
+    opts.appendChild(btn);
+  });
+
+  // Question timer
+  clearInterval(_exam.timerInt);
+  const timerBar=document.getElementById('exam-timer-bar-wrap');
+  if(_exam.timerSecs>0){
+    timerBar.style.display='';
+    _exam.timeLeft=_exam.timerSecs;
+    const fill=document.getElementById('exam-q-timer-fill');
+    fill.style.width='100%';
+    fill.className='sh-exam-timer-fill';
+    _exam.timerInt=setInterval(()=>{
+      _exam.timeLeft--;
+      const pct2=(_exam.timeLeft/_exam.timerSecs*100);
+      fill.style.width=pct2+'%';
+      if(_exam.timeLeft<=10) fill.className='sh-exam-timer-fill low';
+      if(_exam.timeLeft<=0){
+        clearInterval(_exam.timerInt);
+        shExamTimeUp(q.explanation);
+      }
+    },1000);
+  } else {
+    timerBar.style.display='none';
+  }
+}
+
+function shExamAnswer(btn, correct, explanation){
+  clearInterval(_exam.timerInt);
+  const opts=document.querySelectorAll('.sh-exam-opt');
+  opts.forEach(b=>{
+    b.disabled=true;
+    if(b.dataset.correct==='1') b.classList.add('correct');
+    else if(b===btn&&!correct) b.classList.add('wrong');
+  });
+  _exam.answers.push({q:_exam.qs[_exam.current].q,correct,chosen:btn.querySelector('span:last-child').textContent});
+  if(explanation){
+    const ex=document.getElementById('exam-explanation');
+    ex.textContent='💡 '+explanation;
+    ex.style.display='';
+  }
+  document.getElementById('exam-next-btn').style.display='';
+}
+
+function shExamTimeUp(explanation){
+  const opts=document.querySelectorAll('.sh-exam-opt');
+  opts.forEach(b=>{ b.disabled=true; if(b.dataset.correct==='1') b.classList.add('correct'); });
+  _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏱️ Timed out'});
+  if(explanation){
+    const ex=document.getElementById('exam-explanation');
+    ex.textContent='⏱️ Time up! '+explanation;
+    ex.style.display='';
+  }
+  document.getElementById('exam-next-btn').style.display='';
+  shToast('⏱️ Time up for this question!');
+}
+
+function shExamSkip(){
+  clearInterval(_exam.timerInt);
+  _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏭️ Skipped'});
+  shExamNext();
+}
+
+function shExamNext(){
+  _exam.current++;
+  if(_exam.current>=_exam.qs.length){ shExamFinish(); return; }
+  shExamShowQ();
+}
+
+function shExamFinish(){
+  clearInterval(_exam.timerInt);
+  document.getElementById('exam-active').style.display='none';
+  document.getElementById('exam-results').style.display='block';
+
+  const total=_exam.answers.length;
+  const correct=_exam.answers.filter(a=>a.correct).length;
+  const pct=Math.round(correct/total*100);
+  const grade=pct>=70?'A':pct>=60?'B':pct>=50?'C':pct>=45?'D':pct>=40?'E':'F';
+  const remark=pct>=70?'🏆 Excellent!':pct>=60?'🥇 Good Pass':pct>=50?'🥈 Average':pct>=40?'🎯 Keep Studying':'📚 Needs More Work';
+
+  document.getElementById('exam-result-title').textContent=remark+' — '+_exam.topic;
+  document.getElementById('exam-result-stats').innerHTML=`
+    <div class="sh-result-stat"><div class="sh-result-stat-val" style="color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</div><div class="sh-result-stat-lbl">Score</div></div>
+    <div class="sh-result-stat"><div class="sh-result-stat-val" style="color:var(--gold)">${grade}</div><div class="sh-result-stat-lbl">Grade</div></div>
+    <div class="sh-result-stat"><div class="sh-result-stat-val">${correct}/${total}</div><div class="sh-result-stat-lbl">Correct</div></div>
+    <div class="sh-result-stat"><div class="sh-result-stat-val">${total-correct}</div><div class="sh-result-stat-lbl">Wrong</div></div>`;
+
+  document.getElementById('exam-result-qs').innerHTML=_exam.answers.map((a,i)=>`
+    <div class="sh-result-q-item ${a.correct?'sh-correct':'sh-wrong'}">
+      <div style="width:24px;text-align:center;font-weight:800;color:${a.correct?'var(--green)':'var(--red)'};flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4;">${a.q}</div>
+        <div style="font-size:.73rem;color:${a.correct?'#86efac':'#fca5a5'};font-weight:600;">${a.correct?'✓ Correct':'✗ '+a.chosen}</div>
+      </div>
+    </div>`).join('');
+}
+
+function shExamRetry(){
+  document.getElementById('exam-topic').value=_exam.topic;
+  shStartExam();
+}
+
+function shExamSetup(){
+  document.getElementById('exam-setup').style.display='block';
+  document.getElementById('exam-active').style.display='none';
+  document.getElementById('exam-results').style.display='none';
+}
+</script>
+</body>
+</html>
