@@ -1734,12 +1734,13 @@ async function aitStartSession(){
 }
 
 function aitBuildQuestionSchedule(totalMins){
-  /* Plan when to ask check-in questions: roughly every 5-7 mins, not in last 5 */
+  /* 2-3 check-in breaks max — spaced evenly, not in last 5 mins */
   const schedule = [];
   const usable = totalMins - 5;
   if(usable <= 5) return schedule;
-  const interval = Math.floor(usable / Math.max(2, Math.floor(usable/6)));
-  for(let m=interval; m<usable; m+=interval) schedule.push(m*60);
+  const count = totalMins >= 45 ? 3 : 2;
+  const interval = Math.floor(usable / (count + 1));
+  for(let i=1; i<=count; i++) schedule.push(interval * i * 60);
   return schedule;
 }
 
