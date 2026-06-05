@@ -618,7 +618,14 @@ function renderQuizQ(q){
     });
 }
 
-/* ─── WORD HUNT MODE ────────────────────────────────────── */
+/* ─── WORD HUNT MODE ─────────────────────────────────────
+   Scoring: 5 pts per correct letter, awarded to the FIRST
+   player whose input matches that letter position.
+   Point Guess: -5 pts, reveals next hidden letter.
+   Partial display: first + last letter shown on load.
+─────────────────────────────────────────────────────────── */
+var WORD_LETTER_PTS = 5;
+
 function renderWordQ(q){
     var zone = $('pz-mode-word');
     if(!zone) return;
@@ -627,15 +634,22 @@ function renderWordQ(q){
     $('pz-mode-jigsaw') && ($('pz-mode-jigsaw').style.display='none');
     zone.style.display = '';
     G.wordCorrectOrder = 0;
+    G.wordLetterClaimed = {}; /* letterIndex -> player pos or 'hint' */
 
     $('pz-word-clue').textContent = q.clue || '';
     if(q.category) $('pz-word-clue').textContent = '[' + q.category + '] ' + q.clue;
 
-    /* Blanks */
     var word = (q.word||'').toUpperCase();
+
+    /* Blanks: show first + last letter for words > 3 chars (like F---V-) */
     var blanks = $('pz-blanks');
     if(blanks){
         blanks.innerHTML = word.split('').map(function(ch, i){
+            var autoReveal = word.length > 3 && (i === 0 || i === word.length - 1);
+            if(autoReveal){
+                G.wordLetterClaimed[i] = 'shown'; /* pre-shown, no pts */
+                return '<div class="pz-blank-cell revealed" id="pz-blank-'+i+'">'+ch+'</div>';
+            }
             return '<div class="pz-blank-cell" id="pz-blank-'+i+'">_</div>';
         }).join('');
     }
@@ -646,18 +660,26 @@ function renderWordQ(q){
     var fb = $('pz-word-feedback');
     if(fb){ fb.className='pz-word-feedback'; fb.textContent=''; }
 
-    /* Live letter-by-letter preview as user types */
+    /* Live letter-by-letter preview + per-letter scoring */
     inp && inp.addEventListener('input', function(){
         var typed = (inp.value||'').toUpperCase();
+        var earnedThisTick = 0;
         for(var ci=0; ci<word.length; ci++){
             var cell = $('pz-blank-'+ci);
             if(!cell) continue;
-            if(cell.classList.contains('revealed')) continue; /* keep hint reveals */
+            if(cell.classList.contains('revealed')) continue; /* keep hint/auto reveals */
             if(ci < typed.length){
                 cell.textContent = typed[ci];
                 if(typed[ci] === word[ci]){
                     cell.classList.add('typed-correct');
                     cell.classList.remove('typed-wrong');
+                    /* Award 5 pts to the FIRST person who types this letter correctly */
+                    if(!G.wordLetterClaimed[ci]){
+                        G.wordLetterClaimed[ci] = G.myPos;
+                        G.myScore += WORD_LETTER_PTS;
+                        earnedThisTick += WORD_LETTER_PTS;
+                        updateMyScore();
+                    }
                 } else {
                     cell.classList.add('typed-wrong');
                     cell.classList.remove('typed-correct');
@@ -667,6 +689,7 @@ function renderWordQ(q){
                 cell.classList.remove('typed-correct','typed-wrong');
             }
         }
+        if(earnedThisTick > 0) toast('+'+earnedThisTick+' pts! 🎉');
     });
 
     /* Submit on enter or button */
@@ -675,14 +698,28 @@ function renderWordQ(q){
         var typed = (inp.value||'').trim().toUpperCase();
         if(!typed) return;
         if(typed === word){
-            submitAnswer(typed);
+            G.myAnswers[G.currentQ] = typed;
+            /* Award any remaining unclaimed letters (whole-word bonus) */
+            var bonus = 0;
+            word.split('').forEach(function(ch, ci){
+                if(!G.wordLetterClaimed[ci]){
+                    G.wordLetterClaimed[ci] = G.myPos;
+                    G.myScore += WORD_LETTER_PTS;
+                    bonus += WORD_LETTER_PTS;
+                }
+            });
+            if(bonus > 0) updateMyScore();
             inp.disabled = true;
-            fb.textContent = '✅ Correct! +'+calcWordPoints()+' points';
+            var totalPossible = word.length * WORD_LETTER_PTS;
+            fb.textContent = '✅ Correct! ' + totalPossible + ' pts max this word';
             fb.className = 'pz-word-feedback correct';
             revealAllBlanks(word);
             showAnswerOverlay('✅');
             stopTimerNow();
             showPostAnswerUI();
+            /* Also write answer to RTDB */
+            set(rtRef('puzzle_rooms/'+G.roomCode+'/answers/'+G.myPos+'/q'+G.currentQ),
+                { val: typed, t: Date.now() }).catch(function(){});
         } else {
             fb.textContent = '❌ Not quite — try again!';
             fb.className = 'pz-word-feedback wrong';
@@ -701,10 +738,42 @@ function renderWordQ(q){
         newBtn.addEventListener('click', sendFn);
     }
 
-    /* Reveal one letter every 8 seconds as hint */
+    /* Point Guess button: costs -5 pts, reveals next hidden letter */
+    var guessBtn = $('pz-word-point-guess');
+    if(guessBtn){
+        var newGuessBtn = guessBtn.cloneNode(true);
+        guessBtn.parentNode.replaceChild(newGuessBtn, guessBtn);
+        newGuessBtn.addEventListener('click', function(){
+            if(G.myAnswers[G.currentQ] !== undefined) return;
+            if(G.myScore < 5){ toast('⚠️ Need at least 5 pts for a hint!'); return; }
+            /* Find next unrevealed, unclaimed letter */
+            var nextIdx = -1;
+            for(var ci=0; ci<word.length; ci++){
+                var cell = $('pz-blank-'+ci);
+                if(cell && !cell.classList.contains('revealed') && !cell.classList.contains('typed-correct')){
+                    nextIdx = ci; break;
+                }
+            }
+            if(nextIdx === -1){ toast('All letters already revealed!'); return; }
+            G.myScore -= 5;
+            updateMyScore();
+            G.wordLetterClaimed[nextIdx] = 'hint';
+            var cell = $('pz-blank-'+nextIdx);
+            if(cell){ cell.textContent = word[nextIdx]; cell.classList.add('revealed','typed-correct'); }
+            toast('💡 Letter revealed! -5 pts');
+        });
+    }
+
+    /* Auto-reveal: one letter every 8 seconds (skips already revealed/claimed) */
     var revIdx = 0;
     var revInt = setInterval(function(){
         if(G.myAnswers[G.currentQ] !== undefined){ clearInterval(revInt); return; }
+        /* Find next unrevealed cell */
+        while(revIdx < word.length){
+            var cell = $('pz-blank-'+revIdx);
+            if(cell && !cell.classList.contains('revealed') && !cell.classList.contains('typed-correct')){ break; }
+            revIdx++;
+        }
         if(revIdx >= word.length){ clearInterval(revInt); return; }
         var cell = $('pz-blank-'+revIdx);
         if(cell){ cell.textContent = word[revIdx]; cell.classList.add('revealed'); }
@@ -713,11 +782,9 @@ function renderWordQ(q){
 }
 
 function calcWordPoints(){
-    /* Fewer players answered → more points */
-    var answered = Object.values(G.players).filter(function(p){
-        return (p.score || 0) > (G.players[G.myPos]||{}).score || false;
-    }).length;
-    return Math.max(5, 20 - answered*3);
+    /* Legacy — now scoring is per letter (WORD_LETTER_PTS each) */
+    var q = G.questions[G.currentQ];
+    return ((q&&q.word)||'').length * WORD_LETTER_PTS;
 }
 
 function revealAllBlanks(word){
@@ -727,7 +794,86 @@ function revealAllBlanks(word){
     });
 }
 
-/* ─── CROSSWORD MODE ────────────────────────────────────── */
+/* ─── CROSSWORD MODE — Real Visual Grid ──────────────────
+   Words are placed in an intersecting grid (across + down).
+   Each cell is a letter input. Score: 5 pts per correct
+   letter, awarded to the FIRST player to fill that cell.
+─────────────────────────────────────────────────────────── */
+var CW_LETTER_PTS = 5;
+
+/* Build a crossword grid layout from a question list.
+   Returns { grid[15][15], placements[] } */
+function buildCwGrid(questions){
+    var SIZE = 15;
+    var grid = [];
+    var r, c;
+    for(r=0;r<SIZE;r++){ grid[r]=[]; for(c=0;c<SIZE;c++) grid[r][c]=null; }
+
+    var placements = []; /* {qIdx, row, col, dir, num} */
+
+    function canPlace(word, row, col, dir){
+        for(var i=0;i<word.length;i++){
+            var pr = dir==='down' ? row+i : row;
+            var pc = dir==='across' ? col+i : col;
+            if(pr<0||pc<0||pr>=SIZE||pc>=SIZE) return false;
+            var existing = grid[pr][pc];
+            if(existing && existing.letter !== word[i]) return false;
+        }
+        return true;
+    }
+
+    function doPlace(word, row, col, dir, qIdx){
+        for(var i=0;i<word.length;i++){
+            var pr = dir==='down' ? row+i : row;
+            var pc = dir==='across' ? col+i : col;
+            if(!grid[pr][pc]) grid[pr][pc] = { letter:word[i], qIdx:qIdx, cellIdx:i };
+        }
+        placements.push({ qIdx:qIdx, row:row, col:col, dir:dir, num:placements.length+1 });
+    }
+
+    /* Place first word horizontally in centre */
+    var w0 = (questions[0].answer||questions[0].word||'').toUpperCase();
+    var r0 = 7;
+    var c0 = Math.floor((SIZE - w0.length)/2);
+    doPlace(w0, r0, c0, 'across', 0);
+
+    /* Place remaining words, trying to intersect */
+    for(var qi=1;qi<questions.length;qi++){
+        var word = (questions[qi].answer||questions[qi].word||'').toUpperCase();
+        if(!word){ continue; }
+        var placed = false;
+
+        for(var pi=0;pi<placements.length && !placed;pi++){
+            var p = placements[pi];
+            var pWord = (questions[p.qIdx].answer||questions[p.qIdx].word||'').toUpperCase();
+            var newDir = p.dir==='across' ? 'down' : 'across';
+
+            for(var ci=0;ci<word.length && !placed;ci++){
+                for(var pci=0;pci<pWord.length && !placed;pci++){
+                    if(word[ci] !== pWord[pci]) continue;
+                    var nRow = newDir==='down' ? p.row - ci : p.row + pci;
+                    var nCol = newDir==='across' ? p.col - ci : p.col + pci;
+                    if(canPlace(word, nRow, nCol, newDir)){
+                        doPlace(word, nRow, nCol, newDir, qi);
+                        placed = true;
+                    }
+                }
+            }
+        }
+
+        /* Fallback: place as new across row */
+        if(!placed){
+            var fbRow = 1 + qi * 2;
+            if(fbRow >= SIZE) fbRow = SIZE - 2;
+            if(canPlace(word, fbRow, 2, 'across')){
+                doPlace(word, fbRow, 2, 'across', qi);
+            }
+        }
+    }
+
+    return { grid:grid, placements:placements };
+}
+
 function renderCrosswordQ(){
     var zone = $('pz-mode-crossword');
     if(!zone) return;
@@ -736,86 +882,190 @@ function renderCrosswordQ(){
     $('pz-mode-jigsaw') && ($('pz-mode-jigsaw').style.display='none');
     zone.style.display = '';
     G.cwSolved = {};
+    G.cwLetterScored = {}; /* 'row,col' -> playerPos who scored it */
 
-    /* Build clue lists */
-    var across = G.questions.filter(function(q){ return q.direction==='across'; });
-    var down   = G.questions.filter(function(q){ return q.direction==='down'; });
-    /* Fallback: split questions evenly */
-    if(!across.length && !down.length){
-        G.questions.forEach(function(q,i){
-            q.direction = (i%2===0) ? 'across' : 'down';
-            q.num = i+1;
-        });
-        across = G.questions.filter(function(q){ return q.direction==='across'; });
-        down   = G.questions.filter(function(q){ return q.direction==='down'; });
+    var layout = buildCwGrid(G.questions);
+    var grid = layout.grid;
+    var placements = layout.placements;
+
+    /* Find bounding box of placed letters */
+    var minR=15, maxR=0, minC=15, maxC=0;
+    var r, c;
+    for(r=0;r<15;r++) for(c=0;c<15;c++) if(grid[r][c]){
+        if(r<minR) minR=r; if(r>maxR) maxR=r;
+        if(c<minC) minC=c; if(c>maxC) maxC=c;
     }
 
-    var buildList = function(qs, dir){
-        return qs.map(function(q){
-            return '<div class="pz-cw-clue-item" data-qidx="'+G.questions.indexOf(q)+'" id="pz-cw-'+dir+'-'+q.num+'">' +
-                   '<span class="pz-cw-num">'+q.num+'</span>' +
-                   '<span class="pz-cw-clue-text">'+esc(q.clue||'')+'</span>' +
-                   '</div>';
+    /* Render grid */
+    var gridEl = $('pz-cw-grid');
+    if(!gridEl) return;
+    var colCount = maxC - minC + 1;
+    gridEl.style.gridTemplateColumns = 'repeat('+colCount+',34px)';
+
+    var html = '';
+    for(r=minR;r<=maxR;r++){
+        for(c=minC;c<=maxC;c++){
+            var cell = grid[r][c];
+            if(cell){
+                /* Is this the start cell of a word? */
+                var startNum = '';
+                for(var pi=0;pi<placements.length;pi++){
+                    if(placements[pi].row===r && placements[pi].col===c){
+                        startNum = placements[pi].num; break;
+                    }
+                }
+                html += '<div class="pz-cw-cell" id="pz-cwcell-'+r+'-'+c+'">' +
+                    (startNum ? '<span class="pz-cw-cell-num">'+startNum+'</span>' : '') +
+                    '<input class="pz-cw-cell-inp" maxlength="1"' +
+                        ' id="pz-cwinp-'+r+'-'+c+'"' +
+                        ' data-row="'+r+'" data-col="'+c+'"' +
+                        ' data-letter="'+cell.letter+'" data-qidx="'+cell.qIdx+'"' +
+                        ' autocomplete="off" spellcheck="false">' +
+                    '</div>';
+            } else {
+                html += '<div class="pz-cw-cell pz-cw-blocked"></div>';
+            }
+        }
+    }
+    gridEl.innerHTML = html;
+
+    /* Build clue lists */
+    var across = placements.filter(function(p){ return p.dir==='across'; });
+    var down   = placements.filter(function(p){ return p.dir==='down'; });
+
+    function buildClueHtml(arr){
+        return arr.map(function(p){
+            var q = G.questions[p.qIdx];
+            var ansLen = (q.answer||q.word||'').length;
+            return '<div class="pz-cw-clue-item" data-qidx="'+p.qIdx+'">' +
+                '<span class="pz-cw-num">'+p.num+'</span>' +
+                '<span class="pz-cw-clue-text">'+esc(q.clue||q.q||'')+'</span>' +
+                '<span style="color:#94a3b8;font-size:.72rem;margin-left:4px;">('+ansLen+')</span>' +
+                '</div>';
         }).join('');
-    };
+    }
 
-    var acrossEl = $('pz-cw-across'); if(acrossEl) acrossEl.innerHTML = buildList(across,'across');
-    var downEl   = $('pz-cw-down');   if(downEl)   downEl.innerHTML   = buildList(down,'down');
+    var acEl = $('pz-cw-across'); if(acEl) acEl.innerHTML = buildClueHtml(across);
+    var dnEl = $('pz-cw-down');   if(dnEl) dnEl.innerHTML = buildClueHtml(down);
 
-    /* Click clue to activate */
-    zone.querySelectorAll('.pz-cw-clue-item').forEach(function(item){
-        item.addEventListener('click', function(){
-            if(item.classList.contains('solved')) return;
-            zone.querySelectorAll('.pz-cw-clue-item').forEach(function(x){ x.classList.remove('active'); });
-            item.classList.add('active');
-            G.cwActive = parseInt(item.dataset.qidx);
-            var q = G.questions[G.cwActive];
-            var lbl = $('pz-cw-active-clue');
-            if(lbl) lbl.textContent = (q.num||'?') + ' ' + (q.direction||'') + ': ' + (q.clue||'');
-            var inp = $('pz-cw-answer-inp');
-            if(inp){ inp.value=''; inp.focus(); }
+    /* Cell input handlers */
+    gridEl.querySelectorAll('.pz-cw-cell-inp').forEach(function(inp){
+        inp.addEventListener('input', function(){
+            var typed = (inp.value||'').toUpperCase().slice(-1);
+            inp.value = typed;
+            if(!typed) return;
+
+            var row = parseInt(inp.dataset.row);
+            var col = parseInt(inp.dataset.col);
+            var correct = inp.dataset.letter;
+            var key = row+','+col;
+
+            if(typed === correct){
+                inp.classList.add('cw-inp-correct');
+                inp.classList.remove('cw-inp-wrong');
+                inp.readOnly = true;
+                /* Award 5 pts to FIRST player who gets this cell */
+                if(!G.cwLetterScored[key]){
+                    G.cwLetterScored[key] = G.myPos;
+                    G.myScore += CW_LETTER_PTS;
+                    updateMyScore();
+                    toast('+'+CW_LETTER_PTS+' pts!');
+                }
+                /* Check if full word is complete */
+                var qIdx = parseInt(inp.dataset.qidx);
+                checkCwWordComplete(qIdx, placements);
+                /* Auto-focus next cell in word */
+                focusNextCwCell(row, col, placements, qIdx);
+            } else {
+                inp.classList.add('cw-inp-wrong');
+                inp.classList.remove('cw-inp-correct');
+                setTimeout(function(){
+                    inp.classList.remove('cw-inp-wrong');
+                    inp.value = '';
+                }, 400);
+            }
+        });
+
+        /* Highlight word on focus */
+        inp.addEventListener('focus', function(){
+            hlCwWord(parseInt(inp.dataset.qidx), placements);
         });
     });
 
-    var cwSubmit = function(){
-        if(G.cwActive === null) return;
-        var inp = $('pz-cw-answer-inp');
-        var typed = (inp.value||'').trim().toUpperCase();
-        var q = G.questions[G.cwActive];
-        if(!q || !typed) return;
-        if(typed === (q.answer||'').toUpperCase()){
-            G.cwSolved[G.cwActive] = true;
-            var itemEl = zone.querySelector('[data-qidx="'+G.cwActive+'"]');
-            if(itemEl) itemEl.classList.add('solved');
-            var pts = 12;
-            G.myScore += pts;
-            G.myAnswers[G.cwActive] = typed;
-            updateMyScore();
-            toast('✅ Correct! +'+pts+' pts');
-            inp.value = '';
-            G.cwActive = null;
-            var lbl = $('pz-cw-active-clue'); if(lbl) lbl.textContent='Select a clue to answer';
-            showAnswerOverlay('✅');
-            /* Check if all solved */
-            if(Object.keys(G.cwSolved).length >= G.questions.length){
-                toast('🎉 You solved the crossword!');
-                showPostAnswerUI();
+    /* Clue-click → highlight + focus first empty cell */
+    zone.querySelectorAll('.pz-cw-clue-item').forEach(function(item){
+        item.addEventListener('click', function(){
+            var qIdx = parseInt(item.dataset.qidx);
+            hlCwWord(qIdx, placements);
+            var p = placements.filter(function(pl){ return pl.qIdx===qIdx; })[0];
+            if(!p) return;
+            var q = G.questions[qIdx];
+            var word = (q.answer||q.word||'').toUpperCase();
+            for(var i=0;i<word.length;i++){
+                var pr = p.dir==='down' ? p.row+i : p.row;
+                var pc = p.dir==='across' ? p.col+i : p.col;
+                var ci = document.getElementById('pz-cwinp-'+pr+'-'+pc);
+                if(ci && !ci.readOnly){ ci.focus(); break; }
             }
-        } else {
-            toast('❌ Wrong! Try another clue');
-            inp.value='';
-        }
-    };
+        });
+    });
+}
 
-    var cwBtn = $('pz-cw-submit');
-    if(cwBtn){
-        var nb = cwBtn.cloneNode(true);
-        cwBtn.parentNode.replaceChild(nb, cwBtn);
-        nb.addEventListener('click', cwSubmit);
+function hlCwWord(qIdx, placements){
+    document.querySelectorAll('.pz-cw-cell-inp').forEach(function(i){ i.classList.remove('cw-active-word'); });
+    document.querySelectorAll('.pz-cw-clue-item').forEach(function(i){ i.classList.remove('active'); });
+    var p = placements.filter(function(pl){ return pl.qIdx===qIdx; })[0];
+    if(!p) return;
+    var q = G.questions[qIdx];
+    var word = (q.answer||q.word||'').toUpperCase();
+    for(var i=0;i<word.length;i++){
+        var pr = p.dir==='down' ? p.row+i : p.row;
+        var pc = p.dir==='across' ? p.col+i : p.col;
+        var ci = document.getElementById('pz-cwinp-'+pr+'-'+pc);
+        if(ci) ci.classList.add('cw-active-word');
     }
-    var cwInp = $('pz-cw-answer-inp');
-    if(cwInp){
-        cwInp.addEventListener('keydown', function(e){ if(e.key==='Enter') cwSubmit(); });
+    var clueEl = document.querySelector('[data-qidx="'+qIdx+'"]');
+    if(clueEl) clueEl.classList.add('active');
+}
+
+function checkCwWordComplete(qIdx, placements){
+    if(G.cwSolved[qIdx]) return;
+    var p = placements.filter(function(pl){ return pl.qIdx===qIdx; })[0];
+    if(!p) return;
+    var q = G.questions[qIdx];
+    var word = (q.answer||q.word||'').toUpperCase();
+    for(var i=0;i<word.length;i++){
+        var pr = p.dir==='down' ? p.row+i : p.row;
+        var pc = p.dir==='across' ? p.col+i : p.col;
+        var ci = document.getElementById('pz-cwinp-'+pr+'-'+pc);
+        if(!ci || ci.value !== word[i]) return; /* not complete yet */
+    }
+    G.cwSolved[qIdx] = true;
+    var clueEl = document.querySelector('[data-qidx="'+qIdx+'"]');
+    if(clueEl) clueEl.classList.add('solved');
+    toast('✅ Word solved!');
+    G.myAnswers[qIdx] = word;
+    if(Object.keys(G.cwSolved).length >= G.questions.length){
+        toast('🎉 Crossword complete!');
+        showAnswerOverlay('🎉');
+        showPostAnswerUI();
+    }
+}
+
+function focusNextCwCell(row, col, placements, qIdx){
+    var p = placements.filter(function(pl){ return pl.qIdx===qIdx; })[0];
+    if(!p) return;
+    var q = G.questions[qIdx];
+    var word = (q.answer||q.word||'').toUpperCase();
+    var found = false;
+    for(var i=0;i<word.length;i++){
+        var pr = p.dir==='down' ? p.row+i : p.row;
+        var pc = p.dir==='across' ? p.col+i : p.col;
+        if(found){
+            var ni = document.getElementById('pz-cwinp-'+pr+'-'+pc);
+            if(ni && !ni.readOnly){ ni.focus(); return; }
+        }
+        if(pr===row && pc===col) found = true;
     }
 }
 
@@ -943,9 +1193,24 @@ async function advanceQuestion(){
 
     /* Bot: simulate answer score for the question that just finished */
     if(G.hasBotPlayer){
-        var botCorrect = Math.random() < 0.55; /* ~55% accuracy */
-        if(botCorrect){
-            var bPts = 10 + Math.floor(Math.random() * 5); /* 10-14 pts */
+        var q = G.questions[G.currentQ];
+        var bPts = 0;
+        if(G.mode === 'word' || G.mode === 'crossword'){
+            /* Per-letter scoring: bot gets ~55% of letters it didn't lose to real player */
+            var ansWord = (q ? (q.word||q.answer||'') : '').toUpperCase();
+            for(var li=0;li<ansWord.length;li++){
+                var key = G.mode==='word' ? li : li; /* letter index */
+                var alreadyClaimed = G.wordLetterClaimed && G.wordLetterClaimed[key];
+                if(!alreadyClaimed && Math.random() < 0.55){
+                    bPts += WORD_LETTER_PTS;
+                }
+            }
+        } else {
+            /* Quiz/Jigsaw: flat pts */
+            var botCorrect = Math.random() < 0.55;
+            if(botCorrect) bPts = 10 + Math.floor(Math.random() * 5);
+        }
+        if(bPts > 0){
             G.botScore += bPts;
             await set(rtRef('puzzle_rooms/'+G.roomCode+'/players/'+G.botPos+'/score'), G.botScore).catch(function(){});
         }
