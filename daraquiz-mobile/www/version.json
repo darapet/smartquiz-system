@@ -1,8 +1,8 @@
 {
-  "version": "1.177",
-  "versionCode": 152,
+  "version": "1.178",
+  "versionCode": 153,
   "releaseDate": "2026-06-05",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.177/daraquiz-v1.177.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.177/daraquiz-v1.177.apk"
+  "notes": "v1.178: AI Teacher tab — voice-powered timed study sessions, Mistral AI with 10-key cycling, math rendering (MathJax), PDF/doc upload, check-in questions, 5-min Q&A mode. Study Progress tracker — streak, 30-day calendar, subject breakdown, session history (all offline, no login needed).",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.178/daraquiz-v1.178.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.178/daraquiz-v1.178.apk"
 }
