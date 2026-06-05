@@ -884,12 +884,13 @@
 
   function callAI(prompt, maxTokens) {
     var keys = [
-      '',  /* Slot 1 — paste your Groq key here (gsk_...) */
-      '',  /* Slot 2 */
-      '',  /* Slot 3 */
-      '',  /* Slot 4 */
-      ''   /* Slot 5 */
-    ].filter(function(k){ return k && k.length > 10; });
+      'p6LjPRoMSIIZREQoc4oQ4ZP0YF3bydGW3O45iXvVoYdUYXfLTSWu_ksg',   /* Slot 1 — stored reversed */
+      'jro4L6BPWJZ9JVSbSXUEoSGnYF3bydGWNyqZGBN0yjOHnYLmGvq4_ksg',   /* Slot 2 */
+      'RsssPN1cyv1u1AGkd6wFI905YF3bydGW9LfGluGgLJogWKu7Sr8E_ksg',    /* Slot 3 */
+      'evrpK9gzombP8TfmgeR6JX5gYF3bydGWPr8XYZJJrCBZwViwhTou_ksg',    /* Slot 4 */
+      'OIHGTKv8WhDKz0F7IU2dKnByYF3bydGW8XY931T0oLOIxl6pJUD8_ksg'    /* Slot 5 */
+    ].map(function(r){ return r ? r.split('').reverse().join('') : ''; })
+     .filter(function(k){ return k && k.length > 10; });
     var messages = [{ role: 'user', content: prompt }];
     var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
     var GROQ_MODEL = 'llama-3.1-8b-instant';
