@@ -255,6 +255,26 @@ body.aqs-pz-body{background:#050510;color:#e2e8f0;font-family:-apple-system,Blin
 .pz-answer-overlay-inner{font-size:4rem;animation:pz-overlay-pop .6s ease forwards}
 @keyframes pz-overlay-pop{0%{transform:scale(.5);opacity:0}40%{transform:scale(1.2);opacity:1}80%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}
 
+/* ── OPPONENT BAR ────────────────────────────────────── */
+.pz-opponent-bar{display:flex;align-items:center;justify-content:center;gap:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:14px 20px;margin-bottom:16px;flex-wrap:wrap}
+.pz-opp-player{display:flex;align-items:center;gap:10px}
+.pz-opp-avatar{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:800;flex-shrink:0;background:linear-gradient(135deg,#6366f1,#8b5cf6)}
+.pz-opp-avatar-me{background:linear-gradient(135deg,#10b981,#059669)!important;box-shadow:0 0 0 3px rgba(16,185,129,.3)}
+.pz-opp-info{display:flex;flex-direction:column}
+.pz-opp-name{font-size:.82rem;font-weight:700;color:#e2e8f0;display:flex;align-items:center;gap:6px}
+.pz-opp-pts{font-size:.75rem;color:#64748b;font-weight:600;margin-top:1px;transition:color .3s}
+.pz-opp-me .pz-opp-pts{color:#10b981}
+.pz-opp-you-tag{font-size:.62rem;font-weight:800;background:rgba(16,185,129,.2);color:#6ee7b7;border:1px solid rgba(16,185,129,.35);border-radius:5px;padding:1px 5px;letter-spacing:.04em}
+.pz-vs-badge{font-size:.7rem;font-weight:900;color:#8b5cf6;background:rgba(139,92,246,.15);border:1px solid rgba(139,92,246,.3);border-radius:8px;padding:4px 10px;letter-spacing:.1em;flex-shrink:0}
+
+/* ── NEXT QUESTION BUTTON ────────────────────────────── */
+.pz-next-btn{background:linear-gradient(135deg,#10b981,#059669)!important;box-shadow:0 4px 20px rgba(16,185,129,.35)!important;font-size:1rem;letter-spacing:.02em;animation:pz-next-pulse 2s ease-in-out infinite}
+.pz-next-btn:hover{transform:translateY(-2px)!important;box-shadow:0 8px 30px rgba(16,185,129,.45)!important}
+@keyframes pz-next-pulse{0%,100%{box-shadow:0 4px 20px rgba(16,185,129,.35)}50%{box-shadow:0 4px 28px rgba(16,185,129,.6)}}
+
+/* ── WAITING MESSAGE ─────────────────────────────────── */
+.pz-wait-msg{display:flex;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:14px 20px;font-size:.88rem;font-weight:600;color:#64748b}
+
 /* ── UTILITY ─────────────────────────────────────────── */
 .pz-hide{display:none!important}
 .pz-ta-c{text-align:center}
