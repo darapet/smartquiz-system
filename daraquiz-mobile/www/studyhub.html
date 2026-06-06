@@ -1160,7 +1160,10 @@ function shCopyNotes(){
 }
 function shPrintNotes(){
   const w=window.open('','_blank');
-  w.document.write('<html><head><title>Study Notes</title><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;line-height:1.8;color:#111;}h1,h2,h3{margin:20px 0 8px;}strong{color:#333;}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body>'+document.getElementById('notes-output').innerHTML+'</body></html>');
+  w.document.write('<html><head><title>Study Notes</title><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;line-height:1.8;color:#111;}h1,h2,h3{margin:20px 0 8px;}strong{color:#333;}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body>'+document.getElementById('notes-output').innerHTML+'
+<script src="js/aqs-update-check.js"></script>
+<script src="js/aqs-whats-new.js"></script>
+</body></html>');
   w.document.close(); w.print();
 }
 
