@@ -1,8 +1,8 @@
 {
-  "version": "1.190",
-  "versionCode": 165,
+  "version": "1.191",
+  "versionCode": 166,
   "releaseDate": "2026-06-06",
-  "notes": "📚 Study Hub now in all navigation menus • Fixed duplicate sidebar blocks • Better navigation across all pages",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.189/daraquiz-v1.189.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.189/daraquiz-v1.189.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.191/daraquiz-v1.191.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.191/daraquiz-v1.191.apk"
 }
