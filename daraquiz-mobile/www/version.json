@@ -1,8 +1,8 @@
 {
-  "version": "1.197",
-  "versionCode": 172,
+  "version": "1.198",
+  "versionCode": 173,
   "releaseDate": "2026-06-07",
-  "notes": "Added 📋 Copy button on every XZily AI (Studio) response in the app — tap to copy AI message text to clipboard.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.197/daraquiz-v1.197.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.197/daraquiz-v1.197.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.198/daraquiz-v1.198.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.198/daraquiz-v1.198.apk"
 }
