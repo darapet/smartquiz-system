@@ -1140,19 +1140,33 @@ Make it thorough, academically rigorous, and student-friendly.`;
 }
 
 function shMarkdown(md){
-  return md
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
-    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
-    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
-    .replace(/\*(.+?)\*/g,'<em>$1</em>')
-    .replace(/`(.+?)`/g,'<code>$1</code>')
-    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
-    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>')
-    .replace(/^[\-\*] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,m=>m.startsWith('<ol>')?m:'<ul>'+m+'</ul>')
-    .replace(/\n\n/g,'</p><p>').replace(/^(?!<[houlb])/gm,'<p>').replace(/$/gm,'</p>')
-    .replace(/<p><\/p>/g,'');
+  // Escape HTML first
+  let s = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Inline formatting
+  s = s.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  s = s.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  s = s.replace(/`(.+?)`/g,'<code>$1</code>');
+  // Process line by line to avoid wrapping block elements in <p>
+  const lines = s.split('\n');
+  const out = [];
+  let inUl = false, inOl = false;
+  for(let i=0;i<lines.length;i++){
+    const l = lines[i];
+    const h3 = l.match(/^### (.+)$/); if(h3){ if(inUl){out.push('</ul>');inUl=false;} if(inOl){out.push('</ol>');inOl=false;} out.push('<h3>'+h3[1]+'</h3>'); continue; }
+    const h2 = l.match(/^## (.+)$/);  if(h2){ if(inUl){out.push('</ul>');inUl=false;} if(inOl){out.push('</ol>');inOl=false;} out.push('<h2>'+h2[1]+'</h2>'); continue; }
+    const h1 = l.match(/^# (.+)$/);   if(h1){ if(inUl){out.push('</ul>');inUl=false;} if(inOl){out.push('</ol>');inOl=false;} out.push('<h1>'+h1[1]+'</h1>'); continue; }
+    const bq = l.match(/^> (.+)$/);   if(bq){ if(inUl){out.push('</ul>');inUl=false;} if(inOl){out.push('</ol>');inOl=false;} out.push('<blockquote>'+bq[1]+'</blockquote>'); continue; }
+    const ol = l.match(/^\d+\. (.+)$/); if(ol){ if(inUl){out.push('</ul>');inUl=false;} if(!inOl){out.push('<ol>');inOl=true;} out.push('<li>'+ol[1]+'</li>'); continue; }
+    const ul = l.match(/^[-\*] (.+)$/); if(ul){ if(inOl){out.push('</ol>');inOl=false;} if(!inUl){out.push('<ul>');inUl=true;} out.push('<li>'+ul[1]+'</li>'); continue; }
+    // Close lists if not a list item
+    if(inUl){out.push('</ul>');inUl=false;}
+    if(inOl){out.push('</ol>');inOl=false;}
+    // Blank line → paragraph break, non-empty line → wrap in <p>
+    if(l.trim()==='') { out.push(''); } else { out.push('<p>'+l+'</p>'); }
+  }
+  if(inUl) out.push('</ul>');
+  if(inOl) out.push('</ol>');
+  return out.join('\n').replace(/<p><\/p>/g,'').replace(/\n{3,}/g,'\n\n');
 }
 
 function shCopyNotes(){
