@@ -25,7 +25,17 @@ window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat(
         /* Slot  7  */  '',
         /* Slot  8  */  '',
         /* Slot  9  */  '',
-        /* Slot 10  */  ''
+        /* Slot 10  */  '',
+        /* Slot 11  */  '',
+        /* Slot 12  */  '',
+        /* Slot 13  */  '',
+        /* Slot 14  */  '',
+        /* Slot 15  */  '',
+        /* Slot 16  */  '',
+        /* Slot 17  */  '',
+        /* Slot 18  */  '',
+        /* Slot 19  */  '',
+        /* Slot 20  */  ''
     ]
     .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
     .filter(function(k){ return typeof k === 'string' && k.length > 20; })
