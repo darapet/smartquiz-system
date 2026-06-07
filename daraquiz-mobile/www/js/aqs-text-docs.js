@@ -916,6 +916,7 @@
   function wpGetDocSettings() {
     var getV2 = function(id, def) { var el = document.getElementById(id); return (el && el.value) ? el.value : def; };
     var chk   = function(id, def) { var el = document.getElementById(id); return el ? el.checked : def; };
+    /* Heading sizes: prefer modal values (dsm-*), fallback to sidebar or defaults */
     return {
       font:    getV2('wp-ds-font',    'Inter, system-ui, sans-serif'),
       size:    getV2('wp-ds-size',    '12pt'),
@@ -923,7 +924,13 @@
       pspace:  getV2('wp-ds-pspace', '6pt'),
       margin:  getV2('wp-ds-margin', 'normal'),
       page:    getV2('wp-ds-page',   'A4'),
-      divider: chk('wp-ds-divider', true)
+      divider: chk('wp-ds-divider', true),
+      h1: getV2('dsm-h1', '26pt'),
+      h2: getV2('dsm-h2', '20pt'),
+      h3: getV2('dsm-h3', '16pt'),
+      h4: getV2('dsm-h4', '14pt'),
+      h5: getV2('dsm-h5', '12pt'),
+      h6: getV2('dsm-h6', '11pt')
     };
   }
 
@@ -931,7 +938,8 @@
     var marginMap = { narrow: '0.5in (1.27cm)', normal: '1in (2.54cm)', wide: '1.5in (3.81cm)' };
     return '\n\nDOCUMENT FORMATTING REQUIREMENTS — apply these as inline style attributes on every relevant HTML element:\n' +
       '• Font family: ' + ds.font + ' (add style="font-family:' + ds.font + '" on body-text elements)\n' +
-      '• Font size: ' + ds.size + ' (add style="font-size:' + ds.size + '" on p, li, td elements)\n' +
+      '• Body font size: ' + ds.size + ' (add style="font-size:' + ds.size + '" on p, li, td elements)\n' +
+      '• Heading sizes: H1=' + (ds.h1||'26pt') + ' H2=' + (ds.h2||'20pt') + ' H3=' + (ds.h3||'16pt') + ' H4=' + (ds.h4||'14pt') + ' H5=' + (ds.h5||'12pt') + ' H6=' + (ds.h6||'11pt') + ' (apply as style="font-size:X" on each heading tag)\n' +
       '• Line height: ' + ds.lspace + ' (add style="line-height:' + ds.lspace + '" on p, li elements)\n' +
       '• Paragraph spacing: ' + ds.pspace + ' after each paragraph (add style="margin-bottom:' + ds.pspace + '" on every <p>)\n' +
       '• Page margins: ' + (marginMap[ds.margin] || '1in') + '\n' +
@@ -942,8 +950,9 @@
 
   function wpApplyDocSettings(ds) {
     var ed = wpGetEditor(); if (!ed) return;
-    var sizeMap = { '10pt':'13.3px','11pt':'14.7px','12pt':'16px','14pt':'18.7px','16pt':'21.3px' };
-    var px = sizeMap[ds.size] || '16px';
+    var ptToPx = function(pt) { return Math.round(parseFloat(pt) * 1.333) + 'px'; };
+    var sizeMap = { '10pt':'13.3px','11pt':'14.7px','12pt':'16px','13pt':'17.3px','14pt':'18.7px','16pt':'21.3px' };
+    var px = sizeMap[ds.size] || ptToPx(ds.size) || '16px';
     var marginPx = { narrow:'24px', normal:'48px', wide:'72px' };
     ed.style.fontFamily = ds.font;
     ed.style.fontSize   = px;
@@ -955,6 +964,14 @@
     });
     ed.querySelectorAll('p').forEach(function(p) {
       if (ds.pspace && ds.pspace !== '0') p.style.marginBottom = ds.pspace;
+    });
+    /* Apply heading sizes */
+    var hMap = { H1: ds.h1||'26pt', H2: ds.h2||'20pt', H3: ds.h3||'16pt', H4: ds.h4||'14pt', H5: ds.h5||'12pt', H6: ds.h6||'11pt' };
+    Object.keys(hMap).forEach(function(tag) {
+      ed.querySelectorAll(tag.toLowerCase()).forEach(function(el) {
+        el.style.fontSize = ptToPx(hMap[tag]);
+        el.style.fontFamily = ds.font;
+      });
     });
     var page = ed.closest('.wp-page');
     if (page) { var m = marginPx[ds.margin] || '48px'; page.style.padding = m; }
