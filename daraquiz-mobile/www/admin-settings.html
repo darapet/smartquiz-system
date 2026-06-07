@@ -118,7 +118,7 @@ window.addEventListener('DOMContentLoaded', function() {
             var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : [];
             var hcGKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
             hcGKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
-            for (var gi = 1; gi <= 10; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
+            for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
             setVal('aqs-groq-model', s.groq_model || 'llama-3.3-70b-versatile');
             /* Load up to 10 Mistral keys (Firebase first, then hardcoded fallbacks) */
             var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
@@ -347,6 +347,46 @@ window.addEventListener('DOMContentLoaded', function() {
             <div class="aqs-field-group">
                 <label style="display:flex;align-items:center;gap:6px;">Groq Key 10 <span id="aqs-gk-dot-10"></span></label>
                 <input type="password" id="aqs-groq-key-10" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 11 <span id="aqs-gk-dot-11"></span></label>
+                <input type="password" id="aqs-groq-key-11" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 12 <span id="aqs-gk-dot-12"></span></label>
+                <input type="password" id="aqs-groq-key-12" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 13 <span id="aqs-gk-dot-13"></span></label>
+                <input type="password" id="aqs-groq-key-13" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 14 <span id="aqs-gk-dot-14"></span></label>
+                <input type="password" id="aqs-groq-key-14" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 15 <span id="aqs-gk-dot-15"></span></label>
+                <input type="password" id="aqs-groq-key-15" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 16 <span id="aqs-gk-dot-16"></span></label>
+                <input type="password" id="aqs-groq-key-16" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 17 <span id="aqs-gk-dot-17"></span></label>
+                <input type="password" id="aqs-groq-key-17" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 18 <span id="aqs-gk-dot-18"></span></label>
+                <input type="password" id="aqs-groq-key-18" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 19 <span id="aqs-gk-dot-19"></span></label>
+                <input type="password" id="aqs-groq-key-19" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 20 <span id="aqs-gk-dot-20"></span></label>
+                <input type="password" id="aqs-groq-key-20" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
                 <label for="aqs-groq-model">Groq Model</label>
@@ -855,7 +895,7 @@ btn('aqs-test-ai-btn').addEventListener('click', function(){ _aqsTestAllKeys(fal
 /* ── GROQ Save ──────────────────────────────────────────────────── */
 btn('aqs-save-groq-btn').addEventListener('click', function(){
     var groqKeys = [];
-    for (var gi = 1; gi <= 10; gi++) {
+    for (var gi = 1; gi <= 20; gi++) {
         var gel = document.getElementById('aqs-groq-key-' + gi);
         if (gel && gel.value.trim().length > 20) groqKeys.push(gel.value.trim());
     }
@@ -868,13 +908,13 @@ btn('aqs-save-groq-btn').addEventListener('click', function(){
         groq_model: groqModelEl ? groqModelEl.value : 'llama-3.3-70b-versatile'
     }, 'aqs-groq-status', this, '💾 Save Groq Settings');
     /* Reset status dots */
-    for (var ci = 1; ci <= 10; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
+    for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
 /* ── GROQ Test All Keys ─────────────────────────────────────────── */
 async function _aqsTestAllGroqKeys() {
     var allKeys = [];
-    for (var gi = 1; gi <= 10; gi++) {
+    for (var gi = 1; gi <= 20; gi++) {
         var gel = document.getElementById('aqs-groq-key-' + gi);
         if (gel && gel.value.trim().length > 20) {
             allKeys.push({ slot: 'Key ' + gi, key: gel.value.trim() });
