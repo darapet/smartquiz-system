@@ -1,8 +1,8 @@
 {
-  "version": "1.196",
-  "versionCode": 171,
+  "version": "1.197",
+  "versionCode": 172,
   "releaseDate": "2026-06-07",
-  "notes": "AI sidebar now has open/close toggle (hamburger ☰ / X). Added Document Settings panel (font, size, line spacing, paragraph spacing, margins, page size, section dividers) — AI Format and AI Write both use these settings automatically.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.196/daraquiz-v1.196.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.196/daraquiz-v1.196.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.197/daraquiz-v1.197.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.197/daraquiz-v1.197.apk"
 }
