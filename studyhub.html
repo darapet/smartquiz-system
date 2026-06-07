@@ -1006,6 +1006,7 @@ a{text-decoration:none;color:inherit;}
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script src="js/aqs-groq-key.js"></script>
 <script>
 /* ══════════════════════════════════════════════════
@@ -1140,7 +1141,14 @@ Make it thorough, academically rigorous, and student-friendly.`;
 }
 
 function shMarkdown(md){
+  if(typeof marked !== 'undefined'){
+    try{
+      return marked.parse(md, {breaks:true, gfm:true});
+    }catch(e){}
+  }
+  /* Fallback parser (used if marked.js fails to load) */
   return md
+    .replace(/```[\w]*\n?([\s\S]*?)```/g, function(_,code){ return '<pre><code>'+code.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</code></pre>'; })
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
     .replace(/^### (.+)$/gm,'<h3>$1</h3>')
     .replace(/^## (.+)$/gm,'<h2>$1</h2>')
@@ -1151,7 +1159,7 @@ function shMarkdown(md){
     .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
     .replace(/^\d+\. (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>')
     .replace(/^[\-\*] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,m=>m.startsWith('<ol>')?m:'<ul>'+m+'</ul>')
-    .replace(/\n\n/g,'</p><p>').replace(/^(?!<[houlb])/gm,'<p>').replace(/$/gm,'</p>')
+    .replace(/\n\n/g,'</p><p>').replace(/^(?!<[houlbp])/gm,'<p>').replace(/$/gm,'</p>')
     .replace(/<p><\/p>/g,'');
 }
 
