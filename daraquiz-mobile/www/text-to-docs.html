@@ -886,7 +886,7 @@
           </div>
         </div>
 
-        <button class="wp-btn primary" id="wp-ai-btn" onclick="wpFormatAI()" style="margin-top:8px;">✨ Format with AI</button>
+        <button class="wp-btn primary" id="wp-ai-btn" onclick="wpOpenStyleModal('format')" style="margin-top:8px;">✨ Format with AI</button>
         <button class="wp-btn secondary" onclick="wpUseAsIs()" style="margin-top:4px;">Use As-Is (no AI)</button>
         <div class="wp-hint" id="wp-ai-hint"></div>
       </div>
@@ -937,7 +937,7 @@
           <option value="detailed">Detailed (~1500 words)</option>
         </select>
 
-        <button class="wp-btn primary" id="wp-write-btn" onclick="wpAIWrite()" style="margin-top:10px;">✍️ Write with AI</button>
+        <button class="wp-btn primary" id="wp-write-btn" onclick="wpOpenStyleModal('write')" style="margin-top:10px;">✍️ Write with AI</button>
         <div class="wp-hint" id="wp-write-hint"></div>
       </div>
     </div><!-- /wp-spanel-write -->
@@ -989,13 +989,13 @@
           <option>Key Points</option>
           <option>FAQ</option>
         </select>
-        <button class="wp-btn primary" onclick="wpWebImport()">🌐 Import &amp; Format</button>
+        <button class="wp-btn primary" onclick="wpOpenStyleModal('webimport')">🌐 Import &amp; Format</button>
       </div>
       <div class="wp-sec">
         <div class="wp-sec-title">AI Web Research</div>
         <div class="wp-lbl">Research Topic</div>
         <textarea class="wp-textarea" id="wp-web-query" rows="3" placeholder="e.g. Benefits of renewable energy in Africa…"></textarea>
-        <button class="wp-btn accent2" onclick="wpWebResearch()" style="margin-top:8px;">🔍 AI Research</button>
+        <button class="wp-btn accent2" onclick="wpOpenStyleModal('webresearch')" style="margin-top:8px;">🔍 AI Research</button>
         <div class="wp-hint show info" id="wp-web-status" style="display:none"></div>
       </div>
     </div><!-- /wp-spanel-web -->
@@ -1260,6 +1260,176 @@
 
 
 <!-- ════════════════════════════════════════════════
+     DOCUMENT STYLE MODAL
+════════════════════════════════════════════════ -->
+<div class="wp-modal-bg hidden" id="wp-style-modal">
+  <div class="wp-modal-box" style="max-width:480px;max-height:90vh;overflow-y:auto;">
+    <div class="wp-modal-title" style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:20px;">🎨</span>
+      <span>Document Style</span>
+      <span style="margin-left:auto;font-size:11px;color:#6b7280;font-weight:400;font-style:italic;">Applied before AI generates your document</span>
+    </div>
+
+    <!-- Font + Base Size -->
+    <div class="wp-modal-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div>
+        <label class="wp-modal-lbl">Font Family</label>
+        <select class="wp-modal-inp" id="dsm-font">
+          <option value="Inter, system-ui, sans-serif">Inter (Modern)</option>
+          <option value="Georgia, serif">Georgia (Classic)</option>
+          <option value="'Times New Roman', serif">Times New Roman</option>
+          <option value="'Lato', sans-serif">Lato</option>
+          <option value="'Roboto', sans-serif">Roboto</option>
+          <option value="'Open Sans', sans-serif">Open Sans</option>
+          <option value="'Merriweather', serif">Merriweather</option>
+          <option value="'Playfair Display', serif">Playfair Display</option>
+          <option value="'Nunito', sans-serif">Nunito</option>
+          <option value="Arial, sans-serif">Arial</option>
+          <option value="'Courier New', monospace">Courier New</option>
+        </select>
+      </div>
+      <div>
+        <label class="wp-modal-lbl">Body Text Size</label>
+        <select class="wp-modal-inp" id="dsm-size">
+          <option value="10pt">10pt — Compact</option>
+          <option value="11pt">11pt — Small</option>
+          <option value="12pt" selected>12pt — Standard</option>
+          <option value="13pt">13pt — Comfortable</option>
+          <option value="14pt">14pt — Large</option>
+          <option value="16pt">16pt — Extra Large</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Heading Sizes -->
+    <div class="wp-modal-row">
+      <label class="wp-modal-lbl" style="display:flex;align-items:center;gap:6px;">
+        <span>Heading Sizes</span>
+        <span style="font-size:10px;color:#9ca3af;font-weight:400;">(H1 is the main title, H6 is the smallest)</span>
+      </label>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:4px;">
+        <div>
+          <label style="font-size:10px;font-weight:600;color:#4f46e5;display:block;margin-bottom:3px;">H1 — Title</label>
+          <select class="wp-modal-inp" id="dsm-h1" style="font-size:11px;padding:5px 6px;">
+            <option value="28pt">28pt</option>
+            <option value="26pt" selected>26pt</option>
+            <option value="24pt">24pt</option>
+            <option value="22pt">22pt</option>
+            <option value="20pt">20pt</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:600;color:#4f46e5;display:block;margin-bottom:3px;">H2 — Section</label>
+          <select class="wp-modal-inp" id="dsm-h2" style="font-size:11px;padding:5px 6px;">
+            <option value="22pt">22pt</option>
+            <option value="20pt" selected>20pt</option>
+            <option value="18pt">18pt</option>
+            <option value="16pt">16pt</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:600;color:#4f46e5;display:block;margin-bottom:3px;">H3 — Sub-section</label>
+          <select class="wp-modal-inp" id="dsm-h3" style="font-size:11px;padding:5px 6px;">
+            <option value="18pt">18pt</option>
+            <option value="16pt" selected>16pt</option>
+            <option value="14pt">14pt</option>
+            <option value="13pt">13pt</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">H4</label>
+          <select class="wp-modal-inp" id="dsm-h4" style="font-size:11px;padding:5px 6px;">
+            <option value="15pt">15pt</option>
+            <option value="14pt" selected>14pt</option>
+            <option value="13pt">13pt</option>
+            <option value="12pt">12pt</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">H5</label>
+          <select class="wp-modal-inp" id="dsm-h5" style="font-size:11px;padding:5px 6px;">
+            <option value="13pt">13pt</option>
+            <option value="12pt" selected>12pt</option>
+            <option value="11pt">11pt</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:10px;font-weight:600;color:#6b7280;display:block;margin-bottom:3px;">H6</label>
+          <select class="wp-modal-inp" id="dsm-h6" style="font-size:11px;padding:5px 6px;">
+            <option value="12pt">12pt</option>
+            <option value="11pt" selected>11pt</option>
+            <option value="10pt">10pt</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spacing -->
+    <div class="wp-modal-row" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div>
+        <label class="wp-modal-lbl">Line Spacing</label>
+        <select class="wp-modal-inp" id="dsm-lspace">
+          <option value="1.0">1.0 — Tight</option>
+          <option value="1.15" selected>1.15 — Normal</option>
+          <option value="1.5">1.5 — Relaxed</option>
+          <option value="2.0">2.0 — Double</option>
+        </select>
+      </div>
+      <div>
+        <label class="wp-modal-lbl">Para Spacing</label>
+        <select class="wp-modal-inp" id="dsm-pspace">
+          <option value="0">None</option>
+          <option value="4pt">4pt — Small</option>
+          <option value="6pt" selected>6pt — Normal</option>
+          <option value="10pt">10pt — Large</option>
+          <option value="14pt">14pt — Wide</option>
+        </select>
+      </div>
+      <div>
+        <label class="wp-modal-lbl">Margins</label>
+        <select class="wp-modal-inp" id="dsm-margin">
+          <option value="narrow">Narrow (0.5")</option>
+          <option value="normal" selected>Normal (1")</option>
+          <option value="wide">Wide (1.5")</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Page size + section dividers -->
+    <div class="wp-modal-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;">
+      <div>
+        <label class="wp-modal-lbl">Page Size</label>
+        <select class="wp-modal-inp" id="dsm-page">
+          <option value="A4" selected>A4 (210 × 297mm)</option>
+          <option value="Letter">Letter (8.5 × 11")</option>
+          <option value="Legal">Legal (8.5 × 14")</option>
+        </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;padding-top:16px;">
+        <input type="checkbox" id="dsm-divider" checked style="width:16px;height:16px;accent-color:#4f46e5;cursor:pointer;">
+        <label for="dsm-divider" style="font-size:12px;font-weight:600;color:#374151;cursor:pointer;">Section dividers between H2 headings</label>
+      </div>
+    </div>
+
+    <!-- Live preview strip -->
+    <div style="margin:12px 0 0;border:1px solid #e5e7eb;border-radius:10px;padding:14px 16px;background:#fafafa;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#9ca3af;margin-bottom:8px;">Preview</div>
+      <div id="dsm-preview" style="transition:all .2s;">
+        <div id="dsm-prev-h1" style="font-weight:700;color:#1e1b4b;margin-bottom:3px;">Document Title</div>
+        <div id="dsm-prev-h2" style="font-weight:600;color:#374151;margin-bottom:3px;">Section Heading</div>
+        <div id="dsm-prev-body">Body text will appear in this font and size. The AI will apply these settings when formatting or writing your document.</div>
+      </div>
+    </div>
+
+    <div class="wp-modal-actions" style="margin-top:14px;">
+      <button class="wp-modal-btn" onclick="wpHideModal('wp-style-modal')">Cancel</button>
+      <button class="wp-modal-btn" id="dsm-reset-btn" onclick="wpDsmReset()" style="background:#f1f5f9;color:#374151;">↺ Reset Defaults</button>
+      <button class="wp-modal-btn primary" id="dsm-confirm-btn" onclick="wpDsmConfirm()">Apply Style &amp; Continue ➜</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
      SCRIPTS
 ════════════════════════════════════════════════ -->
 <script src="js/aqs-groq-key.js"></script>
@@ -1320,6 +1490,173 @@
   window.wpMobOpen = function() {
     var sb = document.getElementById('wp-sidebar');
     if (sb) sb.classList.add('mob-open');
+  };
+
+  /* ════════════════════════════════════════════════
+     DOCUMENT STYLE MODAL — wpOpenStyleModal, confirm, reset, preview
+  ════════════════════════════════════════════════ */
+  var _dsmPendingAction = null;
+
+  /* Sync sidebar Document Settings → modal dropdowns */
+  function wpDsmSyncFromSidebar() {
+    var map = {
+      'wp-ds-font': 'dsm-font', 'wp-ds-size': 'dsm-size',
+      'wp-ds-lspace': 'dsm-lspace', 'wp-ds-pspace': 'dsm-pspace',
+      'wp-ds-margin': 'dsm-margin', 'wp-ds-page': 'dsm-page'
+    };
+    Object.keys(map).forEach(function(sid) {
+      var src = document.getElementById(sid);
+      var dst = document.getElementById(map[sid]);
+      if (src && dst && src.value) { dst.value = src.value; }
+    });
+    var chk = document.getElementById('wp-ds-divider');
+    var dchk = document.getElementById('dsm-divider');
+    if (chk && dchk) dchk.checked = chk.checked;
+  }
+
+  /* Sync modal → sidebar Document Settings */
+  function wpDsmSyncToSidebar() {
+    var map = {
+      'dsm-font': 'wp-ds-font', 'dsm-size': 'wp-ds-size',
+      'dsm-lspace': 'wp-ds-lspace', 'dsm-pspace': 'wp-ds-pspace',
+      'dsm-margin': 'wp-ds-margin', 'dsm-page': 'wp-ds-page'
+    };
+    Object.keys(map).forEach(function(mid) {
+      var src = document.getElementById(mid);
+      var dst = document.getElementById(map[mid]);
+      if (src && dst) { dst.value = src.value; }
+    });
+    var chk = document.getElementById('wp-ds-divider');
+    var dchk = document.getElementById('dsm-divider');
+    if (chk && dchk) chk.checked = dchk.checked;
+  }
+
+  /* Update the live preview strip inside the modal */
+  function wpDsmUpdatePreview() {
+    var font   = document.getElementById('dsm-font')   ? document.getElementById('dsm-font').value   : 'Inter, system-ui, sans-serif';
+    var size   = document.getElementById('dsm-size')   ? document.getElementById('dsm-size').value   : '12pt';
+    var h1size = document.getElementById('dsm-h1')     ? document.getElementById('dsm-h1').value     : '26pt';
+    var h2size = document.getElementById('dsm-h2')     ? document.getElementById('dsm-h2').value     : '20pt';
+    var lspace = document.getElementById('dsm-lspace') ? document.getElementById('dsm-lspace').value : '1.15';
+    var pspace = document.getElementById('dsm-pspace') ? document.getElementById('dsm-pspace').value : '6pt';
+
+    var prevH1   = document.getElementById('dsm-prev-h1');
+    var prevH2   = document.getElementById('dsm-prev-h2');
+    var prevBody = document.getElementById('dsm-prev-body');
+    if (prevH1)   { prevH1.style.fontFamily = font; prevH1.style.fontSize = h1size; }
+    if (prevH2)   { prevH2.style.fontFamily = font; prevH2.style.fontSize = h2size; }
+    if (prevBody) { prevBody.style.fontFamily = font; prevBody.style.fontSize = size; prevBody.style.lineHeight = lspace; prevBody.style.marginBottom = pspace; }
+  }
+
+  /* Open the style modal, record which action to fire after confirm */
+  window.wpOpenStyleModal = function(action) {
+    _dsmPendingAction = action;
+    wpDsmSyncFromSidebar();
+    wpDsmUpdatePreview();
+    var lbl = { format: '✨ Format with AI', write: '✍️ Write with AI', webimport: '🌐 Import & Format', webresearch: '🔍 AI Research' };
+    var btn = document.getElementById('dsm-confirm-btn');
+    if (btn) btn.textContent = (lbl[action] || 'Continue') + ' ➜';
+    wpShowModal('wp-style-modal');
+  };
+
+  /* Reset modal to defaults */
+  window.wpDsmReset = function() {
+    var defaults = { 'dsm-font': 'Inter, system-ui, sans-serif', 'dsm-size': '12pt', 'dsm-h1': '26pt', 'dsm-h2': '20pt', 'dsm-h3': '16pt', 'dsm-h4': '14pt', 'dsm-h5': '12pt', 'dsm-h6': '11pt', 'dsm-lspace': '1.15', 'dsm-pspace': '6pt', 'dsm-margin': 'normal', 'dsm-page': 'A4' };
+    Object.keys(defaults).forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.value = defaults[id];
+    });
+    var dchk = document.getElementById('dsm-divider');
+    if (dchk) dchk.checked = true;
+    wpDsmUpdatePreview();
+  };
+
+  /* Confirm: sync to sidebar, hide modal, fire the action */
+  window.wpDsmConfirm = function() {
+    wpDsmSyncToSidebar();
+    /* Also sync heading sizes (not in sidebar, stored for AI prompt use) */
+    wpHideModal('wp-style-modal');
+    var action = _dsmPendingAction;
+    _dsmPendingAction = null;
+    if      (action === 'format')      { window.wpFormatAI && wpFormatAI(); }
+    else if (action === 'write')       { window.wpAIWrite && wpAIWrite(); }
+    else if (action === 'webimport')   { window.wpWebImport && wpWebImport(); }
+    else if (action === 'webresearch') { window.wpWebResearch && wpWebResearch(); }
+  };
+
+  /* Attach live preview update to all modal dropdowns/checkbox */
+  document.addEventListener('DOMContentLoaded', function() {
+    ['dsm-font','dsm-size','dsm-h1','dsm-h2','dsm-h3','dsm-h4','dsm-h5','dsm-h6','dsm-lspace','dsm-pspace','dsm-margin','dsm-page','dsm-divider'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.addEventListener('change', wpDsmUpdatePreview);
+    });
+  });
+
+  /* ════════════════════════════════════════════════
+     PRINT FIX — mobile-safe print with full styles
+  ════════════════════════════════════════════════ */
+  window.wpPrint = function() {
+    var container = document.getElementById('wp-pages');
+    if (!container) { window.print(); return; }
+
+    /* Collect current editor styles for print */
+    var ed = container.querySelector('[contenteditable]');
+    var edFont = (ed && ed.style.fontFamily) ? ed.style.fontFamily : 'Georgia, serif';
+    var edSize = (ed && ed.style.fontSize)   ? ed.style.fontSize   : '12pt';
+    var edLine = (ed && ed.style.lineHeight) ? ed.style.lineHeight : '1.6';
+    var page   = container.querySelector('.wp-page');
+    var pagePad = (page && page.style.padding) ? page.style.padding : '48px';
+
+    /* Collect any inline styles on headings/paragraphs for faithful print */
+    var content = container.innerHTML;
+
+    var printStyles = [
+      'body{margin:0;padding:0;background:#fff;}',
+      '.wp-pages-area{padding:0!important;background:#fff!important;}',
+      '.wp-page{box-shadow:none!important;border-radius:0!important;margin:0 auto!important;padding:'+pagePad+'!important;background:#fff!important;max-width:800px!important;}',
+      '[contenteditable]{font-family:'+edFont+';font-size:'+edSize+';line-height:'+edLine+';}',
+      'h1{font-size:26pt;}h2{font-size:20pt;}h3{font-size:16pt;}h4{font-size:14pt;}h5,h6{font-size:12pt;}',
+      'table{border-collapse:collapse;width:100%;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;}',
+      'img{max-width:100%!important;}',
+      '@media print{@page{margin:0;}.wp-page{box-shadow:none!important;break-inside:auto;}}'
+    ].join('\n');
+
+    /* Detect Capacitor / Android WebView — window.open may be blocked */
+    var isCapacitor = !!(window.Capacitor || (window.cordova && window.cordova.platformId));
+
+    if (isCapacitor) {
+      /* Capacitor: inject a full print window into current page using an iframe */
+      var existing = document.getElementById('_wp_print_iframe');
+      if (existing) existing.parentNode.removeChild(existing);
+      var iframe = document.createElement('iframe');
+      iframe.id = '_wp_print_iframe';
+      iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;';
+      document.body.appendChild(iframe);
+      var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+      iDoc.open();
+      iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'</body></html>');
+      iDoc.close();
+      setTimeout(function() {
+        try { iframe.contentWindow.print(); } catch(e) { window.print(); }
+        setTimeout(function() { if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
+      }, 400);
+    } else {
+      /* Desktop / standard browser: open a clean print window */
+      var printWin = window.open('', '_blank', 'width=900,height=700');
+      if (!printWin) {
+        /* Popup blocked — fallback: clone into print-root div */
+        var printRoot = document.getElementById('wp-print-root');
+        if (printRoot) {
+          printRoot.innerHTML = content;
+          printRoot.style.display = 'block';
+          setTimeout(function() { window.print(); setTimeout(function(){ printRoot.style.display='none'; printRoot.innerHTML=''; }, 600); }, 200);
+        } else { window.print(); }
+        return;
+      }
+      printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'</body></html>');
+      printWin.document.close();
+      setTimeout(function() { printWin.print(); setTimeout(function(){ printWin.close(); }, 600); }, 500);
+    }
   };
 </script>
 </body>
