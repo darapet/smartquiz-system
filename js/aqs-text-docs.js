@@ -945,6 +945,89 @@
     if (stat) stat.className = 'wp-ai-status ' + state;
   }
 
+  /* ── Document Settings helpers ───────────────────────────────── */
+  function wpGetDocSettings() {
+    var getV2 = function(id, def) { var el = document.getElementById(id); return (el && el.value) ? el.value : def; };
+    var chk   = function(id, def) { var el = document.getElementById(id); return el ? el.checked : def; };
+    return {
+      font:    getV2('wp-ds-font',    'Inter, system-ui, sans-serif'),
+      size:    getV2('wp-ds-size',    '12pt'),
+      lspace:  getV2('wp-ds-lspace', '1.15'),
+      pspace:  getV2('wp-ds-pspace', '6pt'),
+      margin:  getV2('wp-ds-margin', 'normal'),
+      page:    getV2('wp-ds-page',   'A4'),
+      divider: chk('wp-ds-divider', true)
+    };
+  }
+
+  function wpDocSettingsPrompt(ds) {
+    var marginMap = { narrow: '0.5in (1.27cm)', normal: '1in (2.54cm)', wide: '1.5in (3.81cm)' };
+    return '\n\nDOCUMENT FORMATTING REQUIREMENTS — apply these as inline style attributes on every relevant HTML element:\n' +
+      '• Font family: ' + ds.font + ' (add style="font-family:' + ds.font + '" on body-text elements)\n' +
+      '• Font size: ' + ds.size + ' (add style="font-size:' + ds.size + '" on p, li, td elements)\n' +
+      '• Line height: ' + ds.lspace + ' (add style="line-height:' + ds.lspace + '" on p, li elements)\n' +
+      '• Paragraph spacing: ' + ds.pspace + ' after each paragraph (add style="margin-bottom:' + ds.pspace + '" on every <p>)\n' +
+      '• Page margins: ' + (marginMap[ds.margin] || '1in') + '\n' +
+      '• Page size: ' + ds.page + '\n' +
+      (ds.divider ? '• Insert <hr style="border:none;border-top:1px solid #e2e8f0;margin:1em 0;"> between every major section (before each <h2>)\n' : '') +
+      'Do NOT use separate <style> blocks — only inline style attributes.';
+  }
+
+  function wpApplyDocSettings(ds) {
+    var ed = wpGetEditor(); if (!ed) return;
+    var sizeMap = { '10pt':'13.3px','11pt':'14.7px','12pt':'16px','14pt':'18.7px','16pt':'21.3px' };
+    var px = sizeMap[ds.size] || '16px';
+    var marginPx = { narrow:'24px', normal:'48px', wide:'72px' };
+    ed.style.fontFamily = ds.font;
+    ed.style.fontSize   = px;
+    ed.style.lineHeight = ds.lspace;
+    ed.querySelectorAll('p,li,td,th').forEach(function(el) {
+      el.style.fontFamily = ds.font;
+      el.style.fontSize   = px;
+      el.style.lineHeight = ds.lspace;
+    });
+    ed.querySelectorAll('p').forEach(function(p) {
+      if (ds.pspace && ds.pspace !== '0') p.style.marginBottom = ds.pspace;
+    });
+    var page = ed.closest('.wp-page');
+    if (page) { var m = marginPx[ds.margin] || '48px'; page.style.padding = m; }
+    if (ds.divider) {
+      var h2s = ed.querySelectorAll('h2');
+      h2s.forEach(function(h2, i) {
+        if (i === 0) return;
+        var prev = h2.previousElementSibling;
+        if (!prev || prev.tagName !== 'HR') {
+          var hr = document.createElement('hr');
+          hr.style.cssText = 'border:none;border-top:1px solid #e2e8f0;margin:1em 0;';
+          h2.parentNode.insertBefore(hr, h2);
+        }
+      });
+    }
+    wpSavePageState();
+  }
+
+  /* ── Sidebar toggle (mobile) ─────────────────────────────────── */
+  window.wpToggleSidebar = function() {
+    var sb = document.getElementById('wp-sidebar');
+    if (sb && sb.classList.contains('mob-open')) { wpCloseSidebar(); } else { wpOpenSidebar(); }
+  };
+  window.wpOpenSidebar = function() {
+    var sb = document.getElementById('wp-sidebar');
+    var bd = document.getElementById('wp-sidebar-backdrop');
+    var fab = document.getElementById('wp-sb-fab');
+    if (sb) sb.classList.add('mob-open');
+    if (bd) bd.classList.add('open');
+    if (fab) { fab.innerHTML = '&#x2715;'; fab.title = 'Close AI Tools'; fab.classList.add('is-open'); }
+  };
+  window.wpCloseSidebar = function() {
+    var sb = document.getElementById('wp-sidebar');
+    var bd = document.getElementById('wp-sidebar-backdrop');
+    var fab = document.getElementById('wp-sb-fab');
+    if (sb) sb.classList.remove('mob-open');
+    if (bd) bd.classList.remove('open');
+    if (fab) { fab.innerHTML = '&#9776;'; fab.title = 'AI Tools'; fab.classList.remove('is-open'); }
+  };
+
   /* ── AI Format ──────────────────────────────────────────────── */
   window.wpFormatAI = function() {
     var src = document.getElementById('wp-source');
@@ -953,6 +1036,7 @@
     var text  = src.value.trim().slice(0, 6000);
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
+    var ds    = wpGetDocSettings();
     var btn   = document.getElementById('wp-ai-btn');
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
@@ -968,7 +1052,8 @@
       '4. Key terms → <strong>\n5. ALL body text in <p> tags\n' +
       '6. Bullets → <ul><li>\n7. Numbers → <ol><li>\n8. Quotes → <blockquote>\n' +
       '9. Fix grammar/spelling\n10. Match ' + tone + ' tone throughout\n' +
-      '11. Data/comparison tables → use <table> with proper thead/tbody\n\n' +
+      '11. Data/comparison tables → use <table> with proper thead/tbody\n' +
+      wpDocSettingsPrompt(ds) + '\n\n' +
       'TEXT:\n' + text;
 
     callAI(prompt, 2500)
@@ -982,6 +1067,7 @@
         var clean = sanitizeHTML(trimmed);
         if (clean) {
           wpLoadContent(clean);
+          wpApplyDocSettings(ds);
           var title = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
           wpSaveHistory(title.replace(/<[^>]+>/g,''), wpGetFullContent());
           wpSetStatus('Document formatted ✅');
@@ -1015,6 +1101,7 @@
     var tone   = getV('wp-wtone',    'Professional');
     var dtype  = getV('wp-wdoctype', 'General Document');
     var length = getV('wp-length',   'medium');
+    var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
     var lengths = { short: '250-350 words', medium: '500-700 words', long: '900-1100 words', detailed: '1300-1700 words' };
     var wTarget = lengths[length] || '500-700 words';
@@ -1026,13 +1113,15 @@
     var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone. Target: ' + wTarget + '.\n\nREQUEST: ' + prompt + '\n\n' +
       'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
       'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
-      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate';
+      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate' +
+      wpDocSettingsPrompt(ds);
 
     callAI(aiPrompt, 2500)
       .then(function(result) {
         var clean = sanitizeHTML(result);
         if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
         wpLoadContent(clean);
+        wpApplyDocSettings(ds);
         var wTitle = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Document';
         wpSaveHistory(wTitle.replace(/<[^>]+>/g,''), wpGetFullContent());
         wpSwitchTab('format');
@@ -1289,10 +1378,7 @@
       if (pan) pan.classList.toggle('active', t === tab);
     });
     if (tab === 'history') wpRenderHistory();
-    if (window.innerWidth <= 820) {
-      var sb = document.getElementById('wp-sidebar');
-      if (sb && !sb.classList.contains('mob-open')) wpMobOpen && wpMobOpen();
-    }
+    /* Do NOT auto-open sidebar on mobile — user controls it via the FAB button */
   };
 
   /* ── Document History ───────────────────────────────────────── */

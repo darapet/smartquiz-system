@@ -202,6 +202,77 @@
     /* ── Print root (hidden unless printing) ──── */
     #wp-print-root { display: none; }
     @media print { #wp-print-root { display: block !important; } body > *:not(#wp-print-root) { display: none !important; } }
+
+    /* ── Sidebar FAB toggle (mobile) ────────────── */
+    #wp-sb-fab {
+      display: none;
+      position: fixed;
+      bottom: 76px;
+      right: 16px;
+      z-index: 900;
+      width: 50px; height: 50px;
+      border-radius: 50%;
+      background: #6366f1;
+      color: #fff;
+      border: none;
+      font-size: 22px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(99,102,241,.55);
+      align-items: center;
+      justify-content: center;
+      transition: background .15s, transform .15s;
+      line-height: 1;
+    }
+    #wp-sb-fab:hover { background: #4f46e5; transform: scale(1.07); }
+    #wp-sb-fab.is-open { background: #ef4444; }
+    #wp-sb-fab.is-open:hover { background: #dc2626; }
+    @media (max-width: 820px) { #wp-sb-fab { display: flex; } }
+
+    /* ── Sidebar close button ────────────────────── */
+    .wp-sb-close {
+      display: none;
+      position: absolute;
+      top: 7px; right: 8px;
+      background: none; border: none;
+      font-size: 17px; color: #9ca3af;
+      cursor: pointer; padding: 5px 8px;
+      border-radius: 6px; line-height: 1;
+      z-index: 2;
+    }
+    .wp-sb-close:hover { background: #fee2e2; color: #ef4444; }
+    @media (max-width: 820px) { .wp-sb-close { display: block; } }
+
+    /* ── Doc settings section ───────────────────── */
+    .wp-doc-settings {
+      border-bottom: 1px solid #e9ecf0;
+      background: #f8f9ff;
+    }
+    .wp-doc-settings summary {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #6366f1;
+      cursor: pointer;
+      user-select: none;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      list-style: none;
+    }
+    .wp-doc-settings summary::-webkit-details-marker { display: none; }
+    .wp-doc-settings summary::before {
+      content: '▶';
+      font-size: 8px;
+      transition: transform .15s;
+      display: inline-block;
+    }
+    .wp-doc-settings[open] summary::before { transform: rotate(90deg); }
+    .wp-doc-settings-body { padding: 4px 12px 10px; }
+    .wp-ds-row { display: flex; gap: 5px; margin-bottom: 5px; }
+    .wp-ds-row > div { flex: 1; min-width: 0; }
+    .wp-ds-check { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #374151; margin-top: 6px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -671,14 +742,91 @@
   <!-- ── SIDEBAR ────────────────────────────────── -->
   <div class="wp-sidebar" id="wp-sidebar">
 
+    <!-- Mobile close button -->
+    <button class="wp-sb-close" title="Close panel" onclick="wpCloseSidebar()">&#x2715;</button>
+
     <!-- Sidebar tabs -->
     <div class="wp-sidebar-tabs">
-      <button class="wp-stab active" id="wp-stab-format"   onclick="wpSwitchTab('format')">✨ AI Format</button>
+      <button class="wp-stab active" id="wp-stab-format"   onclick="wpSwitchTab('format')">✨ Format</button>
       <button class="wp-stab" id="wp-stab-write"    onclick="wpSwitchTab('write')">✍️ Write</button>
       <button class="wp-stab" id="wp-stab-template" onclick="wpSwitchTab('template')">📄 Templates</button>
       <button class="wp-stab" id="wp-stab-history"  onclick="wpSwitchTab('history')">🕐 History</button>
       <button class="wp-stab" id="wp-stab-web"      onclick="wpSwitchTab('web')">🌐 Web</button>
     </div>
+
+    <!-- ── Shared Document Settings ── -->
+    <details class="wp-doc-settings" id="wp-doc-settings">
+      <summary>📐 Document Settings</summary>
+      <div class="wp-doc-settings-body">
+        <div class="wp-ds-row">
+          <div>
+            <div class="wp-lbl">Font Family</div>
+            <select class="wp-sel" id="wp-ds-font" style="font-size:11px;">
+              <option value="Inter, system-ui, sans-serif">Inter</option>
+              <option value="Roboto, sans-serif">Roboto</option>
+              <option value="Open Sans, sans-serif">Open Sans</option>
+              <option value="Lato, sans-serif">Lato</option>
+              <option value="Montserrat, sans-serif">Montserrat</option>
+              <option value="Nunito, sans-serif">Nunito</option>
+              <option value="Georgia, serif">Georgia</option>
+              <option value="Times New Roman, serif">Times New Roman</option>
+              <option value="Courier New, monospace">Courier New</option>
+            </select>
+          </div>
+          <div>
+            <div class="wp-lbl">Font Size</div>
+            <select class="wp-sel" id="wp-ds-size" style="font-size:11px;">
+              <option value="10pt">10pt</option>
+              <option value="11pt">11pt</option>
+              <option value="12pt" selected>12pt</option>
+              <option value="14pt">14pt</option>
+              <option value="16pt">16pt</option>
+            </select>
+          </div>
+        </div>
+        <div class="wp-ds-row">
+          <div>
+            <div class="wp-lbl">Line Spacing</div>
+            <select class="wp-sel" id="wp-ds-lspace" style="font-size:11px;">
+              <option value="1">Single (1.0)</option>
+              <option value="1.15" selected>1.15</option>
+              <option value="1.5">1.5</option>
+              <option value="2">Double (2.0)</option>
+            </select>
+          </div>
+          <div>
+            <div class="wp-lbl">Para Spacing</div>
+            <select class="wp-sel" id="wp-ds-pspace" style="font-size:11px;">
+              <option value="0">None</option>
+              <option value="6pt" selected>Small (6pt)</option>
+              <option value="12pt">Medium (12pt)</option>
+              <option value="18pt">Large (18pt)</option>
+            </select>
+          </div>
+        </div>
+        <div class="wp-ds-row">
+          <div>
+            <div class="wp-lbl">Margins</div>
+            <select class="wp-sel" id="wp-ds-margin" style="font-size:11px;">
+              <option value="narrow">Narrow (0.5in)</option>
+              <option value="normal" selected>Normal (1in)</option>
+              <option value="wide">Wide (1.5in)</option>
+            </select>
+          </div>
+          <div>
+            <div class="wp-lbl">Page Size</div>
+            <select class="wp-sel" id="wp-ds-page" style="font-size:11px;">
+              <option value="A4" selected>A4</option>
+              <option value="Letter">Letter</option>
+              <option value="Legal">Legal</option>
+            </select>
+          </div>
+        </div>
+        <label class="wp-ds-check">
+          <input type="checkbox" id="wp-ds-divider" checked> Section dividers (horizontal rules)
+        </label>
+      </div>
+    </details>
 
     <!-- ── Format / AI Panel ── -->
     <div class="wp-spanel active" id="wp-spanel-format">
@@ -1088,6 +1236,12 @@
 <!-- File input for doc upload (Format mode / Upload mode) -->
 <input type="file" id="wp-file-input" accept=".txt,.md,.html,.htm,.docx,.pdf" style="display:none"
        onchange="if(this.files[0]){wpHandleFile(this.files[0]);this.value='';}">
+
+<!-- Sidebar FAB toggle (mobile) -->
+<button id="wp-sb-fab" title="AI Tools" onclick="wpToggleSidebar()">&#9776;</button>
+
+<!-- Sidebar backdrop (closes sidebar on outside tap) -->
+<div class="wp-sidebar-backdrop" id="wp-sidebar-backdrop" onclick="wpCloseSidebar()"></div>
 
 <!-- Print root (content cloned here for print) -->
 <div id="wp-print-root"></div>
