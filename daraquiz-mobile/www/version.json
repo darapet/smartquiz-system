@@ -2,7 +2,7 @@
   "version": "1.194",
   "versionCode": 169,
   "releaseDate": "2026-06-07",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Groq AI added as primary fast provider (10 key slots) with Mistral fallback. New full word processor (Text → Docs v3.1). Bug fixes.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.194/daraquiz-v1.194.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.194/daraquiz-v1.194.apk"
 }
