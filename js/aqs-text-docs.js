@@ -1128,13 +1128,16 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone.\n\nPAGE TARGET: ' + pageLabel + ' (' + wTarget + '). IMPORTANT: The document must fill approximately ' + pageLabel + ' when printed on A4 paper. Do not be too short or too long.\n\nREQUEST: ' + prompt + '\n\n' +
+    /* tokens: ~750 per page (500 words × 1.3 tok/word + HTML overhead), min 2500, max 8000 */
+    var maxTok = Math.min(8000, Math.max(2500, Math.round(pages * 750) + 600));
+
+    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone.\n\nPAGE TARGET: Exactly ' + pageLabel + ' (' + wTarget + '). You MUST write the full ' + pageLabel + ' — do NOT stop early, do NOT summarise at the end, do NOT add "Note: truncated". Keep writing until you have filled ' + pageLabel + ' worth of content.\n\nREQUEST: ' + prompt + '\n\n' +
       'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
       'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
-      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate' +
+      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a full, detailed conclusion\n- DO NOT STOP — write the entire document to completion' +
       wpDocSettingsPrompt(ds);
 
-    callAI(aiPrompt, 2500)
+    callAI(aiPrompt, maxTok)
       .then(function(result) {
         var clean = sanitizeHTML(result);
         if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
