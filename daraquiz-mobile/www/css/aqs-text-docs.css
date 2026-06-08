@@ -368,6 +368,9 @@ body {
   color: #94a3b8; font-weight: 600; pointer-events: none;
 }
 
+/* Page number labels hidden — users navigate via the nav bar */
+.wp-page-footer { display: none !important; }
+
 /* Page inner typography */
 .wp-page-inner h1 { margin-bottom: .5em; line-height: 1.2; }
 .wp-page-inner h2 { margin-bottom: .45em; line-height: 1.25; }
