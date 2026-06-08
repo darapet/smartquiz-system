@@ -829,19 +829,27 @@ body {
   /* Pages area padding for bottom nav */
   .wp-pages-area { padding: 16px 10px 80px; }
 
-  /* Pages go full-width on mobile */
+  /* Pages go full-width on mobile — standard A4 paper appearance */
   .wp-page {
-    /* Keep paper look on mobile — scaled A4 card */
-    width: calc(100vw - 20px) !important;
-    max-width: 500px !important;
+    width: calc(100vw - 16px) !important;
+    max-width: 560px !important;
     min-width: 0 !important;
-    min-height: auto !important;
-    padding: 28px 24px !important;
-    border-radius: 6px !important;
+    /* A4 ratio 297/210 ≈ 1.414 — maintain realistic page proportions */
+    min-height: calc((100vw - 16px) * 1.414) !important;
+    padding: 20mm 18mm !important;
+    border-radius: 2px !important;
     background: #fff !important;
-    box-shadow: 0 2px 16px rgba(0,0,0,.10) !important;
-    border: 1px solid #e5e7eb !important;
+    /* Realistic Word-style shadow */
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,.10),
+      0 2px 8px rgba(0,0,0,.14),
+      0 6px 24px rgba(0,0,0,.16) !important;
+    border: none !important;
     margin: 0 auto !important;
+    position: relative !important;
+  }
+  .wp-page-inner {
+    min-height: calc((100vw - 16px) * 1.414 - 40mm) !important;
   }
 
   /* Page nav bar — mobile friendly */

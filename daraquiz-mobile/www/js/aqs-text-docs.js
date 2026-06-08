@@ -16,7 +16,7 @@
   var wpCtxCell = null, wpCtxTable = null;
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
-  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 15;
+  var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 20;
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -83,10 +83,13 @@
     h = Math.ceil(h) + 1; // +1 to avoid sub-pixel gap
     document.documentElement.style.setProperty('--wp-header-h', h + 'px');
     var sidebar = document.getElementById('wp-sidebar');
-    if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
+    if (window.innerWidth > 768) {
+      if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
+    }
     var layout = document.querySelector('.wp-layout');
     if (layout) layout.style.marginTop = h + 'px';
   }
+  window.addEventListener('resize', function() { setTimeout(wpAdjustHeaderOffset, 100); });
 
   /* ── Active editor ─────────────────────────────────────────── */
   function wpGetEditor() {
@@ -1062,19 +1065,23 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
 
-    var prompt = 'You are a professional document formatter.\n\n' +
+    var prompt = 'You are a professional document formatter. Your ONLY job is to FORMAT the text — you must NEVER remove, shorten, summarize, or omit any content.\n\n' +
       'STEP 1 — ALIGNMENT CHECK: Does the text below fit a "' + dtype + '"? If clearly not, reply ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
-      'STEP 2 — FORMAT: If content aligns, format it as a well-structured ' + dtype + ' with ' + tone + ' tone.\n\n' +
+      'STEP 2 — FORMAT: If content aligns, apply proper HTML structure to the text as a ' + dtype + ' with ' + tone + ' tone.\n\n' +
+      '⚠️ CRITICAL RULES — FORMATTING ONLY:\n' +
+      '• PRESERVE EVERY WORD, SENTENCE, AND PARAGRAPH — do not remove or shorten anything\n' +
+      '• Do NOT summarize, condense, or skip any part of the original text\n' +
+      '• Your job is structure/tags only — all original content must appear in output\n\n' +
       'OUTPUT: Return ONLY clean HTML using ONLY: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, hr, table, thead, tbody, tr, th, td. ' +
       'NO html/head/body/style/script tags.\n\n' +
-      'RULES:\n' +
+      'FORMATTING RULES:\n' +
       '1. Main title → <h1>\n2. Major sections → <h2>\n3. Sub-sections → <h3>\n' +
       '4. Key terms → <strong>\n5. ALL body text in <p> tags\n' +
       '6. Bullets → <ul><li>\n7. Numbers → <ol><li>\n8. Quotes → <blockquote>\n' +
-      '9. Fix grammar/spelling\n10. Match ' + tone + ' tone throughout\n' +
+      '9. Fix grammar/spelling only\n10. Match ' + tone + ' tone throughout\n' +
       '11. Data/comparison tables → use <table> with proper thead/tbody\n' +
       wpDocSettingsPrompt(ds) + '\n\n' +
-      'TEXT:\n' + text;
+      'TEXT TO FORMAT (preserve ALL of it):\n' + text;
 
     callAI(prompt, 2500)
       .then(function(html) {
@@ -1123,23 +1130,30 @@
     var pages  = parseFloat(getV('wp-length-sel', '1')) || 1;
     var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
-    var wordTarget = Math.round(pages * 500);
-    var wTarget = (pages < 1)
-        ? (Math.round(pages * 500) + ' words (about half a page)')
-        : (pages === 1 ? '450-550 words (1 page)' : (wordTarget - 50) + '\u2013' + (wordTarget + 50) + ' words (' + pages + ' pages)');
     var pageLabel = (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
+    /* Scale tokens with pages: ~700 tokens per page, min 2000, max 8000 */
+    var aiMaxTokens = Math.min(8000, Math.max(2000, Math.round(pages * 750)));
+    /* Section count to guide AI length: ~2 major sections per page */
+    var sectionCount = Math.max(2, Math.round(pages * 2));
 
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone.\n\nPAGE TARGET: ' + pageLabel + ' (' + wTarget + '). IMPORTANT: The document must fill approximately ' + pageLabel + ' when printed on A4 paper. Do not be too short or too long.\n\nREQUEST: ' + prompt + '\n\n' +
+    var aiPrompt = 'You are a professional document writer. Write a COMPLETE, thoroughly detailed ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+      'PAGE TARGET: ' + pageLabel + ' of A4 content. THIS IS MANDATORY.\n' +
+      '• You MUST write exactly ' + pageLabel + ' worth of content — do NOT stop early\n' +
+      '• Each A4 page = approximately ' + Math.round(pages < 1 ? 250 : 500) + ' words of body text\n' +
+      '• Include ' + sectionCount + ' major sections (<h2>), each with multiple detailed paragraphs\n' +
+      '• Every section must have 2–4 full paragraphs of substantive content\n' +
+      '• Do NOT truncate, summarize, or stop early — write the FULL document\n\n' +
+      'REQUEST: ' + prompt + '\n\n' +
       'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
-      'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
-      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate' +
+      'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections (need ' + sectionCount + ' of them)\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
+      '- Lists as <ul>/<ol> where appropriate\n- Notable quotes as <blockquote>\n- Use <table> for data comparisons\n- Write a thorough conclusion section\n- Every section must be fully developed — no short stubs\n' +
       wpDocSettingsPrompt(ds);
 
-    callAI(aiPrompt, 2500)
+    callAI(aiPrompt, aiMaxTokens)
       .then(function(result) {
         var clean = sanitizeHTML(result);
         if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
@@ -1645,8 +1659,10 @@
     blocks.forEach(function(b) {
       var bh = b.outerHTML || ('<p>' + b.textContent + '</p>');
       var bl = (b.textContent || '').length;
+      /* Only break at H1 if there's already substantial content (800+ chars)
+         so headings don't get pushed to a new page prematurely */
       var isH1 = b.tagName === 'H1';
-      if ((isH1 && curC > 150) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
+      if ((isH1 && curC > 800) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
         pages.push(cur); cur = bh; curC = bl;
       } else { cur += bh; curC += bl; }
     });
