@@ -1,8 +1,8 @@
 {
-  "version": "1.210",
-  "versionCode": 185,
+  "version": "1.211",
+  "versionCode": 186,
   "releaseDate": "2026-06-08",
-  "notes": "Text-to-Docs: removed page number labels (1, 2, 3) from document pages.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.210/daraquiz-v1.210.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.210/daraquiz-v1.210.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.211/daraquiz-v1.211.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.211/daraquiz-v1.211.apk"
 }
