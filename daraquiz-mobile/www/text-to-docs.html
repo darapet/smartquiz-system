@@ -742,7 +742,13 @@
   <!-- ── SIDEBAR ────────────────────────────────── -->
   <div class="wp-sidebar" id="wp-sidebar">
 
-    <!-- Mobile close button -->
+    <!-- Mobile bottom-sheet drag handle + close -->
+    <div class="wp-sidebar-handle" onclick="wpCloseSidebar()" title="Close panel" style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px 6px;flex-shrink:0;">
+      <span style="font-size:11px;font-weight:700;color:#6366f1;letter-spacing:.06em;text-transform:uppercase;">✨ AI Tools</span>
+      <button style="background:none;border:none;font-size:20px;color:#9ca3af;cursor:pointer;padding:2px 6px;border-radius:6px;line-height:1;" onclick="event.stopPropagation();wpCloseSidebar();">&#x2715;</button>
+    </div>
+
+    <!-- Mobile close button (desktop only fallback) -->
     <button class="wp-sb-close" title="Close panel" onclick="wpCloseSidebar()">&#x2715;</button>
 
     <!-- Sidebar tabs -->
