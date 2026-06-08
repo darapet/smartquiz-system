@@ -955,8 +955,21 @@
             setSendState(false);
         }).catch(function (err) {
             showTyping(false);
-            appendMessage('assistant', '\u26A0\uFE0F Connection error. Please check your internet and try again.');
-            console.error('[dts] Groq error:', err);
+            var errMsg = (err && err.message) ? err.message : String(err || '');
+            var displayMsg;
+            if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
+                displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
+            } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
+                displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait a moment and try again.';
+            } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
+                displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+            } else if (errMsg) {
+                displayMsg = '\u26A0\uFE0F ' + errMsg;
+            } else {
+                displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
+            }
+            appendMessage('assistant', displayMsg);
+            console.error('[dts] AI error:', err);
             isSending = false;
             setSendState(false);
         });
