@@ -163,10 +163,14 @@ window.addEventListener('DOMContentLoaded', function() {
             setVal('aqs-oauth-microsoft-secret', s.microsoft_client_secret);
             setVal('aqs-oauth-yahoo-id', s.yahoo_client_id);
             setVal('aqs-oauth-yahoo-secret', s.yahoo_client_secret);
-            /* Load GitHub PATs */
-            var ghpats = Array.isArray(s.github_pats) ? s.github_pats : [];
-            for (var pi = 1; pi <= 5; pi++) { setVal('aqs-gh-pat-' + pi, ghpats[pi-1] || ''); }
-            setVal('aqs-gh-username', s.github_username || '');
+            /* Load HuggingFace Hub tokens */
+            var hfkeys = Array.isArray(s.hf_keys) ? s.hf_keys : [];
+            var hcHFKeys = Array.isArray(window._AQS_HF_MASTER_KEYS) ? window._AQS_HF_MASTER_KEYS : [];
+            hcHFKeys.forEach(function(k){ if (hfkeys.indexOf(k) === -1) hfkeys.push(k); });
+            for (var hi = 1; hi <= 5; hi++) { setVal('aqs-hf-key-' + hi, hfkeys[hi-1] || ''); }
+            if (typeof window.setHFKeys === 'function') window.setHFKeys(hfkeys.filter(function(k){ return k && k.length > 10; }));
+            window._AQS_HF_MODEL = s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3';
+            setVal('aqs-hf-model', s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3');
         });
     });
 });
@@ -764,56 +768,63 @@ window.addEventListener('DOMContentLoaded', function() {
 </div>
 
 
-  <!-- GitHub Integration — Personal Access Tokens -->
-  <div class="aqs-settings-card" style="border-color:#e2e8f0;">
-      <div class="aqs-settings-card-header" style="background:#f8fafc;">
-          <span class="aqs-settings-card-icon">🐙</span>
-          <div>
-              <h2 class="aqs-settings-card-title">GitHub Integration — Personal Access Tokens</h2>
-              <p class="aqs-settings-card-desc">Store up to 5 GitHub PATs for API access (repo push, content reads, automation). Get tokens at <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>. Tokens are stored securely in Firebase — empty slots are ignored.</p>
-          </div>
-      </div>
-      <div class="aqs-settings-card-body">
-          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#0c4a6e;">
-              🐙 <strong>GitHub PATs</strong> are separate from OAuth login credentials above. These are used for server-side API calls — e.g. pushing quiz exports, reading private repos, or automating releases. Use fine-grained tokens with only the permissions you need.
-          </div>
-          <div class="aqs-field-group" style="margin-bottom:16px;">
-              <label for="aqs-gh-username">GitHub Username / Organisation</label>
-              <input type="text" id="aqs-gh-username" placeholder="e.g. darapet" autocomplete="off" style="max-width:320px;" />
-              <p class="aqs-field-hint">The owner of the repos the tokens will access.</p>
-          </div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-              <div class="aqs-field-group">
-                  <label style="display:flex;align-items:center;gap:6px;">PAT 1 (Primary) <span id="aqs-gh-dot-1"></span></label>
-                  <input type="password" id="aqs-gh-pat-1" placeholder="github_pat_… or ghp_…" autocomplete="off" />
-              </div>
-              <div class="aqs-field-group">
-                  <label style="display:flex;align-items:center;gap:6px;">PAT 2 <span id="aqs-gh-dot-2"></span></label>
-                  <input type="password" id="aqs-gh-pat-2" placeholder="(optional)" autocomplete="off" />
-              </div>
-              <div class="aqs-field-group">
-                  <label style="display:flex;align-items:center;gap:6px;">PAT 3 <span id="aqs-gh-dot-3"></span></label>
-                  <input type="password" id="aqs-gh-pat-3" placeholder="(optional)" autocomplete="off" />
-              </div>
-              <div class="aqs-field-group">
-                  <label style="display:flex;align-items:center;gap:6px;">PAT 4 <span id="aqs-gh-dot-4"></span></label>
-                  <input type="password" id="aqs-gh-pat-4" placeholder="(optional)" autocomplete="off" />
-              </div>
-              <div class="aqs-field-group">
-                  <label style="display:flex;align-items:center;gap:6px;">PAT 5 <span id="aqs-gh-dot-5"></span></label>
-                  <input type="password" id="aqs-gh-pat-5" placeholder="(optional)" autocomplete="off" />
-              </div>
-          </div>
-          <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-              <button class="aqs-btn aqs-btn-primary" id="aqs-save-github-btn" style="background:#24292f;border-color:#24292f;color:#fff;">🐙 Save GitHub Settings</button>
-              <button class="aqs-btn" id="aqs-test-github-btn" style="background:#0969da;color:#fff;border-color:#0550ae;">🔌 Test PATs</button>
-              <span id="aqs-github-status" class="aqs-status-msg"></span>
-          </div>
-          <div id="aqs-github-test-results" style="display:none;margin-top:16px;background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px;font-size:.82rem;"></div>
-      </div>
-  </div>
+  <!-- HuggingFace Hub — AI Fallback Tokens -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:#f0fdf4;">
+        <span class="aqs-settings-card-icon">🤗</span>
+        <div>
+            <h2 class="aqs-settings-card-title">HuggingFace Hub — AI Tokens (up to 5)</h2>
+            <p class="aqs-settings-card-desc"><strong>Third-tier AI fallback</strong> — kicks in when all Groq &amp; Mistral keys are busy. Used by xzily Studio and <strong>Study Hub</strong> for text &amp; study AI features. Free tokens at <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a>.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#14532d;">
+            🤗 <strong>AI Priority order:</strong> ⚡ Groq (1–20) → 🤖 Mistral (1–20) → 🤗 HuggingFace (1–5). Rate-limited keys cool down 62 s automatically. Studio &amp; Study Hub share the same pool.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 1 (Primary) <span id="aqs-hf-dot-1"></span></label>
+                <input type="password" id="aqs-hf-key-1" placeholder="hf_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 2 <span id="aqs-hf-dot-2"></span></label>
+                <input type="password" id="aqs-hf-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 3 <span id="aqs-hf-dot-3"></span></label>
+                <input type="password" id="aqs-hf-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 4 <span id="aqs-hf-dot-4"></span></label>
+                <input type="password" id="aqs-hf-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 5 <span id="aqs-hf-dot-5"></span></label>
+                <input type="password" id="aqs-hf-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-hf-model">HuggingFace Model</label>
+                <select id="aqs-hf-model">
+                    <option value="mistralai/Mistral-7B-Instruct-v0.3">Mistral-7B-Instruct-v0.3 (Recommended ⚡)</option>
+                    <option value="mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral-8x7B-Instruct (Powerful)</option>
+                    <option value="meta-llama/Meta-Llama-3-8B-Instruct">Llama-3-8B-Instruct (Fast)</option>
+                    <option value="meta-llama/Meta-Llama-3-70B-Instruct">Llama-3-70B-Instruct (Large)</option>
+                    <option value="HuggingFaceH4/zephyr-7b-beta">Zephyr-7B-Beta</option>
+                    <option value="microsoft/phi-2">Phi-2 (Lightweight)</option>
+                </select>
+                <p class="aqs-field-hint">Used by Studio chat, Study Hub explanations, and all AI fallback calls.</p>
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-hf-btn" style="background:#16a34a;border-color:#15803d;color:#fff;">🤗 Save HuggingFace Settings</button>
+            <button class="aqs-btn" id="aqs-test-hf-btn" style="background:#059669;color:#fff;border-color:#047857;">🔌 Test All HF Tokens</button>
+            <span id="aqs-hf-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-hf-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
 
-  <!-- Plugin Pages -->
+<!-- Plugin Pages -->
 <div class="aqs-settings-card" style="margin-top:24px;">
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">📄</span>
@@ -1188,75 +1199,81 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
     }, 'aqs-oauth-status', this, '💾 Save OAuth Settings');
 });
 
-  btn('aqs-save-github-btn').addEventListener('click', function(){
-      var pats = [];
-      for (var pi = 1; pi <= 5; pi++) {
-          var pel = document.getElementById('aqs-gh-pat-' + pi);
-          if (pel && pel.value.trim().length > 10) pats.push(pel.value.trim());
-      }
-      var username = document.getElementById('aqs-gh-username') ? document.getElementById('aqs-gh-username').value.trim() : '';
-      /* Store in window for runtime use */
-      window._AQS_GITHUB_PATS     = pats;
-      window._AQS_GITHUB_USERNAME = username;
-      saveSettings('/api/settings', {
-          github_pats: pats,
-          github_username: username
-      }, 'aqs-github-status', this, '🐙 Save GitHub Settings');
-      for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-gh-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
-  });
+  btn('aqs-save-hf-btn').addEventListener('click', function(){
+    var hfKeys = [];
+    for (var hi = 1; hi <= 5; hi++) {
+        var hel = document.getElementById('aqs-hf-key-' + hi);
+        if (hel && hel.value.trim().length > 10) hfKeys.push(hel.value.trim());
+    }
+    var hfModelEl = document.getElementById('aqs-hf-model');
+    if (typeof window.setHFKeys === 'function') window.setHFKeys(hfKeys);
+    window._AQS_HF_MODEL = hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3';
+    saveSettings('/api/settings', {
+        hf_keys: hfKeys,
+        hf_model: hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3'
+    }, 'aqs-hf-status', this, '🤗 Save HuggingFace Settings');
+    for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-hf-dot-' + ci); if (d) d.textContent = ''; }
+});
 
-  async function _aqsTestGithubPats() {
-      var allPats = [];
-      for (var pi = 1; pi <= 5; pi++) {
-          var pel = document.getElementById('aqs-gh-pat-' + pi);
-          if (pel && pel.value.trim().length > 10) allPats.push({ slot: 'PAT ' + pi, token: pel.value.trim() });
-      }
-      var results = document.getElementById('aqs-github-test-results');
-      var testBtn = document.getElementById('aqs-test-github-btn');
-      if (!allPats.length) {
-          results.style.display = 'block';
-          results.innerHTML = '<span style="color:#f85149;">⚠️ No tokens found. Add at least one PAT above, then click Test.</span>';
-          return;
-      }
-      if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-      results.style.display = 'block';
-      results.innerHTML = '<div style="color:#8b949e;padding:4px 0;">⏳ Verifying ' + allPats.length + ' token(s) with GitHub API…</div>';
-      async function pingPat(entry) {
-          var token = entry.token, slot = entry.slot;
-          var masked = token.slice(0, 7) + '…' + token.slice(-4);
-          var badge = '<span style="font-size:.7rem;background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:4px;padding:2px 7px;font-weight:700;">GITHUB</span>';
-          try {
-              var res = await fetch('https://api.github.com/user', {
-                  headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' },
-                  signal: AbortSignal.timeout(10000)
-              });
-              if (res.ok) {
-                  var data = await res.json();
-                  var login = data.login || '?';
-                  return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d2818;border:1px solid #238636;border-radius:8px;">' + badge + '<span style="color:#3fb950;font-weight:700;">' + slot + '</span><code style="color:#56d364;font-size:.78rem;background:#0d1e0e;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#7ee787;margin-left:auto;font-size:.78rem;">✅ Valid · @' + login + '</span></div>' };
-              } else if (res.status === 401) {
-                  return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0010;border:1px solid #6e1a24;border-radius:8px;">' + badge + '<span style="color:#ff7b72;font-weight:700;">' + slot + '</span><code style="color:#f85149;font-size:.78rem;background:#240009;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#ffa198;margin-left:auto;font-size:.78rem;">❌ Invalid / Expired (401)</span></div>' };
-              } else {
-                  return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#131d2e;border:1px solid #1f4068;border-radius:8px;">' + badge + '<span style="color:#79c0ff;font-weight:700;">' + slot + '</span><code style="color:#58a6ff;font-size:.78rem;background:#0d1523;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#a5c9f0;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
-              }
-          } catch(e) {
-              return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0010;border:1px solid #6e1a24;border-radius:8px;">' + badge + '<span style="color:#ff7b72;font-weight:700;">' + slot + '</span><code style="color:#f85149;font-size:.78rem;background:#240009;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#ffa198;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (10s)':'Network error') + '</span></div>' };
-          }
-      }
-      var rows = await Promise.all(allPats.map(pingPat));
-      rows.forEach(function(r, ri) {
-          var dot = document.getElementById('aqs-gh-dot-' + (ri + 1));
-          if (!dot) return;
-          dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem';
-      });
-      var active = rows.filter(function(r){ return r.ok; }).length;
-      var summary = active === rows.length
-          ? '<div style="color:#3fb950;font-weight:700;padding:6px 10px;background:#0d2818;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' token(s) valid!</div>'
-          : '<div style="color:#d29922;font-weight:700;padding:6px 10px;background:#1c1a00;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' token(s) valid.</div>';
-      results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
-      if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test PATs'; }
-  }
-  btn('aqs-test-github-btn').addEventListener('click', _aqsTestGithubPats);
+async function _aqsTestHFKeys() {
+    var allKeys = [];
+    for (var hi = 1; hi <= 5; hi++) {
+        var hel = document.getElementById('aqs-hf-key-' + hi);
+        if (hel && hel.value.trim().length > 10) allKeys.push({ slot: 'Token ' + hi, key: hel.value.trim() });
+    }
+    var results = document.getElementById('aqs-hf-test-results');
+    var testBtn = document.getElementById('aqs-test-hf-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No HF tokens found. Add at least one above, then click Test.</span>';
+        return;
+    }
+    var model = (document.getElementById('aqs-hf-model') || {}).value || 'mistralai/Mistral-7B-Instruct-v0.3';
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' token(s) via HuggingFace Inference API…</div>';
+    async function pingHF(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 5) + '…' + key.slice(-4);
+        var badge = '<span style="font-size:.7rem;background:#d1fae5;color:#065f46;border-radius:4px;padding:2px 7px;font-weight:700;">HF</span>';
+        var tStart = Date.now();
+        try {
+            var res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 5 }),
+                signal: AbortSignal.timeout(15000)
+            });
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                var data = await res.json();
+                var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
+            } else if (res.status === 401 || res.status === 403) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid token (' + res.status + ')</span></div>' };
+            } else if (res.status === 429) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited</span></div>' };
+            } else {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+            }
+        } catch(e) {
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (15s)':'Network error') + '</span></div>' };
+        }
+    }
+    var rows = await Promise.all(allKeys.map(pingHF));
+    rows.forEach(function(r, ri) {
+        var dot = document.getElementById('aqs-hf-dot-' + (ri + 1));
+        if (!dot) return;
+        dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem';
+    });
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' HF token(s) working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' HF tokens active.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All HF Tokens'; }
+}
+btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
   </script>
 </body>
 </html>
