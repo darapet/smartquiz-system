@@ -519,9 +519,13 @@
             if (typeof window.renderMathInElement !== 'undefined') {
                 window.renderMathInElement(containerEl, {
                     delimiters: [
-                        { left: '$',   right: '$',   display: true  },
+                        { left: '$$',  right: '$$',  display: true  },
+                        { left: '$',   right: '$',   display: false },
                         { left: '\\[', right: '\\]', display: true  },
-                        { left: '
+                        { left: '\\(', right: '\\)', display: false }
+                    ]
+                });
+            }
         } catch (e) {}
     }
 
