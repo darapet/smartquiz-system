@@ -50,7 +50,29 @@
     wpUpdateStats();
     wpSetStatus('Word Processor ready — v3.1');
     wpAdjustHeaderOffset();
+    wpSetupDocSettingsListeners();
   });
+
+  /* ── Live-apply Document Style on any setting change ─────────── */
+  function wpSetupDocSettingsListeners() {
+    var ids = [
+      'wp-ds-font','wp-ds-size','wp-ds-lspace','wp-ds-pspace',
+      'wp-ds-margin','wp-ds-page','wp-ds-divider',
+      'dsm-font','dsm-size','dsm-h1','dsm-h2','dsm-h3',
+      'dsm-h4','dsm-h5','dsm-h6','dsm-lspace','dsm-pspace',
+      'dsm-margin','dsm-page'
+    ];
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', function() {
+        wpApplyDocSettings(wpGetDocSettings());
+      });
+    });
+    /* Also handle the dsm-divider checkbox if present */
+    var dsmDiv = document.getElementById('dsm-divider');
+    if (dsmDiv) dsmDiv.addEventListener('change', function() { wpApplyDocSettings(wpGetDocSettings()); });
+  }
 
   /* ── Dynamic header height offset ──────────────────────────── */
   function wpAdjustHeaderOffset() {
