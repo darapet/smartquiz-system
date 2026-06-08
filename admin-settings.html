@@ -119,12 +119,16 @@ window.addEventListener('DOMContentLoaded', function() {
             var hcGKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
             hcGKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
             for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
+            if (typeof window.setGroqKeys === 'function') window.setGroqKeys(gkeys.filter(function(k){ return k && k.length > 20; }));
+            window._AQS_GROQ_MODEL = s.groq_model || 'llama-3.3-70b-versatile';
             setVal('aqs-groq-model', s.groq_model || 'llama-3.3-70b-versatile');
             /* Load up to 20 Mistral keys (Firebase first, then hardcoded fallbacks) */
             var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
             var hcMKeys = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
             hcMKeys.forEach(function(k){ if (mkeys.indexOf(k) === -1) mkeys.push(k); });
             for (var mi = 1; mi <= 20; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
+            if (typeof window.setMistralKeys === 'function') window.setMistralKeys(mkeys.filter(function(k){ return k && k.length > 20; }));
+            window._AQS_MISTRAL_MODEL = s.mistral_model || 'mistral-small-latest';
             setVal('aqs-mistral-model', s.mistral_model || 'mistral-small-latest');
             setVal('aqs-music-url', s.bg_music_url);
             setChk('aqs-splash-enabled', s.splash_enabled);
@@ -159,6 +163,10 @@ window.addEventListener('DOMContentLoaded', function() {
             setVal('aqs-oauth-microsoft-secret', s.microsoft_client_secret);
             setVal('aqs-oauth-yahoo-id', s.yahoo_client_id);
             setVal('aqs-oauth-yahoo-secret', s.yahoo_client_secret);
+            /* Load GitHub PATs */
+            var ghpats = Array.isArray(s.github_pats) ? s.github_pats : [];
+            for (var pi = 1; pi <= 5; pi++) { setVal('aqs-gh-pat-' + pi, ghpats[pi-1] || ''); }
+            setVal('aqs-gh-username', s.github_username || '');
         });
     });
 });
@@ -755,7 +763,57 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Plugin Pages -->
+
+  <!-- GitHub Integration — Personal Access Tokens -->
+  <div class="aqs-settings-card" style="border-color:#e2e8f0;">
+      <div class="aqs-settings-card-header" style="background:#f8fafc;">
+          <span class="aqs-settings-card-icon">🐙</span>
+          <div>
+              <h2 class="aqs-settings-card-title">GitHub Integration — Personal Access Tokens</h2>
+              <p class="aqs-settings-card-desc">Store up to 5 GitHub PATs for API access (repo push, content reads, automation). Get tokens at <a href="https://github.com/settings/tokens" target="_blank">github.com/settings/tokens</a>. Tokens are stored securely in Firebase — empty slots are ignored.</p>
+          </div>
+      </div>
+      <div class="aqs-settings-card-body">
+          <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#0c4a6e;">
+              🐙 <strong>GitHub PATs</strong> are separate from OAuth login credentials above. These are used for server-side API calls — e.g. pushing quiz exports, reading private repos, or automating releases. Use fine-grained tokens with only the permissions you need.
+          </div>
+          <div class="aqs-field-group" style="margin-bottom:16px;">
+              <label for="aqs-gh-username">GitHub Username / Organisation</label>
+              <input type="text" id="aqs-gh-username" placeholder="e.g. darapet" autocomplete="off" style="max-width:320px;" />
+              <p class="aqs-field-hint">The owner of the repos the tokens will access.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+              <div class="aqs-field-group">
+                  <label style="display:flex;align-items:center;gap:6px;">PAT 1 (Primary) <span id="aqs-gh-dot-1"></span></label>
+                  <input type="password" id="aqs-gh-pat-1" placeholder="github_pat_… or ghp_…" autocomplete="off" />
+              </div>
+              <div class="aqs-field-group">
+                  <label style="display:flex;align-items:center;gap:6px;">PAT 2 <span id="aqs-gh-dot-2"></span></label>
+                  <input type="password" id="aqs-gh-pat-2" placeholder="(optional)" autocomplete="off" />
+              </div>
+              <div class="aqs-field-group">
+                  <label style="display:flex;align-items:center;gap:6px;">PAT 3 <span id="aqs-gh-dot-3"></span></label>
+                  <input type="password" id="aqs-gh-pat-3" placeholder="(optional)" autocomplete="off" />
+              </div>
+              <div class="aqs-field-group">
+                  <label style="display:flex;align-items:center;gap:6px;">PAT 4 <span id="aqs-gh-dot-4"></span></label>
+                  <input type="password" id="aqs-gh-pat-4" placeholder="(optional)" autocomplete="off" />
+              </div>
+              <div class="aqs-field-group">
+                  <label style="display:flex;align-items:center;gap:6px;">PAT 5 <span id="aqs-gh-dot-5"></span></label>
+                  <input type="password" id="aqs-gh-pat-5" placeholder="(optional)" autocomplete="off" />
+              </div>
+          </div>
+          <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+              <button class="aqs-btn aqs-btn-primary" id="aqs-save-github-btn" style="background:#24292f;border-color:#24292f;color:#fff;">🐙 Save GitHub Settings</button>
+              <button class="aqs-btn" id="aqs-test-github-btn" style="background:#0969da;color:#fff;border-color:#0550ae;">🔌 Test PATs</button>
+              <span id="aqs-github-status" class="aqs-status-msg"></span>
+          </div>
+          <div id="aqs-github-test-results" style="display:none;margin-top:16px;background:#0d1117;border:1px solid #30363d;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+      </div>
+  </div>
+
+  <!-- Plugin Pages -->
 <div class="aqs-settings-card" style="margin-top:24px;">
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">📄</span>
@@ -1129,6 +1187,76 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
         yahoo_client_secret: document.getElementById('aqs-oauth-yahoo-secret').value.trim()
     }, 'aqs-oauth-status', this, '💾 Save OAuth Settings');
 });
-</script>
+
+  btn('aqs-save-github-btn').addEventListener('click', function(){
+      var pats = [];
+      for (var pi = 1; pi <= 5; pi++) {
+          var pel = document.getElementById('aqs-gh-pat-' + pi);
+          if (pel && pel.value.trim().length > 10) pats.push(pel.value.trim());
+      }
+      var username = document.getElementById('aqs-gh-username') ? document.getElementById('aqs-gh-username').value.trim() : '';
+      /* Store in window for runtime use */
+      window._AQS_GITHUB_PATS     = pats;
+      window._AQS_GITHUB_USERNAME = username;
+      saveSettings('/api/settings', {
+          github_pats: pats,
+          github_username: username
+      }, 'aqs-github-status', this, '🐙 Save GitHub Settings');
+      for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-gh-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
+  });
+
+  async function _aqsTestGithubPats() {
+      var allPats = [];
+      for (var pi = 1; pi <= 5; pi++) {
+          var pel = document.getElementById('aqs-gh-pat-' + pi);
+          if (pel && pel.value.trim().length > 10) allPats.push({ slot: 'PAT ' + pi, token: pel.value.trim() });
+      }
+      var results = document.getElementById('aqs-github-test-results');
+      var testBtn = document.getElementById('aqs-test-github-btn');
+      if (!allPats.length) {
+          results.style.display = 'block';
+          results.innerHTML = '<span style="color:#f85149;">⚠️ No tokens found. Add at least one PAT above, then click Test.</span>';
+          return;
+      }
+      if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+      results.style.display = 'block';
+      results.innerHTML = '<div style="color:#8b949e;padding:4px 0;">⏳ Verifying ' + allPats.length + ' token(s) with GitHub API…</div>';
+      async function pingPat(entry) {
+          var token = entry.token, slot = entry.slot;
+          var masked = token.slice(0, 7) + '…' + token.slice(-4);
+          var badge = '<span style="font-size:.7rem;background:#21262d;color:#58a6ff;border:1px solid #30363d;border-radius:4px;padding:2px 7px;font-weight:700;">GITHUB</span>';
+          try {
+              var res = await fetch('https://api.github.com/user', {
+                  headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' },
+                  signal: AbortSignal.timeout(10000)
+              });
+              if (res.ok) {
+                  var data = await res.json();
+                  var login = data.login || '?';
+                  return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#0d2818;border:1px solid #238636;border-radius:8px;">' + badge + '<span style="color:#3fb950;font-weight:700;">' + slot + '</span><code style="color:#56d364;font-size:.78rem;background:#0d1e0e;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#7ee787;margin-left:auto;font-size:.78rem;">✅ Valid · @' + login + '</span></div>' };
+              } else if (res.status === 401) {
+                  return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0010;border:1px solid #6e1a24;border-radius:8px;">' + badge + '<span style="color:#ff7b72;font-weight:700;">' + slot + '</span><code style="color:#f85149;font-size:.78rem;background:#240009;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#ffa198;margin-left:auto;font-size:.78rem;">❌ Invalid / Expired (401)</span></div>' };
+              } else {
+                  return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#131d2e;border:1px solid #1f4068;border-radius:8px;">' + badge + '<span style="color:#79c0ff;font-weight:700;">' + slot + '</span><code style="color:#58a6ff;font-size:.78rem;background:#0d1523;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#a5c9f0;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+              }
+          } catch(e) {
+              return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0010;border:1px solid #6e1a24;border-radius:8px;">' + badge + '<span style="color:#ff7b72;font-weight:700;">' + slot + '</span><code style="color:#f85149;font-size:.78rem;background:#240009;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#ffa198;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (10s)':'Network error') + '</span></div>' };
+          }
+      }
+      var rows = await Promise.all(allPats.map(pingPat));
+      rows.forEach(function(r, ri) {
+          var dot = document.getElementById('aqs-gh-dot-' + (ri + 1));
+          if (!dot) return;
+          dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem';
+      });
+      var active = rows.filter(function(r){ return r.ok; }).length;
+      var summary = active === rows.length
+          ? '<div style="color:#3fb950;font-weight:700;padding:6px 10px;background:#0d2818;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' token(s) valid!</div>'
+          : '<div style="color:#d29922;font-weight:700;padding:6px 10px;background:#1c1a00;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' token(s) valid.</div>';
+      results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+      if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test PATs'; }
+  }
+  btn('aqs-test-github-btn').addEventListener('click', _aqsTestGithubPats);
+  </script>
 </body>
 </html>
