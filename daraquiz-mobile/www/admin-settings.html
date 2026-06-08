@@ -221,13 +221,128 @@ window.addEventListener('DOMContentLoaded', function() {
     <h1>⚙️ Plugin Settings</h1>
 </div>
 
-<!-- AI Provider -->
+<!-- Groq AI Keys — SHOWN FIRST (primary provider) -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">⚡</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Groq AI — First Priority (up to 20 keys)</h2>
+            <p class="aqs-settings-card-desc">Quiz &amp; challenge generation tries <strong>Groq first</strong> — it is blazing fast with a generous free tier. Falls back to Mistral if all Groq keys are busy. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>. Empty slots are ignored.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#1e40af;">
+            ⚡ <strong>Priority order:</strong> Groq keys (slots 1–20) → Mistral keys (slots 1–20). Rate-limited keys cool down 62 s automatically, then rejoin the pool.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 1 (Primary) <span id="aqs-gk-dot-1"></span></label>
+                <input type="password" id="aqs-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 2 <span id="aqs-gk-dot-2"></span></label>
+                <input type="password" id="aqs-groq-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 3 <span id="aqs-gk-dot-3"></span></label>
+                <input type="password" id="aqs-groq-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 4 <span id="aqs-gk-dot-4"></span></label>
+                <input type="password" id="aqs-groq-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 5 <span id="aqs-gk-dot-5"></span></label>
+                <input type="password" id="aqs-groq-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 6 <span id="aqs-gk-dot-6"></span></label>
+                <input type="password" id="aqs-groq-key-6" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 7 <span id="aqs-gk-dot-7"></span></label>
+                <input type="password" id="aqs-groq-key-7" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 8 <span id="aqs-gk-dot-8"></span></label>
+                <input type="password" id="aqs-groq-key-8" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 9 <span id="aqs-gk-dot-9"></span></label>
+                <input type="password" id="aqs-groq-key-9" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 10 <span id="aqs-gk-dot-10"></span></label>
+                <input type="password" id="aqs-groq-key-10" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 11 <span id="aqs-gk-dot-11"></span></label>
+                <input type="password" id="aqs-groq-key-11" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 12 <span id="aqs-gk-dot-12"></span></label>
+                <input type="password" id="aqs-groq-key-12" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 13 <span id="aqs-gk-dot-13"></span></label>
+                <input type="password" id="aqs-groq-key-13" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 14 <span id="aqs-gk-dot-14"></span></label>
+                <input type="password" id="aqs-groq-key-14" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 15 <span id="aqs-gk-dot-15"></span></label>
+                <input type="password" id="aqs-groq-key-15" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 16 <span id="aqs-gk-dot-16"></span></label>
+                <input type="password" id="aqs-groq-key-16" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 17 <span id="aqs-gk-dot-17"></span></label>
+                <input type="password" id="aqs-groq-key-17" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 18 <span id="aqs-gk-dot-18"></span></label>
+                <input type="password" id="aqs-groq-key-18" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 19 <span id="aqs-gk-dot-19"></span></label>
+                <input type="password" id="aqs-groq-key-19" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Groq Key 20 <span id="aqs-gk-dot-20"></span></label>
+                <input type="password" id="aqs-groq-key-20" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-model">Groq Model</label>
+                <select id="aqs-groq-model">
+                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended ⚡)</option>
+                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Ultra fast)</option>
+                    <option value="llama3-70b-8192">llama3-70b-8192 (Powerful)</option>
+                    <option value="llama3-8b-8192">llama3-8b-8192 (Fast)</option>
+                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
+                    <option value="gemma2-9b-it">gemma2-9b-it (Efficient)</option>
+                </select>
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-groq-btn">💾 Save Groq Settings</button>
+            <button class="aqs-btn" id="aqs-test-groq-btn" style="background:#8b5cf6;color:#fff;border-color:#7c3aed;">🔌 Test All Groq Keys</button>
+            <span id="aqs-groq-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-groq-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
+<!-- Mistral AI Keys — fallback provider -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">🤖</span>
         <div>
-            <h2 class="aqs-settings-card-title">Mistral AI — Primary Provider (up to 10 keys)</h2>
-            <p class="aqs-settings-card-desc">Keys rotate automatically with a 62-second cooldown per key when rate-limited. Get Mistral keys at <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>. Leave extra slots blank — empty slots are ignored.</p>
+            <h2 class="aqs-settings-card-title">Mistral AI — Fallback Provider (up to 20 keys)</h2>
+            <p class="aqs-settings-card-desc">Used automatically when all Groq keys are busy. Keys rotate with a 62-second cooldown. Get keys at <a href="https://console.mistral.ai" target="_blank">console.mistral.ai</a>. Leave extra slots blank — empty slots are ignored.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
@@ -331,123 +446,6 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
         <!-- Test results panel (hidden by default) -->
         <div id="aqs-ai-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
-    </div>
-</div>
-
-<!-- Groq AI Keys -->
-<div class="aqs-settings-card">
-    <div class="aqs-settings-card-header">
-        <span class="aqs-settings-card-icon">⚡</span>
-        <div>
-            <h2 class="aqs-settings-card-title">Groq AI — Primary Fast Provider (up to 10 keys)</h2>
-            <p class="aqs-settings-card-desc">Quiz generation tries <strong>Groq first</strong> — it's blazing fast and has a generous free tier. Falls back to Mistral automatically if all Groq keys are busy. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>. Empty slots are ignored.</p>
-        </div>
-    </div>
-    <div class="aqs-settings-card-body">
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#1e40af;">
-            ⚡ <strong>Priority order:</strong> Groq keys (slots 1–10) → Mistral keys (slots 1–10). If a key gets rate-limited it cools down 62 s and the next key takes over automatically.
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 1 (Primary) <span id="aqs-gk-dot-1"></span></label>
-                <input type="password" id="aqs-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 2 <span id="aqs-gk-dot-2"></span></label>
-                <input type="password" id="aqs-groq-key-2" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 3 <span id="aqs-gk-dot-3"></span></label>
-                <input type="password" id="aqs-groq-key-3" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 4 <span id="aqs-gk-dot-4"></span></label>
-                <input type="password" id="aqs-groq-key-4" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 5 <span id="aqs-gk-dot-5"></span></label>
-                <input type="password" id="aqs-groq-key-5" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 6 <span id="aqs-gk-dot-6"></span></label>
-                <input type="password" id="aqs-groq-key-6" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 7 <span id="aqs-gk-dot-7"></span></label>
-                <input type="password" id="aqs-groq-key-7" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 8 <span id="aqs-gk-dot-8"></span></label>
-                <input type="password" id="aqs-groq-key-8" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 9 <span id="aqs-gk-dot-9"></span></label>
-                <input type="password" id="aqs-groq-key-9" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 10 <span id="aqs-gk-dot-10"></span></label>
-                <input type="password" id="aqs-groq-key-10" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 11 <span id="aqs-gk-dot-11"></span></label>
-                <input type="password" id="aqs-groq-key-11" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 12 <span id="aqs-gk-dot-12"></span></label>
-                <input type="password" id="aqs-groq-key-12" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 13 <span id="aqs-gk-dot-13"></span></label>
-                <input type="password" id="aqs-groq-key-13" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 14 <span id="aqs-gk-dot-14"></span></label>
-                <input type="password" id="aqs-groq-key-14" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 15 <span id="aqs-gk-dot-15"></span></label>
-                <input type="password" id="aqs-groq-key-15" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 16 <span id="aqs-gk-dot-16"></span></label>
-                <input type="password" id="aqs-groq-key-16" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 17 <span id="aqs-gk-dot-17"></span></label>
-                <input type="password" id="aqs-groq-key-17" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 18 <span id="aqs-gk-dot-18"></span></label>
-                <input type="password" id="aqs-groq-key-18" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 19 <span id="aqs-gk-dot-19"></span></label>
-                <input type="password" id="aqs-groq-key-19" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Groq Key 20 <span id="aqs-gk-dot-20"></span></label>
-                <input type="password" id="aqs-groq-key-20" placeholder="(optional)" autocomplete="off" />
-            </div>
-            <div class="aqs-field-group">
-                <label for="aqs-groq-model">Groq Model</label>
-                <select id="aqs-groq-model">
-                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended ⚡)</option>
-                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Ultra fast)</option>
-                    <option value="llama3-70b-8192">llama3-70b-8192 (Powerful)</option>
-                    <option value="llama3-8b-8192">llama3-8b-8192 (Fast)</option>
-                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
-                    <option value="gemma2-9b-it">gemma2-9b-it (Efficient)</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-groq-btn">💾 Save Groq Settings</button>
-            <button class="aqs-btn" id="aqs-test-groq-btn" style="background:#8b5cf6;color:#fff;border-color:#7c3aed;">🔌 Test All Groq Keys</button>
-            <span id="aqs-groq-status" class="aqs-status-msg"></span>
-        </div>
-        <!-- Groq test results panel -->
-        <div id="aqs-groq-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
