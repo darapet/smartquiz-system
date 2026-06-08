@@ -332,9 +332,10 @@ body {
 
 /* ── Pages ── */
 .wp-pages-area {
-  flex: 1; padding: 24px 20px; display: flex;
-  flex-direction: column; align-items: center; gap: 20px;
+  flex: 1; padding: 32px 24px; display: flex;
+  flex-direction: column; align-items: center; gap: 28px;
   overflow-y: auto;
+  background: #d8dce4;
 }
 
 .wp-page {
@@ -342,11 +343,11 @@ body {
   width: var(--wp-page-w);
   min-width: var(--wp-page-min);
   min-height: 297mm;
-  box-shadow: var(--wp-shadow);
-  border-radius: 3px;
+  box-shadow: 0 2px 4px rgba(0,0,0,.10), 0 6px 24px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06);
+  border-radius: 1px;
   position: relative;
   transition: transform .2s;
-  padding: 48px; /* default normal margin so page looks like real paper by default */
+  padding: 25.4mm 25.4mm 25.4mm 25.4mm; /* 1 inch margins — standard Word */
 }
 
 .wp-page-inner,
