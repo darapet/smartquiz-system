@@ -1114,17 +1114,21 @@
     if (wpIsProcessing) return;
     var tone   = getV('wp-wtone',    'Professional');
     var dtype  = getV('wp-wdoctype', 'General Document');
-    var length = getV('wp-length',   'medium');
+    var pages  = parseFloat(getV('wp-length-sel', '1')) || 1;
     var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
-    var lengths = { short: '250-350 words', medium: '500-700 words', long: '900-1100 words', detailed: '1300-1700 words' };
-    var wTarget = lengths[length] || '500-700 words';
+    /* ~500 words per page; half-page rounds up to ~280 */
+    var wordTarget = Math.round(pages * 500);
+    var wTarget = (pages < 1)
+        ? (Math.round(pages * 500) + ' words (about half a page)')
+        : (pages === 1 ? '450-550 words (1 page)' : (wordTarget - 50) + '\u2013' + (wordTarget + 50) + ' words (' + pages + ' pages)');
+    var pageLabel = (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
 
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone. Target: ' + wTarget + '.\n\nREQUEST: ' + prompt + '\n\n' +
+    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone.\n\nPAGE TARGET: ' + pageLabel + ' (' + wTarget + '). IMPORTANT: The document must fill approximately ' + pageLabel + ' when printed on A4 paper. Do not be too short or too long.\n\nREQUEST: ' + prompt + '\n\n' +
       'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
       'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
       '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate' +
