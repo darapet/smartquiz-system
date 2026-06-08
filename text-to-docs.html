@@ -741,6 +741,28 @@
     if (d && d.classList.contains('open') && !d.contains(e.target) && e.target !== b)
       d.classList.remove('open');
   });
+
+  /* Mode overlay — bulletproof dismiss + action */
+  window.wpChooseMode = function(mode) {
+    sessionStorage.setItem('wp_mode_chosen', '1');
+    var overlay = document.getElementById('wp-mode-overlay');
+    if (overlay) { overlay.style.display = 'none'; overlay.classList.add('hidden'); }
+    if (mode === 'format') {
+      if (typeof wpSwitchTab === 'function') wpSwitchTab('format');
+      else { var t = document.getElementById('wp-stab-format'); if(t) t.click(); }
+      setTimeout(function(){ var el = document.getElementById('wp-source'); if(el) el.focus(); }, 150);
+    } else if (mode === 'write') {
+      if (typeof wpSwitchTab === 'function') wpSwitchTab('write');
+      else { var t = document.getElementById('wp-stab-write'); if(t) t.click(); }
+      setTimeout(function(){ var el = document.getElementById('wp-prompt'); if(el) el.focus(); }, 150);
+    } else if (mode === 'template') {
+      if (typeof wpSwitchTab === 'function') wpSwitchTab('template');
+      else { var t = document.getElementById('wp-stab-template'); if(t) t.click(); }
+    } else if (mode === 'upload') {
+      var fi = document.getElementById('wp-file-input'); if(fi) fi.click();
+    }
+    /* blank — just dismiss, editor is already ready */
+  };
 </script>
 
 </body>
