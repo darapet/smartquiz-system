@@ -1,8 +1,8 @@
 {
-  "version": "1.207",
-  "versionCode": 182,
+  "version": "1.208",
+  "versionCode": 183,
   "releaseDate": "2026-06-08",
-  "notes": "Fix page appearance (A4 proportions on mobile), header offset, AI formatter content preservation, AI writer page count accuracy, max pages increased to 20, more page length options (7, 15, 20), headings no longer pushed to new page prematurely.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.207/daraquiz-v1.207.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.207/daraquiz-v1.207.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.208/daraquiz-v1.208.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.208/daraquiz-v1.208.apk"
 }
