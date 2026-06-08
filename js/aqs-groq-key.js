@@ -106,7 +106,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
             var idx = (startIdx + attempt) % keys.length;
-            var key = keys[idx];
+            var key = _sanitizeKey ? _sanitizeKey(keys[idx]) : (keys[idx] || '').trim();
             if (_isRateLimited(key)) {
                 console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'cooling — skip');
                 _setIdx(idxKey, idx + 1, keys); continue;
@@ -182,20 +182,70 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
     window._aqsHFKeyCount      = function() { return _getHFKeys().length; };
 
     /* ── Setters — called by Admin Settings save buttons ─────────────── */
+    /* Strip invisible / non-ASCII chars that can sneak in when copy-pasting keys */
+    function _sanitizeKey(k) {
+        return typeof k === 'string' ? k.replace(/[^\x20-\x7E]/g, '').trim() : '';
+    }
+
     window.setGroqKeys = function(arr) {
-        window._AQS_GROQ_MASTER_KEYS = (arr || []).filter(function(k){ return k && String(k).trim().length > 20; });
+        window._AQS_GROQ_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
         try { localStorage.setItem(GROQ_IDX_KEY, '0'); } catch(e){}
     };
     window.setMistralKeys = function(arr) {
-        window._AQS_MISTRAL_MASTER_KEYS = (arr || []).filter(function(k){ return k && String(k).trim().length > 20; });
+        window._AQS_MISTRAL_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
         try { localStorage.setItem(MISTRAL_IDX_KEY, '0'); } catch(e){}
     };
     window.setHFKeys = function(arr) {
-        window._AQS_HF_MASTER_KEYS = (arr || []).filter(function(k){ return k && String(k).trim().length > 10; });
+        window._AQS_HF_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 10; });
         try { localStorage.setItem(HF_IDX_KEY, '0'); } catch(e){}
     };
 
     /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
     window.getGroqKey  = function(){ return _getGroqKeys()[0] || ''; };
     window.setGroqKey  = function(){};
+})();
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTO-LOADER — pulls AI keys from Firebase settings on every page
+   that includes this file + aqs-firebase.js (Studio, Study Hub, etc.)
+   Fires once Firebase is ready; never blocks page rendering.
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+    function _loadAIKeysFromFirebase() {
+        if (typeof window.aqsAjax !== 'function') return;
+        window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
+            var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
+
+            /* Groq */
+            if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
+                window.setGroqKeys(s.groq_keys);
+            }
+            if (s.groq_model) window._AQS_GROQ_MODEL = s.groq_model;
+
+            /* Mistral */
+            if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
+                window.setMistralKeys(s.mistral_keys);
+            }
+            if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+
+            /* HuggingFace */
+            if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
+                window.setHFKeys(s.hf_keys);
+            }
+            if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+
+            var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
+                      + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
+                      + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+            if (total > 0) {
+                console.log('[aqs-ai] Auto-loaded', total, 'AI key(s) from Firebase settings.');
+            }
+        });
+    }
+
+    if (window._aqsFirebaseReady) {
+        _loadAIKeysFromFirebase();
+    } else {
+        document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
+    }
 })();
