@@ -344,28 +344,6 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
   </div>
 </div>
 
-<!-- ── Floating New Chat FAB (web only — hidden in Median/Capacitor native app) ── -->
-<button id="dts-conv-fab" title="New conversation" style="display:none;position:fixed;bottom:28px;right:24px;z-index:1500;width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;cursor:pointer;box-shadow:0 4px 18px rgba(99,102,241,.6),0 2px 6px rgba(0,0,0,.3);align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;-webkit-tap-highlight-color:transparent;">
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-</button>
-<script>
-(function(){
-  var fab = document.getElementById('dts-conv-fab');
-  if (!fab) return;
-  var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform())
-              || !!(window.median || window.gonative)
-              || /gonative|gonativeios|gonativeandroid|median/i.test(navigator.userAgent || '');
-  if (!isNative) fab.style.display = 'flex';
-  fab.addEventListener('click', function() {
-    var ov = document.getElementById('dts-history-overlay');
-    var dr = document.getElementById('dts-history-drawer');
-    if (ov) ov.classList.add('open');
-    if (dr) dr.classList.add('open');
-  });
-  fab.addEventListener('mouseenter', function(){ fab.style.transform='scale(1.09)'; fab.style.boxShadow='0 6px 26px rgba(99,102,241,.75)'; });
-  fab.addEventListener('mouseleave', function(){ fab.style.transform=''; fab.style.boxShadow=''; });
-})();
-</script>
 
 </body>
 <script src="js/median-bridge.js"></script>
