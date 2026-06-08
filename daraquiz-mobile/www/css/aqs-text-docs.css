@@ -9,13 +9,13 @@
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 
 :root {
-  --wp-bg:       #f0f2f5;
+  --wp-bg:       #151929;
   --wp-bar:      #1e1b4b;
   --wp-bar2:     #2d2a6e;
-  --wp-accent:   #4f46e5;
+  --wp-accent:   #6366f1;
   --wp-accent2:  #06b6d4;
   --wp-accent3:  #10b981;
-  --wp-shadow:   0 4px 20px rgba(0,0,0,.12);
+  --wp-shadow:   0 8px 40px rgba(0,0,0,.38), 0 2px 8px rgba(0,0,0,.18);
   --wp-radius:   10px;
   --wp-page-w:   210mm;
   --wp-page-min: 650px;
@@ -342,8 +342,9 @@ body {
   width: var(--wp-page-w);
   min-width: var(--wp-page-min);
   min-height: 297mm;
-  box-shadow: var(--wp-shadow);
-  border-radius: 3px;
+  box-shadow: 0 10px 50px rgba(0,0,0,.45), 0 2px 10px rgba(0,0,0,.2);
+  border-radius: 4px;
+  border-top: 3px solid #6366f1;
   position: relative;
   transition: transform .2s;
 }
@@ -779,16 +780,23 @@ body {
   .wp-sidebar {
     position: fixed; bottom: 60px; left: 0; right: 0; z-index: 1050;
     width: 100%; height: auto; max-height: 70vh;
-    border-right: none; border-top: 1px solid #e2e8f0;
+    border-right: none; border-top: 2px solid #6366f1;
     border-radius: 20px 20px 0 0;
-    box-shadow: 0 -6px 30px rgba(0,0,0,.2);
-    transform: translateY(100%);
-    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    box-shadow: 0 -8px 40px rgba(0,0,0,.45);
+    transform: translateY(120%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform .28s cubic-bezier(.4,0,.2,1), visibility 0s linear .28s;
     overflow-y: auto; -webkit-overflow-scrolling: touch;
     display: flex !important; flex-direction: column;
   }
-  .wp-sidebar.mob-open { transform: translateY(0); }
-  .wp-sidebar.collapsed { transform: translateY(100%) !important; width: 100%; }
+  .wp-sidebar.mob-open {
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform .28s cubic-bezier(.4,0,.2,1), visibility 0s linear 0s;
+  }
+  .wp-sidebar.collapsed { transform: translateY(120%) !important; visibility: hidden !important; pointer-events: none !important; width: 100%; }
 
   /* Bottom sheet drag handle */
   .wp-sidebar-handle {
