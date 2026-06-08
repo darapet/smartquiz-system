@@ -1,4 +1,4 @@
-/* aqs-studio.js — xzily AI Chat Studio v2
+/* aqs-studio.js — xzily AI Chat Studio v3
    Developed by Omomo Excellence in corporation with Darapet Technology
    Powered by Groq LLaMA-3.3 + Real-time Web Search (DuckDuckGo + Jina AI Reader)
    Requires: aqs-groq-key.js (groqFetch / getGroqKey), marked.js, katex, highlight.js
@@ -36,26 +36,19 @@
         'Today\'s date is ' + TODAY + '. ' +
 
         '\n\n## LANGUAGE & TONE RULES:' +
-        '\n- MIRROR THE USER\'S LANGUAGE AND TONE completely — this is your single most important communication rule.' +
-        '\n- Detect the user\'s language from their message and reply in that SAME language.' +
-        '\n\n### Nigerian Languages & Dialects — respond natively if detected:' +
-        '\n- Nigerian Pidgin English: "abeg", "wetin", "how e dey", "oya", "wahala", "na so" → reply in full Pidgin' +
-        '\n- Yoruba: "bawo ni", "se o wa", "eku ojumo", "mo fe", "se e gbo" → reply fully in Yoruba' +
-        '\n- Igbo: "kedu", "i nwere ike", "nnoo", "gwa m", "ka anyi" → reply fully in Igbo' +
-        '\n- Hausa: "yaya dai", "sannu", "ina kwana", "me kike", "don Allah" → reply fully in Hausa' +
-        '\n- Efik/Ibibio: "mfon", "odudu", "ami" → reply in Efik/Ibibio' +
-        '\n- Ijaw: "wo", "egbesu" → reply in Ijaw' +
-        '\n\n### Other African Languages — respond natively if detected:' +
-        '\n- Twi (Ghana): "ɛte sɛn", "medaase", "akwaaba" → reply in Twi' +
-        '\n- Swahili: "habari", "asante", "karibu", "mambo" → reply in Swahili' +
-        '\n- Amharic: respond in Amharic if detected' +
-        '\n- Zulu/Xhosa: respond in Zulu or Xhosa if detected' +
-        '\n- French (West Africa): reply in French if user writes in French' +
-        '\n\n### Tone matching:' +
-        '\n- Casual/informal in any language → match that casual energy' +
-        '\n- Formal in any language → be formal and structured' +
-        '\n- Mix of English + dialect (code-switching) → match that same code-switching style' +
-        '\n- NEVER force formal standard English on a casual user — it feels cold and robotic.' +
+        '\n- DEFAULT LANGUAGE: Always reply in clear, professional Standard English unless the user explicitly writes in another language.' +
+        '\n- ONLY switch to another language when the user\'s message is clearly and predominantly written in that language — not just because they used one or two casual words.' +
+        '\n- A Nigerian user writing casual English (e.g. "pls help me", "how far", "abeg") should receive a response in Standard English, not Pidgin.' +
+        '\n\n### Non-English languages — respond natively ONLY when the user writes the full message in that language:' +
+        '\n- Nigerian Pidgin English: reply in Pidgin ONLY if the majority of the message is in Pidgin (e.g. "wetin be the answer to dis question, abeg explain am well")' +
+        '\n- Yoruba: reply fully in Yoruba ONLY if user writes fully in Yoruba' +
+        '\n- Igbo: reply fully in Igbo ONLY if user writes fully in Igbo' +
+        '\n- Hausa: reply fully in Hausa ONLY if user writes fully in Hausa' +
+        '\n- French, Swahili, Twi, or other African languages: reply in that language ONLY if user writes fully in it' +
+        '\n\n### Tone matching (within Standard English):' +
+        '\n- Casual/informal English → match that casual energy but keep English' +
+        '\n- Formal English → be formal and structured' +
+        '\n- NEVER default to Pidgin or dialect — the user will clearly indicate if they want that.' +
         '\n- The ONLY exception: financial data, rates, and factual information must always be clearly formatted and accurate, regardless of tone.' +
 
         '\n\n## YOUR CAPABILITIES:' +
@@ -526,12 +519,9 @@
             if (typeof window.renderMathInElement !== 'undefined') {
                 window.renderMathInElement(containerEl, {
                     delimiters: [
-                        { left: '$$', right: '$$', display: true  },
-                        { left: '$',  right: '$',  display: false }
-                    ],
-                    throwOnError: false
-                });
-            }
+                        { left: '$',   right: '$',   display: true  },
+                        { left: '\\[', right: '\\]', display: true  },
+                        { left: '
         } catch (e) {}
     }
 
@@ -782,7 +772,7 @@
     /* ═══════════════════════════════════════════════════════════
        SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
-    async function sendMessage(text) {
+    async function sendMessage(text, _retryCount) {
         text = (text || '').trim();
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
@@ -790,7 +780,7 @@
         isSending = true;
         setSendState(true);
 
-        /* Snapshot image state before clearing */
+        /* Snapshot and clear attachments before async work */
         var snapImageData = attachedImageData;
         var snapImageName = attachedImageName;
 
@@ -804,13 +794,14 @@
 
         clearFileAttachment();
 
-        /* ── Image vision path (Android/web: send image to Llama Vision) ── */
+        /* --- Image vision path --- */
         if (snapImageData) {
+            /* Show user message with thumbnail */
             var imgLabel = (text ? text + '\n\n' : '') + '\uD83D\uDDBC\uFE0F *Image: ' + (snapImageName || 'image') + '*';
             chatHistory.push({ role: 'user', content: imgLabel });
             appendMessage('user', imgLabel);
-            var inputEl2 = document.getElementById('dts-input');
-            if (inputEl2) { inputEl2.value = ''; inputEl2.style.height = 'auto'; }
+            var input2 = document.getElementById('dts-input');
+            if (input2) { input2.value = ''; input2.style.height = 'auto'; }
 
             showTyping(true, 'XZILY AI is analysing your image\u2026');
 
@@ -836,27 +827,28 @@
                 messages: visionMessages,
                 max_tokens: 2048,
                 temperature: 0.7
-            }).then(function (res) { return res.json(); })
-            .then(function (data) {
+            }).then(function(res) { return res.json(); })
+            .then(function(data) {
                 showTyping(false);
                 if (data.error) {
-                    appendMessage('assistant', '\u26A0\uFE0F ' + (data.error.message || 'Vision API error.'));
+                    var em = data.error.message || 'Vision API error.';
+                    appendMessage('assistant', '\u26A0\uFE0F ' + em);
                 } else {
                     var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
                         ? data.choices[0].message.content
                         : 'Sorry, I could not analyse the image. Please try again.';
                     chatHistory.push({ role: 'assistant', content: reply });
-                    streamReply(reply, function () { saveSession(); renderHistoryList(); });
+                    streamReply(reply, function() { saveSession(); renderHistoryList(); });
                 }
                 isSending = false; setSendState(false);
-            }).catch(function (err) {
+            }).catch(function(err) {
                 showTyping(false);
                 appendMessage('assistant', '\u26A0\uFE0F Image analysis failed: ' + (err.message || 'Unknown error'));
                 isSending = false; setSendState(false);
             });
             return;
         }
-        /* ── End image vision path ── */
+        /* --- End image vision path --- */
 
         chatHistory.push({ role: 'user', content: userContent });
         appendMessage('user', userContent);
@@ -960,8 +952,29 @@
             setSendState(false);
         }).catch(function (err) {
             showTyping(false);
-            appendMessage('assistant', '\u26A0\uFE0F Connection error. Please check your internet and try again.');
-            console.error('[dts] Groq error:', err);
+            var errMsg = (err && err.message) ? err.message : String(err || '');
+            /* ── App cold-start: Firebase may not have loaded keys yet — retry up to 2× ── */
+            if ((errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) && (_retryCount || 0) < 2) {
+                showTyping(true, 'Connecting to AI\u2026 please wait');
+                isSending = false;
+                setSendState(false);
+                setTimeout(function () { sendMessage(text, (_retryCount || 0) + 1); }, 2200);
+                return;
+            }
+            var displayMsg;
+            if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
+                displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
+            } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
+                displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait a moment and try again.';
+            } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
+                displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+            } else if (errMsg) {
+                displayMsg = '\u26A0\uFE0F ' + errMsg;
+            } else {
+                displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
+            }
+            appendMessage('assistant', displayMsg);
+            console.error('[dts] AI error:', err);
             isSending = false;
             setSendState(false);
         });
@@ -1001,8 +1014,8 @@
        FILE ATTACHMENT
     ═══════════════════════════════════════════════════════════ */
     function clearFileAttachment() {
-        attachedFileText  = null;
-        attachedFileName  = null;
+        attachedFileText = null;
+        attachedFileName = null;
         attachedImageData = null;
         attachedImageName = null;
         var status = document.getElementById('dts-file-status');
@@ -1017,21 +1030,21 @@
         if (!file) return;
         if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB.'); return; }
         var name = file.name;
-        var setStatus = function (txt) {
+        var setStatus = function(txt) {
             var s = document.getElementById('dts-file-status');
             if (s) { s.style.display = ''; s.textContent = txt; }
         };
         setStatus('\uD83D\uDDBC\uFE0F Reading image\u2026');
         var reader = new FileReader();
-        reader.onload = function (e) {
+        reader.onload = function(e) {
             attachedImageData = e.target.result;
             attachedImageName = name;
-            /* Image takes precedence — clear any text file */
+            /* Clear any file attachment — image takes precedence */
             attachedFileText = null;
             attachedFileName = null;
-            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached \u2014 AI will analyse this image');
+            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached — AI will analyse this image');
         };
-        reader.onerror = function () { setStatus('\u274C Could not read image'); };
+        reader.onerror = function() { setStatus('\u274C Could not read image'); };
         reader.readAsDataURL(file);
     }
 
@@ -1138,8 +1151,6 @@
 
     function stopAiSpeech() {
         voiceAiTalking = false;
-        /* Stop AudioContext source node if playing (Android/Capacitor fix) */
-        if (typeof window.aqsStopCurrentAudio === 'function') { window.aqsStopCurrentAudio(); }
         if (currentStudioAudio) {
             try { currentStudioAudio.pause(); } catch (e) {}
             currentStudioAudio = null;
@@ -1152,33 +1163,8 @@
     function startVoiceListening() {
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
-            /* ── Android/Capacitor: SpeechRecognition is disabled (crashes the WebView).
-               Use MediaRecorder + Groq Whisper for speech-to-text instead. ── */
-            if (typeof window.aqsStartMicRecording === 'function') {
-                stopVoiceListening();
-                setVoiceState('listening');
-                setVoiceTranscript('Listening\u2026 tap \u201cStop Listening\u201d when done speaking.');
-                /* Give stopVoiceListening() something to abort */
-                voiceRecognition = { abort: function () { window.aqsStopMicRecording(); } };
-                window.aqsStartMicRecording(
-                    function (text) {
-                        voiceRecognition = null;
-                        if (!voiceActive) return;
-                        setVoiceTranscript(text);
-                        setVoiceState('thinking');
-                        handleVoiceInput(text.trim());
-                    },
-                    function (errMsg) {
-                        voiceRecognition = null;
-                        setVoiceState('error');
-                        setVoiceTranscript(errMsg || 'Microphone error \u2014 check app permissions.');
-                    },
-                    15000
-                );
-                return;
-            }
             setVoiceState('error');
-            setVoiceTranscript('Speech recognition is not available. Please check your microphone permissions.');
+            setVoiceTranscript('Speech recognition is not supported in this browser. Try Chrome or Edge.');
             return;
         }
         stopVoiceListening();
@@ -1310,7 +1296,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TTS — CHUNKED PLAYBACK (browser speech synthesis)
+       TTS — CHUNKED PLAYBACK (Pollinations audio API)
     ═══════════════════════════════════════════════════════════ */
     function splitSpeechChunks(text, maxLen) {
         var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
@@ -1327,8 +1313,18 @@
         return chunks.filter(function (c) { return c.length > 0; });
     }
 
-    function fetchStudioAudioBlob() {
-        return Promise.reject(new Error('External TTS not available'));
+    function fetchStudioAudioBlob(text, voices, timeout) {
+        var voice = (voices && voices[0]) || 'onyx';
+        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
+                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
+        return new Promise(function (resolve, reject) {
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
+            fetch(url, { signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+                .then(resolve)
+                .catch(function (e) { clearTimeout(timer); reject(e); });
+        });
     }
 
     function speakWithBrowserFallback(text, onDone) {
@@ -1358,14 +1354,6 @@
             fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
                 .then(function (blob) {
                     if (!voiceAiTalking) { finish(); return; }
-                    /* Android/Capacitor: AudioContext route */
-                    if (typeof window.aqsPlayAudioBlob === 'function') {
-                        window.aqsPlayAudioBlob(blob,
-                            function () { idx = chunks.length; finish(); },
-                            function () { speakWithBrowserFallback(remaining, finish); }
-                        );
-                        return;
-                    }
                     var blobUrl = URL.createObjectURL(blob);
                     var audio2  = new Audio();
                     audio2.setAttribute('playsinline', '');
@@ -1396,17 +1384,6 @@
                     if (!voiceAiTalking) { finish(); return; }
 
                     var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
-
-                    /* ── Android/Capacitor: use AudioContext route (new Audio() silent-fails) ── */
-                    if (typeof window.aqsPlayAudioBlob === 'function') {
-                        currentStudioAudio = { _aqsCtx: true };
-                        window.aqsPlayAudioBlob(typedBlob,
-                            function () { currentStudioAudio = null; playNext(); },
-                            function () { currentStudioAudio = null; fallbackRemaining(); }
-                        );
-                        return;
-                    }
-
                     var blobUrl   = URL.createObjectURL(typedBlob);
                     var audio     = new Audio();
                     audio.setAttribute('playsinline', '');
@@ -1596,6 +1573,14 @@
             });
         }
 
+        /* ── Image input ── */
+        var imageInput = document.getElementById('dts-image-input');
+        if (imageInput) {
+            imageInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
+            });
+        }
+
         /* ── Voice button ── */
         var voiceBtn = document.getElementById('dts-voice-btn');
         if (voiceBtn) {
@@ -1637,14 +1622,6 @@
         if (voiceOverlay) {
             voiceOverlay.addEventListener('click', function (e) {
                 if (e.target === voiceOverlay) closeVoiceModal();
-            });
-        }
-
-        /* ── Image input ── */
-        var imageInput = document.getElementById('dts-image-input');
-        if (imageInput) {
-            imageInput.addEventListener('change', function () {
-                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
             });
         }
 
