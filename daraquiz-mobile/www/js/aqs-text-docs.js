@@ -620,17 +620,31 @@
 
   function wrapInlineStyle(styles) {
     var sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-    var range = sel.getRangeAt(0);
-    var span  = document.createElement('span');
-    Object.assign(span.style, styles);
-    try { range.surroundContents(span); }
-    catch (e) {
-      var frag = range.extractContents();
-      span.appendChild(frag); range.insertNode(span);
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      var range = sel.getRangeAt(0);
+      var span  = document.createElement('span');
+      Object.assign(span.style, styles);
+      try { range.surroundContents(span); }
+      catch (e) {
+        var frag = range.extractContents();
+        span.appendChild(frag); range.insertNode(span);
+      }
+      sel.removeAllRanges();
+      var nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
+    } else {
+      /* No selection — apply to entire editor (useful on mobile) */
+      var ed = wpGetEditor();
+      if (!ed) return;
+      if (styles.fontFamily) ed.style.fontFamily = styles.fontFamily;
+      if (styles.fontSize)   ed.style.fontSize   = styles.fontSize;
+      if (styles.lineHeight) ed.style.lineHeight  = styles.lineHeight;
+      /* Also stamp on existing paragraphs so content inherits */
+      ed.querySelectorAll('p,li,td,th,h1,h2,h3,h4,h5,h6').forEach(function(el) {
+        if (styles.fontFamily) el.style.fontFamily = styles.fontFamily;
+        if (styles.fontSize)   el.style.fontSize   = styles.fontSize;
+        if (styles.lineHeight) el.style.lineHeight  = styles.lineHeight;
+      });
     }
-    sel.removeAllRanges();
-    var nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
   }
 
   /* ── Insert helpers ─────────────────────────────────────────── */
@@ -1179,6 +1193,25 @@
 
   /* ── AI Translate ────────────────────────────────────────────── */
   window.wpAITranslate = function() { wpShowModal('wp-translate-modal'); };
+
+  window.wpAIFix = function() {
+    var ed = wpGetEditor(); if (!ed) return;
+    var content = ed.innerHTML;
+    if (!content || content.replace(/<[^>]+>/g,'').trim().length < 5) {
+      wpSetStatus('Nothing to fix — document is empty.'); return;
+    }
+    wpSetAIStatus('working', 'Fixing grammar…');
+    var text = ed.innerText || ed.textContent || '';
+    callAI('Fix all grammar, spelling, punctuation and style issues in the following text. Return ONLY the corrected text with no extra commentary:\n\n' + text, 3000)
+      .then(function(fixed) {
+        if (fixed && fixed.trim()) {
+          var ds = wpGetDocSettings();
+          ed.innerHTML = basicFormat ? basicFormat(fixed) : ('<p>' + fixed.replace(/\n/g,'</p><p>') + '</p>');
+          wpApplyDocSettings(ds);
+          wpSetStatus('Grammar fixed ✅');
+        }
+      }).catch(function(e) { wpSetStatus('Fix failed: ' + (e.message || 'AI error')); });
+  };
   window.wpDoTranslate = function() {
     var lang = getV('wp-trans-lang', 'Spanish');
     var content = wpGetFullContent();
@@ -1434,6 +1467,7 @@
     localStorage.setItem(WP_HIST_KEY, JSON.stringify(hist));
     wpRenderHistory();
   };
+  window.wpShowCellColorModal = function() { wpShowModal('wp-cell-color-modal'); };
   window.wpClearHistory = function() {
     if (!confirm('Clear all document history?')) return;
     localStorage.removeItem(WP_HIST_KEY); wpRenderHistory();
@@ -1529,6 +1563,12 @@
 
     wpUpdatePageNav();
     wpUpdateStats();
+    /* Apply default doc settings so pages show proper margins/font by default */
+    setTimeout(function() {
+      if (typeof wpGetDocSettings === 'function' && typeof wpApplyDocSettings === 'function') {
+        wpApplyDocSettings(wpGetDocSettings());
+      }
+    }, 80);
   }
 
   function wpSavePageState() {
