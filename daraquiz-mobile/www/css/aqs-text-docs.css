@@ -347,6 +347,7 @@ body {
   border-top: 3px solid #6366f1;
   position: relative;
   transition: transform .2s;
+  padding: 48px; /* default normal margin so page looks like real paper by default */
 }
 
 .wp-page-inner {
@@ -826,9 +827,17 @@ body {
 
   /* Pages go full-width on mobile */
   .wp-page {
-    width: 100% !important; min-width: 0 !important;
-    min-height: auto !important; padding: 16px !important;
-    border-radius: 8px;
+    /* Keep paper look on mobile — scaled A4 card */
+    width: calc(100vw - 20px) !important;
+    max-width: 500px !important;
+    min-width: 0 !important;
+    min-height: auto !important;
+    padding: 28px 24px !important;
+    border-radius: 6px !important;
+    background: #fff !important;
+    box-shadow: 0 2px 16px rgba(0,0,0,.10) !important;
+    border: 1px solid #e5e7eb !important;
+    margin: 0 auto !important;
   }
 
   /* Page nav bar — mobile friendly */
