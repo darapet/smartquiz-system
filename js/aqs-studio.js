@@ -519,8 +519,2232 @@
             if (typeof window.renderMathInElement !== 'undefined') {
                 window.renderMathInElement(containerEl, {
                     delimiters: [
-                        { left: '$$', right: '$$', display: true  },
-                        { left: '$',  right: '$',  display: false }
+                        { left: '$',   right: '$',   display: true  },
+                        { left: '\\[', right: '\\]', display: true  },
+                        { left: '
+        } catch (e) {}
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       CHAT SESSION — localStorage
+    ═══════════════════════════════════════════════════════════ */
+    function newSession() {
+        conversationId   = 'sess_' + Date.now();
+        chatHistory      = [];
+        attachedFileText = null;
+        attachedFileName = null;
+    }
+
+    function saveSession() {
+        if (!conversationId || !chatHistory.length) return;
+        var sessions = loadSessions();
+        var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
+        var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
+        var title = firstUser ? firstUser.content.slice(0, 55) : 'Chat';
+        if (title.length === 55) title += '\u2026';
+        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), ts: Date.now() };
+        if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
+        sessions = sessions.slice(0, 30);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (e) {}
+    }
+
+    function loadSessions() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+
+    function deleteSession(id) {
+        var sessions = loadSessions().filter(function (s) { return s.id !== id; });
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+    }
+
+    function renderHistoryList() {
+        var list  = document.getElementById('dts-history-list');
+        var empty = document.getElementById('dts-history-empty');
+        if (!list) return;
+
+        list.querySelectorAll('.dts-drawer-item').forEach(function (el) {
+            el.parentNode.removeChild(el);
+        });
+
+        var sessions = loadSessions();
+        if (!sessions.length) {
+            if (empty) empty.style.display = '';
+            return;
+        }
+        if (empty) empty.style.display = 'none';
+
+        sessions.forEach(function (sess) {
+            var item      = document.createElement('div');
+            item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
+            item.dataset.id = sess.id;
+            item.innerHTML =
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
+
+            item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
+                e.stopPropagation();
+                deleteSession(sess.id);
+                if (sess.id === conversationId) {
+                    startNewChat();
+                } else {
+                    renderHistoryList();
+                }
+            });
+
+            item.addEventListener('click', function () { loadSessionById(sess.id); closeHistoryDrawer(); });
+            list.insertBefore(item, empty || null);
+        });
+    }
+
+    function loadSessionById(id) {
+        var sessions = loadSessions();
+        var sess     = sessions.find(function (s) { return s.id === id; });
+        if (!sess) return;
+        conversationId = sess.id;
+        chatHistory    = sess.messages.slice();
+
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        var _typing  = document.getElementById('dts-typing');
+        if (_typing && messages && _typing.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing, messages.nextSibling);
+        }
+        if (messages) messages.innerHTML = '';
+        if (welcome)  welcome.style.display = 'none';
+
+        chatHistory.forEach(function (msg) {
+            if (msg.role === 'user' || msg.role === 'assistant') {
+                appendMessage(msg.role, msg.content);
+            }
+        });
+
+        renderHistoryList();
+        scrollToBottom(true);
+    }
+
+    function startNewChat() {
+        newSession();
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        var _typing2 = document.getElementById('dts-typing');
+        if (_typing2 && messages && _typing2.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing2, messages.nextSibling);
+        }
+        if (messages) messages.innerHTML = '';
+        if (welcome)  welcome.style.display = 'flex';
+        clearFileAttachment();
+        renderHistoryList();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MESSAGE RENDERING
+    ═══════════════════════════════════════════════════════════ */
+    function appendMessage(role, content) {
+        var messages = document.getElementById('dts-messages');
+        if (!messages) return;
+
+        var welcome = document.getElementById('dts-welcome');
+        if (welcome) welcome.style.display = 'none';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-' + (role === 'user' ? 'user' : 'ai');
+
+        var avatarLetter = role === 'user' ? 'U' : '\u2736';
+        var bubbleHtml   = role === 'user'
+            ? escHtml(content)
+            : renderMessage(content);
+
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">' + avatarLetter + '</div>' +
+            '<div class="dts-msg-content">' +
+              '<div class="dts-msg-bubble">' + bubbleHtml + '</div>' +
+            '</div>';
+
+        if (role === 'assistant') {
+            applyMathAndHighlight(wrap);
+            var msgContent = wrap.querySelector('.dts-msg-content');
+            if (msgContent) {
+                var copyBtn = document.createElement('button');
+                copyBtn.className = 'dts-msg-copy-btn';
+                copyBtn.textContent = '📋 Copy';
+                copyBtn.addEventListener('click', function() {
+                    var bubble = wrap.querySelector('.dts-msg-bubble');
+                    var text = bubble ? (bubble.innerText || bubble.textContent || '') : content;
+                    function doFallback() {
+                        var ta = document.createElement('textarea');
+                        ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                        document.body.appendChild(ta); ta.focus(); ta.select();
+                        try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
+                        catch(e2) { copyBtn.textContent = '❌ Error'; }
+                        document.body.removeChild(ta);
+                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                    }
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        navigator.clipboard.writeText(text).then(function() {
+                            copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
+                            setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                        }).catch(doFallback);
+                    } else { doFallback(); }
+                });
+                msgContent.appendChild(copyBtn);
+            }
+        }
+
+        messages.appendChild(wrap);
+        scrollToBottom();
+        return wrap;
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════
+       STREAM REPLY — types AI response word-by-word
+    ═══════════════════════════════════════════════════════════ */
+    function streamReply(content, onDone) {
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        if (!messages) { if (onDone) onDone(); return; }
+        if (welcome) welcome.style.display = 'none';
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-ai';
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">✶</div>' +
+            '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
+        messages.appendChild(wrap);
+        var bubble = wrap.querySelector('.dts-msg-bubble');
+        var tokens = content.split(/(?=\s)/);
+        if (tokens.length < 4) tokens = content.split('');
+        var idx=0, acc='', CHUNK=6, DELAY=10;
+        function tick() {
+            if (idx < tokens.length) {
+                var end=Math.min(idx+CHUNK,tokens.length);
+                for (var i=idx;i<end;i++) acc+=tokens[i];
+                idx=end;
+                try {
+                    bubble.innerHTML = typeof marked!=='undefined'
+                        ? marked.parse(acc,{breaks:true,gfm:true})
+                        : escHtml(acc).replace(/\n/g,'<br>');
+                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); }
+                scrollToBottom();
+                setTimeout(tick,DELAY);
+            } else {
+                applyMathAndHighlight(wrap);
+                /* Add copy button after streaming finishes */
+                var msgContent2 = wrap.querySelector('.dts-msg-content');
+                if (msgContent2 && !msgContent2.querySelector('.dts-msg-copy-btn')) {
+                    var copyBtn2 = document.createElement('button');
+                    copyBtn2.className = 'dts-msg-copy-btn';
+                    copyBtn2.textContent = '📋 Copy';
+                    copyBtn2.addEventListener('click', function() {
+                        var bubble2 = wrap.querySelector('.dts-msg-bubble');
+                        var text2 = bubble2 ? (bubble2.innerText || bubble2.textContent || '') : acc;
+                        function doFallback2() {
+                            var ta = document.createElement('textarea');
+                            ta.value = text2; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                            document.body.appendChild(ta); ta.focus(); ta.select();
+                            try { document.execCommand('copy'); copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied'); }
+                            catch(e2) { copyBtn2.textContent = '❌ Error'; }
+                            document.body.removeChild(ta);
+                            setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                        }
+                        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                            navigator.clipboard.writeText(text2).then(function() {
+                                copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied');
+                                setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                            }).catch(doFallback2);
+                        } else { doFallback2(); }
+                    });
+                    msgContent2.appendChild(copyBtn2);
+                }
+                scrollToBottom();
+                if (onDone) onDone();
+            }
+        }
+        tick();
+        return wrap;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SEND MESSAGE — with web search + Groq
+    ═══════════════════════════════════════════════════════════ */
+    async function sendMessage(text) {
+        text = (text || '').trim();
+        if (!text && !attachedFileText && !attachedImageData) return;
+        if (isSending) return;
+
+        isSending = true;
+        setSendState(true);
+
+        /* Snapshot and clear attachments before async work */
+        var snapImageData = attachedImageData;
+        var snapImageName = attachedImageName;
+
+        /* Build user content */
+        var userContent = text;
+        if (attachedFileText) {
+            userContent = (text ? text + '\n\n' : 'Please analyse this file:\n\n') +
+                'File: ' + escHtml(attachedFileName || 'attachment') + '\n```\n' +
+                attachedFileText.slice(0, 8000) + '\n```';
+        }
+
+        clearFileAttachment();
+
+        /* --- Image vision path --- */
+        if (snapImageData) {
+            /* Show user message with thumbnail */
+            var imgLabel = (text ? text + '\n\n' : '') + '\uD83D\uDDBC\uFE0F *Image: ' + (snapImageName || 'image') + '*';
+            chatHistory.push({ role: 'user', content: imgLabel });
+            appendMessage('user', imgLabel);
+            var input2 = document.getElementById('dts-input');
+            if (input2) { input2.value = ''; input2.style.height = 'auto'; }
+
+            showTyping(true, 'XZILY AI is analysing your image\u2026');
+
+            var visionMessages = [
+                { role: 'system', content: SYSTEM_PROMPT },
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'image_url', image_url: { url: snapImageData } },
+                        { type: 'text', text: text || 'Please describe and analyse this image in detail.' }
+                    ]
+                }
+            ];
+
+            if (typeof window.groqFetch !== 'function') {
+                showTyping(false);
+                appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
+                isSending = false; setSendState(false); return;
+            }
+
+            window.groqFetch({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                messages: visionMessages,
+                max_tokens: 2048,
+                temperature: 0.7
+            }).then(function(res) { return res.json(); })
+            .then(function(data) {
+                showTyping(false);
+                if (data.error) {
+                    var em = data.error.message || 'Vision API error.';
+                    appendMessage('assistant', '\u26A0\uFE0F ' + em);
+                } else {
+                    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                        ? data.choices[0].message.content
+                        : 'Sorry, I could not analyse the image. Please try again.';
+                    chatHistory.push({ role: 'assistant', content: reply });
+                    streamReply(reply, function() { saveSession(); renderHistoryList(); });
+                }
+                isSending = false; setSendState(false);
+            }).catch(function(err) {
+                showTyping(false);
+                appendMessage('assistant', '\u26A0\uFE0F Image analysis failed: ' + (err.message || 'Unknown error'));
+                isSending = false; setSendState(false);
+            });
+            return;
+        }
+        /* --- End image vision path --- */
+
+        chatHistory.push({ role: 'user', content: userContent });
+        appendMessage('user', userContent);
+
+        var input = document.getElementById('dts-input');
+        if (input) { input.value = ''; input.style.height = 'auto'; }
+
+        /* ── Step 1: Detect if web search needed ── */
+        var webContext   = '';
+        var webSourceTag = '';
+        var searchNeeds  = detectSearchNeeds(text);
+
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
+                var pageContent = await fetchWebPage(searchNeeds.url);
+                if (pageContent) {
+                    webContext   = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pageContent;
+                    webSourceTag = '\uD83C\uDF10 *Read from:* ' + searchNeeds.url;
+                } else {
+                    showTyping(true, '\u26A0\uFE0F Could not visit page, searching instead\u2026');
+                    var fallback = await performWebSearch(text);
+                    if (fallback) {
+                        webContext   = 'WEB SEARCH RESULTS (' + fallback.source + '):\n\n' + fallback.content;
+                        webSourceTag = '\uD83D\uDD0D *Web search via ' + fallback.source + '*';
+                    }
+                }
+            } else {
+                showTyping(true, '\uD83D\uDD0D Searching the web\u2026');
+                var searchResult = await performWebSearch(searchNeeds.query);
+                if (searchResult) {
+                    webContext   = 'WEB SEARCH RESULTS (' + searchResult.source + '):\n\n' + searchResult.content;
+                    webSourceTag = '\uD83D\uDD0D *Web search via ' + searchResult.source + '*';
+                }
+            }
+        }
+
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        /* ── Step 2: Build system prompt with optional web context ── */
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (webContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
+                             '\n===== END OF WEB DATA =====\n' +
+                             '\nCRITICAL INSTRUCTIONS FOR WEB DATA:\n' +
+                             '1. You HAVE successfully visited/searched the web and the content above is the REAL live data from that page or search.\n' +
+                             '2. Extract and present the most relevant information from the web data clearly and comprehensively.\n' +
+                             '3. Always tell the user which website or source the information came from.\n' +
+                             '4. If the page content seems unrelated or insufficient, say so and offer to search differently.\n' +
+                             '5. NEVER say you cannot browse the internet — you just did.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+
+        if (typeof window.groqFetch !== 'function') {
+            showTyping(false);
+            appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
+            isSending = false;
+            setSendState(false);
+            return;
+        }
+
+        /* ── Step 3: Call Groq ── */
+        window.groqFetch({
+            model:       'llama-3.3-70b-versatile',
+            messages:    messages,
+            max_tokens:  3000,
+            temperature: 0.7
+        }).then(function (res) {
+            return res.json();
+        }).then(function (data) {
+            showTyping(false);
+            if (data.error) {
+                var errMsg = data.error.message || 'API error.';
+                if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
+                    errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
+                } else if (errMsg.indexOf('429') !== -1) {
+                    errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
+                }
+                appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
+            } else {
+                var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                    ? data.choices[0].message.content
+                    : 'Sorry, I could not generate a response. Please try again.';
+
+                /* Append web source badge if web was searched */
+                if (webSourceTag) {
+                    reply = reply + '\n\n---\n' + webSourceTag;
+                }
+
+                chatHistory.push({ role: 'assistant', content: reply });
+                streamReply(reply, function () {
+                    saveSession();
+                    renderHistoryList();
+                    if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
+                        showQuizImportBar(reply);
+                    }
+                });
+            }
+            isSending = false;
+            setSendState(false);
+        }).catch(function (err) {
+            showTyping(false);
+            var errMsg = (err && err.message) ? err.message : String(err || '');
+            var displayMsg;
+            if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
+                displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
+            } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
+                displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait a moment and try again.';
+            } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
+                displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+            } else if (errMsg) {
+                displayMsg = '\u26A0\uFE0F ' + errMsg;
+            } else {
+                displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
+            }
+            appendMessage('assistant', displayMsg);
+            console.error('[dts] AI error:', err);
+            isSending = false;
+            setSendState(false);
+        });
+    }
+
+    function setSendState(busy) {
+        var btn = document.getElementById('dts-send');
+        if (btn) btn.disabled = busy;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       QUIZ IMPORT BAR
+    ═══════════════════════════════════════════════════════════ */
+    function showQuizImportBar(content) {
+        var old = document.getElementById('dts-quiz-import-bar');
+        if (old) old.parentNode.removeChild(old);
+
+        var bar = document.createElement('div');
+        bar.id = 'dts-quiz-import-bar';
+        bar.className = 'dts-quiz-import-bar';
+        bar.innerHTML =
+            '<span class="dts-quiz-import-info">\uD83D\uDCDD Quiz questions detected!</span>' +
+            '<button class="dts-create-quiz-btn" id="dts-go-create-quiz">Create Quiz \u2192</button>';
+
+        bar.querySelector('#dts-go-create-quiz').addEventListener('click', function () {
+            try { sessionStorage.setItem('dts_quiz_content', content.slice(0, 5000)); } catch (e) {}
+            var cfg = window.DTS_CONFIG || {};
+            window.location.href = cfg.create_url || 'create-quiz.html';
+        });
+
+        var msgs = document.getElementById('dts-messages');
+        if (msgs) msgs.appendChild(bar);
+        scrollToBottom();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       FILE ATTACHMENT
+    ═══════════════════════════════════════════════════════════ */
+    function clearFileAttachment() {
+        attachedFileText = null;
+        attachedFileName = null;
+        attachedImageData = null;
+        attachedImageName = null;
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = 'none'; status.textContent = ''; }
+        var fi = document.getElementById('dts-file-input');
+        if (fi) fi.value = '';
+        var ii = document.getElementById('dts-image-input');
+        if (ii) ii.value = '';
+    }
+
+    function handleImageAttach(file) {
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB.'); return; }
+        var name = file.name;
+        var setStatus = function(txt) {
+            var s = document.getElementById('dts-file-status');
+            if (s) { s.style.display = ''; s.textContent = txt; }
+        };
+        setStatus('\uD83D\uDDBC\uFE0F Reading image\u2026');
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            attachedImageData = e.target.result;
+            attachedImageName = name;
+            /* Clear any file attachment — image takes precedence */
+            attachedFileText = null;
+            attachedFileName = null;
+            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached — AI will analyse this image');
+        };
+        reader.onerror = function() { setStatus('\u274C Could not read image'); };
+        reader.readAsDataURL(file);
+    }
+
+    function handleFileAttach(file) {
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB.'); return; }
+
+        var name  = file.name;
+        var ext   = name.split('.').pop().toLowerCase();
+        var setStatus = function (txt) {
+            var s = document.getElementById('dts-file-status');
+            if (s) { s.style.display = ''; s.textContent = txt; }
+        };
+
+        /* PDF */
+        if (ext === 'pdf') {
+            if (typeof window.pdfjsLib === 'undefined') {
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
+                setTimeout(function () { handleFileAttach(file); }, 1800);
+                return;
+            }
+            setStatus('\uD83D\uDCCE Reading PDF\u2026');
+            var r1 = new FileReader();
+            r1.onload = function (e) {
+                window.pdfjsLib.getDocument({ data: e.target.result }).promise.then(function (pdf) {
+                    var texts = [], done = 0, total = pdf.numPages;
+                    for (var p = 1; p <= total; p++) {
+                        (function (pn) {
+                            pdf.getPage(pn).then(function (pg) {
+                                return pg.getTextContent();
+                            }).then(function (tc) {
+                                texts[pn - 1] = tc.items.map(function (i) { return i.str; }).join(' ');
+                                done++;
+                                if (done === total) {
+                                    attachedFileText = texts.join('\n\n');
+                                    attachedFileName = name;
+                                    setStatus('\uD83D\uDCCE ' + name + ' attached (' + total + ' pages)');
+                                }
+                            });
+                        })(p);
+                    }
+                }).catch(function () { setStatus('\u274C Could not read PDF'); });
+            };
+            r1.readAsArrayBuffer(file);
+            return;
+        }
+
+        /* DOCX */
+        if (ext === 'docx' || ext === 'doc') {
+            if (typeof mammoth === 'undefined') {
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
+                setTimeout(function () { handleFileAttach(file); }, 1800);
+                return;
+            }
+            setStatus('\uD83D\uDCCE Reading document\u2026');
+            var r2 = new FileReader();
+            r2.onload = function (e) {
+                mammoth.extractRawText({ arrayBuffer: e.target.result }).then(function (result) {
+                    attachedFileText = result.value;
+                    attachedFileName = name;
+                    setStatus('\uD83D\uDCCE ' + name + ' attached');
+                }).catch(function () { setStatus('\u274C Could not read document'); });
+            };
+            r2.readAsArrayBuffer(file);
+            return;
+        }
+
+        /* Plain text: txt, md, csv, json, etc. */
+        var r3 = new FileReader();
+        r3.onload = function (e) {
+            attachedFileText = e.target.result;
+            attachedFileName = name;
+            setStatus('\uD83D\uDCCE ' + name + ' attached');
+        };
+        r3.onerror = function () { setStatus('\u274C Could not read file'); };
+        r3.readAsText(file);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       VOICE MODE
+    ═══════════════════════════════════════════════════════════ */
+    function openVoiceModal() {
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'flex';
+        setVoiceState('idle');
+        voiceActive = true;
+    }
+
+    function closeVoiceModal() {
+        stopVoiceListening();
+        stopAiSpeech();
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'none';
+        setVoiceState('closed');
+        voiceActive = false;
+    }
+
+    function stopVoiceListening() {
+        if (voiceRecognition) {
+            try { voiceRecognition.abort(); } catch (e) {}
+            voiceRecognition = null;
+        }
+    }
+
+    function stopAiSpeech() {
+        voiceAiTalking = false;
+        if (currentStudioAudio) {
+            try { currentStudioAudio.pause(); } catch (e) {}
+            currentStudioAudio = null;
+        }
+        if (typeof window.speechSynthesis !== 'undefined') {
+            window.speechSynthesis.cancel();
+        }
+    }
+
+    function startVoiceListening() {
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            setVoiceState('error');
+            setVoiceTranscript('Speech recognition is not supported in this browser. Try Chrome or Edge.');
+            return;
+        }
+        stopVoiceListening();
+        var rec = new SR();
+        rec.continuous     = false;
+        rec.interimResults = true;
+        rec.lang           = 'en-US';
+        voiceRecognition   = rec;
+        setVoiceState('listening');
+        setVoiceTranscript('Listening\u2026');
+
+        rec.onresult = function (e) {
+            var transcript = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+                transcript += e.results[i][0].transcript;
+            }
+            setVoiceTranscript(transcript);
+            if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
+                rec.stop();
+                setVoiceState('thinking');
+                handleVoiceInput(transcript.trim());
+            }
+        };
+
+        rec.onerror = function (e) {
+            setVoiceState('error');
+            setVoiceTranscript('Mic error: ' + (e.error || 'unknown'));
+        };
+
+        setTimeout(function () {
+            try { rec.start(); } catch (e) {
+                setVoiceState('error');
+                setVoiceTranscript('Could not access microphone: ' + e.message);
+            }
+        }, 120);
+    }
+
+    async function handleVoiceInput(text) {
+        chatHistory.push({ role: 'user', content: text });
+        appendMessage('user', text);
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        if (typeof window.groqFetch !== 'function') {
+            showTyping(false);
+            setVoiceState('error');
+            setVoiceTranscript('API not available.');
+            return;
+        }
+
+        /* Web search for voice too */
+        var voiceWebContext = '';
+        var searchNeeds = detectSearchNeeds(text);
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                var pg = await fetchWebPage(searchNeeds.url);
+                if (pg) voiceWebContext = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pg;
+            } else {
+                var sr = await performWebSearch(text);
+                if (sr) voiceWebContext = 'WEB SEARCH RESULTS (' + sr.source + '):\n\n' + sr.content;
+            }
+        }
+
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (voiceWebContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA =====\n' + voiceWebContext + '\n===== END =====\nUse this data to answer accurately.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+
+        window.groqFetch({
+            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            showTyping(false);
+            if (data.error || !data.choices) {
+                setVoiceState('idle');
+                setVoiceTranscript('Could not get response.');
+                return;
+            }
+            var reply = data.choices[0].message.content;
+            chatHistory.push({ role: 'assistant', content: reply });
+            appendMessage('assistant', reply);
+            saveSession();
+            renderHistoryList();
+
+            var spoken = reply
+                .replace(/```[\s\S]*?```/g, 'code block.')
+                .replace(/`[^`]+`/g, '')
+                .replace(/[*_#>\[\]]/g, '')
+                .trim()
+                .slice(0, 600);
+
+            setVoiceState('speaking');
+            setVoiceTranscript('');
+            voiceAiTalking = true;
+            speakStudioChunked(spoken, function () {
+                if (voiceActive) setVoiceState('idle');
+            });
+        }).catch(function () {
+            showTyping(false);
+            setVoiceState('error');
+            setVoiceTranscript('Connection error.');
+        });
+    }
+
+    /* ── UI helpers for voice modal ── */
+    function setVoiceState(state) {
+        var orb      = document.getElementById('dts-voice-orb');
+        var statusEl = document.getElementById('dts-voice-status');
+        var togBtn   = document.getElementById('dts-voice-toggle');
+        var micIcon  = document.getElementById('dts-voice-mic-icon');
+        var waveIcon = document.getElementById('dts-voice-wave-icon');
+
+        var labels    = { idle: 'Tap "Start Listening" to begin', listening: 'Listening\u2026 speak now', thinking: 'XZILY is thinking\u2026', speaking: 'XZILY is speaking\u2026', error: 'Microphone error', closed: '' };
+        var togLabels = { idle: 'Start Listening', listening: 'Stop Listening', thinking: 'Please wait\u2026', speaking: 'Interrupt', error: 'Retry', closed: '' };
+
+        if (statusEl) statusEl.textContent = labels[state]    || state;
+        if (orb)      orb.dataset.state    = state;
+        if (togBtn)   togBtn.textContent   = togLabels[state] || state;
+
+        if (micIcon && waveIcon) {
+            micIcon.style.display  = state === 'speaking' ? 'none' : '';
+            waveIcon.style.display = state === 'speaking' ? ''     : 'none';
+        }
+    }
+
+    function setVoiceTranscript(text) {
+        var el = document.getElementById('dts-voice-transcript');
+        if (el) el.textContent = text;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TTS — CHUNKED PLAYBACK (Pollinations audio API)
+    ═══════════════════════════════════════════════════════════ */
+    function splitSpeechChunks(text, maxLen) {
+        var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+        var chunks = [], current = '';
+        sentences.forEach(function (s) {
+            if ((current + s).length > maxLen && current) {
+                chunks.push(current.trim());
+                current = s;
+            } else {
+                current += s;
+            }
+        });
+        if (current.trim()) chunks.push(current.trim());
+        return chunks.filter(function (c) { return c.length > 0; });
+    }
+
+    function fetchStudioAudioBlob(text, voices, timeout) {
+        var voice = (voices && voices[0]) || 'onyx';
+        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
+                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
+        return new Promise(function (resolve, reject) {
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
+            fetch(url, { signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+                .then(resolve)
+                .catch(function (e) { clearTimeout(timer); reject(e); });
+        });
+    }
+
+    function speakWithBrowserFallback(text, onDone) {
+        if (typeof window.speechSynthesis === 'undefined') { if (onDone) onDone(); return; }
+        var utt   = new SpeechSynthesisUtterance(text);
+        utt.rate  = 1.0;
+        utt.onend = utt.onerror = function () { if (onDone) onDone(); };
+        window.speechSynthesis.speak(utt);
+    }
+
+    function speakStudioChunked(spoken, onDone) {
+        var chunks    = splitSpeechChunks(spoken, 200);
+        var idx       = 0;
+        var doneCalled = false;
+
+        function finish() {
+            if (doneCalled) return; doneCalled = true;
+            currentStudioAudio = null;
+            voiceAiTalking     = false;
+            if (onDone) onDone();
+        }
+
+        function fallbackRemaining() {
+            if (!voiceAiTalking) { finish(); return; }
+            var remaining = chunks.slice(idx - 1).join(' ');
+            if (!remaining.trim()) { finish(); return; }
+            fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
+                .then(function (blob) {
+                    if (!voiceAiTalking) { finish(); return; }
+                    var blobUrl = URL.createObjectURL(blob);
+                    var audio2  = new Audio();
+                    audio2.setAttribute('playsinline', '');
+                    audio2.src  = blobUrl;
+                    audio2.addEventListener('ended', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        idx = chunks.length;
+                        finish();
+                    });
+                    audio2.addEventListener('error', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                    audio2.play().catch(function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                })
+                .catch(function () { speakWithBrowserFallback(remaining, finish); });
+        }
+
+        function playNext() {
+            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
+            var chunk = chunks[idx++];
+
+            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
+                .then(function (blob) {
+                    if (!voiceAiTalking) { finish(); return; }
+
+                    var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
+                    var blobUrl   = URL.createObjectURL(typedBlob);
+                    var audio     = new Audio();
+                    audio.setAttribute('playsinline', '');
+                    audio.setAttribute('webkit-playsinline', '');
+                    audio.preload  = 'auto';
+                    audio.volume   = 1.0;
+                    audio.src      = blobUrl;
+                    currentStudioAudio = audio;
+
+                    var stallTimer  = null;
+                    var cleaned     = false;
+                    var lastCurTime = -1;
+
+                    function cleanup() {
+                        if (cleaned) return; cleaned = true;
+                        clearTimeout(stallTimer);
+                        clearTimeout(hardCap);
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        currentStudioAudio = null;
+                    }
+
+                    var hardCap = setTimeout(function () {
+                        if (!cleaned) { cleanup(); playNext(); }
+                    }, 60 * 60 * 1000);
+
+                    function armStallTimer() {
+                        clearTimeout(stallTimer);
+                        stallTimer = setTimeout(function () {
+                            if (cleaned) return;
+                            if (audio.currentTime > lastCurTime) {
+                                lastCurTime = audio.currentTime;
+                                armStallTimer();
+                            } else {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                playNext();
+                            }
+                        }, 4000);
+                    }
+
+                    audio.addEventListener('timeupdate', function () {
+                        lastCurTime = audio.currentTime;
+                        armStallTimer();
+                    });
+                    audio.addEventListener('canplay', function () {
+                        if (lastCurTime < 0) armStallTimer();
+                    });
+                    audio.addEventListener('ended', function () {
+                        clearTimeout(hardCap);
+                        cleanup();
+                        playNext();
+                    });
+                    audio.addEventListener('error', function () {
+                        clearTimeout(hardCap);
+                        cleanup();
+                        fallbackRemaining();
+                    });
+
+                    audio.play().catch(function () {
+                        setTimeout(function () {
+                            if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
+                            audio.play().catch(function () {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                fallbackRemaining();
+                            });
+                        }, 400);
+                    });
+                })
+                .catch(function () {
+                    if (!voiceAiTalking) { finish(); return; }
+                    fallbackRemaining();
+                });
+        }
+
+        playNext();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DOM INITIALISATION
+    ═══════════════════════════════════════════════════════════ */
+
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY DRAWER
+    ═══════════════════════════════════════════════════════════ */
+    function openHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        renderHistoryList();
+        if (drawer)  { drawer.classList.add('open');  }
+        if (overlay) { overlay.classList.add('open'); }
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        if (drawer)  drawer.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        newSession();
+        renderHistoryList();
+
+        /* ── Auto-resize textarea ── */
+        var inputEl = document.getElementById('dts-input');
+        if (inputEl) {
+            inputEl.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+
+            inputEl.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    doSend();
+                }
+            });
+        }
+
+        /* ── Send button ── */
+        var sendBtn = document.getElementById('dts-send');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function () { doSend(); });
+        }
+
+        function doSend() {
+            var val = inputEl ? inputEl.value : '';
+            sendMessage(val);
+        }
+
+        /* ── Suggestion buttons ── */
+        document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var prompt = this.dataset.prompt || this.textContent.trim();
+                if (inputEl) inputEl.value = prompt;
+                sendMessage(prompt);
+            });
+        });
+
+
+        /* ── History hamburger button ── */
+        var historyBtn = document.getElementById('dts-hist-open-btn') ||
+                        document.getElementById('dts-history-btn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
+        }
+
+        /* ── History drawer close button ── */
+        var historyClose = document.getElementById('dts-history-close');
+        if (historyClose) {
+            historyClose.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── History overlay backdrop click ── */
+        var historyOverlay = document.getElementById('dts-history-overlay');
+        if (historyOverlay) {
+            historyOverlay.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── New chat button ── */
+        var newChatBtn = document.getElementById('dts-new-chat');
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', function () { startNewChat(); });
+        }
+
+        /* ── History panel toggle ── */
+        var historyToggle = document.getElementById('dts-history-toggle');
+        var historyPanel  = document.getElementById('dts-history-panel');
+        var historyCaret  = document.getElementById('dts-history-caret');
+        if (historyToggle && historyPanel) {
+            historyToggle.addEventListener('click', function () {
+                var open = historyPanel.style.display !== 'none' && historyPanel.style.display !== '';
+                historyPanel.style.display = open ? 'none' : '';
+                if (historyCaret) historyCaret.textContent = open ? '\u25B8' : '\u25BE';
+            });
+        }
+
+        /* ── File input ── */
+        var fileInput = document.getElementById('dts-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleFileAttach(this.files[0]);
+            });
+        }
+
+        /* ── Image input ── */
+        var imageInput = document.getElementById('dts-image-input');
+        if (imageInput) {
+            imageInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
+            });
+        }
+
+        /* ── Voice button ── */
+        var voiceBtn = document.getElementById('dts-voice-btn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', function () { openVoiceModal(); });
+        }
+
+        /* ── Voice modal: close ── */
+        var voiceClose = document.getElementById('dts-voice-close');
+        if (voiceClose) {
+            voiceClose.addEventListener('click', function () { closeVoiceModal(); });
+        }
+
+        /* ── Voice modal: start/stop/interrupt toggle ── */
+        var voiceToggle = document.getElementById('dts-voice-toggle');
+        if (voiceToggle) {
+            voiceToggle.addEventListener('click', function () {
+                var orb   = document.getElementById('dts-voice-orb');
+                var state = orb ? orb.dataset.state : 'idle';
+                if (state === 'idle' || state === 'error') {
+                    startVoiceListening();
+                } else if (state === 'listening') {
+                    stopVoiceListening();
+                    setVoiceState('idle');
+                } else if (state === 'speaking') {
+                    stopAiSpeech();
+                    setVoiceState('idle');
+                }
+            });
+        }
+
+        /* ── Voice modal: end conversation ── */
+        var voiceEnd = document.getElementById('dts-voice-end');
+        if (voiceEnd) {
+            voiceEnd.addEventListener('click', function () { closeVoiceModal(); });
+        }
+
+        /* ── Close voice overlay on backdrop click ── */
+        var voiceOverlay = document.getElementById('dts-voice-overlay');
+        if (voiceOverlay) {
+            voiceOverlay.addEventListener('click', function (e) {
+                if (e.target === voiceOverlay) closeVoiceModal();
+            });
+        }
+
+        /* ── Restore last active session (optional) ── */
+        try {
+            var lastId = localStorage.getItem(ACTIVE_KEY);
+            if (lastId) {
+                var sessions = loadSessions();
+                if (sessions.some(function (s) { return s.id === lastId; })) {
+                    /* Uncomment to restore last session on load: */
+                    /* loadSessionById(lastId); */
+                }
+            }
+        } catch (e) {}
+
+    }); /* end DOMContentLoaded */
+
+})();
+,    right: '
+        } catch (e) {}
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       CHAT SESSION — localStorage
+    ═══════════════════════════════════════════════════════════ */
+    function newSession() {
+        conversationId   = 'sess_' + Date.now();
+        chatHistory      = [];
+        attachedFileText = null;
+        attachedFileName = null;
+    }
+
+    function saveSession() {
+        if (!conversationId || !chatHistory.length) return;
+        var sessions = loadSessions();
+        var idx      = sessions.findIndex(function (s) { return s.id === conversationId; });
+        var firstUser = chatHistory.find(function (m) { return m.role === 'user'; });
+        var title = firstUser ? firstUser.content.slice(0, 55) : 'Chat';
+        if (title.length === 55) title += '\u2026';
+        var sess = { id: conversationId, title: title, messages: chatHistory.slice(), ts: Date.now() };
+        if (idx >= 0) { sessions[idx] = sess; } else { sessions.unshift(sess); }
+        sessions = sessions.slice(0, 30);
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+        try { localStorage.setItem(ACTIVE_KEY, conversationId); } catch (e) {}
+    }
+
+    function loadSessions() {
+        try {
+            var raw = localStorage.getItem(STORAGE_KEY);
+            return raw ? JSON.parse(raw) : [];
+        } catch (e) { return []; }
+    }
+
+    function deleteSession(id) {
+        var sessions = loadSessions().filter(function (s) { return s.id !== id; });
+        try { localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions)); } catch (e) {}
+    }
+
+    function renderHistoryList() {
+        var list  = document.getElementById('dts-history-list');
+        var empty = document.getElementById('dts-history-empty');
+        if (!list) return;
+
+        list.querySelectorAll('.dts-drawer-item').forEach(function (el) {
+            el.parentNode.removeChild(el);
+        });
+
+        var sessions = loadSessions();
+        if (!sessions.length) {
+            if (empty) empty.style.display = '';
+            return;
+        }
+        if (empty) empty.style.display = 'none';
+
+        sessions.forEach(function (sess) {
+            var item      = document.createElement('div');
+            item.className = 'dts-drawer-item' + (sess.id === conversationId ? ' active' : '');
+            item.dataset.id = sess.id;
+            item.innerHTML =
+                '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;opacity:.45"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>' +
+                '<span class="dts-drawer-item-title">' + escHtml(sess.title) + '</span>' +
+                '<button class="dts-drawer-item-del" title="Delete">\u2715</button>';
+
+            item.querySelector('.dts-drawer-item-del').addEventListener('click', function (e) {
+                e.stopPropagation();
+                deleteSession(sess.id);
+                if (sess.id === conversationId) {
+                    startNewChat();
+                } else {
+                    renderHistoryList();
+                }
+            });
+
+            item.addEventListener('click', function () { loadSessionById(sess.id); closeHistoryDrawer(); });
+            list.insertBefore(item, empty || null);
+        });
+    }
+
+    function loadSessionById(id) {
+        var sessions = loadSessions();
+        var sess     = sessions.find(function (s) { return s.id === id; });
+        if (!sess) return;
+        conversationId = sess.id;
+        chatHistory    = sess.messages.slice();
+
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        var _typing  = document.getElementById('dts-typing');
+        if (_typing && messages && _typing.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing, messages.nextSibling);
+        }
+        if (messages) messages.innerHTML = '';
+        if (welcome)  welcome.style.display = 'none';
+
+        chatHistory.forEach(function (msg) {
+            if (msg.role === 'user' || msg.role === 'assistant') {
+                appendMessage(msg.role, msg.content);
+            }
+        });
+
+        renderHistoryList();
+        scrollToBottom(true);
+    }
+
+    function startNewChat() {
+        newSession();
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        var _typing2 = document.getElementById('dts-typing');
+        if (_typing2 && messages && _typing2.parentNode === messages && messages.parentNode) {
+            messages.parentNode.insertBefore(_typing2, messages.nextSibling);
+        }
+        if (messages) messages.innerHTML = '';
+        if (welcome)  welcome.style.display = 'flex';
+        clearFileAttachment();
+        renderHistoryList();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MESSAGE RENDERING
+    ═══════════════════════════════════════════════════════════ */
+    function appendMessage(role, content) {
+        var messages = document.getElementById('dts-messages');
+        if (!messages) return;
+
+        var welcome = document.getElementById('dts-welcome');
+        if (welcome) welcome.style.display = 'none';
+
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-' + (role === 'user' ? 'user' : 'ai');
+
+        var avatarLetter = role === 'user' ? 'U' : '\u2736';
+        var bubbleHtml   = role === 'user'
+            ? escHtml(content)
+            : renderMessage(content);
+
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">' + avatarLetter + '</div>' +
+            '<div class="dts-msg-content">' +
+              '<div class="dts-msg-bubble">' + bubbleHtml + '</div>' +
+            '</div>';
+
+        if (role === 'assistant') {
+            applyMathAndHighlight(wrap);
+            var msgContent = wrap.querySelector('.dts-msg-content');
+            if (msgContent) {
+                var copyBtn = document.createElement('button');
+                copyBtn.className = 'dts-msg-copy-btn';
+                copyBtn.textContent = '📋 Copy';
+                copyBtn.addEventListener('click', function() {
+                    var bubble = wrap.querySelector('.dts-msg-bubble');
+                    var text = bubble ? (bubble.innerText || bubble.textContent || '') : content;
+                    function doFallback() {
+                        var ta = document.createElement('textarea');
+                        ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                        document.body.appendChild(ta); ta.focus(); ta.select();
+                        try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
+                        catch(e2) { copyBtn.textContent = '❌ Error'; }
+                        document.body.removeChild(ta);
+                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                    }
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        navigator.clipboard.writeText(text).then(function() {
+                            copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
+                            setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                        }).catch(doFallback);
+                    } else { doFallback(); }
+                });
+                msgContent.appendChild(copyBtn);
+            }
+        }
+
+        messages.appendChild(wrap);
+        scrollToBottom();
+        return wrap;
+    }
+
+
+
+    /* ═══════════════════════════════════════════════════════════
+       STREAM REPLY — types AI response word-by-word
+    ═══════════════════════════════════════════════════════════ */
+    function streamReply(content, onDone) {
+        var messages = document.getElementById('dts-messages');
+        var welcome  = document.getElementById('dts-welcome');
+        if (!messages) { if (onDone) onDone(); return; }
+        if (welcome) welcome.style.display = 'none';
+        var wrap = document.createElement('div');
+        wrap.className = 'dts-message dts-ai';
+        wrap.innerHTML =
+            '<div class="dts-msg-avatar">✶</div>' +
+            '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
+        messages.appendChild(wrap);
+        var bubble = wrap.querySelector('.dts-msg-bubble');
+        var tokens = content.split(/(?=\s)/);
+        if (tokens.length < 4) tokens = content.split('');
+        var idx=0, acc='', CHUNK=6, DELAY=10;
+        function tick() {
+            if (idx < tokens.length) {
+                var end=Math.min(idx+CHUNK,tokens.length);
+                for (var i=idx;i<end;i++) acc+=tokens[i];
+                idx=end;
+                try {
+                    bubble.innerHTML = typeof marked!=='undefined'
+                        ? marked.parse(acc,{breaks:true,gfm:true})
+                        : escHtml(acc).replace(/\n/g,'<br>');
+                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); }
+                scrollToBottom();
+                setTimeout(tick,DELAY);
+            } else {
+                applyMathAndHighlight(wrap);
+                /* Add copy button after streaming finishes */
+                var msgContent2 = wrap.querySelector('.dts-msg-content');
+                if (msgContent2 && !msgContent2.querySelector('.dts-msg-copy-btn')) {
+                    var copyBtn2 = document.createElement('button');
+                    copyBtn2.className = 'dts-msg-copy-btn';
+                    copyBtn2.textContent = '📋 Copy';
+                    copyBtn2.addEventListener('click', function() {
+                        var bubble2 = wrap.querySelector('.dts-msg-bubble');
+                        var text2 = bubble2 ? (bubble2.innerText || bubble2.textContent || '') : acc;
+                        function doFallback2() {
+                            var ta = document.createElement('textarea');
+                            ta.value = text2; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                            document.body.appendChild(ta); ta.focus(); ta.select();
+                            try { document.execCommand('copy'); copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied'); }
+                            catch(e2) { copyBtn2.textContent = '❌ Error'; }
+                            document.body.removeChild(ta);
+                            setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                        }
+                        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                            navigator.clipboard.writeText(text2).then(function() {
+                                copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied');
+                                setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                            }).catch(doFallback2);
+                        } else { doFallback2(); }
+                    });
+                    msgContent2.appendChild(copyBtn2);
+                }
+                scrollToBottom();
+                if (onDone) onDone();
+            }
+        }
+        tick();
+        return wrap;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       SEND MESSAGE — with web search + Groq
+    ═══════════════════════════════════════════════════════════ */
+    async function sendMessage(text) {
+        text = (text || '').trim();
+        if (!text && !attachedFileText && !attachedImageData) return;
+        if (isSending) return;
+
+        isSending = true;
+        setSendState(true);
+
+        /* Snapshot and clear attachments before async work */
+        var snapImageData = attachedImageData;
+        var snapImageName = attachedImageName;
+
+        /* Build user content */
+        var userContent = text;
+        if (attachedFileText) {
+            userContent = (text ? text + '\n\n' : 'Please analyse this file:\n\n') +
+                'File: ' + escHtml(attachedFileName || 'attachment') + '\n```\n' +
+                attachedFileText.slice(0, 8000) + '\n```';
+        }
+
+        clearFileAttachment();
+
+        /* --- Image vision path --- */
+        if (snapImageData) {
+            /* Show user message with thumbnail */
+            var imgLabel = (text ? text + '\n\n' : '') + '\uD83D\uDDBC\uFE0F *Image: ' + (snapImageName || 'image') + '*';
+            chatHistory.push({ role: 'user', content: imgLabel });
+            appendMessage('user', imgLabel);
+            var input2 = document.getElementById('dts-input');
+            if (input2) { input2.value = ''; input2.style.height = 'auto'; }
+
+            showTyping(true, 'XZILY AI is analysing your image\u2026');
+
+            var visionMessages = [
+                { role: 'system', content: SYSTEM_PROMPT },
+                {
+                    role: 'user',
+                    content: [
+                        { type: 'image_url', image_url: { url: snapImageData } },
+                        { type: 'text', text: text || 'Please describe and analyse this image in detail.' }
+                    ]
+                }
+            ];
+
+            if (typeof window.groqFetch !== 'function') {
+                showTyping(false);
+                appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
+                isSending = false; setSendState(false); return;
+            }
+
+            window.groqFetch({
+                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                messages: visionMessages,
+                max_tokens: 2048,
+                temperature: 0.7
+            }).then(function(res) { return res.json(); })
+            .then(function(data) {
+                showTyping(false);
+                if (data.error) {
+                    var em = data.error.message || 'Vision API error.';
+                    appendMessage('assistant', '\u26A0\uFE0F ' + em);
+                } else {
+                    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                        ? data.choices[0].message.content
+                        : 'Sorry, I could not analyse the image. Please try again.';
+                    chatHistory.push({ role: 'assistant', content: reply });
+                    streamReply(reply, function() { saveSession(); renderHistoryList(); });
+                }
+                isSending = false; setSendState(false);
+            }).catch(function(err) {
+                showTyping(false);
+                appendMessage('assistant', '\u26A0\uFE0F Image analysis failed: ' + (err.message || 'Unknown error'));
+                isSending = false; setSendState(false);
+            });
+            return;
+        }
+        /* --- End image vision path --- */
+
+        chatHistory.push({ role: 'user', content: userContent });
+        appendMessage('user', userContent);
+
+        var input = document.getElementById('dts-input');
+        if (input) { input.value = ''; input.style.height = 'auto'; }
+
+        /* ── Step 1: Detect if web search needed ── */
+        var webContext   = '';
+        var webSourceTag = '';
+        var searchNeeds  = detectSearchNeeds(text);
+
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
+                var pageContent = await fetchWebPage(searchNeeds.url);
+                if (pageContent) {
+                    webContext   = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pageContent;
+                    webSourceTag = '\uD83C\uDF10 *Read from:* ' + searchNeeds.url;
+                } else {
+                    showTyping(true, '\u26A0\uFE0F Could not visit page, searching instead\u2026');
+                    var fallback = await performWebSearch(text);
+                    if (fallback) {
+                        webContext   = 'WEB SEARCH RESULTS (' + fallback.source + '):\n\n' + fallback.content;
+                        webSourceTag = '\uD83D\uDD0D *Web search via ' + fallback.source + '*';
+                    }
+                }
+            } else {
+                showTyping(true, '\uD83D\uDD0D Searching the web\u2026');
+                var searchResult = await performWebSearch(searchNeeds.query);
+                if (searchResult) {
+                    webContext   = 'WEB SEARCH RESULTS (' + searchResult.source + '):\n\n' + searchResult.content;
+                    webSourceTag = '\uD83D\uDD0D *Web search via ' + searchResult.source + '*';
+                }
+            }
+        }
+
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        /* ── Step 2: Build system prompt with optional web context ── */
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (webContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA (retrieved now) =====\n' + webContext +
+                             '\n===== END OF WEB DATA =====\n' +
+                             '\nCRITICAL INSTRUCTIONS FOR WEB DATA:\n' +
+                             '1. You HAVE successfully visited/searched the web and the content above is the REAL live data from that page or search.\n' +
+                             '2. Extract and present the most relevant information from the web data clearly and comprehensively.\n' +
+                             '3. Always tell the user which website or source the information came from.\n' +
+                             '4. If the page content seems unrelated or insufficient, say so and offer to search differently.\n' +
+                             '5. NEVER say you cannot browse the internet — you just did.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+
+        if (typeof window.groqFetch !== 'function') {
+            showTyping(false);
+            appendMessage('assistant', '\u26A0\uFE0F API not ready yet. Please wait a moment and try again.');
+            isSending = false;
+            setSendState(false);
+            return;
+        }
+
+        /* ── Step 3: Call Groq ── */
+        window.groqFetch({
+            model:       'llama-3.3-70b-versatile',
+            messages:    messages,
+            max_tokens:  3000,
+            temperature: 0.7
+        }).then(function (res) {
+            return res.json();
+        }).then(function (data) {
+            showTyping(false);
+            if (data.error) {
+                var errMsg = data.error.message || 'API error.';
+                if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
+                    errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
+                } else if (errMsg.indexOf('429') !== -1) {
+                    errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
+                }
+                appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
+            } else {
+                var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                    ? data.choices[0].message.content
+                    : 'Sorry, I could not generate a response. Please try again.';
+
+                /* Append web source badge if web was searched */
+                if (webSourceTag) {
+                    reply = reply + '\n\n---\n' + webSourceTag;
+                }
+
+                chatHistory.push({ role: 'assistant', content: reply });
+                streamReply(reply, function () {
+                    saveSession();
+                    renderHistoryList();
+                    if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
+                        showQuizImportBar(reply);
+                    }
+                });
+            }
+            isSending = false;
+            setSendState(false);
+        }).catch(function (err) {
+            showTyping(false);
+            var errMsg = (err && err.message) ? err.message : String(err || '');
+            var displayMsg;
+            if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
+                displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
+            } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
+                displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait a moment and try again.';
+            } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
+                displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+            } else if (errMsg) {
+                displayMsg = '\u26A0\uFE0F ' + errMsg;
+            } else {
+                displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
+            }
+            appendMessage('assistant', displayMsg);
+            console.error('[dts] AI error:', err);
+            isSending = false;
+            setSendState(false);
+        });
+    }
+
+    function setSendState(busy) {
+        var btn = document.getElementById('dts-send');
+        if (btn) btn.disabled = busy;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       QUIZ IMPORT BAR
+    ═══════════════════════════════════════════════════════════ */
+    function showQuizImportBar(content) {
+        var old = document.getElementById('dts-quiz-import-bar');
+        if (old) old.parentNode.removeChild(old);
+
+        var bar = document.createElement('div');
+        bar.id = 'dts-quiz-import-bar';
+        bar.className = 'dts-quiz-import-bar';
+        bar.innerHTML =
+            '<span class="dts-quiz-import-info">\uD83D\uDCDD Quiz questions detected!</span>' +
+            '<button class="dts-create-quiz-btn" id="dts-go-create-quiz">Create Quiz \u2192</button>';
+
+        bar.querySelector('#dts-go-create-quiz').addEventListener('click', function () {
+            try { sessionStorage.setItem('dts_quiz_content', content.slice(0, 5000)); } catch (e) {}
+            var cfg = window.DTS_CONFIG || {};
+            window.location.href = cfg.create_url || 'create-quiz.html';
+        });
+
+        var msgs = document.getElementById('dts-messages');
+        if (msgs) msgs.appendChild(bar);
+        scrollToBottom();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       FILE ATTACHMENT
+    ═══════════════════════════════════════════════════════════ */
+    function clearFileAttachment() {
+        attachedFileText = null;
+        attachedFileName = null;
+        attachedImageData = null;
+        attachedImageName = null;
+        var status = document.getElementById('dts-file-status');
+        if (status) { status.style.display = 'none'; status.textContent = ''; }
+        var fi = document.getElementById('dts-file-input');
+        if (fi) fi.value = '';
+        var ii = document.getElementById('dts-image-input');
+        if (ii) ii.value = '';
+    }
+
+    function handleImageAttach(file) {
+        if (!file) return;
+        if (file.size > 5 * 1024 * 1024) { alert('Image too large. Maximum 5 MB.'); return; }
+        var name = file.name;
+        var setStatus = function(txt) {
+            var s = document.getElementById('dts-file-status');
+            if (s) { s.style.display = ''; s.textContent = txt; }
+        };
+        setStatus('\uD83D\uDDBC\uFE0F Reading image\u2026');
+        var reader = new FileReader();
+        reader.onload = function(e) {
+            attachedImageData = e.target.result;
+            attachedImageName = name;
+            /* Clear any file attachment — image takes precedence */
+            attachedFileText = null;
+            attachedFileName = null;
+            setStatus('\uD83D\uDDBC\uFE0F ' + name + ' attached — AI will analyse this image');
+        };
+        reader.onerror = function() { setStatus('\u274C Could not read image'); };
+        reader.readAsDataURL(file);
+    }
+
+    function handleFileAttach(file) {
+        if (!file) return;
+        if (file.size > 10 * 1024 * 1024) { alert('File is too large. Maximum 10 MB.'); return; }
+
+        var name  = file.name;
+        var ext   = name.split('.').pop().toLowerCase();
+        var setStatus = function (txt) {
+            var s = document.getElementById('dts-file-status');
+            if (s) { s.style.display = ''; s.textContent = txt; }
+        };
+
+        /* PDF */
+        if (ext === 'pdf') {
+            if (typeof window.pdfjsLib === 'undefined') {
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
+                setTimeout(function () { handleFileAttach(file); }, 1800);
+                return;
+            }
+            setStatus('\uD83D\uDCCE Reading PDF\u2026');
+            var r1 = new FileReader();
+            r1.onload = function (e) {
+                window.pdfjsLib.getDocument({ data: e.target.result }).promise.then(function (pdf) {
+                    var texts = [], done = 0, total = pdf.numPages;
+                    for (var p = 1; p <= total; p++) {
+                        (function (pn) {
+                            pdf.getPage(pn).then(function (pg) {
+                                return pg.getTextContent();
+                            }).then(function (tc) {
+                                texts[pn - 1] = tc.items.map(function (i) { return i.str; }).join(' ');
+                                done++;
+                                if (done === total) {
+                                    attachedFileText = texts.join('\n\n');
+                                    attachedFileName = name;
+                                    setStatus('\uD83D\uDCCE ' + name + ' attached (' + total + ' pages)');
+                                }
+                            });
+                        })(p);
+                    }
+                }).catch(function () { setStatus('\u274C Could not read PDF'); });
+            };
+            r1.readAsArrayBuffer(file);
+            return;
+        }
+
+        /* DOCX */
+        if (ext === 'docx' || ext === 'doc') {
+            if (typeof mammoth === 'undefined') {
+                setStatus('\uD83D\uDCCE ' + name + ' (parser loading\u2026)');
+                setTimeout(function () { handleFileAttach(file); }, 1800);
+                return;
+            }
+            setStatus('\uD83D\uDCCE Reading document\u2026');
+            var r2 = new FileReader();
+            r2.onload = function (e) {
+                mammoth.extractRawText({ arrayBuffer: e.target.result }).then(function (result) {
+                    attachedFileText = result.value;
+                    attachedFileName = name;
+                    setStatus('\uD83D\uDCCE ' + name + ' attached');
+                }).catch(function () { setStatus('\u274C Could not read document'); });
+            };
+            r2.readAsArrayBuffer(file);
+            return;
+        }
+
+        /* Plain text: txt, md, csv, json, etc. */
+        var r3 = new FileReader();
+        r3.onload = function (e) {
+            attachedFileText = e.target.result;
+            attachedFileName = name;
+            setStatus('\uD83D\uDCCE ' + name + ' attached');
+        };
+        r3.onerror = function () { setStatus('\u274C Could not read file'); };
+        r3.readAsText(file);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       VOICE MODE
+    ═══════════════════════════════════════════════════════════ */
+    function openVoiceModal() {
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'flex';
+        setVoiceState('idle');
+        voiceActive = true;
+    }
+
+    function closeVoiceModal() {
+        stopVoiceListening();
+        stopAiSpeech();
+        var overlay = document.getElementById('dts-voice-overlay');
+        if (overlay) overlay.style.display = 'none';
+        setVoiceState('closed');
+        voiceActive = false;
+    }
+
+    function stopVoiceListening() {
+        if (voiceRecognition) {
+            try { voiceRecognition.abort(); } catch (e) {}
+            voiceRecognition = null;
+        }
+    }
+
+    function stopAiSpeech() {
+        voiceAiTalking = false;
+        if (currentStudioAudio) {
+            try { currentStudioAudio.pause(); } catch (e) {}
+            currentStudioAudio = null;
+        }
+        if (typeof window.speechSynthesis !== 'undefined') {
+            window.speechSynthesis.cancel();
+        }
+    }
+
+    function startVoiceListening() {
+        var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) {
+            setVoiceState('error');
+            setVoiceTranscript('Speech recognition is not supported in this browser. Try Chrome or Edge.');
+            return;
+        }
+        stopVoiceListening();
+        var rec = new SR();
+        rec.continuous     = false;
+        rec.interimResults = true;
+        rec.lang           = 'en-US';
+        voiceRecognition   = rec;
+        setVoiceState('listening');
+        setVoiceTranscript('Listening\u2026');
+
+        rec.onresult = function (e) {
+            var transcript = '';
+            for (var i = e.resultIndex; i < e.results.length; i++) {
+                transcript += e.results[i][0].transcript;
+            }
+            setVoiceTranscript(transcript);
+            if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
+                rec.stop();
+                setVoiceState('thinking');
+                handleVoiceInput(transcript.trim());
+            }
+        };
+
+        rec.onerror = function (e) {
+            setVoiceState('error');
+            setVoiceTranscript('Mic error: ' + (e.error || 'unknown'));
+        };
+
+        setTimeout(function () {
+            try { rec.start(); } catch (e) {
+                setVoiceState('error');
+                setVoiceTranscript('Could not access microphone: ' + e.message);
+            }
+        }, 120);
+    }
+
+    async function handleVoiceInput(text) {
+        chatHistory.push({ role: 'user', content: text });
+        appendMessage('user', text);
+        showTyping(true, 'XZILY AI is thinking\u2026');
+
+        if (typeof window.groqFetch !== 'function') {
+            showTyping(false);
+            setVoiceState('error');
+            setVoiceTranscript('API not available.');
+            return;
+        }
+
+        /* Web search for voice too */
+        var voiceWebContext = '';
+        var searchNeeds = detectSearchNeeds(text);
+        if (searchNeeds) {
+            if (searchNeeds.type === 'url') {
+                var pg = await fetchWebPage(searchNeeds.url);
+                if (pg) voiceWebContext = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pg;
+            } else {
+                var sr = await performWebSearch(text);
+                if (sr) voiceWebContext = 'WEB SEARCH RESULTS (' + sr.source + '):\n\n' + sr.content;
+            }
+        }
+
+        var dynamicSystem = SYSTEM_PROMPT;
+        if (voiceWebContext) {
+            dynamicSystem += '\n\n===== LIVE WEB DATA =====\n' + voiceWebContext + '\n===== END =====\nUse this data to answer accurately.';
+        }
+
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+
+        window.groqFetch({
+            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            showTyping(false);
+            if (data.error || !data.choices) {
+                setVoiceState('idle');
+                setVoiceTranscript('Could not get response.');
+                return;
+            }
+            var reply = data.choices[0].message.content;
+            chatHistory.push({ role: 'assistant', content: reply });
+            appendMessage('assistant', reply);
+            saveSession();
+            renderHistoryList();
+
+            var spoken = reply
+                .replace(/```[\s\S]*?```/g, 'code block.')
+                .replace(/`[^`]+`/g, '')
+                .replace(/[*_#>\[\]]/g, '')
+                .trim()
+                .slice(0, 600);
+
+            setVoiceState('speaking');
+            setVoiceTranscript('');
+            voiceAiTalking = true;
+            speakStudioChunked(spoken, function () {
+                if (voiceActive) setVoiceState('idle');
+            });
+        }).catch(function () {
+            showTyping(false);
+            setVoiceState('error');
+            setVoiceTranscript('Connection error.');
+        });
+    }
+
+    /* ── UI helpers for voice modal ── */
+    function setVoiceState(state) {
+        var orb      = document.getElementById('dts-voice-orb');
+        var statusEl = document.getElementById('dts-voice-status');
+        var togBtn   = document.getElementById('dts-voice-toggle');
+        var micIcon  = document.getElementById('dts-voice-mic-icon');
+        var waveIcon = document.getElementById('dts-voice-wave-icon');
+
+        var labels    = { idle: 'Tap "Start Listening" to begin', listening: 'Listening\u2026 speak now', thinking: 'XZILY is thinking\u2026', speaking: 'XZILY is speaking\u2026', error: 'Microphone error', closed: '' };
+        var togLabels = { idle: 'Start Listening', listening: 'Stop Listening', thinking: 'Please wait\u2026', speaking: 'Interrupt', error: 'Retry', closed: '' };
+
+        if (statusEl) statusEl.textContent = labels[state]    || state;
+        if (orb)      orb.dataset.state    = state;
+        if (togBtn)   togBtn.textContent   = togLabels[state] || state;
+
+        if (micIcon && waveIcon) {
+            micIcon.style.display  = state === 'speaking' ? 'none' : '';
+            waveIcon.style.display = state === 'speaking' ? ''     : 'none';
+        }
+    }
+
+    function setVoiceTranscript(text) {
+        var el = document.getElementById('dts-voice-transcript');
+        if (el) el.textContent = text;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       TTS — CHUNKED PLAYBACK (Pollinations audio API)
+    ═══════════════════════════════════════════════════════════ */
+    function splitSpeechChunks(text, maxLen) {
+        var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
+        var chunks = [], current = '';
+        sentences.forEach(function (s) {
+            if ((current + s).length > maxLen && current) {
+                chunks.push(current.trim());
+                current = s;
+            } else {
+                current += s;
+            }
+        });
+        if (current.trim()) chunks.push(current.trim());
+        return chunks.filter(function (c) { return c.length > 0; });
+    }
+
+    function fetchStudioAudioBlob(text, voices, timeout) {
+        var voice = (voices && voices[0]) || 'onyx';
+        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
+                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
+        return new Promise(function (resolve, reject) {
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
+            fetch(url, { signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+                .then(resolve)
+                .catch(function (e) { clearTimeout(timer); reject(e); });
+        });
+    }
+
+    function speakWithBrowserFallback(text, onDone) {
+        if (typeof window.speechSynthesis === 'undefined') { if (onDone) onDone(); return; }
+        var utt   = new SpeechSynthesisUtterance(text);
+        utt.rate  = 1.0;
+        utt.onend = utt.onerror = function () { if (onDone) onDone(); };
+        window.speechSynthesis.speak(utt);
+    }
+
+    function speakStudioChunked(spoken, onDone) {
+        var chunks    = splitSpeechChunks(spoken, 200);
+        var idx       = 0;
+        var doneCalled = false;
+
+        function finish() {
+            if (doneCalled) return; doneCalled = true;
+            currentStudioAudio = null;
+            voiceAiTalking     = false;
+            if (onDone) onDone();
+        }
+
+        function fallbackRemaining() {
+            if (!voiceAiTalking) { finish(); return; }
+            var remaining = chunks.slice(idx - 1).join(' ');
+            if (!remaining.trim()) { finish(); return; }
+            fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
+                .then(function (blob) {
+                    if (!voiceAiTalking) { finish(); return; }
+                    var blobUrl = URL.createObjectURL(blob);
+                    var audio2  = new Audio();
+                    audio2.setAttribute('playsinline', '');
+                    audio2.src  = blobUrl;
+                    audio2.addEventListener('ended', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        idx = chunks.length;
+                        finish();
+                    });
+                    audio2.addEventListener('error', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                    audio2.play().catch(function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                })
+                .catch(function () { speakWithBrowserFallback(remaining, finish); });
+        }
+
+        function playNext() {
+            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
+            var chunk = chunks[idx++];
+
+            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
+                .then(function (blob) {
+                    if (!voiceAiTalking) { finish(); return; }
+
+                    var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
+                    var blobUrl   = URL.createObjectURL(typedBlob);
+                    var audio     = new Audio();
+                    audio.setAttribute('playsinline', '');
+                    audio.setAttribute('webkit-playsinline', '');
+                    audio.preload  = 'auto';
+                    audio.volume   = 1.0;
+                    audio.src      = blobUrl;
+                    currentStudioAudio = audio;
+
+                    var stallTimer  = null;
+                    var cleaned     = false;
+                    var lastCurTime = -1;
+
+                    function cleanup() {
+                        if (cleaned) return; cleaned = true;
+                        clearTimeout(stallTimer);
+                        clearTimeout(hardCap);
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        currentStudioAudio = null;
+                    }
+
+                    var hardCap = setTimeout(function () {
+                        if (!cleaned) { cleanup(); playNext(); }
+                    }, 60 * 60 * 1000);
+
+                    function armStallTimer() {
+                        clearTimeout(stallTimer);
+                        stallTimer = setTimeout(function () {
+                            if (cleaned) return;
+                            if (audio.currentTime > lastCurTime) {
+                                lastCurTime = audio.currentTime;
+                                armStallTimer();
+                            } else {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                playNext();
+                            }
+                        }, 4000);
+                    }
+
+                    audio.addEventListener('timeupdate', function () {
+                        lastCurTime = audio.currentTime;
+                        armStallTimer();
+                    });
+                    audio.addEventListener('canplay', function () {
+                        if (lastCurTime < 0) armStallTimer();
+                    });
+                    audio.addEventListener('ended', function () {
+                        clearTimeout(hardCap);
+                        cleanup();
+                        playNext();
+                    });
+                    audio.addEventListener('error', function () {
+                        clearTimeout(hardCap);
+                        cleanup();
+                        fallbackRemaining();
+                    });
+
+                    audio.play().catch(function () {
+                        setTimeout(function () {
+                            if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
+                            audio.play().catch(function () {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                fallbackRemaining();
+                            });
+                        }, 400);
+                    });
+                })
+                .catch(function () {
+                    if (!voiceAiTalking) { finish(); return; }
+                    fallbackRemaining();
+                });
+        }
+
+        playNext();
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DOM INITIALISATION
+    ═══════════════════════════════════════════════════════════ */
+
+    /* ═══════════════════════════════════════════════════════════
+       HISTORY DRAWER
+    ═══════════════════════════════════════════════════════════ */
+    function openHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        renderHistoryList();
+        if (drawer)  { drawer.classList.add('open');  }
+        if (overlay) { overlay.classList.add('open'); }
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeHistoryDrawer() {
+        var drawer  = document.getElementById('dts-history-drawer');
+        var overlay = document.getElementById('dts-history-overlay');
+        if (drawer)  drawer.classList.remove('open');
+        if (overlay) overlay.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        newSession();
+        renderHistoryList();
+
+        /* ── Auto-resize textarea ── */
+        var inputEl = document.getElementById('dts-input');
+        if (inputEl) {
+            inputEl.addEventListener('input', function () {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+            });
+
+            inputEl.addEventListener('keydown', function (e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    doSend();
+                }
+            });
+        }
+
+        /* ── Send button ── */
+        var sendBtn = document.getElementById('dts-send');
+        if (sendBtn) {
+            sendBtn.addEventListener('click', function () { doSend(); });
+        }
+
+        function doSend() {
+            var val = inputEl ? inputEl.value : '';
+            sendMessage(val);
+        }
+
+        /* ── Suggestion buttons ── */
+        document.querySelectorAll('.dts-suggestion-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var prompt = this.dataset.prompt || this.textContent.trim();
+                if (inputEl) inputEl.value = prompt;
+                sendMessage(prompt);
+            });
+        });
+
+
+        /* ── History hamburger button ── */
+        var historyBtn = document.getElementById('dts-hist-open-btn') ||
+                        document.getElementById('dts-history-btn');
+        if (historyBtn) {
+            historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
+        }
+
+        /* ── History drawer close button ── */
+        var historyClose = document.getElementById('dts-history-close');
+        if (historyClose) {
+            historyClose.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── History overlay backdrop click ── */
+        var historyOverlay = document.getElementById('dts-history-overlay');
+        if (historyOverlay) {
+            historyOverlay.addEventListener('click', function () { closeHistoryDrawer(); });
+        }
+
+        /* ── New chat button ── */
+        var newChatBtn = document.getElementById('dts-new-chat');
+        if (newChatBtn) {
+            newChatBtn.addEventListener('click', function () { startNewChat(); });
+        }
+
+        /* ── History panel toggle ── */
+        var historyToggle = document.getElementById('dts-history-toggle');
+        var historyPanel  = document.getElementById('dts-history-panel');
+        var historyCaret  = document.getElementById('dts-history-caret');
+        if (historyToggle && historyPanel) {
+            historyToggle.addEventListener('click', function () {
+                var open = historyPanel.style.display !== 'none' && historyPanel.style.display !== '';
+                historyPanel.style.display = open ? 'none' : '';
+                if (historyCaret) historyCaret.textContent = open ? '\u25B8' : '\u25BE';
+            });
+        }
+
+        /* ── File input ── */
+        var fileInput = document.getElementById('dts-file-input');
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleFileAttach(this.files[0]);
+            });
+        }
+
+        /* ── Image input ── */
+        var imageInput = document.getElementById('dts-image-input');
+        if (imageInput) {
+            imageInput.addEventListener('change', function () {
+                if (this.files && this.files[0]) handleImageAttach(this.files[0]);
+            });
+        }
+
+        /* ── Voice button ── */
+        var voiceBtn = document.getElementById('dts-voice-btn');
+        if (voiceBtn) {
+            voiceBtn.addEventListener('click', function () { openVoiceModal(); });
+        }
+
+        /* ── Voice modal: close ── */
+        var voiceClose = document.getElementById('dts-voice-close');
+        if (voiceClose) {
+            voiceClose.addEventListener('click', function () { closeVoiceModal(); });
+        }
+
+        /* ── Voice modal: start/stop/interrupt toggle ── */
+        var voiceToggle = document.getElementById('dts-voice-toggle');
+        if (voiceToggle) {
+            voiceToggle.addEventListener('click', function () {
+                var orb   = document.getElementById('dts-voice-orb');
+                var state = orb ? orb.dataset.state : 'idle';
+                if (state === 'idle' || state === 'error') {
+                    startVoiceListening();
+                } else if (state === 'listening') {
+                    stopVoiceListening();
+                    setVoiceState('idle');
+                } else if (state === 'speaking') {
+                    stopAiSpeech();
+                    setVoiceState('idle');
+                }
+            });
+        }
+
+        /* ── Voice modal: end conversation ── */
+        var voiceEnd = document.getElementById('dts-voice-end');
+        if (voiceEnd) {
+            voiceEnd.addEventListener('click', function () { closeVoiceModal(); });
+        }
+
+        /* ── Close voice overlay on backdrop click ── */
+        var voiceOverlay = document.getElementById('dts-voice-overlay');
+        if (voiceOverlay) {
+            voiceOverlay.addEventListener('click', function (e) {
+                if (e.target === voiceOverlay) closeVoiceModal();
+            });
+        }
+
+        /* ── Restore last active session (optional) ── */
+        try {
+            var lastId = localStorage.getItem(ACTIVE_KEY);
+            if (lastId) {
+                var sessions = loadSessions();
+                if (sessions.some(function (s) { return s.id === lastId; })) {
+                    /* Uncomment to restore last session on load: */
+                    /* loadSessionById(lastId); */
+                }
+            }
+        } catch (e) {}
+
+    }); /* end DOMContentLoaded */
+
+})();
+,    display: false },
+                        { left: '\\(', right: '\\)', display: false }
                     ],
                     throwOnError: false
                 });
