@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.0
+   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.2
    Features: AI Format/Write/Translate/Summarize/Expand
              30+ Google Fonts · Image Upload & Resize
              Excel-Style Tables · Chart from Data
@@ -17,7 +17,7 @@
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
   var wpReflowTimer = null;
-  var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 20;
+  var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 999;
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -49,7 +49,7 @@
     wpSetupContextMenu();
     wpSetupImageDrop();
     wpUpdateStats();
-    wpSetStatus('Word Processor ready — v3.1');
+    wpSetStatus('Word Processor ready — v3.2');
     wpAdjustHeaderOffset();
     wpSetupDocSettingsListeners();
   });
@@ -1944,7 +1944,6 @@
 
 
   window.wpAddPage = function() {
-    if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
     wpSavePageState();
     wpPages.splice(wpCurrentPage + 1, 0, '');
     wpCurrentPage++;
@@ -2051,17 +2050,129 @@
     setTimeout(function(){ if(el.textContent === msg) el.textContent = ''; }, 4000);
   }
 
-  /* ── Print ──────────────────────────────────────────────────── */
+  /* ── Print / Export — Format Picker + Preview ───────────────── */
+  var _wpPrintFormat = 'pdf';
+
   window.wpPrint = function() {
-    var printRoot = document.getElementById('wp-print-root');
-    if (!printRoot) { window.print(); return; }
-    var container = document.getElementById('wp-pages');
-    if (container) printRoot.innerHTML = container.innerHTML;
-    printRoot.style.display = 'block';
-    setTimeout(function() {
-      window.print();
-      setTimeout(function(){ printRoot.style.display = 'none'; printRoot.innerHTML = ''; }, 500);
-    }, 200);
+    wpShowPrintFormatModal();
+  };
+
+  window.wpShowPrintFormatModal = function() {
+    wpShowModal('wp-print-fmt-modal');
+  };
+
+  window.wpSelectPrintFormat = function(fmt) {
+    _wpPrintFormat = fmt;
+    wpHideModal('wp-print-fmt-modal');
+    wpShowPrintPreview(fmt);
+  };
+
+  window.wpShowPrintPreview = function(fmt) {
+    var content = wpGetFullContent();
+    var title   = wpGetDocTitle(content);
+    var previewEl = document.getElementById('wp-print-preview-body');
+    var badgeEl   = document.getElementById('wp-preview-fmt-badge');
+    var dlBtn     = document.getElementById('wp-preview-dl-btn');
+    if (!previewEl) return;
+
+    var fmtLabels = {
+      pdf:'📄 PDF', docx:'📝 Word (.docx)', csv:'📊 Excel / CSV',
+      html:'🌐 HTML', txt:'📃 Plain Text', rtf:'📄 RTF',
+      md:'📋 Markdown', latex:'Σ LaTeX', json:'{ } JSON'
+    };
+    if (badgeEl) badgeEl.textContent = fmtLabels[fmt] || fmt.toUpperCase();
+    if (dlBtn) dlBtn.textContent = '⬇️ Download ' + (fmtLabels[fmt] || fmt.toUpperCase());
+
+    /* Build a clean print preview of the document */
+    var pageStyle = (function() {
+      var mg = getV('wp-margin', 20);
+      var bf = getV('wp-bfont', 'Georgia, serif');
+      var bd = getV('wp-body', 12);
+      var lh = getV('wp-lh', '1.6');
+      var h1 = getV('wp-h1', 24); var h2 = getV('wp-h2', 18); var h3 = getV('wp-h3', 14);
+      return 'font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';' +
+             '--h1-size:' + h1 + 'pt;--h2-size:' + h2 + 'pt;--h3-size:' + h3 + 'pt;';
+    })();
+
+    previewEl.innerHTML = '';
+    var notice = document.createElement('div');
+    notice.style.cssText = 'margin-bottom:14px;padding:9px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:12px;color:#0369a1;font-weight:600;';
+    notice.textContent = '📄 Document: "' + title + '" · Format: ' + (fmtLabels[fmt] || fmt.toUpperCase()) + ' · ' + wpPages.length + ' page(s)';
+    previewEl.appendChild(notice);
+
+    wpPages.forEach(function(pgHtml, idx) {
+      var pageWrap = document.createElement('div');
+      pageWrap.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:20px;' +
+        'box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;overflow:hidden;';
+      var pageLabel = document.createElement('div');
+      pageLabel.style.cssText = 'background:#f8f9ff;border-bottom:1px solid #e2e8f0;padding:6px 14px;font-size:10.5px;color:#6b7280;font-weight:700;';
+      pageLabel.textContent = 'Page ' + (idx + 1) + ' of ' + wpPages.length;
+      var pageContent = document.createElement('div');
+      pageContent.style.cssText = 'padding:24px 28px;' + pageStyle;
+      pageContent.innerHTML = pgHtml || '<em style="color:#9ca3af;">Empty page</em>';
+      /* Apply inline heading sizes */
+      pageContent.querySelectorAll('h1').forEach(function(h){ h.style.fontSize = getV('wp-h1',24) + 'pt'; });
+      pageContent.querySelectorAll('h2').forEach(function(h){ h.style.fontSize = getV('wp-h2',18) + 'pt'; });
+      pageContent.querySelectorAll('h3').forEach(function(h){ h.style.fontSize = getV('wp-h3',14) + 'pt'; });
+      /* Make tables look clean */
+      pageContent.querySelectorAll('table').forEach(function(t){
+        t.style.cssText = 'border-collapse:collapse;width:100%;margin:10px 0;font-size:11pt;';
+      });
+      pageContent.querySelectorAll('td,th').forEach(function(c){
+        c.style.border = '1px solid #d1d5db';
+        c.style.padding = '6px 10px';
+      });
+      pageWrap.appendChild(pageLabel);
+      pageWrap.appendChild(pageContent);
+      previewEl.appendChild(pageWrap);
+    });
+
+    wpShowModal('wp-print-preview-modal');
+  };
+
+  window.wpConfirmPrintDownload = function() {
+    var fmt = _wpPrintFormat;
+    wpHideModal('wp-print-preview-modal');
+    if (fmt === 'pdf') {
+      /* For PDF: use browser print dialog (most reliable on mobile) */
+      var content = wpGetFullContent();
+      var title   = wpGetDocTitle(content);
+      var bf = getV('wp-bfont','Georgia, serif');
+      var bd = getV('wp-body', 12);
+      var mg = getV('wp-margin', 20);
+      var lh = getV('wp-lh', '1.6');
+      var h1sz = getV('wp-h1',24); var h2sz = getV('wp-h2',18); var h3sz = getV('wp-h3',14);
+      var allPages = wpPages.map(function(pg, i) {
+        return '<div style="page-break-after:' + (i < wpPages.length - 1 ? 'always' : 'auto') + ';padding:' + mg + 'mm;">' + (pg || '') + '</div>';
+      }).join('');
+      var printWin = window.open('', '_blank');
+      if (!printWin) {
+        alert('Popup blocked. Please allow popups for this site and try again.');
+        return;
+      }
+      printWin.document.write(
+        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title>' +
+        '<style>' +
+        'body{font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';margin:0;color:#1a1a1a;}' +
+        'h1{font-size:' + h1sz + 'pt;margin:.5em 0;}' +
+        'h2{font-size:' + h2sz + 'pt;margin:.45em 0;}' +
+        'h3{font-size:' + h3sz + 'pt;margin:.4em 0;}' +
+        'p{margin:.5em 0;}' +
+        'table{border-collapse:collapse;width:100%;margin:10px 0;}' +
+        'td,th{border:1px solid #ccc;padding:6px 10px;}' +
+        'th{background:#f1f5f9;font-weight:700;}' +
+        'img{max-width:100%;height:auto;}' +
+        'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}' +
+        'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}' +
+        '@media print{@page{margin:' + mg + 'mm;}body{margin:0;}}' +
+        '</style></head><body>' + allPages + '</body></html>'
+      );
+      printWin.document.close();
+      setTimeout(function(){ printWin.focus(); printWin.print(); }, 600);
+      wpSetStatus('PDF print dialog opened ✅');
+    } else {
+      wpDownload(fmt);
+    }
   };
 
   /* ── New document ───────────────────────────────────────────── */
