@@ -1203,9 +1203,7 @@
     }
     wpSetAIStatus('working', 'Fixing grammar…');
     var text = ed.innerText || ed.textContent || '';
-    callAI('Fix all grammar, spelling, punctuation and style issues in the following text. Return ONLY the corrected text with no extra commentary:
-
-' + text, 3000)
+    callAI('Fix all grammar, spelling, punctuation and style issues in the following text. Return ONLY the corrected text with no extra commentary:\n\n' + text, 3000)
       .then(function(fixed) {
         if (fixed && fixed.trim()) {
           var ds = wpGetDocSettings();
@@ -1529,6 +1527,7 @@
           wpPages[idx] = ed.innerHTML;
           wpUpdateToolbarState();
           wpUpdateStats();
+          if (ed.scrollHeight > ed.clientHeight) { wpHandlePageOverflow(idx); }
         });
         ed.addEventListener('keydown', function(e) {
           // Already handled via document keydown handler
@@ -1606,6 +1605,35 @@
     }, 300);
     wpUpdatePageNav();
   };
+
+  function wpHandlePageOverflow(pageIdx) {
+    var ed = document.getElementById('wp-editor-' + pageIdx);
+    if (!ed || ed.scrollHeight <= ed.clientHeight) return;
+    var lastEl = ed.lastElementChild;
+    if (!lastEl) return;
+    var moved = lastEl.outerHTML || '';
+    ed.removeChild(lastEl);
+    wpPages[pageIdx] = ed.innerHTML;
+    if (pageIdx + 1 >= wpPages.length) {
+      if (wpPages.length >= MAX_PAGES) return;
+      wpPages.splice(pageIdx + 1, 0, moved);
+    } else {
+      wpPages[pageIdx + 1] = moved + wpPages[pageIdx + 1];
+    }
+    wpCurrentPage = pageIdx + 1;
+    wpRenderPages();
+    setTimeout(function() {
+      var nextEd = document.getElementById('wp-editor-' + (pageIdx + 1));
+      if (nextEd) {
+        nextEd.focus();
+        var range = document.createRange();
+        range.setStart(nextEd, 0);
+        range.collapse(true);
+        var sel = window.getSelection();
+        if (sel) { sel.removeAllRanges(); sel.addRange(range); }
+      }
+    }, 100);
+  }
 
   window.wpAddPage = function() {
     if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
