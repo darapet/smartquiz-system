@@ -1696,18 +1696,12 @@
           wpPages[idx] = ed.innerHTML;
           wpUpdateToolbarState();
           wpUpdateStats();
-          if (ed.scrollHeight > ed.clientHeight) { wpHandlePageOverflow(idx); }
+          wpScheduleFullReflow();
         });
         ed.addEventListener('keydown', function(e) {
           if (e.key === 'Enter') {
-            /* After the browser inserts the new block, check for overflow */
-            var capturedIdx = idx;
-            setTimeout(function() {
-              var thisEd = document.getElementById('wp-editor-' + capturedIdx);
-              if (thisEd && thisEd.scrollHeight > thisEd.clientHeight + 2) {
-                wpHandlePageOverflow(capturedIdx);
-              }
-            }, 0);
+            /* Trigger reflow immediately after the browser inserts the new block */
+            setTimeout(wpRunFullReflow, 0);
           }
         });
         ed.addEventListener('mouseup', wpUpdateToolbarState);
@@ -1782,211 +1776,172 @@
   };
 
   /* ── Push one or more elements to the top of the next page ────── */
-  function wpPushBlocksToNextPage(pageIdx, blocks) {
-    /* blocks: array of DOM elements or array of HTML strings */
-    var htmlToMove = blocks.map(function(b) {
-      return (typeof b === 'string') ? b : (b.outerHTML || '');
-    }).join('');
-    if (!htmlToMove) return;
+  /* ════════════════════════════════════════════════════════════════
+     BIDIRECTIONAL PAGINATION ENGINE
+     — overflow:  push content forward to next page
+     — backflow:  pull content back when a page has space (like Word)
+     — runs synchronously to stable state on every edit
+     ════════════════════════════════════════════════════════════════ */
+  var WP_OVERFLOW_BUF = 4; /* px tolerance */
 
-    var focusNext = function(nextEd, created) {
-      if (!nextEd) return;
-      wpCurrentPage = pageIdx + 1;
-      wpUpdatePageNav();
-      nextEd.focus();
-      try {
-        var r = document.createRange();
-        r.setStart(nextEd.firstChild || nextEd, 0);
-        r.collapse(true);
-        var s = window.getSelection();
-        if (s) { s.removeAllRanges(); s.addRange(r); }
-      } catch (ex) {}
-      /* Cascade: if the next page itself overflows, continue reflowing */
-      setTimeout(function() {
-        var ed2 = document.getElementById('wp-editor-' + (pageIdx + 1));
-        if (ed2 && ed2.scrollHeight > ed2.clientHeight + 2) {
-          wpHandlePageOverflow(pageIdx + 1);
+  function wpScheduleFullReflow() {
+    clearTimeout(wpReflowTimer);
+    wpReflowTimer = setTimeout(wpRunFullReflow, 150);
+  }
+  /* Keep old alias so any remaining callers still work */
+  function wpScheduleReflow() { wpScheduleFullReflow(); }
+
+  function wpRunFullReflow() {
+    var MAX_ITER = 80;
+    var anythingChanged = false;
+
+    for (var iter = 0; iter < MAX_ITER; iter++) {
+      var changed = false;
+
+      /* ── Forward pass: push overflow to next page ── */
+      for (var pi = 0; pi < wpPages.length; pi++) {
+        var ed = document.getElementById('wp-editor-' + pi);
+        if (!ed) continue;
+        if (ed.scrollHeight > ed.clientHeight + WP_OVERFLOW_BUF) {
+          if (_wpPushOverflow(pi, ed)) { changed = true; break; }
         }
-      }, 30);
-    };
-
-    if (pageIdx + 1 < wpPages.length) {
-      var nextEd = document.getElementById('wp-editor-' + (pageIdx + 1));
-      if (nextEd) {
-        var tmp = document.createElement('div');
-        tmp.innerHTML = htmlToMove;
-        var frag = document.createDocumentFragment();
-        while (tmp.firstChild) frag.appendChild(tmp.firstChild);
-        nextEd.insertBefore(frag, nextEd.firstChild || null);
-        wpPages[pageIdx + 1] = nextEd.innerHTML;
-        focusNext(nextEd, false);
-        return;
       }
+      if (changed) { anythingChanged = true; continue; }
+
+      /* ── Backward pass: pull underflow back from next page ── */
+      for (var pi2 = 0; pi2 < wpPages.length - 1; pi2++) {
+        var ed2 = document.getElementById('wp-editor-' + pi2);
+        var ned = document.getElementById('wp-editor-' + (pi2 + 1));
+        if (!ed2 || !ned) continue;
+        if (_wpPullUnderflow(pi2, ed2, ned)) { changed = true; break; }
+      }
+      if (changed) { anythingChanged = true; continue; }
+
+      break; /* stable */
     }
-    /* Next page does not exist — create it */
-    if (wpPages.length >= MAX_PAGES) return;
-    wpPages.splice(pageIdx + 1, 0, htmlToMove);
-    wpRenderPages();
-    setTimeout(function() {
-      focusNext(document.getElementById('wp-editor-' + (pageIdx + 1)), true);
-    }, 100);
+
+    if (anythingChanged) {
+      _wpCleanEmptyPages();
+      wpUpdatePageNav();
+      wpUpdateStats();
+    }
   }
 
-  function wpHandlePageOverflow(pageIdx) {
-    var ed = document.getElementById('wp-editor-' + pageIdx);
-    if (!ed) return;
-    if (ed.scrollHeight <= ed.clientHeight + 2) return;
+  /* Push the overflowing tail of page `pi` to page `pi+1`.
+     Returns true if anything was moved. */
+  function _wpPushOverflow(pi, ed) {
+    var maxH = ed.clientHeight;
+    if (ed.scrollHeight <= maxH + WP_OVERFLOW_BUF) return false;
 
     var lastEl = ed.lastElementChild;
-    if (!lastEl) return;
+    if (!lastEl) return false;
+    var blockToMove = null;
 
-    /* ── Case 1: multiple direct children — move the last one ────── */
     if (ed.children.length >= 2) {
+      /* Multiple blocks: move the last block */
       ed.removeChild(lastEl);
-      wpPages[pageIdx] = ed.innerHTML;
-      wpPushBlocksToNextPage(pageIdx, [lastEl]);
-      return;
-    }
-
-    /* ── Case 2: single child that is empty (e.g. <p><br></p>) ───── */
-    var isEmpty = !lastEl.textContent.trim() ||
-                  lastEl.innerHTML.replace(/&nbsp;/gi, '').trim() === '' ||
-                  lastEl.innerHTML === '<br>';
-    if (isEmpty) {
-      ed.removeChild(lastEl);
-      wpPages[pageIdx] = ed.innerHTML;
-      wpPushBlocksToNextPage(pageIdx, [lastEl]);
-      return;
-    }
-
-    /* ── Case 3: single child with multiple inline children ──────── */
-    /* Try removing inline nodes from the end until the page fits */
-    var child = ed.firstElementChild;
-    if (child && child.childNodes.length > 1) {
-      var moved = [];
-      while (child.childNodes.length > 1 && ed.scrollHeight > ed.clientHeight + 2) {
-        var lastNode = child.lastChild;
-        moved.unshift(lastNode.cloneNode(true));
-        child.removeChild(lastNode);
-      }
-      if (moved.length > 0) {
-        /* Wrap moved nodes in the same tag as the parent */
-        var tag = child.tagName.toLowerCase();
-        var overflowEl = document.createElement(tag);
-        moved.forEach(function(n) { overflowEl.appendChild(n); });
-        wpPages[pageIdx] = ed.innerHTML;
-        wpPushBlocksToNextPage(pageIdx, [overflowEl]);
-      }
-      return;
-    }
-
-    /* ── Case 4: truly single text node in a single block ────────── */
-    /* Split the text at a word boundary near the overflow point.     */
-    var textEl = ed.firstElementChild || ed;
-    var fullText = textEl.textContent || '';
-    if (!fullText) return;
-    var words = fullText.split(/(\s+)/);
-    if (words.length <= 2) return; /* can't split a 1-word paragraph */
-
-    /* Binary search for the split point */
-    var lo = 1, hi = words.length - 1;
-    while (lo < hi) {
-      var mid = Math.floor((lo + hi + 1) / 2);
-      textEl.textContent = words.slice(0, mid).join('');
-      if (ed.scrollHeight <= ed.clientHeight + 2) { lo = mid; } else { hi = mid - 1; }
-    }
-    var keepText     = words.slice(0, lo).join('');
-    var overflowText = words.slice(lo).join('').trim();
-
-    if (!keepText || !overflowText) {
-      textEl.textContent = fullText; /* restore */
-      return;
-    }
-
-    /* Restore keep portion */
-    textEl.textContent = keepText;
-    wpPages[pageIdx] = ed.innerHTML;
-
-    /* Build overflow block */
-    var tag2 = (textEl.tagName || 'P').toLowerCase();
-    var overflowElB = document.createElement(tag2);
-    overflowElB.textContent = overflowText;
-    wpPushBlocksToNextPage(pageIdx, [overflowElB]);
-  }
-
-  /* ── Post-load reflow: move overflow blocks to next pages ─────── */
-  function wpScheduleReflow() {
-    clearTimeout(wpReflowTimer);
-    wpReflowTimer = setTimeout(function() { wpDoReflow(0, 0); }, 350);
-  }
-
-  function wpDoReflow(startPage, iterations) {
-    if (iterations > 120) return; /* safety limit */
-    for (var pi = startPage; pi < wpPages.length; pi++) {
-      var ed = document.getElementById('wp-editor-' + pi);
-      if (!ed) continue;
-      /* Need at least 4px headroom to avoid spurious splits */
-      if (ed.scrollHeight <= ed.clientHeight + 4) continue;
-
-      var lastEl = ed.lastElementChild;
-      if (!lastEl) continue;
-
-      var blockToMove = null;
-
-      if (ed.children.length >= 2) {
-        /* Multiple children: move last one */
+      blockToMove = lastEl;
+    } else {
+      /* Single child only */
+      var isEmpty = !lastEl.textContent.trim() ||
+                    lastEl.innerHTML.replace(/&nbsp;/gi, '').trim() === '' ||
+                    lastEl.innerHTML.trim() === '<br>';
+      if (isEmpty) {
         ed.removeChild(lastEl);
         blockToMove = lastEl;
+      } else if (lastEl.childNodes.length > 1) {
+        /* Multiple inline children — peel from the end */
+        var moved = [];
+        while (lastEl.childNodes.length > 1 && ed.scrollHeight > maxH + WP_OVERFLOW_BUF) {
+          var ln = lastEl.lastChild;
+          moved.unshift(ln.cloneNode(true));
+          lastEl.removeChild(ln);
+        }
+        if (moved.length) {
+          var wrapper = document.createElement(lastEl.tagName.toLowerCase());
+          moved.forEach(function(n) { wrapper.appendChild(n); });
+          blockToMove = wrapper;
+        }
       } else {
-        /* Single child */
-        var isEmpty2 = !lastEl.textContent.trim() ||
-                       lastEl.innerHTML.replace(/&nbsp;/gi,'').trim() === '' ||
-                       lastEl.innerHTML === '<br>';
-        if (isEmpty2) {
-          ed.removeChild(lastEl);
-          blockToMove = lastEl;
-        } else if (lastEl.childNodes.length > 1) {
-          /* Has multiple inline nodes — peel from end */
-          var moved2 = [];
-          while (lastEl.childNodes.length > 1 && ed.scrollHeight > ed.clientHeight + 4) {
-            var ln = lastEl.lastChild;
-            moved2.unshift(ln.cloneNode(true));
-            lastEl.removeChild(ln);
-          }
-          if (moved2.length > 0) {
-            var wrapTag = lastEl.tagName.toLowerCase();
-            var wrapper = document.createElement(wrapTag);
-            moved2.forEach(function(n){ wrapper.appendChild(n); });
-            blockToMove = wrapper;
-          }
+        /* Single text node in a single block: binary-search word split */
+        var textEl = ed.firstElementChild || ed;
+        var full   = textEl.textContent || '';
+        if (!full) return false;
+        var words  = full.split(/(\s+)/);
+        if (words.length <= 2) return false;
+        var lo = 1, hi = words.length - 1;
+        while (lo < hi) {
+          var mid = Math.floor((lo + hi + 1) / 2);
+          textEl.textContent = words.slice(0, mid).join('');
+          if (ed.scrollHeight <= maxH + WP_OVERFLOW_BUF) { lo = mid; } else { hi = mid - 1; }
         }
-        /* else: truly single text in single block — skip, can't split safely here */
+        var keepT = words.slice(0, lo).join('');
+        var overT = words.slice(lo).join('').trim();
+        if (!keepT || !overT) { textEl.textContent = full; return false; }
+        textEl.textContent = keepT;
+        var overEl = document.createElement((textEl.tagName || 'P').toLowerCase());
+        overEl.textContent = overT;
+        blockToMove = overEl;
       }
-
-      if (!blockToMove) continue;
-      wpPages[pi] = ed.innerHTML;
-
-      if (pi + 1 < wpPages.length) {
-        var nextEd = document.getElementById('wp-editor-' + (pi + 1));
-        if (nextEd) {
-          nextEd.insertBefore(blockToMove, nextEd.firstChild || null);
-          wpPages[pi + 1] = nextEd.innerHTML;
-          var nextPi = pi;
-          setTimeout(function() { wpDoReflow(nextPi, iterations + 1); }, 60);
-          return;
-        }
-      }
-      /* Must create a new page */
-      if (wpPages.length >= MAX_PAGES) break;
-      wpPages.splice(pi + 1, 0, blockToMove.outerHTML || '');
-      wpRenderPages(true);
-      var capPi = pi;
-      setTimeout(function() { wpDoReflow(capPi, iterations + 1); }, 120);
-      return;
     }
-    wpUpdatePageNav();
-    wpUpdateStats();
+
+    if (!blockToMove) return false;
+    wpPages[pi] = ed.innerHTML;
+
+    /* Insert into existing next page */
+    if (pi + 1 < wpPages.length) {
+      var nextEd = document.getElementById('wp-editor-' + (pi + 1));
+      if (nextEd) {
+        nextEd.insertBefore(blockToMove, nextEd.firstChild || null);
+        wpPages[pi + 1] = nextEd.innerHTML;
+        return true;
+      }
+    }
+    /* Create a new page */
+    if (wpPages.length >= MAX_PAGES) return false;
+    wpPages.splice(pi + 1, 0, blockToMove.outerHTML || '');
+    wpRenderPages(true);
+    return true;
   }
+
+  /* Pull the first block of page `pi+1` back to page `pi` if it fits.
+     This is the "backflow" behaviour — like Word pulling content up on delete.
+     Returns true if anything was moved. */
+  function _wpPullUnderflow(pi, ed, nextEd) {
+    var firstBlock = nextEd.firstElementChild;
+    if (!firstBlock) return false;
+
+    /* Measure with a clone to avoid mutating the DOM */
+    var clone = firstBlock.cloneNode(true);
+    ed.appendChild(clone);
+    var fits = ed.scrollHeight <= ed.clientHeight + WP_OVERFLOW_BUF;
+    ed.removeChild(clone);
+    if (!fits) return false;
+
+    /* Fits — move the real element */
+    nextEd.removeChild(firstBlock);
+    ed.appendChild(firstBlock);
+    wpPages[pi]     = ed.innerHTML;
+    wpPages[pi + 1] = nextEd.innerHTML;
+    return true;
+  }
+
+  /* Remove trailing pages that are fully empty (always keep at least 1) */
+  function _wpCleanEmptyPages() {
+    var changed = false;
+    for (var pi = wpPages.length - 1; pi > 0; pi--) {
+      var ed = document.getElementById('wp-editor-' + pi);
+      var hasContent = ed
+        ? (ed.textContent.trim() || ed.querySelector('img,table,hr'))
+        : wpPages[pi].trim();
+      if (!hasContent) {
+        wpPages.splice(pi, 1);
+        changed = true;
+      }
+    }
+    if (changed) wpRenderPages(true);
+  }
+
 
   window.wpAddPage = function() {
     if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
