@@ -45,7 +45,6 @@ var VS = {
     _interimSnapshot:'', _pausedQueue:[], _currentAudio:null,
     /* user identity */
     userName:null, userSurname:null, lastNameCall:0,
-    language:'English',
     /* voice demo */
     _demoVoices:[], _demoIdx:0,
     /* stream abort controller */
@@ -64,16 +63,12 @@ var _MIC_STATE = { active:false, mediaRecorder:null, chunks:[], stream:null, _au
 
 /* Pollinations neural voices — used for TTS on mobile (more reliable than speechSynthesis) */
 var POLL_VOICES = [
-    {id:'nova',    name:'Nova',    gender:'F', desc:'Bright & engaging'},
-    {id:'shimmer', name:'Shimmer', gender:'F', desc:'Warm & expressive'},
-    {id:'alloy',   name:'Alloy',   gender:'F', desc:'Balanced & clear'},
-    {id:'coral',   name:'Coral',   gender:'F', desc:'Clear & precise'},
-    {id:'sage',    name:'Sage',    gender:'F', desc:'Gentle & wise'},
-    {id:'echo',    name:'Echo',    gender:'M', desc:'Friendly & warm'},
-    {id:'fable',   name:'Fable',   gender:'M', desc:'Storytelling tone'},
-    {id:'onyx',    name:'Onyx',    gender:'M', desc:'Deep & authoritative'},
-    {id:'ash',     name:'Ash',     gender:'M', desc:'Smooth & calm'},
-    {id:'ballad',  name:'Ballad',  gender:'M', desc:'Rich & melodic'},
+    {id:'alloy',   name:'Alloy',   desc:'Balanced & clear'},
+    {id:'echo',    name:'Echo',    desc:'Friendly & warm'},
+    {id:'fable',   name:'Fable',   desc:'Storytelling tone'},
+    {id:'onyx',    name:'Onyx',    desc:'Deep & authoritative'},
+    {id:'nova',    name:'Nova',    desc:'Bright & engaging'},
+    {id:'shimmer', name:'Shimmer', desc:'Warm & expressive'},
 ];
 
 /* ── INIT ───────────────────────────────────────────────────── */
@@ -1055,25 +1050,11 @@ function summonStartSetup() {
 function _summonDemoNextVoice(idx) {
     var voices = VS._demoVoices;
     if (!voices || idx >= voices.length) {
-        /* All voices played — show Tesla visual voice selection grid */
+        /* All voices played — ask user to pick */
         VS._setupStep = 2;
-        var pickMsg = 'All ' + voices.length + ' voices done! Tap the card you liked, or say/type its number.';
-        var gridHtml = '<div class="summon-tesla-setup">' +
-            '<div class="summon-tesla-title">✦ Choose Your Voice</div>' +
-            '<div class="summon-tesla-sub">Tap a card or say / type a number</div>' +
-            '<div class="summon-voice-grid">';
-        for (var vi = 0; vi < voices.length; vi++) {
-            var vv = voices[vi];
-            var vLabel = (vv && (vv.name || vv.id)) ? (vv.name || vv.id) : 'Voice ' + (vi + 1);
-            var vGend = vv && vv.gender ? (vv.gender === 'F' ? '♀' : '♂') : '';
-            gridHtml += '<button class="summon-vcard" onclick="window._summonPickVoiceUI(' + (vi + 1) + ')">' +
-                '<span class="summon-vcard-num">' + (vi + 1) + '</span>' +
-                '<span class="summon-vcard-name">' + vLabel + '</span>' +
-                '<span style="font-size:.6rem;color:#818cf8">' + vGend + '</span>' +
-                '</button>';
-        }
-        gridHtml += '</div></div>';
-        summonSetAiText(gridHtml);
+        var pickMsg = 'That was all ' + voices.length + ' voices. ' +
+                      'Which number did you like best? Please say or type a number from 1 to ' + voices.length + '.';
+        summonSetAiText(pickMsg);
         summonSpeak(pickMsg, function () {
             summonSetState('listening');
             if (!_IS_MOBILE_APP) summonStartListening();
@@ -1165,56 +1146,19 @@ function summonHandleSetup(q) {
         VS.voiceIndex = num - 1;
         VS.voice = voices[VS.voiceIndex];
         summonPickVoice();
-        /* Advance to Step 3 — language selection */
         VS._setupStep = 3;
-        var langs = ['English','French','Spanish','Arabic','Yoruba','Igbo','Hausa','Swahili','Chinese','Portuguese'];
-        var langHtml = '<div class="summon-tesla-setup">' +
-            '<div class="summon-tesla-title">🌐 Choose Language</div>' +
-            '<div class="summon-tesla-sub">I will teach you in this language</div>' +
-            '<div class="summon-lang-grid">' +
-            langs.map(function(l) {
-                return '<button class="summon-lang-btn" onclick="window._summonPickLangUI(\'' + l + '\')">' + l + '</button>';
-            }).join('') +
-            '</div>' +
-            '<div style="color:#64748b;font-size:.7rem;text-align:center;margin:2px 0 6px">or type any language:</div>' +
-            '<div style="display:flex;gap:6px">' +
-            '<input id="summon-lang-custom" class="summon-tesla-input" placeholder="e.g. German, Hindi, Pidgin…" style="margin:0">' +
-            '<button class="summon-sess-btn" style="flex:0 0 auto;width:auto;padding:9px 13px" ' +
-            'onclick="var v=document.getElementById(\'summon-lang-custom\');if(v&&v.value.trim())window._summonPickLangUI(v.value.trim())">Go ➤</button>' +
-            '</div></div>';
-        var langQ = 'Voice ' + num + ' locked in! What language would you like me to teach in?';
-        summonSetAiText(langHtml);
-        return summonSpeak(langQ, function () {
+        var nameQ = _IS_MOBILE_APP
+            ? 'Perfect choice! Now, what is your full name? Type it below and press Send.'
+            : 'Perfect choice! Now, what is your full name? You can say it or type it below.';
+        summonSetAiText(nameQ);
+        return summonSpeak(nameQ, function () {
             summonSetState('listening');
             if (!_IS_MOBILE_APP) summonStartListening();
         });
     }
 
-    /* Step 3 — language selection */
+    /* Step 3 — user gives their name */
     if (VS._setupStep === 3) {
-        var lang = q.trim().replace(/[^a-zA-Z\s\-']/g, '').trim();
-        if (!lang) {
-            var retryLang = 'Please say or type a language — for example English, French, or Yoruba.';
-            summonSetAiText(retryLang);
-            return summonSpeak(retryLang, function () {
-                summonSetState('listening');
-                if (!_IS_MOBILE_APP) summonStartListening();
-            });
-        }
-        VS.language = lang.charAt(0).toUpperCase() + lang.slice(1);
-        VS._setupStep = 4;
-        var nameQ2 = _IS_MOBILE_APP
-            ? 'Great! Teaching in ' + VS.language + '. Now, what is your full name? Type it below and press Send.'
-            : 'Excellent! Teaching in ' + VS.language + '. Now, what is your full name? Say it or type it below.';
-        summonSetAiText(nameQ2);
-        return summonSpeak(nameQ2, function () {
-            summonSetState('listening');
-            if (!_IS_MOBILE_APP) summonStartListening();
-        });
-    }
-
-    /* Step 4 — user gives their name */
-    if (VS._setupStep === 4) {
         var raw = q.trim().replace(/[^a-zA-Z0-9\s\-']/g, '').trim();
         if (!raw) {
             var retryName = _IS_MOBILE_APP
@@ -1490,7 +1434,6 @@ async function summonHandleQuery(q) {
     var sysPrompt =
         'You are a professional, encouraging, and thorough voice-based academic tutor for Darapet Learning System. ' +
         'The student\'s name is ' + (VS.userName || 'Student') + '. ' +
-        'Teach ENTIRELY in ' + (VS.language || 'English') + '. Every explanation, question, and response MUST be in ' + (VS.language || 'English') + ' — do not switch languages. ' +
         context +
         teachInst +
         surnameInst +
@@ -1586,6 +1529,7 @@ async function summonStreamResponse(messages) {
             return;
         }
     }
+    try {
     var reader = res.body.getReader(), decoder = new TextDecoder();
     var full = '', sentenceBuf = '', seenDisplay = false, displayStart = -1;
     summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];
@@ -1959,26 +1903,6 @@ function injectSummonStyles() {
 
         /* ── MOBILE: full-width ── */
         '@media(max-width:480px){#std-summon-overlay{width:100vw!important}#std-summon-fab{bottom:14px!important;right:14px!important}}',
-
-        /* ── TESLA SETUP CARDS ── */
-        '.summon-tesla-setup{padding:12px 14px 8px;animation:std-fade-in .3s ease}',
-        '.summon-tesla-title{font-size:1.05rem;font-weight:800;color:#a78bfa;text-align:center;margin-bottom:2px;letter-spacing:.02em}',
-        '.summon-tesla-sub{font-size:.72rem;color:#64748b;text-align:center;margin-bottom:12px}',
-        '.summon-voice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px;margin-bottom:10px}',
-        '.summon-vcard{background:rgba(99,102,241,.1);border:1.5px solid rgba(99,102,241,.25);border-radius:10px;padding:8px 5px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .18s ease}',
-        '.summon-vcard:hover{background:rgba(99,102,241,.22);border-color:#6366f1;transform:translateY(-2px)}',
-        '.summon-vcard.selected{background:rgba(99,102,241,.35)!important;border-color:#a78bfa!important;box-shadow:0 0 0 2px rgba(167,139,250,.3)}',
-        '.summon-vcard-num{width:22px;height:22px;border-radius:50%;background:rgba(99,102,241,.3);font-size:.72rem;font-weight:900;color:#c4b5fd;display:flex;align-items:center;justify-content:center;line-height:1}',
-        '.summon-vcard-name{font-size:.68rem;font-weight:700;color:#e2e8f0;margin-top:1px}',
-        '.summon-lang-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;justify-content:center}',
-        '.summon-lang-btn{background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:5px 12px;font-size:.76rem;font-weight:700;color:#6ee7b7;cursor:pointer;transition:all .15s ease}',
-        '.summon-lang-btn:hover{background:rgba(16,185,129,.25);border-color:#10b981;color:#fff}',
-        '.summon-tesla-input{width:100%;background:rgba(30,41,59,.8);border:1.5px solid rgba(99,102,241,.25);border-radius:8px;padding:9px 12px;font-size:.82rem;color:#e2e8f0;outline:none;box-sizing:border-box;margin-bottom:6px}',
-        '#std-summon-session-btns{display:flex;gap:6px;padding:7px 14px 9px;border-top:1px solid rgba(99,102,241,.12);flex-shrink:0}',
-        '.summon-sess-btn{flex:1;padding:8px 6px;font-size:.75rem;font-weight:700;border:1.5px solid rgba(99,102,241,.3);border-radius:8px;background:rgba(99,102,241,.1);color:#a78bfa;cursor:pointer;transition:all .15s ease;white-space:nowrap}',
-        '.summon-sess-btn:hover{background:rgba(99,102,241,.22)}',
-        '.summon-sess-end{border-color:rgba(239,68,68,.3)!important;background:rgba(239,68,68,.08)!important;color:#fca5a5!important}',
-        '.summon-sess-end:hover{background:rgba(239,68,68,.2)!important}',
     ].join('');
     document.head.appendChild(s);
 }
@@ -2018,11 +1942,6 @@ function injectSummonUI() {
           '<input id="std-summon-text" type="text" placeholder="' + (_IS_MOBILE_APP ? 'Type your question…' : 'Or type here…') + '" autocomplete="off">',
           '<button id="std-summon-send">&#x27A4;</button>',
           '<button id="std-summon-mic-btn" title="Speak">🎤</button>',
-        '</div>',
-        /* Session action buttons — Save & End */
-        '<div id="std-summon-session-btns">',
-          '<button class="summon-sess-btn" onclick="window._summonSaveSession()">💾 Save</button>',
-          '<button class="summon-sess-btn summon-sess-end" onclick="window._summonEndSession()">⏹ End</button>',
         '</div>',
     ].join('');
     document.body.appendChild(overlay);
@@ -2666,56 +2585,5 @@ function stdVoiceMicTranscribe() {
 /* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
 /* FIX: functions inside an IIFE are not global — expose only what onclick HTML needs */
 window._stdRetry = loadChapterContent;
-
-/* ── TESLA SETUP UI — GLOBAL HANDLERS ───────────────────────── */
-window._summonPickVoiceUI = function (n) {
-    /* Highlight the selected voice card */
-    var cards = document.querySelectorAll('.summon-vcard');
-    cards.forEach(function (c) { c.classList.remove('selected'); });
-    if (cards[n - 1]) cards[n - 1].classList.add('selected');
-    /* Route through the normal send button so the existing flow handles it */
-    var inp = document.getElementById('std-summon-text');
-    if (inp) inp.value = String(n);
-    var btn = document.getElementById('std-summon-send');
-    if (btn) btn.click();
-};
-
-window._summonPickLangUI = function (lang) {
-    var inp = document.getElementById('std-summon-text');
-    if (inp) inp.value = lang;
-    var btn = document.getElementById('std-summon-send');
-    if (btn) btn.click();
-};
-
-window._summonSaveSession = function () {
-    try {
-        var sessions = JSON.parse(localStorage.getItem('xzily_voice_sessions') || '[]');
-        sessions.unshift({
-            id: Date.now(),
-            title: (typeof S !== 'undefined' && S.title ? S.title : (VS.topic || 'Voice Session')) +
-                   ' — ' + new Date().toLocaleDateString(),
-            language: VS.language || 'English',
-            history: VS.history.slice(),
-            ts: Date.now()
-        });
-        localStorage.setItem('xzily_voice_sessions', JSON.stringify(sessions.slice(0, 20)));
-        var saveBtn = document.querySelector('#std-summon-session-btns .summon-sess-btn:first-child');
-        if (saveBtn) {
-            var orig = saveBtn.textContent;
-            saveBtn.textContent = '✅ Saved!';
-            setTimeout(function () { saveBtn.textContent = orig; }, 2000);
-        }
-    } catch (e) {}
-};
-
-window._summonEndSession = function () {
-    window._summonSaveSession();
-    VS.active = false; VS._setupDone = false; VS._inSetup = false;
-    VS._setupStep = 0; VS.history = []; VS.userName = null;
-    var overlay = document.getElementById('std-summon-overlay');
-    if (overlay) overlay.style.display = 'none';
-    var fab = document.getElementById('std-summon-fab');
-    if (fab) fab.style.display = '';
-};
 
 })();
