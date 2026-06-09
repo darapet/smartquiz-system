@@ -2379,9 +2379,12 @@ function _updateAqsGlobals(user, profile) {
                      'take-quiz.html','challenge.html'];
     var authPages = ['login.html', 'register.html'];
 
-    /* Auth guard: redirect to register.html if not signed in with a real account */
+    /* Auth guard: redirect to register.html if not signed in with a real account.
+       Uses a race between authStateReady() and a 10-second fallback so it never
+       hangs silently on Android WebView where IndexedDB can stall. */
     if (openPages.indexOf(page) === -1 && page !== '') {
-        auth.authStateReady().then(function() {
+        var _authGuardTimeout = new Promise(function(resolve) { setTimeout(resolve, 10000); });
+        Promise.race([auth.authStateReady(), _authGuardTimeout]).then(function() {
             var user = auth.currentUser;
             /* null = no session, isAnonymous = guest only — both must register */
             if (!user || user.isAnonymous) {
