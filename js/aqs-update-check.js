@@ -197,7 +197,6 @@ var AQS_APP_VERSION_CODE = 165;
         btn.disabled = false;
         btn.textContent = '⬇️ Download Update';
       }, 2000);
-    }
 
     /* Bridge not ready yet — wait up to 3 seconds then retry */
     var waited = 0;
