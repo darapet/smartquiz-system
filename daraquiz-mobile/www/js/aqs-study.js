@@ -279,19 +279,23 @@ async function loadUploadedDoc(name, type) {
 function setupSearch() {
     var form = document.getElementById('std-search-form');
     var inp  = document.getElementById('std-search-input');
-    var btn  = form ? form.querySelector('button[type="submit"]') : null;
+    /* Button is type="button" so won't submit; find it by class or any button */
+    var btn  = form ? (form.querySelector('button[type="button"]') || form.querySelector('button')) : null;
     function _doSearch() {
         var q = (inp ? inp.value : '').trim();
         if (q) doSearch(q);
     }
     if (form) form.addEventListener('submit', function (e) {
-        e.preventDefault();
+        e.preventDefault(); e.stopPropagation();
         _doSearch();
     });
-    /* Backup: direct click on button in case form submit is swallowed */
     if (btn) btn.addEventListener('click', function (e) {
         e.preventDefault();
         _doSearch();
+    });
+    /* Enter key on mobile keyboard */
+    if (inp) inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); _doSearch(); }
     });
 }
 
@@ -370,7 +374,7 @@ async function loadWiki(title) {
         var sec = await secRes.json();
         var rawSecs  = (sec.parse && sec.parse.sections) ? sec.parse.sections : [];
         var chapters = [{title:'Introduction', index:0, level:1}];
-        rawSecs.filter(function (s) { return parseInt(s.toclevel) <= 2 && s.line; }).slice(0, 20)
+        rawSecs.filter(function (s) { return parseInt(s.toclevel) <= 2 && s.line; })
             .forEach(function (s) { chapters.push({title:s.line.replace(/<[^>]*>/g,''), index:parseInt(s.index), level:parseInt(s.toclevel)}); });
         S.source = 'wiki'; S.title = title; S.wikiTitle = title;
         S.description = sum.extract || sum.description || '';
@@ -490,7 +494,7 @@ async function fetchWikiSection(title, sectionIdx) {
     var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', {signal:AbortSignal.timeout(10000)});
     var d2 = await r2.json();
     var wt = (d2.parse && d2.parse.wikitext && d2.parse.wikitext['*']) || '';
-    return wt.replace(/\{\{[^}]*\}\}/g,'').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,'$2').replace(/'{2,3}/g,'').replace(/==+[^=]+=+/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0, 4000);
+    return wt.replace(/\{\{[^}]*\}\}/g,'').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,'$2').replace(/'{2,3}/g,'').replace(/==+[^=]+=+/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0, 10000);
 }
 
 function showContent(idx, text) {
@@ -513,7 +517,7 @@ async function streamToPanel(panelTitle, messages, temp) {
     if (typeof window.groqFetch === 'function') {
         try {
             var res = await window.groqFetch(
-                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true},
+                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:4000, stream:true},
                 {signal:AbortSignal.timeout(60000)}
             );
             if (res.ok) {
@@ -844,6 +848,8 @@ function setupEvents() {
 
     $('std-close-ai-btn') && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
 
+    $('std-send-to-wp-btn') && $('std-send-to-wp-btn').addEventListener('click', sendToWordProcessor);
+
     $('std-test-close-btn') && $('std-test-close-btn').addEventListener('click', function () {
         var m = $('std-test-modal'); if (m) m.style.display = 'none';
     });
@@ -866,6 +872,46 @@ function setupEvents() {
 
     var tm = $('std-test-modal');
     if (tm) tm.addEventListener('click', function (e) { if (e.target === tm) tm.style.display = 'none'; });
+}
+
+/* ── SEND STUDY CONTENT TO WORD PROCESSOR ───────────────────── */
+function sendToWordProcessor() {
+    try {
+        /* Build a full HTML document from all loaded chapters */
+        var title = S.title || 'Study Guide';
+        var html  = '<h1>' + esc(title) + '</h1>';
+        if (S.description) html += '<p><em>' + esc(S.description) + '</em></p><hr>';
+
+        var hasCached = false;
+        S.chapters.forEach(function (ch, idx) {
+            var cached = S.cache && S.cache[idx];
+            if (cached) {
+                hasCached = true;
+                html += '<h2>' + esc(ch.title) + '</h2>';
+                /* cached content is plain text; convert newlines to paragraphs */
+                cached.split(/\n{2,}/).forEach(function (para) {
+                    var p = para.trim();
+                    if (p) html += '<p>' + p.replace(/\n/g, '<br>') + '</p>';
+                });
+            }
+        });
+
+        /* If no cached chapters, at least show the current chapter content */
+        if (!hasCached) {
+            var contentEl = document.getElementById('std-chapter-content');
+            var bodyEl    = contentEl && contentEl.querySelector('.std-content-body');
+            if (bodyEl) {
+                var curCh = S.chapters[S.activeIdx];
+                if (curCh) html += '<h2>' + esc(curCh.title) + '</h2>';
+                html += bodyEl.innerHTML;
+            }
+        }
+
+        localStorage.setItem('aqs_wdoc_import', JSON.stringify({title: title, html: html, ts: Date.now()}));
+        window.location.href = 'text-to-docs.html';
+    } catch(e) {
+        showErr('Could not open in Word Processor: ' + e.message);
+    }
 }
 
 /* ── HISTORY ────────────────────────────────────────────────── */
