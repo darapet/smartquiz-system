@@ -2109,7 +2109,21 @@
       pageLabel.textContent = 'Page ' + (idx + 1) + ' of ' + wpPages.length;
       var pageContent = document.createElement('div');
       pageContent.style.cssText = 'padding:24px 28px;' + pageStyle;
-      pageContent.innerHTML = pgHtml || '<em style="color:#9ca3af;">Empty page</em>';
+      /* Parse + clean HTML so raw tags never show as text */
+      var cleanHtml = (function(raw) {
+        if (!raw) return '';
+        try {
+          var parsed = (new DOMParser()).parseFromString(raw, 'text/html');
+          var body = parsed.body;
+          /* Strip editor-only attributes that can confuse rendering */
+          body.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+          body.querySelectorAll('[data-gramm],[data-gramm_editor],[data-enable-grammarly]').forEach(function(el){
+            ['data-gramm','data-gramm_editor','data-enable-grammarly'].forEach(function(a){ el.removeAttribute(a); });
+          });
+          return body.innerHTML;
+        } catch(e) { return raw; }
+      })(pgHtml);
+      pageContent.innerHTML = cleanHtml || '<em style="color:#9ca3af;">Empty page</em>';
       /* Apply inline heading sizes */
       pageContent.querySelectorAll('h1').forEach(function(h){ h.style.fontSize = getV('wp-h1',24) + 'pt'; });
       pageContent.querySelectorAll('h2').forEach(function(h){ h.style.fontSize = getV('wp-h2',18) + 'pt'; });
@@ -2303,9 +2317,16 @@
 
       var docFile = new docx.Document({ title: title, creator: 'XZily AI Word Processor', sections: [{ properties: {}, children: children }] });
       docx.Packer.toBlob(docFile).then(function(blob) {
-        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = wpSafeName(title) + '.docx'; a.click();
-        wpSetStatus('DOCX downloaded ✅');
+        var reader = new FileReader();
+        reader.onload = function(e) {
+          var a = document.createElement('a');
+          a.href = e.target.result;
+          a.download = wpSafeName(title) + '.docx';
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ document.body.removeChild(a); }, 300);
+          wpSetStatus('DOCX downloaded ✅');
+        };
+        reader.readAsDataURL(blob);
       });
     } catch(e) {
       console.error('DOCX error:', e);
@@ -2452,10 +2473,23 @@
   }
 
   function wpSaveText(text, filename, mimeType) {
-    var blob = new Blob([text], { type: mimeType });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    try {
+      /* Data-URI approach: works reliably in Capacitor/Android WebView where
+         blob-URL + a.click() often navigates instead of downloading */
+      var dataUri = 'data:' + mimeType + ';charset=utf-8,' + encodeURIComponent(text);
+      var a = document.createElement('a');
+      a.href = dataUri; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function(){ document.body.removeChild(a); }, 300);
+    } catch(e) {
+      /* Fallback to blob URL */
+      var blob = new Blob([text], { type: mimeType });
+      var url = URL.createObjectURL(blob);
+      var a2 = document.createElement('a');
+      a2.href = url; a2.download = filename;
+      document.body.appendChild(a2); a2.click();
+      setTimeout(function(){ document.body.removeChild(a2); URL.revokeObjectURL(url); }, 1000);
+    }
   }
 
   /* ── Helpers ────────────────────────────────────────────────── */
