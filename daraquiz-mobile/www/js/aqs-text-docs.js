@@ -16,6 +16,7 @@
   var wpCtxCell = null, wpCtxTable = null;
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
+  var wpReflowTimer = null;
   var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 20;
 
   /* ── Color palettes ─────────────────────────────────────────── */
@@ -988,45 +989,51 @@
   }
 
   function wpApplyDocSettings(ds) {
-    var ed = wpGetEditor(); if (!ed) return;
+    var editors = document.querySelectorAll('.wp-page-editor');
+    if (!editors.length) return;
     var ptToPx = function(pt) { return Math.round(parseFloat(pt) * 1.333) + 'px'; };
     var sizeMap = { '10pt':'13.3px','11pt':'14.7px','12pt':'16px','13pt':'17.3px','14pt':'18.7px','16pt':'21.3px' };
     var px = sizeMap[ds.size] || ptToPx(ds.size) || '16px';
-    var marginPx = { narrow:'24px', normal:'48px', wide:'72px' };
-    ed.style.fontFamily = ds.font;
-    ed.style.fontSize   = px;
-    ed.style.lineHeight = ds.lspace;
-    ed.querySelectorAll('p,li,td,th').forEach(function(el) {
-      el.style.fontFamily = ds.font;
-      el.style.fontSize   = px;
-      el.style.lineHeight = ds.lspace;
-    });
-    ed.querySelectorAll('p').forEach(function(p) {
-      if (ds.pspace && ds.pspace !== '0') p.style.marginBottom = ds.pspace;
-    });
-    /* Apply heading sizes */
+    /* Standard Word margins: narrow=0.5in, normal=1in, wide=1.5in */
+    var marginMM = { narrow:'12.7mm', normal:'25.4mm', wide:'38.1mm' };
     var hMap = { H1: ds.h1||'26pt', H2: ds.h2||'20pt', H3: ds.h3||'16pt', H4: ds.h4||'14pt', H5: ds.h5||'12pt', H6: ds.h6||'11pt' };
-    Object.keys(hMap).forEach(function(tag) {
-      ed.querySelectorAll(tag.toLowerCase()).forEach(function(el) {
-        el.style.fontSize = ptToPx(hMap[tag]);
+
+    editors.forEach(function(ed) {
+      ed.style.fontFamily = ds.font;
+      ed.style.fontSize   = px;
+      ed.style.lineHeight = ds.lspace;
+      ed.querySelectorAll('p,li,td,th').forEach(function(el) {
         el.style.fontFamily = ds.font;
+        el.style.fontSize   = px;
+        el.style.lineHeight = ds.lspace;
       });
+      ed.querySelectorAll('p').forEach(function(p) {
+        if (ds.pspace && ds.pspace !== '0') p.style.marginBottom = ds.pspace;
+      });
+      /* Apply heading sizes */
+      Object.keys(hMap).forEach(function(tag) {
+        ed.querySelectorAll(tag.toLowerCase()).forEach(function(el) {
+          el.style.fontSize = ptToPx(hMap[tag]);
+          el.style.fontFamily = ds.font;
+        });
+      });
+      var page = ed.closest('.wp-page');
+      if (page) { var m = marginMM[ds.margin] || '25.4mm'; page.style.padding = m; }
+      if (ds.divider) {
+        ed.querySelectorAll('h2').forEach(function(h2, i) {
+          if (i === 0) return;
+          var prev = h2.previousElementSibling;
+          if (!prev || prev.tagName !== 'HR') {
+            var hr = document.createElement('hr');
+            hr.style.cssText = 'border:none;border-top:1px solid #e2e8f0;margin:1em 0;';
+            h2.parentNode.insertBefore(hr, h2);
+          }
+        });
+      }
     });
-    var page = ed.closest('.wp-page');
-    if (page) { var m = marginPx[ds.margin] || '48px'; page.style.padding = m; }
-    if (ds.divider) {
-      var h2s = ed.querySelectorAll('h2');
-      h2s.forEach(function(h2, i) {
-        if (i === 0) return;
-        var prev = h2.previousElementSibling;
-        if (!prev || prev.tagName !== 'HR') {
-          var hr = document.createElement('hr');
-          hr.style.cssText = 'border:none;border-top:1px solid #e2e8f0;margin:1em 0;';
-          h2.parentNode.insertBefore(hr, h2);
-        }
-      });
-    }
     wpSavePageState();
+    /* After style changes layout may shift — schedule overflow reflow */
+    wpScheduleReflow();
   }
 
   /* ── Sidebar toggle (mobile) ─────────────────────────────────── */
@@ -1491,13 +1498,15 @@
   };
 
   /* ── Multi-page engine ──────────────────────────────────────── */
-  function wpRenderPages() {
+  function wpRenderPages(skipSave) {
     var container = document.getElementById('wp-pages');
     if (!container) return;
 
-    // Save current page content first
-    var activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
-    if (activeEd) wpPages[wpCurrentPage] = activeEd.innerHTML;
+    // Save current page content first (skip when loading fresh content to avoid overwriting)
+    if (!skipSave) {
+      var activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
+      if (activeEd) wpPages[wpCurrentPage] = activeEd.innerHTML;
+    }
 
     var paperVal = getV('tb-paper', 'a4');
     var hf  = getV('wp-hfont', 'Georgia, serif');
@@ -1662,6 +1671,49 @@
     }, 100);
   }
 
+  /* ── Post-load reflow: move overflow blocks to next pages ─────── */
+  function wpScheduleReflow() {
+    clearTimeout(wpReflowTimer);
+    wpReflowTimer = setTimeout(function() { wpDoReflow(0, 0); }, 350);
+  }
+
+  function wpDoReflow(startPage, iterations) {
+    if (iterations > 120) return; /* safety limit */
+    for (var pi = startPage; pi < wpPages.length; pi++) {
+      var ed = document.getElementById('wp-editor-' + pi);
+      if (!ed) continue;
+      /* Need at least 4px headroom to avoid spurious splits */
+      if (ed.scrollHeight <= ed.clientHeight + 4) continue;
+      /* Need at least 2 children to split without data loss */
+      if (ed.children.length <= 1) continue;
+      var lastEl = ed.lastElementChild;
+      if (!lastEl) continue;
+      ed.removeChild(lastEl);
+      wpPages[pi] = ed.innerHTML;
+
+      if (pi + 1 < wpPages.length) {
+        /* Next page exists — move directly without full re-render */
+        var nextEd = document.getElementById('wp-editor-' + (pi + 1));
+        if (nextEd) {
+          nextEd.insertBefore(lastEl, nextEd.firstChild || null);
+          wpPages[pi + 1] = nextEd.innerHTML;
+          var nextPi = pi; /* capture for closure */
+          setTimeout(function() { wpDoReflow(nextPi, iterations + 1); }, 60);
+          return;
+        }
+      }
+      /* Must create a new page */
+      if (wpPages.length >= MAX_PAGES) break;
+      wpPages.splice(pi + 1, 0, lastEl.outerHTML || '');
+      wpRenderPages(true);
+      var capPi = pi; /* capture for closure */
+      setTimeout(function() { wpDoReflow(capPi, iterations + 1); }, 120);
+      return;
+    }
+    wpUpdatePageNav();
+    wpUpdateStats();
+  }
+
   window.wpAddPage = function() {
     if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
     wpSavePageState();
@@ -1717,7 +1769,7 @@
   function wpLoadContent(html) {
     wpPages = wpSplitIntoPages(html);
     wpCurrentPage = 0;
-    wpRenderPages();
+    wpRenderPages(true); /* skipSave=true: don't overwrite freshly-split content */
     var pcEl = document.getElementById('tb-page-count');
     if (pcEl) pcEl.value = String(Math.min(wpPages.length, MAX_PAGES));
     setTimeout(function() {
@@ -1725,6 +1777,8 @@
       var ed = document.getElementById('wp-editor-0'); if(ed) { wpAddColResizeHandles(ed); wpSetupImageHandlers(ed); }
     }, 100);
     wpUpdateStats();
+    /* Schedule overflow reflow so content that doesn't fit flows to next pages */
+    wpScheduleReflow();
   }
 
   function wpGetFullContent() {
