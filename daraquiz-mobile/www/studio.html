@@ -132,17 +132,22 @@
         #dts-mobile-hist-sidebar.open{
           transform:translateX(0);
         }
-        /* Overlay backdrop for drawer */
+        /* Overlay backdrop for drawer — opacity-driven so swipe can fade it */
         #dts-mob-hist-overlay{
-          display:none;
           position:fixed;
           inset:0;
           z-index:950;
           background:rgba(0,0,0,.5);
           backdrop-filter:blur(2px);
           -webkit-backdrop-filter:blur(2px);
+          opacity:0;
+          pointer-events:none;
+          transition:opacity .25s cubic-bezier(.4,0,.2,1);
         }
-        #dts-mob-hist-overlay.open{ display:block; }
+        #dts-mob-hist-overlay.open{
+          opacity:1;
+          pointer-events:auto;
+        }
 
         /* ── Drawer: user profile strip ── */
         .mob-hist-user{
@@ -628,6 +633,115 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'DaraQuiz AI',tagline
                 if (e.target.closest('.dts-drawer-item')) closeHist();
             });
         }
+
+        /* ── Professional swipe gesture — open (edge→right) / close (left swipe) ── */
+        (function() {
+            var EDGE_W      = 44;   /* px from left edge that activates swipe-to-open */
+            var VEL_THRESH  = 0.3;  /* px/ms — fast flick overrides distance check */
+            var DIST_THRESH = 0.38; /* fraction of drawer width needed to commit */
+            var MIN_HORIZ   = 8;    /* px of horiz movement before we decide direction */
+            var VERT_RATIO  = 1.5;  /* if |dy| > |dx|*ratio → treat as vertical scroll */
+
+            var tx0 = 0, ty0 = 0, tLastX = 0, tLastT = 0;
+            var dragging = false, openGesture = false, dirDecided = false;
+
+            function drawerW() { return histSidebar ? histSidebar.offsetWidth : 280; }
+
+            function setProgress(p) {
+                p = Math.max(0, Math.min(1, p));
+                if (!histSidebar || !histOverlay) return;
+                histSidebar.style.transition = 'none';
+                histSidebar.style.transform  = 'translateX(' + (-(1 - p) * drawerW()) + 'px)';
+                histOverlay.style.transition = 'none';
+                histOverlay.style.opacity    = String(p * 0.95 + 0.05);
+                histOverlay.style.pointerEvents = 'none';
+            }
+
+            function commit(open) {
+                /* Restore CSS transitions so the snap feels natural */
+                if (histSidebar) {
+                    histSidebar.style.transition = '';
+                    histSidebar.style.transform  = '';
+                }
+                if (histOverlay) {
+                    histOverlay.style.transition    = '';
+                    histOverlay.style.opacity       = '';
+                    histOverlay.style.pointerEvents = '';
+                }
+                open ? openHist() : closeHist();
+                dragging = false;
+            }
+
+            document.addEventListener('touchstart', function(e) {
+                if (!histSidebar) return;
+                var t = e.touches[0];
+                tx0 = t.clientX; ty0 = t.clientY;
+                tLastX = t.clientX; tLastT = Date.now();
+                dragging = false; dirDecided = false;
+
+                var isOpen = histSidebar.classList.contains('open');
+                /* Swipe-to-open: only activate from left edge when drawer is closed */
+                if (!isOpen && tx0 > EDGE_W) return;
+                /* Swipe-to-close: only on the open drawer itself */
+                if (isOpen && !e.target.closest('#dts-mobile-hist-sidebar')) return;
+                openGesture = !isOpen;
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!histSidebar) return;
+                var t     = e.touches[0];
+                var dx    = t.clientX - tx0;
+                var dy    = t.clientY - ty0;
+                var isOpen = histSidebar.classList.contains('open');
+
+                /* Decide direction on first significant movement */
+                if (!dirDecided) {
+                    if (Math.abs(dx) < MIN_HORIZ && Math.abs(dy) < MIN_HORIZ) return;
+                    dirDecided = true;
+                    if (Math.abs(dy) > Math.abs(dx) * VERT_RATIO) return; /* vertical scroll */
+                    if (!isOpen && tx0 <= EDGE_W && dx > 0) {
+                        dragging = true; openGesture = true;
+                        /* Show overlay immediately so it fades in with the drag */
+                        if (histOverlay) histOverlay.style.display = '';
+                    } else if (isOpen && dx < 0) {
+                        dragging = true; openGesture = false;
+                    }
+                }
+
+                if (!dragging) return;
+
+                var w = drawerW();
+                var progress = openGesture
+                    ? Math.min(1, dx / w)
+                    : Math.max(0, 1 + dx / w);
+                setProgress(progress);
+
+                /* Rolling velocity snapshot (last 80ms window) */
+                var now = Date.now();
+                if (now - tLastT > 0) { tLastX = t.clientX; tLastT = now; }
+            }, { passive: true });
+
+            function onTouchEnd(e) {
+                if (!dragging) return;
+                var t  = (e.changedTouches || e.touches)[0];
+                var dx = t.clientX - tx0;
+                var dt = Date.now() - tLastT;
+                /* Velocity in px/ms from the last rolling snapshot */
+                var vel = dt > 0 ? Math.abs(t.clientX - tLastX) / dt : 0;
+                var w   = drawerW();
+                var ratio = Math.abs(dx) / w;
+
+                var shouldOpen;
+                if (openGesture) {
+                    shouldOpen = vel >= VEL_THRESH || ratio >= DIST_THRESH;
+                } else {
+                    shouldOpen = !(vel >= VEL_THRESH || ratio >= DIST_THRESH);
+                }
+                commit(shouldOpen);
+            }
+            document.addEventListener('touchend',    onTouchEnd, { passive: true });
+            document.addEventListener('touchcancel', onTouchEnd, { passive: true });
+        })();
 
         /* Populate user avatar + name from DTS_CONFIG or Firebase auth */
         function setDrawerUser(name) {
