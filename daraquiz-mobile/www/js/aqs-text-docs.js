@@ -1613,14 +1613,106 @@
 
   /* ── Sidebar tab switching ──────────────────────────────────── */
   window.wpSwitchTab = function(tab) {
-    ['format','write','history','template','web'].forEach(function(t) {
+    ['format','write','history','template','web','mydocs'].forEach(function(t) {
       var btn = document.getElementById('wp-stab-' + t);
       var pan = document.getElementById('wp-spanel-' + t);
       if (btn) btn.classList.toggle('active', t === tab);
       if (pan) pan.classList.toggle('active', t === tab);
     });
     if (tab === 'history') wpRenderHistory();
+    if (tab === 'mydocs') wpRenderMyDocs();
     /* Do NOT auto-open sidebar on mobile — user controls it via the FAB button */
+  };
+
+  /* ── My Documents (localStorage saved files) ─────────────────── */
+  var WP_DOCS_KEY = 'aqs_local_documents';
+
+  function wpRenderMyDocs() {
+    var list = document.getElementById('wp-mydocs-list');
+    if (!list) return;
+    var docs = [];
+    try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
+    if (!docs.length) {
+      list.innerHTML = '<div style="text-align:center;padding:24px 12px;color:#9ca3af;font-size:13px;">📭 No saved documents yet.<br><br>When you download DOCX, TXT, HTML<br>or other files, they appear here.</div>';
+      return;
+    }
+    function fmtDate(ts) {
+      try { return new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; }
+    }
+    function fmtSize(str) {
+      var bytes = new Blob([str]).size;
+      return bytes > 1024 ? (bytes/1024).toFixed(1)+'KB' : bytes+'B';
+    }
+    list.innerHTML = docs.map(function(d, i) {
+      var ext = (d.name||'').split('.').pop().toUpperCase();
+      var colors = {DOCX:'#dbeafe',TXT:'#f0fdf4',HTML:'#fff7ed',MD:'#fdf4ff',RTF:'#fef9c3',JSON:'#ecfdf5',CSV:'#f0fdf4',TEX:'#faf5ff'};
+      var bg = colors[ext] || '#f1f5f9';
+      return '<div style="background:#fff;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:10px;overflow:hidden;">' +
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;">' +
+          '<div style="background:' + bg + ';border-radius:7px;padding:5px 8px;font-size:10px;font-weight:700;color:#374151;flex-shrink:0;">' + ext + '</div>' +
+          '<div style="flex:1;min-width:0;">' +
+            '<div style="font-size:13px;font-weight:600;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(d.name || 'Untitled') + '</div>' +
+            '<div style="font-size:11px;color:#9ca3af;margin-top:1px;">' + fmtDate(d.ts) + ' · ' + fmtSize(d.content||'') + '</div>' +
+          '</div>' +
+          '<button onclick="wpDeleteMyDoc(' + i + ')" title="Remove" style="background:none;border:none;color:#d1d5db;font-size:16px;cursor:pointer;flex-shrink:0;padding:2px 4px;">✕</button>' +
+        '</div>' +
+        '<div style="display:flex;gap:1px;border-top:1px solid #f3f4f6;">' +
+          '<button onclick="wpMyDocShare(' + i + ')" style="flex:1;background:#f8f9ff;border:none;padding:8px;font-size:12px;color:#4f46e5;cursor:pointer;font-weight:600;">📤 Share / Save</button>' +
+          '<button onclick="wpMyDocOpen(' + i + ')" style="flex:1;background:#f8f9ff;border:none;padding:8px;font-size:12px;color:#059669;cursor:pointer;font-weight:600;border-left:1px solid #f3f4f6;">📖 Open in Editor</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  window.wpMyDocShare = function(index) {
+    var docs = []; try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
+    var d = docs[index]; if (!d) return;
+    if (navigator.share && navigator.canShare) {
+      try {
+        var f = new File([d.content], d.name, { type: d.type || 'text/plain' });
+        if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: d.name }); return; }
+      } catch(e2) {}
+    }
+    /* Fallback: data-URI download */
+    var a = document.createElement('a');
+    a.href = 'data:' + (d.type||'text/plain') + ';charset=utf-8,' + encodeURIComponent(d.content||'');
+    a.download = d.name || 'document';
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ document.body.removeChild(a); }, 300);
+  };
+
+  window.wpMyDocOpen = function(index) {
+    var docs = []; try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
+    var d = docs[index]; if (!d) return;
+    var content = d.content || '';
+    /* If HTML, extract body; if plain text, wrap in <p> tags */
+    var ext = (d.name||'').split('.').pop().toLowerCase();
+    var html = content;
+    if (ext === 'txt' || ext === 'md' || ext === 'rtf') {
+      html = '<p>' + content.replace(/\n{2,}/g,'</p><p>').replace(/\n/g,'<br>') + '</p>';
+    } else if (ext === 'html') {
+      var m = content.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      html = m ? m[1] : content;
+    }
+    if (wpGetFullContent().replace(/<[^>]+>/g,'').trim().length > 50) {
+      if (!confirm('Open "' + d.name + '"? Current content will be replaced.')) return;
+    }
+    wpLoadContent(html);
+    wpSwitchTab('format');
+    wpSetStatus('Opened: ' + d.name);
+  };
+
+  window.wpDeleteMyDoc = function(index) {
+    var docs = []; try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
+    docs.splice(index, 1);
+    localStorage.setItem(WP_DOCS_KEY, JSON.stringify(docs));
+    wpRenderMyDocs();
+  };
+
+  window.wpClearMyDocs = function() {
+    if (!confirm('Remove all saved documents?')) return;
+    localStorage.removeItem(WP_DOCS_KEY);
+    wpRenderMyDocs();
   };
 
   /* ── Document History ───────────────────────────────────────── */
