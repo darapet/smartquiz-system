@@ -799,9 +799,10 @@ body {
   .wp-bottom-nav { display: flex; }
   .wp-fab { display: flex; }
 
-  /* Hide desktop file buttons in appbar — save space */
-  .wp-appbar-btns { display: none; }
-  /* Print button always visible on mobile — no other way to print */
+  /* Hide all appbar buttons on mobile except print — keep container visible */
+  .wp-appbar-btns { display: flex; }
+  .wp-appbar-btns .wp-appbar-btn { display: none; }
+  /* Print button always visible on mobile — only way to print */
   #wp-print-appbar-btn { display: inline-flex !important; align-items: center; gap: 4px; }
   .wp-ver-badge { display: none; }
 
