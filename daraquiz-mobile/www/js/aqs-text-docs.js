@@ -1627,15 +1627,58 @@
   /* ── My Documents (localStorage saved files) ─────────────────── */
   var WP_DOCS_KEY = 'aqs_local_documents';
 
-  function wpRenderMyDocs() {
-    var list = document.getElementById('wp-mydocs-list');
-    if (!list) return;
+  function wpRenderMyDocs(filterQuery) {
+    var container = document.getElementById('wp-mydocs-list');
+    if (!container) return;
     var docs = [];
     try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
+
+    /* ── Build or preserve the search bar ─────────────────── */
+    var searchBar = document.getElementById('wp-mydocs-search');
+    if (!searchBar) {
+      /* First render: inject search bar above the results */
+      var searchWrap = document.createElement('div');
+      searchWrap.style.cssText = 'padding:10px 12px 8px;position:sticky;top:0;background:#fff;z-index:10;border-bottom:1px solid #f3f4f6;';
+      searchWrap.innerHTML =
+        '<div style="display:flex;align-items:center;background:#f1f5f9;border-radius:10px;padding:0 10px;gap:6px;">' +
+          '<span style="color:#9ca3af;font-size:14px;">🔍</span>' +
+          '<input id="wp-mydocs-search" type="search" placeholder="Search documents…" ' +
+            'style="flex:1;border:none;background:transparent;padding:9px 4px;font-size:13px;outline:none;color:#1e293b;min-width:0;"' +
+          '/>' +
+          '<button id="wp-mydocs-search-clear" style="display:none;background:none;border:none;color:#9ca3af;font-size:16px;cursor:pointer;padding:0 2px;line-height:1;">✕</button>' +
+        '</div>';
+      container.parentNode.insertBefore(searchWrap, container);
+      /* Wire up events */
+      var inp = document.getElementById('wp-mydocs-search');
+      var clr = document.getElementById('wp-mydocs-search-clear');
+      inp.addEventListener('input', function() {
+        clr.style.display = this.value ? 'block' : 'none';
+        wpRenderMyDocs(this.value);
+      });
+      clr.addEventListener('click', function() {
+        document.getElementById('wp-mydocs-search').value = '';
+        this.style.display = 'none';
+        wpRenderMyDocs('');
+      });
+    }
+
+    /* ── Determine current query ───────────────────────────── */
+    var query = filterQuery !== undefined ? filterQuery
+      : (document.getElementById('wp-mydocs-search') ? document.getElementById('wp-mydocs-search').value : '');
+    var q = (query || '').toLowerCase().trim();
+
+    /* ── Filter & render the list ─────────────────────────── */
+    var results = q ? docs.filter(function(d){ return (d.name||'').toLowerCase().indexOf(q) !== -1; }) : docs;
+
     if (!docs.length) {
-      list.innerHTML = '<div style="text-align:center;padding:24px 12px;color:#9ca3af;font-size:13px;">📭 No saved documents yet.<br><br>When you download DOCX, TXT, HTML<br>or other files, they appear here.</div>';
+      container.innerHTML = '<div style="text-align:center;padding:24px 12px;color:#9ca3af;font-size:13px;">📭 No saved documents yet.<br><br>When you download DOCX, TXT, HTML<br>or other files, they appear here.</div>';
       return;
     }
+    if (!results.length) {
+      container.innerHTML = '<div style="text-align:center;padding:24px 12px;color:#9ca3af;font-size:13px;">🔍 No documents match<br><b style="color:#6366f1;">"' + escHtml(query) + '"</b></div>';
+      return;
+    }
+
     function fmtDate(ts) {
       try { return new Date(ts).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}); } catch(e) { return ''; }
     }
@@ -1643,7 +1686,20 @@
       var bytes = new Blob([str]).size;
       return bytes > 1024 ? (bytes/1024).toFixed(1)+'KB' : bytes+'B';
     }
-    list.innerHTML = docs.map(function(d, i) {
+    /* Highlight matching text in filename */
+    function hlName(name) {
+      if (!q) return escHtml(name);
+      var lo = name.toLowerCase(), idx = lo.indexOf(q);
+      if (idx === -1) return escHtml(name);
+      return escHtml(name.slice(0, idx)) +
+        '<mark style="background:#ede9fe;color:#4f46e5;border-radius:3px;padding:0 1px;">' +
+        escHtml(name.slice(idx, idx + q.length)) + '</mark>' +
+        escHtml(name.slice(idx + q.length));
+    }
+
+    container.innerHTML = results.map(function(d) {
+      /* Find real index in full docs array for correct delete/share/open */
+      var realIdx = docs.indexOf(d);
       var ext = (d.name||'').split('.').pop().toUpperCase();
       var colors = {DOCX:'#dbeafe',TXT:'#f0fdf4',HTML:'#fff7ed',MD:'#fdf4ff',RTF:'#fef9c3',JSON:'#ecfdf5',CSV:'#f0fdf4',TEX:'#faf5ff'};
       var bg = colors[ext] || '#f1f5f9';
@@ -1651,14 +1707,14 @@
         '<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;">' +
           '<div style="background:' + bg + ';border-radius:7px;padding:5px 8px;font-size:10px;font-weight:700;color:#374151;flex-shrink:0;">' + ext + '</div>' +
           '<div style="flex:1;min-width:0;">' +
-            '<div style="font-size:13px;font-weight:600;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + escHtml(d.name || 'Untitled') + '</div>' +
+            '<div style="font-size:13px;font-weight:600;color:#1e1b4b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + hlName(d.name || 'Untitled') + '</div>' +
             '<div style="font-size:11px;color:#9ca3af;margin-top:1px;">' + fmtDate(d.ts) + ' · ' + fmtSize(d.content||'') + '</div>' +
           '</div>' +
-          '<button onclick="wpDeleteMyDoc(' + i + ')" title="Remove" style="background:none;border:none;color:#d1d5db;font-size:16px;cursor:pointer;flex-shrink:0;padding:2px 4px;">✕</button>' +
+          '<button onclick="wpDeleteMyDoc(' + realIdx + ')" title="Remove" style="background:none;border:none;color:#d1d5db;font-size:16px;cursor:pointer;flex-shrink:0;padding:2px 4px;">✕</button>' +
         '</div>' +
         '<div style="display:flex;gap:1px;border-top:1px solid #f3f4f6;">' +
-          '<button onclick="wpMyDocShare(' + i + ')" style="flex:1;background:#f8f9ff;border:none;padding:8px;font-size:12px;color:#4f46e5;cursor:pointer;font-weight:600;">📤 Share / Save</button>' +
-          '<button onclick="wpMyDocOpen(' + i + ')" style="flex:1;background:#f8f9ff;border:none;padding:8px;font-size:12px;color:#059669;cursor:pointer;font-weight:600;border-left:1px solid #f3f4f6;">📖 Open in Editor</button>' +
+          '<button onclick="wpMyDocShare(' + realIdx + ')" style="flex:1;background:#f8f9ff;border:none;padding:8px;font-size:12px;color:#4f46e5;cursor:pointer;font-weight:600;">📤 Share / Save</button>' +
+          '<button onclick="wpMyDocOpen(' + realIdx + ')" style="flex:1;background:#f8f9ff;border:none;padding:8px;font-size:12px;color:#059669;cursor:pointer;font-weight:600;border-left:1px solid #f3f4f6;">📖 Open in Editor</button>' +
         '</div>' +
       '</div>';
     }).join('');
