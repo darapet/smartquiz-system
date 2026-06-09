@@ -77,8 +77,8 @@
         }
 
         /* ══════════════════════════════════════════
-           MOBILE APP — persistent history sidebar
-           (≤768px: no hamburger, no slide-in drawer)
+           MOBILE APP — hamburger drawer history
+           (≤768px: hamburger opens slide-in drawer)
            ══════════════════════════════════════════ */
         @media(max-width:768px){
 
@@ -87,11 +87,11 @@
           #aqs-sidebar,
           .aqs-sidebar-overlay { display:none!important; }
 
-          /* 2. Reset sidebar-body — it becomes the right chat panel */
+          /* 2. sidebar-body fills full width */
           .aqs-sidebar-body{
-            margin-left:var(--mob-hist-w)!important;
+            margin-left:0!important;
             padding-left:0!important;
-            width:calc(100% - var(--mob-hist-w))!important;
+            width:100%!important;
           }
 
           /* 3. dts-app fills height below topbar */
@@ -103,15 +103,43 @@
             margin-top:0!important;
           }
 
-          /* 4. Footer offset — clears history sidebar */
+          /* 4. Footer spans full width */
           .dts-footer{
-            left:var(--mob-hist-w)!important;
+            left:0!important;
           }
 
-          /* 5. Show mobile elements */
+          /* 5. Show mobile topbar */
           #dts-mobile-topbar{ display:flex!important; }
-          #dts-mobile-hist-sidebar{ display:flex!important; }
         }
+
+        /* ── Mobile history drawer (slide-in) ── */
+        #dts-mobile-hist-sidebar{
+          position:fixed;
+          top:calc(var(--aqs-cd-bar-h,0px) + var(--mob-topbar-h));
+          left:0;
+          width:var(--mob-hist-w);
+          bottom:var(--aqs-ticker-bar-h,0px);
+          z-index:960;
+          display:flex;
+          flex-direction:column;
+          background:rgba(8,6,28,0.97);
+          border-right:1px solid rgba(255,255,255,0.09);
+          overflow:hidden;
+          transform:translateX(-100%);
+          transition:transform .22s ease;
+        }
+        #dts-mobile-hist-sidebar.open{
+          transform:translateX(0);
+        }
+        /* Overlay backdrop for drawer */
+        #dts-mob-hist-overlay{
+          display:none;
+          position:fixed;
+          inset:0;
+          z-index:950;
+          background:rgba(0,0,0,.45);
+        }
+        #dts-mob-hist-overlay.open{ display:block; }
 
         /* ── Mobile top bar ── */
         #dts-mobile-topbar{
@@ -132,20 +160,18 @@
           box-shadow:0 2px 10px rgba(0,0,0,.4);
           gap:10px;
         }
-        .mob-home-btn{
-          display:flex;align-items:center;gap:5px;
-          text-decoration:none;
-          color:#a5b4fc;
-          font-size:0.8rem;font-weight:600;
+        .mob-hamburger-btn{
+          display:flex;align-items:center;justify-content:center;
           background:rgba(99,102,241,0.16);
           border:1px solid rgba(99,102,241,0.3);
           border-radius:7px;
-          padding:5px 11px;
-          white-space:nowrap;
+          color:#a5b4fc;
+          padding:6px 10px;
+          cursor:pointer;
           flex-shrink:0;
           transition:background .15s;
         }
-        .mob-home-btn:hover{ background:rgba(99,102,241,0.28); }
+        .mob-hamburger-btn:hover{ background:rgba(99,102,241,0.28); }
         .mob-topbar-title{
           flex:1;text-align:center;
           font-size:0.9rem;font-weight:700;color:#e0e7ff;
@@ -257,10 +283,9 @@
 
 <!-- ══ MOBILE TOP BAR (app only — hidden on desktop) ══ -->
 <div id="dts-mobile-topbar">
-    <a href="index.html" class="mob-home-btn">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-        Home
-    </a>
+    <button class="mob-hamburger-btn" id="dts-mob-hist-toggle" aria-label="Chat history">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <span class="mob-topbar-title">xzily AI</span>
     <button class="mob-new-btn" id="dts-mob-new-btn">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -268,7 +293,10 @@
     </button>
 </div>
 
-<!-- ══ PERSISTENT HISTORY SIDEBAR (mobile, always visible) ══ -->
+<!-- ══ HISTORY DRAWER OVERLAY (mobile) ══ -->
+<div id="dts-mob-hist-overlay"></div>
+
+<!-- ══ HISTORY SIDEBAR DRAWER (mobile, slide-in via hamburger) ══ -->
 <div id="dts-mobile-hist-sidebar">
     <div class="mob-hist-header">
         <span class="mob-hist-label">History</span>
@@ -463,7 +491,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'DaraQuiz AI',tagline
         var mobScroll  = document.getElementById('dts-mob-hist-scroll');
         var newChatBtn = document.getElementById('dts-new-chat');
 
-        /* Move history list into the persistent mobile sidebar */
+        /* Move history list into the mobile sidebar drawer */
         if (histList && mobScroll) {
             mobScroll.appendChild(histList);
             histList.style.maxHeight = 'none';
@@ -474,6 +502,30 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'DaraQuiz AI',tagline
         if (mobNew && newChatBtn) {
             mobNew.addEventListener('click', function() {
                 newChatBtn.click();
+            });
+        }
+
+        /* Hamburger toggle for history drawer */
+        var histToggle  = document.getElementById('dts-mob-hist-toggle');
+        var histSidebar = document.getElementById('dts-mobile-hist-sidebar');
+        var histOverlay = document.getElementById('dts-mob-hist-overlay');
+
+        function openHist() {
+            histSidebar && histSidebar.classList.add('open');
+            histOverlay && histOverlay.classList.add('open');
+        }
+        function closeHist() {
+            histSidebar && histSidebar.classList.remove('open');
+            histOverlay && histOverlay.classList.remove('open');
+        }
+
+        if (histToggle)  histToggle.addEventListener('click', openHist);
+        if (histOverlay) histOverlay.addEventListener('click', closeHist);
+
+        /* Close drawer when a history item is tapped */
+        if (histSidebar) {
+            histSidebar.addEventListener('click', function(e) {
+                if (e.target.closest('.dts-history-item')) closeHist();
             });
         }
     });
