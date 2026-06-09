@@ -2,6 +2,16 @@
    ─────────────────────────────────────────────────────────────────────
    Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
    ─────────────────────────────────────────────────────────────────────── */
+
+/* ── AbortSignal.timeout polyfill (not in older Capacitor WebViews) ── */
+if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
+  AbortSignal.timeout = function(ms) {
+    var ctrl = new AbortController();
+    setTimeout(function() { ctrl.abort(new DOMException('TimeoutError','TimeoutError')); }, ms);
+    return ctrl.signal;
+  };
+}
+
 (function () {
 'use strict';
 
@@ -279,12 +289,13 @@ async function loadUploadedDoc(name, type) {
 function setupSearch() {
     var form = document.getElementById('std-search-form');
     var inp  = document.getElementById('std-search-input');
-    /* Button is type="button" so won't submit; find it by class or any button */
     var btn  = form ? (form.querySelector('button[type="button"]') || form.querySelector('button')) : null;
     function _doSearch() {
         var q = (inp ? inp.value : '').trim();
         if (q) doSearch(q);
     }
+    /* Expose globally so the button's onclick attr works even if JS init partly fails */
+    window._aqsStudySearch = _doSearch;
     if (form) form.addEventListener('submit', function (e) {
         e.preventDefault(); e.stopPropagation();
         _doSearch();
