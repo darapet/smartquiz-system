@@ -21,7 +21,7 @@
         /* ── Base layout vars ── */
         :root{
           --mob-topbar-h: 52px;
-          --mob-hist-w: 130px;
+          --mob-hist-w: min(280px, 82vw);
         }
 
         #dts-app{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
@@ -122,11 +122,12 @@
           z-index:960;
           display:flex;
           flex-direction:column;
-          background:rgba(8,6,28,0.97);
-          border-right:1px solid rgba(255,255,255,0.09);
+          background:linear-gradient(180deg,#0d0b24 0%,#0f0c29 100%);
+          border-right:1px solid rgba(99,102,241,0.18);
           overflow:hidden;
           transform:translateX(-100%);
-          transition:transform .22s ease;
+          transition:transform .25s cubic-bezier(.4,0,.2,1);
+          box-shadow:4px 0 24px rgba(0,0,0,.55);
         }
         #dts-mobile-hist-sidebar.open{
           transform:translateX(0);
@@ -137,15 +138,79 @@
           position:fixed;
           inset:0;
           z-index:950;
-          background:rgba(0,0,0,.45);
+          background:rgba(0,0,0,.5);
+          backdrop-filter:blur(2px);
+          -webkit-backdrop-filter:blur(2px);
         }
         #dts-mob-hist-overlay.open{ display:block; }
+
+        /* ── Drawer: user profile strip ── */
+        .mob-hist-user{
+          display:flex;align-items:center;gap:10px;
+          padding:14px 14px 10px;
+          border-bottom:1px solid rgba(255,255,255,0.08);
+          flex-shrink:0;
+        }
+        .mob-hist-avatar{
+          width:34px;height:34px;border-radius:50%;
+          background:linear-gradient(135deg,#6366f1,#8b5cf6);
+          display:flex;align-items:center;justify-content:center;
+          font-size:0.88rem;font-weight:700;color:#fff;
+          flex-shrink:0;
+          box-shadow:0 2px 8px rgba(99,102,241,.4);
+        }
+        .mob-hist-userinfo{flex:1;min-width:0;}
+        .mob-hist-username{
+          font-size:0.82rem;font-weight:600;color:#e0e7ff;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .mob-hist-usersub{
+          font-size:0.68rem;color:#6b7280;margin-top:1px;
+        }
+        .mob-hist-close{
+          display:flex;align-items:center;justify-content:center;
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.10);
+          border-radius:6px;
+          color:#6b7280;
+          width:28px;height:28px;
+          cursor:pointer;
+          flex-shrink:0;
+          font-size:0.9rem;
+          transition:background .15s,color .15s;
+        }
+        .mob-hist-close:hover{ background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.25); }
+
+        /* ── Drawer: new chat button ── */
+        .mob-hist-new{
+          display:flex;align-items:center;gap:8px;
+          margin:10px 10px 6px;
+          padding:9px 12px;
+          background:rgba(99,102,241,0.16);
+          border:1px solid rgba(99,102,241,0.32);
+          border-radius:9px;
+          color:#a5b4fc;
+          font-size:0.82rem;font-weight:600;
+          cursor:pointer;
+          transition:background .15s;
+          flex-shrink:0;
+        }
+        .mob-hist-new:hover{ background:rgba(99,102,241,0.28); }
+        .mob-hist-new svg{ flex-shrink:0; }
+
+        /* ── Drawer: section label ── */
+        .mob-hist-section{
+          font-size:0.64rem;font-weight:700;
+          letter-spacing:.1em;text-transform:uppercase;
+          color:#4b5563;
+          padding:6px 14px 4px;
+          flex-shrink:0;
+        }
 
         /* ── Mobile top bar ── */
         #dts-mobile-topbar{
           display:none;
           position:fixed;
-          /* sits below countdown bar */
           top:var(--aqs-cd-bar-h,0px);
           left:0; right:0;
           height:var(--mob-topbar-h);
@@ -192,62 +257,69 @@
         }
         .mob-new-btn:hover{ background:rgba(99,102,241,0.36); }
 
-        /* ── Persistent history sidebar (mobile) ── */
-        #dts-mobile-hist-sidebar{
-          display:none;
-          position:fixed;
-          /* below countdown bar + topbar */
-          top:calc(var(--aqs-cd-bar-h,0px) + var(--mob-topbar-h));
-          left:0;
-          width:var(--mob-hist-w);
-          bottom:var(--aqs-ticker-bar-h,0px);
-          z-index:930;
-          flex-direction:column;
-          background:rgba(8,6,28,0.97);
-          border-right:1px solid rgba(255,255,255,0.09);
-          overflow:hidden;
-        }
-        .mob-hist-header{
-          display:flex;align-items:center;justify-content:space-between;
-          padding:8px 8px 6px;
-          border-bottom:1px solid rgba(255,255,255,0.07);
-          flex-shrink:0;
-        }
-        .mob-hist-label{
-          font-size:0.65rem;font-weight:700;
-          letter-spacing:.08em;text-transform:uppercase;
-          color:#6b7280;
-        }
+        /* ── Drawer: scrollable history list ── */
         .mob-hist-scroll{
           flex:1;
           overflow-y:auto;
           -webkit-overflow-scrolling:touch;
-          padding:4px 0 8px;
-          /* history list inside takes full width */
+          padding:4px 6px 16px;
         }
-        /* Override history items for narrow sidebar */
-        #dts-mobile-hist-sidebar .dts-history-list{
-          max-height:none!important;
-          gap:1px;
+        .mob-hist-scroll::-webkit-scrollbar{ width:3px; }
+        .mob-hist-scroll::-webkit-scrollbar-track{ background:transparent; }
+        .mob-hist-scroll::-webkit-scrollbar-thumb{ background:rgba(99,102,241,.3);border-radius:3px; }
+
+        /* ── dts-drawer-item styles inside the mobile sidebar ── */
+        #dts-mobile-hist-sidebar .dts-drawer-item{
+          display:flex!important;align-items:center!important;gap:8px!important;
+          padding:9px 10px!important;
+          border-radius:8px!important;
+          cursor:pointer!important;
+          font-size:0.82rem!important;
+          color:#c4c9d4!important;
+          transition:background .15s!important;
+          margin-bottom:2px!important;
+          border:1px solid transparent!important;
         }
-        #dts-mobile-hist-sidebar .dts-history-item{
-          padding:8px 8px!important;
-          font-size:0.73rem!important;
-          border-radius:6px!important;
-          gap:4px!important;
+        #dts-mobile-hist-sidebar .dts-drawer-item:hover{
+          background:rgba(99,102,241,0.12)!important;
+          color:#e0e7ff!important;
+          border-color:rgba(99,102,241,0.2)!important;
         }
-        #dts-mobile-hist-sidebar .dts-history-item-title{
-          font-size:0.73rem;
+        #dts-mobile-hist-sidebar .dts-drawer-item.active{
+          background:rgba(99,102,241,0.22)!important;
+          color:#c7d2fe!important;
+          border-color:rgba(99,102,241,0.35)!important;
         }
-        /* Delete btn: always show on mobile (no hover) */
-        #dts-mobile-hist-sidebar .dts-history-item-del{
-          opacity:1!important;
-          font-size:0.65rem!important;
-          padding:1px 3px!important;
+        #dts-mobile-hist-sidebar .dts-drawer-item-title{
+          flex:1!important;
+          white-space:nowrap!important;
+          overflow:hidden!important;
+          text-overflow:ellipsis!important;
+          font-size:0.82rem!important;
         }
-        #dts-mobile-hist-sidebar .dts-history-empty{
-          font-size:0.72rem!important;
-          padding:8px 8px!important;
+        /* Delete btn: always visible on mobile (tap target) */
+        #dts-mobile-hist-sidebar .dts-drawer-item-del{
+          opacity:0.55!important;
+          font-size:0.78rem!important;
+          color:#6b7280!important;
+          background:none!important;
+          border:none!important;
+          cursor:pointer!important;
+          padding:3px 5px!important;
+          border-radius:4px!important;
+          flex-shrink:0!important;
+          transition:opacity .15s,color .15s!important;
+        }
+        #dts-mobile-hist-sidebar .dts-drawer-item:hover .dts-drawer-item-del,
+        #dts-mobile-hist-sidebar .dts-drawer-item-del:hover{
+          opacity:1!important;color:#f87171!important;
+        }
+        #dts-history-empty{
+          font-size:0.8rem!important;
+          color:#4b5563!important;
+          padding:16px 10px!important;
+          font-style:italic!important;
+          text-align:center!important;
         }
 
         /* Push main content (aqs-sidebar-body) below topbar */
@@ -298,12 +370,29 @@
 
 <!-- ══ HISTORY SIDEBAR DRAWER (mobile, slide-in via hamburger) ══ -->
 <div id="dts-mobile-hist-sidebar">
-    <div class="mob-hist-header">
-        <span class="mob-hist-label">History</span>
+
+    <!-- User profile strip -->
+    <div class="mob-hist-user">
+        <div class="mob-hist-avatar" id="dts-mob-hist-avatar">U</div>
+        <div class="mob-hist-userinfo">
+            <div class="mob-hist-username" id="dts-mob-hist-name">xzily AI</div>
+            <div class="mob-hist-usersub">Chat History</div>
+        </div>
+        <button class="mob-hist-close" id="dts-mob-hist-close" aria-label="Close history">✕</button>
     </div>
-    <div class="mob-hist-scroll" id="dts-mob-hist-scroll">
-        <!-- dts-history-list moved here by JS on mobile -->
-    </div>
+
+    <!-- New Chat shortcut -->
+    <button class="mob-hist-new" id="dts-mob-hist-new-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Chat
+    </button>
+
+    <!-- Recents label -->
+    <div class="mob-hist-section">Recents</div>
+
+    <!-- Scrollable history list (dts-history-list moved here by JS) -->
+    <div class="mob-hist-scroll" id="dts-mob-hist-scroll"></div>
+
 </div>
 
 <!-- ══ DESKTOP SIDEBAR (web ≥769px only — hidden on mobile) ══ -->
@@ -497,12 +586,10 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'DaraQuiz AI',tagline
             histList.style.maxHeight = 'none';
         }
 
-        /* Mobile "New" button triggers the hidden desktop new-chat button */
+        /* Mobile topbar "New" button → triggers desktop new-chat button */
         var mobNew = document.getElementById('dts-mob-new-btn');
         if (mobNew && newChatBtn) {
-            mobNew.addEventListener('click', function() {
-                newChatBtn.click();
-            });
+            mobNew.addEventListener('click', function() { newChatBtn.click(); });
         }
 
         /* Hamburger toggle for history drawer */
@@ -522,12 +609,48 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'DaraQuiz AI',tagline
         if (histToggle)  histToggle.addEventListener('click', openHist);
         if (histOverlay) histOverlay.addEventListener('click', closeHist);
 
+        /* Close (✕) button inside the drawer */
+        var histClose = document.getElementById('dts-mob-hist-close');
+        if (histClose) histClose.addEventListener('click', closeHist);
+
+        /* In-drawer "New Chat" button */
+        var drawerNew = document.getElementById('dts-mob-hist-new-btn');
+        if (drawerNew && newChatBtn) {
+            drawerNew.addEventListener('click', function() {
+                closeHist();
+                newChatBtn.click();
+            });
+        }
+
         /* Close drawer when a history item is tapped */
         if (histSidebar) {
             histSidebar.addEventListener('click', function(e) {
-                if (e.target.closest('.dts-history-item')) closeHist();
+                if (e.target.closest('.dts-drawer-item')) closeHist();
             });
         }
+
+        /* Populate user avatar + name from DTS_CONFIG or Firebase auth */
+        function setDrawerUser(name) {
+            var initial = (name && name.trim().charAt(0) || 'U').toUpperCase();
+            var ava = document.getElementById('dts-mob-hist-avatar');
+            var nm  = document.getElementById('dts-mob-hist-name');
+            if (ava) ava.textContent = initial;
+            if (nm)  nm.textContent  = name || 'xzily AI';
+        }
+
+        /* Try DTS_CONFIG first (fastest) */
+        if (window.DTS_CONFIG && window.DTS_CONFIG.user_name && window.DTS_CONFIG.user_name !== 'User') {
+            setDrawerUser(window.DTS_CONFIG.user_name);
+        }
+
+        /* Also listen for Firebase auth changes (comes later) */
+        document.addEventListener('aqs:authchange', function(e) {
+            var user = e.detail && e.detail.user;
+            if (user) {
+                var name = user.displayName || (user.email ? user.email.split('@')[0] : '') || 'User';
+                setDrawerUser(name);
+            }
+        });
     });
 })();
 </script>
