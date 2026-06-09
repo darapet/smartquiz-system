@@ -719,24 +719,42 @@
   window.wpApplyStyle = function() {
     var hf  = getV('wp-hfont',  'Georgia, serif');
     var bf  = getV('wp-bfont',  'Georgia, serif');
-    var h1  = getV('wp-h1',  24);
-    var h2  = getV('wp-h2',  18);
-    var h3  = getV('wp-h3',  14);
-    var bd  = getV('wp-body', 12);
+    var h1  = parseFloat(getV('wp-h1',  24));
+    var h2  = parseFloat(getV('wp-h2',  18));
+    var h3  = parseFloat(getV('wp-h3',  14));
+    var bd  = parseFloat(getV('wp-body', 12));
     var mg  = getV('wp-margin', 20);
     var lh  = getV('wp-lh',  '1.6');
+    var h4pt = Math.round(bd * 1.1);
     document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      /* CSS custom props (cascade fallback) */
       pg.style.setProperty('--wp-hfont', hf);
       pg.style.setProperty('--wp-bfont', bf);
       pg.style.setProperty('--wp-h1',    h1 + 'pt');
       pg.style.setProperty('--wp-h2',    h2 + 'pt');
       pg.style.setProperty('--wp-h3',    h3 + 'pt');
-      pg.style.setProperty('--wp-h4',    Math.round(Number(bd) * 1.1) + 'pt');
+      pg.style.setProperty('--wp-h4',    h4pt + 'pt');
       pg.style.setProperty('--wp-bsize', bd + 'pt');
       pg.style.setProperty('--wp-lh',    lh);
       pg.style.padding = mg + 'mm';
+      /* Also stamp inline styles directly so AI-generated inline styles are overridden */
+      var ed = pg.querySelector('.wp-page-editor');
+      if (!ed) return;
+      ed.style.fontFamily = bf;
+      ed.style.fontSize   = bd + 'pt';
+      ed.style.lineHeight = lh;
+      ed.querySelectorAll('p, li, td, th').forEach(function(el) {
+        el.style.fontFamily = bf;
+        el.style.fontSize   = bd + 'pt';
+        el.style.lineHeight = lh;
+      });
+      ed.querySelectorAll('h1').forEach(function(el){ el.style.fontSize = h1 + 'pt'; el.style.fontFamily = hf; });
+      ed.querySelectorAll('h2').forEach(function(el){ el.style.fontSize = h2 + 'pt'; el.style.fontFamily = hf; });
+      ed.querySelectorAll('h3').forEach(function(el){ el.style.fontSize = h3 + 'pt'; el.style.fontFamily = hf; });
+      ed.querySelectorAll('h4,h5,h6').forEach(function(el){ el.style.fontSize = h4pt + 'pt'; el.style.fontFamily = hf; });
     });
     var tbm = document.getElementById('tb-margin'); if(tbm) tbm.value = mg;
+    wpSavePageState();
   };
 
   function getV(id, def) {
@@ -1085,23 +1103,30 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
 
-    var prompt = 'You are a professional document formatter. Your ONLY job is to FORMAT the text — you must NEVER remove, shorten, summarize, or omit any content.\n\n' +
-      'STEP 1 — ALIGNMENT CHECK: Does the text below fit a "' + dtype + '"? If clearly not, reply ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
-      'STEP 2 — FORMAT: If content aligns, apply proper HTML structure to the text as a ' + dtype + ' with ' + tone + ' tone.\n\n' +
-      '⚠️ CRITICAL RULES — FORMATTING ONLY:\n' +
-      '• PRESERVE EVERY WORD, SENTENCE, AND PARAGRAPH — do not remove or shorten anything\n' +
-      '• Do NOT summarize, condense, or skip any part of the original text\n' +
-      '• Your job is structure/tags only — all original content must appear in output\n\n' +
-      'OUTPUT: Return ONLY clean HTML using ONLY: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, hr, table, thead, tbody, tr, th, td. ' +
-      'NO html/head/body/style/script tags.\n\n' +
-      'FORMATTING RULES:\n' +
-      '1. Main title → <h1>\n2. Major sections → <h2>\n3. Sub-sections → <h3>\n' +
-      '4. Key terms → <strong>\n5. ALL body text in <p> tags\n' +
-      '6. Bullets → <ul><li>\n7. Numbers → <ol><li>\n8. Quotes → <blockquote>\n' +
-      '9. Fix grammar/spelling only\n10. Match ' + tone + ' tone throughout\n' +
-      '11. Data/comparison tables → use <table> with proper thead/tbody\n' +
+    var prompt = 'You are an expert document formatter. Convert the text below into professional, well-structured HTML. Your ONLY job is to FORMAT — preserve every single word, sentence, and paragraph exactly as given.\n\n' +
+      'STEP 1 — TYPE CHECK: Does the text fit a "' + dtype + '"? If clearly not, reply ONLY with: MISMATCH:[one sentence why, plus a better document type suggestion]\n\n' +
+      'STEP 2 — FORMAT: Structure it as a ' + dtype + ' with ' + tone + ' tone.\n\n' +
+      '━━━ ABSOLUTE RULES ━━━\n' +
+      '✦ PRESERVE EVERY WORD — do NOT summarize, shorten, condense, or omit anything\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no explanations\n' +
+      '✦ Use ONLY these tags: h1 h2 h3 h4 p strong em u ul ol li blockquote hr table thead tbody tr th td\n' +
+      '✦ NO html/head/body/style/script/div/span tags\n' +
+      '✦ NO markdown syntax (**bold** → use <strong>, # headings → use <h1> etc.)\n\n' +
+      '━━━ STRUCTURE RULES ━━━\n' +
+      '1. Document title → <h1> (one per document)\n' +
+      '2. Major section headings → <h2>\n' +
+      '3. Sub-section headings → <h3>\n' +
+      '4. Key terms, important phrases → <strong>\n' +
+      '5. Emphasis, citations → <em>\n' +
+      '6. ALL body text wrapped in <p> tags — never bare text\n' +
+      '7. Bullet lists → <ul><li>…</li></ul>\n' +
+      '8. Numbered lists → <ol><li>…</li></ol>\n' +
+      '9. Pull-quotes, callouts → <blockquote>\n' +
+      '10. Data tables → <table><thead>…</thead><tbody>…</tbody></table>\n' +
+      '11. Section dividers → <hr>\n' +
+      '12. Match ' + tone + ' tone — formal language, no slang\n\n' +
       wpDocSettingsPrompt(ds) + '\n\n' +
-      'TEXT TO FORMAT (preserve ALL of it):\n' + text;
+      '━━━ TEXT TO FORMAT (preserve ALL of it) ━━━\n' + text;
 
     callAI(prompt, 2500)
       .then(function(html) {
@@ -1160,17 +1185,33 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var aiPrompt = 'You are a professional document writer. Write a COMPLETE, thoroughly detailed ' + dtype + ' with a ' + tone + ' tone.\n\n' +
-      'PAGE TARGET: ' + pageLabel + ' of A4 content. THIS IS MANDATORY.\n' +
-      '• You MUST write exactly ' + pageLabel + ' worth of content — do NOT stop early\n' +
-      '• Each A4 page = approximately ' + Math.round(pages < 1 ? 250 : 500) + ' words of body text\n' +
-      '• Include ' + sectionCount + ' major sections (<h2>), each with multiple detailed paragraphs\n' +
-      '• Every section must have 2–4 full paragraphs of substantive content\n' +
-      '• Do NOT truncate, summarize, or stop early — write the FULL document\n\n' +
+    var aiPrompt = 'You are an expert professional document writer. Write a COMPLETE, thoroughly detailed ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+      '━━━ LENGTH REQUIREMENT (MANDATORY) ━━━\n' +
+      'Target: ' + pageLabel + ' of A4 content — you MUST meet this exactly\n' +
+      '• ~' + Math.round(pages < 1 ? 250 : 500) + ' words of body text per A4 page\n' +
+      '• Include ' + sectionCount + ' major sections, each with 2–4 full developed paragraphs\n' +
+      '• Write a thorough Conclusion section at the end\n' +
+      '• Do NOT stop early, truncate, or stub sections — write the complete document\n\n' +
+      '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
+      '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
+      '✦ NO html/head/body/style/script/div/span tags\n' +
+      '✦ NO markdown (**bold** → <strong>, ## heading → <h2>, - item → <li>)\n' +
+      '✦ Start output immediately with <h1> — no explanations before or after\n\n' +
+      '━━━ DOCUMENT STRUCTURE ━━━\n' +
+      '• <h1> — Document title (one only)\n' +
+      '• <h2> — Major sections (' + sectionCount + ' required)\n' +
+      '• <h3> — Sub-sections within each major section\n' +
+      '• <p> — ALL body text (never bare/unwrapped text)\n' +
+      '• <strong> — Key terms, important data, conclusions\n' +
+      '• <ul>/<ol> — Lists and bullet points where appropriate\n' +
+      '• <blockquote> — Notable quotes or callouts\n' +
+      '• <table> — Data comparisons or structured information\n\n' +
+      '━━━ WRITING STYLE ━━━\n' +
+      '• Tone: ' + tone + ' — precise, clear, authoritative language\n' +
+      '• Every paragraph must be substantive — no filler sentences\n' +
+      '• Use specific details, examples, and context throughout\n\n' +
       'REQUEST: ' + prompt + '\n\n' +
-      'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
-      'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections (need ' + sectionCount + ' of them)\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
-      '- Lists as <ul>/<ol> where appropriate\n- Notable quotes as <blockquote>\n- Use <table> for data comparisons\n- Write a thorough conclusion section\n- Every section must be fully developed — no short stubs\n' +
       wpDocSettingsPrompt(ds);
 
     callAI(aiPrompt, aiMaxTokens)
@@ -2160,13 +2201,18 @@
   function sanitizeHTML(raw) {
     if (!raw) return '';
     var html = raw;
-    var fence = html.match(/```html?\n?([\s\S]*?)```/i); if (fence) html = fence[1];
+    /* Strip code fences: ```html ... ``` or ``` ... ``` */
+    html = html.replace(/```html?\n?([\s\S]*?)```/gi, '$1')
+               .replace(/```([\s\S]*?)```/gi, '$1');
+    /* Remove boilerplate wrapper tags and dangerous tags */
     html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g,'')
-               .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi,'')
+               .replace(/<\/?(html|head|body|meta|link)[^>]*>/gi,'')
                .replace(/<style[\s\S]*?<\/style>/gi,'')
-               .replace(/<script[\s\S]*?<\/script>/gi,'');
+               .replace(/<script[\s\S]*?<\/script>/gi,'')
+               .replace(/<\/?(div|span|section|article|aside|nav|header|footer|main)[^>]*>/gi,'');
     html = html.trim();
-    if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote|table)\b/.test(html)) {
+    /* If response has no block-level HTML tags, treat it as markdown/plain text */
+    if (html && !/<(h[1-6]|p|ul|ol|li|blockquote|table)\b/i.test(html)) {
       html = html
         .replace(/^#{4}\s+(.+)$/gm,'<h4>$1</h4>')
         .replace(/^#{3}\s+(.+)$/gm,'<h3>$1</h3>')
@@ -2174,10 +2220,14 @@
         .replace(/^#\s+(.+)$/gm,'<h1>$1</h1>')
         .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
         .replace(/\*(.+?)\*/g,'<em>$1</em>')
-        .replace(/^[\*\-]\s+(.+)$/gm,'<li>$1</li>')
-        .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m){ return '<ul>'+m+'</ul>'; })
-        .replace(/^(?!<[hulob]|$)(.+)$/gm,'<p>$1</p>');
+        .replace(/^[\*\-•]\s+(.+)$/gm,'<li>$1</li>')
+        .replace(/(<li>[\s\S]*?<\/li>\n?)+/g,function(m){ return '<ul>'+m+'</ul>'; })
+        .replace(/^(?!<[hupob]|$)(.+)$/gm,'<p>$1</p>');
     }
+    /* Wrap any bare text nodes (lines not inside a tag) in <p> */
+    html = html.replace(/^(?![\s]*<)(.*\S.*)$/gm, '<p>$1</p>');
+    /* Remove empty paragraphs */
+    html = html.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,'');
     return html.trim();
   }
 
