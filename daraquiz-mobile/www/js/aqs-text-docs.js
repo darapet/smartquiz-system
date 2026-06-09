@@ -1137,18 +1137,21 @@
     var text  = src.value.trim();  /* No character limit — format all content */
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
-    var pages = parseFloat(getV('wp-format-pages', '1')) || 1;
+    var rawPages = parseFloat(getV('wp-format-pages', '1'));
+    var unlimited = (rawPages === 0 || isNaN(rawPages));
+    var pages = unlimited ? 20 : (rawPages || 1);
     var ds    = wpGetDocSettings();
     var btn   = document.getElementById('wp-ai-btn');
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
-    /* Scale max tokens: base on pages + text length; minimum 2500, max 8000 */
-    var fmtMaxTokens = Math.min(8000, Math.max(2500, Math.round(pages * 700 + text.length / 8)));
+    /* Scale max tokens: unlimited → 32000; otherwise base on pages + text length */
+    var fmtMaxTokens = unlimited ? 32000 : Math.min(32000, Math.max(2500, Math.round(pages * 700 + text.length / 8)));
 
     var prompt = 'You are an expert document formatter. Convert the text below into professional, well-structured HTML. Your ONLY job is to FORMAT — preserve every single word, sentence, and paragraph exactly as given.\n\n' +
       'STEP 1 — TYPE CHECK: Does the text fit a "' + dtype + '"? If clearly not, reply ONLY with: MISMATCH:[one sentence why, plus a better document type suggestion]\n\n' +
       'STEP 2 — FORMAT: Structure it as a ' + dtype + ' with ' + tone + ' tone.\n\n' +
+      (unlimited ? '━━━ LENGTH REQUIREMENT ━━━\nWrite the COMPLETE formatted document — do NOT stop early, truncate, or skip any section. Cover 100% of the input text.\n\n' : '') +
       '━━━ ABSOLUTE RULES ━━━\n' +
       '✦ PRESERVE EVERY WORD — do NOT summarize, shorten, condense, or omit anything\n' +
       '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no explanations\n' +
@@ -1215,14 +1218,16 @@
     if (wpIsProcessing) return;
     var tone   = getV('wp-wtone',    'Professional');
     var dtype  = getV('wp-wdoctype', 'General Document');
-    var pages  = parseFloat(getV('wp-length-sel', '1')) || 1;
+    var rawPages = parseFloat(getV('wp-length-sel', '1'));
+    var unlimited = (rawPages === 0 || isNaN(rawPages));
+    var pages  = unlimited ? 20 : (rawPages || 1);
     var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
-    var pageLabel = (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
-    /* Scale tokens with pages: ~700 tokens per page, min 2000, max 8000 */
-    var aiMaxTokens = Math.min(8000, Math.max(2000, Math.round(pages * 750)));
-    /* Section count to guide AI length: ~2 major sections per page */
-    var sectionCount = Math.max(2, Math.round(pages * 2));
+    var pageLabel = unlimited ? 'Unlimited (as long as needed)' : (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
+    /* Scale tokens: unlimited → 32000; otherwise ~750 per page, min 2000 */
+    var aiMaxTokens = unlimited ? 32000 : Math.min(32000, Math.max(2000, Math.round(pages * 750)));
+    /* Section count: unlimited → at least 8; otherwise ~2 per page */
+    var sectionCount = unlimited ? 8 : Math.max(2, Math.round(pages * 2));
 
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
@@ -1230,9 +1235,10 @@
 
     var aiPrompt = 'You are an expert professional document writer. Write a COMPLETE, thoroughly detailed ' + dtype + ' with a ' + tone + ' tone.\n\n' +
       '━━━ LENGTH REQUIREMENT (MANDATORY) ━━━\n' +
-      'Target: ' + pageLabel + ' of A4 content — you MUST meet this exactly\n' +
-      '• ~' + Math.round(pages < 1 ? 250 : 500) + ' words of body text per A4 page\n' +
-      '• Include ' + sectionCount + ' major sections, each with 2–4 full developed paragraphs\n' +
+      (unlimited
+        ? 'Length: UNLIMITED — write as much as needed to fully cover the topic. Do NOT stop early.\n• Write every section in full — no stubs, no placeholders, no truncation\n• Include as many sections as the topic requires\n'
+        : 'Target: ' + pageLabel + ' of A4 content — you MUST meet this exactly\n• ~' + Math.round(pages < 1 ? 250 : 500) + ' words of body text per A4 page\n') +
+      '• Include ' + sectionCount + ' or more major sections, each with 2–4 full developed paragraphs\n' +
       '• Write a thorough Conclusion section at the end\n' +
       '• Do NOT stop early, truncate, or stub sections — write the complete document\n\n' +
       '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
