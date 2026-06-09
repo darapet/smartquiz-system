@@ -2194,12 +2194,7 @@
       var allPages = wpPages.map(function(pg, i) {
         return '<div style="page-break-after:' + (i < wpPages.length - 1 ? 'always' : 'auto') + ';padding:' + mg + 'mm;">' + (pg || '') + '</div>';
       }).join('');
-      var printWin = window.open('', '_blank');
-      if (!printWin) {
-        alert('Popup blocked. Please allow popups for this site and try again.');
-        return;
-      }
-      printWin.document.write(
+      var printHtml =
         '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title>' +
         '<style>' +
         'body{font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';margin:0;color:#1a1a1a;}' +
@@ -2214,10 +2209,22 @@
         'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}' +
         'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}' +
         '@media print{@page{margin:' + mg + 'mm;}body{margin:0;}}' +
-        '</style></head><body>' + allPages + '</body></html>'
-      );
-      printWin.document.close();
-      setTimeout(function(){ printWin.focus(); printWin.print(); }, 600);
+        '</style></head><body>' + allPages + '</body></html>';
+      /* Use hidden iframe — window.open('','_blank') shows about:blank in Capacitor WebView */
+      var old = document.getElementById('wp-print-iframe');
+      if (old) old.remove();
+      var pf = document.createElement('iframe');
+      pf.id = 'wp-print-iframe';
+      pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
+      document.body.appendChild(pf);
+      pf.contentDocument.open();
+      pf.contentDocument.write(printHtml);
+      pf.contentDocument.close();
+      setTimeout(function() {
+        pf.contentWindow.focus();
+        pf.contentWindow.print();
+        setTimeout(function() { pf.remove(); }, 3000);
+      }, 600);
       wpSetStatus('PDF print dialog opened ✅');
     } else {
       wpDownload(fmt);
@@ -2264,11 +2271,18 @@
 
   function wpDownloadPDF(content, title) {
     if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
-      // Fallback: print-based PDF
-      var printWin = window.open('', '_blank');
-      printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;margin:20mm;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:5px 8px;}@media print{body{margin:0;}}</style></head><body>' + content + '</body></html>');
-      printWin.document.close();
-      setTimeout(function(){ printWin.print(); printWin.close(); }, 500);
+      // Fallback: iframe-based print (window.open shows about:blank in Capacitor WebView)
+      var printHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;margin:20mm;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:5px 8px;}@media print{body{margin:0;}}</style></head><body>' + content + '</body></html>';
+      var old2 = document.getElementById('wp-print-iframe2');
+      if (old2) old2.remove();
+      var pf2 = document.createElement('iframe');
+      pf2.id = 'wp-print-iframe2';
+      pf2.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
+      document.body.appendChild(pf2);
+      pf2.contentDocument.open();
+      pf2.contentDocument.write(printHtml);
+      pf2.contentDocument.close();
+      setTimeout(function(){ pf2.contentWindow.focus(); pf2.contentWindow.print(); setTimeout(function(){ pf2.remove(); }, 3000); }, 500);
       return;
     }
     // Try jsPDF with html2canvas
@@ -2508,22 +2522,58 @@
   }
 
   function wpSaveText(text, filename, mimeType) {
+    /* 1. Try Web Share API with File — lets Android save to Files / Documents */
+    var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+    if (isNative && navigator.share && navigator.canShare) {
+      try {
+        var shareFile = new File([text], filename, { type: mimeType });
+        if (navigator.canShare({ files: [shareFile] })) {
+          navigator.share({ files: [shareFile], title: filename })
+            .then(function() { wpSetStatus('✅ File saved/shared successfully'); })
+            .catch(function(err) {
+              if (err && err.name !== 'AbortError') { wpSaveToLocalDoc(text, filename, mimeType); }
+            });
+          return;
+        }
+      } catch(ignore) {}
+    }
+    /* 2. Try standard data-URI anchor click (web / non-Capacitor) */
     try {
-      /* Data-URI approach: works reliably in Capacitor/Android WebView where
-         blob-URL + a.click() often navigates instead of downloading */
       var dataUri = 'data:' + mimeType + ';charset=utf-8,' + encodeURIComponent(text);
       var a = document.createElement('a');
       a.href = dataUri; a.download = filename;
       document.body.appendChild(a); a.click();
       setTimeout(function(){ document.body.removeChild(a); }, 300);
+      if (isNative) {
+        /* On Capacitor the click may not trigger a real save — also store locally */
+        wpSaveToLocalDoc(text, filename, mimeType);
+      }
     } catch(e) {
-      /* Fallback to blob URL */
-      var blob = new Blob([text], { type: mimeType });
-      var url = URL.createObjectURL(blob);
-      var a2 = document.createElement('a');
-      a2.href = url; a2.download = filename;
-      document.body.appendChild(a2); a2.click();
-      setTimeout(function(){ document.body.removeChild(a2); URL.revokeObjectURL(url); }, 1000);
+      wpSaveToLocalDoc(text, filename, mimeType);
+    }
+  }
+
+  /* Save document content to localStorage under "Documents" key */
+  function wpSaveToLocalDoc(text, filename, mimeType) {
+    try {
+      var WP_DOCS_KEY = 'aqs_local_documents';
+      var docs = [];
+      try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(ex) {}
+      /* Replace existing entry with same name, or prepend */
+      var idx = docs.findIndex ? docs.findIndex(function(d){ return d.name === filename; }) : -1;
+      var entry = { name: filename, type: mimeType, content: text, ts: Date.now() };
+      if (idx >= 0) { docs[idx] = entry; } else { docs.unshift(entry); }
+      if (docs.length > 30) docs = docs.slice(0, 30);
+      localStorage.setItem(WP_DOCS_KEY, JSON.stringify(docs));
+      wpSetStatus('✅ Saved to Documents (' + filename + ')');
+      /* Brief toast */
+      var toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e1b4b;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.3);';
+      toast.textContent = '✅ Saved to Documents: ' + filename;
+      document.body.appendChild(toast);
+      setTimeout(function(){ toast.remove(); }, 3000);
+    } catch(storErr) {
+      alert('Could not save file. Storage may be full.\n\n' + storErr.message);
     }
   }
 
