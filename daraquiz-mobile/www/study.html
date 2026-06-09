@@ -84,10 +84,10 @@
         </div>
 
         <div class="std-search-section">
-            <form class="std-search-form" id="std-search-form" autocomplete="off">
+            <form class="std-search-form" id="std-search-form" autocomplete="off" onsubmit="return false;">
                 <input type="text" class="std-search-input" id="std-search-input"
                     placeholder="Type a topic, subject or book title… e.g. 'Photosynthesis', 'World War 2', 'The Great Gatsby'" />
-                <button type="submit" class="std-search-btn">
+                <button type="button" class="std-search-btn">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     Study It
                 </button>
@@ -155,6 +155,7 @@
                     <button class="std-act-btn" id="std-summary-btn">📋 Summarise</button>
                     <button class="std-act-btn" id="std-explain-btn">💡 Explanation</button>
                     <button class="std-act-btn test-btn" id="std-test-btn">🎯 Practice Test</button>
+                    <button class="std-act-btn" id="std-send-to-wp-btn" style="background:rgba(99,102,241,.13);border-color:rgba(99,102,241,.4);color:#a5b4fc;">📝 Word Processor</button>
                 </div>
 
                 <!-- AI output panel -->
