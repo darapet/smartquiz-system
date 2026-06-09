@@ -353,11 +353,13 @@ body {
 
 .wp-page-inner,
 .wp-page-editor {
-  outline: none; height: 100%; overflow: hidden;
+  outline: none; height: 100%;
   word-break: break-word; overflow-wrap: break-word;
   line-height: 1.6; width: 100%; display: block;
   cursor: text;
 }
+.wp-page-inner  { overflow: hidden; }
+.wp-page-editor { overflow: visible; }
 .wp-page-inner:focus,
 .wp-page-editor:focus { outline: none; }
 .wp-page-inner::selection,
@@ -403,26 +405,44 @@ body {
 .wp-page-inner a,.wp-page-editor a { color: var(--wp-accent); text-decoration: underline; }
 
 /* ── Tables ── */
-.wp-page-inner table {
+.wp-page-inner table,
+.wp-page-editor table {
   border-collapse: collapse; width: 100%;
   margin: 10px 0; font-size: 12px;
+  table-layout: fixed;
 }
 .wp-page-inner table th,
-.wp-page-inner table td {
+.wp-page-inner table td,
+.wp-page-editor table th,
+.wp-page-editor table td {
   border: 1px solid #d1d5db; padding: 6px 10px;
   text-align: left; vertical-align: top;
   position: relative; min-width: 60px;
+  word-break: break-word;
 }
-.wp-page-inner table th {
+.wp-page-inner table th,
+.wp-page-editor table th {
   background: #f1f5f9; font-weight: 700; color: #1e293b;
+  user-select: none;
 }
-.wp-page-inner table tr:nth-child(even) td {
+.wp-page-inner table tr:nth-child(even) td,
+.wp-page-editor table tr:nth-child(even) td {
   background: rgba(0,0,0,.02);
 }
+.wp-page-editor table tr:hover td {
+  background: rgba(79,70,229,.03);
+}
 .wp-page-inner table td.wp-cell-selected,
-.wp-page-inner table th.wp-cell-selected {
+.wp-page-inner table th.wp-cell-selected,
+.wp-page-editor table td.wp-cell-selected,
+.wp-page-editor table th.wp-cell-selected {
   background: rgba(79,70,229,.12) !important;
   outline: 2px solid var(--wp-accent);
+}
+.wp-page-editor table td:focus,
+.wp-page-editor table th:focus {
+  outline: 2px solid var(--wp-accent);
+  background: rgba(79,70,229,.06);
 }
 /* Column resize handle — supports both class names (CSS vs JS-generated) */
 .wp-col-resize,
@@ -436,23 +456,29 @@ body {
 .col-resize-handle.dragging { background: var(--wp-accent); opacity: .6; }
 
 /* ── Image in doc ── */
-.wp-page-inner img {
+.wp-page-inner img,
+.wp-page-editor img {
   max-width: 100%; height: auto; display: block;
   border-radius: 3px; cursor: pointer;
 }
-.wp-page-inner .wp-img-wrap {
+.wp-page-inner .wp-img-wrap,
+.wp-page-editor .wp-img-wrap {
   position: relative; display: inline-block; max-width: 100%;
   vertical-align: top;
 }
-.wp-page-inner .wp-img-wrap img { display: block; }
+.wp-page-inner .wp-img-wrap img,
+.wp-page-editor .wp-img-wrap img { display: block; }
 .wp-page-inner .wp-img-wrap.selected img,
-.wp-page-inner img.wp-img-selected { outline: 3px solid var(--wp-accent); border-radius: 3px; }
+.wp-page-inner img.wp-img-selected,
+.wp-page-editor .wp-img-wrap.selected img,
+.wp-page-editor img.wp-img-selected { outline: 3px solid var(--wp-accent); border-radius: 3px; }
 .wp-img-toolbar {
   position: absolute; top: -36px; left: 0;
   background: #1e293b; border-radius: 6px; padding: 4px 6px;
   display: none; gap: 3px; z-index: 50;
 }
-.wp-page-inner .wp-img-wrap.selected .wp-img-toolbar { display: flex; }
+.wp-page-inner .wp-img-wrap.selected .wp-img-toolbar,
+.wp-page-editor .wp-img-wrap.selected .wp-img-toolbar { display: flex; }
 .wp-img-tb-btn {
   background: none; border: none; color: #e2e8f0; cursor: pointer;
   font-size: 11px; padding: 3px 7px; border-radius: 4px;
