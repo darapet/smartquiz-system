@@ -173,7 +173,32 @@
 <!-- ══ PRACTICE TEST MODAL ══ -->
 <div id="std-test-modal" class="std-modal" style="display:none"></div>
 
-<!-- Voice Chat Panel removed — AI Teacher now uses XZILY Summon overlay (FAB button) -->
+<!-- ══ XZILY AI VOICE TUTOR — FAB always hardcoded here so it shows before JS loads ══ -->
+<div id="std-summon-fab" title="XZILY AI Tutor">✦</div>
+<style>
+/* FAB baseline styles — JS also injects these but having them here guarantees visibility */
+#std-summon-fab{
+  position:fixed!important;
+  bottom:28px!important;
+  right:28px!important;
+  z-index:99998!important;
+  width:60px;height:60px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);
+  display:flex!important;
+  align-items:center;justify-content:center;
+  cursor:pointer;
+  box-shadow:0 0 22px 6px rgba(139,92,246,.55);
+  font-size:1.6rem;color:#fff;
+  user-select:none;
+  animation:sfab-pulse 3s ease-in-out infinite;
+}
+@keyframes sfab-pulse{
+  0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.4)}
+  50%{box-shadow:0 0 36px 14px rgba(139,92,246,.65)}
+}
+#std-summon-fab:hover{transform:scale(1.1)}
+</style>
 
 <!-- ══ GLOBAL ERROR TOAST ══ -->
 <div id="std-global-error" class="std-global-error"></div>
