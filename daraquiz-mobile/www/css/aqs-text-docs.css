@@ -340,9 +340,10 @@ body {
 
 .wp-page {
   background: #fff;
-  width: var(--wp-page-w);
-  min-width: var(--wp-page-min);
-  min-height: 297mm;
+  width: min(var(--wp-page-w), calc(100% - 16px));
+  height: 297mm;
+  box-sizing: border-box;
+  overflow: hidden;
   /* Realistic paper shadow — three layers like Word */
   box-shadow:
     0 0 0 1px rgba(0,0,0,.08),
@@ -355,7 +356,7 @@ body {
 }
 
 .wp-page-inner {
-  outline: none; min-height: calc(297mm - 40mm);
+  outline: none; height: 100%; overflow: hidden;
   word-break: break-word; overflow-wrap: break-word;
   line-height: 1.6;
 }
