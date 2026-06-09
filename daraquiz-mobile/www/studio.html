@@ -26,6 +26,8 @@
 
         #dts-app{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
         #dts-main{flex:1;overflow:hidden;position:relative;padding-bottom:var(--dts-footer-h,80px)}
+        /* FIX: welcome overlay fills parent — suggestion & send buttons now always clickable */
+        .dts-welcome{inset:0!important;padding-bottom:28px!important}
         .dts-footer{left:var(--aqs-sidebar-w,260px)!important}
 
         /* History + misc shared styles */
