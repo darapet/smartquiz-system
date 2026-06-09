@@ -704,10 +704,16 @@
 
   /* ── Paper / style ──────────────────────────────────────────── */
   window.wpSetPaper = function(v) {
+    v = (v || 'a4').toLowerCase();
     document.querySelectorAll('.wp-page-item').forEach(function(pg) {
-      pg.className = 'wp-page wp-page-item sz-' + (v || 'a4');
+      pg.className = 'wp-page wp-page-item sz-' + v;
     });
-    var sel = document.getElementById('tb-paper'); if(sel) sel.value = v;
+    /* Sync toolbar select (lowercase) */
+    var tbSel = document.getElementById('tb-paper'); if(tbSel) tbSel.value = v;
+    /* Sync sidebar + modal selects (Title Case: A4, Letter, Legal) */
+    var tc = v === 'a4' ? 'A4' : (v.charAt(0).toUpperCase() + v.slice(1));
+    var ds1 = document.getElementById('wp-ds-page'); if(ds1) ds1.value = tc;
+    var ds2 = document.getElementById('dsm-page');   if(ds2) ds2.value = tc;
   };
 
   window.wpApplyStyle = function() {
@@ -1031,6 +1037,13 @@
         });
       }
     });
+    /* Apply paper size to all pages */
+    var pageSzMap = { 'A4':'a4','a4':'a4','Letter':'letter','letter':'letter','Legal':'legal','legal':'legal' };
+    var paperV = pageSzMap[ds.page] || 'a4';
+    document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      pg.className = 'wp-page wp-page-item sz-' + paperV;
+    });
+    var tbP = document.getElementById('tb-paper'); if(tbP) tbP.value = paperV;
     wpSavePageState();
     /* After style changes layout may shift — schedule overflow reflow */
     wpScheduleReflow();

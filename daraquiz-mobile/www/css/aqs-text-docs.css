@@ -354,6 +354,16 @@ body {
   transition: transform .2s;
   padding: 25.4mm 25.4mm 25.4mm 25.4mm; /* 1-inch margins, Word default */
 }
+/* Letter: 8.5 × 11 in = 215.9 × 279.4 mm */
+.wp-page.sz-letter {
+  width: min(215.9mm, calc(100% - 16px));
+  height: 279.4mm;
+}
+/* Legal: 8.5 × 14 in = 215.9 × 355.6 mm */
+.wp-page.sz-legal {
+  width: min(215.9mm, calc(100% - 16px));
+  height: 355.6mm;
+}
 
 .wp-page-inner {
   outline: none; height: 100%; overflow: hidden;
