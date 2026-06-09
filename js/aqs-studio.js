@@ -1165,6 +1165,8 @@
     }
 
     function startVoiceListening() {
+        /* Guard: never start mic while AI is speaking — prevents echo */
+        if (voiceAiTalking) return;
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
             setVoiceState('error');
@@ -1264,7 +1266,14 @@
             setVoiceTranscript('');
             voiceAiTalking = true;
             speakStudioChunked(spoken, function () {
-                if (voiceActive) setVoiceState('idle');
+                voiceAiTalking = false;
+                if (voiceActive) {
+                    setVoiceState('idle');
+                    /* Auto-restart mic after AI finishes — continuous conversation loop, no echo */
+                    setTimeout(function () {
+                        if (voiceActive && !voiceAiTalking) startVoiceListening();
+                    }, 450);
+                }
             });
         }).catch(function () {
             showTyping(false);
@@ -1611,6 +1620,8 @@
                 } else if (state === 'speaking') {
                     stopAiSpeech();
                     setVoiceState('idle');
+                    /* Interrupt: mic turns back on so user can continue immediately */
+                    setTimeout(function () { if (voiceActive) startVoiceListening(); }, 300);
                 }
             });
         }
