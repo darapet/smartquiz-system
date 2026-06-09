@@ -340,9 +340,10 @@ body {
 
 .wp-page {
   background: #fff;
-  width: var(--wp-page-w);
-  min-width: var(--wp-page-min);
-  min-height: 297mm;
+  width: min(var(--wp-page-w), calc(100% - 16px));
+  height: 297mm;
+  box-sizing: border-box;
+  overflow: hidden;
   box-shadow: 0 2px 4px rgba(0,0,0,.10), 0 6px 24px rgba(0,0,0,.14), 0 0 0 1px rgba(0,0,0,.06);
   border-radius: 1px;
   position: relative;
@@ -352,7 +353,7 @@ body {
 
 .wp-page-inner,
 .wp-page-editor {
-  outline: none; min-height: calc(297mm - 40mm);
+  outline: none; height: 100%; overflow: hidden;
   word-break: break-word; overflow-wrap: break-word;
   line-height: 1.6; width: 100%; display: block;
   cursor: text;
