@@ -59,6 +59,16 @@ var _IS_MOBILE_APP = !!(
     /Android|iPhone|iPad/i.test(navigator.userAgent || '')
 );
 
+/* ── AbortSignal.timeout COMPAT ─────────────────────────────── */
+/* AbortSignal.timeout is not available on older browsers / Android WebViews.
+   Always use _sig(ms) instead of AbortSignal.timeout(ms) directly. */
+function _sig(ms) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        return AbortSignal.timeout(ms);
+    }
+    return undefined;
+}
+
 /* ── MIC RECORDING STATE (getUserMedia + Whisper) ───────────── */
 var _MIC_STATE = { active:false, mediaRecorder:null, chunks:[], stream:null, _autoStop:null };
 
@@ -306,7 +316,7 @@ async function doSearch(q) {
 }
 
 async function wikiSearch(q) {
-    var r = await fetch(WIKI_API + '?action=query&list=search&srsearch=' + encodeURIComponent(q) + '&srlimit=6&format=json&origin=*', {signal:AbortSignal.timeout(8000)});
+    var r = await fetch(WIKI_API + '?action=query&list=search&srsearch=' + encodeURIComponent(q) + '&srlimit=6&format=json&origin=*', {signal:_sig(8000)});
     if (!r.ok) throw new Error('Wiki error');
     var d = await r.json();
     return ((d.query && d.query.search) || []).map(function (x) {
@@ -315,7 +325,7 @@ async function wikiSearch(q) {
 }
 
 async function bookSearch(q) {
-    var r = await fetch(BOOKS_API + '?q=' + encodeURIComponent(q) + '&maxResults=6&orderBy=relevance', {signal:AbortSignal.timeout(8000)});
+    var r = await fetch(BOOKS_API + '?q=' + encodeURIComponent(q) + '&maxResults=6&orderBy=relevance', {signal:_sig(8000)});
     if (!r.ok) return [];
     var d = await r.json();
     return (d.items || []).map(function (b) {
@@ -363,8 +373,8 @@ async function loadWiki(title) {
     setLoadMsg('📖 Loading "' + esc(title) + '" from Wikipedia…');
     try {
         var [sumRes, secRes] = await Promise.all([
-            fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:AbortSignal.timeout(10000)}),
-            fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=sections&format=json&origin=*', {signal:AbortSignal.timeout(10000)})
+            fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:_sig(10000)}),
+            fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=sections&format=json&origin=*', {signal:_sig(10000)})
         ]);
         var sum = await sumRes.json();
         var sec = await secRes.json();
@@ -483,11 +493,11 @@ async function loadChapterContent(idx) {
 
 async function fetchWikiSection(title, sectionIdx) {
     if (sectionIdx === 0) {
-        var r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:AbortSignal.timeout(10000)});
+        var r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:_sig(10000)});
         var d = await r.json();
         return d.extract || d.description || '';
     }
-    var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', {signal:AbortSignal.timeout(10000)});
+    var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', {signal:_sig(10000)});
     var d2 = await r2.json();
     var wt = (d2.parse && d2.parse.wikitext && d2.parse.wikitext['*']) || '';
     return wt.replace(/\{\{[^}]*\}\}/g,'').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,'$2').replace(/'{2,3}/g,'').replace(/==+[^=]+=+/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0, 4000);
@@ -514,7 +524,7 @@ async function streamToPanel(panelTitle, messages, temp) {
         try {
             var res = await window.groqFetch(
                 {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true},
-                {signal:AbortSignal.timeout(60000)}
+                {signal:_sig(60000)}
             );
             if (res.ok) {
                 var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
@@ -789,7 +799,7 @@ async function aiChat(messages, temp) {
     }
     var rg = await window.groqFetch(
         {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
-        {signal:AbortSignal.timeout(60000)}
+        {signal:_sig(60000)}
     );
     if (!rg.ok) {
         var errTxt = '';
