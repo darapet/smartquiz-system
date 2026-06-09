@@ -1105,14 +1105,17 @@
     var src = document.getElementById('wp-source');
     if (!src || !src.value.trim()) { showHint('wp-ai-hint', 'Please paste some text first.', 'warn'); return; }
     if (wpIsProcessing) return;
-    var text  = src.value.trim().slice(0, 6000);
+    var text  = src.value.trim();  /* No character limit — format all content */
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
+    var pages = parseFloat(getV('wp-format-pages', '1')) || 1;
     var ds    = wpGetDocSettings();
     var btn   = document.getElementById('wp-ai-btn');
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
+    /* Scale max tokens: base on pages + text length; minimum 2500, max 8000 */
+    var fmtMaxTokens = Math.min(8000, Math.max(2500, Math.round(pages * 700 + text.length / 8)));
 
     var prompt = 'You are an expert document formatter. Convert the text below into professional, well-structured HTML. Your ONLY job is to FORMAT — preserve every single word, sentence, and paragraph exactly as given.\n\n' +
       'STEP 1 — TYPE CHECK: Does the text fit a "' + dtype + '"? If clearly not, reply ONLY with: MISMATCH:[one sentence why, plus a better document type suggestion]\n\n' +
@@ -1139,7 +1142,7 @@
       wpDocSettingsPrompt(ds) + '\n\n' +
       '━━━ TEXT TO FORMAT (preserve ALL of it) ━━━\n' + text;
 
-    callAI(prompt, 2500)
+    callAI(prompt, fmtMaxTokens)
       .then(function(html) {
         var trimmed = html.trim();
         if (trimmed.toUpperCase().startsWith('MISMATCH:')) {
@@ -1283,6 +1286,81 @@
   /* ── AI Translate ────────────────────────────────────────────── */
   window.wpAITranslate = function() { wpShowModal('wp-translate-modal'); };
 
+  /* ── AI Rewrite ──────────────────────────────────────────────── */
+  window.wpAIRewrite = function() { wpShowModal('wp-rewrite-modal'); };
+
+  window.wpDoRewrite = function() {
+    var content = wpGetFullContent();
+    var text    = stripHtml(content);
+    if (!text.trim() || text.length < 30) { alert('Please add some content to rewrite.'); return; }
+    var tone    = getV('wp-rw-tone',    'Professional');
+    var style   = getV('wp-rw-style',   'Full Rewrite');
+    var reading = getV('wp-rw-reading', 'Standard');
+    var ds      = wpGetDocSettings();
+    var btn     = document.getElementById('wp-rw-btn');
+    wpHideModal('wp-rewrite-modal');
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    if (btn) { btn.disabled = true; }
+    wpSetStatus('Rewriting document…');
+    wpSetAIStatus('working', 'Rewriting…');
+
+    var styleInstructions = {
+      'Full Rewrite':       'Completely rewrite the entire document from scratch while preserving all the key facts, data, and meaning.',
+      'Polish & Refine':    'Polish and refine the existing writing — improve flow, fix awkward phrasing, strengthen sentences. Keep the structure and most original wording intact.',
+      'Simplify Language':  'Rewrite using simpler, clearer language. Replace complex vocabulary with everyday words. Keep sentences short and easy to understand.',
+      'Make More Formal':   'Rewrite in a formal, professional register. Remove colloquialisms, use precise vocabulary, and ensure a polished academic/business tone.',
+      'Make More Casual':   'Rewrite in a friendly, conversational tone. Make it feel approachable and natural — as if explaining to a friend.'
+    };
+    var readingInstructions = {
+      'Simple':      'Target a simple reading level (Grade 6–8) — short sentences, common words, clear explanations.',
+      'Standard':    'Target a standard reading level (Grade 9–12) — clear, balanced prose suitable for a general audience.',
+      'Advanced':    'Target an advanced reading level (college+) — sophisticated vocabulary, complex sentence structures where appropriate.',
+      'Expert':      'Target an expert-level audience — assume deep domain knowledge, use technical terminology precisely.'
+    };
+
+    var rwMaxTokens = Math.min(8000, Math.max(2500, Math.round(text.length / 4 + 1000)));
+
+    var rwPrompt = 'You are an expert professional writer and editor. Rewrite the document below according to these exact requirements.\n\n' +
+      '━━━ REWRITE INSTRUCTIONS ━━━\n' +
+      '• Style: ' + (styleInstructions[style] || styleInstructions['Full Rewrite']) + '\n' +
+      '• Tone: ' + tone + ' — authoritative, clear, and purposeful\n' +
+      '• Reading Level: ' + (readingInstructions[reading] || readingInstructions['Standard']) + '\n\n' +
+      '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
+      '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
+      '✦ NO html/head/body/style/script/div/span tags — start immediately with <h1>\n' +
+      '✦ Preserve ALL key facts, statistics, names, and data — do NOT invent or remove information\n' +
+      '✦ Keep the same document structure (same number of sections, same logical flow)\n\n' +
+      '━━━ HUMANIZATION — MANDATORY ━━━\n' +
+      '✦ Write in a natural human voice that passes AI detection tools\n' +
+      '✦ Vary sentence length — mix short punchy sentences with longer elaborative ones\n' +
+      '✦ Use natural transitions and contractions where appropriate\n' +
+      '✦ NEVER use: "It is important to note that", "Furthermore,", "In conclusion,", "It can be seen that"\n\n' +
+      wpDocSettingsPrompt(ds) + '\n\n' +
+      '━━━ DOCUMENT TO REWRITE ━━━\n' + text;
+
+    callAI(rwPrompt, rwMaxTokens)
+      .then(function(result) {
+        var clean = sanitizeHTML(result);
+        if (!clean || clean.length < 30) throw new Error('AI returned insufficient content');
+        wpLoadContent(clean);
+        wpApplyDocSettings(ds);
+        var wTitle = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || 'Rewritten Document';
+        wpSaveHistory(wTitle.replace(/<[^>]+>/g,''), wpGetFullContent());
+        wpSetStatus('Document rewritten ✅ — ' + style + ' · ' + tone);
+        wpSetAIStatus('ready', 'AI Ready');
+      })
+      .catch(function(err) {
+        wpSetStatus('Rewrite failed — ' + (err.message || 'AI error'));
+        wpSetAIStatus('error', 'Rewrite failed');
+      })
+      .finally(function() {
+        wpIsProcessing = false;
+        if (btn) { btn.disabled = false; }
+      });
+  };
+
   window.wpAIFix = function() {
     var ed = wpGetEditor(); if (!ed) return;
     var content = ed.innerHTML;
@@ -1376,14 +1454,15 @@
     el.style.display = 'block';
   }
 
-  /* ── Char counter ───────────────────────────────────────────── */
+  /* ── Char counter (no limit — shows current length only) ──── */
   window.wpCharCount = function() {
     var el  = document.getElementById('wp-source');
     var n   = el ? el.value.length : 0;
     var cnt = document.getElementById('wp-count');
     if (!cnt) return;
-    cnt.textContent = n.toLocaleString() + ' / 12,000';
-    cnt.className   = 'wp-char-count' + (n >= 12000 ? ' full' : n >= 9000 ? ' warn' : '');
+    var words = el ? el.value.trim().split(/\s+/).filter(Boolean).length : 0;
+    cnt.textContent = n.toLocaleString() + ' chars · ' + words.toLocaleString() + ' words';
+    cnt.className   = 'wp-char-count';
   };
 
   /* ── File upload ────────────────────────────────────────────── */
@@ -1399,7 +1478,7 @@
     wpShowUploadStatus('📤 Reading ' + file.name + '…', false);
     var fillSource = function(text) {
       var src = document.getElementById('wp-source');
-      if (src) { src.value = text.slice(0, 12000); wpCharCount(); }
+      if (src) { src.value = text; wpCharCount(); }  /* No character limit */
       var words = text.trim().split(/\s+/).filter(Boolean).length;
       var preview = text.slice(0, 100).replace(/\s+/g,' ').trim();
       wpShowUploadStatus('✅ ' + file.name + ' — ' + words + ' words\n"' + preview + (text.length > 100 ? '…' : '') + '"', false);

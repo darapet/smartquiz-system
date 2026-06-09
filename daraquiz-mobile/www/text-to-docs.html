@@ -639,6 +639,7 @@
     <div class="wp-tg">
       <button class="tb" title="AI Summarize" onclick="wpAISummarize()">🤖 Summarize</button>
       <button class="tb" title="AI Expand" onclick="wpAIExpand()">🤖 Expand</button>
+      <button class="tb" title="AI Rewrite — change tone and style" onclick="wpAIRewrite()">✏️ Rewrite</button>
       <button class="tb" title="AI Translate" onclick="wpAITranslate()">🌐 Translate</button>
     </div>
   </div><!-- /rp-insert -->
@@ -849,8 +850,8 @@
         </div>
 
         <div class="wp-sec-title">Paste Your Text</div>
-        <textarea class="wp-textarea" id="wp-source" rows="7" placeholder="Paste or type text here (up to 12,000 chars)…" oninput="wpCharCount()"></textarea>
-        <div id="wp-count" class="wp-char-count">0 / 12,000</div>
+        <textarea class="wp-textarea" id="wp-source" rows="7" placeholder="Paste or type any amount of text here…" oninput="wpCharCount()"></textarea>
+        <div id="wp-count" class="wp-char-count" style="font-size:10px;color:#9ca3af;margin-bottom:4px;"></div>
 
         <!-- Upload zone -->
         <div class="wp-upload-zone" id="wp-upload-zone"
@@ -897,6 +898,21 @@
           </div>
         </div>
 
+        <div class="wp-row" style="margin-top:6px;align-items:center;">
+          <div style="flex:1;">
+            <div class="wp-lbl">Target Pages</div>
+            <select class="wp-sel" id="wp-format-pages">
+              <option value="1" selected>1 page</option>
+              <option value="2">2 pages</option>
+              <option value="3">3 pages</option>
+              <option value="5">5 pages</option>
+              <option value="7">7 pages</option>
+              <option value="10">10 pages</option>
+              <option value="15">15 pages</option>
+              <option value="20">20 pages</option>
+            </select>
+          </div>
+        </div>
         <button class="wp-btn primary" id="wp-ai-btn" onclick="wpOpenStyleModal('format')" style="margin-top:8px;">✨ Format with AI</button>
         <button class="wp-btn secondary" onclick="wpUseAsIs()" style="margin-top:4px;">Use As-Is (no AI)</button>
         <div class="wp-hint" id="wp-ai-hint"></div>
@@ -1197,6 +1213,48 @@
     <div class="wp-modal-actions">
       <button class="wp-modal-btn" onclick="wpHideModal('wp-translate-modal')">Cancel</button>
       <button class="wp-modal-btn primary" onclick="wpDoTranslate()">🌐 Translate</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI Rewrite modal -->
+<div class="wp-modal-bg hidden" id="wp-rewrite-modal">
+  <div class="wp-modal-box" style="max-width:360px;">
+    <div class="wp-modal-title">✏️ AI Rewrite</div>
+    <div class="wp-modal-row">
+      <label class="wp-modal-lbl">Rewrite Style</label>
+      <select class="wp-modal-inp-sel" id="wp-rw-style">
+        <option>Full Rewrite</option>
+        <option>Polish &amp; Refine</option>
+        <option>Simplify Language</option>
+        <option>Make More Formal</option>
+        <option>Make More Casual</option>
+      </select>
+    </div>
+    <div class="wp-modal-row">
+      <label class="wp-modal-lbl">Target Tone</label>
+      <select class="wp-modal-inp-sel" id="wp-rw-tone">
+        <option>Professional</option>
+        <option>Formal</option>
+        <option>Academic</option>
+        <option>Creative</option>
+        <option>Casual</option>
+        <option>Technical</option>
+        <option>Persuasive</option>
+      </select>
+    </div>
+    <div class="wp-modal-row">
+      <label class="wp-modal-lbl">Reading Level</label>
+      <select class="wp-modal-inp-sel" id="wp-rw-reading">
+        <option>Simple</option>
+        <option selected>Standard</option>
+        <option>Advanced</option>
+        <option>Expert</option>
+      </select>
+    </div>
+    <div class="wp-modal-actions">
+      <button class="wp-modal-btn" onclick="wpHideModal('wp-rewrite-modal')">Cancel</button>
+      <button class="wp-modal-btn primary" id="wp-rw-btn" onclick="wpDoRewrite()">✏️ Rewrite with AI</button>
     </div>
   </div>
 </div>
