@@ -1609,17 +1609,32 @@
   function wpHandlePageOverflow(pageIdx) {
     var ed = document.getElementById('wp-editor-' + pageIdx);
     if (!ed || ed.scrollHeight <= ed.clientHeight) return;
+    /* Need at least 2 block elements so we can split without losing content */
+    if (ed.children.length <= 1) return;
     var lastEl = ed.lastElementChild;
     if (!lastEl) return;
-    var moved = lastEl.outerHTML || '';
     ed.removeChild(lastEl);
     wpPages[pageIdx] = ed.innerHTML;
-    if (pageIdx + 1 >= wpPages.length) {
-      if (wpPages.length >= MAX_PAGES) return;
-      wpPages.splice(pageIdx + 1, 0, moved);
-    } else {
-      wpPages[pageIdx + 1] = moved + wpPages[pageIdx + 1];
+
+    if (pageIdx + 1 < wpPages.length) {
+      /* Next page already exists — direct DOM move, no full re-render */
+      var nextEd = document.getElementById('wp-editor-' + (pageIdx + 1));
+      if (nextEd) {
+        nextEd.insertBefore(lastEl, nextEd.firstChild || null);
+        wpPages[pageIdx + 1] = nextEd.innerHTML;
+        wpCurrentPage = pageIdx + 1;
+        wpUpdatePageNav();
+        nextEd.focus();
+        var range0 = document.createRange();
+        range0.setStart(nextEd, 0); range0.collapse(true);
+        var sel0 = window.getSelection();
+        if (sel0) { sel0.removeAllRanges(); sel0.addRange(range0); }
+        return;
+      }
     }
+    /* Next page does not exist — create it then focus */
+    if (wpPages.length >= MAX_PAGES) return;
+    wpPages.splice(pageIdx + 1, 0, lastEl.outerHTML || '');
     wpCurrentPage = pageIdx + 1;
     wpRenderPages();
     setTimeout(function() {
@@ -1627,8 +1642,7 @@
       if (nextEd) {
         nextEd.focus();
         var range = document.createRange();
-        range.setStart(nextEd, 0);
-        range.collapse(true);
+        range.setStart(nextEd, 0); range.collapse(true);
         var sel = window.getSelection();
         if (sel) { sel.removeAllRanges(); sel.addRange(range); }
       }
