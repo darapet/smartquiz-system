@@ -801,6 +801,8 @@ body {
 
   /* Hide desktop file buttons in appbar — save space */
   .wp-appbar-btns { display: none; }
+  /* Print button always visible on mobile — no other way to print */
+  #wp-print-appbar-btn { display: inline-flex !important; align-items: center; gap: 4px; }
   .wp-ver-badge { display: none; }
 
   /* Larger appbar on mobile (56dp Material standard) */

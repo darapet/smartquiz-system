@@ -28,6 +28,7 @@
       background: rgba(15,12,41,.92);
       display: flex; align-items: center; justify-content: center;
       padding: 20px;
+      overflow-y: auto;
       transition: opacity .25s;
     }
     #wp-mode-overlay.hidden { opacity: 0; pointer-events: none; }
@@ -35,6 +36,10 @@
       background: #fff; border-radius: 18px; padding: 28px 28px 24px;
       max-width: 540px; width: 100%;
       box-shadow: 0 24px 60px rgba(0,0,0,.5);
+    }
+    @media(max-width:768px){
+      #wp-mode-overlay { align-items: flex-start; padding: 16px 12px 80px; }
+      .wp-mode-card { padding: 20px 16px 20px; }
     }
     .wp-mode-title {
       font-size: 20px; font-weight: 800; color: #1e1b4b;
@@ -302,7 +307,7 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       New
     </button>
-    <button class="wp-appbar-btn" onclick="wpPrint()" title="Print / Save as PDF (Ctrl+P)">
+    <button id="wp-print-appbar-btn" class="wp-appbar-btn" onclick="wpPrint()" title="Print / Save as PDF (Ctrl+P)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print
     </button>

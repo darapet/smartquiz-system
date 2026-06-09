@@ -1009,7 +1009,18 @@
       '• Page margins: ' + (marginMap[ds.margin] || '1in') + '\n' +
       '• Page size: ' + ds.page + '\n' +
       (ds.divider ? '• Insert <hr style="border:none;border-top:1px solid #e2e8f0;margin:1em 0;"> between every major section (before each <h2>)\n' : '') +
-      'Do NOT use separate <style> blocks — only inline style attributes.';
+      'Do NOT use separate <style> blocks — only inline style attributes.\n\n' +
+      '━━━ HUMANIZATION — MANDATORY ━━━\n' +
+      'Write in a natural, authentic human voice so the content passes any AI detection tool:\n' +
+      '• Vary sentence length — mix short punchy sentences with longer elaborative ones\n' +
+      '• Use natural transitions: "However,", "In practice,", "Worth noting here is", "That said,"\n' +
+      '• Include occasional rhetorical questions or observations to add human depth\n' +
+      '• Use contractions naturally where appropriate (e.g. "it\'s", "don\'t", "we\'re")\n' +
+      '• Vary paragraph length — not every paragraph should be the same size\n' +
+      '• NEVER use robotic AI phrases: "It is important to note that", "In conclusion,", "It can be seen that", "It is worth mentioning that", "Furthermore, it is essential"\n' +
+      '• Every sentence must feel uniquely crafted — no template-sounding repetition\n' +
+      '• Ground claims in specifics — real numbers, scenarios, or examples where possible\n' +
+      '• Write like a knowledgeable human expert, not an AI summarizer';
   }
 
   function wpApplyDocSettings(ds) {
@@ -1243,7 +1254,7 @@
     if (wpIsProcessing) return;
     wpIsProcessing = true;
     wpSetStatus('Summarizing…');
-    callAI('Summarize the following document in a well-structured HTML format. Use h1 for title, h2 for key sections, bullet points for key findings. Be concise but comprehensive. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote):\n\n' + text, 1200)
+    callAI('Summarize the following document in a well-structured HTML format. Use h1 for title, h2 for key sections, bullet points for key findings. Be concise but comprehensive. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote). IMPORTANT: Write in a natural human voice — vary sentence length, use contractions, avoid robotic AI phrases like "It is important to note" or "Furthermore". Sound like a knowledgeable human summarizing, not an AI tool:\n\n' + text, 1200)
       .then(function(html) {
         var clean = sanitizeHTML(html);
         if (clean) { wpLoadContent(clean); wpSetStatus('Summary generated ✅'); }
@@ -1260,7 +1271,7 @@
     if (wpIsProcessing) return;
     wpIsProcessing = true;
     wpSetStatus('Expanding document…');
-    callAI('Expand and elaborate on the following document content. Add more detail, examples, context, and depth. Maintain the same structure but make it significantly more comprehensive. Return ONLY clean HTML (h1,h2,h3,h4,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td):\n\n' + text, 2500)
+    callAI('Expand and elaborate on the following document content. Add more detail, examples, context, and depth. Maintain the same structure but make it significantly more comprehensive. Return ONLY clean HTML (h1,h2,h3,h4,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td). HUMANIZATION REQUIRED: Write in a natural, authentic human voice — mix short and long sentences, use contractions where natural, include real examples and specifics, avoid robotic AI phrases. The output must pass AI detection tools as genuine human writing:\n\n' + text, 2500)
       .then(function(html) {
         var clean = sanitizeHTML(html);
         if (clean) { wpLoadContent(clean); wpSetStatus('Document expanded ✅'); }
