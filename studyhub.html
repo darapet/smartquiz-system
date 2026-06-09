@@ -946,13 +946,17 @@ a{text-decoration:none;color:inherit;}
       <!-- Answer typing area (for AI questions) -->
       <div class="ait-type-answer-wrap" id="ait-type-answer-wrap">
         <textarea class="ait-type-answer-input" id="ait-type-answer" placeholder="Type your answer here…"></textarea>
-        <button class="ait-send-btn" onclick="aitSubmitAnswer()">Send Answer</button>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <button class="ait-send-btn" onclick="aitSubmitAnswer()">Send Answer</button>
+          <button class="ait-ctrl-btn ait-ctrl-btn-mic" id="ait-mic-answer" onclick="aitMicToggle('answer')" title="Speak your answer">🎤</button>
+        </div>
       </div>
 
       <!-- Q&A input (end mode) -->
       <div id="ait-qa-input-row" class="ait-qa-input-row" style="display:none;">
         <input class="ait-qa-input" id="ait-qa-input" placeholder="Ask your question…" onkeydown="if(event.key==='Enter')aitSendQA()">
         <button class="ait-qa-send" onclick="aitSendQA()">Send</button>
+        <button class="ait-ctrl-btn ait-ctrl-btn-mic" id="ait-mic-qa" onclick="aitMicToggle('qa')" title="Speak your question">🎤</button>
       </div>
 
       <!-- Controls -->
@@ -968,6 +972,9 @@ a{text-decoration:none;color:inherit;}
         </div>
         <div class="ait-ctrl-row">
           <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()">💬 I Have a Question</button>
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-mic" id="ait-mic-main" onclick="aitMicToggle('main')" title="Speak to AI teacher">🎤 Speak</button>
         </div>
         <div class="ait-ctrl-row">
           <button class="ait-ctrl-btn ait-ctrl-btn-end" onclick="aitEndSession()">⏹ End Session</button>
@@ -2537,8 +2544,101 @@ window.addEventListener('load', ()=>{
 });
 
 /* Stop mic/speech when leaving page */
-window.addEventListener('beforeunload', ()=>{ aitCleanupOnLeave(); });
-window.addEventListener('visibilitychange', ()=>{ if(document.hidden) aitCleanupOnLeave(); });
+window.addEventListener('beforeunload', ()=>{ aitCleanupOnLeave(); aitMicStop(); });
+window.addEventListener('visibilitychange', ()=>{ if(document.hidden){ aitCleanupOnLeave(); aitMicStop(); } });
+
+/* ── MIC RECORDING — Groq Whisper STT ──────────────────────── */
+var _aitMic = { active:false, mediaRecorder:null, chunks:[], stream:null, target:'answer', _autoStop:null };
+
+function aitMicToggle(target){
+  /* Echo guard: never record while AI is speaking */
+  if(_ait.speaking){
+    shToast('⏳ Wait for the AI to finish speaking first.');
+    return;
+  }
+  if(_aitMic.active){ aitMicStop(); return; }
+  _aitMic.target = target || 'answer';
+  aitMicStart();
+}
+
+function aitMicStart(){
+  if(_ait.speaking) return;
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    _aitMic.stream = stream;
+    _aitMic.chunks = [];
+    _aitMic.active = true;
+    aitMicSetUI(true);
+    var mr = new MediaRecorder(stream, {mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm'});
+    _aitMic.mediaRecorder = mr;
+    mr.ondataavailable = function(e){ if(e.data.size > 0) _aitMic.chunks.push(e.data); };
+    mr.onstop = function(){
+      var blob = new Blob(_aitMic.chunks, {type:'audio/webm'});
+      _aitMic.active = false;
+      aitMicSetUI(false);
+      aitMicTranscribe(blob, _aitMic.target);
+      if(_aitMic.stream){ _aitMic.stream.getTracks().forEach(function(t){ t.stop(); }); _aitMic.stream = null; }
+    };
+    mr.start();
+    /* Auto-stop after 30s */
+    _aitMic._autoStop = setTimeout(function(){ if(_aitMic.active) aitMicStop(); }, 30000);
+  }).catch(function(err){
+    shToast('🎤 Mic access denied: ' + err.message);
+  });
+}
+
+function aitMicStop(){
+  if(_aitMic._autoStop){ clearTimeout(_aitMic._autoStop); _aitMic._autoStop = null; }
+  if(_aitMic.mediaRecorder && _aitMic.mediaRecorder.state !== 'inactive'){
+    try{ _aitMic.mediaRecorder.stop(); } catch(e){}
+  }
+  _aitMic.active = false;
+  aitMicSetUI(false);
+}
+
+function aitMicSetUI(on){
+  ['ait-mic-main','ait-mic-answer','ait-mic-qa'].forEach(function(id){
+    var b = document.getElementById(id);
+    if(b){ b.classList.toggle('listening', on); b.textContent = on ? '⏹ Stop' : (id === 'ait-mic-main' ? '🎤 Speak' : '🎤'); }
+  });
+}
+
+async function aitMicTranscribe(blob, target){
+  var keys = aitGetKeys();
+  if(!keys.length){ shToast('No API key — cannot transcribe.'); return; }
+  var fd = new FormData();
+  fd.append('file', blob, 'rec.webm');
+  fd.append('model', 'whisper-large-v3-turbo');
+  fd.append('response_format', 'json');
+  try{
+    var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method:'POST',
+      headers:{Authorization:'Bearer ' + keys[Math.floor(Math.random()*keys.length)]},
+      body: fd
+    });
+    var j = await res.json();
+    var txt = (j.text || '').trim();
+    if(!txt) return;
+    if(target === 'qa'){
+      var inp = document.getElementById('ait-qa-input');
+      if(inp){ inp.value = txt; aitSendQA(); }
+    } else {
+      var ta = document.getElementById('ait-type-answer');
+      if(ta){ ta.value = txt; aitSubmitAnswer(); }
+    }
+  } catch(e){ shToast('Transcription error: ' + e.message); }
+}
+
+/* ── PATCH aitSpeak to auto-restart mic on listening mode ─── */
+(function(){
+  var _origSpeak = aitSpeak;
+  aitSpeak = function(text, onEnd){
+    /* Stop mic immediately when AI starts speaking — no echo */
+    if(_aitMic.active) aitMicStop();
+    _origSpeak(text, function(){
+      if(onEnd) onEnd();
+    });
+  };
+})();
 </script>
 </body>
 </html>
