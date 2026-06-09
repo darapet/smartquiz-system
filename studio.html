@@ -19,6 +19,8 @@
         html,body{overflow:hidden;height:100vh}
         #dts-app{display:flex;flex-direction:column;overflow:hidden}
         #dts-main{flex:1;overflow:hidden;position:relative;padding-bottom:var(--dts-footer-h,80px)}
+        /* FIX: welcome overlay must fill parent so suggestion buttons are always clickable */
+        .dts-welcome{inset:0!important;padding-bottom:28px!important}
         .dts-footer{left:var(--aqs-sidebar-w,260px)!important}
         @media(max-width:768px){.dts-footer{left:0!important}}
         .dts-history-item.active{background:rgba(99,102,241,0.3);color:white}
