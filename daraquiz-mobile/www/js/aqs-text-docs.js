@@ -49,7 +49,36 @@
     wpSetupContextMenu();
     wpSetupImageDrop();
     wpUpdateStats();
-    wpSetStatus('Word Processor ready — v3.2');
+    /* ── Import study content sent from study.html ── */
+    (function() {
+      try {
+        var raw = localStorage.getItem('aqs_wdoc_import');
+        if (!raw) return;
+        var imp = JSON.parse(raw);
+        if (!imp || !imp.html || (Date.now() - imp.ts) > 120000) return; /* ignore if older than 2 min */
+        localStorage.removeItem('aqs_wdoc_import');
+        /* Split imported HTML into pages by heading boundaries */
+        var parser = new DOMParser();
+        var doc2   = parser.parseFromString(imp.html, 'text/html');
+        /* Chunk into rough page-sized pieces (~2500 chars each) */
+        var chunks = [], curChunk = '';
+        Array.from(doc2.body.childNodes).forEach(function(node) {
+          var piece = node.outerHTML || (node.textContent ? '<p>' + node.textContent + '</p>' : '');
+          if (!piece.trim()) return;
+          if (curChunk.length + piece.length > 2500 && curChunk) {
+            chunks.push(curChunk); curChunk = piece;
+          } else { curChunk += piece; }
+        });
+        if (curChunk) chunks.push(curChunk);
+        if (!chunks.length) return;
+        wpPages = chunks;
+        wpCurrentPage = 0;
+        wpRenderPages();
+        wpUpdateStats();
+        wpSetStatus('📚 Study content imported from AI Study ✅');
+      } catch(e) { /* silently ignore import errors */ }
+    })();
+    wpSetStatus('Word Processor ready — v3.3');
     wpAdjustHeaderOffset();
     wpSetupDocSettingsListeners();
   });
