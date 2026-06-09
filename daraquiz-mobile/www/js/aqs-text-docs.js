@@ -2700,7 +2700,7 @@
     setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
   }
 
-  /* Save document content to localStorage under "Documents" key */
+  /* Save document content to localStorage under "Documents" key, then show popup */
   function wpSaveToLocalDoc(text, filename, mimeType) {
     try {
       var WP_DOCS_KEY = 'aqs_local_documents';
@@ -2712,6 +2712,57 @@
       if (docs.length > 30) docs = docs.slice(0, 30);
       localStorage.setItem(WP_DOCS_KEY, JSON.stringify(docs));
     } catch(storErr) { /* silent — storage may be full */ }
+    wpShowSavedPopup(filename);
+  }
+
+  /* Show a popup telling the user the file is in My Docs with a direct link button */
+  function wpShowSavedPopup(filename) {
+    /* Remove any existing popup */
+    var existing = document.getElementById('wp-saved-popup');
+    if (existing) existing.remove();
+    var popup = document.createElement('div');
+    popup.id = 'wp-saved-popup';
+    popup.style.cssText = [
+      'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);',
+      'background:#1e293b;color:#fff;',
+      'padding:14px 18px 12px;border-radius:18px;',
+      'box-shadow:0 6px 32px rgba(0,0,0,.45);',
+      'z-index:999999;max-width:300px;width:90%;',
+      'font-size:13px;line-height:1.5;text-align:center;',
+      'animation:wpPopIn .25s ease;'
+    ].join('');
+    popup.innerHTML =
+      '<div style="font-size:15px;font-weight:700;margin-bottom:4px;">✅ Saved to My Docs!</div>' +
+      '<div style="opacity:.75;font-size:12px;margin-bottom:10px;word-break:break-all;">' + filename + '</div>' +
+      '<button id="wp-goto-mydocs-btn" style="' +
+        'background:#6366f1;color:#fff;border:none;border-radius:12px;' +
+        'padding:9px 20px;font-size:13px;font-weight:700;cursor:pointer;width:100%;' +
+        'margin-bottom:6px;letter-spacing:.3px;' +
+      '">📁 Go to My Docs →</button>' +
+      '<button id="wp-saved-popup-close" style="' +
+        'background:transparent;color:rgba(255,255,255,.5);border:none;' +
+        'font-size:12px;cursor:pointer;padding:2px 8px;' +
+      '">Dismiss</button>';
+    /* Inject keyframe if not already present */
+    if (!document.getElementById('wp-popin-style')) {
+      var st = document.createElement('style');
+      st.id = 'wp-popin-style';
+      st.textContent = '@keyframes wpPopIn{from{opacity:0;transform:translateX(-50%) translateY(18px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}';
+      document.head.appendChild(st);
+    }
+    document.body.appendChild(popup);
+    /* Go to My Docs button */
+    document.getElementById('wp-goto-mydocs-btn').addEventListener('click', function() {
+      popup.remove();
+      if (typeof wpOpenSidebar === 'function') wpOpenSidebar();
+      if (typeof wpSwitchTab === 'function') wpSwitchTab('mydocs');
+    });
+    /* Dismiss button */
+    document.getElementById('wp-saved-popup-close').addEventListener('click', function() {
+      popup.remove();
+    });
+    /* Auto-dismiss after 8 s */
+    setTimeout(function() { if (popup.parentNode) popup.remove(); }, 8000);
   }
 
   /* ── Helpers ────────────────────────────────────────────────── */
