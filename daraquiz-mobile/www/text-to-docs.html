@@ -22,10 +22,10 @@
   <script type="module" src="js/aqs-firebase.js"></script>
 
   <style>
-    /* ── Countdown bar: sit BELOW the fixed wp-appbar (48px tall), not over it ── */
+    /* ── Countdown bar: sit BELOW the full header (appbar 48px + ribbon ~80px = 128px total) ── */
     #aqs-countdown-bar {
-      top: 48px !important;
-      z-index: 1080 !important;
+      top: var(--wp-header-h, 128px) !important;
+      z-index: 890 !important; /* below ribbon (z-index:900) so it never covers toolbar buttons */
     }
 
     /* ── Mode overlay ─────────────────────────── */
