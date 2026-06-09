@@ -87,7 +87,7 @@
             <form class="std-search-form" id="std-search-form" autocomplete="off" onsubmit="return false;">
                 <input type="text" class="std-search-input" id="std-search-input"
                     placeholder="Type a topic, subject or book title… e.g. 'Photosynthesis', 'World War 2', 'The Great Gatsby'" />
-                <button type="button" class="std-search-btn">
+                <button type="button" class="std-search-btn" onclick="(function(){var q=(document.getElementById('std-search-input')||{}).value||'';if(q.trim()){if(window._aqsStudySearch){window._aqsStudySearch();}else{var f=document.getElementById('std-search-form');if(f)f.dispatchEvent(new Event('submit'));}}})()">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     Study It
                 </button>
