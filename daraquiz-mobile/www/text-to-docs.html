@@ -214,6 +214,42 @@
     #wp-print-root { display: none; }
     @media print { #wp-print-root { display: block !important; } body > *:not(#wp-print-root) { display: none !important; } }
 
+    /* ── Print format picker ─────────────────── */
+    .wp-print-fmt-grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 18px;
+    }
+    @media(max-width:480px){ .wp-print-fmt-grid { grid-template-columns: 1fr 1fr; gap: 8px; } }
+    .wp-print-fmt-btn {
+      display: flex; flex-direction: column; align-items: center; gap: 5px;
+      padding: 16px 10px; border: 2px solid #e2e8f0; border-radius: 12px;
+      background: #f8f9ff; cursor: pointer; transition: all .18s; font-family: inherit;
+      text-align: center;
+    }
+    .wp-print-fmt-btn:hover {
+      border-color: #6366f1; background: #eef2ff;
+      transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,.15);
+    }
+    .wp-print-fmt-btn .fmt-icon { font-size: 26px; line-height: 1; }
+    .wp-print-fmt-btn .fmt-name { font-size: 12.5px; font-weight: 700; color: #1e293b; }
+    .wp-print-fmt-btn .fmt-desc { font-size: 10.5px; color: #6b7280; }
+
+    /* ── Print preview modal ─────────────────── */
+    #wp-print-preview-modal {
+      z-index: 1700; align-items: flex-start; padding: 14px;
+    }
+    #wp-print-preview-modal .wp-modal-box {
+      max-width: 860px; width: 100%; max-height: 92vh;
+      display: flex; flex-direction: column;
+    }
+    #wp-print-preview-header {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 12px; flex-shrink: 0; flex-wrap: wrap;
+    }
+    #wp-print-preview-body {
+      flex: 1; overflow-y: auto; border: 1px solid #e2e8f0;
+      border-radius: 8px; background: #f1f3f6; padding: 20px;
+    }
+
     /* ── Fixed viewport height & width ──────────── */
     html, body {
       height: 100%;
@@ -339,9 +375,9 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
       New
     </button>
-    <button id="wp-print-appbar-btn" class="wp-appbar-btn" onclick="wpPrint()" title="Print / Save as PDF (Ctrl+P)">
+    <button id="wp-print-appbar-btn" class="wp-appbar-btn" onclick="wpShowPrintFormatModal()" title="Print / Export (Ctrl+P)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-      Print
+      Print / Export
     </button>
 
     <!-- Download dropdown -->
@@ -377,7 +413,7 @@
     <div id="wp-ai-status" class="wp-ai-status ready" style="padding:3px 8px;font-size:11px;margin-bottom:0;display:flex;align-items:center;gap:4px;border-radius:5px;border:1px solid #bbf7d0;background:#f0fdf4;color:#15803d;">
       <span id="wp-ai-si">✅</span><span id="wp-ai-st">AI Ready</span>
     </div>
-    <span class="wp-ver-badge">v3.1</span>
+    <span class="wp-ver-badge">v3.2</span>
     <span id="wp-sb-msg" style="font-size:11px;color:#a5b4fc;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
   </div>
 </div>
@@ -1355,6 +1391,83 @@
 
 <!-- Sidebar backdrop (closes sidebar on outside tap) -->
 <div class="wp-sidebar-backdrop" id="wp-sidebar-backdrop" onclick="wpCloseSidebar()"></div>
+
+<!-- ════════════════════════════════════════════════
+     PRINT / EXPORT — FORMAT PICKER MODAL
+════════════════════════════════════════════════ -->
+<div class="wp-modal-bg hidden" id="wp-print-fmt-modal">
+  <div class="wp-modal-box" style="max-width:540px;">
+    <div class="wp-modal-title" style="font-size:17px;display:flex;align-items:center;gap:9px;margin-bottom:6px;">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / Export Document
+    </div>
+    <p style="font-size:12px;color:#6b7280;margin-bottom:18px;">Choose a format — a preview will appear before the file is downloaded.</p>
+    <div class="wp-print-fmt-grid">
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('pdf')">
+        <span class="fmt-icon">📄</span>
+        <span class="fmt-name">PDF</span>
+        <span class="fmt-desc">Best for printing &amp; sharing</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('docx')">
+        <span class="fmt-icon">📝</span>
+        <span class="fmt-name">Word (.docx)</span>
+        <span class="fmt-desc">Editable in Microsoft Word</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('csv')">
+        <span class="fmt-icon">📊</span>
+        <span class="fmt-name">Excel / CSV</span>
+        <span class="fmt-desc">Spreadsheet data</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('html')">
+        <span class="fmt-icon">🌐</span>
+        <span class="fmt-name">HTML</span>
+        <span class="fmt-desc">Web-ready document</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('txt')">
+        <span class="fmt-icon">📃</span>
+        <span class="fmt-name">Plain Text</span>
+        <span class="fmt-desc">Universal text format</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('rtf')">
+        <span class="fmt-icon">📋</span>
+        <span class="fmt-name">RTF</span>
+        <span class="fmt-desc">Rich Text Format</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('md')">
+        <span class="fmt-icon">🖊️</span>
+        <span class="fmt-name">Markdown</span>
+        <span class="fmt-desc">Developer-friendly</span>
+      </button>
+      <button class="wp-print-fmt-btn" onclick="wpSelectPrintFormat('latex')">
+        <span class="fmt-icon" style="font-style:italic;font-family:serif;font-size:22px;">Σ</span>
+        <span class="fmt-name">LaTeX</span>
+        <span class="fmt-desc">Academic typesetting</span>
+      </button>
+    </div>
+    <div class="wp-modal-actions">
+      <button class="wp-modal-btn" onclick="wpHideModal('wp-print-fmt-modal')">✕ Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════
+     PRINT PREVIEW MODAL
+════════════════════════════════════════════════ -->
+<div class="wp-modal-bg hidden" id="wp-print-preview-modal">
+  <div class="wp-modal-box" style="max-width:860px;width:100%;max-height:92vh;display:flex;flex-direction:column;">
+    <div id="wp-print-preview-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      <span style="font-size:15px;font-weight:700;color:#1e293b;">Document Preview</span>
+      <span id="wp-preview-fmt-badge" style="background:#eef2ff;color:#4f46e5;border-radius:5px;padding:2px 10px;font-size:11px;font-weight:700;"></span>
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="wp-modal-btn" style="border-color:#6366f1;color:#6366f1;" onclick="wpHideModal('wp-print-preview-modal');wpShowPrintFormatModal();">← Change Format</button>
+        <button class="wp-modal-btn primary" id="wp-preview-dl-btn" onclick="wpConfirmPrintDownload()">⬇️ Download</button>
+        <button class="wp-modal-btn" onclick="wpHideModal('wp-print-preview-modal')">✕ Close</button>
+      </div>
+    </div>
+    <div id="wp-print-preview-body"></div>
+  </div>
+</div>
 
 <!-- Print root (content cloned here for print) -->
 <div id="wp-print-root"></div>
