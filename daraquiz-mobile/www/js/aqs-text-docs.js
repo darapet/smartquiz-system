@@ -1699,7 +1699,16 @@
           if (ed.scrollHeight > ed.clientHeight) { wpHandlePageOverflow(idx); }
         });
         ed.addEventListener('keydown', function(e) {
-          // Already handled via document keydown handler
+          if (e.key === 'Enter') {
+            /* After the browser inserts the new block, check for overflow */
+            var capturedIdx = idx;
+            setTimeout(function() {
+              var thisEd = document.getElementById('wp-editor-' + capturedIdx);
+              if (thisEd && thisEd.scrollHeight > thisEd.clientHeight + 2) {
+                wpHandlePageOverflow(capturedIdx);
+              }
+            }, 0);
+          }
         });
         ed.addEventListener('mouseup', wpUpdateToolbarState);
         ed.addEventListener('keyup', wpUpdateToolbarState);
@@ -1772,47 +1781,137 @@
     wpUpdatePageNav();
   };
 
-  function wpHandlePageOverflow(pageIdx) {
-    var ed = document.getElementById('wp-editor-' + pageIdx);
-    if (!ed || ed.scrollHeight <= ed.clientHeight) return;
-    /* Need at least 2 block elements so we can split without losing content */
-    if (ed.children.length <= 1) return;
-    var lastEl = ed.lastElementChild;
-    if (!lastEl) return;
-    ed.removeChild(lastEl);
-    wpPages[pageIdx] = ed.innerHTML;
+  /* ── Push one or more elements to the top of the next page ────── */
+  function wpPushBlocksToNextPage(pageIdx, blocks) {
+    /* blocks: array of DOM elements or array of HTML strings */
+    var htmlToMove = blocks.map(function(b) {
+      return (typeof b === 'string') ? b : (b.outerHTML || '');
+    }).join('');
+    if (!htmlToMove) return;
+
+    var focusNext = function(nextEd, created) {
+      if (!nextEd) return;
+      wpCurrentPage = pageIdx + 1;
+      wpUpdatePageNav();
+      nextEd.focus();
+      try {
+        var r = document.createRange();
+        r.setStart(nextEd.firstChild || nextEd, 0);
+        r.collapse(true);
+        var s = window.getSelection();
+        if (s) { s.removeAllRanges(); s.addRange(r); }
+      } catch (ex) {}
+      /* Cascade: if the next page itself overflows, continue reflowing */
+      setTimeout(function() {
+        var ed2 = document.getElementById('wp-editor-' + (pageIdx + 1));
+        if (ed2 && ed2.scrollHeight > ed2.clientHeight + 2) {
+          wpHandlePageOverflow(pageIdx + 1);
+        }
+      }, 30);
+    };
 
     if (pageIdx + 1 < wpPages.length) {
-      /* Next page already exists — direct DOM move, no full re-render */
       var nextEd = document.getElementById('wp-editor-' + (pageIdx + 1));
       if (nextEd) {
-        nextEd.insertBefore(lastEl, nextEd.firstChild || null);
+        var tmp = document.createElement('div');
+        tmp.innerHTML = htmlToMove;
+        var frag = document.createDocumentFragment();
+        while (tmp.firstChild) frag.appendChild(tmp.firstChild);
+        nextEd.insertBefore(frag, nextEd.firstChild || null);
         wpPages[pageIdx + 1] = nextEd.innerHTML;
-        wpCurrentPage = pageIdx + 1;
-        wpUpdatePageNav();
-        nextEd.focus();
-        var range0 = document.createRange();
-        range0.setStart(nextEd, 0); range0.collapse(true);
-        var sel0 = window.getSelection();
-        if (sel0) { sel0.removeAllRanges(); sel0.addRange(range0); }
+        focusNext(nextEd, false);
         return;
       }
     }
-    /* Next page does not exist — create it then focus */
+    /* Next page does not exist — create it */
     if (wpPages.length >= MAX_PAGES) return;
-    wpPages.splice(pageIdx + 1, 0, lastEl.outerHTML || '');
-    wpCurrentPage = pageIdx + 1;
+    wpPages.splice(pageIdx + 1, 0, htmlToMove);
     wpRenderPages();
     setTimeout(function() {
-      var nextEd = document.getElementById('wp-editor-' + (pageIdx + 1));
-      if (nextEd) {
-        nextEd.focus();
-        var range = document.createRange();
-        range.setStart(nextEd, 0); range.collapse(true);
-        var sel = window.getSelection();
-        if (sel) { sel.removeAllRanges(); sel.addRange(range); }
-      }
+      focusNext(document.getElementById('wp-editor-' + (pageIdx + 1)), true);
     }, 100);
+  }
+
+  function wpHandlePageOverflow(pageIdx) {
+    var ed = document.getElementById('wp-editor-' + pageIdx);
+    if (!ed) return;
+    if (ed.scrollHeight <= ed.clientHeight + 2) return;
+
+    var lastEl = ed.lastElementChild;
+    if (!lastEl) return;
+
+    /* ── Case 1: multiple direct children — move the last one ────── */
+    if (ed.children.length >= 2) {
+      ed.removeChild(lastEl);
+      wpPages[pageIdx] = ed.innerHTML;
+      wpPushBlocksToNextPage(pageIdx, [lastEl]);
+      return;
+    }
+
+    /* ── Case 2: single child that is empty (e.g. <p><br></p>) ───── */
+    var isEmpty = !lastEl.textContent.trim() ||
+                  lastEl.innerHTML.replace(/&nbsp;/gi, '').trim() === '' ||
+                  lastEl.innerHTML === '<br>';
+    if (isEmpty) {
+      ed.removeChild(lastEl);
+      wpPages[pageIdx] = ed.innerHTML;
+      wpPushBlocksToNextPage(pageIdx, [lastEl]);
+      return;
+    }
+
+    /* ── Case 3: single child with multiple inline children ──────── */
+    /* Try removing inline nodes from the end until the page fits */
+    var child = ed.firstElementChild;
+    if (child && child.childNodes.length > 1) {
+      var moved = [];
+      while (child.childNodes.length > 1 && ed.scrollHeight > ed.clientHeight + 2) {
+        var lastNode = child.lastChild;
+        moved.unshift(lastNode.cloneNode(true));
+        child.removeChild(lastNode);
+      }
+      if (moved.length > 0) {
+        /* Wrap moved nodes in the same tag as the parent */
+        var tag = child.tagName.toLowerCase();
+        var overflowEl = document.createElement(tag);
+        moved.forEach(function(n) { overflowEl.appendChild(n); });
+        wpPages[pageIdx] = ed.innerHTML;
+        wpPushBlocksToNextPage(pageIdx, [overflowEl]);
+      }
+      return;
+    }
+
+    /* ── Case 4: truly single text node in a single block ────────── */
+    /* Split the text at a word boundary near the overflow point.     */
+    var textEl = ed.firstElementChild || ed;
+    var fullText = textEl.textContent || '';
+    if (!fullText) return;
+    var words = fullText.split(/(\s+)/);
+    if (words.length <= 2) return; /* can't split a 1-word paragraph */
+
+    /* Binary search for the split point */
+    var lo = 1, hi = words.length - 1;
+    while (lo < hi) {
+      var mid = Math.floor((lo + hi + 1) / 2);
+      textEl.textContent = words.slice(0, mid).join('');
+      if (ed.scrollHeight <= ed.clientHeight + 2) { lo = mid; } else { hi = mid - 1; }
+    }
+    var keepText     = words.slice(0, lo).join('');
+    var overflowText = words.slice(lo).join('').trim();
+
+    if (!keepText || !overflowText) {
+      textEl.textContent = fullText; /* restore */
+      return;
+    }
+
+    /* Restore keep portion */
+    textEl.textContent = keepText;
+    wpPages[pageIdx] = ed.innerHTML;
+
+    /* Build overflow block */
+    var tag2 = (textEl.tagName || 'P').toLowerCase();
+    var overflowElB = document.createElement(tag2);
+    overflowElB.textContent = overflowText;
+    wpPushBlocksToNextPage(pageIdx, [overflowElB]);
   }
 
   /* ── Post-load reflow: move overflow blocks to next pages ─────── */
@@ -1828,29 +1927,60 @@
       if (!ed) continue;
       /* Need at least 4px headroom to avoid spurious splits */
       if (ed.scrollHeight <= ed.clientHeight + 4) continue;
-      /* Need at least 2 children to split without data loss */
-      if (ed.children.length <= 1) continue;
+
       var lastEl = ed.lastElementChild;
       if (!lastEl) continue;
-      ed.removeChild(lastEl);
+
+      var blockToMove = null;
+
+      if (ed.children.length >= 2) {
+        /* Multiple children: move last one */
+        ed.removeChild(lastEl);
+        blockToMove = lastEl;
+      } else {
+        /* Single child */
+        var isEmpty2 = !lastEl.textContent.trim() ||
+                       lastEl.innerHTML.replace(/&nbsp;/gi,'').trim() === '' ||
+                       lastEl.innerHTML === '<br>';
+        if (isEmpty2) {
+          ed.removeChild(lastEl);
+          blockToMove = lastEl;
+        } else if (lastEl.childNodes.length > 1) {
+          /* Has multiple inline nodes — peel from end */
+          var moved2 = [];
+          while (lastEl.childNodes.length > 1 && ed.scrollHeight > ed.clientHeight + 4) {
+            var ln = lastEl.lastChild;
+            moved2.unshift(ln.cloneNode(true));
+            lastEl.removeChild(ln);
+          }
+          if (moved2.length > 0) {
+            var wrapTag = lastEl.tagName.toLowerCase();
+            var wrapper = document.createElement(wrapTag);
+            moved2.forEach(function(n){ wrapper.appendChild(n); });
+            blockToMove = wrapper;
+          }
+        }
+        /* else: truly single text in single block — skip, can't split safely here */
+      }
+
+      if (!blockToMove) continue;
       wpPages[pi] = ed.innerHTML;
 
       if (pi + 1 < wpPages.length) {
-        /* Next page exists — move directly without full re-render */
         var nextEd = document.getElementById('wp-editor-' + (pi + 1));
         if (nextEd) {
-          nextEd.insertBefore(lastEl, nextEd.firstChild || null);
+          nextEd.insertBefore(blockToMove, nextEd.firstChild || null);
           wpPages[pi + 1] = nextEd.innerHTML;
-          var nextPi = pi; /* capture for closure */
+          var nextPi = pi;
           setTimeout(function() { wpDoReflow(nextPi, iterations + 1); }, 60);
           return;
         }
       }
       /* Must create a new page */
       if (wpPages.length >= MAX_PAGES) break;
-      wpPages.splice(pi + 1, 0, lastEl.outerHTML || '');
+      wpPages.splice(pi + 1, 0, blockToMove.outerHTML || '');
       wpRenderPages(true);
-      var capPi = pi; /* capture for closure */
+      var capPi = pi;
       setTimeout(function() { wpDoReflow(capPi, iterations + 1); }, 120);
       return;
     }
