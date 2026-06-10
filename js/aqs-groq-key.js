@@ -101,7 +101,9 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
     async function _providerFetch(url, keys, idxKey, bodyObj, extraOpts, modelOverride) {
         if (!keys.length) return null;
         var model    = modelOverride || 'unknown';
-        var body     = Object.assign({}, bodyObj, { model: model });
+        /* bodyObj.model takes priority — lets callers pin a specific model;
+           the global setting is only the default, not a forced override.   */
+        var body     = Object.assign({ model: model }, bodyObj);
         var startIdx = _getIdx(idxKey, keys);
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
@@ -118,6 +120,17 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
                     body:    JSON.stringify(body)
                 }));
                 if (res.status === 429) { _markRateLimited(key); _setIdx(idxKey, idx + 1, keys); continue; }
+                /* 401 = bad key — skip to next key slot */
+                if (res.status === 401) {
+                    console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'auth error (401) — skipping key');
+                    _setIdx(idxKey, idx + 1, keys); continue;
+                }
+                /* Any other non-2xx (e.g. 400 deprecated model, 422) — bail out so the
+                   next provider (Mistral / HuggingFace) is tried by groqFetch().       */
+                if (!res.ok) {
+                    console.warn('[aqs-ai]', url.split('/')[2], 'HTTP', res.status, '— falling back to next provider');
+                    return null;
+                }
                 _setIdx(idxKey, idx + 1, keys);
                 return res;
             } catch(e) {
