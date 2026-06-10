@@ -740,54 +740,146 @@ body {
 
 /* ── Print area ── */
 .wp-print-root { display: none; }
+
+/* ══ PROFESSIONAL PRINT STYLES ═══════════════════════════════════
+   @page sets margins; each .wp-page becomes one physical page.   */
+@page {
+  size: letter portrait;
+  margin: 20mm 25mm 18mm 25mm;
+}
+
 @media print {
-  /* ── When printing via print root (mobile hand-off or Ctrl+P button):
-     hide EVERYTHING except the print root so only the clean document
-     pages come out — no toolbar, ribbon, sidebar, or editor chrome. ── */
+  /* ── Colour preservation ── */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* ── Base ── */
+  html { font-size: 10pt !important; }
+  body { background: #fff !important; color: #000 !important; margin: 0 !important; padding: 0 !important; }
+
+  /* ── Button-triggered print (wp-printing class on body):
+     hide every element except the clean print root ── */
   body.wp-printing > *:not(#wp-print-root) { display: none !important; }
-  body.wp-printing #wp-print-root {
+  body.wp-printing #wp-print-root { display: block !important; margin: 0 !important; padding: 0 !important; }
+
+  /* ── One .wp-page = one printed page ── */
+  body.wp-printing .wp-page {
     display: block !important;
-    margin: 0; padding: 0;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
   }
-  body.wp-printing #wp-print-root .wp-page-editor {
-    border: none !important; box-shadow: none !important;
-    padding: 0 !important; margin: 0 !important;
+  body.wp-printing .wp-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
   }
 
-  /* ── Page header (title + date) ── */
+  /* ── Editor / inner content ── */
+  body.wp-printing .wp-page-editor,
+  body.wp-printing .wp-page-inner {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    font-family: 'Georgia', 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    line-height: 1.65 !important;
+    color: #000 !important;
+    background: transparent !important;
+  }
+
+  /* ── Headings ── */
+  body.wp-printing h1 { font-size: 18pt !important; line-height: 1.2 !important; margin: 0 0 8pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h2 { font-size: 14pt !important; line-height: 1.25 !important; margin: 12pt 0 6pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h3 { font-size: 12pt !important; line-height: 1.3 !important; margin: 10pt 0 5pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h4,
+  body.wp-printing h5,
+  body.wp-printing h6 { font-size: 11pt !important; margin: 7pt 0 3pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h1+p,
+  body.wp-printing h2+p,
+  body.wp-printing h3+p { page-break-before: avoid !important; }
+
+  /* ── Paragraphs & inline ── */
+  body.wp-printing p { margin: 0 0 7pt !important; orphans: 3 !important; widows: 3 !important; }
+  body.wp-printing a { color: #000 !important; text-decoration: none !important; }
+  body.wp-printing strong, body.wp-printing b { font-weight: 700 !important; }
+  body.wp-printing em, body.wp-printing i { font-style: italic !important; }
+
+  /* ── Lists ── */
+  body.wp-printing ul, body.wp-printing ol { padding-left: 18pt !important; margin: 0 0 7pt !important; }
+  body.wp-printing li { margin-bottom: 3pt !important; }
+
+  /* ── Tables ── */
+  body.wp-printing table { border-collapse: collapse !important; width: 100% !important; margin: 8pt 0 !important; }
+  body.wp-printing td, body.wp-printing th { border: 0.5pt solid #888 !important; padding: 4pt 6pt !important; font-size: 10pt !important; text-align: left !important; vertical-align: top !important; }
+  body.wp-printing th { background: #f0f0f0 !important; font-weight: 700 !important; }
+  body.wp-printing tr { page-break-inside: avoid !important; }
+
+  /* ── Code & pre ── */
+  body.wp-printing pre, body.wp-printing code { font-family: 'Courier New', Courier, monospace !important; font-size: 9pt !important; }
+  body.wp-printing pre { background: #f5f5f5 !important; border: 0.5pt solid #ccc !important; padding: 6pt !important; page-break-inside: avoid !important; }
+
+  /* ── Blockquote ── */
+  body.wp-printing blockquote { border-left: 2pt solid #aaa !important; padding-left: 10pt !important; margin: 6pt 0 !important; color: #444 !important; font-style: italic !important; }
+
+  /* ── Images ── */
+  body.wp-printing img { max-width: 100% !important; page-break-inside: avoid !important; display: block !important; }
+
+  /* ── Page header (document title + date) ── */
   .wp-print-header {
     display: flex !important;
-    justify-content: space-between;
-    align-items: baseline;
-    border-bottom: 1px solid #d1d5db;
-    padding-bottom: 5pt;
-    margin-bottom: 14pt;
-    font-size: 8.5pt;
-    color: #6b7280;
+    justify-content: space-between !important;
+    align-items: baseline !important;
+    border-bottom: 0.75pt solid #bbb !important;
+    padding-bottom: 5pt !important;
+    margin-bottom: 14pt !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    color: #666 !important;
   }
   .wp-print-hdr-title {
-    font-weight: 700;
-    letter-spacing: 0.2pt;
-    max-width: 70%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    font-weight: 700 !important;
+    max-width: 65% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: #333 !important;
+    letter-spacing: 0.1pt !important;
+    text-transform: uppercase !important;
   }
-  .wp-print-hdr-date { font-weight: 400; white-space: nowrap; }
+  .wp-print-hdr-date { color: #888 !important; font-style: italic !important; white-space: nowrap !important; }
 
-  /* ── Page footer (page number) ── */
+  /* ── Page footer (centred page number) ── */
   .wp-print-footer {
     display: block !important;
-    text-align: center;
-    border-top: 1px solid #d1d5db;
-    padding-top: 5pt;
-    margin-top: 14pt;
-    font-size: 8.5pt;
-    color: #6b7280;
-    font-weight: 500;
+    text-align: center !important;
+    border-top: 0.75pt solid #bbb !important;
+    padding-top: 5pt !important;
+    margin-top: 18pt !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    color: #666 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.15pt !important;
   }
 
-  /* ── Direct window.print() fallback (no print root): clean up UI ── */
+  /* ── Hide screen-only decorations inside cloned pages ── */
+  .wp-page-label { display: none !important; }
+
+  /* ── Direct window.print() path (no wp-printing class): clean up UI ── */
   body:not(.wp-printing) .wp-appbar,
   body:not(.wp-printing) .wp-ribbon,
   body:not(.wp-printing) .wp-sidebar,
@@ -796,12 +888,26 @@ body {
   body:not(.wp-printing) .wp-status-bar,
   body:not(.wp-printing) .wp-mob-toggle,
   body:not(.wp-printing) .wp-mode-overlay,
-  body:not(.wp-printing) .wp-modal-backdrop { display: none !important; }
-  body:not(.wp-printing) .wp-layout { margin-top: 0 !important; }
-  body:not(.wp-printing) .wp-pages-area { padding: 0 !important; gap: 0 !important; }
-  body:not(.wp-printing) .wp-page { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; }
+  body:not(.wp-printing) .wp-modal-backdrop,
+  body:not(.wp-printing) .wp-bottom-nav,
+  body:not(.wp-printing) .wp-fab,
+  #_aqsNav, #aqs-upd-overlay { display: none !important; }
 
-  body { background: #fff !important; }
+  body:not(.wp-printing) .wp-layout { margin-top: 0 !important; }
+  body:not(.wp-printing) .wp-pages-area { padding: 0 !important; gap: 0 !important; background: #fff !important; }
+  body:not(.wp-printing) .wp-page {
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  body:not(.wp-printing) .wp-page:last-child { page-break-after: avoid !important; break-after: avoid !important; }
+  body:not(.wp-printing) .wp-page-editor,
+  body:not(.wp-printing) .wp-page-inner { height: auto !important; overflow: visible !important; }
 }
 
 /* ── Responsive ── */
