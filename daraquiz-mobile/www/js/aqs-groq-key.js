@@ -254,3 +254,55 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
     window.setGroqKey = function(){};
 
 })();
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTO-LOADER — pulls AI keys (Groq + Mistral + HuggingFace) from
+   Firebase settings on every page that includes this file.
+   Fires once Firebase is ready; never blocks page rendering.
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+    function _sanitizeKey(k) {
+        return typeof k === 'string' ? k.replace(/[^\x20-\x7E]/g, '').trim() : '';
+    }
+
+    function _loadAIKeysFromFirebase() {
+        if (typeof window.aqsAjax !== 'function') return;
+        window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
+            var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
+
+            /* Groq */
+            if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
+                var gKeys = s.groq_keys.map(_sanitizeKey).filter(function(k){ return k.length > 20; });
+                if (gKeys.length && typeof window.setGroqKeys === 'function') window.setGroqKeys(gKeys);
+            }
+            if (s.groq_model) window._AQS_GROQ_MODEL = s.groq_model;
+
+            /* Mistral */
+            if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
+                var mKeys = s.mistral_keys.map(_sanitizeKey).filter(function(k){ return k.length > 20; });
+                if (mKeys.length && typeof window.setMistralKeys === 'function') window.setMistralKeys(mKeys);
+            }
+            if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+
+            /* HuggingFace */
+            if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
+                var hKeys = s.hf_keys.map(_sanitizeKey).filter(function(k){ return k.length > 10; });
+                if (hKeys.length && typeof window.setHFKeys === 'function') window.setHFKeys(hKeys);
+            }
+            if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+
+            var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
+                      + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
+                      + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+            if (total > 0) {
+                console.log('[aqs-ai] Auto-loaded', total, 'AI key(s) from Firebase settings.');
+            }
+        });
+    }
+
+    if (window._aqsFirebaseReady) {
+        _loadAIKeysFromFirebase();
+    } else {
+        document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
+    }
+})();

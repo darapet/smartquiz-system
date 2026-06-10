@@ -319,7 +319,7 @@
         var ctrl = new AbortController();
         var tid  = setTimeout(function () { ctrl.abort(); }, 25000);
         return window.groqFetch(
-            { model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.5 },
+            { model: 'llama3-8b-8192', messages: messages, max_tokens: 2000, temperature: 0.5 },
             { signal: ctrl.signal }
         )
         .then(function (r) { clearTimeout(tid); return r.json(); })

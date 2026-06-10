@@ -113,10 +113,11 @@ window.addEventListener('DOMContentLoaded', function() {
             var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
             var setVal = function(id, val){ var el=document.getElementById(id); if(el && val!==undefined && val!==null) el.value=val; };
             var setChk = function(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; };
-            /* Load up to 5 Groq keys — support both new array and legacy single-key */
+            /* Load up to 20 Groq keys */
             var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : (s.groq_api_key ? [s.groq_api_key] : []);
-            for (var gi = 1; gi <= 5; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
+            for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
             setVal('aqs-groq-model', s.groq_model);
+            if (typeof window._aqsCacheAIKeys === 'function') window._aqsCacheAIKeys(s);
             setVal('aqs-music-url', s.bg_music_url);
             setChk('aqs-splash-enabled', s.splash_enabled);
             setVal('aqs-splash-template', s.splash_template || '1');
@@ -158,6 +159,28 @@ window.addEventListener('DOMContentLoaded', function() {
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
+
+<script>
+/* ─── AI Key sessionStorage cache — instant key restore on page reload ── */
+(function() {
+    var SS_KEY = 'aqs_admin_ai_keys_cache';
+    function _cacheKeys(s) {
+        try { sessionStorage.setItem(SS_KEY, JSON.stringify({ groq_keys: s.groq_keys||[], groq_model: s.groq_model||'' })); } catch(e) {}
+    }
+    function _restore() {
+        try {
+            var raw = sessionStorage.getItem(SS_KEY); if (!raw) return;
+            var cache = JSON.parse(raw);
+            var setVal = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+            var gkeys = cache.groq_keys || [];
+            for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
+            if (cache.groq_model) setVal('aqs-groq-model', cache.groq_model);
+        } catch(e) {}
+    }
+    window._aqsCacheAIKeys = _cacheKeys;
+    document.addEventListener('DOMContentLoaded', _restore);
+})();
+</script>
 </head>
 <body>
 
@@ -211,11 +234,71 @@ window.addEventListener('DOMContentLoaded', function() {
                 <input type="password" id="aqs-groq-key-5" placeholder="gsk_… (optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
+                <label for="aqs-groq-key-6">Groq API Key 6</label>
+                <input type="password" id="aqs-groq-key-6" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-7">Groq API Key 7</label>
+                <input type="password" id="aqs-groq-key-7" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-8">Groq API Key 8</label>
+                <input type="password" id="aqs-groq-key-8" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-9">Groq API Key 9</label>
+                <input type="password" id="aqs-groq-key-9" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-10">Groq API Key 10</label>
+                <input type="password" id="aqs-groq-key-10" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-11">Groq API Key 11</label>
+                <input type="password" id="aqs-groq-key-11" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-12">Groq API Key 12</label>
+                <input type="password" id="aqs-groq-key-12" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-13">Groq API Key 13</label>
+                <input type="password" id="aqs-groq-key-13" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-14">Groq API Key 14</label>
+                <input type="password" id="aqs-groq-key-14" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-15">Groq API Key 15</label>
+                <input type="password" id="aqs-groq-key-15" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-16">Groq API Key 16</label>
+                <input type="password" id="aqs-groq-key-16" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-17">Groq API Key 17</label>
+                <input type="password" id="aqs-groq-key-17" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-18">Groq API Key 18</label>
+                <input type="password" id="aqs-groq-key-18" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-19">Groq API Key 19</label>
+                <input type="password" id="aqs-groq-key-19" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-groq-key-20">Groq API Key 20</label>
+                <input type="password" id="aqs-groq-key-20" placeholder="gsk_… (optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
                 <label for="aqs-groq-model">Default Model</label>
                 <select id="aqs-groq-model">
                     <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended)</option>
                     <option value="llama-3.1-70b-versatile">llama-3.1-70b-versatile</option>
-                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Fast)</option>
+                    <option value="llama3-8b-8192">llama3-8b-8192 (Fast)</option>
                     <option value="mixtral-8x7b-32768">Mixtral-8x7B</option>
                     <option value="gemma2-9b-it">Gemma 2 9B</option>
                 </select>
@@ -576,7 +659,7 @@ function btn(id){ return document.getElementById(id); }
 
 btn('aqs-save-ai-btn').addEventListener('click', function(){
     var keys = [];
-    for (var gi = 1; gi <= 5; gi++) {
+    for (var gi = 1; gi <= 20; gi++) {
         var el = document.getElementById('aqs-groq-key-' + gi);
         if (el && el.value.trim()) keys.push(el.value.trim());
     }
@@ -588,7 +671,7 @@ btn('aqs-save-ai-btn').addEventListener('click', function(){
 
 btn('aqs-test-ai-btn').addEventListener('click', async function(){
     var keys = [];
-    for (var gi = 1; gi <= 5; gi++) {
+    for (var gi = 1; gi <= 20; gi++) {
         var el = document.getElementById('aqs-groq-key-' + gi);
         if (el && el.value.trim()) keys.push({ slot: gi, key: el.value.trim() });
     }
@@ -616,7 +699,7 @@ btn('aqs-test-ai-btn').addEventListener('click', async function(){
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
                 body: JSON.stringify({
-                    model: 'llama-3.1-8b-instant',
+                    model: 'llama3-8b-8192',
                     messages: [{ role: 'user', content: 'Reply with one word: OK' }],
                     max_tokens: 5
                 })

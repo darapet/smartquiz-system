@@ -301,7 +301,7 @@
                   var ctrl = new AbortController();
                   var tid  = setTimeout(function () { ctrl.abort(); }, 15000);
                   var res  = await window.groqFetch({
-                      model:       'llama-3.1-8b-instant',
+                      model:       'llama3-8b-8192',
                       messages:    messages,
                       max_tokens:  400,
                       temperature: 0.85

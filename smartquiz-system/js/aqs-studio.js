@@ -1171,7 +1171,7 @@
         var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
 
         window.groqFetch({
-            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
+            model: 'llama3-8b-8192', messages: messages, max_tokens: 600, temperature: 0.7
         }).then(function (r) { return r.json(); }).then(function (data) {
             showTyping(false);
             if (data.error || !data.choices) {

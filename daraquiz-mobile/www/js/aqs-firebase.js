@@ -310,9 +310,45 @@ window.aqsUploadFile = async function(file, storagePath) {
         return dfd.promise();
     };
 
-    /* Signal that Firebase+jQuery patch is ready — pages waiting on this can now make AJAX calls */
-    window._aqsFirebaseReady = true;
-    document.dispatchEvent(new CustomEvent('aqs:firebase:ready'));
+    /* Load AI keys from Firestore FIRST, then signal ready so pages get keys immediately */
+    (function _firebaseReadyWithKeys() {
+        getDoc(doc(db, 'settings', 'main')).then(function(snap) {
+            if (snap.exists()) {
+                var s = snap.data();
+                var sanitize = function(k){ return typeof k==='string'?k.trim():''; };
+                if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
+                    var gKeys = s.groq_keys.map(sanitize).filter(function(k){return k.length>20;}).slice(0,20);
+                    if (gKeys.length) {
+                        var hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS)?window._AQS_GROQ_MASTER_KEYS:[];
+                        var mG = gKeys.slice(); hcG.forEach(function(k){if(mG.indexOf(k)===-1)mG.push(k);});
+                        window._AQS_GROQ_MASTER_KEYS = mG;
+                    }
+                }
+                if (s.groq_model) window._AQS_GROQ_MODEL = s.groq_model;
+                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
+                    var mKeys = s.mistral_keys.map(sanitize).filter(function(k){return k.length>20;}).slice(0,20);
+                    if (mKeys.length) {
+                        var hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS)?window._AQS_MISTRAL_MASTER_KEYS:[];
+                        var mM = mKeys.slice(); hcM.forEach(function(k){if(mM.indexOf(k)===-1)mM.push(k);});
+                        window._AQS_MISTRAL_MASTER_KEYS = mM;
+                    }
+                }
+                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+                if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
+                    var hKeys = s.hf_keys.map(sanitize).filter(function(k){return k.length>10;}).slice(0,5);
+                    if (hKeys.length) {
+                        var hcH = Array.isArray(window._AQS_HF_MASTER_KEYS)?window._AQS_HF_MASTER_KEYS:[];
+                        var mH = hKeys.slice(); hcH.forEach(function(k){if(mH.indexOf(k)===-1)mH.push(k);});
+                        window._AQS_HF_MASTER_KEYS = mH;
+                    }
+                }
+                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+            }
+        }).catch(function(){}).finally(function() {
+            window._aqsFirebaseReady = true;
+            document.dispatchEvent(new CustomEvent('aqs:firebase:ready'));
+        });
+    })();
 })();
 
 function _interceptJqueryCall(settings, data) {
@@ -2196,7 +2232,7 @@ async function actionSaveSettings(data) {
         payload.mistral_keys = payload.mistral_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 20; })
-            .slice(0, 10);
+            .slice(0, 20);
     }
     /* Trim and validate HuggingFace tokens (up to 5) before saving */
     if (Array.isArray(payload.hf_keys)) {
@@ -2476,60 +2512,7 @@ function _updateAqsGlobals(user, profile) {
 
 })();
 
-/* ============================================================
-   AUTO-INIT: load all AI provider keys (Groq, Mistral, HuggingFace)
-   from Firestore into globals so aqs-groq-key.js can use them
-   without any hardcoded secrets.
-   Settings/main is publicly readable per the Firestore rules.
-   ============================================================ */
-(function _loadAllAIKeys() {
-    getDoc(doc(db, 'settings', 'main')).then(function(snap) {
-        if (!snap.exists()) return;
-        var s = snap.data();
-        /* Load up to 20 Groq keys */
-        if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-            var gKeys = s.groq_keys
-                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
-                .filter(function(k){ return k.length > 20; })
-                .slice(0, 20);
-            if (gKeys.length) {
-                var hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-                var mergedG = gKeys.slice();
-                hcG.forEach(function(k){ if (mergedG.indexOf(k) === -1) mergedG.push(k); });
-                window._AQS_GROQ_MASTER_KEYS = mergedG;
-            }
-        }
-        if (s.groq_model) window._AQS_GROQ_MODEL = s.groq_model;
-        /* Load up to 10 Mistral keys */
-        if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
-            var mKeys = s.mistral_keys
-                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
-                .filter(function(k){ return k.length > 20; })
-                .slice(0, 10);
-            if (mKeys.length) {
-                var hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
-                var mergedM = mKeys.slice();
-                hcM.forEach(function(k){ if (mergedM.indexOf(k) === -1) mergedM.push(k); });
-                window._AQS_MISTRAL_MASTER_KEYS = mergedM;
-            }
-        }
-        if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
-        /* Load up to 5 HuggingFace tokens */
-        if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
-            var hKeys = s.hf_keys
-                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
-                .filter(function(k){ return k.length > 10; })
-                .slice(0, 5);
-            if (hKeys.length) {
-                var hcH = Array.isArray(window._AQS_HF_MASTER_KEYS) ? window._AQS_HF_MASTER_KEYS : [];
-                var mergedH = hKeys.slice();
-                hcH.forEach(function(k){ if (mergedH.indexOf(k) === -1) mergedH.push(k); });
-                window._AQS_HF_MASTER_KEYS = mergedH;
-            }
-        }
-        if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
-    }).catch(function() { /* silently ignore — keys stay as hardcoded fallbacks */ });
-})();
+/* AI keys are now loaded before aqs:firebase:ready fires — see _firebaseReadyWithKeys above */
 
 /* ============================================================
    CHALLENGE VOICE CHAT (Firebase Realtime Database)

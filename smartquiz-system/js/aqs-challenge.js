@@ -1986,7 +1986,7 @@
   function chCallGroqDirect(prompt){
       if(typeof window.groqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
       return window.groqFetch({
-          model:'llama-3.1-8b-instant',
+          model:'llama3-8b-8192',
           messages:[
               {role:'system',content:'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.\n\nMATH FORMATTING RULE — STRICTLY FOLLOW:\n- ALWAYS wrap ALL mathematical expressions in LaTeX dollar delimiters.\n- Inline: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$, $\\sin\\theta$.\n- Display: $$x = \\frac{-b}{2a}$$.\n- NEVER write bare math like \\frac{a}{b} or x^2 without $ signs.'},
               {role:'user',content:prompt}

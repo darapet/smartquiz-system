@@ -954,7 +954,7 @@
      .filter(function(k){ return k && k.length > 10; });
     var messages = [{ role: 'user', content: prompt }];
     var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    var GROQ_MODEL = 'llama-3.1-8b-instant';
+    var GROQ_MODEL = 'llama3-8b-8192';
     wpSetAIStatus('working', 'AI is working…');
 
     function tryGroqKeys() {

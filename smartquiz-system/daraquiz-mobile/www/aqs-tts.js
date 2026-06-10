@@ -205,7 +205,7 @@
         if (typeof window.groqFetch !== 'function') return text;
         try {
             var res = await window.groqFetch({
-                model: 'llama-3.1-8b-instant',
+                model: 'llama3-8b-8192',
                 messages: [
                     { role: 'system', content: 'You are a professional translator. Translate the given text accurately to the target language. Return ONLY the translated text with no explanation, no quotes, no labels.' },
                     { role: 'user',   content: 'Translate to ' + targetLocale + ' (' + targetLang + '):\n\n' + text }

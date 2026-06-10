@@ -1849,7 +1849,7 @@
         async function _groqCall(prompt) {
             if (typeof window.groqFetch !== 'function') throw new Error('groqFetch not available');
             var isMath = isMathSubject('', prompt);
-            var groqModel = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+            var groqModel = isMath ? 'llama-3.3-70b-versatile' : 'llama3-8b-8192';
             var ctrl = new AbortController();
             var tid  = setTimeout(function() { ctrl.abort(); }, 25000);
             var res  = await window.groqFetch({

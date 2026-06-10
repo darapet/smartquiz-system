@@ -162,6 +162,45 @@ window.addEventListener('DOMContentLoaded', function() {
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
+
+/* ─── AI Key sessionStorage cache ─────────────────────────────────────────
+   Prevents keys from appearing blank between page loads.
+   Keys are cached after each Firebase load and restored instantly on reload.
+   ─────────────────────────────────────────────────────────────────────── */
+(function() {
+    var SS_KEY = 'aqs_admin_ai_keys_cache';
+    function _cacheKeys(s) {
+        try {
+            var cache = {
+                groq_keys: s.groq_keys || [], groq_model: s.groq_model || '',
+                mistral_keys: s.mistral_keys || [], mistral_model: s.mistral_model || '',
+                hf_keys: s.hf_keys || [], hf_model: s.hf_model || ''
+            };
+            sessionStorage.setItem(SS_KEY, JSON.stringify(cache));
+        } catch(e) {}
+    }
+    function _restoreKeysFromCache() {
+        try {
+            var raw = sessionStorage.getItem(SS_KEY);
+            if (!raw) return;
+            var cache = JSON.parse(raw);
+            var setVal = function(id, val) { var el = document.getElementById(id); if (el && val) el.value = val; };
+            var gkeys = cache.groq_keys || [];
+            for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
+            if (cache.groq_model) setVal('aqs-groq-model', cache.groq_model);
+            var mkeys = cache.mistral_keys || [];
+            for (var mi = 1; mi <= 20; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
+            if (cache.mistral_model) setVal('aqs-mistral-model', cache.mistral_model);
+            var hkeys = cache.hf_keys || [];
+            for (var hi = 1; hi <= 5; hi++) { setVal('aqs-hf-key-' + hi, hkeys[hi-1] || ''); }
+            if (cache.hf_model) setVal('aqs-hf-model', cache.hf_model);
+        } catch(e) {}
+    }
+    /* Expose so the settings load callback can call _cacheKeys after Firebase loads */
+    window._aqsCacheAIKeys = _cacheKeys;
+    /* Restore immediately on DOMContentLoaded (before Firebase) */
+    document.addEventListener('DOMContentLoaded', _restoreKeysFromCache);
+})();
 </head>
 <body>
 
