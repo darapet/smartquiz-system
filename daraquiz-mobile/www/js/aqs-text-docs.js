@@ -972,7 +972,14 @@
   function callAI(prompt, maxTokens) {
     var k = ['wMspDhSungnapsLU3v5hWGdyb3FY9E9AFvBBjuSI38MmrL2ow46o', 'HMrJogeB2HUp6DFxebqgWGdyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
     var keys = k.map(function(x){ return 'gsk_' + x; });
-    var messages = [{ role: 'user', content: prompt }];
+    /* Cap at 8000 to avoid HTTP 413 — Groq rejects requests whose
+       total payload (prompt tokens + max_tokens) exceeds ~16 K tokens */
+    var safeMax = Math.min(maxTokens || 2000, 8000);
+    /* Truncate the prompt itself if extremely long — keep the first 12 000 chars
+       (≈ 3000 tokens), which is well within Groq's 8192-token context window
+       for most models while still providing enough content to work with */
+    var safePrompt = prompt.length > 12000 ? prompt.slice(0, 12000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
     /* Route through groqFetch (now Mistral-primary with key rotation) */
     if (typeof window.groqFetch !== 'function') {
@@ -980,7 +987,7 @@
       return Promise.reject(new Error('AI not ready — no keys configured.'));
     }
     return window.groqFetch(
-      { messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 }
+      { messages: messages, max_tokens: safeMax, temperature: 0.3 }
     ).then(function(r) {
       if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
       return r.json();
@@ -1134,7 +1141,12 @@
     var src = document.getElementById('wp-source');
     if (!src || !src.value.trim()) { showHint('wp-ai-hint', 'Please paste some text first.', 'warn'); return; }
     if (wpIsProcessing) return;
-    var text  = src.value.trim();  /* No character limit — format all content */
+    /* Truncate to 6000 chars to avoid HTTP 413 from Groq.
+       6000 chars ≈ 1500 tokens — leaves enough budget for the system prompt +
+       up to 8000 output tokens within Groq's 16K per-request limit. */
+    var rawText = src.value.trim();
+    var text  = rawText.length > 6000 ? rawText.slice(0, 6000) : rawText;
+    if (rawText.length > 6000) { showHint('wp-ai-hint', '⚠️ Text truncated to 6000 chars to fit AI limit. Format in batches for longer documents.', 'warn'); }
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
     var rawPages = parseFloat(getV('wp-format-pages', '1'));
