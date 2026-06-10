@@ -2460,11 +2460,19 @@
           navigator.share({ files: [shareFile], title: docTitle })
             .then(function() { wpSetStatus('✅ Document shared'); })
             .catch(function(err) {
-              if (err && err.name !== 'AbortError') { _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html'); wpSetStatus('📥 Document downloaded'); }
+              if (err && err.name !== 'AbortError') {
+                /* Share failed (not user cancel) — open in browser */
+                if (!_wpDataUriOpen(html, wpSafeName(docTitle) + '.html', 'text/html')) {
+                  _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html');
+                }
+              }
             });
         } else {
-          _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html');
-          wpSetStatus('📥 Document downloaded — open file and print from there');
+          /* No file-share support — open via Capacitor Browser or blob download */
+          if (!_wpDataUriOpen(html, wpSafeName(docTitle) + '.html', 'text/html')) {
+            _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html');
+          }
+          wpSetStatus('📥 Saving document…');
         }
       }
 
@@ -2618,16 +2626,40 @@
         var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
         if (isNative) {
           /* Mobile: share directly via native share sheet */
-          var docxFile = new File([blob], fname, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          var docxMime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+          var docxFile = new File([blob], fname, { type: docxMime });
           if (navigator.share && navigator.canShare && navigator.canShare({ files: [docxFile] })) {
             navigator.share({ files: [docxFile], title: fname })
               .then(function() { wpSetStatus('DOCX shared ✅'); })
               .catch(function(err) {
-                if (err && err.name !== 'AbortError') { _wpBlobDownload2(blob, fname); wpSetStatus('DOCX downloaded ✅'); }
+                if (err && err.name !== 'AbortError') {
+                  /* Share failed — open via Capacitor Browser using FileReader to get data URI */
+                  var fr = new FileReader();
+                  fr.onload = function() {
+                    var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+                    if (Browser && Browser.open) {
+                      Browser.open({ url: fr.result });
+                      _wpShowToast('📥 DOCX opened — tap Save to download');
+                    } else { _wpBlobDownload2(blob, fname); }
+                  };
+                  fr.readAsDataURL(blob);
+                }
               });
           } else {
-            _wpBlobDownload2(blob, fname);
-            wpSetStatus('DOCX downloaded ✅');
+            /* File share not supported — try Capacitor Browser with data URI */
+            var fr2 = new FileReader();
+            fr2.onload = function() {
+              var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+              if (Browser && Browser.open) {
+                Browser.open({ url: fr2.result });
+                _wpShowToast('📥 DOCX opened in browser — tap ⋮ → Download');
+                wpSetStatus('📥 DOCX opened — tap ⋮ to download');
+              } else {
+                _wpBlobDownload2(blob, fname);
+                wpSetStatus('DOCX downloaded ✅');
+              }
+            };
+            fr2.readAsDataURL(blob);
           }
         } else {
           var a = document.createElement('a');
@@ -2799,6 +2831,9 @@
 
   /* ── Blob download helpers (text content and binary blob) ── */
   function _wpBlobDownload(content, filename, mimeType) {
+    /* Standard anchor-click blob download — works in web browsers.
+       NOTE: on Android Capacitor WebView the download attribute is silently
+       ignored — callers should prefer wpSaveText() which has proper fallbacks. */
     try {
       var b = new Blob([content], { type: mimeType });
       var u = URL.createObjectURL(b);
@@ -2806,7 +2841,7 @@
       a.href = u; a.download = filename;
       document.body.appendChild(a); a.click();
       setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(u); }, 1000);
-    } catch(err) { /* silent — nothing more we can do */ }
+    } catch(err) { /* silent */ }
   }
   function _wpBlobDownload2(blob, filename) {
     try {
@@ -2818,33 +2853,77 @@
     } catch(err) { /* silent */ }
   }
 
+  /* ── Open file content as a base64 data URI in the Capacitor Browser (Chrome).
+     Chrome renders data URIs and lets the user tap ⋮ → Download or Share → Save.
+     Falls back gracefully when the Browser plugin isn't available. ── */
+  function _wpDataUriOpen(text, filename, mimeType) {
+    try {
+      /* base64-encode the content */
+      var b64 = btoa(unescape(encodeURIComponent(text)));
+      var dataUri = 'data:' + mimeType + ';base64,' + b64;
+      var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+      if (Browser && Browser.open) {
+        Browser.open({ url: dataUri });
+        _wpShowToast('📥 File opened in browser — tap ⋮ → Download to save');
+        wpSetStatus('📥 File opened — tap ⋮ → Download');
+        return true;
+      }
+    } catch(e) {}
+    return false;
+  }
+
+  /* ── Show a non-blocking toast message ── */
+  function _wpShowToast(msg) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
+      'background:#1e293b;color:#fff;padding:12px 20px;border-radius:22px;' +
+      'font-size:13px;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.35);' +
+      'max-width:300px;text-align:center;line-height:1.5;pointer-events:none;';
+    t.innerHTML = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ if(t.parentNode) t.remove(); }, 5000);
+  }
+
+  /* ── Main save/download entry point for all text-based formats ──────────────
+     Priority order on native Capacitor:
+       1. navigator.share with File  →  native share sheet (Save to Files, Drive…)
+       2. Capacitor Browser data URI →  opens Chrome where user taps ⋮ → Download
+       3. Blob anchor click          →  web-browser fallback
+     ─────────────────────────────────────────────────────────────────────────── */
   function wpSaveText(text, filename, mimeType) {
     var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
 
     if (isNative) {
-      /* Mobile: share directly via native share sheet — no My Docs auto-save, no Chrome redirect */
+      /* ── 1. Try native Web Share with File (Android 10+ / WebView 80+) ── */
       if (navigator.share && navigator.canShare) {
         try {
           var shareFile = new File([text], filename, { type: mimeType });
           if (navigator.canShare({ files: [shareFile] })) {
             navigator.share({ files: [shareFile], title: filename })
-              .then(function() { wpSetStatus('✅ File saved/shared'); })
+              .then(function() { wpSetStatus('✅ File saved / shared'); })
               .catch(function(err) {
                 if (err && err.name !== 'AbortError') {
-                  /* Share dialog error (not user cancel) — download directly */
-                  _wpBlobDownload(text, filename, mimeType);
+                  /* Share dialog failed (not user cancel) — try data URI approach */
+                  if (!_wpDataUriOpen(text, filename, mimeType)) {
+                    _wpBlobDownload(text, filename, mimeType);
+                  }
                 }
+                /* If AbortError → user dismissed share sheet, nothing to do */
               });
             return;
           }
         } catch(ignore) {}
       }
-      /* Fallback: blob download (Android download manager may pick this up) */
+
+      /* ── 2. Capacitor Browser plugin — open as base64 data URI in Chrome ── */
+      if (_wpDataUriOpen(text, filename, mimeType)) return;
+
+      /* ── 3. Last resort: blob anchor download ── */
       _wpBlobDownload(text, filename, mimeType);
       return;
     }
 
-    /* Web browser: standard blob download */
+    /* Web browser (not Capacitor): standard blob download */
     _wpBlobDownload(text, filename, mimeType);
   }
 
