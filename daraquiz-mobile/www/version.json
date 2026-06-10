@@ -1,8 +1,8 @@
 {
-  "version": "1.247",
-  "versionCode": 222,
+  "version": "1.248",
+  "versionCode": 223,
   "releaseDate": "2026-06-10",
-  "notes": "Fixed AI Studio: Groq and HuggingFace keys now load correctly from settings, deprecated Groq models now automatically fall back to Mistral, and per-request model choices are respected.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.247/daraquiz-v1.247.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.247/daraquiz-v1.247.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.248/daraquiz-v1.248.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.248/daraquiz-v1.248.apk"
 }
