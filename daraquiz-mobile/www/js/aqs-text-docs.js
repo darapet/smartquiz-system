@@ -2225,109 +2225,273 @@
     wpShowModal('wp-print-preview-modal');
   };
 
+  /* ── Open a self-contained download/print page in Chrome (Capacitor Browser).
+     Same pattern as the quiz's aqsPrintQuiz — build complete HTML, open it in
+     the system browser where print/download APIs work reliably.
+     On desktop web browsers the page opens in a new window as usual. ── */
+
   window.wpConfirmPrintDownload = function() {
     var fmt = _wpPrintFormat;
     wpHideModal('wp-print-preview-modal');
-    if (fmt === 'pdf') {
-      /* Build print HTML from current document content */
-      var content = wpGetFullContent();
-      var title   = wpGetDocTitle(content);
-      var bf   = getV('wp-bfont','Georgia, serif');
-      var bd   = getV('wp-body', 12);
-      var mg   = getV('wp-margin', 20);
-      var lh   = getV('wp-lh', '1.6');
-      var h1sz = getV('wp-h1',24); var h2sz = getV('wp-h2',18); var h3sz = getV('wp-h3',14);
-      var allPages = wpPages.map(function(pg, i) {
-        return '<div style="page-break-after:' + (i < wpPages.length - 1 ? 'always' : 'auto') + ';padding:' + mg + 'mm;">' + (pg || '') + '</div>';
-      }).join('');
-      var printHtml =
-        '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title>' +
-        '<style>' +
-        'body{font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';margin:0;color:#1a1a1a;}' +
-        'h1{font-size:' + h1sz + 'pt;margin:.5em 0;}' +
-        'h2{font-size:' + h2sz + 'pt;margin:.45em 0;}' +
-        'h3{font-size:' + h3sz + 'pt;margin:.4em 0;}' +
-        'p{margin:.5em 0;}' +
-        'table{border-collapse:collapse;width:100%;margin:10px 0;}' +
-        'td,th{border:1px solid #ccc;padding:6px 10px;}' +
-        'th{background:#f1f5f9;font-weight:700;}' +
-        'img{max-width:100%;height:auto;}' +
-        'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}' +
-        'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}' +
-        '@media print{@page{margin:' + mg + 'mm;}body{margin:0;}}' +
-        '</style></head><body>' + allPages + '</body></html>';
 
-      /* ── Iframe-based print: works in Capacitor WebView AND web browsers.
-         window.open() is often blocked in Android WebView, but printing via a
-         hidden same-page iframe triggers the native Android/iOS print dialog
-         without needing a new tab/window. ── */
-      function _wpPrintViaIframe(html) {
-        var old = document.getElementById('wp-print-iframe');
-        if (old) old.remove();
-        var pf = document.createElement('iframe');
-        pf.id = 'wp-print-iframe';
-        pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;pointer-events:none;';
-        document.body.appendChild(pf);
+    var content  = wpGetFullContent();
+    var title    = wpGetDocTitle(content);
+    var fname    = wpSafeName(title);
+    var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+    /* ── Shared document styles ── */
+    var bf   = getV('wp-bfont','Georgia, serif');
+    var bd   = getV('wp-body', 12);
+    var mg   = getV('wp-margin', 20);
+    var lh   = getV('wp-lh', '1.6');
+    var h1sz = getV('wp-h1',24); var h2sz = getV('wp-h2',18); var h3sz = getV('wp-h3',14);
+    var docCss = [
+      'body{font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';margin:0;color:#1a1a1a;}',
+      'h1{font-size:' + h1sz + 'pt;margin:.5em 0;}',
+      'h2{font-size:' + h2sz + 'pt;margin:.45em 0;}',
+      'h3{font-size:' + h3sz + 'pt;margin:.4em 0;}',
+      'p{margin:.5em 0;}',
+      'table{border-collapse:collapse;width:100%;margin:10px 0;}',
+      'td,th{border:1px solid #ccc;padding:6px 10px;}',
+      'th{background:#f1f5f9;font-weight:700;}',
+      'img{max-width:100%;height:auto;}',
+      'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}',
+      'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}',
+      '@media print{@page{margin:' + mg + 'mm;}}'
+    ].join('');
+
+    /* All pages as clean HTML */
+    var allPages = wpPages.map(function(pg, i) {
+      return '<div style="margin-bottom:24px;' +
+        (i < wpPages.length - 1 ? 'padding-bottom:24px;border-bottom:2px dashed #e5e7eb;' : '') +
+        '">' + (pg || '') + '</div>';
+    }).join('');
+
+    /* ── Build the self-contained page ── */
+    function buildPage(opts) {
+      /* opts: { subtitle, btnLabel, isPdf, fileB64, fileMime, fileName } */
+      var scriptBlock;
+      if (opts.isPdf) {
+        scriptBlock = 'function doDownload(){window.print();}';
+      } else {
+        scriptBlock = [
+          'var _b=' + JSON.stringify(opts.fileB64 || '') + ';',
+          'var _m=' + JSON.stringify(opts.fileMime || 'text/plain') + ';',
+          'var _n=' + JSON.stringify(opts.fileName || 'document') + ';',
+          'function doDownload(){',
+          '  var a=document.createElement("a");',
+          '  a.href="data:"+_m+";base64,"+_b;',
+          '  a.download=_n;',
+          '  document.body.appendChild(a);',
+          '  a.click();',
+          '  setTimeout(function(){a.remove();},600);',
+          '}'
+        ].join('');
+      }
+      return [
+        '<!DOCTYPE html><html><head>',
+        '<meta charset="UTF-8">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">',
+        '<title>' + escHtml(title) + '</title>',
+        '<style>',
+        '*{box-sizing:border-box;}',
+        'body{margin:0;padding-top:70px;background:#f1f5f9;}',
+        '.dlbar{position:fixed;top:0;left:0;right:0;z-index:9999;',
+        '  background:#4f46e5;color:#fff;padding:10px 14px;',
+        '  display:flex;align-items:center;gap:10px;',
+        '  box-shadow:0 2px 16px rgba(0,0,0,.3);}',
+        '.dlbar-info{flex:1;min-width:0;}',
+        '.dlbar-info h3{margin:0;font-size:14px;font-weight:700;',
+        '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
+        '.dlbar-info p{margin:2px 0 0;font-size:11px;opacity:.8;}',
+        '.dlbtn{background:#fff;color:#4f46e5;border:none;border-radius:12px;',
+        '  padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;}',
+        '.dlbtn:active{background:#e0e7ff;}',
+        '.doc-wrap{max-width:840px;margin:20px auto 40px;background:#fff;',
+        '  padding:32px 24px;border-radius:12px;',
+        '  box-shadow:0 1px 6px rgba(0,0,0,.08);}',
+        docCss,
+        '@media print{',
+        '  .dlbar{display:none!important;}',
+        '  body{background:#fff;padding-top:0;}',
+        '  .doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}',
+        '}',
+        '</style>',
+        '</head><body>',
+        '<div class="dlbar">',
+        '  <div class="dlbar-info">',
+        '    <h3>📄 ' + escHtml(title) + '</h3>',
+        '    <p>' + escHtml(opts.subtitle) + '</p>',
+        '  </div>',
+        '  <button class="dlbtn" onclick="doDownload()">' + opts.btnLabel + '</button>',
+        '</div>',
+        '<div class="doc-wrap">',
+        allPages,
+        '</div>',
+        '<script>' + scriptBlock + '<\/script>',
+        '</body></html>'
+      ].join('\n');
+    }
+
+    /* ── Open page: Capacitor Browser on native, window.open on web ── */
+    function openPage(pageHtml) {
+      if (isNative) {
         try {
-          pf.contentDocument.open();
-          pf.contentDocument.write(html);
-          pf.contentDocument.close();
-        } catch(e) {
-          /* Some WebView builds block document.write — fallback to srcdoc */
-          pf.srcdoc = html;
-        }
-        /* Wait for iframe content to load before calling print */
-        var printed = false;
-        function doPrint() {
-          if (printed) return; printed = true;
-          try {
-            pf.contentWindow.focus();
-            pf.contentWindow.print();
-            wpSetStatus('📄 Print dialog opened — choose "Save as PDF"');
-          } catch(e2) {
-            /* If print() fails inside iframe (rare), share/download the file */
-            _wpShareOrDownload(html, title);
+          var b64page = btoa(unescape(encodeURIComponent(pageHtml)));
+          var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+          if (Browser && Browser.open) {
+            Browser.open({ url: 'data:text/html;base64,' + b64page });
+            wpSetStatus('📄 Opened in Chrome — tap the button to ' + (fmt === 'pdf' ? 'print / save as PDF' : 'download'));
+            return;
           }
-          setTimeout(function() { if (pf.parentNode) pf.remove(); }, 8000);
-        }
-        pf.addEventListener('load', doPrint);
-        /* Safety timeout in case load event never fires */
-        setTimeout(doPrint, 900);
-      }
-
-      /* ── Share / download fallback ── */
-      function _wpShareOrDownload(html, docTitle) {
-        var shareFile = new File([html], wpSafeName(docTitle) + '.html', { type: 'text/html' });
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
-          navigator.share({ files: [shareFile], title: docTitle })
-            .then(function() { wpSetStatus('✅ Document shared'); })
-            .catch(function(err) {
-              if (err && err.name !== 'AbortError') {
-                /* Share failed (not user cancel) — open in browser */
-                if (!_wpDataUriOpen(html, wpSafeName(docTitle) + '.html', 'text/html')) {
-                  _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html');
-                }
-              }
-            });
-        } else {
-          /* No file-share support — open via Capacitor Browser or blob download */
-          if (!_wpDataUriOpen(html, wpSafeName(docTitle) + '.html', 'text/html')) {
-            _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html');
+        } catch(e) {}
+        /* Plugin unavailable — share the page HTML as a file */
+        try {
+          var f = new File([pageHtml], fname + '.html', { type: 'text/html' });
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+            navigator.share({ files: [f] }); return;
           }
-          wpSetStatus('📥 Saving document…');
-        }
+        } catch(e2) {}
       }
+      /* Web / fallback: window.open */
+      var win = window.open('', '_blank', 'width=900,height=700');
+      if (win) {
+        win.document.write(pageHtml);
+        win.document.close();
+        win.focus();
+        if (fmt === 'pdf') { setTimeout(function() { win.print(); }, 600); }
+      } else {
+        alert('Pop-up blocked. Please allow pop-ups and try again.');
+      }
+    }
 
-      /* Try iframe print first; if the WebView refuses (security exception), fall back */
-      try {
-        _wpPrintViaIframe(printHtml);
-      } catch(iframeErr) {
-        _wpShareOrDownload(printHtml, title);
-      }
+    /* ── Format-specific handling ── */
+    if (fmt === 'pdf') {
+      openPage(buildPage({
+        subtitle: 'Tap to open the print dialog — choose "Save as PDF"',
+        btnLabel: '🖨️ Print / Save as PDF',
+        isPdf: true
+      }));
+
+    } else if (fmt === 'docx') {
+      wpSetStatus('Generating DOCX…');
+      _wpGenerateDOCXBase64(content, title, function(fileB64, fileMime, fileNameOut) {
+        openPage(buildPage({
+          subtitle: 'Tap to download your Word document',
+          btnLabel: '📥 Download DOCX',
+          isPdf: false,
+          fileB64: fileB64,
+          fileMime: fileMime,
+          fileName: fileNameOut
+        }));
+      });
+
     } else {
-      wpDownload(fmt);
+      /* Text-based formats — convert synchronously */
+      var textContent, fileMime, fileExt;
+      if (fmt === 'html') {
+        textContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) +
+          '</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a;}</style></head><body>' + content + '</body></html>';
+        fileMime = 'text/html'; fileExt = 'html';
+      } else if (fmt === 'txt')   { textContent = stripHtml(content);          fileMime = 'text/plain';        fileExt = 'txt'; }
+      else if (fmt === 'md')      { textContent = htmlToMarkdown(content);      fileMime = 'text/markdown';     fileExt = 'md'; }
+      else if (fmt === 'rtf')     { textContent = htmlToRTF(content, title);    fileMime = 'application/rtf';  fileExt = 'rtf'; }
+      else if (fmt === 'latex')   { textContent = htmlToLaTeX(content, title);  fileMime = 'text/plain';        fileExt = 'tex'; }
+      else if (fmt === 'json')    { textContent = htmlToJSON(content, title);   fileMime = 'application/json'; fileExt = 'json'; }
+      else if (fmt === 'csv')     { textContent = htmlToCSV(content);           fileMime = 'text/csv';          fileExt = 'csv'; }
+      else                        { textContent = stripHtml(content);           fileMime = 'text/plain';        fileExt = 'txt'; }
+
+      /* On desktop web browsers, skip the page — blob download works fine */
+      if (!isNative) {
+        _wpBlobDownload(textContent, fname + '.' + fileExt, fileMime);
+        wpSetStatus('Downloaded as ' + fileExt.toUpperCase() + ' ✅');
+        return;
+      }
+
+      var fileB64 = btoa(unescape(encodeURIComponent(textContent)));
+      openPage(buildPage({
+        subtitle: 'Tap to download as ' + fileExt.toUpperCase(),
+        btnLabel: '📥 Download ' + fileExt.toUpperCase(),
+        isPdf: false,
+        fileB64: fileB64,
+        fileMime: fileMime,
+        fileName: fname + '.' + fileExt
+      }));
     }
   };
+
+  /* ── Generate DOCX blob, read it as base64, and return via callback ──
+     Extracted from wpDownloadDOCX so it can be used by the download-page flow. ── */
+  function _wpGenerateDOCXBase64(content, title, callback) {
+    if (typeof docx === 'undefined') {
+      var b64 = btoa(unescape(encodeURIComponent(stripHtml(content))));
+      callback(b64, 'text/plain', wpSafeName(title) + '.txt');
+      wpSetStatus('DOCX library not loaded — will download as TXT');
+      return;
+    }
+    try {
+      var parser = new DOMParser();
+      var doc2 = parser.parseFromString(content, 'text/html');
+      var children = [];
+      doc2.body.childNodes.forEach(function(node) {
+        if (node.nodeType !== 1) return;
+        var tag = node.tagName.toUpperCase();
+        var txt = node.textContent.trim();
+        if (!txt && tag !== 'TABLE' && tag !== 'HR') return;
+        var hMap = { H1:'Heading1', H2:'Heading2', H3:'Heading3', H4:'Heading4' };
+        if (hMap[tag]) {
+          children.push(new docx.Paragraph({ text: txt, heading: docx.HeadingLevel[hMap[tag].toUpperCase()] }));
+        } else if (tag === 'P') {
+          children.push(new docx.Paragraph({ children: _parseInlineDocx(node) }));
+        } else if (tag === 'BLOCKQUOTE') {
+          children.push(new docx.Paragraph({ text: txt, style: 'IntenseQuote' }));
+        } else if (tag === 'UL' || tag === 'OL') {
+          node.querySelectorAll('li').forEach(function(li) {
+            children.push(new docx.Paragraph({
+              text: li.textContent.trim(),
+              bullet: tag === 'UL' ? { level: 0 } : undefined,
+              numbering: tag === 'OL' ? { reference: 'default-numbering', level: 0 } : undefined
+            }));
+          });
+        } else if (tag === 'HR') {
+          children.push(new docx.Paragraph({ text: '', border: { bottom: { color: 'CCCCCC', size: 6, space: 1, style: docx.BorderStyle.SINGLE } } }));
+        } else if (tag === 'TABLE') {
+          var tableRows = [];
+          node.querySelectorAll('tr').forEach(function(tr) {
+            var tCells = [];
+            tr.querySelectorAll('td,th').forEach(function(tc) {
+              tCells.push(new docx.TableCell({ children: [new docx.Paragraph({ text: tc.textContent.trim() })], shading: tc.tagName === 'TH' ? { fill: 'F1F5F9' } : undefined }));
+            });
+            if (tCells.length) tableRows.push(new docx.TableRow({ children: tCells }));
+          });
+          if (tableRows.length) children.push(new docx.Table({ rows: tableRows, width: { size: 100, type: docx.WidthType.PERCENTAGE } }));
+        }
+      });
+      var docFile = new docx.Document({ title: title, creator: 'XZily AI Word Processor', sections: [{ properties: {}, children: children }] });
+      docx.Packer.toBlob(docFile).then(function(blob) {
+        var fr = new FileReader();
+        fr.onload = function() {
+          var b64 = fr.result.split(',')[1];
+          callback(b64, 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', wpSafeName(title) + '.docx');
+        };
+        fr.readAsDataURL(blob);
+      });
+    } catch(e) {
+      var b64fb = btoa(unescape(encodeURIComponent(stripHtml(content))));
+      callback(b64fb, 'text/plain', wpSafeName(title) + '.txt');
+      wpSetStatus('DOCX error — will download as TXT');
+    }
+  }
+
+  function _parseInlineDocx(el) {
+    var runs = [];
+    el.childNodes.forEach(function(n) {
+      if (n.nodeType === 3) { if (n.textContent) runs.push(new docx.TextRun({ text: n.textContent })); return; }
+      var t = (n.tagName || '').toUpperCase();
+      runs.push(new docx.TextRun({ text: n.textContent, bold: t==='STRONG'||t==='B', italics: t==='EM'||t==='I', underline: t==='U' ? {} : undefined }));
+    });
+    return runs.length ? runs : [new docx.TextRun({ text: el.textContent })];
+  }
 
   /* ── New document ───────────────────────────────────────────── */
   window.wpNewDocument = function() {
