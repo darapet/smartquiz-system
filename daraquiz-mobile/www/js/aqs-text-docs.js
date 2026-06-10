@@ -2414,28 +2414,22 @@
         'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}' +
         '@media print{@page{margin:' + mg + 'mm;}body{margin:0;}}' +
         '</style></head><body>' + allPages + '</body></html>';
-      /* Open in Chrome — user taps Share → Print in Chrome to save as PDF */
+      /* Mobile (Capacitor): share the print HTML directly via native share sheet.
+         User sees "Save to Files", "Print", Google Drive, WhatsApp, etc. — no Chrome needed. */
       var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
       if (isNative) {
-        var htmlDataUri = 'data:text/html;charset=utf-8,' + encodeURIComponent(printHtml);
-        if (!wpOpenInChrome(htmlDataUri, wpSafeName(title) + '.html')) {
-          /* Fallback: hidden iframe print */
-          var old = document.getElementById('wp-print-iframe');
-          if (old) old.remove();
-          var pf = document.createElement('iframe');
-          pf.id = 'wp-print-iframe';
-          pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
-          document.body.appendChild(pf);
-          pf.contentDocument.open(); pf.contentDocument.write(printHtml); pf.contentDocument.close();
-          setTimeout(function(){ pf.contentWindow.focus(); pf.contentWindow.print(); setTimeout(function(){ pf.remove(); }, 3000); }, 600);
+        var printFile = new File([printHtml], wpSafeName(title) + '.html', { type: 'text/html' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [printFile] })) {
+          navigator.share({ files: [printFile], title: title })
+            .then(function() { wpSetStatus('✅ Document shared'); })
+            .catch(function(err) {
+              if (err && err.name !== 'AbortError') { _wpBlobDownload(printHtml, wpSafeName(title) + '.html', 'text/html'); wpSetStatus('📥 Document downloaded'); }
+            });
         } else {
-          var pt = document.createElement('div');
-          pt.style.cssText = 'position:fixed;bottom:140px;left:50%;transform:translateX(-50%);background:#065f46;color:#fff;padding:10px 18px;border-radius:18px;font-size:12px;z-index:99999;max-width:280px;text-align:center;line-height:1.5;';
-          pt.innerHTML = '📄 In Chrome:<br>Tap <b>⋮ → Share → Print</b> to save as PDF';
-          document.body.appendChild(pt);
-          setTimeout(function(){ pt.remove(); }, 6000);
+          /* Fallback: direct blob download (Android download manager) */
+          _wpBlobDownload(printHtml, wpSafeName(title) + '.html', 'text/html');
+          wpSetStatus('📥 Document downloaded — open to print as PDF');
         }
-        wpSetStatus('📄 Opened in Chrome — use Share → Print to save as PDF');
       } else {
         /* Web / Chrome: open a blob URL in a new tab → Chrome auto-triggers print dialog
            (window.open is reliable in Chrome; user sees print dialog to Save as PDF) */
@@ -2601,23 +2595,26 @@
       docx.Packer.toBlob(docFile).then(function(blob) {
         var fname = wpSafeName(title) + '.docx';
         var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-        var reader = new FileReader();
-        reader.onload = function(e) {
-          var dataUri = e.target.result; /* data:application/vnd...;base64,... */
-          if (isNative) {
-            /* Open in Chrome — Chrome shows a download bar for DOCX files */
-            if (!wpOpenInChrome(dataUri, fname)) {
-              alert('Tip: Open the 📁 My Docs tab — your document was saved there as TXT.');
-            }
+        if (isNative) {
+          /* Mobile: share directly via native share sheet */
+          var docxFile = new File([blob], fname, { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [docxFile] })) {
+            navigator.share({ files: [docxFile], title: fname })
+              .then(function() { wpSetStatus('DOCX shared ✅'); })
+              .catch(function(err) {
+                if (err && err.name !== 'AbortError') { _wpBlobDownload2(blob, fname); wpSetStatus('DOCX downloaded ✅'); }
+              });
           } else {
-            var a = document.createElement('a');
-            a.href = dataUri; a.download = fname;
-            document.body.appendChild(a); a.click();
-            setTimeout(function(){ document.body.removeChild(a); }, 300);
+            _wpBlobDownload2(blob, fname);
+            wpSetStatus('DOCX downloaded ✅');
           }
+        } else {
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(blob); a.download = fname;
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
           wpSetStatus('DOCX ready ✅');
-        };
-        reader.readAsDataURL(blob);
+        }
       });
     } catch(e) {
       console.error('DOCX error:', e);
@@ -2779,48 +2776,55 @@
     return false;
   }
 
+  /* ── Blob download helpers (text content and binary blob) ── */
+  function _wpBlobDownload(content, filename, mimeType) {
+    try {
+      var b = new Blob([content], { type: mimeType });
+      var u = URL.createObjectURL(b);
+      var a = document.createElement('a');
+      a.href = u; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(u); }, 1000);
+    } catch(err) { /* silent — nothing more we can do */ }
+  }
+  function _wpBlobDownload2(blob, filename) {
+    try {
+      var u = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = u; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(u); }, 1000);
+    } catch(err) { /* silent */ }
+  }
+
   function wpSaveText(text, filename, mimeType) {
     var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
 
     if (isNative) {
-      /* Always save to My Docs first — reliable backup regardless of what else works */
-      wpSaveToLocalDoc(text, filename, mimeType);
-
-      /* Strategy 1: Web Share API — opens native share sheet (WhatsApp, Drive, Files…) */
+      /* Mobile: share directly via native share sheet — no My Docs auto-save, no Chrome redirect */
       if (navigator.share && navigator.canShare) {
         try {
           var shareFile = new File([text], filename, { type: mimeType });
           if (navigator.canShare({ files: [shareFile] })) {
             navigator.share({ files: [shareFile], title: filename })
-              .then(function() { wpSetStatus('✅ File shared/saved'); })
+              .then(function() { wpSetStatus('✅ File saved/shared'); })
               .catch(function(err) {
                 if (err && err.name !== 'AbortError') {
-                  /* Share failed — try Chrome */
-                  var dataUri2 = 'data:' + mimeType + ';charset=utf-8,' + encodeURIComponent(text);
-                  wpOpenInChrome(dataUri2, filename);
+                  /* Share dialog error (not user cancel) — download directly */
+                  _wpBlobDownload(text, filename, mimeType);
                 }
               });
             return;
           }
         } catch(ignore) {}
       }
-
-      /* Strategy 2: Open in Chrome via Capacitor Browser plugin */
-      var dataUri = 'data:' + mimeType + ';charset=utf-8,' + encodeURIComponent(text);
-      if (!wpOpenInChrome(dataUri, filename)) {
-        /* My Docs already saved — just notify */
-        wpSetStatus('✅ Saved to My Docs — open 📁 My Docs tab to access');
-      }
+      /* Fallback: blob download (Android download manager may pick this up) */
+      _wpBlobDownload(text, filename, mimeType);
       return;
     }
 
     /* Web browser: standard blob download */
-    var blob = new Blob([text], { type: mimeType });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click();
-    setTimeout(function(){ document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    _wpBlobDownload(text, filename, mimeType);
   }
 
   /* Save document content to localStorage under "Documents" key, then show popup */
