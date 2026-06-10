@@ -1421,6 +1421,76 @@
     /* Do NOT auto-open sidebar on mobile — user controls it via the FAB button */
   };
 
+  /* ── Ribbon tab switcher (toolbar tabs at top) ──────────────── */
+  window.wpRibbonTab = function(tab) {
+    document.querySelectorAll('.wp-rtab').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+    });
+    document.querySelectorAll('.wp-rpanel').forEach(function(pan) {
+      pan.classList.toggle('active', pan.id === 'wp-rp-' + tab);
+    });
+    setTimeout(wpAdjustHeaderOffset, 50);
+  };
+
+  /* ── Dropdown toggle (Format toolbar dropdowns) ─────────────── */
+  window.wpToggleDropdown = function(id) {
+    var menu = document.getElementById(id);
+    if (!menu) return;
+    var isOpen = menu.classList.contains('open');
+    document.querySelectorAll('.wp-dd-menu.open, .wp-color-palette.open').forEach(function(m) {
+      m.classList.remove('open');
+    });
+    if (!isOpen) menu.classList.add('open');
+  };
+  /* Close dropdowns when clicking outside */
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.wp-dd-wrap')) {
+      document.querySelectorAll('.wp-dd-menu.open, .wp-color-palette.open').forEach(function(m) {
+        m.classList.remove('open');
+      });
+    }
+  });
+
+  /* ── AI Format (format pasted / existing content with AI) ───── */
+  window.wpAIFormat = function() {
+    var srcEl  = document.getElementById('wp-source');
+    var srcTxt = srcEl ? srcEl.value.trim() : '';
+    var docTxt = stripHtml(wpGetFullContent()).trim();
+    var raw    = srcTxt || docTxt;
+    if (!raw || raw.length < 10) {
+      alert('Please paste some text in the sidebar Format tab, or add content to the document first.');
+      return;
+    }
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    var ds = wpGetDocSettings();
+    wpSetStatus('Formatting with AI…');
+    wpSetAIStatus('working', 'AI is working…');
+    var aiPrompt =
+      'Format the following raw text into a well-structured professional HTML document. ' +
+      'Use <h1> for the main title, <h2> for major sections, <h3> for sub-sections. ' +
+      'All body text in <p>. Use <ul>/<ol> for lists. Use <strong> for key terms. ' +
+      'Return ONLY clean HTML — no html/head/body/style/script tags.\n\n' +
+      raw.slice(0, 6000) + wpDocSettingsPrompt(ds);
+    callAI(aiPrompt, 3000)
+      .then(function(html) {
+        var clean = sanitizeHTML(html);
+        if (!clean || clean.length < 20) throw new Error('AI returned empty content');
+        wpLoadContent(clean);
+        wpApplyDocSettings(ds);
+        var title = ((clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || 'Formatted Document').replace(/<[^>]+>/g, '');
+        wpSaveHistory(title, wpGetFullContent());
+        wpSetStatus('Formatted ✅');
+        wpSetAIStatus('ready', 'AI Ready');
+        if (srcEl) srcEl.value = '';
+      })
+      .catch(function(e) {
+        wpSetStatus('Format failed: ' + (e.message || 'AI error'));
+        wpSetAIStatus('error', 'AI error');
+      })
+      .finally(function() { wpIsProcessing = false; });
+  };
+
   /* ── Document History ───────────────────────────────────────── */
   var WP_HIST_KEY = 'wp_doc_history_v3', WP_MAX_HIST = 15;
 
