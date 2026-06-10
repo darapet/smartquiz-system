@@ -1885,18 +1885,28 @@
       if (window.wpGetDocTitle) docTitle = wpGetDocTitle(allHtml) || 'Document';
     } catch(e) {}
 
-    /* ── Clone pages and inject header + footer into every page ── */
+    /* ── Clone pages, strip screen-only chrome, inject header + footer ── */
     var cloned = container.cloneNode(true);
     cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+    /* Remove screen-only labels and decorations */
+    cloned.querySelectorAll('.wp-page-label, .wp-page-add, .wp-page-actions').forEach(function(el){ el.parentNode && el.parentNode.removeChild(el); });
+    /* Reset inline height/overflow so content isn't clipped */
+    cloned.querySelectorAll('.wp-page').forEach(function(el){
+      el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
+    });
+    cloned.querySelectorAll('.wp-page-editor, .wp-page-inner').forEach(function(el){
+      el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
+    });
+
     var pages = cloned.querySelectorAll('.wp-page');
     var total = pages.length || 1;
+    var dateStr = new Date().toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
     pages.forEach(function(page, idx) {
-      /* Header: document title, right-aligned date */
+      /* Header: document title (left) + date (right) */
       var hdr = document.createElement('div');
       hdr.className = 'wp-print-header';
-      var dateStr = new Date().toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
-      hdr.innerHTML = '<span class="wp-print-hdr-title">' + docTitle.replace(/</g,'&lt;') + '</span>' +
-                      '<span class="wp-print-hdr-date">'  + dateStr + '</span>';
+      hdr.innerHTML = '<span class="wp-print-hdr-title">' + docTitle.replace(/[<>&"]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c]; }) + '</span>' +
+                      '<span class="wp-print-hdr-date">' + dateStr + '</span>';
       page.insertBefore(hdr, page.firstChild);
 
       /* Footer: centred page number */
@@ -1907,16 +1917,14 @@
     });
 
     printRoot.innerHTML = cloned.outerHTML;
-    printRoot.style.display = 'block';
     document.body.classList.add('wp-printing');
     setTimeout(function() {
       window.print();
       setTimeout(function(){
-        printRoot.style.display = 'none';
         printRoot.innerHTML = '';
         document.body.classList.remove('wp-printing');
-      }, 500);
-    }, 200);
+      }, 800);
+    }, 150);
   };
 
   /* ── New document ───────────────────────────────────────────── */
