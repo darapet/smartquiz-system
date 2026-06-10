@@ -117,7 +117,8 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
         if (!keys.length) return null; /* no Groq keys → skip to Mistral */
 
         var model    = window._AQS_GROQ_MODEL || 'llama-3.3-70b-versatile';
-        var mBody    = Object.assign({}, bodyObj, { model: model });
+        /* bodyObj.model takes priority — lets callers pin a specific model */
+        var mBody    = Object.assign({ model: model }, bodyObj);
         var startIdx = _getIdx(GROQ_IDX_KEY, keys);
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
@@ -134,6 +135,17 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
                     body:    JSON.stringify(mBody)
                 }));
                 if (res.status === 429) { _markRateLimited(key); _setIdx(GROQ_IDX_KEY, idx + 1, keys); continue; }
+                /* 401 = bad key — try next slot */
+                if (res.status === 401) {
+                    console.warn('[groqFetch] Groq slot', idx + 1, 'auth error (401) — skipping key');
+                    _setIdx(GROQ_IDX_KEY, idx + 1, keys); continue;
+                }
+                /* Any other non-2xx (e.g. 400 deprecated model) — bail out so
+                   groqFetch() can fall back to Mistral immediately.            */
+                if (!res.ok) {
+                    console.warn('[groqFetch] Groq HTTP', res.status, '— falling back to Mistral');
+                    return null;
+                }
                 _setIdx(GROQ_IDX_KEY, idx + 1, keys);
                 console.log('[groqFetch] Groq slot', idx + 1, 'responded HTTP', res.status);
                 return res;
@@ -150,7 +162,8 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
         if (!keys.length) return null;
 
         var model    = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
-        var mBody    = Object.assign({}, bodyObj, { model: model });
+        /* bodyObj.model takes priority — lets callers pin a specific model */
+        var mBody    = Object.assign({ model: model }, bodyObj);
         var startIdx = _getIdx(MISTRAL_IDX_KEY, keys);
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
@@ -167,6 +180,14 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
                     body:    JSON.stringify(mBody)
                 }));
                 if (res.status === 429) { _markRateLimited(key); _setIdx(MISTRAL_IDX_KEY, idx + 1, keys); continue; }
+                if (res.status === 401) {
+                    console.warn('[groqFetch] Mistral slot', idx + 1, 'auth error (401) — skipping key');
+                    _setIdx(MISTRAL_IDX_KEY, idx + 1, keys); continue;
+                }
+                if (!res.ok) {
+                    console.warn('[groqFetch] Mistral HTTP', res.status, '— all providers exhausted');
+                    return null;
+                }
                 _setIdx(MISTRAL_IDX_KEY, idx + 1, keys);
                 console.log('[groqFetch] Mistral slot', idx + 1, 'responded HTTP', res.status);
                 return res;
