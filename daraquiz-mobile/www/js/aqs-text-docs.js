@@ -1723,19 +1723,41 @@
   window.wpMyDocShare = function(index) {
     var docs = []; try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
     var d = docs[index]; if (!d) return;
+
+    /* Try Web Share API (native share sheet on mobile) */
     if (navigator.share && navigator.canShare) {
       try {
         var f = new File([d.content], d.name, { type: d.type || 'text/plain' });
-        if (navigator.canShare({ files: [f] })) { navigator.share({ files: [f], title: d.name }); return; }
+        if (navigator.canShare({ files: [f] })) {
+          navigator.share({ files: [f], title: d.name })
+            .catch(function(err) {
+              if (err && err.name !== 'AbortError') { _wpMyDocBlobDownload(d); }
+            });
+          return;
+        }
       } catch(e2) {}
     }
-    /* Fallback: data-URI download */
-    var a = document.createElement('a');
-    a.href = 'data:' + (d.type||'text/plain') + ';charset=utf-8,' + encodeURIComponent(d.content||'');
-    a.download = d.name || 'document';
-    document.body.appendChild(a); a.click();
-    setTimeout(function(){ document.body.removeChild(a); }, 300);
+    /* Fallback: blob URL download — works in Chrome regardless of file size */
+    _wpMyDocBlobDownload(d);
   };
+
+  function _wpMyDocBlobDownload(d) {
+    try {
+      var blob = new Blob([d.content || ''], { type: d.type || 'text/plain' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href = url; a.download = d.name || 'document';
+      document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+    } catch(err) {
+      /* Last resort: data-URI (small files only) */
+      var a2 = document.createElement('a');
+      a2.href = 'data:' + (d.type||'text/plain') + ';charset=utf-8,' + encodeURIComponent(d.content||'');
+      a2.download = d.name || 'document';
+      document.body.appendChild(a2); a2.click();
+      setTimeout(function() { document.body.removeChild(a2); }, 300);
+    }
+  }
 
   window.wpMyDocOpen = function(index) {
     var docs = []; try { docs = JSON.parse(localStorage.getItem(WP_DOCS_KEY) || '[]'); } catch(e) {}
@@ -2000,6 +2022,34 @@
       }
       if (changed) { anythingChanged = true; continue; }
 
+      /* ── Heading-orphan pass: push a lone heading at the bottom of a page
+             forward so it stays with its following content (like Word's
+             "Keep with next" paragraph setting) ── */
+      for (var pi3 = 0; pi3 < wpPages.length - 1; pi3++) {
+        var ed3 = document.getElementById('wp-editor-' + pi3);
+        if (!ed3 || ed3.children.length < 2) continue; /* need at least 2 children */
+        var lastEl3 = ed3.lastElementChild;
+        if (!lastEl3) continue;
+        var t3 = lastEl3.tagName && lastEl3.tagName.toUpperCase();
+        if (t3 !== 'H1' && t3 !== 'H2' && t3 !== 'H3') continue;
+        /* Lone heading at page bottom — push to next page */
+        ed3.removeChild(lastEl3);
+        wpPages[pi3] = ed3.innerHTML;
+        var ned3 = document.getElementById('wp-editor-' + (pi3 + 1));
+        if (ned3) {
+          ned3.insertBefore(lastEl3, ned3.firstChild || null);
+          wpPages[pi3 + 1] = ned3.innerHTML;
+        } else if (wpPages.length < MAX_PAGES) {
+          wpPages.splice(pi3 + 1, 0, lastEl3.outerHTML || '');
+          wpRenderPages(true);
+        } else {
+          ed3.appendChild(lastEl3); wpPages[pi3] = ed3.innerHTML; /* nowhere to put it */
+          continue;
+        }
+        changed = true; break;
+      }
+      if (changed) { anythingChanged = true; continue; }
+
       break; /* stable */
     }
 
@@ -2093,6 +2143,12 @@
   function _wpPullUnderflow(pi, ed, nextEd) {
     var firstBlock = nextEd.firstElementChild;
     if (!firstBlock) return false;
+
+    /* Keep-heading-with-next: never pull a heading back to the previous page.
+       Headings belong at the TOP of their following content, not orphaned
+       at the bottom of the page before. */
+    var fTag = firstBlock.tagName && firstBlock.tagName.toUpperCase();
+    if (fTag === 'H1' || fTag === 'H2' || fTag === 'H3') return false;
 
     /* Measure with a clone to avoid mutating the DOM */
     var clone = firstBlock.cloneNode(true);
@@ -2381,16 +2437,27 @@
         }
         wpSetStatus('📄 Opened in Chrome — use Share → Print to save as PDF');
       } else {
-        /* Web: use iframe print */
-        var old2 = document.getElementById('wp-print-iframe');
-        if (old2) old2.remove();
-        var pf2 = document.createElement('iframe');
-        pf2.id = 'wp-print-iframe';
-        pf2.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
-        document.body.appendChild(pf2);
-        pf2.contentDocument.open(); pf2.contentDocument.write(printHtml); pf2.contentDocument.close();
-        setTimeout(function(){ pf2.contentWindow.focus(); pf2.contentWindow.print(); setTimeout(function(){ pf2.remove(); }, 3000); }, 600);
-        wpSetStatus('PDF print dialog opened ✅');
+        /* Web / Chrome: open a blob URL in a new tab → Chrome auto-triggers print dialog
+           (window.open is reliable in Chrome; user sees print dialog to Save as PDF) */
+        var printBlob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
+        var printBlobUrl = URL.createObjectURL(printBlob);
+        var printWin = window.open(printBlobUrl, '_blank');
+        if (printWin) {
+          printWin.addEventListener('load', function() {
+            setTimeout(function() { printWin.print(); }, 350);
+          });
+          /* Revoke after user has had time to print */
+          setTimeout(function() { URL.revokeObjectURL(printBlobUrl); }, 60000);
+          wpSetStatus('📄 Print dialog opening — choose "Save as PDF" in Chrome');
+        } else {
+          /* Popup blocked — fall back to downloading as HTML */
+          var dlA = document.createElement('a');
+          dlA.href = printBlobUrl;
+          dlA.download = wpSafeName(title) + '.html';
+          document.body.appendChild(dlA); dlA.click();
+          setTimeout(function() { document.body.removeChild(dlA); URL.revokeObjectURL(printBlobUrl); }, 2000);
+          wpSetStatus('📥 Downloaded as HTML — open in Chrome and press Ctrl+P to save as PDF');
+        }
       }
     } else {
       wpDownload(fmt);
