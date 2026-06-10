@@ -50,6 +50,53 @@
     wpUpdateStats();
     wpSetStatus('Word Processor ready — v3.1');
     wpAdjustHeaderOffset();
+
+    /* ── Mobile app print-job handoff ────────────────────────────────
+       When the mobile app cannot print/download locally it opens this
+       page in the real browser with the document encoded in the hash:
+         text-to-docs.html#printjob=<base64-json>
+       We decode it, load the pages, and auto-trigger print/download.
+       The hash never reaches the server, so document content is safe. */
+    (function checkMobilePrintJob() {
+      var hash = window.location.hash || '';
+      if (hash.indexOf('#printjob=') !== 0) return;
+      try {
+        var encoded = hash.substring(10);
+        var job = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+        if (!job || !Array.isArray(job.pages) || !job.pages.length) return;
+
+        /* Load pages into the editor */
+        wpPages = job.pages;
+        wpCurrentPage = 0;
+        wpRenderPages();
+        wpUpdateStats();
+
+        /* Dismiss the mode-selection overlay if present */
+        var overlay = document.getElementById('wp-mode-overlay');
+        if (overlay) overlay.classList.add('hidden');
+        sessionStorage.setItem('wp_mode_chosen', '1');
+
+        /* Clean the hash from the URL bar without adding a history entry */
+        if (history.replaceState) {
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
+        /* Auto-trigger the correct action after the editor settles */
+        var fmt = job.fmt || 'pdf';
+        wpSetStatus('📄 Document loaded from app — ' + (fmt === 'pdf' ? 'opening print dialog…' : 'starting download…'));
+        setTimeout(function () {
+          try {
+            if (fmt === 'pdf') {
+              /* Trigger browser print dialog directly */
+              window.wpPrint();
+            } else {
+              window.wpDownload(fmt);
+            }
+          } catch (err) { /* silently ignore if function not ready yet */ }
+        }, 900);
+
+      } catch (e) { /* ignore malformed hash */ }
+    })();
   });
 
   /* ── Dynamic header height offset ──────────────────────────── */
