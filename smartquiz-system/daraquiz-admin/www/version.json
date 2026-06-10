@@ -1,8 +1,8 @@
 {
-  "version": "1.250",
-  "versionCode": 10,
+  "version": "1.251",
+  "versionCode": 226,
   "releaseDate": "2026-06-05",
-  "notes": "Added AI Key Health dashboard; fixed Groq/Mistral key limits, race condition, deprecated model.",
+  "notes": "Admin-only AI error log, key expiry reminders, hidden console warnings from users, generic error messages.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk"
 }

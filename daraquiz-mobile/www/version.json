@@ -2,7 +2,7 @@
   "version": "1.251",
   "versionCode": 226,
   "releaseDate": "2026-06-10",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Admin-only AI error log, key expiry reminders, hidden console warnings from users, generic error messages.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.251/daraquiz-v1.251.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.251/daraquiz-v1.251.apk"
 }

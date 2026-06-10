@@ -71,11 +71,26 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
     /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
     var _rateLimitedUntil = {};
+
+    /* ── Silent AI logger — visible only when _AQS_ADMIN_MODE is set ────── */
+    /* Non-admin users never see internal key rotation details in the console */
+    window._aqsAIErrorLog = window._aqsAIErrorLog || [];
+    function _aqsLog(level, msg) {
+        var entry = { t: new Date().toISOString(), level: level, msg: [].slice.call(arguments, 1).join(' ') };
+        window._aqsAIErrorLog.unshift(entry);
+        if (window._aqsAIErrorLog.length > 60) window._aqsAIErrorLog.length = 60;
+        if (window._AQS_ADMIN_MODE) {
+            if (level === 'error') console.error('[aqs-ai]', entry.msg);
+            else console.warn('[aqs-ai]', entry.msg);
+        }
+    }
+
+
     function _keyHash(k)         { return k ? k.slice(-8) : '?'; }
     function _isRateLimited(k)   { return (_rateLimitedUntil[_keyHash(k)] || 0) > Date.now(); }
     function _markRateLimited(k) {
         _rateLimitedUntil[_keyHash(k)] = Date.now() + RL_COOLDOWN_MS;
-        console.warn('[aqs-ai] key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
+        _aqsLog('warn', 'key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
     }
 
     /* ── Key pool helpers ────────────────────────────────────────────── */
@@ -110,7 +125,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
             var idx = (startIdx + attempt) % keys.length;
             var key = _sanitizeKey ? _sanitizeKey(keys[idx]) : (keys[idx] || '').trim();
             if (_isRateLimited(key)) {
-                console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'cooling — skip');
+                _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' cooling — skip');
                 _setIdx(idxKey, idx + 1, keys); continue;
             }
             try {
@@ -122,19 +137,19 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
                 if (res.status === 429) { _markRateLimited(key); _setIdx(idxKey, idx + 1, keys); continue; }
                 /* 401 = bad key — skip to next key slot */
                 if (res.status === 401) {
-                    console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'auth error (401) — skipping key');
+                    _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' auth error (401) — skipping key');
                     _setIdx(idxKey, idx + 1, keys); continue;
                 }
                 /* Any other non-2xx (e.g. 400 deprecated model, 422) — bail out so the
                    next provider (Mistral / HuggingFace) is tried by groqFetch().       */
                 if (!res.ok) {
-                    console.warn('[aqs-ai]', url.split('/')[2], 'HTTP', res.status, '— falling back to next provider');
+                    _aqsLog('warn', url.split('/')[2] + ' HTTP ' + res.status + ' — falling back to next provider');
                     return null;
                 }
                 _setIdx(idxKey, idx + 1, keys);
                 return res;
             } catch(e) {
-                console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'error:', e.message || e);
+                _aqsLog('error', url.split('/')[2] + ' slot ' + (idx + 1) + ' error: ' + (e.message || e));
             }
         }
         return null;
@@ -164,14 +179,14 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
         /* 2. Fall back to Mistral */
         if (_getMistralKeys().length) {
-            console.warn('[aqs-ai] All Groq keys busy — falling back to Mistral');
+            _aqsLog('warn', 'All Groq keys busy — falling back to Mistral');
             res = await _mistralFetch(bodyObj, extraOpts);
             if (res) return res;
         }
 
         /* 3. Fall back to HuggingFace (Study Hub + Studio also benefit) */
         if (_getHFKeys().length) {
-            console.warn('[aqs-ai] All Mistral keys busy — falling back to HuggingFace');
+            _aqsLog('warn', 'All Mistral keys busy — falling back to HuggingFace');
             res = await _hfFetch(bodyObj, extraOpts);
             if (res) return res;
         }
@@ -202,15 +217,15 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
     window.setGroqKeys = function(arr) {
         window._AQS_GROQ_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
-        try { localStorage.setItem(GROQ_IDX_KEY, '0'); } catch(e){}
+        try { localStorage.setItem(GROQ_IDX_KEY, '0'); localStorage.setItem('aqs_groq_saved_at', Date.now()); } catch(e){}
     };
     window.setMistralKeys = function(arr) {
         window._AQS_MISTRAL_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
-        try { localStorage.setItem(MISTRAL_IDX_KEY, '0'); } catch(e){}
+        try { localStorage.setItem(MISTRAL_IDX_KEY, '0'); localStorage.setItem('aqs_mistral_saved_at', Date.now()); } catch(e){}
     };
     window.setHFKeys = function(arr) {
         window._AQS_HF_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 10; });
-        try { localStorage.setItem(HF_IDX_KEY, '0'); } catch(e){}
+        try { localStorage.setItem(HF_IDX_KEY, '0'); localStorage.setItem('aqs_hf_saved_at', Date.now()); } catch(e){}
     };
 
 
@@ -276,7 +291,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
                       + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
                       + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
             if (total > 0) {
-                console.log('[aqs-ai] Auto-loaded', total, 'AI key(s) from Firebase settings.');
+                _aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
             }
         });
     }

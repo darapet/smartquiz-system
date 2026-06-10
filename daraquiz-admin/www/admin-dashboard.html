@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin Dashboard — xzily AI</title>
@@ -621,6 +622,53 @@ fetch('#firebase-admin-endpoint-removed/api/admin/quizzes', {credentials:'includ
             grid.innerHTML = _renderProvider(h.groq, 'Groq', '#a78bfa')
                 + _renderProvider(h.mistral, 'Mistral', '#38bdf8')
                 + _renderProvider(h.hf, 'HuggingFace', '#fb923c');
+        }
+
+        /* Expiry banners */
+        var bannerEl = document.getElementById('aqs-ai-expiry-banners');
+        if (bannerEl) {
+            var now2 = Date.now();
+            var DAY = 86400000;
+            var checks = [
+                { key: 'aqs_groq_saved_at',    label: 'Groq',        warn: 30, crit: 45  },
+                { key: 'aqs_mistral_saved_at',  label: 'Mistral',     warn: 60, crit: 90  },
+                { key: 'aqs_hf_saved_at',       label: 'HuggingFace', warn: 90, crit: 120 }
+            ];
+            var banners = '';
+            checks.forEach(function(c) {
+                var saved = 0;
+                try { saved = parseInt(localStorage.getItem(c.key) || '0') || 0; } catch(e){}
+                if (!saved) return;
+                var days = Math.floor((now2 - saved) / DAY);
+                if (days >= c.crit) {
+                    banners += '<div style="background:#1c0101;border:1px solid #7f1d1d;border-radius:10px;padding:12px 16px;margin-bottom:10px;color:#fca5a5;font-size:.85rem;">'
+                        + '🚨 <strong>' + c.label + ' keys are ' + days + ' days old</strong> — strongly recommended to rotate them now. Go to Settings → ' + c.label + ' to add fresh keys.</div>';
+                } else if (days >= c.warn) {
+                    banners += '<div style="background:#1c1001;border:1px solid #78350f;border-radius:10px;padding:12px 16px;margin-bottom:10px;color:#fde68a;font-size:.85rem;">'
+                        + '⚠️ <strong>' + c.label + ' keys are ' + days + ' days old</strong> — consider rotating them soon (recommended every ' + c.warn + ' days).</div>';
+                }
+            });
+            bannerEl.innerHTML = banners;
+        }
+
+        /* Error log */
+        var logEl = document.getElementById('aqs-ai-error-log-body');
+        if (logEl) {
+            var logs = window._aqsAIErrorLog || [];
+            if (!logs.length) {
+                logEl.innerHTML = '<div style="color:#475569;font-style:italic;font-size:.82rem;padding:12px 0;">No AI errors captured yet. Errors appear here when keys are rotated, rate-limited, or fail.</div>';
+            } else {
+                logEl.innerHTML = logs.slice(0, 30).map(function(e) {
+                    var color = e.level === 'error' ? '#fca5a5' : (e.level === 'warn' ? '#fde68a' : '#94a3b8');
+                    var icon  = e.level === 'error' ? '❌' : (e.level === 'warn' ? '⚠️' : 'ℹ️');
+                    var time  = e.t ? e.t.slice(11,19) : '';
+                    return '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid #1e293b;font-size:.78rem;">'
+                        + '<span style="color:#475569;flex-shrink:0;">' + time + '</span>'
+                        + '<span style="flex-shrink:0;">' + icon + '</span>'
+                        + '<span style="color:' + color + ';word-break:break-all;">' + e.msg + '</span>'
+                        + '</div>';
+                }).join('');
+            }
         }
 
         /* Timestamp */
