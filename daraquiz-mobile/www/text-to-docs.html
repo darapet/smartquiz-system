@@ -6,19 +6,14 @@
   <title>Text → Docs | XZily AI Word Processor</title>
   <meta name="theme-color" content="#1e1b4b">
 
-  <!-- Word Processor CSS (includes 30+ Google Fonts) -->
+  <!-- Page-transition skeleton loader (first — shows immediately) -->
+  <script src="js/aqs-nav-loader.js"></script>
+
+  <!-- Word Processor CSS -->
   <link rel="stylesheet" href="css/aqs-text-docs.css">
 
-  <!-- External libs (defer — loaded before aqs-text-docs.js at bottom) -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.0/docx.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-
-  <!-- Firebase + jQuery -->
-  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <!-- Firebase + jQuery (non-blocking module) -->
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js" defer></script>
   <script type="module" src="js/aqs-firebase.js"></script>
 
   <style>
@@ -2356,6 +2351,13 @@
 <!-- ════════════════════════════════════════════════
      SCRIPTS
 ════════════════════════════════════════════════ -->
+<!-- Heavy CDN libs moved here so they don't block the initial page render -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.0/docx.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="js/aqs-groq-key.js"></script>
 <script src="js/aqs-text-docs.js"></script>
 <script src="js/aqs-session.js"></script>
