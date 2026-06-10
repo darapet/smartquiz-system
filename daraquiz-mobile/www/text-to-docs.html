@@ -987,22 +987,22 @@
      APP BAR
 ════════════════════════════════════════════════ -->
 <div class="wp-appbar">
-  <!-- Hamburger (open nav drawer) -->
+  <!-- Hamburger -->
   <button class="wp-nav-toggle" id="wp-nav-toggle" title="Navigation" onclick="(function(){var d=document.getElementById('wp-nav-drawer'),b=document.getElementById('wp-nav-backdrop');if(d){d.classList.toggle('open');b&&b.classList.toggle('open');}})()">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
 
-  <!-- Logo / title -->
+  <!-- Logo + page title -->
   <a href="index.html" class="wp-appbar-logo">
     <div class="wp-appbar-logo-icon">
       <svg width="15" height="15" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg>
     </div>
     <span class="wp-appbar-logo-name">xzily AI</span>
   </a>
-  <div class="wp-appbar-logo-sep" style="width:1px;height:16px;background:rgba(255,255,255,.22);flex-shrink:0;"></div>
+  <div class="wp-appbar-logo-sep"></div>
   <span class="wp-appbar-page-label">Text → Docs</span>
 
-  <!-- Action buttons -->
+  <!-- Desktop action buttons (hidden on mobile) -->
   <div class="wp-appbar-btns">
     <button class="wp-appbar-btn" onclick="wpNewDocument()" title="New document (Ctrl+N)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1012,10 +1012,8 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
       Print / Export
     </button>
-
-    <!-- Download dropdown -->
     <div class="wp-dd-wrap" id="wp-dl-wrap">
-      <button class="wp-appbar-btn" onclick="(function(){var m=document.getElementById('wp-dl-menu');if(m)m.classList.toggle('open');})()" title="Download">
+      <button class="wp-appbar-btn" onclick="(function(){var m=document.getElementById('wp-dl-menu');if(m)m.classList.toggle('open');})()" title="Export">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Export ▾
       </button>
@@ -1031,23 +1029,30 @@
         <button class="wp-lspace-opt" onclick="wpDownload('csv');document.getElementById('wp-dl-menu').classList.remove('open')">📊 CSV</button>
       </div>
     </div>
-
     <button class="wp-appbar-btn" onclick="wpShowFindReplace()" title="Find &amp; Replace (Ctrl+H)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Find
     </button>
   </div>
 
-  <!-- Right side: AI status + page indicator + stats -->
+  <!-- Right side -->
   <div class="wp-appbar-right">
-    <div id="wp-stats-sec" style="display:none;">
-      <div id="wp-stats" style="display:flex;gap:4px;flex-wrap:wrap;"></div>
+    <!-- Mobile-only: quick print icon button -->
+    <button class="wp-appbar-btn wp-appbar-mob-only" onclick="wpShowPrintFormatModal()" title="Print / Export" style="padding:6px 10px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+
+    <!-- AI status: compact dot on mobile, labelled pill on desktop -->
+    <div id="wp-ai-status" class="wp-ai-indicator">
+      <span id="wp-ai-si" class="wp-ai-icon">✅</span>
+      <span id="wp-ai-st" class="wp-ai-label">AI Ready</span>
     </div>
-    <div id="wp-ai-status" class="wp-ai-status ready" style="padding:3px 8px;font-size:11px;margin-bottom:0;display:flex;align-items:center;gap:4px;border-radius:5px;border:1px solid #bbf7d0;background:#f0fdf4;color:#15803d;">
-      <span id="wp-ai-si">✅</span><span id="wp-ai-st">AI Ready</span>
-    </div>
-    <span class="wp-ver-badge">v3.4</span>
-    <span id="wp-sb-msg" style="font-size:11px;color:#a5b4fc;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+
+    <!-- Version badge: desktop only -->
+    <span class="wp-ver-badge wp-appbar-desk-only">v3.4</span>
+
+    <!-- Status message (desktop only) -->
+    <span id="wp-sb-msg" class="wp-appbar-desk-only" style="font-size:11px;color:#a5b4fc;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
   </div>
 </div>
 
