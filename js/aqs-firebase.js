@@ -2173,7 +2173,10 @@ async function actionSaveSettings(data) {
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
     var allowed = [
-        'mistral_keys','mistral_model','bg_music_url',
+        'groq_keys','groq_model',
+        'mistral_keys','mistral_model',
+        'hf_keys','hf_model',
+        'bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
@@ -2184,15 +2187,36 @@ async function actionSaveSettings(data) {
         'yahoo_client_id','yahoo_client_secret'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
-    /* Trim and validate Mistral keys (up to 10) before saving */
+    /* Trim and validate Groq keys (up to 20) before saving */
+    if (Array.isArray(payload.groq_keys)) {
+        payload.groq_keys = payload.groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 20);
+    }
+    /* Trim and validate Mistral keys (up to 20) before saving */
     if (Array.isArray(payload.mistral_keys)) {
         payload.mistral_keys = payload.mistral_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 20; })
-            .slice(0, 10);
+            .slice(0, 20);
+    }
+    /* Trim and validate HuggingFace keys (up to 5) before saving */
+    if (Array.isArray(payload.hf_keys)) {
+        payload.hf_keys = payload.hf_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 10; })
+            .slice(0, 5);
     }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately merge saved keys into in-memory pool (hardcoded keys stay as fallback) */
+    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
+    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
+        var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+        var _gMerged = payload.groq_keys.slice();
+        _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
+        window._AQS_GROQ_MASTER_KEYS = _gMerged;
+    }
+    if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
         var _mMerged = payload.mistral_keys.slice();
@@ -2200,6 +2224,13 @@ async function actionSaveSettings(data) {
         window._AQS_MISTRAL_MASTER_KEYS = _mMerged;
     }
     if (payload.mistral_model) window._AQS_MISTRAL_MODEL = payload.mistral_model;
+    if (Array.isArray(payload.hf_keys) && payload.hf_keys.length) {
+        var _hcHF = Array.isArray(window._AQS_HF_MASTER_KEYS) ? window._AQS_HF_MASTER_KEYS : [];
+        var _hfMerged = payload.hf_keys.slice();
+        _hcHF.forEach(function(k){ if (_hfMerged.indexOf(k) === -1) _hfMerged.push(k); });
+        window._AQS_HF_MASTER_KEYS = _hfMerged;
+    }
+    if (payload.hf_model) window._AQS_HF_MODEL = payload.hf_model;
     return { success: true, message: 'Settings saved.' };
 }
 
