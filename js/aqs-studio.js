@@ -905,7 +905,9 @@
                              '5. NEVER say you cannot browse the internet — you just did.';
         }
 
-        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+        /* Trim history to last 20 messages to keep token usage manageable on long sessions */
+        var histSlice = chatHistory.length > 20 ? chatHistory.slice(chatHistory.length - 20) : chatHistory.slice();
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(histSlice);
 
         if (typeof window.groqFetch !== 'function') {
             showTyping(false);
@@ -915,73 +917,82 @@
             return;
         }
 
-        /* ── Step 3: Call Groq ── */
-        window.groqFetch({
-            model:       'llama-3.3-70b-versatile',
-            messages:    messages,
-            max_tokens:  3000,
-            temperature: 0.7
-        }).then(function (res) {
-            return res.json();
-        }).then(function (data) {
-            showTyping(false);
-            if (data.error) {
-                var errMsg = data.error.message || 'API error.';
-                if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
-                    errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
-                } else if (errMsg.indexOf('429') !== -1) {
-                    errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
-                }
-                appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
-            } else {
-                var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
-                    ? data.choices[0].message.content
-                    : 'Sorry, I could not generate a response. Please try again.';
-
-                /* Append web source badge if web was searched */
-                if (webSourceTag) {
-                    reply = reply + '\n\n---\n' + webSourceTag;
-                }
-
-                chatHistory.push({ role: 'assistant', content: reply });
-                streamReply(reply, function () {
-                    saveSession();
-                    renderHistoryList();
-                    if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
-                        showQuizImportBar(reply);
+        /* ── Step 3: Call Groq — wrapped so rate-limit auto-retry stays within this turn ── */
+        function _attemptCall(attemptN) {
+            window.groqFetch({
+                model:       'llama-3.3-70b-versatile',
+                messages:    messages,
+                max_tokens:  1500,
+                temperature: 0.7
+            }).then(function (res) {
+                return res.json();
+            }).then(function (data) {
+                showTyping(false);
+                if (data.error) {
+                    var errMsg = data.error.message || 'API error.';
+                    if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
+                        errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
+                    } else if (errMsg.indexOf('429') !== -1) {
+                        errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
                     }
-                });
-            }
-            isSending = false;
-            setSendState(false);
-        }).catch(function (err) {
-            showTyping(false);
-            var errMsg = (err && err.message) ? err.message : String(err || '');
-            /* ── App cold-start: Firebase may not have loaded keys yet — retry up to 2× ── */
-            if ((errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) && (_retryCount || 0) < 2) {
-                showTyping(true, 'Connecting to AI\u2026 please wait');
+                    appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
+                } else {
+                    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                        ? data.choices[0].message.content
+                        : 'Sorry, I could not generate a response. Please try again.';
+
+                    /* Append web source badge if web was searched */
+                    if (webSourceTag) {
+                        reply = reply + '\n\n---\n' + webSourceTag;
+                    }
+
+                    chatHistory.push({ role: 'assistant', content: reply });
+                    streamReply(reply, function () {
+                        saveSession();
+                        renderHistoryList();
+                        if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
+                            showQuizImportBar(reply);
+                        }
+                    });
+                }
                 isSending = false;
                 setSendState(false);
-                setTimeout(function () { sendMessage(text, (_retryCount || 0) + 1); }, 2200);
-                return;
-            }
-            var displayMsg;
-            if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
-                displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
-            } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
-                displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait a moment and try again.';
-            } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
-                displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
-            } else if (errMsg) {
-                displayMsg = '\u26A0\uFE0F ' + errMsg;
-            } else {
-                displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
-            }
-            appendMessage('assistant', displayMsg);
-            console.error('[dts] AI error:', err);
-            isSending = false;
-            setSendState(false);
-        });
+            }).catch(function (err) {
+                var errMsg = (err && err.message) ? err.message : String(err || '');
+                /* ── App cold-start: Firebase may not have loaded keys yet — retry up to 2× ── */
+                if ((errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) && (_retryCount || 0) < 2) {
+                    showTyping(true, 'Connecting to AI\u2026 please wait');
+                    isSending = false;
+                    setSendState(false);
+                    setTimeout(function () { sendMessage(text, (_retryCount || 0) + 1); }, 2200);
+                    return;
+                }
+                /* ── Rate-limit: auto-retry once after 65 s so users never have to re-send ── */
+                if ((errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) && attemptN < 1) {
+                    showTyping(true, '\u23F3 Rate limited \u2014 auto-retrying in 65 seconds\u2026');
+                    setTimeout(function () { _attemptCall(1); }, 65000);
+                    return;
+                }
+                showTyping(false);
+                var displayMsg;
+                if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
+                    displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
+                } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
+                    displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait 1 minute and try again.';
+                } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
+                    displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+                } else if (errMsg) {
+                    displayMsg = '\u26A0\uFE0F ' + errMsg;
+                } else {
+                    displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
+                }
+                appendMessage('assistant', displayMsg);
+                console.error('[dts] AI error:', err);
+                isSending = false;
+                setSendState(false);
+            });
+        }
+        _attemptCall(0);
     }
 
     function setSendState(busy) {
