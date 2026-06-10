@@ -1101,10 +1101,12 @@
 
   <!-- Ribbon tab buttons -->
   <div class="wp-ribbon-tabs">
-    <button class="wp-rtab active" id="wp-rtab-format" onclick="wpRibbonTab('format')">Format</button>
-    <button class="wp-rtab" id="wp-rtab-insert" onclick="wpRibbonTab('insert')">Insert</button>
-    <button class="wp-rtab" id="wp-rtab-view"   onclick="wpRibbonTab('view')">View</button>
-    <button class="wp-rtab" id="wp-rtab-style"  onclick="wpRibbonTab('style')">Style</button>
+    <button class="wp-rtab active" id="wp-rtab-format"    onclick="wpRibbonTab('format')">Format</button>
+    <button class="wp-rtab" id="wp-rtab-insert"           onclick="wpRibbonTab('insert')">Insert</button>
+    <button class="wp-rtab" id="wp-rtab-view"             onclick="wpRibbonTab('view')">View</button>
+    <button class="wp-rtab" id="wp-rtab-style"            onclick="wpRibbonTab('style')">Style</button>
+    <button class="wp-rtab" id="wp-rtab-ai-write"         onclick="wpRibbonTab('ai-write')"  style="color:#6366f1;font-weight:700;">✍️ AI Write</button>
+    <button class="wp-rtab" id="wp-rtab-ai-format"        onclick="wpRibbonTab('ai-format')" style="color:#6366f1;font-weight:700;">🔧 AI Format</button>
   </div>
 
   <!-- ── Format Panel ── -->
@@ -1444,6 +1446,107 @@
       </div>
     </div>
   </div><!-- /rp-style -->
+
+  <!-- ── AI Write Panel ── -->
+  <div class="wp-ribbon-panel" id="rp-ai-write">
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">What to write</label>
+      <textarea id="wp-r-prompt" rows="2" style="width:230px;resize:none;font-size:11px;padding:5px 7px;border:1px solid #d1d5db;border-radius:5px;min-height:40px;font-family:inherit;" placeholder="e.g. Write a report on renewable energy…"></textarea>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Tone</label>
+      <select id="wp-r-wtone" class="tb-sel" style="width:110px;">
+        <option value="Professional">Professional</option>
+        <option value="Academic">Academic</option>
+        <option value="Casual">Casual</option>
+        <option value="Creative">Creative</option>
+        <option value="Formal">Formal</option>
+        <option value="Persuasive">Persuasive</option>
+      </select>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Doc Type</label>
+      <select id="wp-r-wdoctype" class="tb-sel" style="width:130px;">
+        <option value="General Document">General Document</option>
+        <option value="Essay">Essay</option>
+        <option value="Report">Report</option>
+        <option value="Business Proposal">Business Proposal</option>
+        <option value="Cover Letter">Cover Letter</option>
+        <option value="Research Paper">Research Paper</option>
+        <option value="Article">Article</option>
+        <option value="Blog Post">Blog Post</option>
+        <option value="Email">Email</option>
+        <option value="Meeting Minutes">Meeting Minutes</option>
+      </select>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Length</label>
+      <select id="wp-r-wlength" class="tb-sel" style="width:90px;">
+        <option value="0.5">½ page</option>
+        <option value="1" selected>1 page</option>
+        <option value="2">2 pages</option>
+        <option value="3">3 pages</option>
+        <option value="5">5 pages</option>
+      </select>
+    </div>
+    <div class="wp-tg">
+      <button class="tb primary" id="wp-write-btn-r" onclick="wpAIWriteRibbon()" style="background:#6366f1;color:#fff;border-color:#6366f1;white-space:nowrap;height:36px;font-weight:700;">✍️ Write with AI</button>
+    </div>
+    <div class="wp-tg">
+      <span id="wp-write-hint-r" style="font-size:10px;color:#ef4444;display:none;max-width:160px;"></span>
+    </div>
+  </div><!-- /rp-ai-write -->
+
+  <!-- ── AI Format Panel ── -->
+  <div class="wp-ribbon-panel" id="rp-ai-format">
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Paste text to format</label>
+      <textarea id="wp-r-source" rows="2" style="width:230px;resize:none;font-size:11px;padding:5px 7px;border:1px solid #d1d5db;border-radius:5px;min-height:40px;font-family:inherit;" placeholder="Paste raw unformatted text here…"></textarea>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Tone</label>
+      <select id="wp-r-tone" class="tb-sel" style="width:110px;">
+        <option value="Professional">Professional</option>
+        <option value="Academic">Academic</option>
+        <option value="Casual">Casual</option>
+        <option value="Creative">Creative</option>
+        <option value="Formal">Formal</option>
+      </select>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Doc Type</label>
+      <select id="wp-r-doctype" class="tb-sel" style="width:130px;">
+        <option value="General Document">General Document</option>
+        <option value="Essay">Essay</option>
+        <option value="Report">Report</option>
+        <option value="Business Proposal">Business Proposal</option>
+        <option value="Research Paper">Research Paper</option>
+        <option value="Article">Article</option>
+        <option value="Blog Post">Blog Post</option>
+      </select>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:2px;">
+      <label style="font-size:10px;color:#6b7280;font-weight:600;">Pages</label>
+      <select id="wp-r-fpages" class="tb-sel" style="width:90px;">
+        <option value="1" selected>1 page</option>
+        <option value="2">2 pages</option>
+        <option value="3">3 pages</option>
+        <option value="5">5 pages</option>
+      </select>
+    </div>
+    <div class="wp-tg" style="flex-direction:column;gap:5px;">
+      <button class="tb primary" id="wp-ai-btn-r" onclick="wpFormatAIRibbon()" style="background:#6366f1;color:#fff;border-color:#6366f1;white-space:nowrap;height:36px;font-weight:700;">✨ Format with AI</button>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;">
+        <button class="tb" onclick="wpAISummarize()" title="Summarize document" style="font-size:10px;">📝 Summarize</button>
+        <button class="tb" onclick="wpAIExpand()"    title="Expand document"   style="font-size:10px;">➕ Expand</button>
+        <button class="tb" onclick="wpAIFix()"       title="Fix Grammar"       style="font-size:10px;">✅ Fix Grammar</button>
+        <button class="tb" onclick="wpAITranslate()" title="Translate"         style="font-size:10px;">🌐 Translate</button>
+      </div>
+    </div>
+    <div class="wp-tg">
+      <span id="wp-ai-hint-r" style="font-size:10px;color:#ef4444;display:none;max-width:160px;"></span>
+    </div>
+  </div><!-- /rp-ai-format -->
 
 </div><!-- /wp-ribbon -->
 
@@ -2371,16 +2474,54 @@
 <script src="capacitor-bridge.js"></script>
 
 <script>
-  /* ── Ribbon tab switching ──────────────────── */
+  /* ── Ribbon tab switching (dynamic — handles any number of tabs) ── */
   function wpRibbonTab(tab) {
-    ['format','insert','view','style'].forEach(function(t) {
-      var btn = document.getElementById('wp-rtab-' + t);
-      var pan = document.getElementById('rp-' + t);
-      if (btn) btn.classList.toggle('active', t === tab);
-      if (pan) pan.classList.toggle('active', t === tab);
+    document.querySelectorAll('.wp-rtab').forEach(function(btn) {
+      btn.classList.toggle('active', btn.id === 'wp-rtab-' + tab);
+    });
+    document.querySelectorAll('.wp-ribbon-panel').forEach(function(pan) {
+      pan.classList.toggle('active', pan.id === 'rp-' + tab);
     });
     window.wpAdjustHeaderOffset && wpAdjustHeaderOffset();
   }
+
+  /* ── Ribbon → AI Write: sync ribbon controls then trigger write ── */
+  window.wpAIWriteRibbon = function() {
+    /* Copy ribbon panel values into the sidebar fields the main function reads */
+    var sync = function(rId, sId) {
+      var r = document.getElementById(rId), s = document.getElementById(sId);
+      if (r && s) s.value = r.value;
+    };
+    sync('wp-r-prompt',   'wp-prompt');
+    sync('wp-r-wtone',    'wp-wtone');
+    sync('wp-r-wdoctype', 'wp-wdoctype');
+    sync('wp-r-wlength',  'wp-length-sel');
+    /* Wire hint back to ribbon span */
+    var rHint = document.getElementById('wp-write-hint-r');
+    var rBtn  = document.getElementById('wp-write-btn-r');
+    if (rBtn) { rBtn.disabled = true; rBtn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
+    window.wpAIWrite && wpAIWrite(function onDone() {
+      if (rBtn) { rBtn.disabled = false; rBtn.innerHTML = '✍️ Write with AI'; }
+    });
+    /* Fallback: re-enable button after 60 s in case callback never fires */
+    setTimeout(function() { if (rBtn) { rBtn.disabled = false; rBtn.innerHTML = '✍️ Write with AI'; } }, 60000);
+  };
+
+  /* ── Ribbon → AI Format: sync ribbon controls then trigger format ── */
+  window.wpFormatAIRibbon = function() {
+    var sync = function(rId, sId) {
+      var r = document.getElementById(rId), s = document.getElementById(sId);
+      if (r && s) s.value = r.value;
+    };
+    sync('wp-r-source',  'wp-source');
+    sync('wp-r-tone',    'wp-tone');
+    sync('wp-r-doctype', 'wp-doctype');
+    sync('wp-r-fpages',  'wp-format-pages');
+    var rBtn = document.getElementById('wp-ai-btn-r');
+    if (rBtn) { rBtn.disabled = true; rBtn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
+    window.wpFormatAI && wpFormatAI();
+    setTimeout(function() { if (rBtn) { rBtn.disabled = false; rBtn.innerHTML = '✨ Format with AI'; } }, 60000);
+  };
 
   /* ── wpShowModal / wpHideModal ─────────────── */
   window.wpShowModal = function(id) {
