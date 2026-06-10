@@ -2366,12 +2366,32 @@
     /* ── Open page: Capacitor Browser on native, window.open on web ── */
     function openPage(pageHtml) {
       if (isNative) {
+        /* Chrome on Android blocks data: URL navigation (since Chrome 65).
+           Instead, encode the document as a #printjob= hash on the real hosted
+           page — the hash never leaves the browser, so it is safe for content.
+           The web page detects the hash, loads the document, and auto-triggers
+           print/download without requiring the user to log in again. */
         try {
-          var b64page = btoa(unescape(encodeURIComponent(pageHtml)));
+          var jobData = {
+            pages:    wpPages.slice(),
+            fmt:      fmt,
+            title:    title,
+            settings: {
+              bfont:  getV('wp-bfont',  'Georgia, serif'),
+              body:   getV('wp-body',   12),
+              margin: getV('wp-margin', 20),
+              lh:     getV('wp-lh',     '1.6'),
+              h1:     getV('wp-h1',     24),
+              h2:     getV('wp-h2',     18),
+              h3:     getV('wp-h3',     14)
+            }
+          };
+          var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(jobData))));
+          var webUrl  = 'https://darapet.github.io/smartquiz-system/text-to-docs.html#printjob=' + encoded;
           var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
           if (Browser && Browser.open) {
-            Browser.open({ url: 'data:text/html;base64,' + b64page });
-            wpSetStatus('📄 Opened in Chrome — tap the button to ' + (fmt === 'pdf' ? 'print / save as PDF' : 'download'));
+            Browser.open({ url: webUrl });
+            wpSetStatus('📄 Opening in browser — tap the button to ' + (fmt === 'pdf' ? 'print / save as PDF' : 'download'));
             return;
           }
         } catch(e) {}
