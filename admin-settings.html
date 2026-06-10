@@ -187,6 +187,7 @@ window.addEventListener('DOMContentLoaded', function() {
    Prevents keys from appearing blank between page loads.
    Keys are cached after each Firebase load and restored instantly on reload.
    ─────────────────────────────────────────────────────────────────────── */
+<script>
 (function() {
     var SS_KEY = 'aqs_admin_ai_keys_cache';
     function _cacheKeys(s) {
@@ -221,6 +222,7 @@ window.addEventListener('DOMContentLoaded', function() {
     /* Restore immediately on DOMContentLoaded (before Firebase) */
     document.addEventListener('DOMContentLoaded', _restoreKeysFromCache);
 })();
+</script>
 </head>
 <body>
 
