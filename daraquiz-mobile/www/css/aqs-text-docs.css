@@ -941,3 +941,189 @@ body {
   .wp-fab { bottom: calc(72px + env(safe-area-inset-bottom)); }
   .wp-sidebar { bottom: calc(60px + env(safe-area-inset-bottom)); }
 }
+
+
+/* ═══════════════════════════════════════════════════════════
+   DW-* SIDEBAR PANEL STYLES — Format AI / Write AI / Stats /
+   Web Search / My Docs / Templates  (DaraWrite skin)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Brand header inside sidebar ── */
+.dw-sb-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 10px; flex-shrink: 0;
+  border-bottom: 1px solid #e9ecf0;
+}
+.dw-sb-brand-icon {
+  width: 34px; height: 34px; flex-shrink: 0;
+  background: linear-gradient(135deg,#4f46e5,#7c3aed);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+}
+.dw-sb-brand-name {
+  font-size: 13px; font-weight: 800; color: #1e1b4b; line-height: 1.2;
+}
+.dw-sb-brand-sub {
+  font-size: 10.5px; color: #6b7280; margin-top: 1px;
+}
+.dw-ai-badge {
+  margin-left: auto; display: flex; align-items: center; gap: 4px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 20px; padding: 3px 9px;
+  font-size: 10.5px; font-weight: 700; color: #15803d; white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Panel body wrapper ── */
+.dw-panel-body {
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+}
+
+/* ── Section label (e.g. "✨ AI Format") ── */
+.dw-sec-label {
+  font-size: 10.5px; font-weight: 800; color: #4f46e5;
+  text-transform: uppercase; letter-spacing: .07em;
+  margin-bottom: 4px; margin-top: 2px;
+}
+
+/* ── Field label ── */
+.dw-lbl {
+  font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 1px;
+}
+
+/* ── Textarea ── */
+.dw-textarea {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 9px 10px; font-size: 13px; resize: vertical;
+  min-height: 80px; width: 100%; background: #fafafa;
+  outline: none; transition: border-color .15s;
+  font-family: inherit; line-height: 1.5;
+}
+.dw-textarea:focus { border-color: #6366f1; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Text input (single-line) ── */
+.dw-input {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; width: 100%;
+  background: #fafafa; outline: none; transition: border-color .15s; font-family: inherit;
+}
+.dw-input:focus { border-color: #6366f1; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Select ── */
+.dw-sel {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 7px 10px; font-size: 12.5px; width: 100%;
+  background: #fff; outline: none; color: #1e293b;
+  transition: border-color .15s; cursor: pointer; font-family: inherit;
+}
+.dw-sel:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Character count ── */
+.dw-char-count {
+  font-size: 10px; color: #9ca3af; text-align: right; margin-top: -2px;
+}
+
+/* ── Upload zone ── */
+.dw-upload-zone {
+  border: 2px dashed #c7d2fe; border-radius: 10px;
+  padding: 14px 12px; text-align: center; cursor: pointer;
+  transition: all .2s; background: #f8f9ff; margin-top: 4px;
+}
+.dw-upload-zone:hover, .dw-upload-zone.drag {
+  border-color: #6366f1; background: #eef2ff;
+}
+
+/* ── 2-column grid ── */
+.dw-grid2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+/* ── Buttons ── */
+.dw-btn-primary {
+  width: 100%; padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: none; background: #6366f1; color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s, transform .1s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-primary:hover { background: #4f46e5; }
+.dw-btn-primary:active { transform: scale(.97); }
+.dw-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.dw-btn-secondary {
+  width: 100%; padding: 9px 14px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border: 1px solid #a5b4fc; background: #f8f9ff; color: #4f46e5;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: background .15s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-secondary:hover { background: #eef2ff; }
+
+.dw-btn-accent {
+  width: 100%; padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: none; background: #06b6d4; color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s, transform .1s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-accent:hover { background: #0891b2; }
+.dw-btn-accent:active { transform: scale(.97); }
+
+.dw-btn-danger-sm {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444;
+  cursor: pointer; transition: background .15s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-danger-sm:hover { background: #fee2e2; }
+
+/* ── Stats tile grid ── */
+.dw-stat-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-top: 6px;
+}
+.dw-stat-tile {
+  background: #f8f9ff; border: 1px solid #e0e7ff; border-radius: 10px;
+  padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 4px;
+  transition: border-color .15s;
+}
+.dw-stat-tile:hover { border-color: #a5b4fc; }
+.dw-stat-tile-label {
+  font-size: 10px; font-weight: 700; color: #6b7280;
+  display: flex; align-items: center; gap: 4px;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.dw-stat-tile-val {
+  font-size: 22px; font-weight: 800; color: #1e1b4b; line-height: 1;
+}
+
+/* ── Quick action grid ── */
+.dw-quick-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 7px;
+  margin-top: 4px;
+}
+.dw-quick-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 6px 9px; border-radius: 10px;
+  border: 1px solid #e0e7ff; background: #f8f9ff; cursor: pointer;
+  font-size: 11px; font-weight: 600; color: #374151;
+  transition: all .15s; font-family: inherit; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-quick-btn:hover { background: #eef2ff; border-color: #a5b4fc; color: #4f46e5; }
+.dw-quick-btn:active { transform: scale(.95); }
+
+/* ── Mobile touch-up: bigger inputs/buttons in panels on narrow screens ── */
+@media (max-width: 768px) {
+  .dw-textarea  { font-size: 16px !important; min-height: 72px; }
+  .dw-input     { font-size: 16px !important; }
+  .dw-sel       { font-size: 16px !important; height: 42px; }
+  .dw-btn-primary   { min-height: 46px; font-size: 14px; }
+  .dw-btn-secondary { min-height: 44px; font-size: 13px; }
+  .dw-btn-accent    { min-height: 46px; font-size: 14px; }
+  .dw-stat-tile-val { font-size: 20px; }
+  .dw-quick-grid { grid-template-columns: repeat(3,1fr); }
+  .dw-quick-btn { padding: 12px 5px 10px; min-height: 60px; }
+}
