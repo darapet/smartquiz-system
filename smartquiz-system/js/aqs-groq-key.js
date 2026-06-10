@@ -213,6 +213,31 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
         try { localStorage.setItem(HF_IDX_KEY, '0'); } catch(e){}
     };
 
+
+    /* ── AI Key Health Reporter (used by Admin Dashboard) ───────────── */
+    window.aqsGetAIKeyHealth = function() {
+        var now = Date.now();
+        function keyInfo(keys, idxKey, minLen) {
+            var active = 0, limited = 0, rows = [];
+            var cur = _getIdx(idxKey, keys.length ? keys : ['x']);
+            for (var i = 0; i < keys.length; i++) {
+                var k = keys[i];
+                var hash = _keyHash(k);
+                var rlUntil = _rateLimitedUntil[hash] || 0;
+                var isRL = rlUntil > now;
+                var cooldownSec = isRL ? Math.ceil((rlUntil - now) / 1000) : 0;
+                var masked = k.slice(0, 6) + '…' + k.slice(-4);
+                if (isRL) limited++; else active++;
+                rows.push({ slot: i + 1, masked: masked, rateLimited: isRL, cooldownSec: cooldownSec, isCurrent: i === cur });
+            }
+            return { total: keys.length, active: active, limited: limited, currentIdx: cur, keys: rows };
+        }
+        return {
+            groq:    keyInfo(_getGroqKeys(),    GROQ_IDX_KEY,    20),
+            mistral: keyInfo(_getMistralKeys(), MISTRAL_IDX_KEY, 20),
+            hf:      keyInfo(_getHFKeys(),      HF_IDX_KEY,      10)
+        };
+    };
     /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
     window.getGroqKey  = function(){ return _getGroqKeys()[0] || ''; };
     window.setGroqKey  = function(){};

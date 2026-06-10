@@ -99,6 +99,35 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
     .aqs-admin-overlay.open{display:block;}
     .aqs-admin-content{padding:16px 14px!important;}
   }}
+
+/* ── AI Key Health Widget ────────────────────────────────────────── */
+.aqs-ai-health-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:20px;}
+.aqs-ai-health-card{background:#0f172a;border:1px solid #1e293b;border-radius:14px;overflow:hidden;color:#e2e8f0;}
+.aqs-ai-health-card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #1e293b;}
+.aqs-ai-health-card-title{font-size:.95rem;font-weight:700;color:#f1f5f9;display:flex;align-items:center;gap:8px;}
+.aqs-ai-health-badge{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:20px;background:#1e293b;color:#94a3b8;}
+.aqs-ai-health-badge.ok{background:#052e16;color:#4ade80;}
+.aqs-ai-health-badge.warn{background:#1c1001;color:#fbbf24;}
+.aqs-ai-health-badge.empty{background:#1e1b4b;color:#818cf8;}
+.aqs-ai-health-rows{padding:10px 0;}
+.aqs-ai-key-row{display:flex;align-items:center;gap:10px;padding:7px 18px;font-size:.82rem;border-bottom:1px solid #1e293b;transition:background .12s;}
+.aqs-ai-key-row:last-child{border-bottom:none;}
+.aqs-ai-key-row:hover{background:rgba(255,255,255,.03);}
+.aqs-ai-key-row.current{background:rgba(99,102,241,.12);border-left:3px solid #6366f1;}
+.aqs-ai-key-row.ratelimited{opacity:.7;}
+.aqs-ai-key-slot{width:50px;color:#64748b;font-size:.75rem;font-weight:600;flex-shrink:0;}
+.aqs-ai-key-code{font-family:monospace;color:#94a3b8;flex:1;font-size:.8rem;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.aqs-ai-key-status{flex-shrink:0;font-size:.75rem;font-weight:700;padding:2px 9px;border-radius:20px;white-space:nowrap;}
+.aqs-ai-key-status.active{background:#052e16;color:#4ade80;}
+.aqs-ai-key-status.ratelimited{background:#1c1001;color:#fbbf24;}
+.aqs-ai-key-next{flex-shrink:0;font-size:.7rem;color:#6366f1;font-weight:700;}
+.aqs-ai-health-empty{padding:18px;text-align:center;color:#475569;font-size:.85rem;font-style:italic;}
+.aqs-ai-health-toolbar{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.aqs-ai-health-summary{display:flex;gap:12px;flex-wrap:wrap;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:14px 20px;margin-bottom:16px;}
+.aqs-ai-health-summary-item{display:flex;flex-direction:column;gap:2px;}
+.aqs-ai-health-summary-val{font-size:1.4rem;font-weight:800;color:#f1f5f9;}
+.aqs-ai-health-summary-lbl{font-size:.72rem;color:#64748b;font-weight:500;}
+.aqs-ai-health-refresh-note{font-size:.75rem;color:#64748b;margin-left:auto;}
 </style>
 <script>
 window.AQS = {
@@ -152,6 +181,7 @@ window._AQS_SETTINGS_NONCE = '';
         <button class="aqs-admin-tab" data-tab="tab-attendees">All Attendees</button>
         <button class="aqs-admin-tab" data-tab="tab-ads">📢 Ads Manager</button>
         <button class="aqs-admin-tab" data-tab="tab-ratings">⭐ Ratings</button>
+        <button class="aqs-admin-tab" data-tab="tab-ai-health">🔑 AI Health</button>
     </div>
 
     <!-- TAB: My Quizzes -->
@@ -527,6 +557,108 @@ fetch('#firebase-admin-endpoint-removed/api/admin/quizzes', {credentials:'includ
         document.getElementById('aqs-quiz-rows').innerHTML = '<tr><td colspan="9" class="aqs-loading">Failed to load. Check API server.</td></tr>';
     });
 </script>
-  <script src="capacitor-bridge.js"></script>
+  <script src="capacitor-bridge.js">
+/* ── AI Key Health Dashboard ─────────────────────────────────────── */
+(function() {
+    var _healthTimer = null;
+    var _healthLoaded = false;
+
+    function _mask(k) {
+        if (!k || k.length < 10) return '—';
+        return k.slice(0, 6) + '…' + k.slice(-4);
+    }
+
+    function _renderProvider(info, label, color) {
+        var badgeClass = info.total === 0 ? 'empty' : (info.limited > 0 ? 'warn' : 'ok');
+        var badgeText  = info.total === 0 ? 'No keys' :
+            (info.limited > 0 ? info.active + '/' + info.total + ' active' : 'All ' + info.total + ' active');
+        var rows = '';
+        if (info.total === 0) {
+            rows = '<div class="aqs-ai-health-empty">No ' + label + ' keys configured. Go to Settings → ' + label + ' to add keys.</div>';
+        } else {
+            for (var i = 0; i < info.keys.length; i++) {
+                var k = info.keys[i];
+                var rowClass = 'aqs-ai-key-row' + (k.isCurrent ? ' current' : '') + (k.rateLimited ? ' ratelimited' : '');
+                var statusClass = k.rateLimited ? 'ratelimited' : 'active';
+                var statusText  = k.rateLimited ? '⏳ ' + k.cooldownSec + 's cooldown' : '✅ Active';
+                var nextBadge   = k.isCurrent ? '<span class="aqs-ai-key-next">▶ next</span>' : '';
+                rows += '<div class="' + rowClass + '">'
+                    + '<span class="aqs-ai-key-slot">Slot ' + k.slot + '</span>'
+                    + '<span class="aqs-ai-key-code">' + k.masked + '</span>'
+                    + nextBadge
+                    + '<span class="aqs-ai-key-status ' + statusClass + '">' + statusText + '</span>'
+                    + '</div>';
+            }
+        }
+        return '<div class="aqs-ai-health-card">'
+            + '<div class="aqs-ai-health-card-header">'
+            + '<span class="aqs-ai-health-card-title"><span style="color:' + color + '">●</span> ' + label + '</span>'
+            + '<span class="aqs-ai-health-badge ' + badgeClass + '">' + badgeText + '</span>'
+            + '</div>'
+            + '<div class="aqs-ai-health-rows">' + rows + '</div>'
+            + '</div>';
+    }
+
+    function _renderHealth() {
+        if (typeof window.aqsGetAIKeyHealth !== 'function') {
+            document.getElementById('aqs-ai-health-grid').innerHTML =
+                '<div style="color:#f87171;padding:20px;">⚠️ AI key health reporter not available. Make sure aqs-groq-key.js is loaded.</div>';
+            return;
+        }
+        var h = window.aqsGetAIKeyHealth();
+
+        /* Summary bar */
+        var el = function(id){ return document.getElementById(id); };
+        if (el('ahs-groq-count'))   el('ahs-groq-count').textContent   = h.groq.total;
+        if (el('ahs-groq-active'))  el('ahs-groq-active').textContent  = h.groq.active;
+        if (el('ahs-mistral-count'))el('ahs-mistral-count').textContent = h.mistral.total;
+        if (el('ahs-mistral-active'))el('ahs-mistral-active').textContent = h.mistral.active;
+        if (el('ahs-hf-count'))     el('ahs-hf-count').textContent     = h.hf.total;
+
+        /* Key cards */
+        var grid = document.getElementById('aqs-ai-health-grid');
+        if (grid) {
+            grid.innerHTML = _renderProvider(h.groq, 'Groq', '#a78bfa')
+                + _renderProvider(h.mistral, 'Mistral', '#38bdf8')
+                + _renderProvider(h.hf, 'HuggingFace', '#fb923c');
+        }
+
+        /* Timestamp */
+        var note = document.getElementById('aqs-ai-health-updated');
+        if (note) {
+            var t = new Date(); var hh = t.getHours(), mm = String(t.getMinutes()).padStart(2,'0'), ss = String(t.getSeconds()).padStart(2,'0');
+            note.textContent = 'Last updated: ' + hh + ':' + mm + ':' + ss + ' · Auto-refreshes every 30 s';
+        }
+    }
+
+    function _startHealthTab() {
+        if (!_healthLoaded) { _healthLoaded = true; _renderHealth(); }
+        if (!_healthTimer) _healthTimer = setInterval(_renderHealth, 30000);
+    }
+
+    function _stopHealthTimer() {
+        if (_healthTimer) { clearInterval(_healthTimer); _healthTimer = null; }
+    }
+
+    /* Hook into tab switching */
+    document.addEventListener('DOMContentLoaded', function() {
+        var tabs = document.querySelectorAll('.aqs-admin-tab');
+        tabs.forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                if (this.dataset.tab === 'tab-ai-health') {
+                    _startHealthTab();
+                } else {
+                    _stopHealthTimer();
+                    _healthLoaded = false;
+                }
+            });
+        });
+
+        /* Manual refresh button */
+        var refreshBtn = document.getElementById('aqs-ai-health-refresh-btn');
+        if (refreshBtn) refreshBtn.addEventListener('click', _renderHealth);
+    });
+})();
+</script>
 </body>
 </html>
