@@ -1009,7 +1009,7 @@
     ['wp-ai-status-icon','wp-ai-si'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = icon; });
     ['wp-ai-status-text','wp-ai-st'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = msg; });
     var stat = document.getElementById('wp-ai-status');
-    if (stat) stat.className = 'wp-ai-status ' + state;
+    if (stat) stat.className = 'wp-ai-indicator ' + state;
   }
 
   /* ── Document Settings helpers ───────────────────────────────── */
