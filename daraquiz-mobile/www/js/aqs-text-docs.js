@@ -2387,13 +2387,13 @@
     var fmt = _wpPrintFormat;
     wpHideModal('wp-print-preview-modal');
     if (fmt === 'pdf') {
-      /* For PDF: use browser print dialog (most reliable on mobile) */
+      /* Build print HTML from current document content */
       var content = wpGetFullContent();
       var title   = wpGetDocTitle(content);
-      var bf = getV('wp-bfont','Georgia, serif');
-      var bd = getV('wp-body', 12);
-      var mg = getV('wp-margin', 20);
-      var lh = getV('wp-lh', '1.6');
+      var bf   = getV('wp-bfont','Georgia, serif');
+      var bd   = getV('wp-body', 12);
+      var mg   = getV('wp-margin', 20);
+      var lh   = getV('wp-lh', '1.6');
       var h1sz = getV('wp-h1',24); var h2sz = getV('wp-h2',18); var h3sz = getV('wp-h3',14);
       var allPages = wpPages.map(function(pg, i) {
         return '<div style="page-break-after:' + (i < wpPages.length - 1 ? 'always' : 'auto') + ';padding:' + mg + 'mm;">' + (pg || '') + '</div>';
@@ -2414,44 +2414,65 @@
         'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}' +
         '@media print{@page{margin:' + mg + 'mm;}body{margin:0;}}' +
         '</style></head><body>' + allPages + '</body></html>';
-      /* Mobile (Capacitor): share the print HTML directly via native share sheet.
-         User sees "Save to Files", "Print", Google Drive, WhatsApp, etc. — no Chrome needed. */
-      var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-      if (isNative) {
-        var printFile = new File([printHtml], wpSafeName(title) + '.html', { type: 'text/html' });
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [printFile] })) {
-          navigator.share({ files: [printFile], title: title })
+
+      /* ── Iframe-based print: works in Capacitor WebView AND web browsers.
+         window.open() is often blocked in Android WebView, but printing via a
+         hidden same-page iframe triggers the native Android/iOS print dialog
+         without needing a new tab/window. ── */
+      function _wpPrintViaIframe(html) {
+        var old = document.getElementById('wp-print-iframe');
+        if (old) old.remove();
+        var pf = document.createElement('iframe');
+        pf.id = 'wp-print-iframe';
+        pf.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;pointer-events:none;';
+        document.body.appendChild(pf);
+        try {
+          pf.contentDocument.open();
+          pf.contentDocument.write(html);
+          pf.contentDocument.close();
+        } catch(e) {
+          /* Some WebView builds block document.write — fallback to srcdoc */
+          pf.srcdoc = html;
+        }
+        /* Wait for iframe content to load before calling print */
+        var printed = false;
+        function doPrint() {
+          if (printed) return; printed = true;
+          try {
+            pf.contentWindow.focus();
+            pf.contentWindow.print();
+            wpSetStatus('📄 Print dialog opened — choose "Save as PDF"');
+          } catch(e2) {
+            /* If print() fails inside iframe (rare), share/download the file */
+            _wpShareOrDownload(html, title);
+          }
+          setTimeout(function() { if (pf.parentNode) pf.remove(); }, 8000);
+        }
+        pf.addEventListener('load', doPrint);
+        /* Safety timeout in case load event never fires */
+        setTimeout(doPrint, 900);
+      }
+
+      /* ── Share / download fallback ── */
+      function _wpShareOrDownload(html, docTitle) {
+        var shareFile = new File([html], wpSafeName(docTitle) + '.html', { type: 'text/html' });
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [shareFile] })) {
+          navigator.share({ files: [shareFile], title: docTitle })
             .then(function() { wpSetStatus('✅ Document shared'); })
             .catch(function(err) {
-              if (err && err.name !== 'AbortError') { _wpBlobDownload(printHtml, wpSafeName(title) + '.html', 'text/html'); wpSetStatus('📥 Document downloaded'); }
+              if (err && err.name !== 'AbortError') { _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html'); wpSetStatus('📥 Document downloaded'); }
             });
         } else {
-          /* Fallback: direct blob download (Android download manager) */
-          _wpBlobDownload(printHtml, wpSafeName(title) + '.html', 'text/html');
-          wpSetStatus('📥 Document downloaded — open to print as PDF');
+          _wpBlobDownload(html, wpSafeName(docTitle) + '.html', 'text/html');
+          wpSetStatus('📥 Document downloaded — open file and print from there');
         }
-      } else {
-        /* Web / Chrome: open a blob URL in a new tab → Chrome auto-triggers print dialog
-           (window.open is reliable in Chrome; user sees print dialog to Save as PDF) */
-        var printBlob = new Blob([printHtml], { type: 'text/html;charset=utf-8' });
-        var printBlobUrl = URL.createObjectURL(printBlob);
-        var printWin = window.open(printBlobUrl, '_blank');
-        if (printWin) {
-          printWin.addEventListener('load', function() {
-            setTimeout(function() { printWin.print(); }, 350);
-          });
-          /* Revoke after user has had time to print */
-          setTimeout(function() { URL.revokeObjectURL(printBlobUrl); }, 60000);
-          wpSetStatus('📄 Print dialog opening — choose "Save as PDF" in Chrome');
-        } else {
-          /* Popup blocked — fall back to downloading as HTML */
-          var dlA = document.createElement('a');
-          dlA.href = printBlobUrl;
-          dlA.download = wpSafeName(title) + '.html';
-          document.body.appendChild(dlA); dlA.click();
-          setTimeout(function() { document.body.removeChild(dlA); URL.revokeObjectURL(printBlobUrl); }, 2000);
-          wpSetStatus('📥 Downloaded as HTML — open in Chrome and press Ctrl+P to save as PDF');
-        }
+      }
+
+      /* Try iframe print first; if the WebView refuses (security exception), fall back */
+      try {
+        _wpPrintViaIframe(printHtml);
+      } catch(iframeErr) {
+        _wpShareOrDownload(printHtml, title);
       }
     } else {
       wpDownload(fmt);
