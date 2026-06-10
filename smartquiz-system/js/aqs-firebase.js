@@ -2241,6 +2241,9 @@ async function actionSaveSettings(data) {
             .filter(function(k){ return k.length > 10; })
             .slice(0, 5);
     }
+    if (Array.isArray(payload.groq_keys)    && payload.groq_keys.length    === 0) delete payload.groq_keys;
+    if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length === 0) delete payload.mistral_keys;
+    if (Array.isArray(payload.hf_keys)      && payload.hf_keys.length      === 0) delete payload.hf_keys;
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {

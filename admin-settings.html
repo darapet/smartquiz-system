@@ -904,6 +904,7 @@ window.addEventListener('DOMContentLoaded', function() {
 function btn(id){ return document.getElementById(id); }
 
 btn('aqs-save-groq-btn').addEventListener('click', function(){
+    if (!window._aqsFirebaseReady) { _showStatus('aqs-groq-status', false, '⏳ Settings still loading from server — please wait a moment and try again.'); return; }
     var groqKeys = [];
     for (var gi = 1; gi <= 20; gi++) {
         var gel = document.getElementById('aqs-groq-key-' + gi);
@@ -920,6 +921,7 @@ btn('aqs-save-groq-btn').addEventListener('click', function(){
 });
 
 btn('aqs-save-ai-btn').addEventListener('click', function(){
+    if (!window._aqsFirebaseReady) { _showStatus('aqs-ai-status', false, '⏳ Settings still loading from server — please wait a moment and try again.'); return; }
     var mistralKeys = [];
     for (var mi = 1; mi <= 20; mi++) {
         var mel = document.getElementById('aqs-mistral-key-' + mi);
@@ -1243,6 +1245,7 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
 });
 
   btn('aqs-save-hf-btn').addEventListener('click', function(){
+    if (!window._aqsFirebaseReady) { _showStatus('aqs-hf-status', false, '⏳ Settings still loading from server — please wait a moment and try again.'); return; }
     var hfKeys = [];
     for (var hi = 1; hi <= 5; hi++) {
         var hel = document.getElementById('aqs-hf-key-' + hi);

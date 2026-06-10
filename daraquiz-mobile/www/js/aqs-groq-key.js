@@ -215,7 +215,9 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
         }
 
         /* 2. Try Mistral */
-        res = await _tryMistral(bodyObj, extraOpts);
+        /* Strip any Groq-specific model name so Mistral uses its own default */
+        var _mBody = Object.assign({}, bodyObj); delete _mBody.model;
+        res = await _tryMistral(_mBody, extraOpts);
         if (res) return res;
 
         /* 3. Both exhausted */

@@ -180,14 +180,16 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
         /* 2. Fall back to Mistral */
         if (_getMistralKeys().length) {
             _aqsLog('warn', 'All Groq keys busy — falling back to Mistral');
-            res = await _mistralFetch(bodyObj, extraOpts);
+            var _mBody = Object.assign({}, bodyObj); delete _mBody.model;
+            res = await _mistralFetch(_mBody, extraOpts);
             if (res) return res;
         }
 
         /* 3. Fall back to HuggingFace (Study Hub + Studio also benefit) */
         if (_getHFKeys().length) {
             _aqsLog('warn', 'All Mistral keys busy — falling back to HuggingFace');
-            res = await _hfFetch(bodyObj, extraOpts);
+            var _hBody = Object.assign({}, bodyObj); delete _hBody.model;
+            res = await _hfFetch(_hBody, extraOpts);
             if (res) return res;
         }
 

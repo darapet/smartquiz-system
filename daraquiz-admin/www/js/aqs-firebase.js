@@ -2064,6 +2064,8 @@ async function actionSaveSettings(data) {
     if (Array.isArray(payload.groq_keys)) {
         payload.groq_keys = payload.groq_keys.filter(function(k) { return k && k.startsWith('gsk_'); });
     }
+    /* Safety: never wipe existing keys by saving an empty array */
+    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length === 0) delete payload.groq_keys;
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
     /* Immediately expose the updated keys to aqs-groq-key.js */
     if (Array.isArray(payload.groq_keys)) {
