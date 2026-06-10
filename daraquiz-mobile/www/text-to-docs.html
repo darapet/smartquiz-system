@@ -347,6 +347,421 @@
     .wp-ds-row > div { flex: 1; min-width: 0; }
     .wp-ds-check { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #374151; margin-top: 6px; cursor: pointer; }
   </style>
+
+  <!-- ═══════════════════════════════════════════════════════
+       DARK INDIGO WEB THEME — desktop only (≥821px)
+       Matches DaraWrite web app colour palette
+  ══════════════════════════════════════════════════════════ -->
+  <style id="wp-web-theme">
+    /* ── Live word-count bar (hidden on mobile) ── */
+    #wp-web-statsbar {
+      display: none;
+    }
+
+    @media (min-width: 821px) {
+
+      /* ── Canvas & base ── */
+      body { background: #0d1117 !important; }
+
+      /* ── App bar ── */
+      .wp-appbar {
+        background: #111827 !important;
+        border-bottom: 1px solid #1e2a3a !important;
+        color: #e2e8f0 !important;
+      }
+      .wp-appbar-logo-name { color: #e2e8f0 !important; }
+      .wp-appbar-page-label { color: #9ca3af !important; }
+      .wp-appbar-btn {
+        background: rgba(99,102,241,.12) !important;
+        color: #c7d2fe !important;
+        border: 1px solid rgba(99,102,241,.22) !important;
+        border-radius: 7px !important;
+      }
+      .wp-appbar-btn:hover {
+        background: rgba(99,102,241,.28) !important;
+        color: #fff !important;
+      }
+      .wp-ver-badge {
+        background: rgba(99,102,241,.15) !important;
+        color: #818cf8 !important;
+        border-color: rgba(99,102,241,.22) !important;
+      }
+      #wp-sb-msg { color: #818cf8 !important; }
+
+      /* ── Ribbon ── */
+      .wp-ribbon {
+        background: #111827 !important;
+        border-bottom: 1px solid #1e2a3a !important;
+      }
+      .wp-ribbon-tabs { border-bottom: 1px solid #1e2a3a !important; }
+      .wp-rtab {
+        color: #9ca3af !important;
+        background: none !important;
+        border-radius: 6px 6px 0 0 !important;
+        transition: background .15s, color .15s !important;
+      }
+      .wp-rtab.active {
+        color: #c7d2fe !important;
+        background: rgba(99,102,241,.16) !important;
+        border-bottom: 2px solid #6366f1 !important;
+      }
+      .wp-rtab:not(.active):hover {
+        color: #e2e8f0 !important;
+        background: rgba(255,255,255,.05) !important;
+      }
+      .wp-tg {
+        border-right: 1px solid rgba(255,255,255,.06) !important;
+      }
+      .wp-tg label { color: #9ca3af !important; font-size: 11px !important; }
+      .tb {
+        background: rgba(255,255,255,.06) !important;
+        color: #d1d5db !important;
+        border: 1px solid rgba(255,255,255,.09) !important;
+        border-radius: 5px !important;
+        transition: background .13s, color .13s !important;
+      }
+      .tb:hover {
+        background: rgba(99,102,241,.22) !important;
+        color: #fff !important;
+        border-color: rgba(99,102,241,.35) !important;
+      }
+      .tb.primary {
+        background: #6366f1 !important;
+        color: #fff !important;
+        border-color: #6366f1 !important;
+      }
+      .tb.primary:hover { background: #4f46e5 !important; }
+      .tb-sel, .tb-num {
+        background: #1f2937 !important;
+        color: #d1d5db !important;
+        border: 1px solid #374151 !important;
+        border-radius: 5px !important;
+      }
+      .tb-col-btn {
+        background: rgba(255,255,255,.06) !important;
+        border: 1px solid rgba(255,255,255,.09) !important;
+        border-radius: 5px !important;
+      }
+
+      /* ── Nav drawer ── */
+      .wp-nav-drawer {
+        background: #111827 !important;
+        border-right: 1px solid #1e2a3a !important;
+        box-shadow: 4px 0 24px rgba(0,0,0,.5) !important;
+      }
+      .wp-nav-link { color: #9ca3af !important; }
+      .wp-nav-link:hover  { color: #c7d2fe !important; background: rgba(99,102,241,.1) !important; }
+      .wp-nav-link.active { color: #c7d2fe !important; background: rgba(99,102,241,.16) !important; }
+      .wp-nav-section { color: #6b7280 !important; font-size: 10px !important; }
+      .wp-nav-backdrop { background: rgba(0,0,0,.6) !important; }
+
+      /* ── Live word-count stats bar ── */
+      #wp-web-statsbar {
+        display: flex !important;
+        align-items: center;
+        justify-content: space-between;
+        padding: 5px 18px;
+        background: #0a0f1a;
+        border-bottom: 1px solid rgba(99,102,241,.12);
+        font-size: 11.5px;
+        color: #6b7280;
+        font-family: 'Inter', system-ui, sans-serif;
+        gap: 8px;
+        position: sticky;
+        top: var(--wp-header-h, 128px);
+        z-index: 880;
+        user-select: none;
+      }
+      #wp-web-statsbar .wp-wsb-left { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+      #wp-web-statsbar .wp-wsb-right { display: flex; align-items: center; gap: 10px; font-size: 11px; }
+      #wp-web-statsbar .wp-wsb-chip { display: inline-flex; align-items: center; gap: 4px; }
+      #wp-web-statsbar .wp-wsb-chip strong { font-weight: 700; }
+      #wp-web-statsbar .wp-wsb-words strong { color: #818cf8; }
+      #wp-web-statsbar .wp-wsb-chars strong { color: #34d399; }
+      #wp-web-statsbar .wp-wsb-pages strong { color: #60a5fa; }
+      #wp-web-statsbar .wp-wsb-read  strong { color: #f472b6; }
+      #wp-web-statsbar .wp-wsb-sep { color: #1f2937; font-size: 13px; }
+      #wp-web-statsbar .wp-wsb-indicator {
+        font-size: 10px;
+        padding: 2px 7px;
+        border-radius: 4px;
+        background: rgba(99,102,241,.12);
+        color: #818cf8;
+        border: 1px solid rgba(99,102,241,.2);
+      }
+      #wp-web-statsbar .wp-wsb-autosave {
+        font-size: 10px; color: #4b5563;
+        display: flex; align-items: center; gap: 3px;
+      }
+
+      /* ── Main layout ── */
+      .wp-layout { background: #0d1117 !important; }
+
+      /* ── Sidebar ── */
+      .wp-sidebar {
+        background: #111827 !important;
+        border-right: 1px solid #1e2a3a !important;
+        color: #e2e8f0 !important;
+      }
+      .wp-sidebar-tabs {
+        background: #0f172a !important;
+        border-bottom: 1px solid #1e2a3a !important;
+      }
+      .wp-stab {
+        color: #9ca3af !important;
+        border-bottom: 2px solid transparent !important;
+        background: none !important;
+        transition: color .15s, border-color .15s !important;
+      }
+      .wp-stab.active {
+        color: #818cf8 !important;
+        border-bottom-color: #6366f1 !important;
+      }
+      .wp-stab:not(.active):hover { color: #e2e8f0 !important; }
+      .wp-sidebar-handle {
+        background: #0f172a !important;
+        border-bottom: 1px solid #1e2a3a !important;
+      }
+      .wp-sb-close { color: #6b7280 !important; }
+      .wp-sb-close:hover { background: rgba(239,68,68,.12) !important; color: #f87171 !important; }
+      .wp-doc-settings {
+        background: #0f172a !important;
+        border-bottom: 1px solid #1e2a3a !important;
+      }
+      .wp-doc-settings summary { color: #818cf8 !important; }
+      .wp-doc-settings-body { background: #0f172a !important; }
+      .wp-ds-row .wp-lbl { color: #9ca3af !important; }
+      .wp-sec-title { color: #e2e8f0 !important; }
+      .wp-lbl { color: #9ca3af !important; }
+      .wp-char-count { color: #6b7280 !important; }
+      .wp-textarea {
+        background: #1f2937 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #374151 !important;
+        border-radius: 8px !important;
+      }
+      .wp-textarea::placeholder { color: #4b5563 !important; }
+      .wp-textarea:focus { border-color: #6366f1 !important; outline: none !important; }
+      .wp-sel {
+        background: #1f2937 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #374151 !important;
+        border-radius: 6px !important;
+      }
+      .wp-btn {
+        background: rgba(99,102,241,.12) !important;
+        color: #c7d2fe !important;
+        border: 1px solid rgba(99,102,241,.22) !important;
+        border-radius: 8px !important;
+        transition: background .15s, color .15s !important;
+      }
+      .wp-btn:hover { background: rgba(99,102,241,.26) !important; color: #fff !important; }
+      .wp-btn.primary {
+        background: #6366f1 !important;
+        color: #fff !important;
+        border-color: #6366f1 !important;
+      }
+      .wp-btn.primary:hover { background: #4f46e5 !important; }
+      .wp-btn.secondary {
+        background: #1f2937 !important;
+        color: #9ca3af !important;
+        border-color: #374151 !important;
+      }
+      .wp-btn.secondary:hover { color: #e2e8f0 !important; }
+      .wp-btn.accent2 {
+        background: rgba(168,85,247,.12) !important;
+        color: #c084fc !important;
+        border-color: rgba(168,85,247,.22) !important;
+      }
+      .wp-btn.accent2:hover { background: rgba(168,85,247,.24) !important; color: #e9d5ff !important; }
+      .wp-hint.info {
+        background: rgba(99,102,241,.1) !important;
+        border-color: rgba(99,102,241,.25) !important;
+        color: #c7d2fe !important;
+      }
+      .wp-hint.error {
+        background: rgba(239,68,68,.1) !important;
+        border-color: rgba(239,68,68,.25) !important;
+        color: #fca5a5 !important;
+      }
+
+      /* Stats chips in history panel */
+      #wp-spanel-history .wp-sec > div[style*="background:#eef2ff"] {
+        background: rgba(99,102,241,.12) !important;
+        color: #c7d2fe !important;
+        border-radius: 7px;
+      }
+      #wp-spanel-history .wp-sec > div[style*="background:#f0fdf4"] {
+        background: rgba(52,211,153,.1) !important;
+        color: #6ee7b7 !important;
+      }
+      #wp-spanel-history .wp-sec > div[style*="background:#fef9c3"] {
+        background: rgba(250,204,21,.08) !important;
+        color: #fde68a !important;
+      }
+      #wp-spanel-history .wp-sec > div[style*="background:#fdf4ff"] {
+        background: rgba(192,132,252,.1) !important;
+        color: #d8b4fe !important;
+      }
+
+      /* ── Upload zone ── */
+      .wp-upload-zone {
+        background: rgba(99,102,241,.06) !important;
+        border: 1.5px dashed rgba(99,102,241,.28) !important;
+        color: #6b7280 !important;
+        border-radius: 10px !important;
+      }
+      .wp-upload-zone:hover, .wp-upload-zone.drag {
+        background: rgba(99,102,241,.12) !important;
+        border-color: #6366f1 !important;
+        color: #c7d2fe !important;
+      }
+      .wp-upload-label { color: #c7d2fe !important; }
+      .wp-upload-hint  { color: #4b5563 !important; }
+
+      /* ── AI status ── */
+      .wp-ai-status.ready {
+        background: rgba(16,185,129,.1) !important;
+        border-color: rgba(16,185,129,.25) !important;
+        color: #6ee7b7 !important;
+      }
+
+      /* ── Editor wrap & pages ── */
+      .wp-editor-wrap { background: #0d1117 !important; }
+      .wp-pages-area  { background: #0d1117 !important; }
+
+      /* ── Page nav bar ── */
+      .wp-page-nav {
+        background: #111827 !important;
+        border-bottom: 1px solid #1e2a3a !important;
+      }
+      .wp-pnav-info { color: #9ca3af !important; }
+      .wp-pnav-btn {
+        background: rgba(99,102,241,.1) !important;
+        color: #c7d2fe !important;
+        border: 1px solid rgba(99,102,241,.2) !important;
+        border-radius: 6px !important;
+      }
+      .wp-pnav-btn:hover:not(:disabled) {
+        background: rgba(99,102,241,.24) !important;
+        color: #fff !important;
+      }
+      .wp-pnav-btn:disabled { opacity: .35 !important; }
+      .wp-pnav-add {
+        background: rgba(99,102,241,.08) !important;
+        color: #818cf8 !important;
+        border: 1px dashed rgba(99,102,241,.28) !important;
+        border-radius: 6px !important;
+      }
+      .wp-pnav-add:hover {
+        background: rgba(99,102,241,.2) !important;
+        color: #c7d2fe !important;
+        border-style: solid !important;
+      }
+      .wp-zoom-sel {
+        background: #1f2937 !important;
+        color: #d1d5db !important;
+        border: 1px solid #374151 !important;
+        border-radius: 5px !important;
+      }
+
+      /* ── Page footer labels ── */
+      .wp-page-footer {
+        background: rgba(30,27,75,.9) !important;
+        color: #818cf8 !important;
+      }
+
+      /* ── Dropdowns ── */
+      .wp-dd-menu {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        box-shadow: 0 12px 40px rgba(0,0,0,.55) !important;
+      }
+      .wp-lspace-opt {
+        color: #d1d5db !important;
+        background: none !important;
+      }
+      .wp-lspace-opt:hover {
+        background: rgba(99,102,241,.14) !important;
+        color: #fff !important;
+      }
+
+      /* ── Modals ── */
+      .wp-modal-box {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        box-shadow: 0 24px 60px rgba(0,0,0,.65) !important;
+      }
+      .wp-modal-title { color: #e2e8f0 !important; }
+      .wp-modal-lbl   { color: #9ca3af !important; }
+      .wp-modal-inp, .wp-modal-inp-sel {
+        background: #111827 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #374151 !important;
+      }
+      .wp-modal-inp:focus { border-color: #6366f1 !important; }
+      .wp-modal-btn {
+        background: #374151 !important;
+        color: #d1d5db !important;
+        border-color: #4b5563 !important;
+      }
+      .wp-modal-btn:hover { background: #4b5563 !important; }
+      .wp-modal-btn.primary {
+        background: #6366f1 !important;
+        color: #fff !important;
+        border-color: #6366f1 !important;
+      }
+      .wp-modal-btn.primary:hover { background: #4f46e5 !important; }
+      .wp-modal-check { color: #9ca3af !important; }
+
+      /* ── Context menu ── */
+      #wp-ctx-menu {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        box-shadow: 0 8px 28px rgba(0,0,0,.5) !important;
+      }
+      .wp-ctx-item { color: #d1d5db !important; }
+      .wp-ctx-item:hover { background: rgba(99,102,241,.14) !important; color: #c7d2fe !important; }
+      .wp-ctx-sep { border-top-color: #374151 !important; }
+
+      /* ── Color palette box ── */
+      .wp-color-palette-box {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,.5) !important;
+      }
+
+      /* ── Table picker ── */
+      .wp-tbl-picker-box {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+      }
+      #wp-tbl-lbl { color: #9ca3af !important; }
+
+      /* ── Mode overlay card ── */
+      .wp-mode-card {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        box-shadow: 0 24px 60px rgba(0,0,0,.65) !important;
+      }
+      .wp-mode-title { color: #e2e8f0 !important; }
+      .wp-mode-sub   { color: #9ca3af !important; }
+      .wp-mode-btn {
+        background: rgba(99,102,241,.08) !important;
+        border: 1.5px solid #374151 !important;
+      }
+      .wp-mode-btn:hover {
+        border-color: #6366f1 !important;
+        background: rgba(99,102,241,.18) !important;
+        box-shadow: 0 4px 16px rgba(99,102,241,.18) !important;
+      }
+      .wp-mode-btn-label { color: #e2e8f0 !important; }
+      .wp-mode-btn-desc  { color: #6b7280 !important; }
+
+      /* ── Sidebar FAB (hide on desktop — sidebar always visible) ── */
+      #wp-sb-fab { display: none !important; }
+    }
+  </style>
 </head>
 <body>
 
@@ -814,6 +1229,34 @@
 
 </div><!-- /wp-ribbon -->
 
+<!-- ── Live Word Count Stats Bar (web/desktop only) ─────────── -->
+<div id="wp-web-statsbar">
+  <div class="wp-wsb-left">
+    <span class="wp-wsb-chip wp-wsb-words">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <strong id="wp-wsb-wcount">0</strong> words
+    </span>
+    <span class="wp-wsb-sep">·</span>
+    <span class="wp-wsb-chip wp-wsb-chars"><strong id="wp-wsb-ccount">0</strong> chars</span>
+    <span class="wp-wsb-sep">·</span>
+    <span class="wp-wsb-chip wp-wsb-pages">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <strong id="wp-wsb-pcount">1</strong> pages
+    </span>
+    <span class="wp-wsb-sep">·</span>
+    <span class="wp-wsb-chip wp-wsb-read">
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <strong id="wp-wsb-rtime">—</strong> min read
+    </span>
+  </div>
+  <div class="wp-wsb-right">
+    <span class="wp-wsb-indicator" id="wp-wsb-page-ind">Page 1 of 1</span>
+    <span class="wp-wsb-autosave" id="wp-wsb-save-status">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      Auto-saved
+    </span>
+  </div>
+</div>
 
 <!-- ════════════════════════════════════════════════
      MAIN LAYOUT (sidebar + editor)
@@ -1899,6 +2342,61 @@
       setTimeout(function() { printWin.print(); setTimeout(function(){ printWin.close(); }, 600); }, 500);
     }
   };
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   WEB STATS BAR — patches wpUpdateStats after main JS loads
+   Updates the always-visible desktop word-count bar
+═══════════════════════════════════════════════════════════════ */
+(function() {
+  function patchStatsBar() {
+    var _orig = window.wpUpdateStats;
+    if (typeof _orig !== 'function') return;
+
+    window.wpUpdateStats = function() {
+      _orig.apply(this, arguments);
+
+      /* Mirror the values already computed by the original function */
+      var sbw = document.getElementById('wp-sb-words');
+      var sbc = document.getElementById('wp-sb-chars');
+      var sbp = document.getElementById('wp-sb-pages');
+      var sbr = document.getElementById('wp-sb-read');
+      var ind = document.getElementById('wp-page-indicator');
+
+      var ww = document.getElementById('wp-wsb-wcount');
+      var wc = document.getElementById('wp-wsb-ccount');
+      var wp = document.getElementById('wp-wsb-pcount');
+      var wr = document.getElementById('wp-wsb-rtime');
+      var wi = document.getElementById('wp-wsb-page-ind');
+      var ws = document.getElementById('wp-wsb-save-status');
+
+      if (ww && sbw) ww.textContent = sbw.textContent;
+      if (wc && sbc) wc.textContent = sbc.textContent;
+      if (wp && sbp) wp.textContent = sbp.textContent;
+      if (wr && sbr) wr.textContent = sbr.textContent.replace(' min','');
+      if (wi && ind) wi.textContent = ind.textContent;
+
+      /* Flash "Saving…" then "Auto-saved" */
+      if (ws) {
+        ws.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Saving…';
+        ws.style.color = '#818cf8';
+        clearTimeout(ws._t);
+        ws._t = setTimeout(function() {
+          ws.innerHTML = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Auto-saved';
+          ws.style.color = '';
+        }, 900);
+      }
+    };
+  }
+
+  /* Run after all scripts at bottom of body have executed */
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', patchStatsBar);
+  } else {
+    patchStatsBar();
+  }
+})();
 </script>
 </body>
 </html>
