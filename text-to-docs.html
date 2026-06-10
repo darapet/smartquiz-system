@@ -16,29 +16,58 @@
 
 <!-- ═══ APP BAR ═══ -->
 <header class="wp-appbar">
+  <!-- Hamburger -->
   <button class="wp-nav-toggle" id="wp-nav-btn" title="Navigation menu" aria-label="Open menu">
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
   </button>
+
+  <!-- Logo + page title -->
   <a href="index.html" class="wp-appbar-logo">
     <div class="wp-appbar-logo-icon">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <svg width="15" height="15" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg>
     </div>
     <span class="wp-appbar-logo-name">XZily AI</span>
-    <span class="wp-appbar-logo-sep"></span>
-    <span class="wp-appbar-page-label">Text → Docs</span>
   </a>
+  <div class="wp-appbar-logo-sep"></div>
+  <span class="wp-appbar-page-label">Text → Docs</span>
+
+  <!-- Action buttons -->
   <div class="wp-appbar-btns">
-    <button class="wp-appbar-btn" onclick="document.getElementById('wp-file-input').click()">📂 Open</button>
-    <button class="wp-appbar-btn" onclick="wpNewDocument()">📄 New</button>
-    <button class="wp-appbar-btn" onclick="wpPrint()">🖨️ Print/PDF</button>
-    <button class="wp-appbar-btn" onclick="wpDownload('docx')">⬇️ DOCX</button>
+    <button class="wp-appbar-btn" onclick="document.getElementById('wp-file-input').click()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+      Open
+    </button>
+    <button class="wp-appbar-btn" onclick="wpNewDocument()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      New
+    </button>
+    <button class="wp-appbar-btn" onclick="wpPrint()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print / PDF
+    </button>
+    <button class="wp-appbar-btn" onclick="wpDownload('docx')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      DOCX
+    </button>
   </div>
+
+  <!-- Right side -->
   <div class="wp-appbar-right">
-    <div id="wp-ai-status" class="wp-ai-status ready">
-      <span id="wp-ai-status-icon">✅</span>
-      <span id="wp-ai-status-text">AI Ready</span>
+    <!-- Mobile-only: quick print icon -->
+    <button class="wp-appbar-btn wp-appbar-mob-only" onclick="wpPrint()" title="Print / PDF" style="padding:6px 10px;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+    </button>
+
+    <!-- AI status indicator -->
+    <div id="wp-ai-status" class="wp-ai-indicator ready">
+      <span id="wp-ai-status-icon" class="wp-ai-icon">✅</span>
+      <span id="wp-ai-status-text" class="wp-ai-label">AI Ready</span>
     </div>
-    <span class="wp-ver-badge">v3.4</span>
+
+    <!-- Version badge (desktop only) -->
+    <span class="wp-ver-badge wp-appbar-desk-only">v3.4</span>
+
+    <!-- Sidebar toggle -->
     <button class="wp-appbar-btn" onclick="wpToggleSidebar()" title="Toggle panel">⚙️</button>
   </div>
 </header>
