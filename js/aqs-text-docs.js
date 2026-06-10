@@ -1877,9 +1877,14 @@
     var container = document.getElementById('wp-pages');
     if (container) printRoot.innerHTML = container.innerHTML;
     printRoot.style.display = 'block';
+    document.body.classList.add('wp-printing');
     setTimeout(function() {
       window.print();
-      setTimeout(function(){ printRoot.style.display = 'none'; printRoot.innerHTML = ''; }, 500);
+      setTimeout(function(){
+        printRoot.style.display = 'none';
+        printRoot.innerHTML = '';
+        document.body.classList.remove('wp-printing');
+      }, 500);
     }, 200);
   };
 
