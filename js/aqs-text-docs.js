@@ -1875,7 +1875,38 @@
     var printRoot = document.getElementById('wp-print-root');
     if (!printRoot) { window.print(); return; }
     var container = document.getElementById('wp-pages');
-    if (container) printRoot.innerHTML = container.innerHTML;
+    if (!container) { window.print(); return; }
+
+    /* ── Build a clean document title ── */
+    var docTitle = 'Document';
+    try {
+      var allHtml = '';
+      container.querySelectorAll('.wp-page-editor,.wp-editor').forEach(function(ed){ allHtml += ed.innerHTML; });
+      if (window.wpGetDocTitle) docTitle = wpGetDocTitle(allHtml) || 'Document';
+    } catch(e) {}
+
+    /* ── Clone pages and inject header + footer into every page ── */
+    var cloned = container.cloneNode(true);
+    cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+    var pages = cloned.querySelectorAll('.wp-page');
+    var total = pages.length || 1;
+    pages.forEach(function(page, idx) {
+      /* Header: document title, right-aligned date */
+      var hdr = document.createElement('div');
+      hdr.className = 'wp-print-header';
+      var dateStr = new Date().toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
+      hdr.innerHTML = '<span class="wp-print-hdr-title">' + docTitle.replace(/</g,'&lt;') + '</span>' +
+                      '<span class="wp-print-hdr-date">'  + dateStr + '</span>';
+      page.insertBefore(hdr, page.firstChild);
+
+      /* Footer: centred page number */
+      var ftr = document.createElement('div');
+      ftr.className = 'wp-print-footer';
+      ftr.textContent = 'Page ' + (idx + 1) + ' of ' + total;
+      page.appendChild(ftr);
+    });
+
+    printRoot.innerHTML = cloned.outerHTML;
     printRoot.style.display = 'block';
     document.body.classList.add('wp-printing');
     setTimeout(function() {
