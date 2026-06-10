@@ -723,11 +723,33 @@ body {
 /* ── Print area ── */
 .wp-print-root { display: none; }
 @media print {
-  .wp-appbar,.wp-ribbon,.wp-sidebar,.wp-page-nav,.wp-dl-bar,.wp-status-bar,
-  .wp-mob-toggle,.wp-mode-overlay,.wp-modal-backdrop { display: none !important; }
-  .wp-layout { margin-top: 0 !important; }
-  .wp-pages-area { padding: 0 !important; gap: 0 !important; }
-  .wp-page { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; }
+  /* ── When printing via print root (mobile hand-off or Ctrl+P button):
+     hide EVERYTHING except the print root so only the clean document
+     pages come out — no toolbar, ribbon, sidebar, or editor chrome. ── */
+  body.wp-printing > *:not(#wp-print-root) { display: none !important; }
+  body.wp-printing #wp-print-root {
+    display: block !important;
+    margin: 0; padding: 0;
+  }
+  body.wp-printing #wp-print-root .wp-page-editor {
+    border: none !important; box-shadow: none !important;
+    padding: 0 !important; margin: 0 !important;
+  }
+
+  /* ── Direct window.print() fallback (no print root): clean up UI ── */
+  body:not(.wp-printing) .wp-appbar,
+  body:not(.wp-printing) .wp-ribbon,
+  body:not(.wp-printing) .wp-sidebar,
+  body:not(.wp-printing) .wp-page-nav,
+  body:not(.wp-printing) .wp-dl-bar,
+  body:not(.wp-printing) .wp-status-bar,
+  body:not(.wp-printing) .wp-mob-toggle,
+  body:not(.wp-printing) .wp-mode-overlay,
+  body:not(.wp-printing) .wp-modal-backdrop { display: none !important; }
+  body:not(.wp-printing) .wp-layout { margin-top: 0 !important; }
+  body:not(.wp-printing) .wp-pages-area { padding: 0 !important; gap: 0 !important; }
+  body:not(.wp-printing) .wp-page { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; }
+
   body { background: #fff !important; }
 }
 
