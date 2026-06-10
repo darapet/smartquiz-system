@@ -2270,11 +2270,11 @@
     /* ── Build the self-contained page ── */
     function buildPage(opts) {
       /* opts: { subtitle, btnLabel, isPdf, fileB64, fileMime, fileName } */
-      var scriptBlock;
+      var downloadFn;
       if (opts.isPdf) {
-        scriptBlock = 'function doDownload(){window.print();}';
+        downloadFn = 'function doDownload(){window.print();}';
       } else {
-        scriptBlock = [
+        downloadFn = [
           'var _b=' + JSON.stringify(opts.fileB64 || '') + ';',
           'var _m=' + JSON.stringify(opts.fileMime || 'text/plain') + ';',
           'var _n=' + JSON.stringify(opts.fileName || 'document') + ';',
@@ -2288,6 +2288,22 @@
           '}'
         ].join('');
       }
+      var scriptBlock = [
+        downloadFn,
+        'function doYes(){',
+        '  document.getElementById("dl-overlay").style.display="none";',
+        '  doDownload();',
+        '}',
+        'function doNo(){',
+        '  try{ window.close(); }catch(e){}',
+        '  setTimeout(function(){',
+        '    document.getElementById("dl-overlay").style.display="none";',
+        '  }, 200);',
+        '}',
+        'window.addEventListener("load",function(){',
+        '  document.getElementById("dl-overlay").style.display="flex";',
+        '});'
+      ].join('');
       return [
         '<!DOCTYPE html><html><head>',
         '<meta charset="UTF-8">',
@@ -2295,36 +2311,50 @@
         '<title>' + escHtml(title) + '</title>',
         '<style>',
         '*{box-sizing:border-box;}',
-        'body{margin:0;padding-top:70px;background:#f1f5f9;}',
-        '.dlbar{position:fixed;top:0;left:0;right:0;z-index:9999;',
-        '  background:#4f46e5;color:#fff;padding:10px 14px;',
-        '  display:flex;align-items:center;gap:10px;',
-        '  box-shadow:0 2px 16px rgba(0,0,0,.3);}',
-        '.dlbar-info{flex:1;min-width:0;}',
-        '.dlbar-info h3{margin:0;font-size:14px;font-weight:700;',
-        '  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}',
-        '.dlbar-info p{margin:2px 0 0;font-size:11px;opacity:.8;}',
-        '.dlbtn{background:#fff;color:#4f46e5;border:none;border-radius:12px;',
-        '  padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;flex-shrink:0;}',
-        '.dlbtn:active{background:#e0e7ff;}',
-        '.doc-wrap{max-width:840px;margin:20px auto 40px;background:#fff;',
+        'body{margin:0;background:#f1f5f9;font-family:Georgia,serif;}',
+        /* document content */
+        '.doc-wrap{max-width:840px;margin:24px auto 40px;background:#fff;',
         '  padding:32px 24px;border-radius:12px;',
         '  box-shadow:0 1px 6px rgba(0,0,0,.08);}',
         docCss,
+        /* modal overlay */
+        '#dl-overlay{display:none;position:fixed;inset:0;z-index:99999;',
+        '  background:rgba(15,23,42,.55);',
+        '  align-items:center;justify-content:center;padding:20px;}',
+        '.dl-card{background:#fff;border-radius:20px;padding:28px 24px;',
+        '  max-width:340px;width:100%;text-align:center;',
+        '  box-shadow:0 12px 40px rgba(0,0,0,.25);}',
+        '.dl-icon{font-size:40px;margin-bottom:10px;}',
+        '.dl-title{margin:0 0 4px;font-size:19px;font-weight:700;color:#1e293b;}',
+        '.dl-fname{margin:0 0 6px;font-size:13px;color:#6366f1;font-weight:600;',
+        '  word-break:break-all;}',
+        '.dl-hint{margin:0 0 22px;font-size:13px;color:#94a3b8;}',
+        '.dl-yes{width:100%;background:#4f46e5;color:#fff;border:none;',
+        '  border-radius:14px;padding:16px;font-size:16px;font-weight:700;',
+        '  cursor:pointer;margin-bottom:10px;letter-spacing:.3px;}',
+        '.dl-yes:active{background:#4338ca;}',
+        '.dl-no{width:100%;background:#f1f5f9;color:#64748b;border:none;',
+        '  border-radius:14px;padding:13px;font-size:14px;cursor:pointer;}',
+        '.dl-no:active{background:#e2e8f0;}',
         '@media print{',
-        '  .dlbar{display:none!important;}',
-        '  body{background:#fff;padding-top:0;}',
+        '  #dl-overlay{display:none!important;}',
+        '  body{background:#fff;}',
         '  .doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}',
         '}',
         '</style>',
         '</head><body>',
-        '<div class="dlbar">',
-        '  <div class="dlbar-info">',
-        '    <h3>📄 ' + escHtml(title) + '</h3>',
-        '    <p>' + escHtml(opts.subtitle) + '</p>',
+        /* popup */
+        '<div id="dl-overlay">',
+        '  <div class="dl-card">',
+        '    <div class="dl-icon">' + (opts.isPdf ? '🖨️' : '📥') + '</div>',
+        '    <p class="dl-title">Continue to download?</p>',
+        '    <p class="dl-fname">' + escHtml(opts.fileName || (title + (opts.isPdf ? '.pdf' : ''))) + '</p>',
+        '    <p class="dl-hint">' + escHtml(opts.subtitle) + '</p>',
+        '    <button class="dl-yes" onclick="doYes()">✅ Yes, Download</button>',
+        '    <button class="dl-no" onclick="doNo()">✕ No, Go Back</button>',
         '  </div>',
-        '  <button class="dlbtn" onclick="doDownload()">' + opts.btnLabel + '</button>',
         '</div>',
+        /* document preview */
         '<div class="doc-wrap">',
         allPages,
         '</div>',
