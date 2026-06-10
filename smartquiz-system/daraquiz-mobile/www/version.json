@@ -1,8 +1,8 @@
 {
-  "version": "1.171",
-  "versionCode": 146,
-  "releaseDate": "2026-06-05",
-  "notes": "Removed Campus Monopoly game. Added AI Study Hub — professional study tool with AI Notes Generator, Smart Flashcards, GPA/CGPA Calculator, Pomodoro Study Timer, and AI Mock Exam generator.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.171/daraquiz-v1.171.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.169/daraquiz-v1.169.apk"
+  "version": "1.247",
+  "versionCode": 222,
+  "releaseDate": "2026-06-10",
+  "notes": "Fixed AI Studio: Groq and HuggingFace keys now load correctly from settings, deprecated Groq models now automatically fall back to Mistral, and per-request model choices are respected.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.247/daraquiz-v1.247.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.247/daraquiz-v1.247.apk"
 }
