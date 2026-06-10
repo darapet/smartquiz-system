@@ -183,37 +183,32 @@
 
   <!-- ── AI Write Panel ── -->
   <div class="wp-ribbon-panel wp-rpanel" id="wp-rp-write">
-    <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start;padding:4px 0;width:100%;">
-      <textarea id="wp-prompt" class="wp-textarea" rows="2"
-        placeholder="Describe what to write… e.g. 'Write a 500-word essay about renewable energy'"
-        style="flex:1;min-width:200px;resize:vertical;min-height:50px;"></textarea>
-      <div style="display:flex;flex-direction:column;gap:4px;">
-        <select id="wp-tone-sel" class="wp-sel" title="Tone">
-          <option value="professional">Professional</option>
-          <option value="academic">Academic</option>
-          <option value="casual">Casual</option>
-          <option value="creative">Creative</option>
-          <option value="formal">Formal</option>
-          <option value="persuasive">Persuasive</option>
-        </select>
-        <select id="wp-length-sel" class="wp-sel" title="Pages">
-          <option value="0.5">½ page</option>
-          <option value="1" selected>1 page</option>
-          <option value="2">2 pages</option>
-          <option value="3">3 pages</option>
-          <option value="5">5 pages</option>
-          <option value="10">10 pages</option>
-        </select>
-      </div>
-      <button class="wp-btn" onclick="wpAIWrite()" style="background:#6366f1;color:#fff;border-color:#6366f1;white-space:nowrap;">✍️ Write</button>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;">
-        <button class="wp-btn" onclick="wpAIFormat()">🔧 Format</button>
-        <button class="wp-btn" onclick="wpAISummarize()">📝 Summarize</button>
-        <button class="wp-btn" onclick="wpAIExpand()">➕ Expand</button>
-        <button class="wp-btn" onclick="wpAITranslate()">🌐 Translate</button>
-        <button class="wp-btn" onclick="wpAIFix()">✅ Fix Grammar</button>
-      </div>
-    </div>
+    <textarea id="wp-prompt" class="wp-textarea" rows="1"
+      placeholder="Describe what to write… e.g. 'Write a 500-word essay on renewable energy'"
+      style="flex:1;min-width:180px;max-width:340px;resize:none;height:30px;padding:5px 8px;font-size:12px;"></textarea>
+    <select id="wp-tone-sel" class="tb-sel" title="Tone" style="width:110px;">
+      <option value="professional">Professional</option>
+      <option value="academic">Academic</option>
+      <option value="casual">Casual</option>
+      <option value="creative">Creative</option>
+      <option value="formal">Formal</option>
+      <option value="persuasive">Persuasive</option>
+    </select>
+    <select id="wp-length-sel" class="tb-sel" title="Length" style="width:88px;">
+      <option value="0.5">½ page</option>
+      <option value="1" selected>1 page</option>
+      <option value="2">2 pages</option>
+      <option value="3">3 pages</option>
+      <option value="5">5 pages</option>
+      <option value="10">10 pages</option>
+    </select>
+    <button class="tb primary" onclick="wpAIWrite()" style="white-space:nowrap;background:#6366f1;color:#fff;border-color:#6366f1;">✍️ Write</button>
+    <div class="tb-sep"></div>
+    <button class="tb" onclick="wpAIFormat()" title="Format with AI">🔧 Format</button>
+    <button class="tb" onclick="wpAISummarize()" title="Summarize">📝 Summarize</button>
+    <button class="tb" onclick="wpAIExpand()" title="Expand">➕ Expand</button>
+    <button class="tb" onclick="wpAITranslate()" title="Translate">🌐 Translate</button>
+    <button class="tb" onclick="wpAIFix()" title="Fix Grammar">✅ Fix Grammar</button>
   </div>
 
   <!-- ── Table Panel ── -->
