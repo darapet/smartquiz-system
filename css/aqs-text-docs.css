@@ -736,6 +736,39 @@ body {
     padding: 0 !important; margin: 0 !important;
   }
 
+  /* ── Page header (title + date) ── */
+  .wp-print-header {
+    display: flex !important;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid #d1d5db;
+    padding-bottom: 5pt;
+    margin-bottom: 14pt;
+    font-size: 8.5pt;
+    color: #6b7280;
+  }
+  .wp-print-hdr-title {
+    font-weight: 700;
+    letter-spacing: 0.2pt;
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .wp-print-hdr-date { font-weight: 400; white-space: nowrap; }
+
+  /* ── Page footer (page number) ── */
+  .wp-print-footer {
+    display: block !important;
+    text-align: center;
+    border-top: 1px solid #d1d5db;
+    padding-top: 5pt;
+    margin-top: 14pt;
+    font-size: 8.5pt;
+    color: #6b7280;
+    font-weight: 500;
+  }
+
   /* ── Direct window.print() fallback (no print root): clean up UI ── */
   body:not(.wp-printing) .wp-appbar,
   body:not(.wp-printing) .wp-ribbon,
