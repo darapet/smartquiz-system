@@ -3072,11 +3072,23 @@ async function aitMicTranscribe(blob, target){
     });
   }
 
+  /* ── Math detection (any subject) ── */
+  function hasMathContent(text){
+    var t = text || '';
+    if(t.indexOf('[DISPLAY]') > -1) return true;
+    if(/=\s*[\d\-\+\(]/.test(t)) return true;
+    if(/\d\s*[+\-*/]\s*\d/.test(t)) return true;
+    if(/[∫∑√∞∂×÷≈≠≤≥±]/.test(t)) return true;
+    if(/\\[a-zA-Z]/.test(t)) return true;
+    if(/\b(integrate|differentiate|solve for|simplify|expand|factor|equation|formula|derivative|integral|calculate|evaluate|compute)\b/i.test(t)) return true;
+    return false;
+  }
+
   /* ── Public API ── */
   window.aitVisualBoard = {
     init:       initBoard,
     setSubject: function(s){ setMode(detectMode(s)); },
-    setMathContent: function(text){ if(mode==='math'){ mathLines=[]; mathDisplayed=0; parseMathContent(text); } }
+    setMathContent: function(text){ if(hasMathContent(text)){ mathLines=[]; mathDisplayed=0; parseMathContent(text); } }
   };
 
   /* auto-init when DOM ready */
