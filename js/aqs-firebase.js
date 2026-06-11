@@ -2184,7 +2184,8 @@ async function actionSaveSettings(data) {
         'google_client_id','google_client_secret',
         'github_client_id','github_client_secret',
         'microsoft_client_id','microsoft_client_secret',
-        'yahoo_client_id','yahoo_client_secret'
+        'yahoo_client_id','yahoo_client_secret',
+        'quoteGroqKeys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
     /* Trim and validate Groq keys (up to 20) before saving */
@@ -2206,6 +2207,13 @@ async function actionSaveSettings(data) {
         payload.hf_keys = payload.hf_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 10; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Quote Groq keys (up to 5) before saving */
+    if (Array.isArray(payload.quoteGroqKeys)) {
+        payload.quoteGroqKeys = payload.quoteGroqKeys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
             .slice(0, 5);
     }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
