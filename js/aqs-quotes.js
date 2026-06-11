@@ -9,9 +9,17 @@
     'use strict';
 
     /* ── Dedicated quote keys — loaded from Firebase at runtime ─────── */
-    var _QK       = [];
+    var _QK        = [];
     var _QK_IDX_LS = 'aqs_qk_idx';
-    var _QK_RL    = {};
+    var _QK_RL     = {};
+    var _lastQuoteErr = '';   /* last failure reason — shown in admin status */
+
+    /* Models tried in order — first available wins */
+    var _QUOTE_MODELS = [
+        'llama-3.1-8b-instant',
+        'llama3-8b-8192',
+        'llama-3.3-70b-versatile'
+    ];
 
     async function _loadQuoteKeys() {
         if (_QK.length) return;
@@ -31,29 +39,49 @@
         } catch(e) {}
     }
 
+    /* Try one key across all models — returns response JSON or null */
+    async function _tryKeyAllModels(key, prompt) {
+        for (var m = 0; m < _QUOTE_MODELS.length; m++) {
+            try {
+                var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                    body: JSON.stringify({
+                        model: _QUOTE_MODELS[m],
+                        messages: [{ role: 'user', content: prompt }],
+                        max_tokens: 5500, temperature: 1.1
+                    })
+                });
+                if (res.status === 429) { _lastQuoteErr = 'rate_limit'; return null; }
+                if (res.status === 401) { _lastQuoteErr = 'invalid_key'; return null; }
+                if (res.status === 404) { continue; /* model not available — try next */ }
+                if (!res.ok) { _lastQuoteErr = 'api_error_' + res.status; return null; }
+                _lastQuoteErr = '';
+                return await res.json();
+            } catch(e) { _lastQuoteErr = 'network'; }
+        }
+        return null;
+    }
+
     async function _quoteFetch(prompt) {
         await _loadQuoteKeys();
-        if (!_QK.length) return null;
+        if (!_QK.length) { _lastQuoteErr = 'no_keys'; return null; }
         var start;
         try { start = parseInt(localStorage.getItem(_QK_IDX_LS) || '0') || 0; } catch(e) { start = 0; }
 
         for (var attempt = 0; attempt < _QK.length; attempt++) {
             var idx = (start + attempt) % _QK.length;
-            if (_QK_RL[idx] && Date.now() < _QK_RL[idx]) continue;
-            try {
-                var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + _QK[idx] },
-                    body: JSON.stringify({ model: 'llama3-8b-8192',
-                        messages: [{ role: 'user', content: prompt }],
-                        max_tokens: 5500, temperature: 1.1 })
-                });
-                if (res.status === 429) { _QK_RL[idx] = Date.now() + 65000; continue; }
-                if (res.status === 401) continue;
-                if (!res.ok) continue;
+            if (_QK_RL[idx] && Date.now() < _QK_RL[idx]) {
+                _lastQuoteErr = 'rate_limit'; continue;
+            }
+            var result = await _tryKeyAllModels(_QK[idx], prompt);
+            if (result) {
                 try { localStorage.setItem(_QK_IDX_LS, String((idx + 1) % _QK.length)); } catch(e) {}
-                return await res.json();
-            } catch (e) { continue; }
+                return result;
+            }
+            if (_lastQuoteErr === 'rate_limit') {
+                _QK_RL[idx] = Date.now() + 65000;
+            }
         }
         return null;
     }
@@ -254,7 +282,13 @@
         if (quotes && quotes.length) {
             status('✅ Done! ' + quotes.length + ' quotes generated for today.');
         } else {
-            status('❌ Generation failed. Your quote keys may be invalid or rate-limited. Check the keys and try again.');
+            var _errDetail = {
+                invalid_key: '❌ Invalid Groq API key. Go to console.groq.com, copy a valid key, then save it in Quote Keys and try again.',
+                rate_limit:  '❌ Rate limited — all your keys hit Groq's limit. Wait 60 seconds and try again.',
+                no_keys:     '❌ No quote keys found. Save at least one Groq key in the Quote Keys section first.',
+                network:     '❌ Network error reaching Groq. Check your internet connection and try again.'
+            }[_lastQuoteErr] || ('❌ Generation failed (reason: ' + (_lastQuoteErr || 'unknown') + '). Check your Groq key at console.groq.com.');
+            status(_errDetail);
         }
         return quotes;
     };
