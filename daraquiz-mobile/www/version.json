@@ -1,8 +1,8 @@
 {
-  "version": "1.257",
-  "versionCode": 235,
+  "version": "1.258",
+  "versionCode": 236,
   "releaseDate": "2026-06-11",
-  "notes": "Fixed: studio AI key loading, quote key save, and app cache refresh.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.257/daraquiz-v1.257.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.257/daraquiz-v1.257.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.258/daraquiz-v1.258.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.258/daraquiz-v1.258.apk"
 }
