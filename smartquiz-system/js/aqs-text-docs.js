@@ -877,17 +877,19 @@
 
   /* ── AI calls — Groq key pool ───────────────────────────────── */
   function callAI(prompt, maxTokens) {
-    var k = ['wMspDhSungnapsLU3v5hWGdyb3FY9E9AFvBBjuSI38MmrL2ow46o', 'HMrJogeB2HUp6DFxebqgWGdyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
-    var keys = k.map(function(x){ return 'gsk_' + x; });
-    var messages = [{ role: 'user', content: prompt }];
+    /* Cap to avoid HTTP 413 — keep output ≤ 4000 tokens and prompt
+       ≤ 8000 chars so the JSON body stays under Groq's size limit. */
+    var safeMax    = Math.min(maxTokens || 2000, 4000);
+    var safePrompt = prompt.length > 8000 ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
-    /* Route through groqFetch (now Mistral-primary with key rotation) */
+    /* Route through groqFetch (Groq → Mistral → HuggingFace key rotation) */
     if (typeof window.groqFetch !== 'function') {
       wpSetAIStatus('error', 'AI not ready');
       return Promise.reject(new Error('AI not ready — no keys configured.'));
     }
     return window.groqFetch(
-      { messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 }
+      { messages: messages, max_tokens: safeMax, temperature: 0.3 }
     ).then(function(r) {
       if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
       return r.json();
