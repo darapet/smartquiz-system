@@ -16,7 +16,7 @@
   var wpCtxCell = null, wpCtxTable = null;
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
-  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 15;
+  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 9999; /* no practical limit */
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -48,7 +48,7 @@
     wpSetupContextMenu();
     wpSetupImageDrop();
     wpUpdateStats();
-    wpSetStatus('Word Processor ready — v3.1');
+    wpSetStatus('Word Processor ready — v3.2');
     wpAdjustHeaderOffset();
 
     /* ── Mobile app print-job handoff ────────────────────────────────
@@ -1718,7 +1718,7 @@
       }
     }
     /* Next page does not exist — create it then focus */
-    if (wpPages.length >= MAX_PAGES) return;
+    /* page limit removed */
     wpPages.splice(pageIdx + 1, 0, lastEl.outerHTML || '');
     wpCurrentPage = pageIdx + 1;
     wpRenderPages();
@@ -1735,7 +1735,7 @@
   }
 
   window.wpAddPage = function() {
-    if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
+    /* page limit removed */
     wpSavePageState();
     wpPages.splice(wpCurrentPage + 1, 0, '');
     wpCurrentPage++;
@@ -1853,8 +1853,25 @@
       if (window.wpGetDocTitle) docTitle = wpGetDocTitle(allHtml) || 'Document';
     } catch(e) {}
 
-    /* ── Clone pages, strip screen-only chrome, inject header + footer ── */
-    var cloned = container.cloneNode(true);
+    /* ── Save active editor state ── */
+    var _activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
+    if (_activeEd) wpPages[wpCurrentPage] = _activeEd.innerHTML;
+
+    /* ── Clone ONLY the current page (not all pages) ── */
+    var _curPageEl = container.querySelector('#wp-page-' + wpCurrentPage) ||
+                     container.querySelectorAll('.wp-page')[wpCurrentPage];
+    var cloned;
+    if (_curPageEl) {
+      /* Wrap single page in a container matching the original structure */
+      var _wrapper = document.createElement('div');
+      _wrapper.id = 'wp-pages';
+      _wrapper.appendChild(_curPageEl.cloneNode(true));
+      cloned = _wrapper;
+    } else {
+      /* Fallback: clone all pages */
+      cloned = container.cloneNode(true);
+    }
+
     cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
     /* Remove screen-only labels and decorations */
     cloned.querySelectorAll('.wp-page-label, .wp-page-add, .wp-page-actions').forEach(function(el){ el.parentNode && el.parentNode.removeChild(el); });
@@ -1864,6 +1881,15 @@
     });
     cloned.querySelectorAll('.wp-page-editor, .wp-page-inner').forEach(function(el){
       el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
+    });
+
+    /* ── Remove completely blank pages from print output ──────────── */
+    cloned.querySelectorAll('.wp-page').forEach(function(page) {
+      var editor = page.querySelector('.wp-page-editor, .wp-page-inner');
+      if (!editor) return;
+      var hasText  = editor.textContent.trim().length > 0;
+      var hasMedia = !!editor.querySelector('img, canvas, table, svg');
+      if (!hasText && !hasMedia) { page.parentNode && page.parentNode.removeChild(page); }
     });
 
     var pages = cloned.querySelectorAll('.wp-page');
