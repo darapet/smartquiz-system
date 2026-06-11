@@ -33,8 +33,14 @@
         try {
             if (window._aqsFS) {
                 var cfg = await window._aqsFS.get('settings', 'main');
-                if (cfg && Array.isArray(cfg.quoteGroqKeys))
-                    _QK = cfg.quoteGroqKeys.filter(function(k){ return (k||'').trim().length > 10; });
+                if (cfg) {
+                    /* Try dedicated quote keys first */
+                    if (Array.isArray(cfg.quoteGroqKeys) && cfg.quoteGroqKeys.length)
+                        _QK = cfg.quoteGroqKeys.filter(function(k){ return (k||'').trim().length > 10; });
+                    /* Fall back to the main Groq key pool (same admin, same settings page) */
+                    if (!_QK.length && Array.isArray(cfg.groq_keys) && cfg.groq_keys.length)
+                        _QK = cfg.groq_keys.filter(function(k){ return (k||'').trim().length > 20; });
+                }
             }
         } catch(e) {}
     }
@@ -131,7 +137,12 @@
     }
 
     /* ── Quote generation / retrieval ─────────────────────────────────── */
-    async function getOrGenerate() {
+    /* Generates 5 batches of 10 quotes, one batch per API call.
+       Each call naturally advances the key-rotation index so different
+       keys are used across batches — spreading load across all saved keys. */
+    var _BATCH_CATS = ['education','motivation','wisdom','success','life'];
+
+    async function getOrGenerate(onBatch) {
         var key = todayKey();
         /* 1 — Firebase shared cache */
         if (window._aqsFS) {
@@ -141,21 +152,27 @@
         /* 2 — localStorage fallback */
         try { var ls=JSON.parse(localStorage.getItem(LS_CACHE+key)||'null'); if(Array.isArray(ls)&&ls.length>=10)return ls; } catch(e){}
 
-        /* 3 — Generate via AI */
-        var prompt = 'Generate exactly 50 diverse motivational and educational quotes. Use real people: scientists, philosophers, athletes, leaders, entrepreneurs, authors.\n\nReturn ONLY a valid JSON array, no other text:\n[{"text":"Quote here.","author":"Full Name","cat":"education"}]\n\nCategories: education | motivation | wisdom | success | life\nKeep each quote under 180 characters. Vary the era and background of authors. Every quote must be genuinely inspiring.';
-        var raw_res = await _quoteFetch(prompt);
-        if (!raw_res) return null;
-        try {
-            var raw = raw_res.choices[0].message.content.trim();
-            var s=raw.indexOf('['), e=raw.lastIndexOf(']');
-            if(s<0||e<0)return null;
-            var arr=JSON.parse(raw.slice(s,e+1));
-            if(!Array.isArray(arr)||arr.length<5)return null;
-            arr=arr.slice(0,50);
-            if(window._aqsFS) window._aqsFS.set(COL,key,{quotes:arr,generatedAt:Date.now(),date:key});
-            try{ localStorage.setItem(LS_CACHE+key,JSON.stringify(arr)); }catch(e2){}
-            return arr;
-        } catch(e){return null;}
+        /* 3 — Generate in 5 batches of 10 (one API call per batch) */
+        var allQuotes = [];
+        for (var b = 0; b < 5; b++) {
+            if (typeof onBatch === 'function') onBatch(b + 1, allQuotes.length);
+            var cat = _BATCH_CATS[b];
+            var prompt = 'Generate exactly 10 diverse motivational and educational quotes about ' + cat + '. Use real, famous people — scientists, philosophers, athletes, leaders, entrepreneurs, authors.\n\nReturn ONLY a valid JSON array, no other text:\n[{"text":"Quote here.","author":"Full Name","cat":"' + cat + '"}]\n\nRules: keep each quote under 180 characters, vary the era and background of authors, every quote must be genuinely inspiring.';
+            var raw_res = await _quoteFetch(prompt);
+            if (!raw_res) continue; /* key busy or invalid — skip this batch, try next */
+            try {
+                var raw = raw_res.choices[0].message.content.trim();
+                var si = raw.indexOf('['), ei = raw.lastIndexOf(']');
+                if (si < 0 || ei < 0) continue;
+                var arr = JSON.parse(raw.slice(si, ei + 1));
+                if (Array.isArray(arr)) allQuotes = allQuotes.concat(arr.slice(0, 10));
+            } catch(ex) { continue; }
+        }
+
+        if (allQuotes.length < 5) return null;
+        if (window._aqsFS) window._aqsFS.set(COL, key, {quotes: allQuotes, generatedAt: Date.now(), date: key});
+        try { localStorage.setItem(LS_CACHE + key, JSON.stringify(allQuotes)); } catch(e2) {}
+        return allQuotes;
     }
 
     /* ── Popup UI ─────────────────────────────────────────────────────── */
@@ -277,17 +294,19 @@
             status('❌ No quote keys found. Go to the Quote Generation Keys section above, enter at least one Groq API key, and click Save Quote Keys — then try Generate Now again.');
             return null;
         }
-        status('⚡ Generating 50 new quotes with ' + _QK.length + ' key(s)…');
-        var quotes = await getOrGenerate();
+        status('⚡ Starting generation — 5 batches of 10 quotes using ' + _QK.length + ' key(s)…');
+        var quotes = await getOrGenerate(function(batchNum, soFar) {
+            status('⚡ Batch ' + batchNum + ' of 5… (' + soFar + ' quotes collected so far)');
+        });
         if (quotes && quotes.length) {
-            status('✅ Done! ' + quotes.length + ' quotes generated for today.');
+            status('✅ Done! ' + quotes.length + ' quotes generated and saved.');
         } else {
             var _errDetail = {
-                invalid_key: '❌ Invalid Groq API key. Go to console.groq.com, copy a valid key, then save it in Quote Keys and try again.',
-                rate_limit:  '❌ Rate limited — all your keys hit Groq's limit. Wait 60 seconds and try again.',
-                no_keys:     '❌ No quote keys found. Save at least one Groq key in the Quote Keys section first.',
-                network:     '❌ Network error reaching Groq. Check your internet connection and try again.'
-            }[_lastQuoteErr] || ('❌ Generation failed (reason: ' + (_lastQuoteErr || 'unknown') + '). Check your Groq key at console.groq.com.');
+                invalid_key: '❌ Invalid Groq key. Go to console.groq.com → API Keys → create a new key → save it in Admin Settings → AI Keys, then try again.',
+                rate_limit:  '❌ All keys are rate-limited by Groq. Wait 60 seconds and try again.',
+                no_keys:     '❌ No keys found. Save at least one Groq key in Admin Settings → AI Keys, then try again.',
+                network:     '❌ Network error reaching Groq. Check your internet connection.'
+            }[_lastQuoteErr] || ('❌ Generation failed (' + (_lastQuoteErr || 'unknown') + '). Check your key at console.groq.com.');
             status(_errDetail);
         }
         return quotes;
