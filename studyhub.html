@@ -388,6 +388,16 @@ a{text-decoration:none;color:inherit;}
   .sh-timer-display{font-size:2.4rem;}
   .ait-voice-grid{grid-template-columns:repeat(3,1fr);}
 }
+/* ── AI Visual Board (Canvas Concept Animator) ── */
+.ait-visual-board{width:100%;border-radius:12px;overflow:hidden;border:1px solid rgba(99,102,241,.22);background:#08081a;margin-bottom:14px;flex-shrink:0;}
+.ait-visual-board-header{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:rgba(99,102,241,.08);border-bottom:1px solid rgba(99,102,241,.15);}
+.ait-vb-title{font-size:.58rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;letter-spacing:.1em;display:flex;align-items:center;gap:6px;}
+.ait-vb-dot{width:5px;height:5px;border-radius:50%;background:#6366f1;animation:ait-vb-blink 1.5s ease-in-out infinite;flex-shrink:0;}
+.ait-vb-dot.active{background:#34d399;box-shadow:0 0 6px rgba(52,211,153,.8);}
+@keyframes ait-vb-blink{0%,100%{opacity:.35}50%{opacity:1}}
+.ait-vb-mode{font-size:.58rem;color:#475569;font-weight:600;letter-spacing:.03em;}
+#ait-visual-canvas{display:block;width:100%;height:158px;cursor:default;}
+@media(max-width:600px){#ait-visual-canvas{height:118px;}.ait-visual-board{margin-bottom:10px;}}
 </style>
   <script src="js/aqs-nav-loader.js"></script>
 </head>
@@ -914,6 +924,15 @@ a{text-decoration:none;color:inherit;}
         </div>
         <div class="ait-ai-name" id="ait-display-teacher-name">AI Teacher</div>
         <div class="ait-avatar-status" id="ait-avatar-status">Ready</div>
+      </div>
+
+      <!-- Visual Board — Concept Animator -->
+      <div class="ait-visual-board" id="ait-visual-board">
+        <div class="ait-visual-board-header">
+          <div class="ait-vb-title"><div class="ait-vb-dot" id="ait-vb-dot"></div>Concept Visualizer</div>
+          <div class="ait-vb-mode" id="ait-vb-mode">—</div>
+        </div>
+        <canvas id="ait-visual-canvas"></canvas>
       </div>
 
       <!-- Transcript bubbles — no math board here any more -->
@@ -1737,6 +1756,7 @@ async function aitStartSession(){
 
   document.getElementById('ait-ses-subject-label').textContent = subject;
   document.getElementById('ait-ses-topic-label').textContent = topic;
+  if(window.aitVisualBoard) aitVisualBoard.setSubject(subject);
   document.getElementById('ait-display-teacher-name').textContent = _ait.teacherName;
   document.getElementById('ait-ses-timer').textContent = aitFmtTime(_ait.remainingSecs);
   document.getElementById('ait-prog-fill').style.width = '100%';
@@ -2639,6 +2659,372 @@ async function aitMicTranscribe(blob, target){
       if(onEnd) onEnd();
     });
   };
+})();
+
+/* ══════════════════════════════════════════════════════
+   AIT VISUAL BOARD — Concept Animator
+   Canvas animation that visualises the subject being
+   taught. Reacts to AI speaking state automatically.
+══════════════════════════════════════════════════════ */
+(function(){
+  var canvas, ctx, W, H, raf;
+  var mode = 'general', isSpeaking = false, tick = 0;
+
+  /* ── particle pools ── */
+  var genParts = [], letterParts = [], codeDrops = [];
+
+  var LETTERS = ['A','B','∫','α','β','γ','Σ','→','←','∞','∂','π','θ','λ'];
+  var CODE_CH  = ['0','1','{}','if','for','let','fn','&&','||','->','()','</>','//','λ'];
+  var MATH_SUBJECTS = ['math','calculus','algebra','geometry','trigon','statistic','arithmetic','number'];
+  var PHYS_S  = ['physics','mechanic','wave','force','energy','motion','optic','quantum','electric'];
+  var CHEM_S  = ['chem','organic','molecule','bond','element','periodic','reaction'];
+  var BIO_S   = ['bio','cell','dna','gene','organ','ecolog','evolut','nervous','anatomy'];
+  var HIST_S  = ['histor','geograph','civics','social','politic','economic','government','war'];
+  var LANG_S  = ['english','language','literatur','grammar','writing','vocab','french','spanish','arabic'];
+  var CODE_S  = ['computer','program','code','algorithm','software','data','javascript','python','java'];
+
+  function detectMode(subject){
+    var s = (subject||'').toLowerCase();
+    if(MATH_SUBJECTS.some(function(k){return s.indexOf(k)>-1;})) return 'math';
+    if(PHYS_S.some(function(k){return s.indexOf(k)>-1;}))  return 'physics';
+    if(CHEM_S.some(function(k){return s.indexOf(k)>-1;}))  return 'chemistry';
+    if(BIO_S.some(function(k){return s.indexOf(k)>-1;}))   return 'biology';
+    if(HIST_S.some(function(k){return s.indexOf(k)>-1;}))  return 'history';
+    if(LANG_S.some(function(k){return s.indexOf(k)>-1;}))  return 'language';
+    if(CODE_S.some(function(k){return s.indexOf(k)>-1;}))  return 'code';
+    return 'general';
+  }
+
+  function setMode(m){
+    mode = m;
+    tick = 0;
+    var labels = {math:'Mathematics',physics:'Physics',chemistry:'Chemistry',biology:'Biology',
+                  history:'Social Studies',language:'Language',code:'Programming',general:'General Knowledge'};
+    var modeEl = document.getElementById('ait-vb-mode');
+    if(modeEl) modeEl.textContent = labels[m] || 'General Knowledge';
+    buildPools();
+  }
+
+  function buildPools(){
+    genParts = [];
+    for(var i=0; i<45; i++){
+      genParts.push({
+        x:Math.random()*W, y:Math.random()*H,
+        vx:(Math.random()-.5)*.5, vy:(Math.random()-.5)*.5,
+        r:Math.random()*2+1, alpha:Math.random()*.6+.2
+      });
+    }
+    letterParts = [];
+    for(var i=0; i<22; i++){
+      letterParts.push({
+        x:Math.random()*W, y:Math.random()*H,
+        vy:Math.random()*.7+.25, vx:(Math.random()-.5)*.25,
+        alpha:Math.random()*.7+.2, size:Math.random()*9+7,
+        char:LETTERS[Math.floor(Math.random()*LETTERS.length)]
+      });
+    }
+    codeDrops = [];
+    for(var i=0; i<18; i++){
+      codeDrops.push({
+        x:Math.random()*W, y:Math.random()*H,
+        speed:Math.random()*1.2+.4, alpha:Math.random()*.8+.2,
+        char:CODE_CH[Math.floor(Math.random()*CODE_CH.length)]
+      });
+    }
+  }
+
+  /* ── DOM init ── */
+  function initBoard(){
+    canvas = document.getElementById('ait-visual-canvas');
+    if(!canvas) return;
+    ctx = canvas.getContext('2d');
+    resize();
+    window.addEventListener('resize', function(){ if(document.getElementById('ait-session-screen').classList.contains('active')) resize(); });
+
+    /* Watch avatar glow class for speaking state */
+    var glowEl = document.getElementById('ait-avatar-glow');
+    if(glowEl && window.MutationObserver){
+      new MutationObserver(function(){
+        var speaking = glowEl.classList.contains('speaking');
+        isSpeaking = speaking;
+        var dot = document.getElementById('ait-vb-dot');
+        if(dot){ if(speaking) dot.classList.add('active'); else dot.classList.remove('active'); }
+      }).observe(glowEl, {attributes:true, attributeFilter:['class']});
+    }
+    loop();
+  }
+
+  function resize(){
+    if(!canvas) return;
+    var rect = canvas.getBoundingClientRect();
+    var dpr  = window.devicePixelRatio || 1;
+    W = rect.width; H = rect.height;
+    canvas.width  = W * dpr;
+    canvas.height = H * dpr;
+    ctx.scale(dpr, dpr);
+    buildPools();
+  }
+
+  function loop(){
+    raf = requestAnimationFrame(loop);
+    tick++;
+    if(!ctx || !W || !H) return;
+    draw();
+  }
+
+  /* ─ main draw dispatcher ─ */
+  function draw(){
+    var spd = isSpeaking ? 1.7 : 0.65;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = '#08081a';
+    ctx.fillRect(0, 0, W, H);
+
+    if     (mode==='math')      drawMath(spd);
+    else if(mode==='physics')   drawPhysics(spd);
+    else if(mode==='chemistry') drawChemistry(spd);
+    else if(mode==='biology')   drawBiology(spd);
+    else if(mode==='history')   drawHistory(spd);
+    else if(mode==='language')  drawLanguage(spd);
+    else if(mode==='code')      drawCode(spd);
+    else                        drawGeneral(spd);
+  }
+
+  /* ── MATH: grid + dual sine/cos waves + moving dot ── */
+  function drawMath(spd){
+    var t = tick * 0.014 * spd;
+    /* grid */
+    ctx.strokeStyle = 'rgba(99,102,241,.07)'; ctx.lineWidth = .5;
+    for(var x=0;x<W;x+=20){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=0;y<H;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    /* axes */
+    ctx.strokeStyle='rgba(99,102,241,.22)'; ctx.lineWidth=1;
+    ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
+    /* cosine (faint) */
+    ctx.beginPath(); ctx.strokeStyle='rgba(167,139,250,.45)'; ctx.lineWidth=1.5;
+    for(var i=0;i<=W;i++){
+      var cy=H/2+Math.cos((i/W)*Math.PI*4+t)*H*.19;
+      i===0?ctx.moveTo(i,cy):ctx.lineTo(i,cy);
+    }
+    ctx.stroke();
+    /* sine (bright) */
+    ctx.beginPath(); ctx.strokeStyle='#6366f1'; ctx.lineWidth=2.2;
+    for(var i=0;i<=W;i++){
+      var sy=H/2+Math.sin((i/W)*Math.PI*4+t)*H*.28;
+      i===0?ctx.moveTo(i,sy):ctx.lineTo(i,sy);
+    }
+    ctx.stroke();
+    /* travelling dot */
+    var dx=((tick*spd*.9)%W);
+    var dy=H/2+Math.sin((dx/W)*Math.PI*4+t)*H*.28;
+    ctx.beginPath(); ctx.arc(dx,dy,5,0,Math.PI*2);
+    ctx.fillStyle = isSpeaking?'#a78bfa':'#6366f1';
+    ctx.shadowColor='#6366f1'; ctx.shadowBlur=isSpeaking?18:8;
+    ctx.fill(); ctx.shadowBlur=0;
+  }
+
+  /* ── PHYSICS: expanding ripples + wave + orbiting ball ── */
+  function drawPhysics(spd){
+    var t=tick*.018*spd, cx=W/2, cy=H/2;
+    for(var r=0;r<4;r++){
+      var rad=(((tick*spd*.55)+r*55)%(Math.max(W,H)+20));
+      var op=Math.max(0, .45-rad/Math.max(W,H)*.55);
+      ctx.beginPath(); ctx.arc(cx,cy,rad,0,Math.PI*2);
+      ctx.strokeStyle='rgba(99,102,241,'+op+')'; ctx.lineWidth=1.2; ctx.stroke();
+    }
+    ctx.beginPath(); ctx.strokeStyle='rgba(94,234,212,.75)'; ctx.lineWidth=2;
+    for(var i=0;i<=W;i++){
+      var wy=cy+Math.sin((i/W)*Math.PI*6+t)*H*.22;
+      i===0?ctx.moveTo(i,wy):ctx.lineTo(i,wy);
+    }
+    ctx.stroke();
+    var orx=cx+Math.cos(t*1.6)*W*.32, ory=cy+Math.sin(t*1.6)*H*.32;
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(orx,ory);
+    ctx.strokeStyle='rgba(94,234,212,.18)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.beginPath(); ctx.arc(orx,ory,5.5,0,Math.PI*2);
+    ctx.fillStyle='#5eead4'; ctx.shadowColor='#5eead4'; ctx.shadowBlur=isSpeaking?14:6;
+    ctx.fill(); ctx.shadowBlur=0;
+  }
+
+  /* ── CHEMISTRY: animated molecular bond diagram ── */
+  var ATOM_DEF = [
+    {lx:.5,  ly:.5,  r:11, c:'#6366f1', label:'C'},
+    {lx:.22, ly:.28, r:7,  c:'#ef4444', label:'O'},
+    {lx:.78, ly:.28, r:7,  c:'#60a5fa', label:'H'},
+    {lx:.22, ly:.72, r:7,  c:'#34d399', label:'N'},
+    {lx:.78, ly:.72, r:7,  c:'#fbbf24', label:'H'},
+    {lx:.5,  ly:.12, r:6,  c:'#a78bfa', label:'O'},
+  ];
+  function drawChemistry(spd){
+    var t=tick*.016*spd;
+    var atoms = ATOM_DEF.map(function(a,i){
+      return {
+        x: a.lx*W + (i>0?Math.sin(t+i*1.3)*5:0),
+        y: a.ly*H + (i>0?Math.cos(t+i*.9)*4:0),
+        r:a.r, c:a.c, label:a.label
+      };
+    });
+    /* bonds */
+    for(var i=1;i<atoms.length;i++){
+      ctx.beginPath();ctx.moveTo(atoms[0].x,atoms[0].y);ctx.lineTo(atoms[i].x,atoms[i].y);
+      ctx.strokeStyle='rgba(165,180,252,.28)'; ctx.lineWidth=1.8; ctx.stroke();
+    }
+    /* atoms */
+    atoms.forEach(function(a){
+      ctx.beginPath(); ctx.arc(a.x,a.y,a.r,0,Math.PI*2);
+      ctx.fillStyle=a.c; ctx.shadowColor=a.c; ctx.shadowBlur=isSpeaking?14:6;
+      ctx.fill(); ctx.shadowBlur=0;
+      ctx.fillStyle='#fff'; ctx.font='bold '+(a.r+2)+'px Inter,sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(a.label,a.x,a.y);
+    });
+  }
+
+  /* ── BIOLOGY: DNA double helix ── */
+  function drawBiology(spd){
+    var t=tick*.018*spd, steps=22, cx=W/2, amp=W*.28;
+    var pts1=[], pts2=[];
+    for(var i=0;i<=steps;i++){
+      var frac=i/steps, y2=H*frac;
+      pts1.push({x:cx+Math.sin(frac*Math.PI*4+t)*amp, y:y2});
+      pts2.push({x:cx+Math.sin(frac*Math.PI*4+t+Math.PI)*amp, y:y2});
+    }
+    /* strand 1 */
+    ctx.beginPath(); ctx.strokeStyle='rgba(99,102,241,.85)'; ctx.lineWidth=2;
+    pts1.forEach(function(p,i){i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);}); ctx.stroke();
+    /* strand 2 */
+    ctx.beginPath(); ctx.strokeStyle='rgba(167,139,250,.85)'; ctx.lineWidth=2;
+    pts2.forEach(function(p,i){i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y);}); ctx.stroke();
+    /* base pairs */
+    for(var i=0;i<=steps;i+=2){
+      ctx.beginPath();ctx.moveTo(pts1[i].x,pts1[i].y);ctx.lineTo(pts2[i].x,pts2[i].y);
+      ctx.strokeStyle='rgba(94,234,212,.32)'; ctx.lineWidth=1; ctx.stroke();
+      ctx.beginPath(); ctx.arc(pts1[i].x,pts1[i].y,3,0,Math.PI*2);
+      ctx.fillStyle='#6366f1'; ctx.fill();
+      ctx.beginPath(); ctx.arc(pts2[i].x,pts2[i].y,3,0,Math.PI*2);
+      ctx.fillStyle='#a78bfa'; ctx.fill();
+    }
+  }
+
+  /* ── HISTORY: animated timeline with glowing event nodes ── */
+  var HIST_YEARS = ['1776','1865','1914','1945','1969','2001'];
+  function drawHistory(spd){
+    var t=tick*.012*spd, py=H/2, mar=24;
+    var spacing=(W-mar*2)/(HIST_YEARS.length-1);
+    /* line */
+    ctx.beginPath(); ctx.moveTo(mar,py); ctx.lineTo(W-mar,py);
+    ctx.strokeStyle='rgba(99,102,241,.28)'; ctx.lineWidth=1.5; ctx.stroke();
+    /* nodes */
+    HIST_YEARS.forEach(function(yr,i){
+      var px=mar+i*spacing;
+      var pulse=.5+.5*Math.sin(t*2+i*.9);
+      var nr=isSpeaking?5+pulse*3.5:4.5;
+      ctx.beginPath(); ctx.arc(px,py,nr,0,Math.PI*2);
+      ctx.fillStyle='#6366f1'; ctx.shadowColor='#6366f1';
+      ctx.shadowBlur=isSpeaking?pulse*14:4; ctx.fill(); ctx.shadowBlur=0;
+      ctx.fillStyle='rgba(165,180,252,.88)';
+      ctx.font='bold 8px Inter,sans-serif'; ctx.textAlign='center';
+      ctx.fillText(yr, px, i%2===0?py-16:py+22);
+      /* vertical tick */
+      ctx.beginPath(); ctx.moveTo(px,i%2===0?py-10:py); ctx.lineTo(px,i%2===0?py:py+10);
+      ctx.strokeStyle='rgba(99,102,241,.3)'; ctx.lineWidth=1; ctx.stroke();
+    });
+    /* moving cursor */
+    var curX=mar+((tick*spd*.45)%(W-mar*2));
+    ctx.beginPath(); ctx.moveTo(curX,py-13); ctx.lineTo(curX,py+13);
+    ctx.strokeStyle='rgba(167,139,250,.45)'; ctx.lineWidth=1.5; ctx.stroke();
+  }
+
+  /* ── LANGUAGE: floating letter particles ── */
+  function drawLanguage(spd){
+    var sp=isSpeaking?spd*1.5:spd*.6;
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    letterParts.forEach(function(p){
+      p.y -= p.vy*sp; p.x += p.vx*sp;
+      p.alpha -= .0018*sp;
+      if(p.y<-14 || p.alpha<.04){
+        p.y=H+12; p.x=Math.random()*W; p.alpha=Math.random()*.7+.2;
+        p.char=LETTERS[Math.floor(Math.random()*LETTERS.length)];
+        p.size=Math.random()*9+7;
+      }
+      ctx.font='bold '+p.size+'px Inter,sans-serif';
+      ctx.fillStyle='rgba(165,180,252,'+p.alpha+')';
+      ctx.fillText(p.char, p.x, p.y);
+    });
+    /* faint horizontal lines (ruled page feel) */
+    for(var y=20;y<H;y+=22){
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);
+      ctx.strokeStyle='rgba(99,102,241,.04)'; ctx.lineWidth=.5; ctx.stroke();
+    }
+  }
+
+  /* ── CODE: falling code chars + connection web ── */
+  function drawCode(spd){
+    var sp=isSpeaking?spd*1.6:spd*.7;
+    codeDrops.forEach(function(d){
+      d.y += d.speed*sp;
+      if(d.y>H+12){
+        d.y=-12; d.x=Math.random()*W;
+        d.char=CODE_CH[Math.floor(Math.random()*CODE_CH.length)];
+      }
+      ctx.font='bold 10px "Courier New",monospace'; ctx.textAlign='center';
+      ctx.fillStyle='rgba(99,102,241,'+d.alpha+')';
+      ctx.fillText(d.char, d.x, d.y);
+    });
+    /* connection web */
+    for(var i=0;i<codeDrops.length;i++){
+      for(var j=i+1;j<codeDrops.length;j++){
+        var ddx=codeDrops[i].x-codeDrops[j].x, ddy=codeDrops[i].y-codeDrops[j].y;
+        var dist=Math.sqrt(ddx*ddx+ddy*ddy);
+        if(dist<72){
+          ctx.beginPath();ctx.moveTo(codeDrops[i].x,codeDrops[i].y);ctx.lineTo(codeDrops[j].x,codeDrops[j].y);
+          ctx.strokeStyle='rgba(99,102,241,'+((.14)*(1-dist/72))+')'; ctx.lineWidth=.5; ctx.stroke();
+        }
+      }
+    }
+  }
+
+  /* ── GENERAL: neural network particle constellation ── */
+  function drawGeneral(spd){
+    var sp=isSpeaking?spd*1.4:spd*.65;
+    genParts.forEach(function(p){
+      p.x+=p.vx*sp; p.y+=p.vy*sp;
+      if(p.x<0||p.x>W) p.vx*=-1;
+      if(p.y<0||p.y>H) p.vy*=-1;
+    });
+    /* edges */
+    for(var i=0;i<genParts.length;i++){
+      for(var j=i+1;j<genParts.length;j++){
+        var ddx=genParts[i].x-genParts[j].x, ddy=genParts[i].y-genParts[j].y;
+        var dist=Math.sqrt(ddx*ddx+ddy*ddy);
+        if(dist<88){
+          ctx.beginPath();ctx.moveTo(genParts[i].x,genParts[i].y);ctx.lineTo(genParts[j].x,genParts[j].y);
+          ctx.strokeStyle='rgba(99,102,241,'+(.28*(1-dist/88))+')'; ctx.lineWidth=.8; ctx.stroke();
+        }
+      }
+    }
+    /* nodes */
+    genParts.forEach(function(p,i){
+      var pulse = isSpeaking ? .6+.4*Math.sin(tick*.05+i*.4) : 1;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.r*pulse,0,Math.PI*2);
+      ctx.fillStyle='rgba(99,102,241,'+p.alpha+')';
+      if(isSpeaking){ctx.shadowColor='#6366f1'; ctx.shadowBlur=7;}
+      ctx.fill(); ctx.shadowBlur=0;
+    });
+  }
+
+  /* ── Public API ── */
+  window.aitVisualBoard = {
+    init:       initBoard,
+    setSubject: function(s){ setMode(detectMode(s)); }
+  };
+
+  /* auto-init when DOM ready */
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded', initBoard);
+  } else {
+    initBoard();
+  }
 })();
 </script>
 </body>
