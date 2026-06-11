@@ -1520,6 +1520,9 @@
   }
 
   function wpLoadContent(html) {
+    /* Set wpCurrentPage to -1 BEFORE replacing wpPages so that wpRenderPages()
+       cannot overwrite wpPages[0] with the old DOM's empty first editor. */
+    wpCurrentPage = -1;
     wpPages = wpSplitIntoPages(html);
     wpCurrentPage = 0;
     wpRenderPages();
@@ -1578,62 +1581,92 @@
     var printRoot = document.getElementById('wp-print-root');
     if (!printRoot) { window.print(); return; }
     var container = document.getElementById('wp-pages');
-    if (container) {
-      /* Save ALL editors into wpPages before printing */
-      container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
-        var m = ed.id.match(/wp-editor-(\d+)/);
-        if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
-      });
+    if (!container) { window.print(); return; }
 
-      /* Clone ALL pages */
-      var cloned = container.cloneNode(true);
-      /* Reset the flex container so page-break-after creates correct page breaks */
-      cloned.style.display = 'block';
-      cloned.style.padding = '0';
-      cloned.style.margin = '0';
-      cloned.style.overflow = 'visible';
-      cloned.style.background = 'transparent';
-      cloned.style.width = '100%';
+    /* ── Save ALL editors into wpPages first ── */
+    container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+      var m = ed.id.match(/wp-editor-(\d+)/);
+      if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
+    });
 
-      /* Strip contenteditable and screen-only decorations */
-      cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
-      cloned.querySelectorAll('.wp-page-label,.wp-page-add,.wp-page-actions,.wp-page-num,.wp-page-footer-bar').forEach(function(el){ el.parentNode && el.parentNode.removeChild(el); });
+    /* ── Collect non-empty pages directly from wpPages ── */
+    var nonEmpty = wpPages.filter(function(pg) {
+      if (!pg) return false;
+      return pg.replace(/<[^>]+>/g, '').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+    });
+    if (!nonEmpty.length) { window.print(); return; }
 
-      /* Reset screen CSS that clips content in print */
-      cloned.querySelectorAll('.wp-page,.wp-page-item').forEach(function(el){
-        el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
-        el.style.boxShadow = 'none'; el.style.margin = '0'; el.style.borderRadius = '0';
-      });
-      cloned.querySelectorAll('.wp-page-editor,.wp-page-inner').forEach(function(el){
-        el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
-      });
+    /* ── Document settings ── */
+    var bf   = getV('wp-bfont', "'Times New Roman', Georgia, serif");
+    var bd   = Number(getV('wp-body',   12)) || 12;
+    var mg   = Number(getV('wp-margin', 20)) || 20;
+    var lh   = getV('wp-lh', '1.6');
+    var h1sz = Number(getV('wp-h1', 24)) || 24;
+    var h2sz = Number(getV('wp-h2', 18)) || 18;
+    var h3sz = Number(getV('wp-h3', 14)) || 14;
 
-      /* Remove blank pages */
-      cloned.querySelectorAll('.wp-page,.wp-page-item').forEach(function(pg) {
-        var ed = pg.querySelector('.wp-page-editor, .wp-page-inner');
-        if (!ed) return;
-        if (!ed.textContent.trim().length && !ed.querySelector('img,canvas,table,svg')) {
-          pg.parentNode && pg.parentNode.removeChild(pg);
-        }
-      });
+    var docTitle = 'Document';
+    try { if (window.wpGetDocTitle) docTitle = wpGetDocTitle(nonEmpty.join('')) || 'Document'; } catch(e) {}
+    var dateStr = new Date().toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
+    var esc = function(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
 
-      /* Add page numbers */
-      var allPages = cloned.querySelectorAll('.wp-page,.wp-page-item');
-      var total = allPages.length || 1;
-      allPages.forEach(function(pg, i) {
-        var ftr = document.createElement('div');
-        ftr.className = 'wp-print-footer';
-        ftr.textContent = 'Page ' + (i + 1) + ' of ' + total;
-        pg.appendChild(ftr);
-      });
+    var total = nonEmpty.length;
+    var mgB   = Math.round(mg * 0.8);
 
-      printRoot.innerHTML = cloned.outerHTML;
-    }
-    printRoot.style.display = 'block';
+    var STYLE = [
+      '@page{size:A4 portrait;margin:0;}',
+      'html,body{margin:0;padding:0;background:#fff;color:#000;}',
+      '.wp-pp{box-sizing:border-box;width:100%;background:#fff;',
+        'padding:' + mg + 'mm ' + mg + 'mm ' + mgB + 'mm;',
+        'font-family:' + bf + ';font-size:' + bd + 'pt;',
+        'line-height:' + lh + ';color:#000;}',
+      '.wp-pp:not(:last-child){break-after:page;page-break-after:always;}',
+      '.wp-pp-hdr{display:flex;justify-content:space-between;',
+        'border-bottom:0.5pt solid #ccc;padding-bottom:4pt;',
+        'margin-bottom:12pt;font-size:8.5pt;color:#777;}',
+      '.wp-pp-ftr{border-top:0.5pt solid #ccc;padding-top:4pt;',
+        'margin-top:12pt;font-size:8.5pt;color:#777;text-align:center;}',
+      '.wp-pp h1{font-size:' + h1sz + 'pt!important;font-weight:700;',
+        'margin:.4em 0 .2em;line-height:1.2;color:#000;page-break-after:avoid;}',
+      '.wp-pp h2{font-size:' + h2sz + 'pt!important;font-weight:700;',
+        'margin:.35em 0 .15em;line-height:1.25;color:#000;page-break-after:avoid;}',
+      '.wp-pp h3{font-size:' + h3sz + 'pt!important;font-weight:700;',
+        'margin:.3em 0 .1em;line-height:1.3;color:#000;page-break-after:avoid;}',
+      '.wp-pp h4,.wp-pp h5,.wp-pp h6{font-size:' + (bd + 2) + 'pt!important;',
+        'font-weight:700;margin:.25em 0;color:#000;}',
+      '.wp-pp p{margin:0 0 6pt;}',
+      '.wp-pp ul,.wp-pp ol{padding-left:16pt;margin:0 0 6pt;}',
+      '.wp-pp li{margin-bottom:2pt;}',
+      '.wp-pp strong,.wp-pp b{font-weight:700;}',
+      '.wp-pp em,.wp-pp i{font-style:italic;}',
+      '.wp-pp a{color:#000;text-decoration:none;}',
+      '.wp-pp img{max-width:100%;height:auto;display:block;}',
+      '.wp-pp blockquote{border-left:2pt solid #aaa;padding-left:10pt;margin:6pt 0;color:#444;font-style:italic;}',
+      '.wp-pp pre,.wp-pp code{font-family:"Courier New",Courier,monospace;font-size:9pt;}',
+      '.wp-pp pre{background:#f5f5f5;border:0.5pt solid #ccc;padding:6pt;white-space:pre-wrap;page-break-inside:avoid;}',
+      '.wp-pp table{border-collapse:collapse;width:100%;margin:8pt 0;}',
+      '.wp-pp td,.wp-pp th{border:0.5pt solid #888;padding:4pt 6pt;font-size:' + (bd - 1) + 'pt;}',
+      '.wp-pp th{background:#f0f0f0;font-weight:700;}',
+      '.wp-pp tr{page-break-inside:avoid;}'
+    ].join('');
+
+    var pagesHtml = nonEmpty.map(function(pg, idx) {
+      return '<div class="wp-pp">' +
+        '<div class="wp-pp-hdr"><span>' + esc(docTitle) + '</span><span>' + dateStr + '</span></div>' +
+        pg +
+        '<div class="wp-pp-ftr">Page ' + (idx + 1) + ' of ' + total + '</div>' +
+        '</div>';
+    }).join('');
+
+    printRoot.innerHTML = '<style>' + STYLE + '</style>' + pagesHtml;
+    document.body.classList.add('wp-printing');
     setTimeout(function() {
       window.print();
-      setTimeout(function(){ printRoot.style.display = 'none'; printRoot.innerHTML = ''; }, 500);
-    }, 200);
+      setTimeout(function() {
+        printRoot.innerHTML = '';
+        document.body.classList.remove('wp-printing');
+      }, 800);
+    }, 150);
   };
 
   /* ── New document ───────────────────────────────────────────── */
