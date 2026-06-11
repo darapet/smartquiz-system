@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0b14">
 <title>📚 AI Study Hub — xzily AI</title>
 <script src="js/aqs-nav-loader.js"></script>
-<!-- App Version: 2.8.0 -->
+<!-- App Version: 2.9.0 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- MathJax for math rendering -->
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
@@ -336,8 +336,11 @@ a{text-decoration:none;color:inherit;}
 .ait-subj-bar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .6s ease;}
 .ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
 
-/* Math Board — hidden globally (replaced by canvas Concept Visualizer) */
-.ait-math-board-panel{display:none!important;}
+/* Mobile inline solving board */
+.ait-mob-math-board{display:none;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.25);border-radius:10px;padding:10px 12px;margin:8px 0 4px;overflow-y:auto;max-height:260px;}
+.ait-mob-math-board.visible{display:block;}
+.ait-mob-math-board-hdr{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.ait-mob-math-board-body{font-size:.88rem;color:#e2e8f0;line-height:2;word-break:break-word;}
 
 /* Mobile-only elements (hidden on desktop) */
 .ait-mob-action-bar{display:none;gap:6px;padding:8px 12px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -349,7 +352,7 @@ a{text-decoration:none;color:inherit;}
 .ait-mob-answer-footer{display:none;padding:8px 12px 10px;border-top:1px solid var(--border);background:rgba(10,11,20,.98);flex-shrink:0;gap:8px;align-items:flex-end;backdrop-filter:blur(8px);}
 .ait-mob-answer-footer textarea{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:.83rem;font-family:inherit;outline:none;resize:none;height:48px;line-height:1.4;}
 .ait-mob-answer-footer textarea:focus{border-color:rgba(99,102,241,.45);}
-.ait-mob-answer-footer .ait-send-btn{white-space:nowrap;height:48px;padding:0 14px;font-size:.78rem;}
+.ait-mob-answer-footer .ait-send-btn{white-space:nowrap;height:48px;padding:0 18px;font-size:.78rem;flex:0 0 auto;width:auto;}
 .ait-math-board-panel-header{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;height:160px;min-height:80px;max-height:420px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
 .ait-math-line{min-height:1.4em;padding:1px 0;}
@@ -438,7 +441,7 @@ a{text-decoration:none;color:inherit;}
 <header class="sh-hdr">
   <div style="display:flex;align-items:baseline;gap:4px;">
     <div class="sh-logo">📚 AI Study Hub</div>
-    <span class="sh-logo-ver">v2.8.0</span>
+    <span class="sh-logo-ver">v2.9.0</span>
   </div>
   <a href="index.html" class="sh-back">🏠 Back to Home</a>
 </header>
@@ -927,11 +930,12 @@ a{text-decoration:none;color:inherit;}
     <div class="ait-ses-timer-badge" id="ait-ses-timer">30:00</div>
   </div>
 
-  <!-- MOBILE: Sticky action header (Pause / Question / End always visible) -->
+  <!-- MOBILE: Sticky action header (Pause / Continue / Ask / End always visible) -->
   <div class="ait-mob-action-bar" id="ait-mob-action-bar">
-    <button class="ait-ctrl-btn ait-ctrl-btn-pause" id="ait-mob-pause-btn" onclick="aitTogglePause()" style="flex:1;">⏸ Pause AI</button>
-    <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()" style="flex:0 0 auto;padding:9px 13px;">💬 Ask</button>
-    <button class="ait-ctrl-btn ait-ctrl-btn-end" onclick="aitEndSession()" style="flex:0 0 auto;padding:9px 13px;">⏹ End</button>
+    <button class="ait-ctrl-btn ait-ctrl-btn-pause" id="ait-mob-pause-btn" onclick="aitTogglePause()" style="flex:1;min-width:0;">⏸ Pause</button>
+    <button class="ait-ctrl-btn ait-ctrl-btn-continue" id="ait-mob-continue-btn" onclick="aitContinueTeaching()" style="flex:1;min-width:0;display:none;">▶ Continue</button>
+    <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()" style="flex:1;min-width:0;">💬 Ask</button>
+    <button class="ait-ctrl-btn ait-ctrl-btn-end" onclick="aitEndSession()" style="flex:1;min-width:0;">⏹ End</button>
   </div>
   <!-- MOBILE: Tab bar (Solving Board | Notes) -->
   <div class="ait-mob-tab-bar" id="ait-mob-tab-bar">
@@ -977,7 +981,13 @@ a{text-decoration:none;color:inherit;}
         <canvas id="ait-visual-canvas"></canvas>
       </div>
 
-      <!-- Transcript bubbles — no math board here any more -->
+      <!-- MOBILE: Inline solving board (shows actual LaTeX step-by-step working) -->
+      <div class="ait-mob-math-board" id="ait-mob-math-board">
+        <div class="ait-mob-math-board-hdr">📐 Solving Board — <span id="ait-mob-math-topic"></span></div>
+        <div class="ait-mob-math-board-body" id="ait-mob-math-body"></div>
+      </div>
+
+      <!-- Transcript bubbles -->
       <div class="ait-transcript-wrap" id="ait-transcript"></div>
 
       <!-- MOBILE ONLY: Notes panel — visible on "Lesson Notes" tab -->
@@ -1826,7 +1836,7 @@ async function aitStartSession(){
   document.getElementById('ait-qa-input-row').style.display = 'none';
   document.getElementById('ait-ses-right-top').style.display = '';
   document.getElementById('ait-type-answer-wrap').classList.remove('show');
-  document.getElementById('ait-continue-row').style.display = 'none';
+  aitSetContinue(false);
   document.getElementById('ait-pause-btn').textContent = '⏸ Pause AI';
   document.getElementById('ait-pause-btn').classList.remove('paused');
   const mobPauseBtn = document.getElementById('ait-mob-pause-btn');
@@ -1938,11 +1948,10 @@ function aitSpeak(text, onEnd){
 
   const glowEl   = document.getElementById('ait-avatar-glow');
   const statusEl = document.getElementById('ait-avatar-status');
-  const contRow  = document.getElementById('ait-continue-row');
 
   if(glowEl)   glowEl.classList.add('speaking');
   if(statusEl) statusEl.textContent = 'Teaching…';
-  if(contRow)  contRow.style.display = 'none'; /* hide Continue while speaking */
+  aitSetContinue(false); /* hide Continue while speaking */
 
   const _onFinish = ()=>{
     _ait.speaking = false;
@@ -1971,29 +1980,28 @@ function aitAddBubble(text, isMath, label){
 function aitTypeText(el, text, onDone){
   /* Feed math calculation to Concept Visualizer board */
   if(window.aitVisualBoard && aitVisualBoard.setMathContent) aitVisualBoard.setMathContent(text);
-  /* For math topics type instantly (show LaTeX/text), for others animate */
-  const isMath = aitIsMathSubject(_ait.subject);
-  if(isMath){
-    el.textContent = text;
-    if(window.MathJax) MathJax.typesetPromise([el]).then(()=>{ if(onDone) onDone(); });
-    else if(onDone) onDone();
-    return;
-  }
-  /* Typing animation */
+  /* Always render as markdown HTML — strip LaTeX for the transcript display */
+  const cleanText = aitCleanForSpeech(text); /* plain text for typing animation */
+  /* Typing animation for all content */
   let i=0;
   const cursor = document.createElement('span');
   cursor.className='ait-typing-cursor';
   el.appendChild(cursor);
   const interval = setInterval(()=>{
-    if(i<text.length){
-      cursor.before(text[i]); i++;
-      el.closest('.ait-transcript-wrap').scrollTop = el.closest('.ait-transcript-wrap').scrollHeight;
+    if(i<cleanText.length){
+      cursor.before(cleanText[i]); i++;
+      const wrap = el.closest('.ait-transcript-wrap');
+      if(wrap) wrap.scrollTop = wrap.scrollHeight;
     } else {
       clearInterval(interval);
       cursor.remove();
+      /* Replace plain text with formatted markdown */
+      el.innerHTML = shMarkdown(text);
+      const wrap = el.closest('.ait-transcript-wrap');
+      if(wrap) wrap.scrollTop = wrap.scrollHeight;
       if(onDone) onDone();
     }
-  }, 18);
+  }, 16);
 }
 
 function aitIsMathSubject(sub){
@@ -2050,8 +2058,7 @@ async function aitNextTeachingSegment(){
   if(_ait.paused || _ait.awaitingAnswer || _ait.inQAMode || _ait.speaking) return;
 
   /* Hide continue button */
-  const contRow = document.getElementById('ait-continue-row');
-  if(contRow) contRow.style.display = 'none';
+  aitSetContinue(false);
 
   _ait.teachingStepIdx++;
   const isMath = aitIsMathSubject(_ait.subject);
@@ -2081,9 +2088,8 @@ async function aitNextTeachingSegment(){
 
   const reply = await aitMistral(_ait.conversationHistory, 700);
   if(!reply){
-    if(statusEl) statusEl.textContent = 'Connection issue — click Continue to retry';
-    const row = document.getElementById('ait-continue-row');
-    if(row) row.style.display = '';
+    if(statusEl) statusEl.textContent = 'Connection issue — tap ▶ Continue to retry';
+    aitSetContinue(true);
     return;
   }
   _ait.conversationHistory.push({role:'assistant', content:reply});
@@ -2099,13 +2105,12 @@ async function aitNextTeachingSegment(){
   const el = aitAddBubble(spokenText, isMath);
   aitTypeText(el, spokenText, null);
 
-  /* Speak then show Continue button */
+  /* Speak then show Continue button (desktop + mobile) */
   aitSpeak(spokenText, ()=>{
     if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer){
-      const row = document.getElementById('ait-continue-row');
+      aitSetContinue(true);
       const statusEl = document.getElementById('ait-avatar-status');
-      if(row) row.style.display = '';
-      if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+      if(statusEl) statusEl.textContent = 'Tap ▶ Continue when ready';
     }
   });
 }
@@ -2131,24 +2136,38 @@ function aitParseReply(text, isMath){
 
 /* ─ Math Board helpers ─ */
 function aitShowMathBoardContent(latex){
-  const board    = document.getElementById('ait-math-board');
-  const body     = document.getElementById('ait-math-board-body');
-  const topicEl  = document.getElementById('ait-math-board-topic');
-  if(!board || !body) return;
-  board.classList.add('visible');
-  if(topicEl) topicEl.textContent = _ait.topic;
-  /* Use innerHTML so MathJax can parse $$ and $ delimiters in the content */
-  body.innerHTML = latex
+  const lines = latex
     .split('\n')
     .map(line => `<div class="ait-math-line">${line}</div>`)
     .join('');
-  if(window.MathJax){
-    MathJax.typesetPromise([body]).catch(e=>console.warn('MathJax error',e));
+
+  /* Desktop board (right panel) */
+  const board   = document.getElementById('ait-math-board');
+  const body    = document.getElementById('ait-math-board-body');
+  const topicEl = document.getElementById('ait-math-board-topic');
+  if(board && body){
+    board.classList.add('visible');
+    if(topicEl) topicEl.textContent = _ait.topic;
+    body.innerHTML = lines;
+    if(window.MathJax) MathJax.typesetPromise([body]).catch(e=>console.warn('MathJax',e));
+  }
+
+  /* Mobile inline solving board */
+  const mobBoard   = document.getElementById('ait-mob-math-board');
+  const mobBody    = document.getElementById('ait-mob-math-body');
+  const mobTopic   = document.getElementById('ait-mob-math-topic');
+  if(mobBoard && mobBody){
+    mobBoard.classList.add('visible');
+    if(mobTopic) mobTopic.textContent = _ait.topic;
+    mobBody.innerHTML = lines;
+    if(window.MathJax) MathJax.typesetPromise([mobBody]).catch(e=>console.warn('MathJax mob',e));
   }
 }
 function aitHideMathBoardContent(){
   const board = document.getElementById('ait-math-board');
   if(board) board.classList.remove('visible');
+  const mobBoard = document.getElementById('ait-mob-math-board');
+  if(mobBoard) mobBoard.classList.remove('visible');
 }
 function aitCopyMathBoard(btn){
   const body = document.getElementById('ait-math-board-body');
@@ -2159,9 +2178,16 @@ function aitCopyMathBoard(btn){
 }
 
 /* ─ Continue Teaching button ─ */
+/* ─ Show / hide Continue button on both desktop + mobile ─ */
+function aitSetContinue(visible){
+  const row    = document.getElementById('ait-continue-row');
+  const mobBtn = document.getElementById('ait-mob-continue-btn');
+  if(row)    row.style.display    = visible ? '' : 'none';
+  if(mobBtn) mobBtn.style.display = visible ? '' : 'none';
+}
+
 function aitContinueTeaching(){
-  const contRow = document.getElementById('ait-continue-row');
-  if(contRow) contRow.style.display = 'none';
+  aitSetContinue(false);
   if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer && !_ait.speaking){
     setTimeout(aitNextTeachingSegment, 300);
   }
@@ -2180,10 +2206,9 @@ async function aitSendToAI(userPrompt, onSpeechDone){
   const el = aitAddBubble(spokenText || reply, isMath);
   aitTypeText(el, spokenText || reply, null);
   aitSpeak(spokenText || reply, onSpeechDone || (()=>{
-    const row = document.getElementById('ait-continue-row');
+    if(!_ait.inQAMode && !_ait.awaitingAnswer) aitSetContinue(true);
     const statusEl = document.getElementById('ait-avatar-status');
-    if(row && !_ait.inQAMode && !_ait.awaitingAnswer) row.style.display = '';
-    if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+    if(statusEl) statusEl.textContent = 'Tap ▶ Continue when ready';
   }));
 }
 
@@ -2270,11 +2295,9 @@ Keep it to 3-5 sentences. Be encouraging like a good teacher. Do NOT use the stu
   aitTypeText(fbEl, feedback, null);
   aitSpeak(feedback, ()=>{
     _ait.awaitingAnswer = false;
-    /* Show Continue so student can keep learning */
-    const row = document.getElementById('ait-continue-row');
+    aitSetContinue(true);
     const statusEl = document.getElementById('ait-avatar-status');
-    if(row) row.style.display = '';
-    if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+    if(statusEl) statusEl.textContent = 'Tap ▶ Continue when ready';
   });
 }
 
