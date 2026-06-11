@@ -1011,12 +1011,24 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone. Target: ' + wTarget + '.\n\nREQUEST: ' + prompt + '\n\n' +
-      'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
-      'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
-      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a proper conclusion\n- Be complete — do not truncate';
+    var lengthWords = { short: 300, medium: 600, long: 1000, detailed: 1500 };
+    var strictWords = lengthWords[length] || 600;
+    var strictMax   = Math.round(strictWords * 1.1);
+    var aiMaxTok    = Math.min(6000, Math.max(1500, Math.round(strictWords * 1.4)));
 
-    callAI(aiPrompt, 2500)
+    var aiPrompt = 'You are a professional document writer. Write a ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+      '━━━ STRICT LENGTH RULE (MANDATORY) ━━━\n' +
+      'Target word count: approximately ' + strictWords + ' words of body text.\n' +
+      'HARD LIMIT: Do NOT write more than ' + strictMax + ' words total.\n' +
+      'Stop writing when you reach the word limit.\n\n' +
+      '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences\n' +
+      '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
+      '✦ NO html/head/body/style/script/div/span tags\n' +
+      '✦ Start immediately with <h1> — no text before or after the HTML\n\n' +
+      'REQUEST: ' + prompt;
+
+    callAI(aiPrompt, aiMaxTok)
       .then(function(result) {
         var clean = sanitizeHTML(result);
         if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
@@ -1567,29 +1579,48 @@
     if (!printRoot) { window.print(); return; }
     var container = document.getElementById('wp-pages');
     if (container) {
-      /* Save active editor content */
-      var _aed = document.getElementById('wp-editor-' + wpCurrentPage);
-      if (_aed) wpPages[wpCurrentPage] = _aed.innerHTML;
-      /* Clone ONLY the current page */
-      var _curEl = container.querySelector('#wp-page-' + wpCurrentPage) ||
-                   container.querySelectorAll('.wp-page, .wp-page-item')[wpCurrentPage];
-      var _wrapper = document.createElement('div');
-      if (_curEl) {
-        _wrapper.appendChild(_curEl.cloneNode(true));
-      } else {
-        /* fallback: all pages */
-        var _fb = container.cloneNode(true);
-        _wrapper.innerHTML = _fb.innerHTML;
-      }
-      /* Strip blank pages */
-      _wrapper.querySelectorAll('.wp-page, .wp-page-item').forEach(function(pg) {
+      /* Save ALL editors into wpPages before printing */
+      container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+        var m = ed.id.match(/wp-editor-(\d+)/);
+        if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
+      });
+
+      /* Clone ALL pages */
+      var cloned = container.cloneNode(true);
+
+      /* Strip contenteditable and screen-only decorations */
+      cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+      cloned.querySelectorAll('.wp-page-label,.wp-page-add,.wp-page-actions,.wp-page-num,.wp-page-footer-bar').forEach(function(el){ el.parentNode && el.parentNode.removeChild(el); });
+
+      /* Reset screen CSS that clips content in print */
+      cloned.querySelectorAll('.wp-page,.wp-page-item').forEach(function(el){
+        el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
+        el.style.boxShadow = 'none'; el.style.margin = '0'; el.style.borderRadius = '0';
+      });
+      cloned.querySelectorAll('.wp-page-editor,.wp-page-inner').forEach(function(el){
+        el.style.height = 'auto'; el.style.minHeight = '0'; el.style.overflow = 'visible';
+      });
+
+      /* Remove blank pages */
+      cloned.querySelectorAll('.wp-page,.wp-page-item').forEach(function(pg) {
         var ed = pg.querySelector('.wp-page-editor, .wp-page-inner');
         if (!ed) return;
-        var hasText  = ed.textContent.trim().length > 0;
-        var hasMedia = !!ed.querySelector('img, canvas, table, svg');
-        if (!hasText && !hasMedia) { pg.parentNode && pg.parentNode.removeChild(pg); }
+        if (!ed.textContent.trim().length && !ed.querySelector('img,canvas,table,svg')) {
+          pg.parentNode && pg.parentNode.removeChild(pg);
+        }
       });
-      printRoot.innerHTML = _wrapper.innerHTML;
+
+      /* Add page numbers */
+      var allPages = cloned.querySelectorAll('.wp-page,.wp-page-item');
+      var total = allPages.length || 1;
+      allPages.forEach(function(pg, i) {
+        var ftr = document.createElement('div');
+        ftr.className = 'wp-print-footer';
+        ftr.textContent = 'Page ' + (i + 1) + ' of ' + total;
+        pg.appendChild(ftr);
+      });
+
+      printRoot.innerHTML = cloned.outerHTML;
     }
     printRoot.style.display = 'block';
     setTimeout(function() {
