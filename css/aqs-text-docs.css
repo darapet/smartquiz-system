@@ -749,6 +749,9 @@ body {
 }
 
 @media print {
+  /* ── Page setup: no browser margins (padding on .wp-page handles margins) ── */
+  @page { size: A4 portrait; margin: 0; }
+
   /* ── Colour preservation ── */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
@@ -772,7 +775,7 @@ body {
     border-radius: 0 !important;
     border: none !important;
     background: #fff !important;
-    padding: 0 !important;
+    padding: 20mm 20mm 16mm 20mm !important;
     margin: 0 !important;
     page-break-after: always !important;
     break-after: page !important;
@@ -876,6 +879,13 @@ body {
     letter-spacing: 0.15pt !important;
   }
 
+
+  /* ── Suppress placeholder ::before text in print ── */
+  .wp-page-editor::before,
+  .wp-page-inner::before {
+    display: none !important;
+    content: '' !important;
+  }
   /* ── Hide screen-only decorations inside cloned pages ── */
   .wp-page-label { display: none !important; }
 
