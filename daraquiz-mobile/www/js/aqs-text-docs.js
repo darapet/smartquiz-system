@@ -1250,43 +1250,35 @@
     var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
     var pageLabel = unlimited ? 'Unlimited (as long as needed)' : (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
-    /* Scale tokens: unlimited → 32000; otherwise ~750 per page, min 2000 */
-    var aiMaxTokens = unlimited ? 32000 : Math.min(32000, Math.max(2000, Math.round(pages * 750)));
-    /* Section count: unlimited → at least 8; otherwise ~2 per page */
-    var sectionCount = unlimited ? 8 : Math.max(2, Math.round(pages * 2));
+    /* Tokens: A4 page ≈ 450 words ≈ 600 tokens (with HTML); cap at 6000 */
+    var strictWords = unlimited ? null : Math.round(pages * 450);
+    var aiMaxTokens = unlimited ? 6000 : Math.min(6000, Math.max(2000, Math.round(pages * 600) + 400));
+    var sectionCount = unlimited ? 6 : Math.max(2, Math.round(pages * 1.5));
 
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var aiPrompt = 'You are an expert professional document writer. Write a COMPLETE, thoroughly detailed ' + dtype + ' with a ' + tone + ' tone.\n\n' +
-      '━━━ LENGTH REQUIREMENT (MANDATORY) ━━━\n' +
+    var aiPrompt = 'You are a professional document writer. Write a ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+      '━━━ STRICT LENGTH RULE (MANDATORY) ━━━\n' +
       (unlimited
-        ? 'Length: UNLIMITED — write as much as needed to fully cover the topic. Do NOT stop early.\n• Write every section in full — no stubs, no placeholders, no truncation\n• Include as many sections as the topic requires\n'
-        : 'Target: ' + pageLabel + ' of A4 content — you MUST meet this exactly\n• ~' + Math.round(pages < 1 ? 250 : 500) + ' words of body text per A4 page\n') +
-      '• Include ' + sectionCount + ' or more major sections, each with 2–4 full developed paragraphs\n' +
-      '• Write a thorough Conclusion section at the end\n' +
-      '• Do NOT stop early, truncate, or stub sections — write the complete document\n\n' +
+        ? 'Length: Write a complete, thorough document. Cover the topic fully.\n'
+        : 'Required length: ' + pageLabel + ' of A4 content.\n' +
+          'Target word count: approximately ' + strictWords + ' words of body text.\n' +
+          'HARD LIMIT: Do NOT write more than ' + Math.round(strictWords * 1.1) + ' words total.\n' +
+          'An A4 page holds ~450 words. Stop when you reach the word limit.\n') +
+      '• Include ' + sectionCount + ' major sections\n' +
+      '• Write a Conclusion at the end\n\n' +
       '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
       '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
       '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
       '✦ NO html/head/body/style/script/div/span tags\n' +
-      '✦ NO markdown (**bold** → <strong>, ## heading → <h2>, - item → <li>)\n' +
-      '✦ Start output immediately with <h1> — no explanations before or after\n\n' +
-      '━━━ DOCUMENT STRUCTURE ━━━\n' +
-      '• <h1> — Document title (one only)\n' +
-      '• <h2> — Major sections (' + sectionCount + ' required)\n' +
-      '• <h3> — Sub-sections within each major section\n' +
-      '• <p> — ALL body text (never bare/unwrapped text)\n' +
-      '• <strong> — Key terms, important data, conclusions\n' +
-      '• <ul>/<ol> — Lists and bullet points where appropriate\n' +
-      '• <blockquote> — Notable quotes or callouts\n' +
-      '• <table> — Data comparisons or structured information\n\n' +
-      '━━━ WRITING STYLE ━━━\n' +
-      '• Tone: ' + tone + ' — precise, clear, authoritative language\n' +
-      '• Every paragraph must be substantive — no filler sentences\n' +
-      '• Use specific details, examples, and context throughout\n\n' +
-      'REQUEST: ' + prompt + '\n\n' +
+      '✦ Start immediately with <h1> — no text before or after the HTML\n\n' +
+      '━━━ STRUCTURE ━━━\n' +
+      '• <h1> title • <h2> major sections • <h3> sub-sections\n' +
+      '• <p> ALL body text • <strong> key terms\n' +
+      '• <ul>/<ol> lists • <blockquote> quotes • <table> data\n\n' +
+      'REQUEST: ' + prompt + '\n' +
       wpDocSettingsPrompt(ds);
 
     callAI(aiPrompt, aiMaxTokens)
@@ -2195,20 +2187,20 @@
     notice.textContent = '📄 Document: "' + title + '" · Format: ' + (fmtLabels[fmt] || fmt.toUpperCase()) + ' · ' + wpPages.length + ' page(s)';
     previewEl.appendChild(notice);
 
-    /* Print only the currently active page */
-    var _curIdx = wpCurrentPage;
-    /* Save latest edits from the active editor first */
-    var _activeEd = document.getElementById('wp-editor-' + _curIdx);
-    if (_activeEd) wpPages[_curIdx] = _activeEd.innerHTML;
-    var _curPageHtml = wpPages[_curIdx] || '';
-    var _printPages = (_curPageHtml.replace(/<[^>]+>/g,'').trim().length > 0 ||
-                       /<img|<canvas|<table|<svg/i.test(_curPageHtml))
-                     ? [_curPageHtml]
-                     : wpPages.filter(function(pg) {
-                         if (!pg) return false;
-                         return pg.replace(/<[^>]+>/g,'').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
-                       }); /* fallback: all non-blank pages if current is empty */
-    if (!_printPages.length) _printPages = [_curPageHtml || ''];
+    /* Save ALL editor states before building preview */
+    var _previewContainer = document.getElementById('wp-pages');
+    if (_previewContainer) {
+      _previewContainer.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+        var _m = ed.id.match(/wp-editor-(\d+)/);
+        if (_m) wpPages[parseInt(_m[1], 10)] = ed.innerHTML;
+      });
+    }
+    /* Collect all non-empty pages */
+    var _printPages = wpPages.filter(function(pg) {
+      if (!pg) return false;
+      return pg.replace(/<[^>]+>/g,'').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+    });
+    if (!_printPages.length) _printPages = [wpPages[wpCurrentPage] || ''];
 
     _printPages.forEach(function(pgHtml, idx) {
       var pageWrap = document.createElement('div');
@@ -2289,20 +2281,20 @@
       '@media print{@page{margin:' + mg + 'mm;}}'
     ].join('');
 
-    /* Use only the currently active page */
-    var _printCurIdx = wpCurrentPage;
-    var _printCurEd = document.getElementById('wp-editor-' + _printCurIdx);
-    if (_printCurEd) wpPages[_printCurIdx] = _printCurEd.innerHTML;
-    var _printCurHtml = wpPages[_printCurIdx] || '';
-    var _nonEmptyPages = (_printCurHtml.replace(/<[^>]+>/g,'').trim().length > 0 ||
-                          /<img|<canvas|<table|<svg/i.test(_printCurHtml))
-                        ? [_printCurHtml]
-                        : wpPages.filter(function(pg){
-                            if (!pg) return false;
-                            var s = pg.replace(/<[^>]+>/g,'').trim();
-                            return s.length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
-                          });
-    if (!_nonEmptyPages.length) _nonEmptyPages = [_printCurHtml || ''];
+    /* Save ALL editor states before building download */
+    var _dlContainer = document.getElementById('wp-pages');
+    if (_dlContainer) {
+      _dlContainer.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+        var _m = ed.id.match(/wp-editor-(\d+)/);
+        if (_m) wpPages[parseInt(_m[1], 10)] = ed.innerHTML;
+      });
+    }
+    /* Collect all non-empty pages */
+    var _nonEmptyPages = wpPages.filter(function(pg) {
+      if (!pg) return false;
+      return pg.replace(/<[^>]+>/g,'').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+    });
+    if (!_nonEmptyPages.length) _nonEmptyPages = [wpPages[wpCurrentPage] || ''];
     var allPages = _nonEmptyPages.map(function(pg, i) {
       return '<div style="margin-bottom:24px;' +
         (i < _nonEmptyPages.length - 1 ? 'padding-bottom:24px;border-bottom:2px dashed #e5e7eb;' : '') +
