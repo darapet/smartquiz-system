@@ -687,7 +687,7 @@ body {
   .wp-appbar,.wp-ribbon,.wp-sidebar,.wp-page-nav,.wp-dl-bar,.wp-status-bar,
   .wp-mob-toggle,.wp-mode-overlay,.wp-modal-backdrop { display: none !important; }
   .wp-layout { margin-top: 0 !important; }
-  .wp-pages-area { padding: 0 !important; gap: 0 !important; }
+  .wp-pages-area { display: block !important; padding: 0 !important; margin: 0 !important; gap: 0 !important; overflow: visible !important; background: transparent !important; width: 100% !important; }
   .wp-page { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; }
   body { background: #fff !important; }
 }

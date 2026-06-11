@@ -16,7 +16,7 @@
   var wpCtxCell = null, wpCtxTable = null;
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
-  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 9999; /* no practical limit */
+  var PAGE_CHAR_LIMIT = 3200, MAX_PAGES = 9999; /* no practical limit */
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -1908,6 +1908,13 @@
 
     /* ── Clone ALL pages ── */
     var cloned = container.cloneNode(true);
+    /* Reset the flex container so page-break-after creates correct page breaks */
+    cloned.style.display = 'block';
+    cloned.style.padding = '0';
+    cloned.style.margin = '0';
+    cloned.style.overflow = 'visible';
+    cloned.style.background = 'transparent';
+    cloned.style.width = '100%';
 
     cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
     /* Remove screen-only labels and decorations */

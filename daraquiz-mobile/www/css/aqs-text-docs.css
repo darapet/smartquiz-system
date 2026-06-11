@@ -759,6 +759,16 @@ body {
   /* ── Button-triggered print: hide everything except print root ── */
   body.wp-printing > *:not(#wp-print-root) { display: none !important; }
   body.wp-printing #wp-print-root { display: block !important; margin: 0 !important; padding: 0 !important; }
+  /* Reset flex container so page-break-after works and no phantom blank first page */
+  body.wp-printing .wp-pages-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    width: 100% !important;
+  }
 
   /* ── One .wp-page = one printed page ── */
   body.wp-printing .wp-page,
@@ -880,7 +890,7 @@ body {
   .wp-status-bar, .wp-mob-toggle, .wp-mode-overlay, .wp-modal-backdrop,
   .wp-bottom-nav, .wp-fab, #_aqsNav, #aqs-upd-overlay { display: none !important; }
   .wp-layout { margin-top: 0 !important; }
-  .wp-pages-area { padding: 0 !important; gap: 0 !important; background: #fff !important; }
+  .wp-pages-area { display: block !important; padding: 0 !important; gap: 0 !important; overflow: visible !important; background: #fff !important; }
 }
 
 /* ── Responsive ── */
