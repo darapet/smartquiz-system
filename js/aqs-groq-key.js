@@ -60,6 +60,18 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
     .filter(function(k){ return typeof k === 'string' && k.length > 10; })
 );
 
+/* ── Keys-ready promise ──────────────────────────────────────────────
+   Resolves once the Firebase auto-loader has finished (or after a
+   5-second timeout). groqFetch() awaits this before deciding that no
+   keys are configured, so a slow Firestore read no longer causes a
+   false "AI Not Configured" error on page load.
+   ─────────────────────────────────────────────────────────────────── */
+window._aqsKeysReady = new Promise(function(resolve) {
+    window._aqsKeysReadyResolve = resolve;
+    /* Safety timeout: resolve after 5 s even if Firebase never fires */
+    setTimeout(resolve, 5000);
+});
+
 (function(){
     var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
     var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';
@@ -83,6 +95,9 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
             else console.warn('[aqs-ai]', entry.msg);
         }
     }
+    /* expose so the auto-loader IIFE below can also use it */
+    window._aqsLog = _aqsLog;
+
     /* ── Professional user error modal ─────────────────────────────────── */
     var _aqsLastErrTime = 0;
     function _aqsShowUserError(type) {
@@ -98,7 +113,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
         var footer = !isNet ? '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);text-align:center;"><p style="margin:0 0 8px;font-size:.72rem;color:#64748b;letter-spacing:.05em;text-transform:uppercase;font-weight:700;">Contact Admin to Report This</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><a href="https://wa.me/2349134873694" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.22);border-radius:8px;color:#4ade80;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">📱 WhatsApp</a><a href="tel:+2349134873694" style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.18);border-radius:8px;color:#38bdf8;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">📞 Call</a><a href="mailto:daramolapeter98@gmail.com" style="display:inline-flex;align-items:center;gap:5px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.18);border-radius:8px;color:#fb923c;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">✉️ Email</a></div></div>' : '';
         var modal = document.createElement('div'); modal.id = '_aqs-err-modal';
         modal.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999997;max-width:430px;width:calc(100% - 32px);background:rgba(10,10,25,.97);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.75);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:_aqsErrIn .4s cubic-bezier(.22,1,.36,1) both;';
-        modal.innerHTML = '<style>@keyframes _aqsErrIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style><div style="display:flex;align-items:flex-start;gap:13px;"><div style="width:40px;height:40px;border-radius:10px;background:rgba(249,115,22,.13);border:1px solid rgba(249,115,22,.27);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">' + icon + '</div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><span style="font-weight:800;color:#f1f5f9;font-size:.93rem;">' + title + '</span><button onclick="document.getElementById('_aqs-err-modal').remove();" style="background:none;border:none;color:#475569;font-size:1.05rem;cursor:pointer;padding:0;line-height:1;">✕</button></div><p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.55;">' + msg + '</p>' + footer + '</div></div>';
+        modal.innerHTML = '<style>@keyframes _aqsErrIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style><div style="display:flex;align-items:flex-start;gap:13px;"><div style="width:40px;height:40px;border-radius:10px;background:rgba(249,115,22,.13);border:1px solid rgba(249,115,22,.27);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">' + icon + '</div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><span style="font-weight:800;color:#f1f5f9;font-size:.93rem;">' + title + '</span><button onclick="document.getElementById(\'_aqs-err-modal\').remove();" style="background:none;border:none;color:#475569;font-size:1.05rem;cursor:pointer;padding:0;line-height:1;">✕</button></div><p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.55;">' + msg + '</p>' + footer + '</div></div>';
         document.body.appendChild(modal);
         if (isNet) setTimeout(function(){ var m=document.getElementById('_aqs-err-modal'); if(m)m.remove(); }, 7000);
     }
@@ -179,6 +194,14 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
      *  features. The provider chain is transparent to callers.         */
     window.groqFetch = async function(bodyObj, extraOpts) {
+        /* Wait for the Firebase key auto-loader to complete before checking
+           key counts. This prevents false "not configured" errors that happen
+           when groqFetch is called before the async Firestore read finishes.
+           The promise resolves in ≤5 s (safety timeout) so we never hang. */
+        if (!_getGroqKeys().length && !_getMistralKeys().length && !_getHFKeys().length) {
+            await window._aqsKeysReady;
+        }
+
         /* 1. Try Groq (fastest, free tier) */
         var res = await _groqFetch(bodyObj, extraOpts);
         if (res) return res;
@@ -243,10 +266,20 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
    AUTO-LOADER — pulls AI keys from Firebase settings on every page
    that includes this file + aqs-firebase.js (Studio, Study Hub, etc.)
    Fires once Firebase is ready; never blocks page rendering.
+   Resolves window._aqsKeysReady when complete so groqFetch() can
+   safely wait for keys before declaring "not configured".
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
     function _loadAIKeysFromFirebase() {
-        if (typeof window.aqsAjax !== 'function') return;
+        if (typeof window.aqsAjax !== 'function') {
+            /* aqsAjax not available — resolve immediately so groqFetch
+               doesn't wait forever on pages without aqs-firebase.js */
+            if (typeof window._aqsKeysReadyResolve === 'function') {
+                window._aqsKeysReadyResolve();
+                window._aqsKeysReadyResolve = null;
+            }
+            return;
+        }
         window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
             var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
 
@@ -271,8 +304,14 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
             var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
                       + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
                       + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
-            if (total > 0) {
-                _aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+            if (total > 0 && typeof window._aqsLog === 'function') {
+                window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+            }
+
+            /* Signal that keys are now available */
+            if (typeof window._aqsKeysReadyResolve === 'function') {
+                window._aqsKeysReadyResolve();
+                window._aqsKeysReadyResolve = null;
             }
         });
     }
