@@ -1163,13 +1163,32 @@
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    /* tokens: ~750 per page (500 words × 1.3 tok/word + HTML overhead), min 2500, max 8000 */
-    var maxTok = Math.min(8000, Math.max(2500, Math.round(pages * 750) + 600));
+    /* Tokens: A4 page ≈ 450 words ≈ 600 tokens (with HTML); cap at 6000 */
+    var strictWords = Math.round(pages * 450);
+    var maxTok = Math.min(6000, Math.max(2000, Math.round(pages * 600) + 400));
 
-    var aiPrompt = 'You are a professional document writer. Write a complete, well-structured ' + dtype + ' with a ' + tone + ' tone.\n\nPAGE TARGET: Exactly ' + pageLabel + ' (' + wTarget + '). You MUST write the full ' + pageLabel + ' — do NOT stop early, do NOT summarise at the end, do NOT add "Note: truncated". Keep writing until you have filled ' + pageLabel + ' worth of content.\n\nREQUEST: ' + prompt + '\n\n' +
-      'OUTPUT: Return ONLY clean HTML using: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, table, thead, tbody, tr, th, td. NO html/head/body/style/script tags.\n\n' +
-      'STRUCTURE:\n- Open with <h1> title\n- Use <h2> for major sections\n- Use <h3> for sub-sections\n- Key points in <strong>\n- ALL body text in <p>\n' +
-      '- Lists as <ul>/<ol>\n- Notable quotes as <blockquote>\n- When data fits → use <table>\n- Write a full, detailed conclusion\n- DO NOT STOP — write the entire document to completion' +
+    var aiPrompt = 'You are a professional document writer. Write a ' + dtype + ' with a ' + tone + ' tone.\n\n' +
+      '━━━ STRICT LENGTH RULE (MANDATORY) ━━━\n' +
+      'Required length: ' + pageLabel + ' of A4 content.\n' +
+      'Target word count: approximately ' + strictWords + ' words of body text.\n' +
+      'HARD LIMIT: Do NOT write more than ' + Math.round(strictWords * 1.1) + ' words total.\n' +
+      'An A4 page holds ~450 words. You must stay within ' + pageLabel + '.\n' +
+      'Stop writing when you reach the word limit — do NOT add extra sections beyond it.\n\n' +
+      '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
+      '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
+      '✦ NO html/head/body/style/script/div/span tags\n' +
+      '✦ Start immediately with <h1> — no text before or after the HTML\n\n' +
+      '━━━ STRUCTURE ━━━\n' +
+      '• <h1> document title (one only)\n' +
+      '• <h2> major sections\n' +
+      '• <h3> sub-sections\n' +
+      '• <p> ALL body text\n' +
+      '• <strong> key terms\n' +
+      '• <ul>/<ol> lists\n' +
+      '• <blockquote> quotes\n' +
+      '• <table> data comparisons\n\n' +
+      'REQUEST: ' + prompt + '\n' +
       wpDocSettingsPrompt(ds);
 
     callAI(aiPrompt, maxTok)
@@ -1873,24 +1892,14 @@
       if (window.wpGetDocTitle) docTitle = wpGetDocTitle(allHtml) || 'Document';
     } catch(e) {}
 
-    /* ── Save active editor state ── */
-    var _activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
-    if (_activeEd) wpPages[wpCurrentPage] = _activeEd.innerHTML;
+    /* ── Save ALL editors into wpPages before printing ── */
+    container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+      var m = ed.id.match(/wp-editor-(\d+)/);
+      if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
+    });
 
-    /* ── Clone ONLY the current page (not all pages) ── */
-    var _curPageEl = container.querySelector('#wp-page-' + wpCurrentPage) ||
-                     container.querySelectorAll('.wp-page')[wpCurrentPage];
-    var cloned;
-    if (_curPageEl) {
-      /* Wrap single page in a container matching the original structure */
-      var _wrapper = document.createElement('div');
-      _wrapper.id = 'wp-pages';
-      _wrapper.appendChild(_curPageEl.cloneNode(true));
-      cloned = _wrapper;
-    } else {
-      /* Fallback: clone all pages */
-      cloned = container.cloneNode(true);
-    }
+    /* ── Clone ALL pages ── */
+    var cloned = container.cloneNode(true);
 
     cloned.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
     /* Remove screen-only labels and decorations */
