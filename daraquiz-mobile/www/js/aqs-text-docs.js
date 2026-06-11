@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.2
+   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.4
    Features: AI Format/Write/Translate/Summarize/Expand
              30+ Google Fonts · Image Upload & Resize
              Excel-Style Tables · Chart from Data
@@ -17,7 +17,7 @@
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
   var wpReflowTimer = null;
-  var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 999;
+  var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 9999 /* no practical limit */;
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -78,7 +78,7 @@
         wpSetStatus('📚 Study content imported from AI Study ✅');
       } catch(e) { /* silently ignore import errors */ }
     })();
-    wpSetStatus('Word Processor ready — v3.3');
+    wpSetStatus('Word Processor ready — v3.4');
     wpAdjustHeaderOffset();
     wpSetupDocSettingsListeners();
   });
@@ -1879,7 +1879,7 @@
         if (ned3) {
           ned3.insertBefore(lastEl3, ned3.firstChild || null);
           wpPages[pi3 + 1] = ned3.innerHTML;
-        } else if (wpPages.length < MAX_PAGES) {
+        } else if (true) { /* no page limit */
           wpPages.splice(pi3 + 1, 0, lastEl3.outerHTML || '');
           wpRenderPages(true);
         } else {
@@ -1971,7 +1971,7 @@
       }
     }
     /* Create a new page */
-    if (wpPages.length >= MAX_PAGES) return false;
+    /* page limit removed */
     wpPages.splice(pi + 1, 0, blockToMove.outerHTML || '');
     wpRenderPages(true);
     return true;
@@ -2179,13 +2179,28 @@
     notice.textContent = '📄 Document: "' + title + '" · Format: ' + (fmtLabels[fmt] || fmt.toUpperCase()) + ' · ' + wpPages.length + ' page(s)';
     previewEl.appendChild(notice);
 
-    wpPages.forEach(function(pgHtml, idx) {
+    /* Print only the currently active page */
+    var _curIdx = wpCurrentPage;
+    /* Save latest edits from the active editor first */
+    var _activeEd = document.getElementById('wp-editor-' + _curIdx);
+    if (_activeEd) wpPages[_curIdx] = _activeEd.innerHTML;
+    var _curPageHtml = wpPages[_curIdx] || '';
+    var _printPages = (_curPageHtml.replace(/<[^>]+>/g,'').trim().length > 0 ||
+                       /<img|<canvas|<table|<svg/i.test(_curPageHtml))
+                     ? [_curPageHtml]
+                     : wpPages.filter(function(pg) {
+                         if (!pg) return false;
+                         return pg.replace(/<[^>]+>/g,'').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+                       }); /* fallback: all non-blank pages if current is empty */
+    if (!_printPages.length) _printPages = [_curPageHtml || ''];
+
+    _printPages.forEach(function(pgHtml, idx) {
       var pageWrap = document.createElement('div');
       pageWrap.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:20px;' +
         'box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;overflow:hidden;';
       var pageLabel = document.createElement('div');
       pageLabel.style.cssText = 'background:#f8f9ff;border-bottom:1px solid #e2e8f0;padding:6px 14px;font-size:10.5px;color:#6b7280;font-weight:700;';
-      pageLabel.textContent = 'Page ' + (idx + 1) + ' of ' + wpPages.length;
+      pageLabel.textContent = 'Page ' + (idx + 1) + ' of ' + _printPages.length;
       var pageContent = document.createElement('div');
       pageContent.style.cssText = 'padding:24px 28px;' + pageStyle;
       /* Parse + clean HTML so raw tags never show as text */
@@ -2258,10 +2273,23 @@
       '@media print{@page{margin:' + mg + 'mm;}}'
     ].join('');
 
-    /* All pages as clean HTML */
-    var allPages = wpPages.map(function(pg, i) {
+    /* Use only the currently active page */
+    var _printCurIdx = wpCurrentPage;
+    var _printCurEd = document.getElementById('wp-editor-' + _printCurIdx);
+    if (_printCurEd) wpPages[_printCurIdx] = _printCurEd.innerHTML;
+    var _printCurHtml = wpPages[_printCurIdx] || '';
+    var _nonEmptyPages = (_printCurHtml.replace(/<[^>]+>/g,'').trim().length > 0 ||
+                          /<img|<canvas|<table|<svg/i.test(_printCurHtml))
+                        ? [_printCurHtml]
+                        : wpPages.filter(function(pg){
+                            if (!pg) return false;
+                            var s = pg.replace(/<[^>]+>/g,'').trim();
+                            return s.length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+                          });
+    if (!_nonEmptyPages.length) _nonEmptyPages = [_printCurHtml || ''];
+    var allPages = _nonEmptyPages.map(function(pg, i) {
       return '<div style="margin-bottom:24px;' +
-        (i < wpPages.length - 1 ? 'padding-bottom:24px;border-bottom:2px dashed #e5e7eb;' : '') +
+        (i < _nonEmptyPages.length - 1 ? 'padding-bottom:24px;border-bottom:2px dashed #e5e7eb;' : '') +
         '">' + (pg || '') + '</div>';
     }).join('');
 
