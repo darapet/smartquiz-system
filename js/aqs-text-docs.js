@@ -937,52 +937,20 @@
   };
 
   /* ── AI calls — Groq key pool (direct) ─────────────────────── */
-  var _tdGroqRL = {};
-  var _tdGroqCooldown = 62000;
-  function _tdKeyHash(k) { return k ? k.slice(-8) : '?'; }
-  function _tdIsRL(k) { return (_tdGroqRL[_tdKeyHash(k)] || 0) > Date.now(); }
-  function _tdMarkRL(k) { _tdGroqRL[_tdKeyHash(k)] = Date.now() + _tdGroqCooldown; }
-
   function callAI(prompt, maxTokens) {
-    var keys = [
-      'p6LjPRoMSIIZREQoc4oQ4ZP0YF3bydGW3O45iXvVoYdUYXfLTSWu_ksg',   /* Slot 1 — stored reversed */
-      'jro4L6BPWJZ9JVSbSXUEoSGnYF3bydGWNyqZGBN0yjOHnYLmGvq4_ksg',   /* Slot 2 */
-      'RsssPN1cyv1u1AGkd6wFI905YF3bydGW9LfGluGgLJogWKu7Sr8E_ksg',    /* Slot 3 */
-      'evrpK9gzombP8TfmgeR6JX5gYF3bydGWPr8XYZJJrCBZwViwhTou_ksg',    /* Slot 4 */
-      'OIHGTKv8WhDKz0F7IU2dKnByYF3bydGW8XY931T0oLOIxl6pJUD8_ksg'    /* Slot 5 */
-    ].map(function(r){ return r ? r.split('').reverse().join('') : ''; })
-     .filter(function(k){ return k && k.length > 10; });
-    var messages = [{ role: 'user', content: prompt }];
-    var GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions';
-    var GROQ_MODEL = 'llama-3.1-8b-instant';
+    /* Safety caps — avoids HTTP 413 and context-window overflows */
+    var safeMax    = Math.min(maxTokens || 2000, 8000);
+    var safePrompt = prompt.length > 12000 ? prompt.slice(0, 12000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    var messages   = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
-
-    function tryGroqKeys() {
-      var idx = 0;
-      function attempt() {
-        if (idx >= keys.length) return Promise.resolve(null);
-        var key = keys[idx++];
-        if (_tdIsRL(key)) return attempt();
-        return fetch(GROQ_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-          body: JSON.stringify({ model: GROQ_MODEL, messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 })
-        }).then(function(res) {
-          if (res.status === 429) { _tdMarkRL(key); return attempt(); }
-          return res;
-        }).catch(function() { return attempt(); });
-      }
-      return attempt();
-    }
-
-    return tryGroqKeys().then(function(r) {
-      if (r) return r;
-      if (typeof window.groqFetch === 'function') {
-        return window.groqFetch({ messages: messages, max_tokens: maxTokens || 2000, temperature: 0.3 });
-      }
+    /* Route through groqFetch (Groq → Mistral → HuggingFace key rotation) */
+    if (typeof window.groqFetch !== 'function') {
       wpSetAIStatus('error', 'AI not ready');
-      return Promise.reject(new Error('AI not ready — no keys available.'));
-    }).then(function(r) {
+      return Promise.reject(new Error('AI not ready — no keys configured.'));
+    }
+    return window.groqFetch(
+      { messages: messages, max_tokens: safeMax, temperature: 0.3 }
+    ).then(function(r) {
       if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
       return r.json();
     }).then(function(d) {
