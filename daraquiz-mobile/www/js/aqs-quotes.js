@@ -71,10 +71,13 @@
     function getAnonId() {
         try { var id=localStorage.getItem(LS_ANON); if(!id){id=Date.now().toString(36)+Math.random().toString(36).substr(2,7);localStorage.setItem(LS_ANON,id);} return id; } catch(e){return 'anon';}
     }
-    function hasSeenToday() { try { return localStorage.getItem(LS_SEEN+todayKey())==='1'; } catch(e){return false;} }
-    function markSeen()     { try { localStorage.setItem(LS_SEEN+todayKey(),'1'); } catch(e){} }
-    function hashIdx(seed, max) {
-        var h=0; for(var i=0;i<seed.length;i++){h=(Math.imul(31,h)+seed.charCodeAt(i))|0;} return Math.abs(h)%max;
+    /* Per-visit rotating index — each page load gets the next quote in order */
+    function nextVisitIdx(max) {
+        var KEY = 'aqs_visit_qi';
+        var cur = 0;
+        try { cur = Math.abs(parseInt(localStorage.getItem(KEY) || '0')) || 0; } catch(e) {}
+        try { localStorage.setItem(KEY, String((cur + 1) % max)); } catch(e) {}
+        return cur % max;
     }
 
     /* ── Auto-cleanup: delete Firestore docs older than today ────────── */
@@ -163,8 +166,10 @@
             '#_aqs-qcard ._aqsbadge{display:inline-block;background:rgba(124,58,237,.18);border:1px solid rgba(124,58,237,.3);color:#c4b5fd;font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:4px 13px;border-radius:20px;margin-bottom:30px;}',
             '#_aqs-qcard ._aqsbtn{width:100%;padding:14px;background:linear-gradient(135deg,#f97316,#dc2626);color:#fff;border:none;border-radius:13px;font-size:.97rem;font-weight:800;cursor:pointer;letter-spacing:.03em;transition:opacity .15s,transform .15s;box-shadow:0 5px 28px rgba(249,115,22,.38);}',
             '#_aqs-qcard ._aqsbtn:hover{opacity:.9;transform:translateY(-2px);}',
-            '#_aqs-qclose{position:absolute;top:18px;right:20px;z-index:3;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);color:#64748b;font-size:1rem;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s;line-height:1;}',
-            '#_aqs-qclose:hover{background:rgba(255,255,255,.14);color:#f1f5f9;}'
+            '#_aqs-qclose{position:absolute;top:14px;right:16px;z-index:3;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:#cbd5e1;font-size:1.05rem;font-weight:700;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s;}',
+            '#_aqs-qclose:hover{background:rgba(255,255,255,.22);color:#fff;}',
+            '#_aqs-qskip{display:block;margin-top:14px;font-size:.8rem;color:#475569;cursor:pointer;text-decoration:underline;text-underline-offset:3px;transition:color .15s;}',
+            '#_aqs-qskip:hover{color:#94a3b8;}'
         ].join('');
         document.head.appendChild(style);
 
@@ -183,6 +188,7 @@
             '  <div class="_aqsau">— '+_esc(quote.author||'Unknown')+'</div>',
             '  <span class="_aqsbadge">'+catLabel+'</span>',
             '  <button class="_aqsbtn">Start Learning 🚀</button>',
+            '  <span id="_aqs-qskip">Skip for now</span>',
             '</div>'
         ].join('');
         document.body.appendChild(overlay);
@@ -190,12 +196,12 @@
         function dismiss(){['_aqs-quote-overlay','_aqs-quote-style'].forEach(function(id){var e=document.getElementById(id);if(e)e.remove();});}
         overlay.querySelector('#_aqs-qclose').addEventListener('click',dismiss);
         overlay.querySelector('._aqsbtn').addEventListener('click',dismiss);
+        overlay.querySelector('#_aqs-qskip').addEventListener('click',dismiss);
     }
 
     /* ── Main run ─────────────────────────────────────────────────────── */
     async function run(force) {
-        if (!force && hasSeenToday()) return;
-        if (!force) markSeen();
+        /* Show on every visit — no once-per-day guard */
 
         /* Schedule cleanup at 11 PM */
         var now = new Date(), midnight = new Date(now);
@@ -207,8 +213,8 @@
         var quotes = await getOrGenerate();
         if (!quotes || !quotes.length) return;
 
-        var uid   = (window._aqsFirebaseUser && window._aqsFirebaseUser.uid) || getAnonId();
-        var idx   = hashIdx(uid + todayKey(), quotes.length);
+        /* Pick next quote in rotation; for forced (test/admin) pick a random one */
+        var idx   = force ? Math.floor(Math.random() * quotes.length) : nextVisitIdx(quotes.length);
         var quote = quotes[idx] || quotes[0];
         var u     = window._aqsFirebaseUser;
         var name  = (u && (u.displayName || (u.email||'').split('@')[0])) || 'Scholar';
