@@ -1,8 +1,8 @@
 {
-  "version": "1.262",
-  "versionCode": 240,
+  "version": "1.263",
+  "versionCode": 241,
   "releaseDate": "2026-06-11",
-  "notes": "AI Studio fixed — keys now load correctly from Firebase on startup. New science quote categories added: Physics, Chemistry, Biology, Mathematics.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.262/daraquiz-v1.262.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.262/daraquiz-v1.262.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.263/daraquiz-v1.263.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.263/daraquiz-v1.263.apk"
 }
