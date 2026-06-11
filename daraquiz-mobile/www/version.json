@@ -2,7 +2,7 @@
   "version": "1.272",
   "versionCode": 250,
   "releaseDate": "2026-06-11",
-  "notes": "Fix 413 error on AI Write/Format — reduced prompt size and improved error handling.",
+  "notes": "Bug fixes and improvements.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.272/daraquiz-v1.272.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.272/daraquiz-v1.272.apk"
 }
