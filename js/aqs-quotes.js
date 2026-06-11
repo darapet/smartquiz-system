@@ -216,5 +216,29 @@
         run(true);
     };
 
+    /* ── Force-regenerate today's quotes (admin "Generate Now") ───────── */
+    window._aqsForceGenerate = async function(onStatus) {
+        var key = todayKey();
+        function status(msg) { if (typeof onStatus === 'function') onStatus(msg); }
+        status('🗑️ Clearing today\'s cache…');
+        /* Clear localStorage */
+        try { localStorage.removeItem(LS_CACHE + key); } catch(e){}
+        try { localStorage.removeItem(LS_SEEN  + key); } catch(e){}
+        /* Delete today's Firestore doc */
+        if (window._aqsFS) {
+            try { await window._aqsFS.set('aqsDailyQuotes', key, { quotes: [], generatedAt: 0, date: key }); } catch(e){}
+        }
+        /* Reset in-memory key load flag so keys re-load fresh */
+        _QK = [];
+        status('⚡ Generating 50 new quotes…');
+        var quotes = await getOrGenerate();
+        if (quotes && quotes.length) {
+            status('✅ Done! ' + quotes.length + ' quotes generated for today.');
+        } else {
+            status('❌ Generation failed. Check your quote keys are saved and valid.');
+        }
+        return quotes;
+    };
+
     document.addEventListener('aqs:firebase:ready', function(){ run(false); }, { once: true });
 })();

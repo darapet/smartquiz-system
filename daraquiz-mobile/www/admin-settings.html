@@ -1276,13 +1276,33 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
                 var today = new Date();
                 var dk = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
                 try { localStorage.removeItem('aqs_quote_seen_' + dk); } catch(e){}
-                /* Trigger the quote system to fire a test popup */
                 if (window._aqsTestQuote) {
                     window._aqsTestQuote();
                     setStatus('🎉 Quote popup triggered!', true);
                 } else {
-                    setStatus('⚠️ Quote script not loaded on this page. Open index.html or dashboard.html to test.', false);
+                    setStatus('⚠️ Quote script not loaded on this page.', false);
                 }
+            });
+        }
+
+        /* Generate Now — wipes today's cache and regenerates 50 fresh quotes */
+        var genNowBtn = document.getElementById('aqs-gen-now-btn');
+        if (genNowBtn) {
+            genNowBtn.addEventListener('click', async function () {
+                if (!window._aqsForceGenerate) {
+                    setStatus('⚠️ Quote script not loaded yet. Try again in a moment.', false);
+                    return;
+                }
+                genNowBtn.disabled = true;
+                genNowBtn.textContent = '⏳ Working…';
+                await window._aqsForceGenerate(function(msg) {
+                    setStatus(msg, msg.startsWith('✅'));
+                    genNowBtn.textContent = msg.startsWith('✅') ? '✅ Done!' : msg.startsWith('❌') ? '❌ Failed' : '⏳ ' + msg.slice(3, 28) + '…';
+                });
+                setTimeout(function() {
+                    genNowBtn.disabled = false;
+                    genNowBtn.textContent = '🔄 Generate Now';
+                }, 3500);
             });
         }
 
