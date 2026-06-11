@@ -738,6 +738,9 @@ body {
 }
 
 @media print {
+  /* ── Page setup: no browser margins (padding on .wp-page handles margins) ── */
+  @page { size: A4 portrait; margin: 0; }
+
   /* ── Colour preservation ── */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
