@@ -16,7 +16,7 @@
   var wpCtxCell = null, wpCtxTable = null;
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
-  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 15;
+  var PAGE_CHAR_LIMIT = 2000, MAX_PAGES = 9999; /* no practical limit */
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -1437,7 +1437,7 @@
   };
 
   window.wpAddPage = function() {
-    if (wpPages.length >= MAX_PAGES) { alert('Maximum ' + MAX_PAGES + ' pages reached.'); return; }
+    /* page limit removed */
     wpSavePageState();
     wpPages.splice(wpCurrentPage + 1, 0, '');
     wpCurrentPage++;
@@ -1545,7 +1545,31 @@
     var printRoot = document.getElementById('wp-print-root');
     if (!printRoot) { window.print(); return; }
     var container = document.getElementById('wp-pages');
-    if (container) printRoot.innerHTML = container.innerHTML;
+    if (container) {
+      /* Save active editor content */
+      var _aed = document.getElementById('wp-editor-' + wpCurrentPage);
+      if (_aed) wpPages[wpCurrentPage] = _aed.innerHTML;
+      /* Clone ONLY the current page */
+      var _curEl = container.querySelector('#wp-page-' + wpCurrentPage) ||
+                   container.querySelectorAll('.wp-page, .wp-page-item')[wpCurrentPage];
+      var _wrapper = document.createElement('div');
+      if (_curEl) {
+        _wrapper.appendChild(_curEl.cloneNode(true));
+      } else {
+        /* fallback: all pages */
+        var _fb = container.cloneNode(true);
+        _wrapper.innerHTML = _fb.innerHTML;
+      }
+      /* Strip blank pages */
+      _wrapper.querySelectorAll('.wp-page, .wp-page-item').forEach(function(pg) {
+        var ed = pg.querySelector('.wp-page-editor, .wp-page-inner');
+        if (!ed) return;
+        var hasText  = ed.textContent.trim().length > 0;
+        var hasMedia = !!ed.querySelector('img, canvas, table, svg');
+        if (!hasText && !hasMedia) { pg.parentNode && pg.parentNode.removeChild(pg); }
+      });
+      printRoot.innerHTML = _wrapper.innerHTML;
+    }
     printRoot.style.display = 'block';
     setTimeout(function() {
       window.print();
