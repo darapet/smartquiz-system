@@ -1,8 +1,8 @@
 {
-  "version": "1.279",
-  "versionCode": 257,
+  "version": "1.280",
+  "versionCode": 258,
   "releaseDate": "2026-06-11",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.279/daraquiz-v1.279.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.279/daraquiz-v1.279.apk"
+  "notes": "AI Teacher: fixed math board display and calculation solving — AI now solves problems step by step instead of reframing them.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.280/daraquiz-v1.280.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.280/daraquiz-v1.280.apk"
 }
