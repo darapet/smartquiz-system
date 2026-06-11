@@ -14,11 +14,11 @@
   /* ── Groq hardcoded keys (primary — up to 10 slots) ─────────────── */
   window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat(
       [
-          /* Slot  1  — paste reversed Groq key (gsk_…) */  '',
-          /* Slot  2  */  '',
-          /* Slot  3  */  '',
-          /* Slot  4  */  '',
-          /* Slot  5  */  '',
+          /* Slot  1  — paste reversed Groq key (gsk_…) */  'EyePP35AARr3CpueykZgzJ81YF3bydGWk3HjuNgJSMZimjtaKdlb_ksg',
+          /* Slot  2  */  'Oyq0Qut415RRkrHNkeOHnRihYF3bydGWJn7HHCuh2kAfh74WmzhM_ksg',
+          /* Slot  3  */  'QA1p18xmKTAe2Nzhi2YJXCMOYF3bydGWVbz22zyBdKMqLpphAvkH_ksg',
+          /* Slot  4  */  'VFzaLeaDV2ToC4aX1O3yDT2qYF3bydGWMPdPTjVdiC2BpOV1ebbM_ksg',
+          /* Slot  5  */  'ySKq8DlgdVce047gg4D0fyIpYF3bydGWU4ZizvOsfuv3R1ZUMxtL_ksg',
           /* Slot  6  */  '',
           /* Slot  7  */  '',
           /* Slot  8  */  '',
