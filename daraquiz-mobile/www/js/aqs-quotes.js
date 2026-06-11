@@ -334,6 +334,21 @@
           return quotes;
       };
 
-      document.addEventListener('aqs:firebase:ready', function() { run(false); }, { once: true });
+  
+      /* ── Trigger: run when Firebase is ready ───────────────────────────── */
+      function _startQuotes() { run(false); }
+
+      /* Race-condition safe: Firebase may already be ready when this script loads */
+      if (window._aqsFirebaseReady) {
+          setTimeout(_startQuotes, 900);
+      } else {
+          document.addEventListener('aqs:firebase:ready', _startQuotes, { once: true });
+      }
+
+      /* Mobile (Capacitor): show a new quote every time the user re-opens the app */
+      document.addEventListener('resume', function () {
+          setTimeout(function () { run(false); }, 1200);
+      }, false);
+
   })();
   
