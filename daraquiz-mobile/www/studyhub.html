@@ -336,9 +336,20 @@ a{text-decoration:none;color:inherit;}
 .ait-subj-bar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .6s ease;}
 .ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
 
-/* Math Board — right panel position, resizable */
-.ait-math-board-panel{flex-shrink:0;border-bottom:1px solid var(--border);padding:12px 12px 0 12px;display:none;position:relative;}
-.ait-math-board-panel.visible{display:block;}
+/* Math Board — hidden globally (replaced by canvas Concept Visualizer) */
+.ait-math-board-panel{display:none!important;}
+
+/* Mobile-only elements (hidden on desktop) */
+.ait-mob-action-bar{display:none;gap:6px;padding:8px 12px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);flex-shrink:0;}
+.ait-mob-action-bar .ait-ctrl-btn{font-size:.75rem;padding:9px 10px;}
+.ait-mob-tab-bar{display:none;flex-shrink:0;background:rgba(255,255,255,.015);}
+.ait-mob-tab{flex:1;padding:10px 6px;background:transparent;border:none;border-bottom:3px solid transparent;color:var(--muted);font-size:.8rem;font-weight:700;font-family:inherit;cursor:pointer;transition:all .18s;display:inline-flex;align-items:center;justify-content:center;gap:5px;}
+.ait-mob-tab.active{color:#a5b4fc;border-bottom-color:#6366f1;background:rgba(99,102,241,.06);}
+.ait-mob-notes-panel{display:none;width:100%;padding:4px 0 12px;overflow-y:auto;}
+.ait-mob-answer-footer{display:none;padding:8px 12px 10px;border-top:1px solid var(--border);background:rgba(10,11,20,.98);flex-shrink:0;gap:8px;align-items:flex-end;backdrop-filter:blur(8px);}
+.ait-mob-answer-footer textarea{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:.83rem;font-family:inherit;outline:none;resize:none;height:48px;line-height:1.4;}
+.ait-mob-answer-footer textarea:focus{border-color:rgba(99,102,241,.45);}
+.ait-mob-answer-footer .ait-send-btn{white-space:nowrap;height:48px;padding:0 14px;font-size:.78rem;}
 .ait-math-board-panel-header{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;height:160px;min-height:80px;max-height:420px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
 .ait-math-resize-handle{height:10px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;margin-top:4px;margin-bottom:0;opacity:.5;transition:opacity .2s;}
@@ -367,14 +378,32 @@ a{text-decoration:none;color:inherit;}
 .ait-summ-btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
 .ait-summ-btn-ghost:hover{border-color:rgba(255,255,255,.2);color:var(--text);}
 
-/* Mobile responsive */
+/* Mobile responsive — tabbed 2-panel layout */
 @media(max-width:640px){
-  .ait-ses-body{flex-direction:column;}
-  .ait-ses-right{width:100%;border-right:none;border-top:1px solid var(--border);max-height:260px;}
-  .ait-ses-left{padding:12px 10px;}
-  .ait-avatar-glow{width:90px;height:90px;}
-  .ait-avatar-inner{width:82px;height:82px;}
+  /* Show mobile-only UI elements */
+  .ait-mob-action-bar{display:flex;}
+  .ait-mob-tab-bar{display:flex;}
+  .ait-mob-answer-footer{display:flex;}
+  /* Body fills remaining height, no stacking */
+  .ait-ses-body{flex:1;overflow:hidden;gap:0;min-height:0;}
+  /* Hide desktop right panel entirely */
+  .ait-ses-right{display:none!important;}
+  /* Left panel = full-width, no border */
+  .ait-ses-left{padding:8px 10px;width:100%;border-right:none;flex:1;overflow-y:auto;min-height:0;}
+  /* Shrink avatar on mobile */
+  .ait-avatar-glow{width:76px;height:76px;}
+  .ait-avatar-inner{width:68px;height:68px;}
   .ait-voice-grid{grid-template-columns:repeat(5,1fr);gap:5px;}
+  /* ── Board tab (default) ── */
+  #ait-session-screen:not(.tab-notes) .ait-mob-notes-panel{display:none;}
+  #ait-session-screen:not(.tab-notes) .ait-avatar-wrap,
+  #ait-session-screen:not(.tab-notes) .ait-visual-board,
+  #ait-session-screen:not(.tab-notes) .ait-transcript-wrap{display:block;}
+  /* ── Notes tab ── */
+  #ait-session-screen.tab-notes .ait-mob-notes-panel{display:block;}
+  #ait-session-screen.tab-notes .ait-avatar-wrap,
+  #ait-session-screen.tab-notes .ait-visual-board,
+  #ait-session-screen.tab-notes .ait-transcript-wrap{display:none;}
 }
 
 /* TOAST */
@@ -897,6 +926,18 @@ a{text-decoration:none;color:inherit;}
     <div class="ait-ses-timer-badge" id="ait-ses-timer">30:00</div>
   </div>
 
+  <!-- MOBILE: Sticky action header (Pause / Question / End always visible) -->
+  <div class="ait-mob-action-bar" id="ait-mob-action-bar">
+    <button class="ait-ctrl-btn ait-ctrl-btn-pause" id="ait-mob-pause-btn" onclick="aitTogglePause()" style="flex:1;">⏸ Pause AI</button>
+    <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()" style="flex:0 0 auto;padding:9px 13px;">💬 Ask</button>
+    <button class="ait-ctrl-btn ait-ctrl-btn-end" onclick="aitEndSession()" style="flex:0 0 auto;padding:9px 13px;">⏹ End</button>
+  </div>
+  <!-- MOBILE: Tab bar (Solving Board | Notes) -->
+  <div class="ait-mob-tab-bar" id="ait-mob-tab-bar">
+    <button class="ait-mob-tab active" id="ait-mob-tab-board" onclick="aitMobTab('board')">📊 Solving Board</button>
+    <button class="ait-mob-tab" id="ait-mob-tab-notes" onclick="aitMobTab('notes')">📋 Lesson Notes</button>
+  </div>
+
   <!-- Body: left = AI + transcript, right = controls -->
   <div class="ait-ses-body">
     <!-- LEFT: Avatar + transcript -->
@@ -937,6 +978,12 @@ a{text-decoration:none;color:inherit;}
 
       <!-- Transcript bubbles — no math board here any more -->
       <div class="ait-transcript-wrap" id="ait-transcript"></div>
+
+      <!-- MOBILE ONLY: Notes panel — visible on "Lesson Notes" tab -->
+      <div class="ait-mob-notes-panel" id="ait-mob-notes-panel">
+        <div style="font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">📋 Study Material / Notes</div>
+        <div class="ait-doc-preview" id="ait-mob-doc-preview" style="max-height:none;">Notes will appear here when the session starts…</div>
+      </div>
     </div>
 
     <!-- RIGHT: Controls + math board + doc preview -->
@@ -1001,6 +1048,12 @@ a{text-decoration:none;color:inherit;}
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- MOBILE ONLY: Sticky answer footer (always visible) -->
+  <div class="ait-mob-answer-footer" id="ait-mob-answer-footer">
+    <textarea id="ait-mob-answer-input" placeholder="Type your answer here…"></textarea>
+    <button class="ait-send-btn" onclick="aitSubmitMobAnswer()">Send</button>
   </div>
 </div>
 
@@ -1775,12 +1828,20 @@ async function aitStartSession(){
   document.getElementById('ait-continue-row').style.display = 'none';
   document.getElementById('ait-pause-btn').textContent = '⏸ Pause AI';
   document.getElementById('ait-pause-btn').classList.remove('paused');
+  const mobPauseBtn = document.getElementById('ait-mob-pause-btn');
+  if(mobPauseBtn){ mobPauseBtn.textContent = '⏸ Pause AI'; mobPauseBtn.classList.remove('paused'); }
+
+  /* Reset mobile tab to Solving Board */
+  aitMobTab('board');
 
   if(_ait.docText){
     document.getElementById('ait-doc-preview').textContent = _ait.docText.slice(0,2000);
   } else {
     document.getElementById('ait-doc-preview').textContent = 'No document uploaded — AI teaching from topic knowledge.';
   }
+  /* Sync mobile notes panel */
+  const mobDoc = document.getElementById('ait-mob-doc-preview');
+  if(mobDoc) mobDoc.textContent = document.getElementById('ait-doc-preview').textContent;
 
   /* Show fullscreen session */
   const screen = document.getElementById('ait-session-screen');
@@ -2259,18 +2320,45 @@ async function aitSendQA(){
 }
 
 /* ─ Controls ─ */
+/* ── Mobile tab switching ── */
+function aitMobTab(tab){
+  const screen = document.getElementById('ait-session-screen');
+  screen.classList.toggle('tab-notes', tab === 'notes');
+  const btnBoard = document.getElementById('ait-mob-tab-board');
+  const btnNotes = document.getElementById('ait-mob-tab-notes');
+  if(btnBoard) btnBoard.classList.toggle('active', tab === 'board');
+  if(btnNotes) btnNotes.classList.toggle('active', tab === 'notes');
+  if(tab === 'notes'){
+    /* Sync notes content from desktop panel */
+    const src = document.getElementById('ait-doc-preview');
+    const dst = document.getElementById('ait-mob-doc-preview');
+    if(src && dst) dst.innerHTML = src.innerHTML;
+  }
+}
+
+/* ── Mobile answer footer submit ── */
+function aitSubmitMobAnswer(){
+  const mobInp = document.getElementById('ait-mob-answer-input');
+  if(!mobInp || !mobInp.value.trim()) return;
+  const mainInp = document.getElementById('ait-type-answer');
+  if(mainInp) mainInp.value = mobInp.value;
+  aitSubmitAnswer();
+  mobInp.value = '';
+}
+
 function aitTogglePause(){
   _ait.paused = !_ait.paused;
   const btn = document.getElementById('ait-pause-btn');
+  const mobBtn = document.getElementById('ait-mob-pause-btn');
   if(_ait.paused){
-    btn.textContent = '▶ Resume AI';
-    btn.classList.add('paused');
+    if(btn){ btn.textContent = '▶ Resume AI'; btn.classList.add('paused'); }
+    if(mobBtn){ mobBtn.textContent = '▶ Resume AI'; mobBtn.classList.add('paused'); }
     _ait.synth?.pause();
     document.getElementById('ait-avatar-status').textContent = 'Paused — click Resume to continue';
     document.getElementById('ait-avatar-glow').classList.remove('speaking');
   } else {
-    btn.textContent = '⏸ Pause AI';
-    btn.classList.remove('paused');
+    if(btn){ btn.textContent = '⏸ Pause AI'; btn.classList.remove('paused'); }
+    if(mobBtn){ mobBtn.textContent = '⏸ Pause AI'; mobBtn.classList.remove('paused'); }
     _ait.synth?.resume();
     document.getElementById('ait-avatar-status').textContent = 'Teaching…';
     setTimeout(()=>aitNextTeachingSegment(), 1000);
@@ -2872,10 +2960,21 @@ async function aitMicTranscribe(blob, target){
     genParts.forEach(function(p,i){var pulse=isSpeaking?.6+.4*Math.sin(tick*.05+i*.4):1;ctx.beginPath();ctx.arc(p.x,p.y,p.r*pulse,0,Math.PI*2);ctx.fillStyle='rgba(99,102,241,'+p.alpha+')';if(isSpeaking){ctx.shadowColor='#6366f1';ctx.shadowBlur=7;}ctx.fill();ctx.shadowBlur=0;});
   }
 
+  function hasMathContent(text){
+    var t=text||'';
+    if(t.indexOf('[DISPLAY]')>-1) return true;
+    if(/=\s*[\d\-\+\(]/.test(t)) return true;
+    if(/\d\s*[+\-*/]\s*\d/.test(t)) return true;
+    if(/[∫∑√∞∂×÷≈≠≤≥±]/.test(t)) return true;
+    if(/\\[a-zA-Z]/.test(t)) return true;
+    if(/\b(integrate|differentiate|solve for|simplify|expand|factor|equation|formula|derivative|integral|calculate|evaluate|compute)\b/i.test(t)) return true;
+    return false;
+  }
+
   window.aitVisualBoard={
     init:initBoard,
     setSubject:function(s){setMode(detectMode(s));},
-    setMathContent:function(text){if(mode==='math'){mathLines=[];mathDisplayed=0;parseMathContent(text);}}
+    setMathContent:function(text){if(hasMathContent(text)){mathLines=[];mathDisplayed=0;parseMathContent(text);}}
   };
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initBoard);
