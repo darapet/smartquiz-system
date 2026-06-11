@@ -1921,6 +1921,8 @@ function aitAddBubble(text, isMath, label){
 }
 
 function aitTypeText(el, text, onDone){
+  /* Feed math calculation to Concept Visualizer board */
+  if(window.aitVisualBoard && aitVisualBoard.setMathContent) aitVisualBoard.setMathContent(text);
   /* For math topics type instantly (show LaTeX/text), for others animate */
   const isMath = aitIsMathSubject(_ait.subject);
   if(isMath){
@@ -2672,6 +2674,31 @@ async function aitMicTranscribe(blob, target){
 
   /* ── particle pools ── */
   var genParts = [], letterParts = [], codeDrops = [];
+  var mathLines = [], mathDisplayed = 0, mathRevealTick = 0;
+
+  function parseMathContent(text){
+    var raw = text || '';
+    var di = raw.indexOf('[DISPLAY]');
+    if(di > -1) raw = raw.slice(di + 9);
+    raw = raw.replace(/\$\$/g,'').replace(/\\\[/g,'').replace(/\\\]/g,'')
+             .replace(/\\int\b/g,'∫').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g,'($1)/($2)')
+             .replace(/\\cdot/g,'·').replace(/\\times/g,'×').replace(/\\div/g,'÷')
+             .replace(/\\sqrt\{([^}]*)\}/g,'√($1)').replace(/\\infty/g,'∞')
+             .replace(/\\therefore/g,'∴').replace(/\\to/g,'→').replace(/\\rightarrow/g,'→')
+             .replace(/\\pi/g,'π').replace(/\\theta/g,'θ').replace(/\\alpha/g,'α')
+             .replace(/\\beta/g,'β').replace(/\\gamma/g,'γ').replace(/\\delta/g,'δ')
+             .replace(/\\[a-zA-Z]+/g,'').replace(/[{}]/g,'');
+    var lines = raw.split(/\n/).map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
+    if(!lines.length) return;
+    mathLines = lines.map(function(l,i){
+      var color = '#e2e8f0';
+      if(i===0) color = '#a78bfa';
+      else if(/^(step\s*\d|given|formula|let |using|where|since|proof|∫)/i.test(l)) color = '#93c5fd';
+      if(/^(∴|therefore|answer|result|hence|final)/i.test(l)) color = '#34d399';
+      return {text:l, color:color};
+    });
+    mathDisplayed = 0; mathRevealTick = 0;
+  }
 
   var LETTERS = ['A','B','∫','α','β','γ','Σ','→','←','∞','∂','π','θ','λ'];
   var CODE_CH  = ['0','1','{}','if','for','let','fn','&&','||','->','()','</>','//','λ'];
@@ -2789,38 +2816,70 @@ async function aitMicTranscribe(blob, target){
     else                        drawGeneral(spd);
   }
 
-  /* ── MATH: grid + dual sine/cos waves + moving dot ── */
+  /* ── MATH: step-by-step calculation solver board ── */
   function drawMath(spd){
-    var t = tick * 0.014 * spd;
-    /* grid */
-    ctx.strokeStyle = 'rgba(99,102,241,.07)'; ctx.lineWidth = .5;
-    for(var x=0;x<W;x+=20){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
-    for(var y=0;y<H;y+=20){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-    /* axes */
-    ctx.strokeStyle='rgba(99,102,241,.22)'; ctx.lineWidth=1;
-    ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
-    ctx.beginPath();ctx.moveTo(W/2,0);ctx.lineTo(W/2,H);ctx.stroke();
-    /* cosine (faint) */
-    ctx.beginPath(); ctx.strokeStyle='rgba(167,139,250,.45)'; ctx.lineWidth=1.5;
-    for(var i=0;i<=W;i++){
-      var cy=H/2+Math.cos((i/W)*Math.PI*4+t)*H*.19;
-      i===0?ctx.moveTo(i,cy):ctx.lineTo(i,cy);
+    ctx.fillStyle='#07071a'; ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle='rgba(99,102,241,.04)'; ctx.lineWidth=.5;
+    for(var x=0;x<W;x+=28){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+    for(var y=0;y<H;y+=28){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+    if(!mathLines.length){
+      var t=tick*.014*spd,cy=H/2;
+      ctx.beginPath();ctx.strokeStyle='rgba(99,102,241,.28)';ctx.lineWidth=1.5;
+      for(var i=0;i<=W;i++){var sy=cy+Math.sin((i/W)*Math.PI*4+t)*H*.18;i===0?ctx.moveTo(i,sy):ctx.lineTo(i,sy);}
+      ctx.stroke();
+      ctx.fillStyle='rgba(165,180,252,.32)';ctx.font='bold 11px Inter,sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText('Awaiting calculation…',W/2,H/2);
+      return;
     }
-    ctx.stroke();
-    /* sine (bright) */
-    ctx.beginPath(); ctx.strokeStyle='#6366f1'; ctx.lineWidth=2.2;
-    for(var i=0;i<=W;i++){
-      var sy=H/2+Math.sin((i/W)*Math.PI*4+t)*H*.28;
-      i===0?ctx.moveTo(i,sy):ctx.lineTo(i,sy);
+    /* reveal one line per interval – faster when speaking */
+    mathRevealTick+=spd;
+    var revealInterval=isSpeaking?35:60;
+    if(mathRevealTick>revealInterval && mathDisplayed<mathLines.length){mathDisplayed++;mathRevealTick=0;}
+    /* fixed layout constants */
+    var PAD=14, TOP=10, FONT_HDR=13, FONT_BODY=12, LH=22;
+    var visibleLines=Math.floor((H-TOP-8)/LH);
+    var startIdx=Math.max(0,mathDisplayed-visibleLines);
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    for(var i=startIdx;i<mathDisplayed;i++){
+      var line=mathLines[i];
+      var di=i-startIdx;
+      var rowY=TOP+di*LH, midY=rowY+LH/2;
+      var isHdr=(i===0), isRes=(line.color==='#34d399');
+      /* result row highlight + left accent */
+      if(isRes){
+        ctx.fillStyle='rgba(52,211,153,.09)';
+        ctx.fillRect(0,rowY+1,W,LH-2);
+        ctx.fillStyle='#34d399'; ctx.fillRect(0,rowY+2,3,LH-4);
+      }
+      /* header underline after header row */
+      if(isHdr && mathDisplayed>1){
+        ctx.beginPath();ctx.moveTo(PAD,rowY+LH-1);ctx.lineTo(W-PAD,rowY+LH-1);
+        ctx.strokeStyle='rgba(99,102,241,.22)';ctx.lineWidth=.8;ctx.stroke();
+      }
+      /* text */
+      var fontSize=isHdr?FONT_HDR:FONT_BODY;
+      ctx.font='bold '+fontSize+'px Inter,sans-serif';
+      ctx.fillStyle=line.color;
+      var txt=line.text;
+      if(i===mathDisplayed-1 && isSpeaking) txt+=Math.floor(tick/18)%2===0?' ▎':'  ';
+      /* truncate if too wide */
+      var maxW=W-PAD*2-6;
+      if(ctx.measureText(txt).width>maxW){
+        while(ctx.measureText(txt+'…').width>maxW && txt.length>1) txt=txt.slice(0,-1);
+        txt+='…';
+      }
+      ctx.fillText(txt,PAD,midY);
     }
-    ctx.stroke();
-    /* travelling dot */
-    var dx=((tick*spd*.9)%W);
-    var dy=H/2+Math.sin((dx/W)*Math.PI*4+t)*H*.28;
-    ctx.beginPath(); ctx.arc(dx,dy,5,0,Math.PI*2);
-    ctx.fillStyle = isSpeaking?'#a78bfa':'#6366f1';
-    ctx.shadowColor='#6366f1'; ctx.shadowBlur=isSpeaking?18:8;
-    ctx.fill(); ctx.shadowBlur=0;
+    /* animated dots for lines still incoming */
+    if(mathDisplayed<mathLines.length){
+      var dotY=TOP+Math.min(mathDisplayed,visibleLines)*LH+LH/2;
+      for(var d=0;d<3;d++){
+        var op=.3+.7*Math.abs(Math.sin(tick*.07+d*.9));
+        ctx.beginPath();ctx.arc(PAD+d*12,dotY,3,0,Math.PI*2);
+        ctx.fillStyle='rgba(99,102,241,'+op+')';ctx.fill();
+      }
+    }
   }
 
   /* ── PHYSICS: expanding ripples + wave + orbiting ball ── */
@@ -3016,7 +3075,8 @@ async function aitMicTranscribe(blob, target){
   /* ── Public API ── */
   window.aitVisualBoard = {
     init:       initBoard,
-    setSubject: function(s){ setMode(detectMode(s)); }
+    setSubject: function(s){ setMode(detectMode(s)); },
+    setMathContent: function(text){ if(mode==='math'){ mathLines=[]; mathDisplayed=0; parseMathContent(text); } }
   };
 
   /* auto-init when DOM ready */
