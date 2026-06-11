@@ -166,6 +166,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                     headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
                     body:    JSON.stringify(body)
                 }));
+                if (res.status === 413) { _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — 413 payload too large, skipping key'); _setIdx(idxKey, idx + 1, keys); continue; }
                 if (res.status === 429) { _markRateLimited(key); _setIdx(idxKey, idx + 1, keys); continue; }
                 _setIdx(idxKey, idx + 1, keys);
                 return res;
