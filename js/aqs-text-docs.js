@@ -938,11 +938,13 @@
 
   /* ── AI calls — Groq key pool (direct) ─────────────────────── */
   function callAI(prompt, maxTokens) {
-    /* Safety caps — avoids HTTP 413 (Groq rejects large payloads)
-       Keep prompt ≤ 8000 chars (~2000 tokens) and output ≤ 4000 tokens
-       so total request body stays well under Groq's ~1 MB limit. */
-    var safeMax    = Math.min(maxTokens || 2000, 4000);
-    var safePrompt = prompt.length > 8000 ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    /* Safety caps — avoids HTTP 413 (Groq rejects oversized prompts).
+       Prompt capped at 8000 chars (~2000 tokens); output up to 6000 tokens
+       so full documents still come back complete without triggering 413. */
+    var safeMax    = Math.min(maxTokens || 2000, 6000);
+    var wasTrimmed = prompt.length > 8000;
+    var safePrompt = wasTrimmed ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    if (wasTrimmed) wpShowTruncToast();
     var messages   = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
     /* Route through groqFetch (Groq → Mistral → HuggingFace key rotation) */
@@ -974,6 +976,22 @@
     ['wp-ai-status-text','wp-ai-st'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = msg; });
     var stat = document.getElementById('wp-ai-status');
     if (stat) stat.className = 'wp-ai-indicator ' + state;
+  }
+
+  /* ── Truncation toast — shown when AI prompt is auto-trimmed ─── */
+  function wpShowTruncToast() {
+    var old = document.getElementById('_wp-trunc-toast'); if (old) old.remove();
+    var el = document.createElement('div'); el.id = '_wp-trunc-toast';
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;max-width:420px;width:calc(100% - 32px);background:#1e293b;border:1px solid #f59e0b;border-radius:14px;padding:14px 18px;box-shadow:0 12px 40px rgba(0,0,0,.6);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;display:flex;align-items:flex-start;gap:12px;animation:_wpTruncIn .35s cubic-bezier(.22,1,.36,1) both;';
+    el.innerHTML = '<style>@keyframes _wpTruncIn{from{opacity:0;transform:translateX(-50%) translateY(16px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style>'
+      + '<span style="font-size:1.25rem;flex-shrink:0;">✂️</span>'
+      + '<div style="flex:1;min-width:0;">'
+      + '<div style="font-weight:700;color:#fbbf24;font-size:.88rem;margin-bottom:3px;">Text was too long — trimmed automatically</div>'
+      + '<div style="color:#94a3b8;font-size:.80rem;line-height:1.5;">Your content exceeded the AI limit and was trimmed to 8,000 characters. For best results, paste your document in smaller sections.</div>'
+      + '</div>'
+      + '<button onclick="document.getElementById(\'_wp-trunc-toast\').remove();" style="background:none;border:none;color:#475569;font-size:1rem;cursor:pointer;padding:0;flex-shrink:0;line-height:1;margin-top:1px;">✕</button>';
+    document.body.appendChild(el);
+    setTimeout(function(){ var t = document.getElementById('_wp-trunc-toast'); if(t) t.remove(); }, 7000);
   }
 
   /* ── Document Settings helpers ───────────────────────────────── */
