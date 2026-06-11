@@ -918,6 +918,96 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
         })();
     }
 
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Quote Generation Keys — Save / Load / Test
+       Completely independent from all other save buttons.
+    ═══════════════════════════════════════════════════════════════════ */
+    (function () {
+        var STATUS = document.getElementById('aqs-quote-key-status');
+        var DOTS   = [1,2,3,4,5].map(function(i){ return document.getElementById('aqs-qk-dot-'+i); });
+
+        function setStatus(msg, ok) {
+            if (!STATUS) return;
+            STATUS.textContent = msg;
+            STATUS.style.color = ok ? '#10b981' : '#ef4444';
+            if (ok) setTimeout(function(){ STATUS.textContent = ''; }, 3000);
+        }
+
+        function dotColor(el, val) {
+            if (!el) return;
+            el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+        }
+
+        /* Load keys from Firebase on page open */
+        async function loadQuoteKeys() {
+            try {
+                var snap = await getDoc(doc(db, 'settings', 'main'));
+                if (snap.exists()) {
+                    var data = snap.data();
+                    var keys = data.quoteGroqKeys || [];
+                    for (var i = 0; i < 5; i++) {
+                        var el = document.getElementById('aqs-quote-key-' + (i+1));
+                        if (el) el.value = keys[i] || '';
+                        dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
+                    }
+                }
+            } catch(e) { /* silently ignore */ }
+        }
+
+        /* Save — only writes quoteGroqKeys, merges with existing doc */
+        var saveBtn = document.getElementById('aqs-save-quote-keys-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function () {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '⏳ Saving…';
+                var keys = [];
+                for (var i = 1; i <= 5; i++) {
+                    var v = (document.getElementById('aqs-quote-key-' + i) || {}).value || '';
+                    if (v.trim()) keys.push(v.trim());
+                }
+                if (!keys.length) {
+                    setStatus('❌ Add at least one key.', false);
+                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
+                    return;
+                }
+                try {
+                    await setDoc(doc(db, 'settings', 'main'), { quoteGroqKeys: keys }, { merge: true });
+                    keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
+                    setStatus('✅ Saved ' + keys.length + ' key(s)!', true);
+                    saveBtn.textContent = '✅ Saved!';
+                    setTimeout(function(){ saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys'; }, 2200);
+                } catch(e) {
+                    setStatus('❌ ' + (e.message || 'Save failed'), false);
+                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
+                }
+            });
+        }
+
+        /* Test Quote Popup — clears seen flag then fires immediately */
+        var testBtn = document.getElementById('aqs-test-quote-btn');
+        if (testBtn) {
+            testBtn.addEventListener('click', function () {
+                var today = new Date();
+                var dk = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+                try { localStorage.removeItem('aqs_quote_seen_' + dk); } catch(e){}
+                /* Trigger the quote system to fire a test popup */
+                if (window._aqsTestQuote) {
+                    window._aqsTestQuote();
+                    setStatus('🎉 Quote popup triggered!', true);
+                } else {
+                    setStatus('⚠️ Quote script not loaded on this page. Open index.html or dashboard.html to test.', false);
+                }
+            });
+        }
+
+        /* Run on load */
+        if (typeof db !== 'undefined' && typeof getDoc !== 'undefined') {
+            loadQuoteKeys();
+        } else {
+            document.addEventListener('aqs:firebase:ready', loadQuoteKeys, { once: true });
+        }
+    })();
 </script>
 </body>
 </html>

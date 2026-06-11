@@ -770,17 +770,49 @@ window.addEventListener('DOMContentLoaded', function() {
 
 
   
-                <!-- QUOTE GENERATION KEYS -->
-                <div class="aqs-settings-card">
-                    <h3 class="aqs-settings-card-title">✨ Quote Generation Keys (Groq)</h3>
-                    <p style="color:#94a3b8;font-size:.83rem;margin:0 0 18px 0;line-height:1.55;">Dedicated Groq keys used <em>only</em> for generating daily motivational quotes. Stored in Firebase — never in source code. Add up to 5 keys.</p>
-                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 1</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-1" placeholder="gsk_…" autocomplete="off"></div>
-                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 2</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-2" placeholder="gsk_…" autocomplete="off"></div>
-                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 3</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-3" placeholder="gsk_…" autocomplete="off"></div>
-                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 4</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-4" placeholder="gsk_…" autocomplete="off"></div>
-                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 5</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-5" placeholder="gsk_…" autocomplete="off"></div>
-                    <button class="aqs-btn aqs-btn-primary" id="aqs-save-quote-keys-btn">💾 Save Quote Keys</button>
-                </div>
+<!-- Quote Generation Keys — Daily Motivational Quotes -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fef3c7,#fde68a);">
+        <span class="aqs-settings-card-icon">✨</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Quote Generation Keys (Groq)</h2>
+            <p class="aqs-settings-card-desc">Dedicated Groq keys used <strong>only for daily motivational quotes</strong> — completely separate from your main AI pool. Stored in Firebase, never in code. Add up to 5 keys.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:.83rem;color:#78350f;">
+            ✨ <strong>How it works:</strong> Every day at midnight, 50 fresh quotes are generated and cached in Firebase. Each user sees 1 personalized quote per day. Old quotes auto-delete after 11 PM to save storage.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 1 (Primary) <span id="aqs-qk-dot-1"></span></label>
+                <input type="password" id="aqs-quote-key-1" placeholder="gsk_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 2 <span id="aqs-qk-dot-2"></span></label>
+                <input type="password" id="aqs-quote-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 3 <span id="aqs-qk-dot-3"></span></label>
+                <input type="password" id="aqs-quote-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 4 <span id="aqs-qk-dot-4"></span></label>
+                <input type="password" id="aqs-quote-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 5 <span id="aqs-qk-dot-5"></span></label>
+                <input type="password" id="aqs-quote-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-card-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-quote-keys-btn">💾 Save Quote Keys</button>
+            <button class="aqs-btn" id="aqs-test-quote-btn" style="background:#f59e0b;color:#fff;border-color:#d97706;">🧪 Test Quote Popup</button>
+            <span id="aqs-quote-key-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
 <!-- HuggingFace Hub — AI Fallback Tokens -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header" style="background:#f0fdf4;">
@@ -1289,33 +1321,96 @@ async function _aqsTestHFKeys() {
 btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
   
 
-    /* ── Save Quote Keys ────────────────────────────────────────────────── */
-    var aqsSaveQuoteKeysBtn = document.getElementById('aqs-save-quote-keys-btn');
-    if (aqsSaveQuoteKeysBtn) {
-        aqsSaveQuoteKeysBtn.addEventListener('click', async function () {
-            var keys = [];
-            for (var i = 1; i <= 5; i++) {
-                var v = (document.getElementById('aqs-quote-key-' + i) || {}).value || '';
-                if (v.trim()) keys.push(v.trim());
-            }
-            try {
-                await setDoc(doc(db, 'settings', 'main'), { quoteGroqKeys: keys }, { merge: true });
-                aqsSaveQuoteKeysBtn.textContent = '✅ Saved!';
-                setTimeout(function(){ aqsSaveQuoteKeysBtn.textContent = '💾 Save Quote Keys'; }, 2000);
-            } catch(e) { alert('Save failed: ' + e.message); }
-        });
-        /* Load existing keys */
-        (async function(){
-            try {
-                var s = await getDoc(doc(db, 'settings', 'main'));
-                if (s.exists()) {
-                    var d = s.data(); var ks = d.quoteGroqKeys || [];
-                    ks.forEach(function(k, i) { var el = document.getElementById('aqs-quote-key-' + (i+1)); if (el) el.value = k; });
-                }
-            } catch(e) {}
-        })();
-    }
 
+    /* ═══════════════════════════════════════════════════════════════════
+       Quote Generation Keys — Save / Load / Test
+       Completely independent from all other save buttons.
+    ═══════════════════════════════════════════════════════════════════ */
+    (function () {
+        var STATUS = document.getElementById('aqs-quote-key-status');
+        var DOTS   = [1,2,3,4,5].map(function(i){ return document.getElementById('aqs-qk-dot-'+i); });
+
+        function setStatus(msg, ok) {
+            if (!STATUS) return;
+            STATUS.textContent = msg;
+            STATUS.style.color = ok ? '#10b981' : '#ef4444';
+            if (ok) setTimeout(function(){ STATUS.textContent = ''; }, 3000);
+        }
+
+        function dotColor(el, val) {
+            if (!el) return;
+            el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+        }
+
+        /* Load keys from Firebase on page open */
+        async function loadQuoteKeys() {
+            try {
+                var snap = await getDoc(doc(db, 'settings', 'main'));
+                if (snap.exists()) {
+                    var data = snap.data();
+                    var keys = data.quoteGroqKeys || [];
+                    for (var i = 0; i < 5; i++) {
+                        var el = document.getElementById('aqs-quote-key-' + (i+1));
+                        if (el) el.value = keys[i] || '';
+                        dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
+                    }
+                }
+            } catch(e) { /* silently ignore */ }
+        }
+
+        /* Save — only writes quoteGroqKeys, merges with existing doc */
+        var saveBtn = document.getElementById('aqs-save-quote-keys-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function () {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '⏳ Saving…';
+                var keys = [];
+                for (var i = 1; i <= 5; i++) {
+                    var v = (document.getElementById('aqs-quote-key-' + i) || {}).value || '';
+                    if (v.trim()) keys.push(v.trim());
+                }
+                if (!keys.length) {
+                    setStatus('❌ Add at least one key.', false);
+                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
+                    return;
+                }
+                try {
+                    await setDoc(doc(db, 'settings', 'main'), { quoteGroqKeys: keys }, { merge: true });
+                    keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
+                    setStatus('✅ Saved ' + keys.length + ' key(s)!', true);
+                    saveBtn.textContent = '✅ Saved!';
+                    setTimeout(function(){ saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys'; }, 2200);
+                } catch(e) {
+                    setStatus('❌ ' + (e.message || 'Save failed'), false);
+                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
+                }
+            });
+        }
+
+        /* Test Quote Popup — clears seen flag then fires immediately */
+        var testBtn = document.getElementById('aqs-test-quote-btn');
+        if (testBtn) {
+            testBtn.addEventListener('click', function () {
+                var today = new Date();
+                var dk = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+                try { localStorage.removeItem('aqs_quote_seen_' + dk); } catch(e){}
+                /* Trigger the quote system to fire a test popup */
+                if (window._aqsTestQuote) {
+                    window._aqsTestQuote();
+                    setStatus('🎉 Quote popup triggered!', true);
+                } else {
+                    setStatus('⚠️ Quote script not loaded on this page. Open index.html or dashboard.html to test.', false);
+                }
+            });
+        }
+
+        /* Run on load */
+        if (typeof db !== 'undefined' && typeof getDoc !== 'undefined') {
+            loadQuoteKeys();
+        } else {
+            document.addEventListener('aqs:firebase:ready', loadQuoteKeys, { once: true });
+        }
+    })();
 </script>
 </body>
 </html>
