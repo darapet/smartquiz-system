@@ -1,8 +1,8 @@
 {
-  "version": "1.0.9",
-  "versionCode": 9,
+  "version": "1.253",
+  "versionCode": 228,
   "releaseDate": "2026-06-05",
-  "notes": "Removed Campus Monopoly game. Added AI Study Hub — professional study tool with AI Notes Generator, Smart Flashcards, GPA/CGPA Calculator, Pomodoro Study Timer, and AI Mock Exam generator.",
+  "notes": "Daily AI quote popup (animated warm bg), admin feedback/questionnaire system, professional error modals with contact info, network vs AI error detection, dedicated 4-key quote pool.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/admin-v1.0.0/daraquiz-admin-v1.0.0.apk"
 }

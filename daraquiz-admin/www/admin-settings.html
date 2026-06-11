@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings — Admin — xzily AI</title>
@@ -784,6 +785,35 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
     }, 'aqs-oauth-status', this, '💾 Save OAuth Settings');
 });
 </script>
-  <script src="capacitor-bridge.js"></script>
+  <script src="capacitor-bridge.js">
+
+    /* ── Save Quote Keys ────────────────────────────────────────────────── */
+    var aqsSaveQuoteKeysBtn = document.getElementById('aqs-save-quote-keys-btn');
+    if (aqsSaveQuoteKeysBtn) {
+        aqsSaveQuoteKeysBtn.addEventListener('click', async function () {
+            var keys = [];
+            for (var i = 1; i <= 5; i++) {
+                var v = (document.getElementById('aqs-quote-key-' + i) || {}).value || '';
+                if (v.trim()) keys.push(v.trim());
+            }
+            try {
+                await setDoc(doc(db, 'settings', 'main'), { quoteGroqKeys: keys }, { merge: true });
+                aqsSaveQuoteKeysBtn.textContent = '✅ Saved!';
+                setTimeout(function(){ aqsSaveQuoteKeysBtn.textContent = '💾 Save Quote Keys'; }, 2000);
+            } catch(e) { alert('Save failed: ' + e.message); }
+        });
+        /* Load existing keys */
+        (async function(){
+            try {
+                var s = await getDoc(doc(db, 'settings', 'main'));
+                if (s.exists()) {
+                    var d = s.data(); var ks = d.quoteGroqKeys || [];
+                    ks.forEach(function(k, i) { var el = document.getElementById('aqs-quote-key-' + (i+1)); if (el) el.value = k; });
+                }
+            } catch(e) {}
+        })();
+    }
+
+</script>
 </body>
 </html>

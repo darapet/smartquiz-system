@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings — Admin — xzily AI</title>
@@ -768,7 +769,19 @@ window.addEventListener('DOMContentLoaded', function() {
 </div>
 
 
-  <!-- HuggingFace Hub — AI Fallback Tokens -->
+  
+                <!-- QUOTE GENERATION KEYS -->
+                <div class="aqs-settings-card">
+                    <h3 class="aqs-settings-card-title">✨ Quote Generation Keys (Groq)</h3>
+                    <p style="color:#94a3b8;font-size:.83rem;margin:0 0 18px 0;line-height:1.55;">Dedicated Groq keys used <em>only</em> for generating daily motivational quotes. Stored in Firebase — never in source code. Add up to 5 keys.</p>
+                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 1</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-1" placeholder="gsk_…" autocomplete="off"></div>
+                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 2</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-2" placeholder="gsk_…" autocomplete="off"></div>
+                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 3</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-3" placeholder="gsk_…" autocomplete="off"></div>
+                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 4</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-4" placeholder="gsk_…" autocomplete="off"></div>
+                    <div class="aqs-settings-row"><label class="aqs-settings-label">Quote Key 5</label><input type="password" class="aqs-settings-input" id="aqs-quote-key-5" placeholder="gsk_…" autocomplete="off"></div>
+                    <button class="aqs-btn aqs-btn-primary" id="aqs-save-quote-keys-btn">💾 Save Quote Keys</button>
+                </div>
+<!-- HuggingFace Hub — AI Fallback Tokens -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header" style="background:#f0fdf4;">
         <span class="aqs-settings-card-icon">🤗</span>
@@ -1274,6 +1287,35 @@ async function _aqsTestHFKeys() {
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All HF Tokens'; }
 }
 btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
-  </script>
+  
+
+    /* ── Save Quote Keys ────────────────────────────────────────────────── */
+    var aqsSaveQuoteKeysBtn = document.getElementById('aqs-save-quote-keys-btn');
+    if (aqsSaveQuoteKeysBtn) {
+        aqsSaveQuoteKeysBtn.addEventListener('click', async function () {
+            var keys = [];
+            for (var i = 1; i <= 5; i++) {
+                var v = (document.getElementById('aqs-quote-key-' + i) || {}).value || '';
+                if (v.trim()) keys.push(v.trim());
+            }
+            try {
+                await setDoc(doc(db, 'settings', 'main'), { quoteGroqKeys: keys }, { merge: true });
+                aqsSaveQuoteKeysBtn.textContent = '✅ Saved!';
+                setTimeout(function(){ aqsSaveQuoteKeysBtn.textContent = '💾 Save Quote Keys'; }, 2000);
+            } catch(e) { alert('Save failed: ' + e.message); }
+        });
+        /* Load existing keys */
+        (async function(){
+            try {
+                var s = await getDoc(doc(db, 'settings', 'main'));
+                if (s.exists()) {
+                    var d = s.data(); var ks = d.quoteGroqKeys || [];
+                    ks.forEach(function(k, i) { var el = document.getElementById('aqs-quote-key-' + (i+1)); if (el) el.value = k; });
+                }
+            } catch(e) {}
+        })();
+    }
+
+</script>
 </body>
 </html>

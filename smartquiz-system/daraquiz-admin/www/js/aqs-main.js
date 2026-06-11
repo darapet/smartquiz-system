@@ -1454,7 +1454,7 @@
                 checkAllSectionsReady();
             } catch (e) {
                 sections[i].generating = false; renderSectionCards();
-                alert('AI error (Section ' + (i + 1) + '): ' + e.message);
+                alert('AI generation failed. Please try again.');
             }
         });
 
@@ -1720,7 +1720,7 @@
                 showProgress(false);
             } catch (e) {
                 showProgress(false);
-                alert('AI error: ' + e.message);
+                alert('AI is temporarily unavailable. Please try again in a moment.');
             }
         });
 

@@ -978,7 +978,7 @@
                 displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
             }
             appendMessage('assistant', displayMsg);
-            console.error('[dts] AI error:', err);
+            if(window._AQS_ADMIN_MODE){console.error('[dts] AI error:',err);}else{window._aqsAIErrorLog=window._aqsAIErrorLog||[];window._aqsAIErrorLog.unshift({t:new Date().toISOString(),level:'error',msg:'Studio AI: '+(err&&err.message||err)});}
             isSending = false;
             setSendState(false);
         });

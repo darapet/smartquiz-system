@@ -71,11 +71,45 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
     /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
     var _rateLimitedUntil = {};
+
+    /* ── Silent AI logger ── visible only when _AQS_ADMIN_MODE is set ──── */
+    window._aqsAIErrorLog = window._aqsAIErrorLog || [];
+    function _aqsLog(level, msg) {
+        var entry = { t: new Date().toISOString(), level: level, msg: [].slice.call(arguments, 1).join(' ') };
+        window._aqsAIErrorLog.unshift(entry);
+        if (window._aqsAIErrorLog.length > 60) window._aqsAIErrorLog.length = 60;
+        if (window._AQS_ADMIN_MODE) {
+            if (level === 'error') console.error('[aqs-ai]', entry.msg);
+            else console.warn('[aqs-ai]', entry.msg);
+        }
+    }
+    /* ── Professional user error modal ─────────────────────────────────── */
+    var _aqsLastErrTime = 0;
+    function _aqsShowUserError(type) {
+        var now = Date.now(); if (now - _aqsLastErrTime < 4000) return; _aqsLastErrTime = now;
+        var old = document.getElementById('_aqs-err-modal'); if (old) old.remove();
+        var isNet = type==='network', isCfg = type==='config';
+        var icon  = isNet ? '📡' : '🤖';
+        var title = isNet ? 'Connection Issue' : (isCfg ? 'AI Not Configured' : 'AI Unavailable');
+        var msg   = isNet
+            ? 'Your internet connection seems unstable. Please check your network and try again.'
+            : (isCfg ? 'AI features have not been configured. Please contact the admin.'
+                     : 'There is a network issue with the AI connection. The service may be temporarily unavailable.');
+        var footer = !isNet ? '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);text-align:center;"><p style="margin:0 0 8px;font-size:.72rem;color:#64748b;letter-spacing:.05em;text-transform:uppercase;font-weight:700;">Contact Admin to Report This</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><a href="https://wa.me/2349134873694" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.22);border-radius:8px;color:#4ade80;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">📱 WhatsApp</a><a href="tel:+2349134873694" style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.18);border-radius:8px;color:#38bdf8;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">📞 Call</a><a href="mailto:daramolapeter98@gmail.com" style="display:inline-flex;align-items:center;gap:5px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.18);border-radius:8px;color:#fb923c;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">✉️ Email</a></div></div>' : '';
+        var modal = document.createElement('div'); modal.id = '_aqs-err-modal';
+        modal.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999997;max-width:430px;width:calc(100% - 32px);background:rgba(10,10,25,.97);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.75);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:_aqsErrIn .4s cubic-bezier(.22,1,.36,1) both;';
+        modal.innerHTML = '<style>@keyframes _aqsErrIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style><div style="display:flex;align-items:flex-start;gap:13px;"><div style="width:40px;height:40px;border-radius:10px;background:rgba(249,115,22,.13);border:1px solid rgba(249,115,22,.27);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">' + icon + '</div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><span style="font-weight:800;color:#f1f5f9;font-size:.93rem;">' + title + '</span><button onclick="document.getElementById('_aqs-err-modal').remove();" style="background:none;border:none;color:#475569;font-size:1.05rem;cursor:pointer;padding:0;line-height:1;">✕</button></div><p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.55;">' + msg + '</p>' + footer + '</div></div>';
+        document.body.appendChild(modal);
+        if (isNet) setTimeout(function(){ var m=document.getElementById('_aqs-err-modal'); if(m)m.remove(); }, 7000);
+    }
+    window._aqsShowUserError = _aqsShowUserError;
+
+
     function _keyHash(k)         { return k ? k.slice(-8) : '?'; }
     function _isRateLimited(k)   { return (_rateLimitedUntil[_keyHash(k)] || 0) > Date.now(); }
     function _markRateLimited(k) {
         _rateLimitedUntil[_keyHash(k)] = Date.now() + RL_COOLDOWN_MS;
-        console.warn('[aqs-ai] key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
+        _aqsLog('warn', 'key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
     }
 
     /* ── Key pool helpers ────────────────────────────────────────────── */
@@ -108,7 +142,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
             var idx = (startIdx + attempt) % keys.length;
             var key = _sanitizeKey ? _sanitizeKey(keys[idx]) : (keys[idx] || '').trim();
             if (_isRateLimited(key)) {
-                console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'cooling — skip');
+                _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' cooling — skip');
                 _setIdx(idxKey, idx + 1, keys); continue;
             }
             try {
@@ -121,7 +155,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
                 _setIdx(idxKey, idx + 1, keys);
                 return res;
             } catch(e) {
-                console.warn('[aqs-ai]', url.split('/')[2], 'slot', idx + 1, 'error:', e.message || e);
+                if (!navigator.onLine || (e instanceof TypeError && /fetch|network/i.test(e.message||''))) { _aqsShowUserError('network'); } _aqsLog('error', url.split('/')[2] + ' slot ' + (idx + 1) + ' error: ' + (e.message || e));
             }
         }
         return null;
@@ -151,14 +185,14 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
         /* 2. Fall back to Mistral */
         if (_getMistralKeys().length) {
-            console.warn('[aqs-ai] All Groq keys busy — falling back to Mistral');
+            _aqsLog('warn', 'All Groq keys busy — falling back to Mistral');
             res = await _mistralFetch(bodyObj, extraOpts);
             if (res) return res;
         }
 
         /* 3. Fall back to HuggingFace (Study Hub + Studio also benefit) */
         if (_getHFKeys().length) {
-            console.warn('[aqs-ai] All Mistral keys busy — falling back to HuggingFace');
+            _aqsLog('warn', 'All Mistral keys busy — falling back to HuggingFace');
             res = await _hfFetch(bodyObj, extraOpts);
             if (res) return res;
         }
@@ -166,7 +200,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
         /* 4. Nothing left */
         var gc = _getGroqKeys().length, mc = _getMistralKeys().length, hc = _getHFKeys().length;
         if (!gc && !mc && !hc) {
-            throw new Error('No AI keys configured. Add Groq, Mistral, or HuggingFace tokens in Admin Settings.');
+            _aqsShowUserError('config'); throw new Error('AI features not configured.');
         }
         throw new Error('All AI keys are busy or rate-limited. Please wait a moment and try again.');
     };
@@ -189,15 +223,15 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 
     window.setGroqKeys = function(arr) {
         window._AQS_GROQ_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
-        try { localStorage.setItem(GROQ_IDX_KEY, '0'); } catch(e){}
+        try { localStorage.setItem(GROQ_IDX_KEY, '0'); localStorage.setItem('aqs_groq_saved_at', Date.now()); } catch(e){}
     };
     window.setMistralKeys = function(arr) {
         window._AQS_MISTRAL_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
-        try { localStorage.setItem(MISTRAL_IDX_KEY, '0'); } catch(e){}
+        try { localStorage.setItem(MISTRAL_IDX_KEY, '0'); localStorage.setItem('aqs_mistral_saved_at', Date.now()); } catch(e){}
     };
     window.setHFKeys = function(arr) {
         window._AQS_HF_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 10; });
-        try { localStorage.setItem(HF_IDX_KEY, '0'); } catch(e){}
+        try { localStorage.setItem(HF_IDX_KEY, '0'); localStorage.setItem('aqs_hf_saved_at', Date.now()); } catch(e){}
     };
 
     /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
@@ -238,7 +272,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
                       + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
                       + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
             if (total > 0) {
-                console.log('[aqs-ai] Auto-loaded', total, 'AI key(s) from Firebase settings.');
+                _aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
             }
         });
     }

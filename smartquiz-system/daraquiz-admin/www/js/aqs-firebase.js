@@ -2393,4 +2393,24 @@ async function actionGetCurrentUser() {
     };
 }
 
+
+/* ── Global Firestore helpers (non-module scripts) ─── */
+window._aqsFS = {
+    get: async function(col, id) {
+        try { var s = await getDoc(doc(db, col, id)); return s.exists() ? Object.assign({ id: s.id }, s.data()) : null; } catch(e) { return null; }
+    },
+    set: async function(col, id, data, opts) {
+        try { await setDoc(doc(db, col, id), data, opts || {}); return true; } catch(e) { return false; }
+    },
+    add: async function(col, data) {
+        try { var r = await addDoc(collection(db, col), data); return r.id; } catch(e) { return null; }
+    },
+    getAll: async function(col) {
+        try { var s = await getDocs(collection(db, col)); return s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }); } catch(e) { return []; }
+    },
+    getWhere: async function(col, field, op, val) {
+        try { var q = query(collection(db, col), where(field, op, val)); var s = await getDocs(q); return s.docs.map(function(d){ return Object.assign({ id: d.id }, d.data()); }); } catch(e) { return []; }
+    }
+};
+
 export { auth, db, rtdb, requireAuth, generateToken };
