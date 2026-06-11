@@ -1,8 +1,8 @@
 {
-  "version": "1.253",
-  "versionCode": 231,
-  "releaseDate": "2026-06-10",
-  "notes": "Daily AI quote popup (animated warm bg), admin feedback/questionnaire system, professional error modals with contact info, network vs AI error detection, dedicated 4-key quote pool.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.255/daraquiz-v1.255.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.255/daraquiz-v1.255.apk"
+  "version": "1.254",
+  "versionCode": 232,
+  "releaseDate": "2026-06-11",
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.254/daraquiz-v1.254.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.254/daraquiz-v1.254.apk"
 }
