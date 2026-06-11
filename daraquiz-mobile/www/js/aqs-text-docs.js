@@ -970,13 +970,11 @@
 
   /* ── AI calls — Groq key pool ───────────────────────────────── */
   function callAI(prompt, maxTokens) {
-    /* Cap at 8000 to avoid HTTP 413 — Groq rejects requests whose
-       total payload (prompt tokens + max_tokens) exceeds ~16 K tokens */
-    var safeMax = Math.min(maxTokens || 2000, 8000);
-    /* Truncate the prompt itself if extremely long — keep the first 12 000 chars
-       (≈ 3000 tokens), which is well within Groq's 8192-token context window
-       for most models while still providing enough content to work with */
-    var safePrompt = prompt.length > 12000 ? prompt.slice(0, 12000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    /* Cap to avoid HTTP 413 — Groq rejects large request bodies.
+       Keep output ≤ 4000 tokens and prompt ≤ 8000 chars so the total
+       JSON payload stays well under Groq's ~1 MB body limit. */
+    var safeMax = Math.min(maxTokens || 2000, 4000);
+    var safePrompt = prompt.length > 8000 ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
     var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
     /* Route through groqFetch (now Mistral-primary with key rotation) */
