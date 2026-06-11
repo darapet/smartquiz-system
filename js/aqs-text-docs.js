@@ -938,9 +938,11 @@
 
   /* ── AI calls — Groq key pool (direct) ─────────────────────── */
   function callAI(prompt, maxTokens) {
-    /* Safety caps — avoids HTTP 413 and context-window overflows */
-    var safeMax    = Math.min(maxTokens || 2000, 8000);
-    var safePrompt = prompt.length > 12000 ? prompt.slice(0, 12000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    /* Safety caps — avoids HTTP 413 (Groq rejects large payloads)
+       Keep prompt ≤ 8000 chars (~2000 tokens) and output ≤ 4000 tokens
+       so total request body stays well under Groq's ~1 MB limit. */
+    var safeMax    = Math.min(maxTokens || 2000, 4000);
+    var safePrompt = prompt.length > 8000 ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
     var messages   = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
     /* Route through groqFetch (Groq → Mistral → HuggingFace key rotation) */
