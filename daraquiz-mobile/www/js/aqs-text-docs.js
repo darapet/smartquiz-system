@@ -1032,7 +1032,7 @@
     var chk   = function(id, def) { var el = document.getElementById(id); return el ? el.checked : def; };
     /* Heading sizes: prefer modal values (dsm-*), fallback to sidebar or defaults */
     return {
-      font:    getV2('wp-ds-font',    'Inter, system-ui, sans-serif'),
+      font:    getV2('wp-ds-font',    'Times New Roman, Times, Georgia, serif'),
       size:    getV2('wp-ds-size',    '12pt'),
       lspace:  getV2('wp-ds-lspace', '1.15'),
       pspace:  getV2('wp-ds-pspace', '6pt'),

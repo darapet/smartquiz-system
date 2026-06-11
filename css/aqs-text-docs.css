@@ -375,6 +375,10 @@ body {
   word-break: break-word; overflow-wrap: break-word;
   line-height: 1.6; width: 100%; display: block;
   cursor: text;
+  /* Document body text — 12pt = 16px, standard Word/WordPad default */
+  font-size: 16px;
+  font-family: 'Times New Roman', Times, Georgia, serif;
+  color: #000;
 }
 .wp-page-inner  { overflow: hidden; }
 .wp-page-editor { overflow: visible; }
@@ -396,12 +400,12 @@ body {
   color: #94a3b8; font-weight: 600; pointer-events: none;
 }
 
-/* Page inner typography */
-.wp-page-inner h1,.wp-page-editor h1 { margin-bottom: .5em; line-height: 1.2; }
-.wp-page-inner h2,.wp-page-editor h2 { margin-bottom: .45em; line-height: 1.25; }
-.wp-page-inner h3,.wp-page-editor h3 { margin-bottom: .4em; line-height: 1.3; }
-.wp-page-inner h4,.wp-page-editor h4 { margin-bottom: .35em; line-height: 1.35; }
-.wp-page-inner p,.wp-page-editor p   { margin-bottom: .6em; }
+/* Page inner typography — proper Word/WordPad document sizes */
+.wp-page-inner h1,.wp-page-editor h1 { font-size: 2em;   margin-bottom: .5em;  line-height: 1.2; }
+.wp-page-inner h2,.wp-page-editor h2 { font-size: 1.5em; margin-bottom: .45em; line-height: 1.25; }
+.wp-page-inner h3,.wp-page-editor h3 { font-size: 1.25em;margin-bottom: .4em;  line-height: 1.3; }
+.wp-page-inner h4,.wp-page-editor h4 { font-size: 1.1em; margin-bottom: .35em; line-height: 1.35; }
+.wp-page-inner p,.wp-page-editor p   { font-size: 1em;   margin-bottom: .6em; }
 .wp-page-inner blockquote,
 .wp-page-editor blockquote {
   border-left: 3px solid var(--wp-accent); padding-left: 12px;
