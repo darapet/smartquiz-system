@@ -939,11 +939,11 @@
   /* ── AI calls — Groq key pool (direct) ─────────────────────── */
   function callAI(prompt, maxTokens) {
     /* Safety caps — avoids HTTP 413 (Groq rejects oversized prompts).
-       Prompt capped at 8000 chars (~2000 tokens); output up to 6000 tokens
-       so full documents still come back complete without triggering 413. */
-    var safeMax    = Math.min(maxTokens || 2000, 6000);
-    var wasTrimmed = prompt.length > 8000;
-    var safePrompt = wasTrimmed ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+       Prompt capped at 5000 chars (~1250 tokens); output up to 4000 tokens.
+       Total request stays well within Groq/Mistral per-request limits. */
+    var safeMax    = Math.min(maxTokens || 2000, 4000);
+    var wasTrimmed = prompt.length > 5000;
+    var safePrompt = wasTrimmed ? prompt.slice(0, 5000) + '\n\n[Content trimmed to fit AI limit — split long documents into smaller sections for better results]' : prompt;
     if (wasTrimmed) wpShowTruncToast();
     var messages   = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
@@ -1082,7 +1082,7 @@
     var src = document.getElementById('wp-source');
     if (!src || !src.value.trim()) { showHint('wp-ai-hint', 'Please paste some text first.', 'warn'); return; }
     if (wpIsProcessing) return;
-    var text  = src.value.trim().slice(0, 6000);
+    var text  = src.value.trim().slice(0, 4000);
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
     var ds    = wpGetDocSettings();
@@ -1125,7 +1125,11 @@
       .catch(function(err) {
         var ed = wpGetEditor();
         if (ed) { ed.innerHTML = basicFormat(text); wpUpdateStats(); }
-        showHint('wp-ai-hint', '⚠️ ' + (err.message || 'AI busy') + ' — basic formatting applied.', 'error');
+        var errMsg = (err.message || '');
+        var hint = errMsg.indexOf('413') !== -1
+          ? '⚠️ Text too long for AI — trimmed and basic formatting applied. Paste smaller sections for full AI results.'
+          : '⚠️ ' + (errMsg || 'AI busy') + ' — basic formatting applied.';
+        showHint('wp-ai-hint', hint, 'error');
         wpSetStatus('Basic formatting applied (AI unavailable)');
       })
       .finally(function() {
@@ -1203,7 +1207,11 @@
         wpSetStatus('Document written ✅');
       })
       .catch(function(err) {
-        showHint('wp-write-hint', '⚠️ ' + (err.message || 'AI failed') + ' — please try again.', 'error');
+        var errMsg = (err.message || '');
+        var hint = errMsg.indexOf('413') !== -1
+          ? '⚠️ Prompt too large — please shorten your request or choose fewer pages and try again.'
+          : '⚠️ ' + (errMsg || 'AI failed') + ' — please try again.';
+        showHint('wp-write-hint', hint, 'error');
         wpSetStatus('AI writing failed — please retry');
       })
       .finally(function() {
