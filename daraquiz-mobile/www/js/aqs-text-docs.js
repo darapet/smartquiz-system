@@ -970,12 +970,12 @@
 
   /* ── AI calls — Groq key pool ───────────────────────────────── */
   function callAI(prompt, maxTokens) {
-    /* Cap to avoid HTTP 413 — Groq rejects oversized prompts.
-       Prompt capped at 8000 chars (~2000 tokens); output up to 6000 tokens
-       so full documents still come back complete without triggering 413. */
-    var safeMax = Math.min(maxTokens || 2000, 6000);
-    var wasTrimmed = prompt.length > 8000;
-    var safePrompt = wasTrimmed ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    /* Safety caps — avoids HTTP 413 (Groq rejects oversized prompts).
+       Prompt capped at 5000 chars (~1250 tokens); output up to 4000 tokens.
+       Total request stays well within Groq/Mistral per-request limits. */
+    var safeMax = Math.min(maxTokens || 2000, 4000);
+    var wasTrimmed = prompt.length > 5000;
+    var safePrompt = wasTrimmed ? prompt.slice(0, 5000) + '\n\n[Content trimmed to fit AI limit — split long documents into smaller sections for better results]' : prompt;
     if (wasTrimmed) wpShowTruncToast();
     var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
@@ -1155,12 +1155,12 @@
     var src = document.getElementById('wp-source');
     if (!src || !src.value.trim()) { showHint('wp-ai-hint', 'Please paste some text first.', 'warn'); return; }
     if (wpIsProcessing) return;
-    /* Truncate to 6000 chars to avoid HTTP 413 from Groq.
-       6000 chars ≈ 1500 tokens — leaves enough budget for the system prompt +
-       up to 8000 output tokens within Groq's 16K per-request limit. */
+    /* Truncate to 4000 chars to reliably avoid HTTP 413 from Groq.
+       4000 chars ≈ 1000 tokens — leaves safe budget for the full prompt
+       template + up to 4000 output tokens within per-request limits. */
     var rawText = src.value.trim();
-    var text  = rawText.length > 6000 ? rawText.slice(0, 6000) : rawText;
-    if (rawText.length > 6000) { showHint('wp-ai-hint', '⚠️ Text truncated to 6000 chars to fit AI limit. Format in batches for longer documents.', 'warn'); }
+    var text  = rawText.length > 4000 ? rawText.slice(0, 4000) : rawText;
+    if (rawText.length > 4000) { showHint('wp-ai-hint', '⚠️ Text trimmed to 4000 chars to fit AI limit. Paste in smaller sections for longer documents.', 'warn'); }
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
     var rawPages = parseFloat(getV('wp-format-pages', '1'));
@@ -1171,8 +1171,8 @@
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
-    /* Scale max tokens: unlimited → 32000; otherwise base on pages + text length */
-    var fmtMaxTokens = unlimited ? 32000 : Math.min(32000, Math.max(2500, Math.round(pages * 700 + text.length / 8)));
+    /* Scale max tokens: cap at 4000 to stay within Groq per-request limits */
+    var fmtMaxTokens = Math.min(4000, Math.max(2000, Math.round(pages * 600 + text.length / 10)));
 
     var prompt = 'You are an expert document formatter. Convert the text below into professional, well-structured HTML. Your ONLY job is to FORMAT — preserve every single word, sentence, and paragraph exactly as given.\n\n' +
       'STEP 1 — TYPE CHECK: Does the text fit a "' + dtype + '"? If clearly not, reply ONLY with: MISMATCH:[one sentence why, plus a better document type suggestion]\n\n' +
@@ -1220,7 +1220,11 @@
       .catch(function(err) {
         var ed = wpGetEditor();
         if (ed) { ed.innerHTML = basicFormat(text); wpUpdateStats(); }
-        showHint('wp-ai-hint', '⚠️ ' + (err.message || 'AI busy') + ' — basic formatting applied.', 'error');
+        var errMsg = (err.message || '');
+        var hint = errMsg.indexOf('413') !== -1
+          ? '⚠️ Text too long for AI — basic formatting applied. Paste in smaller sections for full AI results.'
+          : '⚠️ ' + (errMsg || 'AI busy') + ' — basic formatting applied.';
+        showHint('wp-ai-hint', hint, 'error');
         wpSetStatus('Basic formatting applied (AI unavailable)');
       })
       .finally(function() {
@@ -1293,7 +1297,11 @@
         wpSetStatus('Document written ✅');
       })
       .catch(function(err) {
-        showHint('wp-write-hint', '⚠️ ' + (err.message || 'AI failed') + ' — please try again.', 'error');
+        var errMsg = (err.message || '');
+        var hint = errMsg.indexOf('413') !== -1
+          ? '⚠️ Prompt too large — please shorten your request or choose fewer pages and try again.'
+          : '⚠️ ' + (errMsg || 'AI failed') + ' — please try again.';
+        showHint('wp-write-hint', hint, 'error');
         wpSetStatus('AI writing failed — please retry');
       })
       .finally(function() {
