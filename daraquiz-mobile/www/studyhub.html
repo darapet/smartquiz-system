@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#0a0b14">
 <title>📚 AI Study Hub — xzily AI</title>
 <script src="js/aqs-nav-loader.js"></script>
-<!-- App Version: 2.7.0 -->
+<!-- App Version: 2.8.0 -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <!-- MathJax for math rendering -->
 <script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
@@ -352,6 +352,7 @@ a{text-decoration:none;color:inherit;}
 .ait-mob-answer-footer .ait-send-btn{white-space:nowrap;height:48px;padding:0 14px;font-size:.78rem;}
 .ait-math-board-panel-header{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
 .ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;height:160px;min-height:80px;max-height:420px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
+.ait-math-line{min-height:1.4em;padding:1px 0;}
 .ait-math-resize-handle{height:10px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;margin-top:4px;margin-bottom:0;opacity:.5;transition:opacity .2s;}
 .ait-math-resize-handle:hover{opacity:1;}
 .ait-math-resize-handle::before{content:'';display:block;width:32px;height:3px;border-radius:2px;background:rgba(20,184,166,.5);}
@@ -437,7 +438,7 @@ a{text-decoration:none;color:inherit;}
 <header class="sh-hdr">
   <div style="display:flex;align-items:baseline;gap:4px;">
     <div class="sh-logo">📚 AI Study Hub</div>
-    <span class="sh-logo-ver">v3.0.0</span>
+    <span class="sh-logo-ver">v2.8.0</span>
   </div>
   <a href="index.html" class="sh-back">🏠 Back to Home</a>
 </header>
@@ -2012,7 +2013,13 @@ TEACHING RULES:
 - IMPORTANT: Use the student's first name ONLY in the welcome greeting — do NOT use their name again in any subsequent response during the session.
 - Keep each response 3-5 sentences — short enough to be spoken clearly.
 - When you ask a comprehension question, write it as the LAST sentence and say nothing more. Wait for the student to reply.
-${isMath ? `MATH FORMAT: For math responses, first write the plain-English explanation (no symbols), then write [DISPLAY] on a new line, then re-write the same content using proper LaTeX ($$...$$ for displayed, $...$ for inline). The student sees the board while hearing your voice.` : ''}${docCtx}`;
+MATH/CALCULATION FORMAT (ALWAYS apply this for ANY calculation, equation, or formula — regardless of subject):
+- When your response includes any calculation, equation, formula, or step-by-step working, you MUST split your response into two parts:
+  1. First write the plain-English spoken explanation (no LaTeX symbols, no dollar signs).
+  2. Then write [DISPLAY] on its own line.
+  3. Then write the full step-by-step working using proper LaTeX: use $$...$$ for each displayed equation on its own line, $...$ for inline math.
+- NEVER skip [DISPLAY] when there is any calculation involved. This shows the working on the math board so the student can see it.
+- When asked to SOLVE a problem: actually solve it completely, showing every step on the board. Do NOT just re-state or reframe the problem.${docCtx}`;
 
   _ait.conversationHistory = [{role:'system', content:sysPrompt}];
   _ait.lastSurnameCallSecs = 0;
@@ -2130,8 +2137,14 @@ function aitShowMathBoardContent(latex){
   if(!board || !body) return;
   board.classList.add('visible');
   if(topicEl) topicEl.textContent = _ait.topic;
-  body.textContent = latex;
-  if(window.MathJax) MathJax.typesetPromise([body]).catch(()=>{});
+  /* Use innerHTML so MathJax can parse $$ and $ delimiters in the content */
+  body.innerHTML = latex
+    .split('\n')
+    .map(line => `<div class="ait-math-line">${line}</div>`)
+    .join('');
+  if(window.MathJax){
+    MathJax.typesetPromise([body]).catch(e=>console.warn('MathJax error',e));
+  }
 }
 function aitHideMathBoardContent(){
   const board = document.getElementById('ait-math-board');
@@ -2226,8 +2239,19 @@ async function aitSubmitAnswer(){
   wrap.appendChild(userDiv);
   wrap.scrollTop = wrap.scrollHeight;
 
-  /* AI feedback */
-  const feedbackPrompt = `The student answered your question about "${_ait.topic}".
+  /* AI feedback — handle free questions differently from quiz check-ins */
+  let feedbackPrompt;
+  if(_ait.currentQuestion === '__USER_QUESTION__'){
+    feedbackPrompt = `The student asked you a question: "${answer}"
+
+Answer their question directly and completely as a teacher would:
+- If it involves a calculation or equation: SOLVE IT fully, step by step. Do NOT reframe or restate the problem — actually compute the answer.
+- If it is a concept question: explain it clearly and thoroughly.
+- If it involves working out steps: show every step clearly.
+Use the [DISPLAY] format for any calculations: spoken explanation first, then [DISPLAY] on its own line, then full LaTeX working.
+Keep the spoken part concise (2-4 sentences). Do NOT use the student's name.`;
+  } else {
+    feedbackPrompt = `The student answered your question about "${_ait.topic}".
 Question: "${_ait.currentQuestion}"
 Student's answer: "${answer}"
 
@@ -2235,8 +2259,9 @@ Give feedback:
 - If correct/mostly correct: praise specifically, confirm what's right, then continue teaching.
 - If wrong: be kind, explain the correct answer clearly, re-explain the concept, then ask the question again differently.
 Keep it to 3-5 sentences. Be encouraging like a good teacher. Do NOT use the student's name.`;
+  }
 
-  const feedback = await aitMistral([..._ait.conversationHistory, {role:'user',content:feedbackPrompt}], 400);
+  const feedback = await aitMistral([..._ait.conversationHistory, {role:'user',content:feedbackPrompt}], 600);
   if(!feedback){ _ait.awaitingAnswer=false; return; }
 
   _ait.conversationHistory.push({role:'assistant', content:feedback});
@@ -2309,14 +2334,16 @@ async function aitSendQA(){
 
   const reply = await aitMistral([
     ..._ait.conversationHistory,
-    {role:'user', content:`Student question about "${_ait.topic}": ${q}. Answer concisely and helpfully in 2-4 sentences. Do NOT use the student's name.`}
-  ], 400);
+    {role:'user', content:`Student question about "${_ait.topic}": ${q}\n\nAnswer directly and completely. If it involves a calculation or equation, SOLVE IT fully step by step — do not just reframe it. Use [DISPLAY] format for any calculations: spoken explanation first, then [DISPLAY] on its own line, then full LaTeX working. Keep the spoken part to 2-4 sentences. Do NOT use the student's name.`}
+  ], 600);
 
   if(!reply) return;
   _ait.conversationHistory.push({role:'assistant', content:reply});
-  msgs.innerHTML += `<div class="ait-qa-msg ai"><strong>${_ait.teacherName}:</strong> ${reply}</div>`;
+  const {spokenText: qaSpoken, displayText: qaDisplay} = aitParseReply(reply, true);
+  if(qaDisplay) aitShowMathBoardContent(qaDisplay);
+  msgs.innerHTML += `<div class="ait-qa-msg ai"><strong>${_ait.teacherName}:</strong> ${qaSpoken || reply}</div>`;
   msgs.scrollTop = msgs.scrollHeight;
-  aitSpeak(reply, null);
+  aitSpeak(qaSpoken || reply, null);
 }
 
 /* ─ Controls ─ */
