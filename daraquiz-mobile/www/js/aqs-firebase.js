@@ -2173,6 +2173,7 @@ async function actionSaveSettings(data) {
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
     var allowed = [
+        'groq_keys',
         'mistral_keys','mistral_model','bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
@@ -2185,6 +2186,13 @@ async function actionSaveSettings(data) {
         'quoteGroqKeys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    /* Trim and validate Groq keys (up to 20) before saving */
+    if (Array.isArray(payload.groq_keys)) {
+        payload.groq_keys = payload.groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 20);
+    }
     /* Trim and validate quote Groq keys (up to 5) before saving */
     if (Array.isArray(payload.quoteGroqKeys)) {
         payload.quoteGroqKeys = payload.quoteGroqKeys
@@ -2200,7 +2208,14 @@ async function actionSaveSettings(data) {
             .slice(0, 10);
     }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately merge saved keys into in-memory pool (hardcoded keys stay as fallback) */
+    /* Immediately push saved keys into in-memory pools so they work right away */
+    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
+        var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+        var _gMerged = payload.groq_keys.slice();
+        _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
+        window._AQS_GROQ_MASTER_KEYS = _gMerged;
+        if (typeof window.setGroqKeys === 'function') window.setGroqKeys(window._AQS_GROQ_MASTER_KEYS);
+    }
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
         var _mMerged = payload.mistral_keys.slice();
@@ -2457,31 +2472,45 @@ function _updateAqsGlobals(user, profile) {
 })();
 
 /* ============================================================
-   AUTO-INIT: load Groq master keys from Firestore into global
+   AUTO-INIT: load Groq + Mistral keys from Firestore on startup
    so aqs-groq-key.js can use them without any hardcoded secrets.
-   Settings/main is publicly readable per the Firestore rules.
+   settings/main is publicly readable per the Firestore rules.
    ============================================================ */
-(function _loadMistralKeys() {
-    /* Load Mistral keys (now primary AI) from Firestore and merge with
-       any hardcoded keys in aqs-groq-key.js. Firebase keys come first
-       so admin-saved keys take priority over hardcoded fallbacks.     */
+(function _loadAIKeys() {
     getDoc(doc(db, 'settings', 'main')).then(function(snap) {
         if (!snap.exists()) return;
         var s = snap.data();
-        /* Load up to 10 Mistral keys */
+
+        /* ── Load up to 20 Groq keys ── */
+        if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
+            var gkFb = s.groq_keys
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.length > 20; })
+                .slice(0, 20);
+            if (gkFb.length) {
+                var hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+                var mergedG = gkFb.slice();
+                hcG.forEach(function(k){ if (mergedG.indexOf(k) === -1) mergedG.push(k); });
+                window._AQS_GROQ_MASTER_KEYS = mergedG;
+                /* Also call setGroqKeys so the key-manager picks them up */
+                if (typeof window.setGroqKeys === 'function') window.setGroqKeys(window._AQS_GROQ_MASTER_KEYS);
+            }
+        }
+
+        /* ── Load up to 10 Mistral keys ── */
         if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
-            var fbKeys = s.mistral_keys
+            var mkFb = s.mistral_keys
                 .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
                 .filter(function(k){ return k.length > 20; })
                 .slice(0, 10);
-            if (fbKeys.length) {
-                /* Merge: Firebase keys first, then any hardcoded fallbacks not already listed */
-                var hc = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
-                var merged = fbKeys.slice();
-                hc.forEach(function(k){ if (merged.indexOf(k) === -1) merged.push(k); });
-                window._AQS_MISTRAL_MASTER_KEYS = merged;
+            if (mkFb.length) {
+                var hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
+                var mergedM = mkFb.slice();
+                hcM.forEach(function(k){ if (mergedM.indexOf(k) === -1) mergedM.push(k); });
+                window._AQS_MISTRAL_MASTER_KEYS = mergedM;
             }
         }
+
         if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
     }).catch(function() { /* silently ignore — keys stay as hardcoded fallbacks */ });
 })();
