@@ -15,6 +15,13 @@
 
     async function _loadQuoteKeys() {
         if (_QK.length) return;
+        /* If Firebase isn't ready yet, wait up to 6s for it */
+        if (!window._aqsFirebaseReady) {
+            await new Promise(function(resolve) {
+                var t = setTimeout(resolve, 6000);
+                document.addEventListener('aqs:firebase:ready', function() { clearTimeout(t); resolve(); }, { once: true });
+            });
+        }
         try {
             if (window._aqsFS) {
                 var cfg = await window._aqsFS.get('settings', 'main');
@@ -230,12 +237,18 @@
         }
         /* Reset in-memory key load flag so keys re-load fresh */
         _QK = [];
-        status('⚡ Generating 50 new quotes…');
+        status('🔑 Loading quote keys from Firebase…');
+        await _loadQuoteKeys();
+        if (!_QK.length) {
+            status('❌ No quote keys found. Go to the Quote Generation Keys section above, enter at least one Groq API key, and click Save Quote Keys — then try Generate Now again.');
+            return null;
+        }
+        status('⚡ Generating 50 new quotes with ' + _QK.length + ' key(s)…');
         var quotes = await getOrGenerate();
         if (quotes && quotes.length) {
             status('✅ Done! ' + quotes.length + ' quotes generated for today.');
         } else {
-            status('❌ Generation failed. Check your quote keys are saved and valid.');
+            status('❌ Generation failed. Your quote keys may be invalid or rate-limited. Check the keys and try again.');
         }
         return quotes;
     };
