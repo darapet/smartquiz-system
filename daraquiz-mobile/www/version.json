@@ -1,8 +1,8 @@
 {
-  "version": "1.264",
-  "versionCode": 242,
+  "version": "1.265",
+  "versionCode": 243,
   "releaseDate": "2026-06-11",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.264/daraquiz-v1.264.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.264/daraquiz-v1.264.apk"
+  "notes": "Quote popup now shows on every app open — including when resuming the app. Physics, Chemistry, Biology, Mathematics & Motivation quotes added. AI key loading fixed.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.265/daraquiz-v1.265.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.265/daraquiz-v1.265.apk"
 }
