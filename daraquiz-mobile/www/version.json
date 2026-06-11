@@ -1,8 +1,8 @@
 {
-  "version": "1.281",
-  "versionCode": 259,
+  "version": "1.282",
+  "versionCode": 260,
   "releaseDate": "2026-06-11",
-  "notes": "AI Teacher v2.9.0: mobile math board visible inline, Continue button on mobile action bar, typing animation works for all content, MathJax rendered on both platforms.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.281/daraquiz-v1.281.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.281/daraquiz-v1.281.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.282/daraquiz-v1.282.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.282/daraquiz-v1.282.apk"
 }
