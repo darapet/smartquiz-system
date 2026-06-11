@@ -970,8 +970,6 @@
 
   /* ── AI calls — Groq key pool ───────────────────────────────── */
   function callAI(prompt, maxTokens) {
-    var k = ['wMspDhSungnapsLU3v5hWGdyb3FY9E9AFvBBjuSI38MmrL2ow46o', 'HMrJogeB2HUp6DFxebqgWGdyb3FYpxpzJ42bE5Y9jNGgaoKPxGKN'];
-    var keys = k.map(function(x){ return 'gsk_' + x; });
     /* Cap at 8000 to avoid HTTP 413 — Groq rejects requests whose
        total payload (prompt tokens + max_tokens) exceeds ~16 K tokens */
     var safeMax = Math.min(maxTokens || 2000, 8000);
