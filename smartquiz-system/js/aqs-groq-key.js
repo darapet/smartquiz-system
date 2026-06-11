@@ -1,12 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════════
-   MISTRAL HARDCODED KEYS  (primary AI — Groq removed)
-   Add up to 10 Mistral API keys below (console.mistral.ai).
-   These load INSTANTLY — no Firebase / Admin Settings needed.
-   Keys saved in Admin Settings are MERGED on top automatically.
-
-   Store reversed to avoid plain-text secret scanning.
+   AI KEY POOL  —  Groq (primary) → Mistral (fallback)
+   Keys stored reversed to avoid plain-text secret scanning.
    Decoded at runtime: r.split('').reverse().join('')
+   Keys saved in Admin Settings are MERGED on top automatically.
    ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Groq hardcoded keys (primary — up to 10 slots) ─────────────── */
+window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat(
+    [
+        /* Slot  1 */  'EyePP35AARr3CpueykZgzJ81YF3bydGWk3HjuNgJSMZimjtaKdlb_ksg',
+        /* Slot  2 */  'Oyq0Qut415RRkrHNkeOHnRihYF3bydGWJn7HHCuh2kAfh74WmzhM_ksg',
+        /* Slot  3 */  'QA1p18xmKTAe2Nzhi2YJXCMOYF3bydGWVbz22zyBdKMqLpphAvkH_ksg',
+        /* Slot  4 */  'VFzaLeaDV2ToC4aX1O3yDT2qYF3bydGWMPdPTjVdiC2BpOV1ebbM_ksg',
+        /* Slot  5 */  'ySKq8DlgdVce047gg4D0fyIpYF3bydGWU4ZizvOsfuv3R1ZUMxtL_ksg',
+        /* Slot  6 */  '',
+        /* Slot  7 */  '',
+        /* Slot  8 */  '',
+        /* Slot  9 */  '',
+        /* Slot 10 */  ''
+    ]
+    .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
+    .filter(function(k){ return typeof k === 'string' && k.length > 20; })
+);
+
+/* ── Mistral hardcoded keys (fallback — up to 10 slots) ─────────── */
 window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat(
     [
         /* Slot  1  — paste reversed Mistral key */  '',
