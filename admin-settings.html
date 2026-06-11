@@ -1325,7 +1325,8 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
 
     /* ═══════════════════════════════════════════════════════════════════
        Quote Generation Keys — Save / Load / Test
-       Completely independent from all other save buttons.
+       Uses aqsAjax (global) instead of direct Firestore calls so it
+       works correctly in a regular <script> alongside aqs-firebase.js.
     ═══════════════════════════════════════════════════════════════════ */
     (function () {
         var STATUS = document.getElementById('aqs-quote-key-status');
@@ -1343,26 +1344,28 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
             el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
         }
 
-        /* Load keys from Firebase on page open */
-        async function loadQuoteKeys() {
-            try {
-                var snap = await getDoc(doc(db, 'settings', 'main'));
-                if (snap.exists()) {
-                    var data = snap.data();
-                    var keys = data.quoteGroqKeys || [];
-                    for (var i = 0; i < 5; i++) {
-                        var el = document.getElementById('aqs-quote-key-' + (i+1));
-                        if (el) el.value = keys[i] || '';
-                        dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
-                    }
+        /* Load keys via aqsAjax — works in regular <script> tags */
+        function loadQuoteKeys() {
+            if (typeof window.aqsAjax !== 'function') return;
+            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+                var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
+                var keys = Array.isArray(s.quoteGroqKeys) ? s.quoteGroqKeys : [];
+                for (var i = 0; i < 5; i++) {
+                    var el = document.getElementById('aqs-quote-key-' + (i+1));
+                    if (el) el.value = keys[i] || '';
+                    dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
                 }
-            } catch(e) { /* silently ignore */ }
+            });
         }
 
-        /* Save — only writes quoteGroqKeys, merges with existing doc */
+        /* Save via aqsAjax — quoteGroqKeys is now in the allowed list */
         var saveBtn = document.getElementById('aqs-save-quote-keys-btn');
         if (saveBtn) {
-            saveBtn.addEventListener('click', async function () {
+            saveBtn.addEventListener('click', function () {
+                if (typeof window.aqsAjax !== 'function') {
+                    setStatus('❌ Firebase not ready. Please wait a moment and try again.', false);
+                    return;
+                }
                 saveBtn.disabled = true;
                 saveBtn.textContent = '⏳ Saving…';
                 var keys = [];
@@ -1375,16 +1378,20 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
                     saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
                     return;
                 }
-                try {
-                    await setDoc(doc(db, 'settings', 'main'), { quoteGroqKeys: keys }, { merge: true });
-                    keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
-                    setStatus('✅ Saved ' + keys.length + ' key(s)!', true);
-                    saveBtn.textContent = '✅ Saved!';
-                    setTimeout(function(){ saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys'; }, 2200);
-                } catch(e) {
-                    setStatus('❌ ' + (e.message || 'Save failed'), false);
-                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
-                }
+                window.aqsAjax(
+                    { action: 'aqs_save_settings', quoteGroqKeys: keys },
+                    function(res) {
+                        if (res && res.success) {
+                            keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
+                            setStatus('✅ Saved ' + keys.length + ' key(s)!', true);
+                            saveBtn.textContent = '✅ Saved!';
+                            setTimeout(function(){ saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys'; }, 2200);
+                        } else {
+                            setStatus('❌ ' + ((res && res.data) || 'Save failed. Make sure you are signed in as admin.'), false);
+                            saveBtn.disabled = false; saveBtn.textContent = '💾 Save Quote Keys';
+                        }
+                    }
+                );
             });
         }
 
@@ -1425,8 +1432,8 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
             });
         }
 
-        /* Run on load */
-        if (typeof db !== 'undefined' && typeof getDoc !== 'undefined') {
+        /* Run on load — wait for Firebase then load keys */
+        if (window._aqsFirebaseReady) {
             loadQuoteKeys();
         } else {
             document.addEventListener('aqs:firebase:ready', loadQuoteKeys, { once: true });
