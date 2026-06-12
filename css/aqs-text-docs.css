@@ -748,13 +748,14 @@ body {
 /* ══ PROFESSIONAL PRINT STYLES ═══════════════════════════════════
    @page sets margins; each .wp-page becomes one physical page.   */
 @page {
-  size: letter portrait;
-  margin: 20mm 25mm 18mm 25mm;
+  size: A4 portrait;
+  margin: 15mm;
 }
 
 @media print {
-  /* ── Page setup: no browser margins (padding on .wp-page handles margins) ── */
-  @page { size: A4 portrait; margin: 0; }
+  /* ── Page setup: 15mm @page margin prevents printer hardware clipping;
+     .wp-pp / .wp-page padding adds the remaining visual whitespace ── */
+  @page { size: A4 portrait; margin: 15mm; }
 
   /* ── Colour preservation ── */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -789,7 +790,7 @@ body {
     border-radius: 0 !important;
     border: none !important;
     background: #fff !important;
-    padding: 20mm 20mm 16mm 20mm !important;
+    padding: 5mm 5mm 4mm 5mm !important;
     margin: 0 !important;
     page-break-after: always !important;
     break-after: page !important;
@@ -819,12 +820,12 @@ body {
   }
 
   /* ── Headings ── */
-  body.wp-printing h1 { font-size: 18pt !important; line-height: 1.2 !important; margin: 0 0 8pt !important; page-break-after: avoid !important; color: #000 !important; }
-  body.wp-printing h2 { font-size: 14pt !important; line-height: 1.25 !important; margin: 12pt 0 6pt !important; page-break-after: avoid !important; color: #000 !important; }
-  body.wp-printing h3 { font-size: 12pt !important; line-height: 1.3 !important; margin: 10pt 0 5pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h1 { font-size: 18pt !important; font-family: inherit !important; font-weight: 700 !important; line-height: 1.2 !important; margin: 0 0 8pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h2 { font-size: 14pt !important; font-family: inherit !important; font-weight: 700 !important; line-height: 1.25 !important; margin: 12pt 0 6pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h3 { font-size: 12pt !important; font-family: inherit !important; font-weight: 700 !important; line-height: 1.3 !important; margin: 10pt 0 5pt !important; page-break-after: avoid !important; color: #000 !important; }
   body.wp-printing h4,
   body.wp-printing h5,
-  body.wp-printing h6 { font-size: 11pt !important; margin: 7pt 0 3pt !important; page-break-after: avoid !important; color: #000 !important; }
+  body.wp-printing h6 { font-size: 11pt !important; font-family: inherit !important; font-weight: 700 !important; margin: 7pt 0 3pt !important; page-break-after: avoid !important; color: #000 !important; }
   body.wp-printing h1+p,
   body.wp-printing h2+p,
   body.wp-printing h3+p { page-break-before: avoid !important; }
