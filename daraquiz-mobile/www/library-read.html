@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0b14">
+<title>📖 Reader — xzily Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-library.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="lib-hdr" style="position:relative;z-index:10">
+  <span class="lib-logo" id="hdr-title" style="font-size:.85rem;max-width:50%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;-webkit-text-fill-color:#e2e8f0;background:none;">Loading…</span>
+  <div class="lib-hdr-actions">
+    <button class="lib-back" onclick="history.back()">← Back</button>
+    <a href="library.html" class="lib-back">Library</a>
+  </div>
+</header>
+
+<!-- READER LAYOUT -->
+<div class="lib-reader-layout">
+
+  <!-- PDF VIEWER -->
+  <div class="lib-reader-pdf">
+    <div class="lib-reader-toolbar">
+      <button class="lib-btn lib-btn-ghost" id="btn-prev" onclick="pdfPrev()" style="padding:6px 10px">◀</button>
+      <span class="lib-page-info" id="page-info">Page 1 / 1</span>
+      <button class="lib-btn lib-btn-ghost" id="btn-next" onclick="pdfNext()" style="padding:6px 10px">▶</button>
+      <button class="lib-btn lib-btn-ghost" onclick="pdfZoomOut()" style="padding:6px 10px">−</button>
+      <button class="lib-btn lib-btn-ghost" onclick="pdfZoomIn()" style="padding:6px 10px">+</button>
+      <a id="dl-btn" class="lib-btn lib-btn-ghost" style="padding:6px 10px;font-size:.75rem" download>⬇ Download</a>
+    </div>
+    <div class="lib-pdf-canvas-wrap" id="pdf-wrap">
+      <div style="color:#64748b;font-size:.85rem;padding:40px;text-align:center" id="pdf-loading">Loading PDF…</div>
+      <canvas id="lib-pdf-canvas" style="display:none"></canvas>
+    </div>
+  </div>
+
+  <!-- SIDE PANEL -->
+  <div class="lib-reader-panel">
+    <div class="lib-panel-tabs">
+      <button class="lib-panel-tab active" onclick="switchTab('info',this)">Info</button>
+      <button class="lib-panel-tab" onclick="switchTab('comments',this)">Comments</button>
+      <button class="lib-panel-tab" onclick="switchTab('ai',this)">🤖 AI</button>
+    </div>
+
+    <!-- INFO TAB -->
+    <div class="lib-panel-body">
+      <div class="lib-panel-section active" id="tab-info">
+        <img id="book-thumb" class="lib-book-info-thumb" src="" alt="" style="display:none">
+        <div class="lib-book-info-title" id="book-title">…</div>
+        <div style="margin:10px 0 14px;display:flex;flex-direction:column;gap:4px" id="book-meta"></div>
+        <div class="lib-action-row">
+          <button class="lib-like-btn" id="like-btn" onclick="toggleLike()">
+            <span id="like-icon">🤍</span> <span id="like-count">0</span>
+          </button>
+          <button class="lib-share-btn" onclick="shareBook()">🔗 Share</button>
+        </div>
+        <div style="font-size:.72rem;color:#64748b;text-align:center" id="reader-count"></div>
+      </div>
+
+      <!-- COMMENTS TAB -->
+      <div class="lib-panel-section" id="tab-comments">
+        <div class="lib-comment-form" id="comment-form" style="display:none">
+          <textarea class="lib-comment-input" id="comment-input" placeholder="Write a comment…" rows="3"></textarea>
+          <button class="lib-comment-submit" onclick="submitComment()">Post Comment</button>
+        </div>
+        <div style="font-size:.75rem;color:#64748b;margin-bottom:10px" id="comment-login-hint"></div>
+        <div class="lib-comment-list" id="comment-list"><div style="color:#64748b;font-size:.82rem">Loading…</div></div>
+      </div>
+
+      <!-- AI TAB -->
+      <div class="lib-panel-section" id="tab-ai">
+        <div style="font-size:.78rem;color:#64748b;margin-bottom:12px;line-height:1.6">
+          AI reads this document and gives you explanations, key concepts, and practice questions.
+        </div>
+        <div class="lib-ai-btns">
+          <button class="lib-ai-btn" id="explain-btn" onclick="doExplain()">
+            ✨ Explain with AI
+          </button>
+          <button class="lib-ai-btn" id="mcq-btn" onclick="doMCQ()">
+            🎯 Practice MCQ (10 Questions)
+          </button>
+        </div>
+        <!-- Explanation output -->
+        <div class="lib-ai-output" id="ai-explain-out"></div>
+        <div style="display:none" id="explain-dl-wrap">
+          <button class="lib-btn lib-btn-ghost" style="width:100%;margin-bottom:12px;font-size:.78rem" onclick="downloadExplanation()">⬇ Download Explanation</button>
+        </div>
+        <!-- MCQ output -->
+        <div class="lib-mcq-wrap" id="mcq-wrap">
+          <div id="mcq-questions"></div>
+          <div class="lib-mcq-score" id="mcq-score">
+            <div class="lib-mcq-score-num" id="score-num">0/10</div>
+            <div class="lib-mcq-score-label">Practice complete!</div>
+            <button class="lib-btn lib-btn-primary" style="margin-top:12px;font-size:.8rem" onclick="resetMCQ()">Try Again</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="lib-toast" id="lib-toast"></div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-groq-key.js"></script>
+<script type="module" src="js/aqs-library.js"></script>
+<script type="module">
+  let _book = null, _user = null, _pdfDoc = null, _curPage = 1, _scale = 1.4, _mcqData = [], _mcqAnswered = 0, _mcqScore = 0, _explainText = '';
+
+  /* ── Load book ── */
+  const bookId = new URLSearchParams(location.search).get('id');
+  if (!bookId) { window.libToast('No book ID.'); }
+
+  window.libOnAuth(async function(user) { _user = user; renderCommentForm(); });
+
+  async function init() {
+    if (!bookId) return;
+    try {
+      _book = await window.libGetBook(bookId);
+      if (!_book) { window.libToast('Book not found.'); return; }
+      window.libRecordView(bookId);
+      renderInfo();
+      loadComments();
+      if (_book.fileUrl) loadPDF(_book.fileUrl);
+      if (_user) {
+        const liked = await window.libHasLiked(bookId, _user.uid);
+        if (liked) { document.getElementById('like-btn').classList.add('liked'); document.getElementById('like-icon').textContent = '❤️'; }
+      }
+    } catch(e) { window.libToast('Load error: ' + e.message); }
+  }
+
+  function renderInfo() {
+    document.title = _book.title + ' — xzily Library';
+    document.getElementById('hdr-title').textContent = _book.title;
+    if (_book.thumbnailUrl) { const img=document.getElementById('book-thumb'); img.src=_book.thumbnailUrl; img.style.display='block'; }
+    document.getElementById('book-title').textContent = _book.title;
+    document.getElementById('like-count').textContent = _book.likes || 0;
+    document.getElementById('reader-count').textContent = '👁️ ' + ((_book.views||0)+1) + ' readers';
+    const dl = document.getElementById('dl-btn'); dl.href = _book.fileUrl || '#'; dl.download = _book.title + '.pdf';
+    const meta = document.getElementById('book-meta');
+    meta.innerHTML = [
+      _book.institution   ? `<div class="lib-book-info-row">🏫 <span>${_book.institution}</span></div>` : '',
+      _book.level         ? `<div class="lib-book-info-row">📊 <span>${_book.level}</span></div>` : '',
+      _book.subject       ? `<div class="lib-book-info-row">📚 <span>${_book.subject}</span></div>` : '',
+      _book.author        ? `<div class="lib-book-info-row">✍️ <span>${_book.author}</span></div>` : '',
+      _book.pages         ? `<div class="lib-book-info-row">📄 <span>${_book.pages} pages</span></div>` : '',
+      _book.uploaderName  ? `<div class="lib-book-info-row">👤 <span>Uploaded by ${_book.uploaderName}</span></div>` : ''
+    ].join('');
+  }
+
+  /* ── PDF Viewer ── */
+  async function loadPDF(url) {
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    try {
+      _pdfDoc = await pdfjsLib.getDocument({ url, withCredentials: false }).promise;
+      document.getElementById('pdf-loading').style.display = 'none';
+      document.getElementById('lib-pdf-canvas').style.display = 'block';
+      renderPage(_curPage);
+    } catch(e) {
+      document.getElementById('pdf-loading').textContent = 'Could not load PDF. Click Download to get the file.';
+    }
+  }
+
+  async function renderPage(n) {
+    if (!_pdfDoc) return;
+    const page    = await _pdfDoc.getPage(n);
+    const vp      = page.getViewport({ scale: _scale });
+    const canvas  = document.getElementById('lib-pdf-canvas');
+    const ctx     = canvas.getContext('2d');
+    canvas.height = vp.height; canvas.width = vp.width;
+    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    document.getElementById('page-info').textContent = 'Page ' + n + ' / ' + _pdfDoc.numPages;
+    document.getElementById('btn-prev').disabled = n <= 1;
+    document.getElementById('btn-next').disabled = n >= _pdfDoc.numPages;
+  }
+
+  window.pdfPrev = function(){ if(_curPage>1){_curPage--;renderPage(_curPage);} };
+  window.pdfNext = function(){ if(_pdfDoc&&_curPage<_pdfDoc.numPages){_curPage++;renderPage(_curPage);} };
+  window.pdfZoomIn  = function(){ _scale=Math.min(_scale+0.25,3);renderPage(_curPage); };
+  window.pdfZoomOut = function(){ _scale=Math.max(_scale-0.25,0.6);renderPage(_curPage); };
+
+  /* ── Like ── */
+  window.toggleLike = async function() {
+    if (!_user) { window.libToast('Sign in to like books.'); return; }
+    const btn = document.getElementById('like-btn');
+    btn.disabled = true;
+    try {
+      const liked = await window.libToggleLike(bookId, _user.uid);
+      document.getElementById('like-icon').textContent = liked ? '❤️' : '🤍';
+      btn.classList.toggle('liked', liked);
+      const cur = parseInt(document.getElementById('like-count').textContent) || 0;
+      document.getElementById('like-count').textContent = cur + (liked ? 1 : -1);
+    } catch(e) { window.libToast('Error: ' + e.message); }
+    btn.disabled = false;
+  };
+
+  /* ── Share ── */
+  window.shareBook = function() {
+    const url = location.href;
+    if (navigator.share) {
+      navigator.share({ title: _book ? _book.title : 'Library Book', url }).catch(function(){});
+    } else {
+      navigator.clipboard.writeText(url).then(function(){ window.libToast('Link copied!'); }).catch(function(){ window.libToast('Copy link: ' + url); });
+    }
+  };
+
+  /* ── Comments ── */
+  function renderCommentForm() {
+    document.getElementById('comment-form').style.display = _user ? 'block' : 'none';
+    document.getElementById('comment-login-hint').textContent = _user ? '' : 'Sign in to leave a comment.';
+  }
+  async function loadComments() {
+    try {
+      const list = await window.libGetComments(bookId);
+      const el = document.getElementById('comment-list');
+      if (!list.length) { el.innerHTML = '<div style="color:#64748b;font-size:.82rem;text-align:center;padding:16px">No comments yet. Be the first!</div>'; return; }
+      el.innerHTML = list.map(function(c) {
+        return `<div class="lib-comment-item"><div class="lib-comment-author">${c.displayName||'Anonymous'}</div><div class="lib-comment-text">${c.text}</div><div class="lib-comment-time">${window.libFormatTime(c.createdAt)}</div></div>`;
+      }).join('');
+    } catch(e) {}
+  }
+  window.submitComment = async function() {
+    if (!_user) { window.libToast('Sign in to comment.'); return; }
+    const text = document.getElementById('comment-input').value.trim();
+    if (!text) return;
+    const name = _user.displayName || _user.email?.split('@')[0] || 'Student';
+    try {
+      await window.libAddComment(bookId, _user.uid, name, text);
+      document.getElementById('comment-input').value = '';
+      window.libToast('Comment posted!');
+      loadComments();
+    } catch(e) { window.libToast('Error: ' + e.message); }
+  };
+
+  /* ── Tabs ── */
+  window.switchTab = function(name, btn) {
+    document.querySelectorAll('.lib-panel-section').forEach(function(s){ s.classList.remove('active'); });
+    document.querySelectorAll('.lib-panel-tab').forEach(function(t){ t.classList.remove('active'); });
+    document.getElementById('tab-' + name).classList.add('active');
+    btn.classList.add('active');
+  };
+
+  /* ── AI Explain ── */
+  window.doExplain = async function() {
+    if (!_book?.fileUrl) { window.libToast('No file to analyse.'); return; }
+    const btn = document.getElementById('explain-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="lib-spinner"></span> Reading document…';
+    const out = document.getElementById('ai-explain-out');
+    out.style.display = 'none'; document.getElementById('explain-dl-wrap').style.display = 'none';
+    try {
+      const result = await window.libAiExplain(_book.fileUrl, _book.title);
+      _explainText = result;
+      out.innerHTML = result.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+      out.style.display = 'block';
+      document.getElementById('explain-dl-wrap').style.display = 'block';
+    } catch(e) { window.libToast('AI error: ' + e.message); }
+    btn.disabled = false; btn.innerHTML = '✨ Explain with AI';
+  };
+
+  window.downloadExplanation = function() {
+    if (!_explainText) return;
+    const blob = new Blob([_explainText], { type: 'text/plain' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+    a.download = (_book?.title || 'explanation') + ' — AI Explanation.txt';
+    a.click();
+  };
+
+  /* ── AI MCQ ── */
+  window.doMCQ = async function() {
+    if (!_book?.fileUrl) { window.libToast('No file to analyse.'); return; }
+    const btn = document.getElementById('mcq-btn');
+    btn.disabled = true; btn.innerHTML = '<span class="lib-spinner"></span> Generating questions…';
+    const wrap = document.getElementById('mcq-wrap'); wrap.style.display = 'none';
+    document.getElementById('mcq-score').style.display = 'none';
+    try {
+      _mcqData = await window.libAiMCQ(_book.fileUrl, _book.title);
+      _mcqAnswered = 0; _mcqScore = 0;
+      renderMCQ();
+      wrap.style.display = 'block';
+    } catch(e) { window.libToast('AI error: ' + e.message); }
+    btn.disabled = false; btn.innerHTML = '🎯 Practice MCQ (10 Questions)';
+  };
+
+  function renderMCQ() {
+    document.getElementById('mcq-questions').innerHTML = _mcqData.map(function(q, qi) {
+      return `<div class="lib-mcq-q" id="mcq-q-${qi}">
+        <div class="lib-mcq-qtext">${qi+1}. ${q.q}</div>
+        <div class="lib-mcq-options">
+          ${q.opts.map(function(opt, oi){ return `<button class="lib-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${opt}</button>`; }).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  window.answerMCQ = function(qi, oi) {
+    const q = _mcqData[qi];
+    if (document.getElementById('mcq-q-' + qi).dataset.answered) return;
+    document.getElementById('mcq-q-' + qi).dataset.answered = '1';
+    q.opts.forEach(function(_, i) {
+      const btn = document.getElementById('mcq-opt-' + qi + '-' + i);
+      btn.disabled = true;
+      if (i === q.ans) btn.classList.add('correct');
+      else if (i === oi) btn.classList.add('wrong');
+    });
+    if (oi === q.ans) _mcqScore++;
+    _mcqAnswered++;
+    if (_mcqAnswered >= _mcqData.length) {
+      setTimeout(function(){
+        document.getElementById('score-num').textContent = _mcqScore + ' / ' + _mcqData.length;
+        document.getElementById('mcq-score').style.display = 'block';
+      }, 600);
+    }
+  };
+
+  window.resetMCQ = function() {
+    _mcqScore = 0; _mcqAnswered = 0;
+    document.getElementById('mcq-score').style.display = 'none';
+    renderMCQ();
+  };
+
+  document.addEventListener('aqs:firebase:ready', init);
+  if (window._aqsFirebaseReady) init();
+</script>
+</body>
+</html>
