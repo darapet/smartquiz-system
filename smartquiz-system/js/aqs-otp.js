@@ -1,16 +1,11 @@
-/* aqs-otp.js — Email OTP verification step for registration
-   Hooks into register.html before the form is submitted.
-   Requires: aqs-auth.js loaded after this script.
+/* aqs-otp.js — Email OTP verification via Firebase Cloud Functions + Brevo
+   Drop-in for register.html. No Replit server needed — runs entirely on Firebase.
 */
 (function () {
     'use strict';
 
-    var API_BASE = (function () {
-        /* Try to auto-detect the API server URL from the current origin */
-        var origin = window.location.origin;
-        /* Replit proxies everything through the same domain */
-        return origin + '/api';
-    })();
+    /* Firebase Functions base URL for project smartquiz-darapet */
+    var FN = 'https://us-central1-smartquiz-darapet.cloudfunctions.net';
 
     var _otpVerifiedEmail = null;
     var _otpCooldown = false;
@@ -79,7 +74,7 @@
         var btn = getEl('aqs-send-otp-btn');
         if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
 
-        fetch(API_BASE + '/email/send-otp', {
+        fetch(FN + '/sendOtp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email })
@@ -106,18 +101,13 @@
         if (!wrap) return;
         wrap.style.display = 'block';
         wrap.style.animation = 'aqsOtpFadeIn .3s ease';
-
-        /* Store email for verification */
         wrap.setAttribute('data-email', email);
-
-        /* Focus the first OTP digit box */
         var first = getEl('otp-d0');
         if (first) setTimeout(function () { first.focus(); }, 100);
     }
 
     function getEnteredOtp() {
-        var digits = ['otp-d0','otp-d1','otp-d2','otp-d3','otp-d4','otp-d5'];
-        return digits.map(function (id) {
+        return ['otp-d0','otp-d1','otp-d2','otp-d3','otp-d4','otp-d5'].map(function (id) {
             var el = getEl(id);
             return el ? el.value : '';
         }).join('');
@@ -137,7 +127,7 @@
         if (verifyBtn) { verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…'; }
         hideOtpAlert();
 
-        fetch(API_BASE + '/email/verify-otp', {
+        fetch(FN + '/verifyOtp', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email, otp: otp })
@@ -146,25 +136,18 @@
         .then(function (data) {
             if (data.success) {
                 _otpVerifiedEmail = email;
+                try { sessionStorage.setItem('_aqs_otp_verified', email); } catch(e) {}
                 showOtpAlert('Email verified!', false);
                 showVerifiedState(email);
             } else {
                 showOtpAlert(data.message || 'Invalid code. Try again.', true);
                 if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.textContent = 'Verify Code'; }
-                /* Shake the OTP boxes */
                 var box = getEl('aqs-otp-boxes');
-                if (box) {
-                    box.style.animation = 'none';
-                    box.offsetWidth;
-                    box.style.animation = 'aqsOtpShake .4s ease';
-                }
-                /* Clear digits */
+                if (box) { box.style.animation = 'none'; box.offsetWidth; box.style.animation = 'aqsOtpShake .4s ease'; }
                 ['otp-d0','otp-d1','otp-d2','otp-d3','otp-d4','otp-d5'].forEach(function (id) {
-                    var el = getEl(id);
-                    if (el) el.value = '';
+                    var el = getEl(id); if (el) el.value = '';
                 });
-                var first = getEl('otp-d0');
-                if (first) first.focus();
+                var first = getEl('otp-d0'); if (first) first.focus();
             }
         })
         .catch(function () {
@@ -178,31 +161,17 @@
         if (wrap) wrap.style.display = 'none';
 
         var badge = getEl('aqs-email-verified-badge');
-        if (badge) {
-            badge.style.display = 'flex';
-            badge.style.animation = 'aqsOtpFadeIn .3s ease';
-        }
+        if (badge) { badge.style.display = 'flex'; badge.style.animation = 'aqsOtpFadeIn .3s ease'; }
 
-        /* Lock the email field */
         var emailInput = getEl('reg-email');
-        if (emailInput) {
-            emailInput.value = email;
-            emailInput.readOnly = true;
-            emailInput.style.opacity = '0.7';
-        }
+        if (emailInput) { emailInput.value = email; emailInput.readOnly = true; emailInput.style.opacity = '0.7'; }
 
         var otpStep = getEl('aqs-otp-step');
-        if (otpStep) {
-            otpStep.style.opacity = '0.5';
-            otpStep.style.pointerEvents = 'none';
-        }
+        if (otpStep) { otpStep.style.opacity = '0.5'; otpStep.style.pointerEvents = 'none'; }
 
-        /* Unlock the registration form */
         var regForm = getEl('aqs-register-form-fields');
-        if (regForm) {
-            regForm.style.display = 'block';
-            regForm.style.animation = 'aqsOtpFadeIn .4s ease';
-        }
+        if (regForm) { regForm.style.display = 'block'; regForm.style.animation = 'aqsOtpFadeIn .4s ease'; }
+
         var regSubmit = getEl('aqs-register-submit');
         if (regSubmit) regSubmit.disabled = false;
     }
@@ -215,37 +184,25 @@
             el.addEventListener('input', function () {
                 var val = el.value.replace(/\D/g, '');
                 el.value = val.slice(-1);
-                if (val && idx < ids.length - 1) {
-                    var next = getEl(ids[idx + 1]);
-                    if (next) next.focus();
-                }
-                if (getEnteredOtp().length === 6) {
-                    setTimeout(verifyOtp, 120);
-                }
+                if (val && idx < ids.length - 1) { var next = getEl(ids[idx + 1]); if (next) next.focus(); }
+                if (getEnteredOtp().length === 6) setTimeout(verifyOtp, 120);
             });
             el.addEventListener('keydown', function (e) {
                 if (e.key === 'Backspace' && !el.value && idx > 0) {
-                    var prev = getEl(ids[idx - 1]);
-                    if (prev) { prev.value = ''; prev.focus(); }
+                    var prev = getEl(ids[idx - 1]); if (prev) { prev.value = ''; prev.focus(); }
                 }
                 if (e.key === 'Enter') verifyOtp();
             });
             el.addEventListener('paste', function (e) {
                 e.preventDefault();
                 var paste = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g, '').slice(0, 6);
-                paste.split('').forEach(function (char, i) {
-                    var target = getEl(ids[i]);
-                    if (target) target.value = char;
-                });
-                var lastFilled = Math.min(paste.length, ids.length - 1);
-                var lastEl = getEl(ids[lastFilled]);
-                if (lastEl) lastEl.focus();
+                paste.split('').forEach(function (char, i) { var t = getEl(ids[i]); if (t) t.value = char; });
+                var last = getEl(ids[Math.min(paste.length, ids.length - 1)]); if (last) last.focus();
                 if (paste.length === 6) setTimeout(verifyOtp, 120);
             });
         });
     }
 
-    /* Intercept register form submit — require verified OTP */
     function hookRegisterForm() {
         var form = document.getElementById('aqs-register-form');
         if (!form) return;
@@ -257,56 +214,41 @@
                 var otpStep = getEl('aqs-otp-step');
                 if (otpStep) otpStep.scrollIntoView({ behavior: 'smooth', block: 'center' });
             }
-        }, true); /* capture phase — runs before aqs-auth.js handler */
+        }, true);
     }
 
-    /* After successful registration, add user to Brevo contacts */
+    /* Called after successful Firebase registration — adds user to Brevo list */
     window._aqsOtpAddContact = function (email, name) {
         if (!email) return;
-        fetch(API_BASE + '/email/add-contact', {
+        fetch(FN + '/addContact', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email: email, name: name || '' })
         }).catch(function () { /* silent */ });
     };
 
-    /* Expose verified email so aqs-auth.js can include it in logic */
     window._aqsGetVerifiedEmail = function () { return _otpVerifiedEmail; };
 
     document.addEventListener('DOMContentLoaded', function () {
-        /* Wire send OTP button */
         var sendBtn = getEl('aqs-send-otp-btn');
         if (sendBtn) sendBtn.addEventListener('click', sendOtp);
 
-        /* Wire verify button */
         var verifyBtn = getEl('aqs-verify-otp-btn');
         if (verifyBtn) verifyBtn.addEventListener('click', verifyOtp);
 
         setupOtpDigitInputs();
         hookRegisterForm();
 
-        /* Restore state if email was already verified this session */
+        /* Restore verified state if user navigated away briefly */
         try {
-            var savedEmail = sessionStorage.getItem('_aqs_otp_verified');
-            if (savedEmail) {
-                _otpVerifiedEmail = savedEmail;
-                showVerifiedState(savedEmail);
-            }
-        } catch (e) { /* ignore */ }
-
-        /* Persist verification across soft refreshes (NOT hard reload) */
-        window.addEventListener('beforeunload', function () {
-            if (_otpVerifiedEmail) {
-                try { sessionStorage.setItem('_aqs_otp_verified', _otpVerifiedEmail); } catch (e) { /* ignore */ }
-            }
-        });
+            var saved = sessionStorage.getItem('_aqs_otp_verified');
+            if (saved) { _otpVerifiedEmail = saved; showVerifiedState(saved); }
+        } catch(e) {}
     });
 
-    /* Inject keyframe animations */
+    /* Keyframe animations */
     var style = document.createElement('style');
-    style.textContent = [
-        '@keyframes aqsOtpFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}',
-        '@keyframes aqsOtpShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}'
-    ].join('');
+    style.textContent = '@keyframes aqsOtpFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}'
+        + '@keyframes aqsOtpShake{0%,100%{transform:translateX(0)}20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}';
     document.head.appendChild(style);
 })();
