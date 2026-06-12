@@ -1282,3 +1282,116 @@ body {
   .dw-quick-grid { grid-template-columns: repeat(3,1fr); }
   .dw-quick-btn { padding: 12px 5px 10px; min-height: 60px; }
 }
+
+
+/* ════════════════════════════════════════════════════════════════
+   DESKTOP LAYOUT FIX — two-column word-processor layout (≥821px)
+   ROOT CAUSE: .wp-layout was missing display:flex so the sidebar
+   and editor stacked vertically instead of sitting side-by-side.
+   This also caused the document pages area to collapse to zero
+   height, making generated content invisible.
+════════════════════════════════════════════════════════════════ */
+@media (min-width: 821px) {
+
+  /* Outer container: sidebar LEFT + editor RIGHT */
+  .wp-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+
+  /* ── Sidebar: fixed-width left panel ── */
+  .wp-sidebar {
+    width: 300px;
+    min-width: 260px;
+    max-width: 320px;
+    flex-shrink: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Collapsed state: hide sidebar when user clicks ⊞ Panel */
+  .wp-sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+  }
+
+  /* ── Editor wrap: fills remaining width ── */
+  .wp-editor-wrap {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100% !important;
+  }
+
+  /* ── Pages canvas: must scroll inside editor-wrap ── */
+  .wp-pages-area {
+    flex: 1 1 0%;
+    min-height: 0;     /* critical: lets flex shrink below content height */
+    overflow-y: auto;
+  }
+
+  /* ── Page nav bar: never shrinks ── */
+  .wp-page-nav {
+    flex-shrink: 0;
+  }
+
+  /* ── Side panels (Format / Write / etc.) fill sidebar height ── */
+  .wp-spanel {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    flex-direction: column;
+  }
+  .wp-spanel.active {
+    display: flex;
+  }
+
+  /* ── Sidebar tabs: never shrink ── */
+  .wp-sidebar-tabs {
+    flex-shrink: 0;
+  }
+
+  /* ── Sidebar handle/header: never shrinks ── */
+  .wp-sidebar-handle {
+    flex-shrink: 0;
+  }
+
+  /* ── Doc settings: never shrinks ── */
+  .wp-doc-settings {
+    flex-shrink: 0;
+  }
+
+  /* ── Ensure DaraWrite panel body fills available space ── */
+  .dw-panel-body {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GENERATED CONTENT VISIBILITY FIX
+   After AI generation, the #wp-pages div is populated by JS.
+   Make sure the pages area is always visible and scrollable.
+════════════════════════════════════════════════════════════════ */
+#wp-pages:empty::after {
+  content: '';
+  display: block;
+  min-height: 100px;
+}
+
+/* Ensure the word-processor page (A4 paper) always shows even
+   if the parent chain doesn't yet have a calculated height       */
+.wp-page {
+  display: block !important;
+  visibility: visible !important;
+}
+
