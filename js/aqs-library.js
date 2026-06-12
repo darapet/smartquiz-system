@@ -318,7 +318,25 @@ window.libToggleLike=async function(bookId,uid){ await _init(); const lRef=doc(_
 window.libHasLiked=async function(bookId,uid){ await _init(); return(await getDoc(doc(_db,'library_likes',bookId+'_'+uid))).exists(); };
 window.libAddComment=async function(bookId,uid,name,text){ await _init(); await addDoc(collection(_db,'library_comments'),{bookId,uid,displayName:name,text,createdAt:serverTimestamp()}); await updateDoc(doc(_db,'library_books',bookId),{commentCount:increment(1)}); };
 window.libGetComments=async function(bookId){ await _init(); const s=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',bookId),orderBy('createdAt','desc'),limit(50))); return s.docs.map(function(d){return{id:d.id,...d.data()};}); };
-window.libRecordView=async function(bookId){ await _init(); try{await updateDoc(doc(_db,'library_books',bookId),{views:increment(1)});}catch(e){} };
+window.libRecordView=async function(bookId, uid){
+  await _init();
+  try {
+    if (uid) {
+      // Logged-in user: use Firestore doc keyed by bookId+uid so each person counts once
+      const viewRef = doc(_db, 'library_views', bookId + '_' + uid);
+      const snap = await getDoc(viewRef);
+      if (snap.exists()) return; // Already counted this user
+      await setDoc(viewRef, { bookId, uid, viewedAt: serverTimestamp() });
+    } else {
+      // Anonymous user: use localStorage so the same browser session only counts once
+      const lsKey = 'lib_view_' + bookId;
+      if (localStorage.getItem(lsKey)) return; // Already counted this browser
+      localStorage.setItem(lsKey, '1');
+    }
+    // Only reaches here on the very first view — safe to increment
+    await updateDoc(doc(_db,'library_books',bookId),{views:increment(1)});
+  } catch(e) {}
+};
 
 
 window.libUploadFile=async function(file,bookId,type){
