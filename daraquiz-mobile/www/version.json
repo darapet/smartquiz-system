@@ -1,8 +1,8 @@
 {
-  "version": "1.283",
-  "versionCode": 261,
+  "version": "1.284",
+  "versionCode": 262,
   "releaseDate": "2026-06-12",
-  "notes": "AI Teacher v2.9.0: removed wave canvas, solving board as main area, AI Teacher redirects to browser on mobile.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.283/daraquiz-v1.283.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.283/daraquiz-v1.283.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.284/daraquiz-v1.284.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.284/daraquiz-v1.284.apk"
 }
