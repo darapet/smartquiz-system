@@ -177,7 +177,29 @@
   }
 
   /* ── PDF / Document Viewer ── */
+  function hidePdfControls() {
+    ['btn-prev','btn-next','page-info'].forEach(function(id){
+      var el=document.getElementById(id); if(el) el.style.display='none';
+    });
+    document.querySelectorAll('.lib-reader-toolbar button').forEach(function(el){ el.style.display='none'; });
+    document.getElementById('pdf-loading').style.display='none';
+  }
+  function showEmbedViewer(viewerUrl) {
+    hidePdfControls();
+    var viewer = document.getElementById('docs-viewer');
+    viewer.src = viewerUrl;
+    viewer.style.display = 'block';
+  }
   async function loadPDF(url) {
+    // Detect file type from URL extension
+    var ext = url.split('?')[0].split('.').pop().toLowerCase();
+    var officeExts = ['doc','docx','ppt','pptx','xls','xlsx'];
+    if (officeExts.indexOf(ext) !== -1) {
+      // Microsoft Office Online viewer — best for Office files, stays on site
+      showEmbedViewer('https://view.officeapps.live.com/op/embed.aspx?src=' + encodeURIComponent(url));
+      return;
+    }
+    // Try PDF.js for PDFs (and unknown types — PDF.js detects by content)
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     try {
       _pdfDoc = await pdfjsLib.getDocument({ url, withCredentials: false }).promise;
@@ -186,14 +208,7 @@
       renderPage(_curPage);
     } catch(e) {
       // Fallback: Google Docs embedded viewer — stays on your site, no redirect
-      document.getElementById('pdf-loading').style.display = 'none';
-      ['btn-prev','btn-next','page-info'].forEach(function(id){
-        var el=document.getElementById(id); if(el) el.style.display='none';
-      });
-      document.querySelectorAll('.lib-reader-toolbar button').forEach(function(el){ el.style.display='none'; });
-      var viewer = document.getElementById('docs-viewer');
-      viewer.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true';
-      viewer.style.display = 'block';
+      showEmbedViewer('https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true');
     }
   }
 

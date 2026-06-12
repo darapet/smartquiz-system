@@ -16,7 +16,7 @@ import {
 /* Cloudinary direct-upload config (no server required) */
 var _CLD_CLOUD = 'du7misvms';
 var _CLD_THUMB_PRESET = 'smartquiz_thumbs';
-var _CLD_FILE_PRESET  = 'smartquiz_files';
+var _CLD_FILE_PRESET  = 'smartquiz_docs';
 
 function _waitFirebase() {
   return new Promise(function(res){
@@ -324,12 +324,11 @@ window.libRecordView=async function(bookId){ await _init(); try{await updateDoc(
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  const resourceType=isThumb?'image':'raw';
-  const folder=isThumb?'library/thumbnails':'library/files';
+  const resourceType=isThumb?'image':'auto';
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
-  formData.append('public_id',folder+'/'+bookId);
+  if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
   const res=await fetch(url,{method:'POST',body:formData});
   if(!res.ok){

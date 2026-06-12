@@ -151,6 +151,7 @@
           <div class="lib-upload-zone-hint">JPG / PNG / WEBP — max 5MB</div>
           <input type="file" id="thumb-input" accept="image/*" onchange="onThumbSelect(this)">
         </div>
+        <div id="thumb-error" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;color:#f87171;font-size:.8rem;font-weight:500"></div>
         <div id="thumb-preview" style="margin-top:8px;display:none;align-items:center;gap:10px">
           <img id="thumb-img" style="height:72px;border-radius:8px;object-fit:cover;">
           <span id="thumb-name" style="font-size:.75rem;color:#64748b"></span>
@@ -230,13 +231,24 @@
 
   /* ── File selectors ── */
   window.onThumbSelect = function(inp) {
+    var errEl = document.getElementById('thumb-error');
+    errEl.style.display = 'none';
     if (!inp.files[0]) return;
-    if (inp.files[0].size > 5242880) { window.libToast('Cover image must be under 5MB.'); inp.value=''; return; }
+    var mb = (inp.files[0].size / 1048576).toFixed(1);
+    if (inp.files[0].size > 5242880) {
+      inp.value = '';
+      _selThumb = null;
+      document.getElementById('thumb-preview').style.display = 'none';
+      document.getElementById('thumb-zone').style.borderColor = 'rgba(239,68,68,.5)';
+      errEl.textContent = '⚠️ Image too large (' + mb + ' MB). Cover image must be under 5 MB. Please choose a smaller image.';
+      errEl.style.display = 'block';
+      return;
+    }
     _selThumb = inp.files[0];
-    document.getElementById('thumb-img').src = URL.createObjectURL(_selThumb);
-    document.getElementById('thumb-name').textContent = _selThumb.name;
-    document.getElementById('thumb-preview').style.display = 'flex';
     document.getElementById('thumb-zone').style.borderColor = 'rgba(99,102,241,.5)';
+    document.getElementById('thumb-img').src = URL.createObjectURL(_selThumb);
+    document.getElementById('thumb-name').textContent = _selThumb.name + ' (' + mb + ' MB)';
+    document.getElementById('thumb-preview').style.display = 'flex';
   };
   window.onFileSelect = function(inp) {
     if (!inp.files[0]) return;
