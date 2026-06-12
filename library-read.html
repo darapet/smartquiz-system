@@ -117,7 +117,12 @@
   const bookId = new URLSearchParams(location.search).get('id');
   if (!bookId) { window.libToast('No book ID.'); }
 
-  window.libOnAuth(async function(user) { _user = user; renderCommentForm(); });
+  window.libOnAuth(async function(user) {
+    _user = user;
+    renderCommentForm();
+    // Record view after auth resolves so we have the uid for unique tracking
+    if (bookId && _book) window.libRecordView(bookId, user ? user.uid : null);
+  });
 
   async function init() {
     if (!bookId) return;
@@ -125,7 +130,7 @@
     try {
       _book = await window.libGetBook(bookId);
       if (!_book) { window.libToast('Book not found.'); return; }
-      window.libRecordView(bookId);
+      // View is recorded inside libOnAuth so we have the user uid
       renderInfo();
       loadComments();
       if (_book.fileUrl) loadPDF(_book.fileUrl);
@@ -142,7 +147,7 @@
     if (_book.thumbnailUrl) { const img=document.getElementById('book-thumb'); img.src=_book.thumbnailUrl; img.style.display='block'; }
     document.getElementById('book-title').textContent = _book.title;
     document.getElementById('like-count').textContent = _book.likes || 0;
-    document.getElementById('reader-count').textContent = '👁️ ' + ((_book.views||0)+1) + ' readers';
+    document.getElementById('reader-count').textContent = '👁️ ' + (_book.views||0) + ' readers';
     const dl = document.getElementById('dl-btn');
     dl.href = '#';
     dl.onclick = async function(e) {
@@ -207,8 +212,27 @@
       document.getElementById('lib-pdf-canvas').style.display = 'block';
       renderPage(_curPage);
     } catch(e) {
-      // Fallback: Google Docs embedded viewer — stays on your site, no redirect
-      showEmbedViewer('https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true');
+      // Fallback 1: direct iframe — all modern browsers render PDFs natively,
+      // and iframes bypass the CORS restriction that blocks PDF.js on Cloudinary URLs.
+      hidePdfControls();
+      var viewer = document.getElementById('docs-viewer');
+      viewer.style.display = 'block';
+      viewer.src = url;
+
+      // Fallback 2: if the direct URL still can't display (e.g. attachment header),
+      // swap to Google Docs viewer after a short wait.
+      var _fbTimeout = setTimeout(function() {
+        // Only switch if PDF.js canvas is still hidden (i.e. direct iframe didn't work)
+        if (document.getElementById('lib-pdf-canvas').style.display === 'none') {
+          viewer.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true';
+        }
+      }, 4000);
+
+      // If iframe loads successfully cancel the fallback timer
+      viewer.onload = function() {
+        // Check content — if Google Docs is NOT needed, cancel the fallback
+        if (viewer.src === url) clearTimeout(_fbTimeout);
+      };
     }
   }
 
