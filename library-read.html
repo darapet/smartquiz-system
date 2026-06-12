@@ -36,6 +36,7 @@
     <div class="lib-pdf-canvas-wrap" id="pdf-wrap">
       <div style="color:#64748b;font-size:.85rem;padding:40px;text-align:center" id="pdf-loading">Loading PDF…</div>
       <canvas id="lib-pdf-canvas" style="display:none"></canvas>
+      <iframe id="docs-viewer" style="display:none;width:100%;min-height:75vh;border:none;background:#1e1e2e" allow="fullscreen"></iframe>
     </div>
   </div>
 
@@ -142,7 +143,28 @@
     document.getElementById('book-title').textContent = _book.title;
     document.getElementById('like-count').textContent = _book.likes || 0;
     document.getElementById('reader-count').textContent = '👁️ ' + ((_book.views||0)+1) + ' readers';
-    const dl = document.getElementById('dl-btn'); dl.href = _book.fileUrl || '#'; dl.download = _book.title + '.pdf';
+    const dl = document.getElementById('dl-btn');
+    dl.href = '#';
+    dl.onclick = async function(e) {
+      e.preventDefault();
+      if (!_book || !_book.fileUrl) return;
+      const orig = dl.textContent;
+      dl.textContent = '⏳…';
+      try {
+        const resp = await fetch(_book.fileUrl);
+        const blob = await resp.blob();
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        const urlPath = _book.fileUrl.split('?')[0];
+        const dotIdx = urlPath.lastIndexOf('.');
+        const ext = dotIdx > urlPath.lastIndexOf('/') ? urlPath.slice(dotIdx) : '';
+        a.download = (_book.title || 'document') + ext;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+      } catch(err) { window.open(_book.fileUrl, '_blank'); }
+      dl.textContent = orig;
+      return false;
+    };
     const meta = document.getElementById('book-meta');
     meta.innerHTML = [
       _book.institution   ? `<div class="lib-book-info-row">🏫 <span>${_book.institution}</span></div>` : '',
@@ -154,7 +176,7 @@
     ].join('');
   }
 
-  /* ── PDF Viewer ── */
+  /* ── PDF / Document Viewer ── */
   async function loadPDF(url) {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     try {
@@ -163,7 +185,15 @@
       document.getElementById('lib-pdf-canvas').style.display = 'block';
       renderPage(_curPage);
     } catch(e) {
-      document.getElementById('pdf-loading').textContent = 'Could not load PDF. Click Download to get the file.';
+      // Fallback: Google Docs embedded viewer — stays on your site, no redirect
+      document.getElementById('pdf-loading').style.display = 'none';
+      ['btn-prev','btn-next','page-info'].forEach(function(id){
+        var el=document.getElementById(id); if(el) el.style.display='none';
+      });
+      document.querySelectorAll('.lib-reader-toolbar button').forEach(function(el){ el.style.display='none'; });
+      var viewer = document.getElementById('docs-viewer');
+      viewer.src = 'https://docs.google.com/viewer?url=' + encodeURIComponent(url) + '&embedded=true';
+      viewer.style.display = 'block';
     }
   }
 

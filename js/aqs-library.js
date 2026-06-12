@@ -324,7 +324,7 @@ window.libRecordView=async function(bookId){ await _init(); try{await updateDoc(
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  const resourceType=isThumb?'image':'auto';
+  const resourceType=isThumb?'image':'raw';
   const folder=isThumb?'library/thumbnails':'library/files';
   const formData=new FormData();
   formData.append('file',file);
