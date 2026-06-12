@@ -12,8 +12,9 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, limit,
   serverTimestamp, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
-    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+/* Cloudinary upload endpoint (replaces Firebase Storage) */
+var _CLOUDINARY_UPLOAD_URL = 'https://41287842-97aa-46ca-a29d-afc7f33af84a-00-2yk7dft4p2ds8.riker.replit.dev/api/library/upload';
 
 function _waitFirebase() {
   return new Promise(function(res){
@@ -348,12 +349,19 @@ window._libResetDailyCount=async function(key){
 };
 
 window.libUploadFile=async function(file,bookId,type){
-  await _init();
-  const ext=file.name.split('.').pop().toLowerCase();
-  const path=type==='thumb'?'library/thumbnails/'+bookId+'.'+ext:'library/files/'+bookId+'.'+ext;
-  const fileRef=storageRef(_storage,path);
-  await uploadBytes(fileRef,file);
-  return await getDownloadURL(fileRef);
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('bookId',bookId);
+  formData.append('uploadType',type||'file');
+  const res=await fetch(_CLOUDINARY_UPLOAD_URL,{method:'POST',body:formData});
+  if(!res.ok){
+    let msg='Upload failed ('+res.status+')';
+    try{const d=await res.json();if(d.error)msg=d.error;}catch(e){}
+    throw new Error(msg);
+  }
+  const data=await res.json();
+  if(!data.url) throw new Error('No URL returned from upload service');
+  return data.url;
 };
 window.libExtractPdfText=async function(pdfUrl,maxPages){
   maxPages=maxPages||10; if(typeof pdfjsLib==='undefined') return '';
