@@ -346,39 +346,57 @@
     btn.disabled=true;
     document.getElementById('upload-progress').style.display='block';
 
+    let successCount = 0, failCount = 0, lastError = '';
+
     for (let i=0; i<_batch.length; i++) {
       const item=_batch[i];
-      if (item.status==='done') continue;
+      if (item.status==='done') { successCount++; continue; }
       item.status='uploading'; renderBatch();
       setProgress(Math.round((i/_batch.length)*80), 'Uploading: '+item.data.title+'…');
       try {
         const bookId='lib_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
         let thumbnailUrl='', fileUrl='';
         if (item.thumb) { setProgress(null,'Uploading cover…'); thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb'); }
-        setProgress(null,'Uploading book file (this may take a moment)…');
+        setProgress(null,'Saving book file — this may take a moment…');
         fileUrl=await window.libUploadFile(item.file,bookId,'file');
+        setProgress(null,'Saving to library database…');
         await window.libAddBook({
           ...item.data, thumbnailUrl, fileUrl,
           uploaderUid: _user.uid,
           uploaderName: ((_profile.firstName||'')+' '+(_profile.lastName||'')).trim()
         });
-        item.status='done'; renderBatch();
+        item.status='done'; successCount++;
+        renderBatch();
       } catch(e) {
-        item.status='error'; renderBatch();
-        window.libToast('Upload failed: '+e.message);
+        item.status='error'; failCount++;
+        lastError = e.message;
+        renderBatch();
+        setProgress(null,'❌ Failed: ' + e.message);
       }
     }
 
-    setProgress(100,'All uploads complete! ✅');
-    setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 3000);
     btn.disabled=false;
-    _batch=[]; renderBatch();
-    document.getElementById('file-input').value='';
-    document.getElementById('thumb-input').value='';
-    document.getElementById('file-name-show').style.display='none';
-    document.getElementById('thumb-preview').style.display='none';
-    window.libToast('✅ Book(s) uploaded successfully!');
-    loadMyBooks(); loadStats();
+
+    if (failCount > 0 && successCount === 0) {
+      setProgress(null,'❌ Upload failed — ' + lastError);
+      window.libToast('Upload failed: ' + lastError, 6000);
+    } else if (failCount > 0) {
+      setProgress(100, successCount + ' uploaded, ' + failCount + ' failed');
+      window.libToast(successCount + ' book(s) uploaded. ' + failCount + ' failed: ' + lastError);
+      setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 5000);
+      _batch = _batch.filter(function(b){ return b.status !== 'done'; });
+      renderBatch(); loadMyBooks(); loadStats();
+    } else {
+      setProgress(100,'✅ ' + successCount + ' book(s) uploaded successfully!');
+      setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 3000);
+      window.libToast('✅ Book(s) uploaded successfully!');
+      _batch=[]; renderBatch();
+      document.getElementById('file-input').value='';
+      document.getElementById('thumb-input').value='';
+      document.getElementById('file-name-show').style.display='none';
+      document.getElementById('thumb-preview').style.display='none';
+      loadMyBooks(); loadStats();
+    }
   };
 
   function setProgress(pct,text){

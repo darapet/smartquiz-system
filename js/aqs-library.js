@@ -280,28 +280,34 @@ window.libUpdateBook=async function(id,data){ await _init(); await updateDoc(doc
 window.libDeleteBook=async function(id){ await _init(); await deleteDoc(doc(_db,'library_books',id)); };
 window.libGetBook=async function(id){ await _init(); const s=await getDoc(doc(_db,'library_books',id)); return s.exists()?{id:s.id,...s.data()}:null; };
 
-/* Smart search: server filters on institutionType+institution (most selective), client filters rest */
+/* Smart search — avoids composite indexes by sorting client-side */
 window.libSearchBooks=async function(f){
   await _init();
-  const constraints=[where('status','==','approved')];
-  /* Use most specific server-side filter available */
+  /* Single-field server filters only (no orderBy on server = no composite index needed) */
+  const constraints=[where('status','==','approved'),limit(300)];
   if(f.institution) constraints.push(where('institution','==',f.institution));
   else if(f.institutionType) constraints.push(where('institutionType','==',f.institutionType));
-  constraints.push(orderBy('createdAt','desc'),limit(200));
   let docs=(await getDocs(query(collection(_db,'library_books'),...constraints))).docs.map(function(d){return{id:d.id,...d.data()};});
   /* Client-side filters */
-  if(f.institution && !constraints.find(c=>c._field&&c._field.segments&&c._field.segments[0]==='institution'))
-    docs=docs.filter(function(b){ return b.institution===f.institution; });
   if(f.course)  docs=docs.filter(function(b){ return b.course===f.course; });
   if(f.level)   docs=docs.filter(function(b){ return b.level===f.level; });
   if(f.keyword){
     const kw=f.keyword.toLowerCase();
     docs=docs.filter(function(b){ return (b.title||'').toLowerCase().includes(kw)||(b.course||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw); });
   }
+  /* Sort newest first client-side */
+  docs.sort(function(a,b){ return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)); });
   return docs;
 };
 
-window.libGetMyBooks=async function(uid){ await _init(); const s=await getDocs(query(collection(_db,'library_books'),where('uploaderUid','==',uid),orderBy('createdAt','desc'))); return s.docs.map(function(d){return{id:d.id,...d.data()};}); };
+/* No orderBy on server = no composite index needed; sort client-side */
+window.libGetMyBooks=async function(uid){
+  await _init();
+  const s=await getDocs(query(collection(_db,'library_books'),where('uploaderUid','==',uid),limit(200)));
+  return s.docs.map(function(d){return{id:d.id,...d.data()};}).sort(function(a,b){
+    return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0));
+  });
+};
 window.libGetMyStats=async function(uid){ await _init(); const s=await getDocs(query(collection(_db,'library_books'),where('uploaderUid','==',uid))); let b=0,r=0,l=0,c=0; s.docs.forEach(function(d){const x=d.data();b++;r+=x.views||0;l+=x.likes||0;c+=x.commentCount||0;}); return{books:b,readers:r,likes:l,comments:c}; };
 window.libToggleLike=async function(bookId,uid){ await _init(); const lRef=doc(_db,'library_likes',bookId+'_'+uid); const s=await getDoc(lRef); if(s.exists()){await deleteDoc(lRef);await updateDoc(doc(_db,'library_books',bookId),{likes:increment(-1)});return false;}else{await setDoc(lRef,{bookId,uid,createdAt:serverTimestamp()});await updateDoc(doc(_db,'library_books',bookId),{likes:increment(1)});return true;} };
 window.libHasLiked=async function(bookId,uid){ await _init(); return(await getDoc(doc(_db,'library_likes',bookId+'_'+uid))).exists(); };
