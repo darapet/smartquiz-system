@@ -85,39 +85,6 @@
       <div class="lib-stat-card"><div class="lib-stat-num" id="s-comments">0</div><div class="lib-stat-lbl">Comments</div></div>
     </div>
 
-    <!-- DAILY READER ADMIN PANEL -->
-    <div class="lib-card-form" id="daily-stats-panel">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-        <div class="lib-card-form-title" style="margin:0">📊 Daily Library Stats</div>
-        <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="refreshDailyStats()" id="refresh-stats-btn">↻ Refresh</button>
-      </div>
-
-      <!-- TODAY -->
-      <div style="background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.18);border-radius:12px;padding:16px;margin-bottom:16px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-          <div style="font-size:.8rem;font-weight:600;color:#94a3b8;letter-spacing:.05em;text-transform:uppercase">Today</div>
-          <div style="font-size:.75rem;color:#64748b" id="daily-date"></div>
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:8px;margin-bottom:10px">
-          <div style="font-size:2.2rem;font-weight:800;color:#e2e8f0;line-height:1" id="daily-count">—</div>
-          <div style="font-size:.85rem;color:#64748b;margin-bottom:6px">/ 150 readers</div>
-        </div>
-        <div style="background:rgba(255,255,255,.06);border-radius:99px;height:8px;overflow:hidden;margin-bottom:10px">
-          <div id="daily-bar" style="height:100%;border-radius:99px;width:0%;transition:width .5s ease;background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div style="font-size:.75rem;color:#64748b" id="daily-status">Loading…</div>
-          <button class="lib-btn lib-btn-danger lib-btn-sm" id="reset-btn" onclick="resetTodayCount()" style="font-size:.72rem;padding:5px 12px">🔄 Reset Today's Count</button>
-        </div>
-      </div>
-
-      <!-- 7-DAY HISTORY -->
-      <div style="font-size:.78rem;font-weight:600;color:#64748b;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Last 7 Days</div>
-      <div id="daily-history" style="display:flex;flex-direction:column;gap:6px">
-        <div style="color:#475569;font-size:.8rem;text-align:center;padding:12px">Loading history…</div>
-      </div>
-    </div>
-
     <!-- UPLOAD FORM -->
     <div class="lib-card-form">
       <div class="lib-card-form-title">📖 Upload a New Book</div>
@@ -409,75 +376,6 @@
     if(text) document.getElementById('progress-text').textContent=text;
   }
 
-  /* ── Daily Reader Admin Panel ── */
-  async function refreshDailyStats() {
-    const btn = document.getElementById('refresh-stats-btn');
-    if (btn) { btn.textContent = '…'; btn.disabled = true; }
-
-    try {
-      // Today
-      const today = window.libGetDailyKey();
-      document.getElementById('daily-date').textContent = today;
-      const todayRes = await window.libCheckDailyLimit();
-      const count = todayRes.count;
-      document.getElementById('daily-count').textContent = count;
-      const pct = Math.min(100, Math.round((count / 150) * 100));
-      document.getElementById('daily-bar').style.width = pct + '%';
-      document.getElementById('daily-bar').style.background =
-        count >= 150 ? 'linear-gradient(90deg,#ef4444,#f97316)' :
-        count >= 120 ? 'linear-gradient(90deg,#f59e0b,#f97316)' :
-                       'linear-gradient(90deg,#6366f1,#8b5cf6)';
-      document.getElementById('daily-status').textContent =
-        count >= 150 ? '🔴 Limit reached — library is closed for today' :
-        count >= 120 ? '🟡 Almost full — ' + (150 - count) + ' slots remaining' :
-                       '🟢 Open — ' + count + ' of 150 readers today';
-
-      // 7-day history
-      const hist = document.getElementById('daily-history');
-      const rows = [];
-      for (let i = 0; i < 7; i++) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        const key = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-        rows.push(key);
-      }
-
-      // Fetch all 7 docs from Firestore via libCheckDailyLimit trick: read each key
-      // We'll call a small helper to read arbitrary day docs
-      const histRows = await Promise.all(rows.map(async function(key) {
-        try {
-          const snap = await window._libDailySnap(key);
-          const n = snap ? (snap.readers || 0) : 0;
-          const pct = Math.min(100, Math.round((n / 150) * 100));
-          const color = n >= 150 ? '#ef4444' : n >= 120 ? '#f59e0b' : '#6366f1';
-          const label = key === today ? '<strong>' + key + ' (today)</strong>' : key;
-          return `<div style="display:flex;align-items:center;gap:10px">
-            <div style="font-size:.72rem;color:#64748b;width:86px;flex-shrink:0">${label}</div>
-            <div style="flex:1;background:rgba(255,255,255,.05);border-radius:99px;height:6px;overflow:hidden">
-              <div style="height:100%;border-radius:99px;width:${pct}%;background:${color};transition:width .4s"></div>
-            </div>
-            <div style="font-size:.72rem;color:#94a3b8;width:52px;text-align:right;flex-shrink:0">${n} / 150</div>
-          </div>`;
-        } catch(e) { return ''; }
-      }));
-      hist.innerHTML = histRows.join('') || '<div style="color:#475569;font-size:.8rem;padding:8px">No data</div>';
-    } catch(e) {
-      window.libToast('Stats error: ' + e.message);
-    }
-
-    if (btn) { btn.textContent = '↻ Refresh'; btn.disabled = false; }
-  }
-
-  window.refreshDailyStats = refreshDailyStats;
-
-  window.resetTodayCount = async function() {
-    if (!confirm('Reset today\'s reader count to 0? This will reopen the library for today.')) return;
-    try {
-      await window._libResetDailyCount(window.libGetDailyKey());
-      window.libToast('✅ Today\'s count reset to 0.');
-      refreshDailyStats();
-    } catch(e) { window.libToast('Reset failed: ' + e.message); }
-  };
-
   /* ── My Books ── */
   async function loadStats(){
     const s=await window.libGetMyStats(_user.uid);
@@ -545,7 +443,7 @@
       document.getElementById('profile-overlay').style.display='flex';
     } else {
       document.getElementById('main-content').style.display='block';
-      loadStats(); loadMyBooks(); refreshDailyStats();
+      loadStats(); loadMyBooks();
     }
   });
 </script>

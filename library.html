@@ -64,15 +64,6 @@
   <button class="lib-filter-search-btn" id="search-btn" onclick="doSearch()">🔍 Search</button>
 </section>
 
-<!-- DAILY LIMIT BANNER -->
-<div id="limit-banner" style="display:none;background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(239,68,68,.06));border:1px solid rgba(239,68,68,.25);border-radius:12px;margin:0 16px 16px;padding:14px 18px;display:none;align-items:center;gap:12px">
-  <span style="font-size:1.3rem">⚠️</span>
-  <div>
-    <div id="limit-banner-title" style="font-size:.85rem;font-weight:700;color:#fca5a5;margin-bottom:2px">Daily Reading Limit</div>
-    <div id="limit-banner-text" style="font-size:.78rem;color:#94a3b8;line-height:1.5"></div>
-  </div>
-</div>
-
 <!-- RESULTS -->
 <main class="lib-main">
   <div class="lib-section-hdr">
@@ -175,19 +166,9 @@
 
   async function loadRecent() {
     try {
-      const [books, lim] = await Promise.all([window.libSearchBooks({}), window.libCheckDailyLimit()]);
+      const books = await window.libSearchBooks({});
       _allBooks = books;
       renderGrid(books);
-      /* Show banner if limit is near or reached */
-      const banner = document.getElementById('limit-banner');
-      const bannerText = document.getElementById('limit-banner-text');
-      if (lim.exceeded) {
-        banner.style.display = 'flex';
-        bannerText.textContent = 'The library has reached its limit of 150 readers today. Books cannot be opened until midnight.';
-      } else if (lim.count >= 120) {
-        banner.style.display = 'flex';
-        bannerText.textContent = lim.count + ' of 150 daily readers used. Library may become unavailable soon today.';
-      }
     } catch(e) {
       document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">Could not load books.</div></div>';
     }
