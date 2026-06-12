@@ -10,7 +10,6 @@
 </head>
 <body>
 
-<!-- HEADER -->
 <header class="lib-hdr">
   <span class="lib-logo">📚 xzily Library</span>
   <div class="lib-hdr-actions">
@@ -19,56 +18,66 @@
   </div>
 </header>
 
-<!-- HERO / SEARCH -->
+<!-- HERO -->
 <section class="lib-hero">
   <div class="lib-hero-title">Nigerian Academic Library</div>
-  <div class="lib-hero-sub">Find study materials for your school, level and subject</div>
+  <div class="lib-hero-sub">Browse study materials by your school, course and level — upload yours too</div>
   <div class="lib-search-wrap">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input class="lib-search" id="lib-search" type="search" placeholder="Search by title or subject…" oninput="libSearchInput(this.value)">
+    <input class="lib-search" id="lib-search" type="search" placeholder="Search by title, author or course…">
   </div>
 </section>
 
-<!-- FILTERS -->
+<!-- CASCADE FILTERS -->
 <section class="lib-filters">
+  <!-- Step 1: Type -->
   <div class="lib-filter-group">
-    <label class="lib-filter-label">Institution Type</label>
-    <select class="lib-select" id="f-type" onchange="libOnTypeChange(this.value)">
+    <label class="lib-filter-label">① Institution Type</label>
+    <select class="lib-select" id="f-type" onchange="onTypeChange(this.value)">
       <option value="">All Types</option>
       <option value="university">University</option>
       <option value="polytechnic">Polytechnic</option>
       <option value="college_of_education">College of Education</option>
     </select>
   </div>
+  <!-- Step 2: School -->
   <div class="lib-filter-group">
-    <label class="lib-filter-label">School</label>
-    <select class="lib-select" id="f-school">
-      <option value="">All Schools</option>
+    <label class="lib-filter-label">② School</label>
+    <select class="lib-select" id="f-school" disabled>
+      <option value="">— Select type first —</option>
     </select>
   </div>
+  <!-- Step 3: Course -->
   <div class="lib-filter-group">
-    <label class="lib-filter-label">Level</label>
-    <select class="lib-select" id="f-level">
-      <option value="">All Levels</option>
+    <label class="lib-filter-label">③ Course / Department</label>
+    <select class="lib-select" id="f-course" disabled>
+      <option value="">— Select type first —</option>
     </select>
   </div>
+  <!-- Step 4: Level -->
   <div class="lib-filter-group">
-    <label class="lib-filter-label">Subject / Course</label>
-    <input class="lib-select" id="f-subject" type="text" placeholder="e.g. Mathematics" style="padding:10px 12px;">
+    <label class="lib-filter-label">④ Level</label>
+    <select class="lib-select" id="f-level" disabled>
+      <option value="">— Select type first —</option>
+    </select>
   </div>
-  <button class="lib-filter-search-btn" onclick="libDoSearch()">🔍 Search</button>
+  <button class="lib-filter-search-btn" id="search-btn" onclick="doSearch()">🔍 Search</button>
 </section>
 
-<!-- BOOK GRID -->
+<!-- RESULTS -->
 <main class="lib-main">
   <div class="lib-section-hdr">
-    <span class="lib-section-title" id="lib-grid-title">Recent Books</span>
-    <span class="lib-count" id="lib-grid-count"></span>
+    <span class="lib-section-title" id="grid-title">All Recent Books</span>
+    <span class="lib-count" id="grid-count"></span>
   </div>
   <div id="lib-grid">
-    <!-- skeleton -->
-    <div class="lib-skeleton-grid">
-      ${Array(8).fill('<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>').join('')}
+    <div class="lib-skeleton-grid" id="lib-skeleton">
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
     </div>
   </div>
 </main>
@@ -78,7 +87,82 @@
 <script type="module" src="js/aqs-firebase.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
-  let _allBooks = [], _searchTerm = '';
+  let _allBooks = [];
+
+  /* ── STEP 1: Type selected — unlock schools, courses, levels ── */
+  window.onTypeChange = function(type) {
+    const schoolSel  = document.getElementById('f-school');
+    const courseSel  = document.getElementById('f-course');
+    const levelSel   = document.getElementById('f-level');
+
+    if (!type) {
+      ['f-school','f-course','f-level'].forEach(function(id){
+        const el = document.getElementById(id);
+        el.innerHTML = '<option value="">— Select type first —</option>';
+        el.disabled = true;
+      });
+      return;
+    }
+
+    window.libPopulateSchools(schoolSel, type);
+    window.libPopulateCourses(courseSel, type);
+    window.libPopulateLevels(levelSel,   type);
+
+    schoolSel.disabled = false;
+    courseSel.disabled = false;
+    levelSel.disabled  = false;
+  };
+
+  /* ── SEARCH ── */
+  window.doSearch = async function() {
+    const type    = document.getElementById('f-type').value;
+    const school  = document.getElementById('f-school').value;
+    const course  = document.getElementById('f-course').value;
+    const level   = document.getElementById('f-level').value;
+    const keyword = document.getElementById('lib-search').value.trim();
+
+    showSkeleton();
+
+    const label = [school||type||'All', course, level].filter(Boolean).join(' · ');
+    document.getElementById('grid-title').textContent = label ? 'Results for: ' + label : 'All Books';
+
+    try {
+      const filters = {};
+      if (type)    filters.institutionType = type;
+      if (school)  filters.institution     = school;
+      if (course)  filters.course          = course;
+      if (level)   filters.level           = level;
+      if (keyword) filters.keyword         = keyword;
+      const books = await window.libSearchBooks(filters);
+      _allBooks = books;
+      renderGrid(books);
+    } catch(e) {
+      document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-text">Search failed: '+e.message+'</div></div>';
+    }
+  };
+
+  /* ── search input live filter ── */
+  document.getElementById('lib-search').addEventListener('input', function(){
+    const kw = this.value.toLowerCase();
+    if (!kw) { renderGrid(_allBooks); return; }
+    renderGrid(_allBooks.filter(function(b){
+      return (b.title||'').toLowerCase().includes(kw)||(b.course||b.subject||'').toLowerCase().includes(kw)||(b.institution||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw);
+    }));
+  });
+
+  function showSkeleton() {
+    document.getElementById('lib-grid').innerHTML = document.getElementById('lib-skeleton').outerHTML;
+  }
+
+  function renderGrid(books) {
+    const grid = document.getElementById('lib-grid');
+    document.getElementById('grid-count').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
+    if (!books.length) {
+      grid.innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">No books found for this selection.<br><span style="font-size:.8rem">Be the first to <a href="library-upload.html" style="color:#6366f1;font-weight:700">upload one!</a></span></div></div>';
+      return;
+    }
+    grid.innerHTML = '<div class="lib-grid">' + books.map(window.libBookCardHTML).join('') + '</div>';
+  }
 
   async function loadRecent() {
     try {
@@ -86,63 +170,9 @@
       _allBooks = books;
       renderGrid(books);
     } catch(e) {
-      document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">Could not load books. Please try again.</div></div>';
+      document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">Could not load books.</div></div>';
     }
   }
-
-  function renderGrid(books) {
-    const grid = document.getElementById('lib-grid');
-    document.getElementById('lib-grid-count').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
-    if (!books.length) {
-      grid.innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📚</div><div class="lib-empty-text">No books found for this filter.</div></div>';
-      return;
-    }
-    grid.innerHTML = '<div class="lib-grid">' + books.map(window.libBookCardHTML).join('') + '</div>';
-  }
-
-  window.libOnTypeChange = function(type) {
-    const schoolSel = document.getElementById('f-school');
-    const levelSel  = document.getElementById('f-level');
-    if (type) {
-      window.libPopulateSchools(schoolSel, type);
-      window.libPopulateLevels(levelSel, type);
-    } else {
-      schoolSel.innerHTML = '<option value="">All Schools</option>';
-      levelSel.innerHTML  = '<option value="">All Levels</option>';
-    }
-  };
-
-  window.libDoSearch = async function() {
-    const type    = document.getElementById('f-type').value;
-    const school  = document.getElementById('f-school').value;
-    const level   = document.getElementById('f-level').value;
-    const subject = document.getElementById('f-subject').value.trim();
-    document.getElementById('lib-grid-title').textContent = 'Search Results';
-    document.getElementById('lib-grid').innerHTML = '<div class="lib-skeleton-grid">' + Array(4).fill('<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div></div></div>').join('') + '</div>';
-    try {
-      const filters = {};
-      if (type)   filters.institutionType = type;
-      if (school) filters.institution     = school;
-      if (level)  filters.level           = level;
-      let books = await window.libSearchBooks(filters);
-      if (subject) books = books.filter(function(b){ return (b.subject||'').toLowerCase().includes(subject.toLowerCase()) || (b.title||'').toLowerCase().includes(subject.toLowerCase()); });
-      _allBooks = books;
-      renderGrid(books);
-    } catch(e) {
-      window.libToast('Search failed: ' + e.message);
-    }
-  };
-
-  window.libSearchInput = function(val) {
-    _searchTerm = val.toLowerCase();
-    if (!val.trim()) { renderGrid(_allBooks); return; }
-    const filtered = _allBooks.filter(function(b){
-      return (b.title||'').toLowerCase().includes(_searchTerm) ||
-             (b.subject||'').toLowerCase().includes(_searchTerm) ||
-             (b.institution||'').toLowerCase().includes(_searchTerm);
-    });
-    renderGrid(filtered);
-  };
 
   document.addEventListener('aqs:firebase:ready', loadRecent);
   if (window._aqsFirebaseReady) loadRecent();
