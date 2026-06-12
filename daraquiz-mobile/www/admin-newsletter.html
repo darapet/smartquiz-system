@@ -399,7 +399,7 @@ window.AQS = {
 <script>
 var _logoDataUrl = null;
 var _sentHistory = JSON.parse(localStorage.getItem('_nl_history') || '[]');
-var API_BASE = window.location.origin + '/api';
+var API_BASE = 'https://us-central1-smartquiz-darapet.cloudfunctions.net';
 
 /* ── Auth gate ── */
 document.addEventListener('DOMContentLoaded', function () {
@@ -551,7 +551,7 @@ function sendNewsletter() {
     btn.innerHTML = '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending…';
     hideAlert();
 
-    fetch(API_BASE + '/email/send-newsletter', {
+    fetch(API_BASE + '/sendNewsletter', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject: subject, body: body, senderName: senderName, logoUrl: logoUrl })
