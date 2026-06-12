@@ -12,6 +12,8 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, limit,
   serverTimestamp, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
+    from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
 
 function _waitFirebase() {
   return new Promise(function(res){
@@ -268,8 +270,8 @@ window.LIB_LEVELS = {
 /* ══════════════════════════════════════════════════════
    FIRESTORE
 ══════════════════════════════════════════════════════ */
-let _db=null, _auth=null;
-async function _init(){ if(_db) return; await _waitFirebase(); const a=getApp(); _db=getFirestore(a); _auth=getAuth(a); }
+let _db=null, _auth=null, _storage=null;
+async function _init(){ if(_db) return; await _waitFirebase(); const a=getApp(); _db=getFirestore(a); _auth=getAuth(a); _storage=getStorage(a); }
 
 window.libToast=function(msg,dur){ let el=document.getElementById('lib-toast'); if(!el){el=document.createElement('div');el.id='lib-toast';el.className='lib-toast';document.body.appendChild(el);} el.textContent=msg;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(function(){el.style.display='none';},dur||3000); };
 window.libOnAuth=function(cb){ _init().then(function(){ onAuthStateChanged(_auth,cb); }); };
@@ -346,10 +348,12 @@ window._libResetDailyCount=async function(key){
 };
 
 window.libUploadFile=async function(file,bookId,type){
+  await _init();
   const ext=file.name.split('.').pop().toLowerCase();
   const path=type==='thumb'?'library/thumbnails/'+bookId+'.'+ext:'library/files/'+bookId+'.'+ext;
-  if(typeof window.aqsUploadFile!=='function') throw new Error('aqsUploadFile not available');
-  return await window.aqsUploadFile(file,path);
+  const fileRef=storageRef(_storage,path);
+  await uploadBytes(fileRef,file);
+  return await getDownloadURL(fileRef);
 };
 window.libExtractPdfText=async function(pdfUrl,maxPages){
   maxPages=maxPages||10; if(typeof pdfjsLib==='undefined') return '';
