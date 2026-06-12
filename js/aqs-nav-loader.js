@@ -177,6 +177,9 @@
     'quiz-results':   'Results',
     'quiz-manage':    'Manage Quiz',
     'puzzle':         'Puzzle',
+    'library':        'Library',
+    'library-upload': 'Library Upload',
+    'library-read':   'Library',
   };
 
   document.addEventListener('click', function (e) {
