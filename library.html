@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0b14">
+<title>📚 Library — xzily AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-library.css">
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="lib-hdr">
+  <span class="lib-logo">📚 xzily Library</span>
+  <div class="lib-hdr-actions">
+    <a href="dashboard.html" class="lib-back">← Dashboard</a>
+    <button class="lib-upload-btn" onclick="location.href='library-upload.html'">+ Upload Book</button>
+  </div>
+</header>
+
+<!-- HERO / SEARCH -->
+<section class="lib-hero">
+  <div class="lib-hero-title">Nigerian Academic Library</div>
+  <div class="lib-hero-sub">Find study materials for your school, level and subject</div>
+  <div class="lib-search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="lib-search" id="lib-search" type="search" placeholder="Search by title or subject…" oninput="libSearchInput(this.value)">
+  </div>
+</section>
+
+<!-- FILTERS -->
+<section class="lib-filters">
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">Institution Type</label>
+    <select class="lib-select" id="f-type" onchange="libOnTypeChange(this.value)">
+      <option value="">All Types</option>
+      <option value="university">University</option>
+      <option value="polytechnic">Polytechnic</option>
+      <option value="college_of_education">College of Education</option>
+    </select>
+  </div>
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">School</label>
+    <select class="lib-select" id="f-school">
+      <option value="">All Schools</option>
+    </select>
+  </div>
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">Level</label>
+    <select class="lib-select" id="f-level">
+      <option value="">All Levels</option>
+    </select>
+  </div>
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">Subject / Course</label>
+    <input class="lib-select" id="f-subject" type="text" placeholder="e.g. Mathematics" style="padding:10px 12px;">
+  </div>
+  <button class="lib-filter-search-btn" onclick="libDoSearch()">🔍 Search</button>
+</section>
+
+<!-- BOOK GRID -->
+<main class="lib-main">
+  <div class="lib-section-hdr">
+    <span class="lib-section-title" id="lib-grid-title">Recent Books</span>
+    <span class="lib-count" id="lib-grid-count"></span>
+  </div>
+  <div id="lib-grid">
+    <!-- skeleton -->
+    <div class="lib-skeleton-grid">
+      ${Array(8).fill('<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>').join('')}
+    </div>
+  </div>
+</main>
+
+<div class="lib-toast" id="lib-toast"></div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-library.js"></script>
+<script type="module">
+  let _allBooks = [], _searchTerm = '';
+
+  async function loadRecent() {
+    try {
+      const books = await window.libSearchBooks({});
+      _allBooks = books;
+      renderGrid(books);
+    } catch(e) {
+      document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">Could not load books. Please try again.</div></div>';
+    }
+  }
+
+  function renderGrid(books) {
+    const grid = document.getElementById('lib-grid');
+    document.getElementById('lib-grid-count').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
+    if (!books.length) {
+      grid.innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📚</div><div class="lib-empty-text">No books found for this filter.</div></div>';
+      return;
+    }
+    grid.innerHTML = '<div class="lib-grid">' + books.map(window.libBookCardHTML).join('') + '</div>';
+  }
+
+  window.libOnTypeChange = function(type) {
+    const schoolSel = document.getElementById('f-school');
+    const levelSel  = document.getElementById('f-level');
+    if (type) {
+      window.libPopulateSchools(schoolSel, type);
+      window.libPopulateLevels(levelSel, type);
+    } else {
+      schoolSel.innerHTML = '<option value="">All Schools</option>';
+      levelSel.innerHTML  = '<option value="">All Levels</option>';
+    }
+  };
+
+  window.libDoSearch = async function() {
+    const type    = document.getElementById('f-type').value;
+    const school  = document.getElementById('f-school').value;
+    const level   = document.getElementById('f-level').value;
+    const subject = document.getElementById('f-subject').value.trim();
+    document.getElementById('lib-grid-title').textContent = 'Search Results';
+    document.getElementById('lib-grid').innerHTML = '<div class="lib-skeleton-grid">' + Array(4).fill('<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div></div></div>').join('') + '</div>';
+    try {
+      const filters = {};
+      if (type)   filters.institutionType = type;
+      if (school) filters.institution     = school;
+      if (level)  filters.level           = level;
+      let books = await window.libSearchBooks(filters);
+      if (subject) books = books.filter(function(b){ return (b.subject||'').toLowerCase().includes(subject.toLowerCase()) || (b.title||'').toLowerCase().includes(subject.toLowerCase()); });
+      _allBooks = books;
+      renderGrid(books);
+    } catch(e) {
+      window.libToast('Search failed: ' + e.message);
+    }
+  };
+
+  window.libSearchInput = function(val) {
+    _searchTerm = val.toLowerCase();
+    if (!val.trim()) { renderGrid(_allBooks); return; }
+    const filtered = _allBooks.filter(function(b){
+      return (b.title||'').toLowerCase().includes(_searchTerm) ||
+             (b.subject||'').toLowerCase().includes(_searchTerm) ||
+             (b.institution||'').toLowerCase().includes(_searchTerm);
+    });
+    renderGrid(filtered);
+  };
+
+  document.addEventListener('aqs:firebase:ready', loadRecent);
+  if (window._aqsFirebaseReady) loadRecent();
+</script>
+</body>
+</html>
