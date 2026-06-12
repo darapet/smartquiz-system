@@ -72,7 +72,35 @@ rules_version = '2';
       match /challenges/{challengeId} {
         allow read: if true;
         allow write: if isAdmin() || isSignedIn();
+      
+      // ─── Library Books ──────────────────────────────────────────────
+      match /library_books/{bookId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin()
+            || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
       }
+
+      // ─── Library Profiles ───────────────────────────────────────────
+      match /library_profiles/{uid} {
+        allow read: if true;
+        allow write: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      }
+
+      // ─── Library Likes ──────────────────────────────────────────────
+      match /library_likes/{likeId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn();
+      }
+
+      // ─── Library Comments ───────────────────────────────────────────
+      match /library_comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow delete: if isAdmin()
+            || (isSignedIn() && resource.data.uid == request.auth.uid);
+      }
+}
 
     }
   }
