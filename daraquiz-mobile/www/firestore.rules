@@ -47,14 +47,6 @@ rules_version = '2';
         allow write: if isAdmin() || isSignedIn();
       }
 
-      // ─── Email tokens (passwordless sign-in) ─────────────────────────
-      // Keyed by a safe base64 of the email → { token, created_at }.
-      // Public read+write needed so the app can look up / create a token
-      // before any Firebase Auth session exists.
-      match /email_tokens/{tokenId} {
-        allow read, write: if true;
-      }
-
       // ─── Settings ───────────────────────────────────────────────────
       match /settings/{settingId} {
         // Anyone can read settings (needed for notifications, splash, etc.)
@@ -80,7 +72,36 @@ rules_version = '2';
       match /challenges/{challengeId} {
         allow read: if true;
         allow write: if isAdmin() || isSignedIn();
+      
+      // ─── Library Books ──────────────────────────────────────────────
+      match /library_books/{bookId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow update, delete: if isAdmin()
+            || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
       }
+
+      // ─── Library Profiles ───────────────────────────────────────────
+      match /library_profiles/{uid} {
+        allow read: if true;
+        allow write: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+      }
+
+      // ─── Library Likes ──────────────────────────────────────────────
+      match /library_likes/{likeId} {
+        allow read: if true;
+        allow create, delete: if isSignedIn();
+      }
+
+      // ─── Library Comments ───────────────────────────────────────────
+      match /library_comments/{commentId} {
+        allow read: if true;
+        allow create: if isSignedIn();
+        allow delete: if isAdmin()
+            || (isSignedIn() && resource.data.uid == request.auth.uid);
+      }
+}
 
     }
   }
+  
