@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Newsletter — Admin — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;}
+
+/* ── Layout ── */
+.nl-wrap{display:flex;min-height:100vh;}
+.nl-sidebar{width:240px;background:#13111f;border-right:1px solid rgba(255,255,255,.07);padding:28px 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;}
+.nl-main{margin-left:240px;flex:1;min-height:100vh;display:flex;flex-direction:column;}
+
+/* ── Sidebar ── */
+.nl-brand{padding:0 22px 24px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:12px;}
+.nl-brand-icon{width:40px;height:40px;background:rgba(99,102,241,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.nl-brand-name{font-weight:800;font-size:1rem;color:#e0e7ff;line-height:1.2;}
+.nl-brand-tag{font-size:.7rem;color:#6366f1;font-weight:600;}
+.nl-nav{padding:18px 0;flex:1;}
+.nl-nav-label{padding:6px 22px 4px;font-size:.67rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;}
+.nl-nav-link{display:flex;align-items:center;gap:10px;padding:11px 22px;color:#94a3b8;text-decoration:none;font-size:.87rem;font-weight:500;cursor:pointer;border:none;background:none;width:100%;transition:all .15s;}
+.nl-nav-link:hover{background:rgba(99,102,241,.1);color:#a5b4fc;}
+.nl-nav-link.active{background:rgba(99,102,241,.14);color:#a5b4fc;border-right:3px solid #6366f1;}
+.nl-nav-icon{font-size:1.05rem;width:20px;text-align:center;}
+.nl-sidebar-foot{padding:18px 22px;border-top:1px solid rgba(255,255,255,.07);}
+.nl-status-dot{display:inline-block;width:8px;height:8px;background:#10b981;border-radius:50%;margin-right:6px;}
+.nl-status-text{font-size:.75rem;color:#6ee7b7;}
+
+/* ── Topbar ── */
+.nl-topbar{background:#13111f;border-bottom:1px solid rgba(255,255,255,.07);padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+.nl-topbar-left{display:flex;align-items:center;gap:12px;}
+.nl-topbar-title{font-size:1.05rem;font-weight:700;color:#e0e7ff;}
+.nl-topbar-breadcrumb{font-size:.82rem;color:#4b5563;}
+
+/* ── Content ── */
+.nl-content{padding:32px;flex:1;}
+.nl-grid{display:grid;grid-template-columns:1fr 380px;gap:24px;align-items:start;}
+
+/* ── Cards ── */
+.nl-card{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:16px;overflow:hidden;}
+.nl-card-head{padding:20px 24px 0;display:flex;align-items:center;justify-content:space-between;}
+.nl-card-title{font-size:.95rem;font-weight:700;color:#e0e7ff;display:flex;align-items:center;gap:8px;}
+.nl-card-icon{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.9rem;}
+.nl-card-body{padding:20px 24px 24px;}
+
+/* ── Form fields ── */
+.nl-field{margin-bottom:18px;}
+.nl-field label{display:block;font-size:.82rem;font-weight:600;color:#94a3b8;margin-bottom:7px;letter-spacing:.02em;}
+.nl-field-hint{font-size:.75rem;color:#4b5563;margin-top:5px;}
+.nl-input, .nl-textarea, .nl-select{width:100%;background:#0f0c29;border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:11px 14px;color:#e2e8f0;font-size:.9rem;font-family:'Inter',sans-serif;outline:none;transition:border .2s,box-shadow .2s;}
+.nl-input:focus,.nl-textarea:focus,.nl-select:focus{border-color:rgba(99,102,241,.6);box-shadow:0 0 0 3px rgba(99,102,241,.12);}
+.nl-textarea{resize:vertical;min-height:180px;line-height:1.7;}
+.nl-input::placeholder,.nl-textarea::placeholder{color:#374151;}
+
+/* ── Logo upload zone ── */
+.nl-logo-zone{border:2px dashed rgba(99,102,241,.25);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.nl-logo-zone:hover{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.04);}
+.nl-logo-zone.drag-over{border-color:#6366f1;background:rgba(99,102,241,.08);}
+.nl-logo-preview{max-width:120px;max-height:60px;margin:0 auto 10px;display:block;border-radius:6px;}
+.nl-logo-placeholder{color:#4b5563;font-size:.85rem;}
+.nl-logo-placeholder span{display:block;font-size:1.6rem;margin-bottom:6px;}
+.nl-logo-replace{font-size:.75rem;color:#6366f1;margin-top:6px;cursor:pointer;}
+#nl-logo-input{display:none;}
+
+/* ── Send button ── */
+.nl-send-btn{width:100%;padding:14px 20px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:12px;color:#fff;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:.02em;}
+.nl-send-btn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(99,102,241,.35);}
+.nl-send-btn:active{transform:translateY(0);}
+.nl-send-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+.nl-send-btn svg{flex-shrink:0;}
+
+/* ── Alert ── */
+.nl-alert{display:none;padding:12px 16px;border-radius:10px;font-size:.88rem;margin-bottom:16px;}
+.nl-alert.success{background:rgba(34,197,94,.1);color:#4ade80;border:1px solid rgba(34,197,94,.2);}
+.nl-alert.error{background:rgba(239,68,68,.1);color:#f87171;border:1px solid rgba(239,68,68,.2);}
+
+/* ── Preview card ── */
+.nl-preview-card{background:#0f0c29;border:1px solid rgba(99,102,241,.2);border-radius:14px;overflow:hidden;}
+.nl-preview-header{background:linear-gradient(135deg,#1e1b4b,#312e81);padding:20px;text-align:center;border-bottom:1px solid rgba(99,102,241,.2);}
+.nl-preview-header-logo{width:40px;height:40px;background:rgba(99,102,241,.2);border-radius:10px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;}
+.nl-preview-logo-img{max-width:80px;max-height:40px;margin:0 auto 10px;display:block;}
+.nl-preview-brand{font-size:.85rem;font-weight:800;color:#e0e7ff;}
+.nl-preview-body{padding:20px;}
+.nl-preview-subject{font-size:.95rem;font-weight:700;color:#e0e7ff;margin-bottom:10px;}
+.nl-preview-text{font-size:.82rem;color:#94a3b8;line-height:1.7;white-space:pre-wrap;}
+.nl-preview-footer{padding:14px 20px;border-top:1px solid rgba(255,255,255,.05);font-size:.72rem;color:#475569;text-align:center;}
+
+/* ── Stats row ── */
+.nl-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+.nl-stat{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;text-align:center;}
+.nl-stat-num{font-size:1.6rem;font-weight:800;color:#a5b4fc;display:block;}
+.nl-stat-label{font-size:.75rem;color:#64748b;margin-top:3px;display:block;}
+
+/* ── Char counter ── */
+.nl-char-counter{text-align:right;font-size:.73rem;color:#4b5563;margin-top:4px;}
+
+/* ── Tabs ── */
+.nl-tabs{display:flex;gap:2px;background:rgba(255,255,255,.05);border-radius:10px;padding:3px;margin-bottom:20px;}
+.nl-tab{flex:1;padding:8px 12px;border:none;border-radius:8px;font-size:.82rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;color:#64748b;background:transparent;}
+.nl-tab.active{background:#1a1730;color:#a5b4fc;box-shadow:0 1px 4px rgba(0,0,0,.3);}
+
+/* ── Divider ── */
+.nl-divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:18px 0;}
+
+/* ── Gate overlay ── */
+#nl-gate{position:fixed;inset:0;background:#0f0f1a;z-index:999;display:flex;align-items:center;justify-content:center;}
+.nl-gate-box{background:#1a1730;border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:44px 40px;text-align:center;max-width:340px;width:90%;}
+.nl-gate-icon{font-size:2.8rem;margin-bottom:16px;}
+.nl-gate-title{font-size:1.3rem;font-weight:800;color:#e0e7ff;margin-bottom:8px;}
+.nl-gate-desc{font-size:.88rem;color:#64748b;margin-bottom:6px;}
+
+@media(max-width:900px){
+  .nl-grid{grid-template-columns:1fr;}
+  .nl-sidebar{display:none;}
+  .nl-main{margin-left:0;}
+  .nl-stats{grid-template-columns:repeat(2,1fr);}
+}
+</style>
+</head>
+<body>
+<div id="nl-gate">
+  <div class="nl-gate-box">
+    <div class="nl-gate-icon">🛡️</div>
+    <div class="nl-gate-title">Admin Access Only</div>
+    <p class="nl-gate-desc">This page is restricted to administrators.</p>
+    <p style="font-size:.8rem;color:#4b5563;margin-top:4px;">Redirecting to login…</p>
+  </div>
+</div>
+
+<div class="nl-wrap" id="nl-app" style="display:none;">
+  <!-- Sidebar -->
+  <aside class="nl-sidebar">
+    <div class="nl-brand">
+      <div class="nl-brand-icon">
+        <svg width="22" height="22" viewBox="0 0 36 36" fill="none">
+          <polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/>
+          <circle cx="18" cy="18" r="6" fill="#6366f1"/>
+        </svg>
+      </div>
+      <div>
+        <div class="nl-brand-name">xzily AI</div>
+        <div class="nl-brand-tag">Admin Panel</div>
+      </div>
+    </div>
+
+    <nav class="nl-nav">
+      <div class="nl-nav-label">Navigation</div>
+      <a href="admin.html" class="nl-nav-link">
+        <span class="nl-nav-icon">🏠</span> Dashboard
+      </a>
+      <a href="admin.html" class="nl-nav-link">
+        <span class="nl-nav-icon">👥</span> Users
+      </a>
+      <a href="admin.html" class="nl-nav-link">
+        <span class="nl-nav-icon">📋</span> Quizzes
+      </a>
+      <div class="nl-nav-label" style="margin-top:10px;">Communications</div>
+      <a href="admin-newsletter.html" class="nl-nav-link active">
+        <span class="nl-nav-icon">📧</span> Newsletter
+      </a>
+    </nav>
+
+    <div class="nl-sidebar-foot">
+      <div><span class="nl-status-dot"></span><span class="nl-status-text" id="nl-admin-email">Admin</span></div>
+      <button onclick="doLogout()" style="margin-top:12px;width:100%;padding:9px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:8px;color:#f87171;font-size:.8rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;">Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <div class="nl-main">
+    <div class="nl-topbar">
+      <div class="nl-topbar-left">
+        <div>
+          <div class="nl-topbar-title">Newsletter</div>
+          <div class="nl-topbar-breadcrumb">Compose & send to all subscribers</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:8px;height:8px;background:#10b981;border-radius:50%;"></div>
+        <span style="font-size:.8rem;color:#6ee7b7;font-weight:500;">Brevo connected</span>
+      </div>
+    </div>
+
+    <div class="nl-content">
+      <!-- Stats -->
+      <div class="nl-stats">
+        <div class="nl-stat">
+          <span class="nl-stat-num" id="nl-stat-sent">—</span>
+          <span class="nl-stat-label">Campaigns Sent</span>
+        </div>
+        <div class="nl-stat">
+          <span class="nl-stat-num" id="nl-stat-contacts">—</span>
+          <span class="nl-stat-label">Subscribers</span>
+        </div>
+        <div class="nl-stat">
+          <span class="nl-stat-num" id="nl-stat-last">—</span>
+          <span class="nl-stat-label">Last Sent</span>
+        </div>
+      </div>
+
+      <div id="nl-alert" class="nl-alert"></div>
+
+      <div class="nl-grid">
+        <!-- Compose panel -->
+        <div class="nl-card">
+          <div class="nl-card-head">
+            <div class="nl-card-title">
+              <div class="nl-card-icon" style="background:rgba(99,102,241,.15);">✍️</div>
+              Compose Newsletter
+            </div>
+          </div>
+          <div class="nl-card-body">
+            <div class="nl-tabs">
+              <button class="nl-tab active" onclick="switchTab('compose',this)">Compose</button>
+              <button class="nl-tab" onclick="switchTab('preview',this)">Preview</button>
+            </div>
+
+            <div id="nl-compose-tab">
+              <!-- Sender name -->
+              <div class="nl-field">
+                <label>Sender Name</label>
+                <input type="text" class="nl-input" id="nl-sender" value="xzily AI" placeholder="xzily AI" />
+                <div class="nl-field-hint">Shown as "From" in your subscribers' inboxes</div>
+              </div>
+
+              <!-- Subject -->
+              <div class="nl-field">
+                <label>Subject Line</label>
+                <input type="text" class="nl-input" id="nl-subject" placeholder="What's new at xzily AI 🚀" maxlength="150" oninput="updatePreview();updateCounter('nl-subject','nl-subject-count',150)" />
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+                  <span class="nl-field-hint">Keep it under 60 characters for best open rates</span>
+                  <span class="nl-char-counter"><span id="nl-subject-count">0</span>/150</span>
+                </div>
+              </div>
+
+              <!-- Body -->
+              <div class="nl-field">
+                <label>Message</label>
+                <textarea class="nl-textarea" id="nl-body" placeholder="Write your message here…&#10;&#10;You can use multiple paragraphs — each blank line becomes a new paragraph in the email." oninput="updatePreview();updateCounter('nl-body','nl-body-count',5000)"></textarea>
+                <div style="display:flex;justify-content:space-between;margin-top:4px;">
+                  <span class="nl-field-hint">Plain text — each paragraph on its own line</span>
+                  <span class="nl-char-counter"><span id="nl-body-count">0</span>/5000</span>
+                </div>
+              </div>
+
+              <hr class="nl-divider">
+
+              <!-- Logo upload -->
+              <div class="nl-field">
+                <label>Logo / Header Image <span style="font-weight:400;color:#4b5563;">(optional)</span></label>
+                <div class="nl-logo-zone" id="nl-logo-zone" onclick="document.getElementById('nl-logo-input').click()" ondragover="handleDragOver(event)" ondrop="handleDrop(event)" ondragleave="document.getElementById('nl-logo-zone').classList.remove('drag-over')">
+                  <img id="nl-logo-preview-img" class="nl-logo-preview" style="display:none;" alt="Logo preview" />
+                  <div class="nl-logo-placeholder" id="nl-logo-placeholder">
+                    <span>🖼️</span>
+                    Drop your logo here or click to upload
+                  </div>
+                  <div class="nl-logo-replace" id="nl-logo-replace" style="display:none;">Click to replace</div>
+                </div>
+                <input type="file" id="nl-logo-input" accept="image/*" onchange="handleLogoUpload(event)" />
+                <div class="nl-field-hint">PNG, JPG, SVG — shown at the top of the email. Max 2 MB.</div>
+              </div>
+
+              <!-- Or logo URL -->
+              <div class="nl-field">
+                <label>Or paste a logo URL</label>
+                <input type="url" class="nl-input" id="nl-logo-url" placeholder="https://yoursite.com/logo.png" oninput="updatePreview()" />
+              </div>
+
+              <button class="nl-send-btn" id="nl-send-btn" onclick="sendNewsletter()">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                Send to All Subscribers
+              </button>
+            </div>
+
+            <!-- Preview tab (hidden) -->
+            <div id="nl-preview-tab" style="display:none;">
+              <p style="font-size:.82rem;color:#64748b;margin-bottom:16px;">This is how your email will look to subscribers.</p>
+              <div class="nl-preview-card">
+                <div class="nl-preview-header">
+                  <div id="preview-logo-wrap">
+                    <div class="nl-preview-header-logo">
+                      <svg width="20" height="20" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg>
+                    </div>
+                  </div>
+                  <div class="nl-preview-brand" id="preview-brand">xzily AI</div>
+                </div>
+                <div class="nl-preview-body">
+                  <div class="nl-preview-subject" id="preview-subject">Your subject line here</div>
+                  <div class="nl-preview-text" id="preview-body">Your message will appear here…</div>
+                </div>
+                <div class="nl-preview-footer">
+                  You're receiving this because you're a member of xzily AI.<br>
+                  © 2025 xzily AI — All rights reserved.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right panel -->
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          <!-- Tips card -->
+          <div class="nl-card">
+            <div class="nl-card-head">
+              <div class="nl-card-title">
+                <div class="nl-card-icon" style="background:rgba(245,158,11,.12);">💡</div>
+                Tips
+              </div>
+            </div>
+            <div class="nl-card-body" style="padding-top:14px;">
+              <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;">
+                <li style="display:flex;gap:10px;align-items:flex-start;">
+                  <span style="color:#a5b4fc;font-size:.8rem;margin-top:1px;">✦</span>
+                  <span style="font-size:.82rem;color:#94a3b8;line-height:1.5;">Keep subject lines short — 40–60 characters gets the best open rates</span>
+                </li>
+                <li style="display:flex;gap:10px;align-items:flex-start;">
+                  <span style="color:#a5b4fc;font-size:.8rem;margin-top:1px;">✦</span>
+                  <span style="font-size:.82rem;color:#94a3b8;line-height:1.5;">One topic per newsletter performs better than covering many things</span>
+                </li>
+                <li style="display:flex;gap:10px;align-items:flex-start;">
+                  <span style="color:#a5b4fc;font-size:.8rem;margin-top:1px;">✦</span>
+                  <span style="font-size:.82rem;color:#94a3b8;line-height:1.5;">Paste image links as plain text — Brevo will make them clickable</span>
+                </li>
+                <li style="display:flex;gap:10px;align-items:flex-start;">
+                  <span style="color:#a5b4fc;font-size:.8rem;margin-top:1px;">✦</span>
+                  <span style="font-size:.82rem;color:#94a3b8;line-height:1.5;">Emails are scheduled 1 minute ahead so Brevo can process them</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Checklist card -->
+          <div class="nl-card">
+            <div class="nl-card-head">
+              <div class="nl-card-title">
+                <div class="nl-card-icon" style="background:rgba(16,185,129,.12);">✅</div>
+                Pre-send Checklist
+              </div>
+            </div>
+            <div class="nl-card-body" style="padding-top:14px;">
+              <div style="display:flex;flex-direction:column;gap:10px;" id="nl-checklist">
+                <div class="nl-check-item" id="chk-subject">
+                  <span class="nl-chk-icon">⬜</span>
+                  <span style="font-size:.83rem;color:#94a3b8;">Subject line added</span>
+                </div>
+                <div class="nl-check-item" id="chk-body">
+                  <span class="nl-chk-icon">⬜</span>
+                  <span style="font-size:.83rem;color:#94a3b8;">Message written</span>
+                </div>
+                <div class="nl-check-item" id="chk-sender">
+                  <span class="nl-chk-icon">✅</span>
+                  <span style="font-size:.83rem;color:#94a3b8;">Sender name set</span>
+                </div>
+              </div>
+              <style>.nl-check-item{display:flex;align-items:center;gap:10px;}.nl-chk-icon{font-size:.9rem;flex-shrink:0;}</style>
+            </div>
+          </div>
+
+          <!-- History card -->
+          <div class="nl-card">
+            <div class="nl-card-head">
+              <div class="nl-card-title">
+                <div class="nl-card-icon" style="background:rgba(139,92,246,.12);">📜</div>
+                Recent Sends
+              </div>
+            </div>
+            <div class="nl-card-body" style="padding-top:14px;" id="nl-history-body">
+              <p style="font-size:.82rem;color:#4b5563;text-align:center;padding:10px 0;">No newsletters sent yet</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.AQS = {
+    ajax_url: 'firebase',
+    nonce: '',
+    auth_nonce: '',
+    home_url: 'index.html',
+    login_url: 'login.html',
+    dashboard_url: 'user-dashboard.html',
+    is_logged_in: false,
+    is_host: false,
+    is_admin: false,
+    plugin_url: './'
+};
+</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+<script src="js/aqs-session.js"></script>
+<script>
+var _logoDataUrl = null;
+var _sentHistory = JSON.parse(localStorage.getItem('_nl_history') || '[]');
+var API_BASE = window.location.origin + '/api';
+
+/* ── Auth gate ── */
+document.addEventListener('DOMContentLoaded', function () {
+    renderHistory();
+    updateCounter('nl-subject', 'nl-subject-count', 150);
+    updateCounter('nl-body', 'nl-body-count', 5000);
+
+    /* Wait for aqs-firebase to expose aqsAjax then check admin role */
+    var attempts = 0;
+    var authCheck = setInterval(function () {
+        attempts++;
+        if (attempts > 40) {
+            clearInterval(authCheck);
+            window.location.href = 'login.html?redirect=admin-newsletter.html';
+            return;
+        }
+        if (typeof window.aqsAjax !== 'function') return;
+        /* Check if current user is admin */
+        if (window.AQS && window.AQS.current_user_role === 'admin') {
+            clearInterval(authCheck);
+            showApp();
+        } else if (window.AQS && window.AQS.current_user_role && window.AQS.current_user_role !== 'admin') {
+            clearInterval(authCheck);
+            window.location.href = 'unauthorized.html';
+        }
+    }, 250);
+});
+
+function showApp() {
+    document.getElementById('nl-gate').style.display = 'none';
+    document.getElementById('nl-app').style.display = 'flex';
+    var emailEl = document.getElementById('nl-admin-email');
+    if (emailEl && window.AQS && window.AQS.current_user_email) {
+        emailEl.textContent = window.AQS.current_user_email;
+    }
+    document.getElementById('nl-stat-sent').textContent = _sentHistory.length;
+    document.getElementById('nl-stat-contacts').textContent = '—';
+    document.getElementById('nl-stat-last').textContent = _sentHistory.length > 0
+        ? new Date(_sentHistory[_sentHistory.length-1].time).toLocaleDateString()
+        : 'Never';
+}
+
+function doLogout() {
+    if (typeof window.aqsAjax === 'function') {
+        window.aqsAjax({ action: 'aqs_logout' }, function () {
+            window.location.href = 'login.html';
+        }, function () { window.location.href = 'login.html'; });
+    } else {
+        window.location.href = 'login.html';
+    }
+}
+
+/* ── Tabs ── */
+function switchTab(tab, btn) {
+    document.querySelectorAll('.nl-tab').forEach(function (t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+    document.getElementById('nl-compose-tab').style.display = tab === 'compose' ? 'block' : 'none';
+    document.getElementById('nl-preview-tab').style.display = tab === 'preview' ? 'block' : 'none';
+    if (tab === 'preview') updatePreview();
+}
+
+/* ── Live preview ── */
+function updatePreview() {
+    var subject = document.getElementById('nl-subject').value || 'Your subject line here';
+    var body = document.getElementById('nl-body').value || 'Your message will appear here…';
+    var brand = document.getElementById('nl-sender').value || 'xzily AI';
+    var logoUrl = _logoDataUrl || document.getElementById('nl-logo-url').value;
+
+    document.getElementById('preview-subject').textContent = subject;
+    document.getElementById('preview-body').textContent = body;
+    document.getElementById('preview-brand').textContent = brand;
+
+    var logoWrap = document.getElementById('preview-logo-wrap');
+    if (logoUrl) {
+        logoWrap.innerHTML = '<img src="' + logoUrl + '" class="nl-preview-logo-img" alt="Logo" onerror="this.style.display=\'none\'" />';
+    } else {
+        logoWrap.innerHTML = '<div class="nl-preview-header-logo"><svg width="20" height="20" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>';
+    }
+
+    /* Checklist */
+    setCheck('chk-subject', subject && subject !== 'Your subject line here');
+    setCheck('chk-body', body && body !== 'Your message will appear here…');
+    setCheck('chk-sender', !!brand);
+}
+
+function setCheck(id, ok) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    var icon = el.querySelector('.nl-chk-icon');
+    if (icon) icon.textContent = ok ? '✅' : '⬜';
+}
+
+/* ── Counter ── */
+function updateCounter(inputId, countId, max) {
+    var el = document.getElementById(inputId);
+    var cnt = document.getElementById(countId);
+    if (!el || !cnt) return;
+    cnt.textContent = el.value.length;
+    cnt.style.color = el.value.length > max * 0.9 ? '#f87171' : '#4b5563';
+}
+
+/* ── Logo upload ── */
+function handleLogoUpload(e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+        showAlert('Logo too large — max 2 MB.', 'error');
+        return;
+    }
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+        _logoDataUrl = ev.target.result;
+        document.getElementById('nl-logo-preview-img').src = _logoDataUrl;
+        document.getElementById('nl-logo-preview-img').style.display = 'block';
+        document.getElementById('nl-logo-placeholder').style.display = 'none';
+        document.getElementById('nl-logo-replace').style.display = 'block';
+        updatePreview();
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('nl-logo-zone').classList.add('drag-over');
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('nl-logo-zone').classList.remove('drag-over');
+    var file = e.dataTransfer.files[0];
+    if (file && file.type.startsWith('image/')) {
+        var fakeEvent = { target: { files: [file] } };
+        handleLogoUpload(fakeEvent);
+    }
+}
+
+/* ── Send ── */
+function sendNewsletter() {
+    var subject = (document.getElementById('nl-subject').value || '').trim();
+    var body = (document.getElementById('nl-body').value || '').trim();
+    var senderName = (document.getElementById('nl-sender').value || 'xzily AI').trim();
+    var logoUrl = _logoDataUrl || (document.getElementById('nl-logo-url').value || '').trim();
+
+    if (!subject) { showAlert('Please enter a subject line.', 'error'); document.getElementById('nl-subject').focus(); return; }
+    if (!body) { showAlert('Please write a message.', 'error'); document.getElementById('nl-body').focus(); return; }
+
+    var btn = document.getElementById('nl-send-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Sending…';
+    hideAlert();
+
+    fetch(API_BASE + '/email/send-newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject: subject, body: body, senderName: senderName, logoUrl: logoUrl })
+    })
+    .then(function (r) { return r.json(); })
+    .then(function (data) {
+        if (data.success) {
+            showAlert('Newsletter scheduled! It will be sent to all subscribers within 1 minute.', 'success');
+            btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send to All Subscribers';
+            btn.disabled = false;
+            /* Save to history */
+            _sentHistory.push({ subject: subject, time: Date.now() });
+            localStorage.setItem('_nl_history', JSON.stringify(_sentHistory));
+            document.getElementById('nl-stat-sent').textContent = _sentHistory.length;
+            document.getElementById('nl-stat-last').textContent = new Date().toLocaleDateString();
+            renderHistory();
+            /* Clear form */
+            document.getElementById('nl-subject').value = '';
+            document.getElementById('nl-body').value = '';
+            updatePreview();
+            updateCounter('nl-subject','nl-subject-count',150);
+            updateCounter('nl-body','nl-body-count',5000);
+        } else {
+            showAlert(data.message || 'Failed to send. Check Brevo settings.', 'error');
+            btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send to All Subscribers';
+            btn.disabled = false;
+        }
+    })
+    .catch(function () {
+        showAlert('Network error. Please try again.', 'error');
+        btn.innerHTML = '<svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send to All Subscribers';
+        btn.disabled = false;
+    });
+}
+
+function showAlert(msg, type) {
+    var el = document.getElementById('nl-alert');
+    el.textContent = msg;
+    el.className = 'nl-alert ' + type;
+    el.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(function () { el.style.display = 'none'; }, 8000);
+}
+
+function hideAlert() {
+    var el = document.getElementById('nl-alert');
+    if (el) el.style.display = 'none';
+}
+
+function renderHistory() {
+    var el = document.getElementById('nl-history-body');
+    if (!el) return;
+    if (_sentHistory.length === 0) {
+        el.innerHTML = '<p style="font-size:.82rem;color:#4b5563;text-align:center;padding:10px 0;">No newsletters sent yet</p>';
+        return;
+    }
+    var items = _sentHistory.slice().reverse().slice(0, 5).map(function (item) {
+        return '<div style="padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05);display:flex;align-items:flex-start;gap:10px;">'
+             + '<span style="font-size:.85rem;">📧</span>'
+             + '<div><div style="font-size:.83rem;color:#e0e7ff;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;">' + item.subject + '</div>'
+             + '<div style="font-size:.75rem;color:#4b5563;margin-top:2px;">' + new Date(item.time).toLocaleString() + '</div></div>'
+             + '</div>';
+    }).join('');
+    el.innerHTML = items;
+}
+</script>
+</body>
+</html>
