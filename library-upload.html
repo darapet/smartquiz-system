@@ -7,6 +7,7 @@
 <title>📤 Upload — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -89,7 +90,6 @@
     <div class="lib-card-form">
       <div class="lib-card-form-title">📖 Upload a New Book</div>
 
-      <!-- CASCADE: Type → School → Course → Level -->
       <div class="lib-form-row">
         <div class="lib-form-group">
           <label class="lib-label">① Institution Type *</label>
@@ -123,7 +123,6 @@
         </div>
       </div>
 
-      <!-- Book details -->
       <div class="lib-form-row">
         <div class="lib-form-group full">
           <label class="lib-label">Book Title *</label>
@@ -132,13 +131,9 @@
       </div>
 
       <div class="lib-form-row">
-        <div class="lib-form-group">
+        <div class="lib-form-group full">
           <label class="lib-label">Author (optional)</label>
           <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
-        </div>
-        <div class="lib-form-group">
-          <label class="lib-label">Number of Pages (optional)</label>
-          <input class="lib-input" id="u-pages" type="number" min="1" placeholder="e.g. 320">
         </div>
       </div>
 
@@ -164,10 +159,17 @@
         <div class="lib-upload-zone" id="file-zone">
           <div class="lib-upload-zone-icon">📄</div>
           <div class="lib-upload-zone-text">Click to select the <strong>book file</strong></div>
-          <div class="lib-upload-zone-hint">PDF · EPUB · DOCX — max 50 MB</div>
+          <div class="lib-upload-zone-hint">PDF · EPUB · DOCX — max 50 MB · Pages auto-detected</div>
           <input type="file" id="file-input" accept=".pdf,.epub,.docx,.doc,.txt" onchange="onFileSelect(this)">
         </div>
-        <div id="file-name-show" style="font-size:.75rem;color:#a5b4fc;margin-top:6px;display:none"></div>
+        <div id="file-name-show" style="font-size:.76rem;color:#a5b4fc;margin-top:8px;display:none;line-height:1.7"></div>
+        <!-- Parse progress -->
+        <div id="parse-progress" style="display:none;margin-top:10px">
+          <div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+            <div id="parse-fill" style="height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);transition:width .25s;width:0%"></div>
+          </div>
+          <div id="parse-text" style="font-size:.72rem;color:#64748b;margin-top:5px;text-align:center"></div>
+        </div>
       </div>
 
       <!-- Batch queue -->
@@ -183,7 +185,7 @@
         </button>
       </div>
 
-      <!-- Progress -->
+      <!-- Upload Progress -->
       <div class="lib-progress-wrap" id="upload-progress">
         <div class="lib-progress-bar"><div class="lib-progress-fill" id="progress-fill"></div></div>
         <div class="lib-progress-text" id="progress-text">Uploading…</div>
@@ -204,191 +206,243 @@
 <script type="module" src="js/aqs-firebase.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
-  let _user=null, _profile=null, _batch=[], _selFile=null, _selThumb=null;
+  let _user=null,_profile=null,_batch=[],_selFile=null,_selThumb=null;
+  let _detectedPages=0,_parsedPages=[];
 
-  /* ── PROFILE CASCADE ── */
-  window.profileTypeChange = function(type) {
-    const schoolSel = document.getElementById('p-school');
-    const deptSel   = document.getElementById('p-dept');
-    if (!type) { schoolSel.disabled=true; deptSel.disabled=true; return; }
-    window.libPopulateSchools(schoolSel, type); schoolSel.disabled=false;
-    window.libPopulateCourses(deptSel, type);   deptSel.disabled=false;
+  /* ── CASCADE ── */
+  window.profileTypeChange=function(type){
+    const schoolSel=document.getElementById('p-school');
+    const deptSel=document.getElementById('p-dept');
+    if(!type){schoolSel.disabled=true;deptSel.disabled=true;return;}
+    window.libPopulateSchools(schoolSel,type);schoolSel.disabled=false;
+    window.libPopulateCourses(deptSel,type);deptSel.disabled=false;
   };
-
-  /* ── UPLOAD FORM CASCADE ── */
-  window.uploadTypeChange = function(type) {
-    const school = document.getElementById('u-school');
-    const course = document.getElementById('u-course');
-    const level  = document.getElementById('u-level');
-    if (!type) {
-      [school,course,level].forEach(function(s){ s.innerHTML='<option value="">— Select type first —</option>'; s.disabled=true; });
+  window.uploadTypeChange=function(type){
+    const school=document.getElementById('u-school');
+    const course=document.getElementById('u-course');
+    const level=document.getElementById('u-level');
+    if(!type){
+      [school,course,level].forEach(function(s){s.innerHTML='<option value="">— Select type first —</option>';s.disabled=true;});
       return;
     }
-    window.libPopulateSchools(school, type); school.disabled=false;
-    window.libPopulateCourses(course, type); course.disabled=false;
-    window.libPopulateLevels(level,  type);  level.disabled=false;
+    window.libPopulateSchools(school,type);school.disabled=false;
+    window.libPopulateCourses(course,type);course.disabled=false;
+    window.libPopulateLevels(level,type);level.disabled=false;
   };
 
-  /* ── File selectors ── */
-  window.onThumbSelect = function(inp) {
-    var errEl = document.getElementById('thumb-error');
-    errEl.style.display = 'none';
-    if (!inp.files[0]) return;
-    var mb = (inp.files[0].size / 1048576).toFixed(1);
-    if (inp.files[0].size > 5242880) {
-      inp.value = '';
-      _selThumb = null;
-      document.getElementById('thumb-preview').style.display = 'none';
-      document.getElementById('thumb-zone').style.borderColor = 'rgba(239,68,68,.5)';
-      errEl.textContent = '⚠️ Image too large (' + mb + ' MB). Cover image must be under 5 MB. Please choose a smaller image.';
-      errEl.style.display = 'block';
-      return;
+  /* ── Thumbnail ── */
+  window.onThumbSelect=function(inp){
+    const errEl=document.getElementById('thumb-error');errEl.style.display='none';
+    if(!inp.files[0]) return;
+    const mb=(inp.files[0].size/1048576).toFixed(1);
+    if(inp.files[0].size>5242880){
+      inp.value='';_selThumb=null;
+      document.getElementById('thumb-preview').style.display='none';
+      document.getElementById('thumb-zone').style.borderColor='rgba(239,68,68,.5)';
+      errEl.textContent='⚠️ Image too large ('+mb+' MB). Must be under 5 MB.';
+      errEl.style.display='block';return;
     }
-    _selThumb = inp.files[0];
-    document.getElementById('thumb-zone').style.borderColor = 'rgba(99,102,241,.5)';
-    document.getElementById('thumb-img').src = URL.createObjectURL(_selThumb);
-    document.getElementById('thumb-name').textContent = _selThumb.name + ' (' + mb + ' MB)';
-    document.getElementById('thumb-preview').style.display = 'flex';
-  };
-  window.onFileSelect = function(inp) {
-    if (!inp.files[0]) return;
-    if (inp.files[0].size > 52428800) { window.libToast('File exceeds 50MB limit.'); inp.value=''; return; }
-    _selFile = inp.files[0];
-    const el = document.getElementById('file-name-show');
-    el.textContent = '✅ ' + _selFile.name + ' (' + (_selFile.size/1048576).toFixed(1) + ' MB)';
-    el.style.display = 'block';
-    document.getElementById('file-zone').style.borderColor = 'rgba(34,197,94,.5)';
+    _selThumb=inp.files[0];
+    document.getElementById('thumb-zone').style.borderColor='rgba(99,102,241,.5)';
+    document.getElementById('thumb-img').src=URL.createObjectURL(_selThumb);
+    document.getElementById('thumb-name').textContent=_selThumb.name+' ('+mb+' MB)';
+    document.getElementById('thumb-preview').style.display='flex';
   };
 
-  function getFormData() {
-    return {
-      institutionType: document.getElementById('u-type').value,
-      institution:     document.getElementById('u-school').value,
-      course:          document.getElementById('u-course').value,
-      level:           document.getElementById('u-level').value,
-      title:           document.getElementById('u-title').value.trim(),
-      author:          document.getElementById('u-author').value.trim(),
-      pages:           parseInt(document.getElementById('u-pages').value)||0
+  /* ── File selector — auto-parse PDF ── */
+  window.onFileSelect=async function(inp){
+    if(!inp.files[0]) return;
+    if(inp.files[0].size>52428800){window.libToast('File exceeds 50 MB limit.');inp.value='';return;}
+    _selFile=inp.files[0];
+    _detectedPages=0;_parsedPages=[];
+
+    const nameEl=document.getElementById('file-name-show');
+    const parseBar=document.getElementById('parse-progress');
+    const parseFill=document.getElementById('parse-fill');
+    const parseText=document.getElementById('parse-text');
+
+    const mb=(_selFile.size/1048576).toFixed(1);
+    nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB)';
+    nameEl.style.display='block';
+    document.getElementById('file-zone').style.borderColor='rgba(34,197,94,.5)';
+
+    const isPDF=_selFile.type==='application/pdf'||_selFile.name.toLowerCase().endsWith('.pdf');
+    if(!isPDF) return;
+
+    parseBar.style.display='block';
+    parseFill.style.width='5%';
+    parseText.textContent='Detecting pages…';
+
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const ab=await _selFile.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+      _detectedPages=pdf.numPages;
+
+      nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB) · '+_detectedPages+' pages detected';
+      parseFill.style.width='8%';
+      parseText.textContent='Parsing content (0 / '+_detectedPages+')…';
+
+      _parsedPages=[];
+      for(let i=1;i<=_detectedPages;i++){
+        const page=await pdf.getPage(i);
+        const content=await page.getTextContent();
+        // Preserve line breaks using y-position changes between text items
+        let lastY=null;let text='';
+        for(const item of content.items){
+          if('str' in item){
+            if(lastY!==null&&Math.abs(item.transform[5]-lastY)>3) text+='\n';
+            text+=item.str;
+            lastY=item.transform[5];
+          }
+        }
+        _parsedPages.push({n:i,text:text.trim()});
+
+        const pct=8+Math.round((i/_detectedPages)*90);
+        parseFill.style.width=pct+'%';
+        parseText.textContent='Parsing page '+i+' of '+_detectedPages+'…';
+      }
+
+      parseFill.style.width='100%';
+      parseText.textContent='✅ All '+_detectedPages+' pages parsed and ready';
+      nameEl.textContent='✅ '+_selFile.name+' · '+_detectedPages+' pages · Content ready';
+      setTimeout(function(){parseBar.style.display='none';},4000);
+    }catch(e){
+      _detectedPages=0;_parsedPages=[];
+      parseBar.style.display='none';
+      nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB)';
+    }
+  };
+
+  function getFormData(){
+    return{
+      institutionType:document.getElementById('u-type').value,
+      institution:document.getElementById('u-school').value,
+      course:document.getElementById('u-course').value,
+      level:document.getElementById('u-level').value,
+      title:document.getElementById('u-title').value.trim(),
+      author:document.getElementById('u-author').value.trim(),
+      pages:_detectedPages||0
     };
   }
 
-  function validateForm(d) {
-    if (!d.institutionType) return 'Select an institution type.';
-    if (!d.institution)     return 'Select a school.';
-    if (!d.course)          return 'Select a course/department.';
-    if (!d.level)           return 'Select a level.';
-    if (!d.title)           return 'Enter the book title.';
+  function validateForm(d){
+    if(!d.institutionType) return 'Select an institution type.';
+    if(!d.institution) return 'Select a school.';
+    if(!d.course) return 'Select a course/department.';
+    if(!d.level) return 'Select a level.';
+    if(!d.title) return 'Enter the book title.';
     return null;
   }
 
   /* ── Batch ── */
-  window.addToBatch = function() {
-    const d = getFormData();
-    const err = validateForm(d);
-    if (err) { window.libToast(err); return; }
-    if (!_selFile) { window.libToast('Select a book file first.'); return; }
-    _batch.push({ data:d, file:_selFile, thumb:_selThumb, status:'pending' });
-    _selFile=null; _selThumb=null;
+  window.addToBatch=function(){
+    const d=getFormData();const err=validateForm(d);
+    if(err){window.libToast(err);return;}
+    if(!_selFile){window.libToast('Select a book file first.');return;}
+    _batch.push({data:d,file:_selFile,thumb:_selThumb,parsedPages:[..._parsedPages],status:'pending'});
+    _selFile=null;_selThumb=null;_detectedPages=0;_parsedPages=[];
     document.getElementById('file-input').value='';
     document.getElementById('thumb-input').value='';
     document.getElementById('file-name-show').style.display='none';
+    document.getElementById('parse-progress').style.display='none';
     document.getElementById('thumb-preview').style.display='none';
     document.getElementById('thumb-zone').style.borderColor='';
     document.getElementById('file-zone').style.borderColor='';
     document.getElementById('u-title').value='';
-    renderBatch();
-    window.libToast('Added to batch! Fill next book details.');
+    renderBatch();window.libToast('Added to batch! Fill next book details.');
   };
 
-  function renderBatch() {
-    const el = document.getElementById('batch-queue');
-    if (!_batch.length) { el.innerHTML=''; return; }
-    el.innerHTML = _batch.map(function(b,i){
-      const cls = {done:'done',uploading:'uploading',error:'error',pending:'pending'}[b.status]||'pending';
-      return `<div class="lib-batch-item"><span class="lib-batch-item-name">${b.data.title}</span><span class="lib-batch-status ${cls}">${cls}</span></div>`;
+  function renderBatch(){
+    const el=document.getElementById('batch-queue');
+    if(!_batch.length){el.innerHTML='';return;}
+    el.innerHTML=_batch.map(function(b){
+      const cls={done:'done',uploading:'uploading',error:'error',pending:'pending'}[b.status]||'pending';
+      return`<div class="lib-batch-item"><span class="lib-batch-item-name">${b.data.title}</span><span class="lib-batch-status ${cls}">${cls}</span></div>`;
     }).join('');
   }
 
   /* ── Upload ── */
-  window.doUpload = async function() {
-    const d = getFormData();
-    if (!_selFile && !_batch.length) { window.libToast('Select a book file.'); return; }
-
-    if (_selFile) {
-      const err = validateForm(d);
-      if (err) { window.libToast(err); return; }
-      _batch.unshift({ data:d, file:_selFile, thumb:_selThumb, status:'pending' });
-      _selFile=null; _selThumb=null;
+  window.doUpload=async function(){
+    const d=getFormData();
+    if(!_selFile&&!_batch.length){window.libToast('Select a book file.');return;}
+    if(_selFile){
+      const err=validateForm(d);if(err){window.libToast(err);return;}
+      _batch.unshift({data:d,file:_selFile,thumb:_selThumb,parsedPages:[..._parsedPages],status:'pending'});
+      _selFile=null;_selThumb=null;_detectedPages=0;_parsedPages=[];
     }
 
-    const btn = document.getElementById('upload-btn');
-    btn.disabled=true;
+    const btn=document.getElementById('upload-btn');btn.disabled=true;
     document.getElementById('upload-progress').style.display='block';
+    let successCount=0,failCount=0,lastError='';
 
-    let successCount = 0, failCount = 0, lastError = '';
-
-    for (let i=0; i<_batch.length; i++) {
+    for(let i=0;i<_batch.length;i++){
       const item=_batch[i];
-      if (item.status==='done') { successCount++; continue; }
-      item.status='uploading'; renderBatch();
-      setProgress(Math.round((i/_batch.length)*80), 'Uploading: '+item.data.title+'…');
-      try {
+      if(item.status==='done'){successCount++;continue;}
+      item.status='uploading';renderBatch();
+      setProgress(Math.round((i/_batch.length)*65),'Uploading: '+item.data.title+'…');
+      try{
         const bookId='lib_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-        let thumbnailUrl='', fileUrl='';
-        if (item.thumb) { setProgress(null,'Uploading cover…'); thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb'); }
-        setProgress(null,'Saving book file — this may take a moment…');
+        let thumbnailUrl='',fileUrl='',parsedUrl='';
+
+        if(item.thumb){setProgress(null,'Uploading cover image…');thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb');}
+
+        setProgress(null,'Uploading book file to Cloudinary…');
         fileUrl=await window.libUploadFile(item.file,bookId,'file');
+
+        // Upload parsed content JSON to Cloudinary if available
+        if(item.parsedPages&&item.parsedPages.length>0){
+          setProgress(null,'Saving parsed content to Cloudinary…');
+          try{
+            parsedUrl=await window.libUploadParsed(item.parsedPages,bookId);
+          }catch(pe){
+            // Non-fatal — book will fall back to PDF.js rendering
+            console.warn('[upload] parsed content upload failed:',pe.message);
+          }
+        }
+
         setProgress(null,'Saving to library database…');
         await window.libAddBook({
-          ...item.data, thumbnailUrl, fileUrl,
-          uploaderUid: _user.uid,
-          uploaderName: ((_profile.firstName||'')+' '+(_profile.lastName||'')).trim()
+          ...item.data,thumbnailUrl,fileUrl,parsedUrl,
+          uploaderUid:_user.uid,
+          uploaderName:((_profile.firstName||'')+' '+(_profile.lastName||'')).trim()
         });
-        item.status='done'; successCount++;
-        renderBatch();
-      } catch(e) {
-        item.status='error'; failCount++;
-        lastError = e.message;
-        renderBatch();
-        /* Show the real error so user knows what went wrong */
-        setProgress(null,'❌ Failed: ' + e.message);
+        item.status='done';successCount++;renderBatch();
+      }catch(e){
+        item.status='error';failCount++;lastError=e.message;renderBatch();
+        setProgress(null,'❌ Failed: '+e.message);
       }
     }
 
     btn.disabled=false;
-
-    if (failCount > 0 && successCount === 0) {
-      /* All failed */
-      setProgress(null,'❌ Upload failed — ' + lastError);
-      window.libToast('Upload failed: ' + lastError, 6000);
-      /* Keep batch so user can retry */
-    } else if (failCount > 0) {
-      /* Some failed */
-      setProgress(100, successCount + ' uploaded, ' + failCount + ' failed');
-      window.libToast(successCount + ' book(s) uploaded. ' + failCount + ' failed: ' + lastError);
-      setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 5000);
-      _batch = _batch.filter(function(b){ return b.status !== 'done'; });
-      renderBatch(); loadMyBooks(); loadStats();
+    if(failCount>0&&successCount===0){
+      setProgress(null,'❌ Upload failed — '+lastError);
+      window.libToast('Upload failed: '+lastError,6000);
+    } else if(failCount>0){
+      setProgress(100,successCount+' uploaded, '+failCount+' failed');
+      window.libToast(successCount+' book(s) uploaded. '+failCount+' failed: '+lastError);
+      setTimeout(function(){document.getElementById('upload-progress').style.display='none';},5000);
+      _batch=_batch.filter(function(b){return b.status!=='done';});
+      renderBatch();loadMyBooks();loadStats();
     } else {
-      /* All succeeded */
-      setProgress(100,'✅ ' + successCount + ' book(s) uploaded successfully!');
-      setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 3000);
+      setProgress(100,'✅ '+successCount+' book(s) uploaded successfully!');
+      setTimeout(function(){document.getElementById('upload-progress').style.display='none';},3000);
       window.libToast('✅ Book(s) uploaded successfully!');
-      _batch=[]; renderBatch();
+      _batch=[];renderBatch();
       document.getElementById('file-input').value='';
       document.getElementById('thumb-input').value='';
       document.getElementById('file-name-show').style.display='none';
+      document.getElementById('parse-progress').style.display='none';
       document.getElementById('thumb-preview').style.display='none';
-      loadMyBooks(); loadStats();
+      loadMyBooks();loadStats();
     }
   };
 
   function setProgress(pct,text){
-    if(pct!==null) document.getElementById('progress-fill').style.width=pct+'%';
-    if(text) document.getElementById('progress-text').textContent=text;
+    if(pct!==null)document.getElementById('progress-fill').style.width=pct+'%';
+    if(text)document.getElementById('progress-text').textContent=text;
   }
 
-  /* ── My Books ── */
   async function loadStats(){
     const s=await window.libGetMyStats(_user.uid);
     document.getElementById('s-books').textContent=s.books;
@@ -401,17 +455,19 @@
     const books=await window.libGetMyBooks(_user.uid);
     document.getElementById('my-books-count').textContent=books.length?'('+books.length+')':'';
     const el=document.getElementById('my-books-list');
-    if(!books.length){ el.innerHTML='<div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">No books uploaded yet.</div>'; return; }
+    if(!books.length){el.innerHTML='<div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">No books uploaded yet.</div>';return;}
     el.innerHTML=books.map(function(b){
-      return `<div class="lib-book-row">
+      const parsedBadge=b.parsedUrl?'<span style="font-size:.65rem;padding:2px 8px;border-radius:10px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac;margin-left:6px">✓ Parsed</span>':'';
+      return`<div class="lib-book-row">
         ${b.thumbnailUrl?`<img class="lib-book-row-thumb" src="${b.thumbnailUrl}" alt="">`:'<div class="lib-book-row-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:rgba(99,102,241,.1)">📖</div>'}
         <div class="lib-book-row-info">
-          <div class="lib-book-row-title">${b.title}</div>
+          <div class="lib-book-row-title">${b.title}${parsedBadge}</div>
           <div class="lib-book-row-meta">${b.institution||''} · ${b.course||b.subject||''} · ${b.level||''}</div>
           <div class="lib-book-row-stats">
             <span class="lib-book-row-stat">👁️ ${b.views||0}</span>
             <span class="lib-book-row-stat">❤️ ${b.likes||0}</span>
             <span class="lib-book-row-stat">💬 ${b.commentCount||0}</span>
+            ${b.pages?`<span class="lib-book-row-stat">📄 ${b.pages}p</span>`:''}
           </div>
         </div>
         <div class="lib-book-row-actions">
@@ -424,38 +480,36 @@
 
   window.deleteBook=async function(id){
     if(!confirm('Delete this book? This cannot be undone.')) return;
-    try{ await window.libDeleteBook(id); window.libToast('Book deleted.'); loadMyBooks(); loadStats(); }
-    catch(e){ window.libToast('Error: '+e.message); }
+    try{await window.libDeleteBook(id);window.libToast('Book deleted.');loadMyBooks();loadStats();}
+    catch(e){window.libToast('Error: '+e.message);}
   };
 
-  /* ── Profile save ── */
   window.saveProfile=async function(){
     const fn=document.getElementById('p-fname').value.trim();
     const ln=document.getElementById('p-lname').value.trim();
     const it=document.getElementById('p-type').value;
     const sc=document.getElementById('p-school').value;
     const dp=document.getElementById('p-dept').value;
-    if(!fn||!ln||!it||!sc||!dp){ window.libToast('Please fill all profile fields.'); return; }
+    if(!fn||!ln||!it||!sc||!dp){window.libToast('Please fill all profile fields.');return;}
     try{
       await window.libSaveProfile(_user.uid,{firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp});
       _profile={firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp};
       document.getElementById('profile-overlay').style.display='none';
       document.getElementById('main-content').style.display='block';
-      loadStats(); loadMyBooks();
+      loadStats();loadMyBooks();
       window.libToast('Profile saved! You can now upload books.');
-    }catch(e){ window.libToast('Save failed: '+e.message); }
+    }catch(e){window.libToast('Save failed: '+e.message);}
   };
 
-  /* ── Auth ── */
   window.libOnAuth(async function(user){
-    if(!user){ document.getElementById('auth-gate').style.display='flex'; return; }
+    if(!user){document.getElementById('auth-gate').style.display='flex';return;}
     _user=user;
     _profile=await window.libGetProfile(user.uid);
     if(!_profile){
       document.getElementById('profile-overlay').style.display='flex';
     } else {
       document.getElementById('main-content').style.display='block';
-      loadStats(); loadMyBooks();
+      loadStats();loadMyBooks();
     }
   });
 </script>
