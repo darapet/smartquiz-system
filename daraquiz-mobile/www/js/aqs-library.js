@@ -13,8 +13,10 @@ import {
   serverTimestamp, increment
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-/* Cloudinary upload endpoint (replaces Firebase Storage) */
-var _CLOUDINARY_UPLOAD_URL = 'https://41287842-97aa-46ca-a29d-afc7f33af84a-00-2yk7dft4p2ds8.riker.replit.dev/api/library/upload';
+/* Cloudinary direct-upload config (no server required) */
+var _CLD_CLOUD = 'du7misvms';
+var _CLD_THUMB_PRESET = 'smartquiz_thumbs';
+var _CLD_FILE_PRESET  = 'smartquiz_files';
 
 function _waitFirebase() {
   return new Promise(function(res){
@@ -317,19 +319,24 @@ window.libRecordView=async function(bookId){ await _init(); try{await updateDoc(
 
 
 window.libUploadFile=async function(file,bookId,type){
+  const isThumb=(type==='thumb');
+  const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
+  const resourceType=isThumb?'image':'auto';
+  const folder=isThumb?'library/thumbnails':'library/files';
   const formData=new FormData();
   formData.append('file',file);
-  formData.append('bookId',bookId);
-  formData.append('uploadType',type||'file');
-  const res=await fetch(_CLOUDINARY_UPLOAD_URL,{method:'POST',body:formData});
+  formData.append('upload_preset',preset);
+  formData.append('public_id',folder+'/'+bookId);
+  const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
+  const res=await fetch(url,{method:'POST',body:formData});
   if(!res.ok){
     let msg='Upload failed ('+res.status+')';
-    try{const d=await res.json();if(d.error)msg=d.error;}catch(e){}
+    try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
     throw new Error(msg);
   }
   const data=await res.json();
-  if(!data.url) throw new Error('No URL returned from upload service');
-  return data.url;
+  if(!data.secure_url) throw new Error('No URL returned from Cloudinary');
+  return data.secure_url;
 };
 window.libExtractPdfText=async function(pdfUrl,maxPages){
   maxPages=maxPages||10; if(typeof pdfjsLib==='undefined') return '';
