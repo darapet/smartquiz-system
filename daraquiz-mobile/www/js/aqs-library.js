@@ -271,8 +271,8 @@ window.LIB_LEVELS = {
 /* ══════════════════════════════════════════════════════
    FIRESTORE
 ══════════════════════════════════════════════════════ */
-let _db=null, _auth=null, _storage=null;
-async function _init(){ if(_db) return; await _waitFirebase(); const a=getApp(); _db=getFirestore(a); _auth=getAuth(a); _storage=getStorage(a); }
+let _db=null, _auth=null;
+async function _init(){ if(_db) return; await _waitFirebase(); const a=getApp(); _db=getFirestore(a); _auth=getAuth(a); }
 
 window.libToast=function(msg,dur){ let el=document.getElementById('lib-toast'); if(!el){el=document.createElement('div');el.id='lib-toast';el.className='lib-toast';document.body.appendChild(el);} el.textContent=msg;el.style.display='block';clearTimeout(el._t);el._t=setTimeout(function(){el.style.display='none';},dur||3000); };
 window.libOnAuth=function(cb){ _init().then(function(){ onAuthStateChanged(_auth,cb); }); };
