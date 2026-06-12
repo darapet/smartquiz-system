@@ -791,6 +791,19 @@ window.addEventListener('DOMContentLoaded', function() {
 <script>
 function btn(id){ return document.getElementById(id); }
 
+
+btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
+    var libKeys = [];
+    for (var li = 1; li <= 10; li++) {
+        var lel = document.getElementById('aqs-lib-key-' + li);
+        if (lel && lel.value.trim().length > 20) libKeys.push(lel.value.trim());
+    }
+    if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(libKeys);
+    saveSettings('/api/settings', {
+        lib_groq_keys: libKeys
+    }, 'aqs-lib-keys-status', this, '💾 Save Library AI Keys');
+});
+
 btn('aqs-save-ai-btn').addEventListener('click', function(){
     var mistralKeys = [];
     for (var mi = 1; mi <= 20; mi++) {
