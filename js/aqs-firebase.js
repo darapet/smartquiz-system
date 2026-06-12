@@ -249,6 +249,13 @@ window.aqsUploadFile = async function(file, storagePath) {
 (function patchJQuery() {
     if (typeof jQuery === 'undefined') {
         document.addEventListener('DOMContentLoaded', patchJQuery);
+        /* Firebase is already initialised — fire ready now for pages that don't use jQuery
+           (e.g. library.html, library-upload.html). Without this, aqs:firebase:ready never
+           fires on those pages and they get stuck loading forever. */
+        if (!window._aqsFirebaseReady) {
+            window._aqsFirebaseReady = true;
+            document.dispatchEvent(new CustomEvent('aqs:firebase:ready'));
+        }
         return;
     }
     var _origAjax = jQuery.ajax.bind(jQuery);

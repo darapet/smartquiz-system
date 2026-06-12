@@ -20,6 +20,23 @@
   </div>
 </header>
 
+<!-- DAILY LIMIT SCREEN -->
+<div id="limit-screen" style="display:none;position:fixed;inset:0;z-index:9999;background:#0a0b14;flex-direction:column;align-items:center;justify-content:center;padding:30px;text-align:center">
+  <div style="font-size:3.5rem;margin-bottom:16px">📚</div>
+  <div style="font-size:1.4rem;font-weight:800;color:#e2e8f0;margin-bottom:10px;letter-spacing:-.01em">Library Unavailable</div>
+  <div style="font-size:.9rem;color:#94a3b8;max-width:360px;line-height:1.8;margin-bottom:6px">
+    Our free library has reached its daily limit of <strong style="color:#6366f1">150 readers</strong>.<br>
+    We do this to keep the service running for everyone at no cost.
+  </div>
+  <div style="font-size:.78rem;color:#475569;margin-bottom:28px;line-height:1.7">
+    The library resets automatically at midnight.<br>Resets in: <strong id="limit-countdown" style="color:#6366f1"></strong>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+    <a href="library.html" style="text-decoration:none;background:#6366f1;color:#fff;padding:10px 24px;border-radius:10px;font-size:.85rem;font-weight:600">← Back to Library</a>
+    <a href="dashboard.html" style="text-decoration:none;background:rgba(255,255,255,.06);color:#94a3b8;padding:10px 24px;border-radius:10px;font-size:.85rem;font-weight:600;border:1px solid rgba(255,255,255,.08)">Dashboard</a>
+  </div>
+</div>
+
 <!-- READER LAYOUT -->
 <div class="lib-reader-layout">
 
@@ -118,8 +135,33 @@
 
   window.libOnAuth(async function(user) { _user = user; renderCommentForm(); });
 
+  function showLimitScreen() {
+    document.querySelector('.lib-reader-layout').style.display = 'none';
+    const el = document.getElementById('limit-screen');
+    el.style.display = 'flex';
+    (function tick() {
+      const now = new Date(), midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const d = midnight - now;
+      const h = Math.floor(d / 3600000), m = Math.floor((d % 3600000) / 60000), s = Math.floor((d % 60000) / 1000);
+      const cd = document.getElementById('limit-countdown');
+      if (cd) cd.textContent = h + 'h ' + String(m).padStart(2,'0') + 'm ' + String(s).padStart(2,'0') + 's';
+      setTimeout(tick, 1000);
+    })();
+  }
+
   async function init() {
     if (!bookId) return;
+
+    /* Check daily limit — use sessionStorage so a page refresh doesn't double-count */
+    const sessionKey = 'lib_rd_' + bookId;
+    if (!sessionStorage.getItem(sessionKey)) {
+      const lim = await window.libCheckDailyLimit();
+      if (lim.exceeded) { showLimitScreen(); return; }
+      await window.libIncrementDailyReaders();
+      try { sessionStorage.setItem(sessionKey, '1'); } catch(e) {}
+    }
+
     try {
       _book = await window.libGetBook(bookId);
       if (!_book) { window.libToast('Book not found.'); return; }

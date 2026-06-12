@@ -182,7 +182,7 @@ window.LIB_COURSES = {
     "Software Engineering",
     /* Natural Sciences */
     "Biochemistry","Botany","Chemistry","Environmental Biology","Genetics",
-    "Geology","Microbiology","Physics","Physics with Electronics",
+    "Geology","Meteorology and Climate Science","Microbiology","Physics","Physics with Electronics",
     "Plant Biology","Zoology",
     /* Medicine & Health Sciences */
     "Dentistry","Medical Laboratory Science","Medical Rehabilitation",
@@ -308,6 +308,30 @@ window.libHasLiked=async function(bookId,uid){ await _init(); return(await getDo
 window.libAddComment=async function(bookId,uid,name,text){ await _init(); await addDoc(collection(_db,'library_comments'),{bookId,uid,displayName:name,text,createdAt:serverTimestamp()}); await updateDoc(doc(_db,'library_books',bookId),{commentCount:increment(1)}); };
 window.libGetComments=async function(bookId){ await _init(); const s=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',bookId),orderBy('createdAt','desc'),limit(50))); return s.docs.map(function(d){return{id:d.id,...d.data()};}); };
 window.libRecordView=async function(bookId){ await _init(); try{await updateDoc(doc(_db,'library_books',bookId),{views:increment(1)});}catch(e){} };
+
+/* ── Daily Reader Limit ── */
+window.libGetDailyKey=function(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+window.libCheckDailyLimit=async function(){
+  await _init();
+  try{
+    const snap=await getDoc(doc(_db,'library_daily_stats',window.libGetDailyKey()));
+    const count=snap.exists()?(snap.data().readers||0):0;
+    return{count,limit:150,exceeded:count>=150};
+  }catch(e){ return{count:0,limit:150,exceeded:false}; }
+};
+window.libIncrementDailyReaders=async function(){
+  await _init();
+  const key=window.libGetDailyKey();
+  const ref=doc(_db,'library_daily_stats',key);
+  try{
+    const snap=await getDoc(ref);
+    if(!snap.exists()){ await setDoc(ref,{readers:1,date:key,createdAt:serverTimestamp()}); return 1; }
+    const current=snap.data().readers||0;
+    if(current>=150) return current;
+    await updateDoc(ref,{readers:increment(1)});
+    return current+1;
+  }catch(e){ return 0; }
+};
 
 window.libUploadFile=async function(file,bookId,type){
   const ext=file.name.split('.').pop().toLowerCase();
