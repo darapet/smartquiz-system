@@ -1925,16 +1925,24 @@
     var total = nonEmpty.length;
     var mgB   = Math.round(mg * 0.8);
 
+    /* ── Page margin split: 15mm goes to @page (printer hardware zone),
+       the rest becomes inner padding on .wp-pp.
+       This prevents content from being clipped by the printer's
+       non-printable area when @page margin was 0. ── */
+    var PAGE_MARGIN = 15;
+    var innerMg  = Math.max(2, mg  - PAGE_MARGIN);
+    var innerMgB = Math.max(2, mgB - PAGE_MARGIN);
+
     /* ── Self-contained print stylesheet ─────────────────────────
        Using short class names (.wp-pp*) to avoid any collision with
        the host-page stylesheet. All sizes are explicit pt/mm values;
        no em/rem inheritance from the app UI. ── */
     var STYLE = [
-      '@page{size:A4 portrait;margin:0;}',
+      '@page{size:A4 portrait;margin:' + PAGE_MARGIN + 'mm;}',
       'html,body{margin:0;padding:0;background:#fff;color:#000;}',
       '.wp-pp{',
         'box-sizing:border-box;width:100%;background:#fff;',
-        'padding:' + mg + 'mm ' + mg + 'mm ' + mgB + 'mm;',
+        'padding:' + innerMg + 'mm ' + innerMg + 'mm ' + innerMgB + 'mm;',
         'font-family:' + bf + ';font-size:' + bd + 'pt;',
         'line-height:' + lh + ';color:#000;',
       '}',
@@ -1942,18 +1950,19 @@
       /* Header / footer */
       '.wp-pp-hdr{display:flex;justify-content:space-between;',
         'border-bottom:0.5pt solid #ccc;padding-bottom:4pt;',
-        'margin-bottom:12pt;font-size:8.5pt;color:#777;}',
+        'margin-bottom:12pt;font-size:8.5pt;color:#777;font-family:Arial,Helvetica,sans-serif;}',
       '.wp-pp-ftr{border-top:0.5pt solid #ccc;padding-top:4pt;',
-        'margin-top:12pt;font-size:8.5pt;color:#777;text-align:center;}',
-      /* Headings — explicit pt so nothing can inherit app UI sizes */
-      '.wp-pp h1{font-size:' + h1sz + 'pt!important;font-weight:700;',
+        'margin-top:12pt;font-size:8.5pt;color:#777;text-align:center;font-family:Arial,Helvetica,sans-serif;}',
+      /* Headings — explicit pt + inherit body font so they never fall back
+         to the browser UA serif default */
+      '.wp-pp h1{font-size:' + h1sz + 'pt!important;font-weight:700;font-family:' + bf + '!important;',
         'margin:.4em 0 .2em;line-height:1.2;color:#000;page-break-after:avoid;}',
-      '.wp-pp h2{font-size:' + h2sz + 'pt!important;font-weight:700;',
+      '.wp-pp h2{font-size:' + h2sz + 'pt!important;font-weight:700;font-family:' + bf + '!important;',
         'margin:.35em 0 .15em;line-height:1.25;color:#000;page-break-after:avoid;}',
-      '.wp-pp h3{font-size:' + h3sz + 'pt!important;font-weight:700;',
+      '.wp-pp h3{font-size:' + h3sz + 'pt!important;font-weight:700;font-family:' + bf + '!important;',
         'margin:.3em 0 .1em;line-height:1.3;color:#000;page-break-after:avoid;}',
       '.wp-pp h4,.wp-pp h5,.wp-pp h6{font-size:' + (bd + 2) + 'pt!important;',
-        'font-weight:700;margin:.25em 0;color:#000;}',
+        'font-weight:700;margin:.25em 0;color:#000;font-family:' + bf + '!important;}',
       /* Body text */
       '.wp-pp p{margin:0 0 6pt;}',
       '.wp-pp ul,.wp-pp ol{padding-left:16pt;margin:0 0 6pt;}',
