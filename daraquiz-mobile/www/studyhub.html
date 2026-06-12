@@ -337,10 +337,10 @@ a{text-decoration:none;color:inherit;}
 .ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
 
 /* Mobile inline solving board */
-.ait-mob-math-board{display:none;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.25);border-radius:10px;padding:10px 12px;margin:8px 0 4px;overflow-y:auto;max-height:260px;}
-.ait-mob-math-board.visible{display:block;}
-.ait-mob-math-board-hdr{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
-.ait-mob-math-board-body{font-size:.88rem;color:#e2e8f0;line-height:2;word-break:break-word;}
+.ait-mob-math-board{display:none;flex-direction:column;flex:1;min-height:0;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.25);border-radius:10px;padding:10px 12px;margin:8px 0 4px;overflow-y:auto;}
+.ait-mob-math-board-hdr{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;flex-shrink:0;}
+.ait-mob-math-board-body{flex:1;overflow-y:auto;font-size:.88rem;color:#e2e8f0;line-height:2;word-break:break-word;}
+.ait-mob-board-placeholder{font-size:.82rem;color:rgba(148,163,184,.35);font-style:italic;text-align:center;padding:24px 0;}
 
 /* Mobile-only elements (hidden on desktop) */
 .ait-mob-action-bar{display:none;gap:6px;padding:8px 12px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);flex-shrink:0;}
@@ -366,6 +366,7 @@ a{text-decoration:none;color:inherit;}
 .ait-summ-card{background:rgba(255,255,255,.04);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:28px 24px;max-width:480px;width:100%;text-align:center;box-shadow:0 0 60px rgba(99,102,241,.12);}
 .ait-summ-trophy{font-size:3rem;margin-bottom:10px;animation:ait-pop .4s cubic-bezier(.34,1.56,.64,1);}
 @keyframes ait-pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+@keyframes ait-fade-in{0%{opacity:0;transform:translateY(8px)}100%{opacity:1;transform:translateY(0)}}
 .ait-summ-title{font-size:1.35rem;font-weight:900;color:var(--text);margin-bottom:4px;}
 .ait-summ-sub{font-size:.83rem;color:var(--muted);margin-bottom:22px;line-height:1.5;}
 .ait-summ-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
@@ -400,14 +401,14 @@ a{text-decoration:none;color:inherit;}
   .ait-voice-grid{grid-template-columns:repeat(5,1fr);gap:5px;}
   /* ── Board tab (default) ── */
   #ait-session-screen:not(.tab-notes) .ait-mob-notes-panel{display:none;}
-  #ait-session-screen:not(.tab-notes) .ait-avatar-wrap,
-  #ait-session-screen:not(.tab-notes) .ait-visual-board,
-  #ait-session-screen:not(.tab-notes) .ait-transcript-wrap{display:block;}
+  #ait-session-screen:not(.tab-notes) .ait-avatar-wrap{display:block;}
+  #ait-session-screen:not(.tab-notes) .ait-transcript-wrap{display:block;max-height:160px;flex-shrink:0;overflow-y:auto;}
+  #ait-session-screen:not(.tab-notes) .ait-mob-math-board{display:flex;}
   /* ── Notes tab ── */
   #ait-session-screen.tab-notes .ait-mob-notes-panel{display:block;}
   #ait-session-screen.tab-notes .ait-avatar-wrap,
-  #ait-session-screen.tab-notes .ait-visual-board,
-  #ait-session-screen.tab-notes .ait-transcript-wrap{display:none;}
+  #ait-session-screen.tab-notes .ait-transcript-wrap,
+  #ait-session-screen.tab-notes .ait-mob-math-board{display:none;}
 }
 
 /* TOAST */
@@ -454,7 +455,7 @@ a{text-decoration:none;color:inherit;}
     <button class="sh-tab" onclick="shTab('gpa')">📊 GPA Calculator</button>
     <button class="sh-tab" onclick="shTab('timer')">⏱️ Study Timer</button>
     <button class="sh-tab" onclick="shTab('exam')">📝 Mock Exam</button>
-    <button class="sh-tab sh-tab-ai-timer" onclick="shTab('aitimer')">🤖 AI Teacher</button>
+    <button class="sh-tab sh-tab-ai-timer" onclick="aitMobileRedirect()">🤖 AI Teacher</button>
   </div>
 </div>
 
@@ -972,23 +973,16 @@ a{text-decoration:none;color:inherit;}
         <div class="ait-avatar-status" id="ait-avatar-status">Ready</div>
       </div>
 
-      <!-- Visual Board — Concept Animator -->
-      <div class="ait-visual-board" id="ait-visual-board">
-        <div class="ait-visual-board-header">
-          <div class="ait-vb-title"><div class="ait-vb-dot" id="ait-vb-dot"></div>Concept Visualizer</div>
-          <div class="ait-vb-mode" id="ait-vb-mode">—</div>
-        </div>
-        <canvas id="ait-visual-canvas"></canvas>
-      </div>
+      <!-- Transcript bubbles — compact above the solving board -->
+      <div class="ait-transcript-wrap" id="ait-transcript"></div>
 
-      <!-- MOBILE: Inline solving board (shows actual LaTeX step-by-step working) -->
+      <!-- MOBILE: Solving board — main content area, full height -->
       <div class="ait-mob-math-board" id="ait-mob-math-board">
         <div class="ait-mob-math-board-hdr">📐 Solving Board — <span id="ait-mob-math-topic"></span></div>
-        <div class="ait-mob-math-board-body" id="ait-mob-math-body"></div>
+        <div class="ait-mob-math-board-body" id="ait-mob-math-body">
+          <div class="ait-mob-board-placeholder">Solving steps will appear here during the lesson…</div>
+        </div>
       </div>
-
-      <!-- Transcript bubbles -->
-      <div class="ait-transcript-wrap" id="ait-transcript"></div>
 
       <!-- MOBILE ONLY: Notes panel — visible on "Lesson Notes" tab -->
       <div class="ait-mob-notes-panel" id="ait-mob-notes-panel">
@@ -2152,22 +2146,51 @@ function aitShowMathBoardContent(latex){
     if(window.MathJax) MathJax.typesetPromise([body]).catch(e=>console.warn('MathJax',e));
   }
 
-  /* Mobile inline solving board */
-  const mobBoard   = document.getElementById('ait-mob-math-board');
-  const mobBody    = document.getElementById('ait-mob-math-body');
-  const mobTopic   = document.getElementById('ait-mob-math-topic');
-  if(mobBoard && mobBody){
-    mobBoard.classList.add('visible');
+  /* Mobile solving board — always visible via CSS, just populate content */
+  const mobBody  = document.getElementById('ait-mob-math-body');
+  const mobTopic = document.getElementById('ait-mob-math-topic');
+  if(mobBody){
     if(mobTopic) mobTopic.textContent = _ait.topic;
     mobBody.innerHTML = lines;
     if(window.MathJax) MathJax.typesetPromise([mobBody]).catch(e=>console.warn('MathJax mob',e));
   }
 }
 function aitHideMathBoardContent(){
+  /* Desktop board */
   const board = document.getElementById('ait-math-board');
   if(board) board.classList.remove('visible');
-  const mobBoard = document.getElementById('ait-mob-math-board');
-  if(mobBoard) mobBoard.classList.remove('visible');
+  /* Mobile — reset to placeholder instead of hiding */
+  const mobBody  = document.getElementById('ait-mob-math-body');
+  const mobTopic = document.getElementById('ait-mob-math-topic');
+  if(mobBody) mobBody.innerHTML = '<div class="ait-mob-board-placeholder">Solving steps will appear here during the lesson…</div>';
+  if(mobTopic) mobTopic.textContent = '';
+}
+
+/* ─ Mobile redirect — AI Teacher opens in browser ─ */
+function aitMobileRedirect(){
+  if(document.getElementById('ait-mob-redirect-overlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'ait-mob-redirect-overlay';
+  overlay.style.cssText = [
+    'position:fixed;inset:0;z-index:99999;',
+    'background:rgba(10,11,20,.97);',
+    'display:flex;flex-direction:column;align-items:center;justify-content:center;',
+    'padding:36px 28px;gap:14px;backdrop-filter:blur(12px);',
+    'animation:ait-fade-in .25s ease;'
+  ].join('');
+  overlay.innerHTML =
+    '<div style="font-size:2.6rem;line-height:1;">🎓</div>' +
+    '<div style="font-size:1.05rem;font-weight:800;color:#e2e8f0;text-align:center;line-height:1.5;">AI Teacher uses voice</div>' +
+    '<div style="font-size:.86rem;color:#94a3b8;text-align:center;max-width:270px;line-height:1.75;">This feature needs full browser voice support.<br>Opening in your browser now…</div>' +
+    '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;justify-content:center;">' +
+      '<button onclick="window.open(\'https://darapet.github.io/smartquiz-system/studyhub.html\',\'_system\')" ' +
+        'style="padding:11px 22px;border-radius:9px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;">🌐 Open in Browser</button>' +
+      '<button onclick="document.getElementById(\'ait-mob-redirect-overlay\').remove()" ' +
+        'style="padding:11px 20px;border-radius:9px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.06);color:#94a3b8;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;">✕ Dismiss</button>' +
+    '</div>';
+  document.body.appendChild(overlay);
+  /* Auto-open after brief delay so user reads the message */
+  setTimeout(()=>{ window.open('https://darapet.github.io/smartquiz-system/studyhub.html','_system'); }, 900);
 }
 function aitCopyMathBoard(btn){
   const body = document.getElementById('ait-math-board-body');
