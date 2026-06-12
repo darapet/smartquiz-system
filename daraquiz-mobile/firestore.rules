@@ -1,107 +1,91 @@
 rules_version = '2';
-  service cloud.firestore {
-    match /databases/{database}/documents {
+service cloud.firestore {
+  match /databases/{database}/documents {
 
-      // ─── Admin helper ───────────────────────────────────────────────
-      // Admin is identified by email address
-      function isAdmin() {
-        return request.auth != null
-            && request.auth.token.email == 'daramolapeter98@gmail.com';
-      }
-
-      function isSignedIn() {
-        return request.auth != null;
-      }
-
-      // ─── Quizzes ────────────────────────────────────────────────────
-      match /quizzes/{quizId} {
-        // Anyone can read a published quiz (needed for take-quiz page)
-        allow read: if true;
-        // Only admin or the quiz's own host can update/delete
-        allow update, delete: if isAdmin()
-            || (isSignedIn() && resource.data.host_uid == request.auth.uid);
-        // Any signed-in user (host) can create a quiz
-        allow create: if isSignedIn();
-      }
-
-      // ─── Attempts ───────────────────────────────────────────────────
-      match /attempts/{attemptId} {
-        // Anyone can submit an attempt (quiz takers may not be logged in)
-        allow create: if true;
-        // Admin can read, update, delete all attempts
-        allow read, update, delete: if isAdmin()
-            || (isSignedIn() && resource.data.host_uid == request.auth.uid);
-      }
-
-      // ─── Users ──────────────────────────────────────────────────────
-      match /users/{userId} {
-        // Admin has full access; users can read/write their own profile
-        allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
-      }
-
-      // ─── Usernames (public lookup for registration uniqueness check) ─
-      // Keyed by username → { uid }. Public read so the unauthenticated
-      // registration page can check availability before creating the Auth user.
-      match /usernames/{username} {
-        allow read: if true;
-        allow write: if isAdmin() || isSignedIn();
-      }
-
-      // ─── Settings ───────────────────────────────────────────────────
-      match /settings/{settingId} {
-        // Anyone can read settings (needed for notifications, splash, etc.)
-        allow read: if true;
-        // Only admin can write settings
-        allow write: if isAdmin();
-      }
-
-      // ─── Ads ────────────────────────────────────────────────────────
-      match /ads/{adId} {
-        // Anyone can read ads (shown on public pages)
-        allow read: if true;
-        // Only admin can create/update/delete ads
-        allow write: if isAdmin();
-      }
-
-      // ─── Deleted Quizzes Archive ────────────────────────────────────
-      match /deleted_quizzes/{docId} {
-        allow read, write: if isAdmin();
-      }
-
-      // ─── Challenges (Realtime DB handles most of this, but just in case)
-      match /challenges/{challengeId} {
-        allow read: if true;
-        allow write: if isAdmin() || isSignedIn();
-      
-      // ─── Library Books ──────────────────────────────────────────────
-      match /library_books/{bookId} {
-        allow read: if true;
-        allow create: if isSignedIn();
-        allow update, delete: if isAdmin()
-            || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
-      }
-
-      // ─── Library Profiles ───────────────────────────────────────────
-      match /library_profiles/{uid} {
-        allow read: if true;
-        allow write: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
-      }
-
-      // ─── Library Likes ──────────────────────────────────────────────
-      match /library_likes/{likeId} {
-        allow read: if true;
-        allow create, delete: if isSignedIn();
-      }
-
-      // ─── Library Comments ───────────────────────────────────────────
-      match /library_comments/{commentId} {
-        allow read: if true;
-        allow create: if isSignedIn();
-        allow delete: if isAdmin()
-            || (isSignedIn() && resource.data.uid == request.auth.uid);
-      }
-}
-
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email == 'daramolapeter98@gmail.com';
     }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ─── Quizzes ────────────────────────────────────────────────────
+    match /quizzes/{quizId} {
+      allow read: if true;
+      allow update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+      allow create: if isSignedIn();
+    }
+
+    // ─── Attempts ───────────────────────────────────────────────────
+    match /attempts/{attemptId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    // ─── Usernames ──────────────────────────────────────────────────
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if isAdmin() || isSignedIn();
+    }
+
+    // ─── Settings ───────────────────────────────────────────────────
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Ads ────────────────────────────────────────────────────────
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Deleted Quizzes ────────────────────────────────────────────
+    match /deleted_quizzes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Challenges ─────────────────────────────────────────────────
+    match /challenges/{challengeId} {
+      allow read: if true;
+      allow write: if isAdmin() || isSignedIn();
+    }
+
+    // ─── Library Books ──────────────────────────────────────────────
+    match /library_books/{bookId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
+    }
+
+    // ─── Library Profiles ───────────────────────────────────────────
+    match /library_profiles/{uid} {
+      allow read: if true;
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+    }
+
+    // ─── Library Likes ──────────────────────────────────────────────
+    match /library_likes/{likeId} {
+      allow read: if true;
+      allow create, delete: if isSignedIn();
+    }
+
+    // ─── Library Comments ───────────────────────────────────────────
+    match /library_comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
   }
-  
+}
