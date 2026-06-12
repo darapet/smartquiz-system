@@ -8,6 +8,45 @@
 <link rel="stylesheet" href="css/aqs-auth.css">
 <style>
 body{margin:0;padding:0;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;font-family:'Inter',sans-serif;}
+
+/* ── OTP step ── */
+#aqs-otp-step{margin-bottom:0;}
+.aqs-otp-email-row{display:flex;gap:8px;align-items:flex-end;}
+.aqs-otp-email-row input{flex:1;}
+#aqs-send-otp-btn{white-space:nowrap;padding:11px 16px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border:none;border-radius:10px;color:#fff;font-size:.83rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;flex-shrink:0;}
+#aqs-send-otp-btn:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(99,102,241,.35);}
+#aqs-send-otp-btn:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none;}
+
+/* ── OTP input wrap ── */
+#aqs-otp-input-wrap{display:none;margin-top:14px;}
+.aqs-otp-label{font-size:.82rem;color:#94a3b8;margin-bottom:10px;display:block;}
+#aqs-otp-boxes{display:flex;gap:8px;justify-content:center;margin-bottom:14px;}
+.aqs-otp-digit{width:44px;height:52px;background:#0f0c29;border:1px solid rgba(255,255,255,.14);border-radius:10px;text-align:center;font-size:1.4rem;font-weight:700;color:#e0e7ff;outline:none;font-family:'Inter',sans-serif;transition:border .2s,box-shadow .2s;caret-color:#6366f1;}
+.aqs-otp-digit:focus{border-color:rgba(99,102,241,.7);box-shadow:0 0 0 3px rgba(99,102,241,.15);}
+#aqs-verify-otp-btn{width:100%;padding:11px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:10px;color:#a5b4fc;font-size:.88rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s;}
+#aqs-verify-otp-btn:hover{background:rgba(99,102,241,.25);}
+#aqs-verify-otp-btn:disabled{opacity:.5;cursor:not-allowed;}
+
+/* ── Verified badge ── */
+#aqs-email-verified-badge{display:none;align-items:center;gap:8px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);border-radius:10px;padding:10px 14px;margin-top:8px;}
+#aqs-email-verified-badge .badge-icon{width:22px;height:22px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.75rem;}
+#aqs-email-verified-badge .badge-text{font-size:.85rem;color:#4ade80;font-weight:600;}
+#aqs-email-verified-badge .badge-email{font-size:.78rem;color:#86efac;margin-top:1px;}
+
+/* ── Locked form fields ── */
+#aqs-register-form-fields{display:none;}
+
+/* ── Step indicator ── */
+.aqs-step-indicator{display:flex;align-items:center;gap:0;margin-bottom:20px;}
+.aqs-step{display:flex;align-items:center;gap:6px;flex:1;}
+.aqs-step-dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;transition:all .3s;}
+.aqs-step-dot.active{background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;box-shadow:0 2px 8px rgba(99,102,241,.4);}
+.aqs-step-dot.done{background:#22c55e;color:#fff;}
+.aqs-step-dot.pending{background:rgba(255,255,255,.08);color:#475569;border:1px solid rgba(255,255,255,.1);}
+.aqs-step-label{font-size:.75rem;font-weight:600;color:#64748b;}
+.aqs-step-label.active{color:#a5b4fc;}
+.aqs-step-label.done{color:#4ade80;}
+.aqs-step-line{flex:1;height:1px;background:rgba(255,255,255,.08);margin:0 6px;}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,8 +66,6 @@ window.AQS = {
 };
 </script>
 
-<!-- Firebase SDK -->
-<!-- Google Identity Services — enables Google Sign-In without Firebase Hosting -->
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
@@ -48,7 +85,21 @@ window.AQS = {
         <p class="aqs-auth-subtitle">Join xzily AI — free forever</p>
     </div>
 
+    <!-- Step indicator -->
+    <div class="aqs-step-indicator">
+        <div class="aqs-step">
+            <div class="aqs-step-dot active" id="step-dot-1">1</div>
+            <span class="aqs-step-label active" id="step-label-1">Verify Email</span>
+        </div>
+        <div class="aqs-step-line"></div>
+        <div class="aqs-step">
+            <div class="aqs-step-dot pending" id="step-dot-2">2</div>
+            <span class="aqs-step-label" id="step-label-2">Your Details</span>
+        </div>
+    </div>
+
     <div id="aqs-register-alert" class="aqs-auth-alert"></div>
+    <div id="aqs-otp-alert" class="aqs-auth-alert" style="display:none;"></div>
 
     <!-- Social signup -->
     <div class="aqs-social-btns">
@@ -61,57 +112,93 @@ window.AQS = {
     <div class="aqs-auth-divider"><span>or create account with email</span></div>
 
     <form id="aqs-register-form" autocomplete="off" novalidate>
-        <div class="aqs-auth-row-2">
+
+        <!-- ── STEP 1: Email + OTP ── -->
+        <div id="aqs-otp-step">
             <div class="aqs-auth-field">
-                <label for="reg-name">Full Name</label>
-                <input type="text" id="reg-name" placeholder="John Doe" required autocomplete="name" />
-            </div>
-            <div class="aqs-auth-field">
-                <label for="reg-username">Username</label>
-                <input type="text" id="reg-username" placeholder="johndoe" required autocomplete="username" />
-            </div>
-        </div>
-        <div class="aqs-auth-field">
-            <label for="reg-email">Email Address</label>
-            <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email" />
-        </div>
-        <div class="aqs-auth-field">
-            <label>I am a…</label>
-            <div class="aqs-role-chips" id="aqs-role-chips">
-                <button type="button" class="aqs-role-chip" data-role="student">🎓 Student</button>
-                <button type="button" class="aqs-role-chip" data-role="teacher">📚 Teacher</button>
-                <button type="button" class="aqs-role-chip" data-role="lecturer">🏫 Lecturer</button>
-                <button type="button" class="aqs-role-chip" data-role="host">🎯 Host</button>
-                <button type="button" class="aqs-role-chip" data-role="other">✦ Other</button>
-            </div>
-            <input type="hidden" id="reg-role" value="" />
-        </div>
-        <div class="aqs-auth-row-2">
-            <div class="aqs-auth-field">
-                <label for="reg-password">Password</label>
-                <div class="aqs-pw-wrap">
-                    <input type="password" id="reg-password" placeholder="Min. 6 characters" required autocomplete="new-password" />
-                    <button type="button" class="aqs-pw-toggle" data-target="reg-password" aria-label="Toggle">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
+                <label for="reg-email">Email Address</label>
+                <div class="aqs-otp-email-row">
+                    <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email" />
+                    <button type="button" id="aqs-send-otp-btn">Send OTP</button>
                 </div>
-                <div class="aqs-pw-strength"><div class="aqs-pw-strength-bar" id="reg-pw-strength-bar"></div></div>
             </div>
-            <div class="aqs-auth-field">
-                <label for="reg-confirm">Confirm Password</label>
-                <div class="aqs-pw-wrap">
-                    <input type="password" id="reg-confirm" placeholder="Repeat password" required autocomplete="new-password" />
-                    <button type="button" class="aqs-pw-toggle" data-target="reg-confirm" aria-label="Toggle">
-                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                    </button>
+
+            <!-- OTP digit input — shown after Send OTP -->
+            <div id="aqs-otp-input-wrap">
+                <span class="aqs-otp-label">Enter the 6-digit code sent to your email</span>
+                <div id="aqs-otp-boxes">
+                    <input class="aqs-otp-digit" id="otp-d0" type="text" inputmode="numeric" maxlength="1" autocomplete="one-time-code" />
+                    <input class="aqs-otp-digit" id="otp-d1" type="text" inputmode="numeric" maxlength="1" />
+                    <input class="aqs-otp-digit" id="otp-d2" type="text" inputmode="numeric" maxlength="1" />
+                    <input class="aqs-otp-digit" id="otp-d3" type="text" inputmode="numeric" maxlength="1" />
+                    <input class="aqs-otp-digit" id="otp-d4" type="text" inputmode="numeric" maxlength="1" />
+                    <input class="aqs-otp-digit" id="otp-d5" type="text" inputmode="numeric" maxlength="1" />
+                </div>
+                <button type="button" id="aqs-verify-otp-btn">Verify Code</button>
+            </div>
+
+            <!-- Verified state badge -->
+            <div id="aqs-email-verified-badge">
+                <div class="badge-icon">✓</div>
+                <div>
+                    <div class="badge-text">Email verified</div>
+                    <div class="badge-email" id="aqs-badge-email"></div>
                 </div>
             </div>
         </div>
-        <label class="aqs-auth-check">
-            <input type="checkbox" id="reg-terms" />
-            I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
-        </label>
-        <button type="submit" class="aqs-auth-submit" id="aqs-register-submit">Create Account</button>
+
+        <!-- ── STEP 2: Registration fields (unlocked after OTP) ── -->
+        <div id="aqs-register-form-fields">
+            <div style="height:16px;"></div>
+            <div class="aqs-auth-row-2">
+                <div class="aqs-auth-field">
+                    <label for="reg-name">Full Name</label>
+                    <input type="text" id="reg-name" placeholder="John Doe" required autocomplete="name" />
+                </div>
+                <div class="aqs-auth-field">
+                    <label for="reg-username">Username</label>
+                    <input type="text" id="reg-username" placeholder="johndoe" required autocomplete="username" />
+                </div>
+            </div>
+            <div class="aqs-auth-field">
+                <label>I am a…</label>
+                <div class="aqs-role-chips" id="aqs-role-chips">
+                    <button type="button" class="aqs-role-chip" data-role="student">🎓 Student</button>
+                    <button type="button" class="aqs-role-chip" data-role="teacher">📚 Teacher</button>
+                    <button type="button" class="aqs-role-chip" data-role="lecturer">🏫 Lecturer</button>
+                    <button type="button" class="aqs-role-chip" data-role="host">🎯 Host</button>
+                    <button type="button" class="aqs-role-chip" data-role="other">✦ Other</button>
+                </div>
+                <input type="hidden" id="reg-role" value="" />
+            </div>
+            <div class="aqs-auth-row-2">
+                <div class="aqs-auth-field">
+                    <label for="reg-password">Password</label>
+                    <div class="aqs-pw-wrap">
+                        <input type="password" id="reg-password" placeholder="Min. 6 characters" required autocomplete="new-password" />
+                        <button type="button" class="aqs-pw-toggle" data-target="reg-password" aria-label="Toggle">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                    <div class="aqs-pw-strength"><div class="aqs-pw-strength-bar" id="reg-pw-strength-bar"></div></div>
+                </div>
+                <div class="aqs-auth-field">
+                    <label for="reg-confirm">Confirm Password</label>
+                    <div class="aqs-pw-wrap">
+                        <input type="password" id="reg-confirm" placeholder="Repeat password" required autocomplete="new-password" />
+                        <button type="button" class="aqs-pw-toggle" data-target="reg-confirm" aria-label="Toggle">
+                            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <label class="aqs-auth-check">
+                <input type="checkbox" id="reg-terms" />
+                I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+            </label>
+            <button type="submit" class="aqs-auth-submit" id="aqs-register-submit" disabled>Create Account</button>
+        </div>
+
     </form>
 
     <p class="aqs-auth-switch">
@@ -120,7 +207,68 @@ window.AQS = {
 
 </div>
 </div>
+
+<script>
+/* Step indicator update — called by aqs-otp.js after verification */
+(function () {
+    var _orig = document.createElement;
+    /* Watch for badge display to update step indicator */
+    var observer = new MutationObserver(function () {
+        var badge = document.getElementById('aqs-email-verified-badge');
+        if (badge && badge.style.display === 'flex') {
+            /* Update step 1 → done, step 2 → active */
+            var d1 = document.getElementById('step-dot-1');
+            var l1 = document.getElementById('step-label-1');
+            var d2 = document.getElementById('step-dot-2');
+            var l2 = document.getElementById('step-label-2');
+            if (d1) { d1.className = 'aqs-step-dot done'; d1.textContent = '✓'; }
+            if (l1) { l1.className = 'aqs-step-label done'; }
+            if (d2) { d2.className = 'aqs-step-dot active'; }
+            if (l2) { l2.className = 'aqs-step-label active'; }
+            /* Show verified email in badge */
+            var emailEl = document.getElementById('aqs-badge-email');
+            var emailInput = document.getElementById('reg-email');
+            if (emailEl && emailInput) emailEl.textContent = emailInput.value;
+        }
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+        var badge = document.getElementById('aqs-email-verified-badge');
+        if (badge) observer.observe(badge, { attributes: true, attributeFilter: ['style'] });
+    });
+})();
+</script>
+
+<script>
+/* After registration success — add user to Brevo contacts */
+(function () {
+    var _origAjax = null;
+    function hookAjax() {
+        if (typeof window.aqsAjax !== 'function') {
+            setTimeout(hookAjax, 300);
+            return;
+        }
+        var _orig = window.aqsAjax;
+        window.aqsAjax = function (data, onSuccess, onError) {
+            if (data && data.action === 'aqs_register') {
+                _orig(data, function (res) {
+                    if (res && res.success && typeof window._aqsOtpAddContact === 'function') {
+                        window._aqsOtpAddContact(data.email, data.name);
+                        /* Clear OTP session */
+                        try { sessionStorage.removeItem('_aqs_otp_verified'); } catch(e) {}
+                    }
+                    if (typeof onSuccess === 'function') onSuccess(res);
+                }, onError);
+            } else {
+                _orig(data, onSuccess, onError);
+            }
+        };
+    }
+    document.addEventListener('DOMContentLoaded', hookAjax);
+})();
+</script>
+
 <script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-otp.js"></script>
 <script src="js/aqs-auth.js"></script>
 <script src="js/aqs-session.js"></script>
 </body>
