@@ -129,6 +129,10 @@ window.addEventListener('DOMContentLoaded', function() {
             hcMKeys.forEach(function(k){ if (mkeys.indexOf(k) === -1) mkeys.push(k); });
             for (var mi = 1; mi <= 20; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
             if (typeof window.setMistralKeys === 'function') window.setMistralKeys(mkeys.filter(function(k){ return k && k.length > 20; }));
+            /* Load Library AI keys */
+            var lkeys = Array.isArray(s.lib_groq_keys) ? s.lib_groq_keys : [];
+            for (var li = 1; li <= 10; li++) { setVal('aqs-lib-key-' + li, lkeys[li-1] || ''); }
+            if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(lkeys.filter(function(k){ return k && k.length > 20; }));
             window._AQS_MISTRAL_MODEL = s.mistral_model || 'mistral-small-latest';
             setVal('aqs-mistral-model', s.mistral_model || 'mistral-small-latest');
             setVal('aqs-music-url', s.bg_music_url);
@@ -346,6 +350,70 @@ window.addEventListener('DOMContentLoaded', function() {
             <span id="aqs-groq-status" class="aqs-status-msg"></span>
         </div>
         <div id="aqs-groq-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
+
+<!-- Library AI Keys — Dedicated Pool (10 slots) -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+        <span class="aqs-settings-card-icon">📚</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Library AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">These keys are used <strong>only for Library features</strong> (AI Explain, AI MCQ Practice) — completely separate from the main quiz AI pool. Falls back to main pool if all 10 are busy. Empty slots are ignored.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#3730a3;">
+            📚 <strong>How it works:</strong> Students using AI Explain and AI MCQ Practice on library PDFs use these 10 keys in round-robin rotation. If all are rate-limited, the system automatically falls back to the main Groq pool.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 1 (Primary)</label>
+                <input type="password" id="aqs-lib-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 2</label>
+                <input type="password" id="aqs-lib-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 3</label>
+                <input type="password" id="aqs-lib-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 4</label>
+                <input type="password" id="aqs-lib-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 5</label>
+                <input type="password" id="aqs-lib-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 6</label>
+                <input type="password" id="aqs-lib-key-6" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 7</label>
+                <input type="password" id="aqs-lib-key-7" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 8</label>
+                <input type="password" id="aqs-lib-key-8" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 9</label>
+                <input type="password" id="aqs-lib-key-9" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 10</label>
+                <input type="password" id="aqs-lib-key-10" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-lib-keys-btn">💾 Save Library AI Keys</button>
+            <span id="aqs-lib-keys-status" class="aqs-status-msg"></span>
+        </div>
     </div>
 </div>
 
@@ -920,6 +988,19 @@ btn('aqs-save-groq-btn').addEventListener('click', function(){
         groq_model: groqModelEl ? groqModelEl.value : 'llama-3.3-70b-versatile'
     }, 'aqs-groq-status', this, '💾 Save Groq Settings');
     for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
+});
+
+
+btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
+    var libKeys = [];
+    for (var li = 1; li <= 10; li++) {
+        var lel = document.getElementById('aqs-lib-key-' + li);
+        if (lel && lel.value.trim().length > 20) libKeys.push(lel.value.trim());
+    }
+    if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(libKeys);
+    saveSettings('/api/settings', {
+        lib_groq_keys: libKeys
+    }, 'aqs-lib-keys-status', this, '💾 Save Library AI Keys');
 });
 
 btn('aqs-save-ai-btn').addEventListener('click', function(){
