@@ -30,6 +30,7 @@
       display: flex; align-items: center; justify-content: center;
       padding: 20px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       transition: opacity .25s;
     }
     #wp-mode-overlay.hidden { opacity: 0; pointer-events: none; }
@@ -52,6 +53,7 @@
       border: 2px solid #e2e8f0; border-radius: 12px;
       padding: 14px 12px; text-align: center; cursor: pointer;
       background: #f8f9ff; transition: all .18s; font-family: inherit;
+      touch-action: manipulation; -webkit-tap-highlight-color: transparent;
     }
     .wp-mode-btn:hover { border-color: #6366f1; background: #eef2ff; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(99,102,241,.15); }
     .wp-mode-btn-icon { font-size: 24px; margin-bottom: 6px; }
@@ -190,7 +192,7 @@
 
     /* ── Mobile notice ─────────────────────────── */
     #wp-mobile-notice {
-      position: fixed; inset: 0; z-index: 1900;
+      position: fixed; inset: 0; z-index: 2100;
       background: rgba(15,12,41,.88); display: flex;
       align-items: center; justify-content: center; padding: 24px;
     }
