@@ -332,6 +332,15 @@ window.libIncrementDailyReaders=async function(){
     return current+1;
   }catch(e){ return 0; }
 };
+window._libDailySnap=async function(key){
+  await _init();
+  try{ const s=await getDoc(doc(_db,'library_daily_stats',key)); return s.exists()?s.data():null; }catch(e){ return null; }
+};
+window._libResetDailyCount=async function(key){
+  await _init();
+  const ref=doc(_db,'library_daily_stats',key);
+  try{ const s=await getDoc(ref); if(s.exists()) await updateDoc(ref,{readers:0}); else await setDoc(ref,{readers:0,date:key,createdAt:serverTimestamp()}); }catch(e){ throw e; }
+};
 
 window.libUploadFile=async function(file,bookId,type){
   const ext=file.name.split('.').pop().toLowerCase();
