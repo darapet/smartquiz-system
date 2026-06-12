@@ -406,3 +406,25 @@ window.libBookCardHTML=function(b){
 };
 
 console.log('[aqs-library] loaded — lib Groq slots: '+window.getLibGroqKeyCount());
+
+/* ══════════════════════════════════════════════════════
+   PARSED CONTENT UPLOAD — stores JSON in Cloudinary
+   (avoids Firebase bandwidth limits for large docs)
+══════════════════════════════════════════════════════ */
+window.libUploadParsed=async function(pages,bookId){
+  const payload=JSON.stringify({totalPages:pages.length,pages:pages});
+  const blob=new Blob([payload],{type:'application/json'});
+  const formData=new FormData();
+  formData.append('file',blob,bookId+'_parsed.json');
+  formData.append('upload_preset',_CLD_FILE_PRESET);
+  formData.append('public_id','library/parsed/'+bookId);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/raw/upload',{method:'POST',body:formData});
+  if(!res.ok){
+    let msg='Parsed upload failed ('+res.status+')';
+    try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
+    throw new Error(msg);
+  }
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned for parsed content');
+  return data.secure_url;
+};
