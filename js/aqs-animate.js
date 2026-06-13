@@ -162,8 +162,8 @@
             $enhBtn.disabled = true;
             $enhBtn.textContent = 'Enhancing...';
 
-            if (typeof window.animateGroqFetch === 'function' && raw) {
-                window.animateGroqFetch({
+            if (typeof window.groqFetch === 'function' && raw) {
+                window.groqFetch({
                     model: 'llama3-8b-8192',
                     messages: [
                         {
