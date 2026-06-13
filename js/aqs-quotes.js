@@ -9,6 +9,10 @@
   (function () {
       'use strict';
 
+      /* ── Dedicated quote keys — loaded from Firebase at runtime ─────── */
+      var _QK        = [];
+      var _QK_IDX_LS = 'aqs_qk_idx';
+      var _QK_RL     = {};
       var _lastQuoteErr = '';
 
       /* Models tried in order — first available wins */
@@ -30,19 +34,88 @@
           motivation:  'Generate exactly 10 diverse motivational and success quotes for students and learners. Use real famous leaders, entrepreneurs, and thinkers — Edison, Einstein, Roosevelt, Mandela, Jobs, Obama, Angelou, Lincoln, and others. Focus on perseverance, learning, growth, and academic excellence.'
       };
 
-      /* All quote generation goes exclusively through the admin-managed quotes pool */
-      async function _quoteFetch(prompt) {
-          if (typeof window.quotesGroqFetch !== 'function') { _lastQuoteErr = 'no_pool'; return null; }
+      async function _loadQuoteKeys() {
+          if (_QK.length) return;
+          /* Wait for Firebase if not ready yet */
+          if (!window._aqsFirebaseReady) {
+              await new Promise(function(resolve) {
+                  var t = setTimeout(resolve, 6000);
+                  document.addEventListener('aqs:firebase:ready', function() { clearTimeout(t); resolve(); }, { once: true });
+              });
+          }
+          try {
+              if (window._aqsFS) {
+                  var cfg = await window._aqsFS.get('settings', 'main');
+                  if (cfg) {
+                      /* Try dedicated quote keys first */
+                      if (Array.isArray(cfg.quoteGroqKeys) && cfg.quoteGroqKeys.length)
+                          _QK = cfg.quoteGroqKeys.filter(function(k){ return (k||'').trim().length > 10; });
+                      /* Fall back to main Groq key pool */
+                      if (!_QK.length && Array.isArray(cfg.groq_keys) && cfg.groq_keys.length)
+                          _QK = cfg.groq_keys.filter(function(k){ return (k||'').trim().length > 20; });
+                  }
+              }
+          } catch(e) {}
+      }
+
+      /* Try one key across all models — returns JSON or null */
+      async function _tryKeyAllModels(key, prompt) {
           for (var m = 0; m < _QUOTE_MODELS.length; m++) {
               try {
-                  var res = await window.quotesGroqFetch({
-                      model: _QUOTE_MODELS[m],
-                      messages: [{ role: 'user', content: prompt }],
-                      max_tokens: 5500, temperature: 1.1
+                  var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                      body: JSON.stringify({
+                          model: _QUOTE_MODELS[m],
+                          messages: [{ role: 'user', content: prompt }],
+                          max_tokens: 5500, temperature: 1.1
+                      })
                   });
-                  if (res && res.ok) { _lastQuoteErr = ''; return await res.json(); }
-              } catch(e) { _lastQuoteErr = 'pool_error'; }
+                  if (res.status === 429) { _lastQuoteErr = 'rate_limit'; return null; }
+                  if (res.status === 401) { _lastQuoteErr = 'invalid_key'; return null; }
+                  if (res.status === 404) { continue; }
+                  if (!res.ok) { _lastQuoteErr = 'api_error_' + res.status; return null; }
+                  _lastQuoteErr = '';
+                  return await res.json();
+              } catch(e) { _lastQuoteErr = 'network'; }
           }
+          return null;
+      }
+
+      async function _quoteFetch(prompt) {
+          await _loadQuoteKeys();
+
+          /* 1. Try dedicated quote keys (Groq) */
+          if (_QK.length) {
+              var start;
+              try { start = parseInt(localStorage.getItem(_QK_IDX_LS) || '0') || 0; } catch(e) { start = 0; }
+              for (var attempt = 0; attempt < _QK.length; attempt++) {
+                  var idx = (start + attempt) % _QK.length;
+                  if (_QK_RL[idx] && Date.now() < _QK_RL[idx]) { _lastQuoteErr = 'rate_limit'; continue; }
+                  var result = await _tryKeyAllModels(_QK[idx], prompt);
+                  if (result) {
+                      try { localStorage.setItem(_QK_IDX_LS, String((idx + 1) % _QK.length)); } catch(e) {}
+                      return result;
+                  }
+                  if (_lastQuoteErr === 'rate_limit') { _QK_RL[idx] = Date.now() + 65000; }
+              }
+          }
+
+          /* 2. Fall back to the main groqFetch chain (Groq → Mistral → HuggingFace) */
+          if (typeof window.groqFetch === 'function') {
+              try {
+                  var fallbackRes = await window.groqFetch({
+                      messages: [{ role: 'user', content: prompt }],
+                      max_tokens: 5500,
+                      temperature: 1.1
+                  });
+                  if (fallbackRes && fallbackRes.ok) {
+                      _lastQuoteErr = '';
+                      return await fallbackRes.json();
+                  }
+              } catch(e) { _lastQuoteErr = _lastQuoteErr || 'fallback_error'; }
+          }
+
           return null;
       }
 
@@ -238,8 +311,8 @@
           _QK = [];
           status('🔑 Loading quote keys from Firebase…');
           await _loadQuoteKeys();
-          if (!_QK.length && typeof window.quotesGroqFetch !== 'function') {
-              status('❌ No quote keys found. Add Groq API keys in Admin Settings → quotes pool.');
+          if (!_QK.length && typeof window.groqFetch !== 'function') {
+              status('❌ No quote keys found and no fallback available. Add Groq API keys in Admin Settings → AI Keys.');
               return null;
           }
           status('⚡ Generating — 5 batches (Physics, Chemistry, Biology, Mathematics, Motivation)…');
