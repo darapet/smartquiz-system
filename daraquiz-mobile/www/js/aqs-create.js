@@ -286,7 +286,7 @@
     }
 
     async function callGroqDirect(prompt) {
-        if (typeof window.groqFetch !== 'function') return null;
+        if (typeof window.quizGroqFetch !== 'function') return null;
         var isMath = isMathPrompt(prompt);
         var groqModel  = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
         var groqTokens = isMath ? 6144 : 4096;
@@ -301,7 +301,7 @@
             try {
                 var ctrl = new AbortController();
                 var tid  = setTimeout(function() { ctrl.abort(); }, to);
-                var res  = await window.groqFetch({
+                var res  = await window.quizGroqFetch({
                     model: m,
                     messages: [
                         { role: 'system', content: 'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.' },
