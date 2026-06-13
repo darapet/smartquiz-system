@@ -12,10 +12,10 @@
 <div class="lib-page-bg"></div>
 
 <header class="lib-hdr">
-  <span class="lib-logo">📚 xzily Library</span>
+  <a href="library.html" class="lib-logo">📚 xzily Library</a>
   <div class="lib-hdr-actions">
     <a href="dashboard.html" class="lib-back">← Dashboard</a>
-    <span class="lib-back" id="hdr-mybooks" style="display:none;cursor:pointer" onclick="location.href='library-host-view.html'">My Books</span>
+    <a href="library-host-view.html" class="lib-back" id="hdr-mybooks" style="display:none">My Books</a>
     <button class="lib-upload-btn" onclick="location.href='library-upload.html'">+ Upload</button>
   </div>
 </header>
@@ -69,7 +69,9 @@
     <span class="lib-count" id="grid-count"></span>
   </div>
   <div id="lib-grid">
-    <div class="lib-skeleton-grid">
+    <div class="lib-skeleton-grid" id="lib-skeleton">
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
       <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
       <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
       <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
@@ -84,93 +86,108 @@
 <script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
-  let _allBooks=[];
-  let _profileCache={};
+  let _allBooks = [];
+  let _profileCache = {};
 
+  /* Show My Books button if logged in */
   window.libOnAuth(function(user){
     if(user) document.getElementById('hdr-mybooks').style.display='inline-flex';
   });
 
-  window.onTypeChange=function(type){
+  /* ── CASCADE ── */
+  window.onTypeChange = function(type) {
     ['f-school','f-course','f-level'].forEach(function(id){
-      const el=document.getElementById(id);
-      el.innerHTML='<option value="">— Select type first —</option>';
-      el.disabled=!type;
+      const el = document.getElementById(id);
+      el.innerHTML = '<option value="">— Select type first —</option>';
+      el.disabled = !type;
     });
-    if(type){
-      window.libPopulateSchools(document.getElementById('f-school'),type);
-      window.libPopulateCourses(document.getElementById('f-course'),type);
-      window.libPopulateLevels(document.getElementById('f-level'),type);
+    if (type) {
+      window.libPopulateSchools(document.getElementById('f-school'), type);
+      window.libPopulateCourses(document.getElementById('f-course'), type);
+      window.libPopulateLevels(document.getElementById('f-level'), type);
     }
   };
 
-  window.doSearch=async function(){
-    const type=document.getElementById('f-type').value;
-    const school=document.getElementById('f-school').value;
-    const course=document.getElementById('f-course').value;
-    const level=document.getElementById('f-level').value;
-    const keyword=document.getElementById('lib-search').value.trim();
+  /* ── SEARCH ── */
+  window.doSearch = async function() {
+    const type    = document.getElementById('f-type').value;
+    const school  = document.getElementById('f-school').value;
+    const course  = document.getElementById('f-course').value;
+    const level   = document.getElementById('f-level').value;
+    const keyword = document.getElementById('lib-search').value.trim();
     showSkeleton();
-    document.getElementById('grid-title').textContent=[school||type||'All',course,level].filter(Boolean).join(' · ')||'All Books';
-    try{
-      const filters={};
-      if(type)    filters.institutionType=type;
-      if(school)  filters.institution=school;
-      if(course)  filters.course=course;
-      if(level)   filters.level=level;
-      if(keyword) filters.keyword=keyword;
-      const books=await window.libSearchBooks(filters);
-      _allBooks=books;
+    const label = [school||type||'All', course, level].filter(Boolean).join(' · ');
+    document.getElementById('grid-title').textContent = label ? 'Results: ' + label : 'All Books';
+    try {
+      const filters = {};
+      if (type)    filters.institutionType = type;
+      if (school)  filters.institution     = school;
+      if (course)  filters.course          = course;
+      if (level)   filters.level           = level;
+      if (keyword) filters.keyword         = keyword;
+      const books = await window.libSearchBooks(filters);
+      _allBooks = books;
       await renderGrid(books);
-    }catch(e){
-      document.getElementById('lib-grid').innerHTML='<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-title">Search failed</div></div>';
+    } catch(e) {
+      document.getElementById('lib-grid').innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-title">Search failed</div><div class="lib-empty-sub">${e.message}</div></div>`;
     }
   };
 
-  document.getElementById('lib-search').addEventListener('input',async function(){
-    const kw=this.value.toLowerCase();
-    if(!kw){await renderGrid(_allBooks);return;}
+  /* Live search filter */
+  document.getElementById('lib-search').addEventListener('input', async function(){
+    const kw = this.value.toLowerCase();
+    if (!kw) { await renderGrid(_allBooks); return; }
     await renderGrid(_allBooks.filter(function(b){
-      return(b.title||'').toLowerCase().includes(kw)||(b.course||b.subject||'').toLowerCase().includes(kw)||(b.institution||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw)||(b.uploaderName||'').toLowerCase().includes(kw);
+      return (b.title||'').toLowerCase().includes(kw)||(b.course||b.subject||'').toLowerCase().includes(kw)||(b.institution||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw)||(b.uploaderName||'').toLowerCase().includes(kw);
     }));
   });
 
-  function showSkeleton(){
-    document.getElementById('lib-grid').innerHTML='<div class="lib-skeleton-grid">'+Array(4).fill('<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>').join('')+'</div>';
+  function showSkeleton() {
+    document.getElementById('lib-grid').innerHTML = `<div class="lib-skeleton-grid">
+      ${Array(6).fill(`<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>`).join('')}
+    </div>`;
   }
 
-  async function fetchUploaderProfiles(books){
-    const uids=[...new Set(books.map(function(b){return b.uploaderUid;}).filter(Boolean))];
-    const missing=uids.filter(function(uid){return!_profileCache[uid];});
-    if(missing.length){
-      const fetched=await Promise.all(missing.map(function(uid){return window.libGetProfile(uid);}));
-      missing.forEach(function(uid,i){_profileCache[uid]=fetched[i]||null;});
+  /* Fetch uploader profiles in batch (cached) */
+  async function fetchUploaderProfiles(books) {
+    const uids = [...new Set(books.map(b => b.uploaderUid).filter(Boolean))];
+    const missing = uids.filter(uid => !_profileCache[uid]);
+    if (missing.length) {
+      const fetched = await Promise.all(missing.map(uid => window.libGetProfile(uid)));
+      missing.forEach((uid,i) => { _profileCache[uid] = fetched[i] || null; });
     }
   }
 
-  async function renderGrid(books){
-    const grid=document.getElementById('lib-grid');
-    document.getElementById('grid-count').textContent=books.length+' book'+(books.length!==1?'s':'');
-    if(!books.length){
-      grid.innerHTML='<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">No books found</div><div class="lib-empty-sub">Be the first to <a href="library-upload.html" style="color:#6366f1;font-weight:700">upload one!</a></div></div>';
+  async function renderGrid(books) {
+    const grid = document.getElementById('lib-grid');
+    document.getElementById('grid-count').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
+    if (!books.length) {
+      grid.innerHTML = `<div class="lib-empty">
+        <div class="lib-empty-icon">📭</div>
+        <div class="lib-empty-title">No books found</div>
+        <div class="lib-empty-sub">Be the first to <a href="library-upload.html" style="color:#6366f1;font-weight:700">upload one!</a></div>
+      </div>`;
       return;
     }
+    /* Fetch uploader profiles for avatar display */
     await fetchUploaderProfiles(books);
-    grid.innerHTML='<div class="lib-grid">'+books.map(function(b){return window.libBookCardHTML(b,_profileCache[b.uploaderUid]);}).join('')+'</div>';
+    grid.innerHTML = '<div class="lib-grid">' +
+      books.map(b => window.libBookCardHTML(b, _profileCache[b.uploaderUid])).join('') +
+    '</div>';
   }
 
-  async function loadRecent(){
-    try{
-      const books=await window.libSearchBooks({});
-      _allBooks=books;
+  async function loadRecent() {
+    try {
+      const books = await window.libSearchBooks({});
+      _allBooks = books;
       await renderGrid(books);
-    }catch(e){
-      document.getElementById('lib-grid').innerHTML='<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">Could not load books</div></div>';
+    } catch(e) {
+      document.getElementById('lib-grid').innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">Could not load books</div></div>`;
     }
   }
 
-  document.addEventListener('aqs:firebase:ready',loadRecent);
-  if(window._aqsFirebaseReady) loadRecent();
+  document.addEventListener('aqs:firebase:ready', loadRecent);
+  if (window._aqsFirebaseReady) loadRecent();
 </script>
 </body>
 </html>
