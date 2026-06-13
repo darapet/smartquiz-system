@@ -283,6 +283,18 @@ window.libUploadProfilePhoto=async function(uid,file){
   await window.libSaveProfile(uid,{photoURL:data.secure_url});
   return data.secure_url;
 };
+window.libUploadCoverPhoto=async function(uid,file){
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/covers/'+uid);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Cover upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{coverURL:data.secure_url});
+  return data.secure_url;
+};
 
 /* ── BOOKS ── */
 window.libAddBook=async function(data){
@@ -300,15 +312,26 @@ window.libGetBook=async function(id){
 
 window.libSearchBooks=async function(f){
   await _init();
-  const constraints=[where('status','==','approved'),limit(300)];
-  if(f.institution) constraints.push(where('institution','==',f.institution));
-  else if(f.institutionType) constraints.push(where('institutionType','==',f.institutionType));
-  let docs=(await getDocs(query(collection(_db,'library_books'),...constraints))).docs.map(function(d){return{id:d.id,...d.data()};});
-  if(f.course) docs=docs.filter(function(b){ return b.course===f.course; });
-  if(f.level)  docs=docs.filter(function(b){ return b.level===f.level; });
+  /* Fetch all approved books (client-side filtering avoids missing composite indexes) */
+  let docs=(await getDocs(query(collection(_db,'library_books'),where('status','==','approved'),limit(500)))).docs.map(function(d){return{id:d.id,...d.data()};});
+  /* Institution type filter — broadest level */
+  if(f.institutionType) docs=docs.filter(function(b){ return (b.institutionType||'').toLowerCase()===f.institutionType.toLowerCase(); });
+  /* School filter — narrows within type */
+  if(f.institution) docs=docs.filter(function(b){ return (b.institution||'').toLowerCase()===f.institution.toLowerCase(); });
+  /* Course / department */
+  if(f.course) docs=docs.filter(function(b){ return (b.course||'').toLowerCase()===f.course.toLowerCase(); });
+  /* Level */
+  if(f.level) docs=docs.filter(function(b){ return (b.level||'').toLowerCase()===f.level.toLowerCase(); });
+  /* Keyword: title, course, author, courseCode, institution */
   if(f.keyword){
     const kw=f.keyword.toLowerCase();
-    docs=docs.filter(function(b){ return (b.title||'').toLowerCase().includes(kw)||(b.course||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw); });
+    docs=docs.filter(function(b){
+      return (b.title||'').toLowerCase().includes(kw)
+          ||(b.course||'').toLowerCase().includes(kw)
+          ||(b.author||'').toLowerCase().includes(kw)
+          ||(b.courseCode||'').toLowerCase().includes(kw)
+          ||(b.institution||'').toLowerCase().includes(kw);
+    });
   }
   docs.sort(function(a,b){ return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)); });
   return docs;
