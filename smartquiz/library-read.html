@@ -8,10 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <style>
 html,body{height:100%;overflow:hidden;}
 
@@ -753,22 +749,8 @@ html,body{height:100%;overflow:hidden;}
         ? await window.libAiExplainText(pageText,_book?.title||'this document')
         : await window.libAiExplain(_book.fileUrl,_book.title);
       _explainText=result;
-      /* Render markdown then typeset math with KaTeX */
-      out.innerHTML = (typeof marked !== 'undefined')
-        ? marked.parse(result)
-        : result.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
+      out.innerHTML=result.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
       out.style.display='block';
-      if (typeof renderMathInElement !== 'undefined') {
-        renderMathInElement(out, {
-          delimiters:[
-            {left:'$$',right:'$$',display:true},
-            {left:'$',right:'$',display:false},
-            {left:'\\[',right:'\\]',display:true},
-            {left:'\\(',right:'\\)',display:false}
-          ],
-          throwOnError:false
-        });
-      }
       /* Explanation download disabled until Paystack integration is live */
       // document.getElementById('p-dl-wrap').style.display='block';
     }catch(e){window.libToast('AI error: '+e.message);}
@@ -803,12 +785,16 @@ html,body{height:100%;overflow:hidden;}
   function renderMCQ(){
     const liveBar=document.getElementById('p-score-live');
     if(liveBar){liveBar.style.display='none';}
-    document.getElementById('p-mcq-qs').innerHTML=_mcqData.map(function(q,qi){
+    const qs=document.getElementById('p-mcq-qs');
+    qs.innerHTML=_mcqData.map(function(q,qi){
       return`<div class="rdr-mcq-q" id="mcq-q-${qi}">
         <div class="rdr-mcq-qt">${qi+1}. ${q.q}</div>
         <div class="rdr-mcq-opts">${q.opts.map(function(opt,oi){return`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${esc(opt)}</button>`;}).join('')}</div>
       </div>`;
     }).join('');
+    if(typeof renderMathInElement!=='undefined'){
+      renderMathInElement(qs,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});
+    }
   }
   function updateLiveScore(){
     const liveBar=document.getElementById('p-score-live');
