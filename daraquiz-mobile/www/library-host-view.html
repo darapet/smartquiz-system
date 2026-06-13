@@ -132,11 +132,22 @@
             <option value="">— Select type first —</option>
           </select>
         </div>
-        <div class="lib-form-group" style="margin-bottom:20px">
+        <div class="lib-form-group" style="margin-bottom:12px">
           <label class="lib-label">Department / Faculty</label>
           <select class="lib-select-inp" id="pe-dept" disabled>
             <option value="">— Select type first —</option>
           </select>
+        </div>
+
+        <div class="lib-form-row">
+          <div class="lib-form-group">
+            <label class="lib-label">Phone Number (optional)</label>
+            <input class="lib-input" id="pe-phone" placeholder="e.g. 08012345678" type="tel">
+          </div>
+          <div class="lib-form-group">
+            <label class="lib-label">WhatsApp Number (optional)</label>
+            <input class="lib-input" id="pe-whatsapp" placeholder="e.g. +2348012345678" type="tel">
+          </div>
         </div>
 
         <button class="lib-btn lib-btn-primary" onclick="saveProfile()" id="pe-save-btn">
@@ -242,6 +253,8 @@
     document.getElementById('pe-lname').value = nameParts.slice(1).join(' ')||'';
     document.getElementById('pe-bio').value = _profile.bio||'';
     document.getElementById('pe-name-disp').textContent = _profile.displayName||'Your Name';
+    document.getElementById('pe-phone').value = _profile.phone||'';
+    document.getElementById('pe-whatsapp').value = _profile.whatsapp||'';
     if (_profile.institutionType) {
       document.getElementById('pe-type').value = _profile.institutionType;
       peTypeChange(_profile.institutionType);
@@ -507,7 +520,9 @@
         bio: document.getElementById('pe-bio').value.trim(),
         institutionType: document.getElementById('pe-type').value,
         institution: document.getElementById('pe-school').value,
-        department: document.getElementById('pe-dept').value
+        department: document.getElementById('pe-dept').value,
+        phone: document.getElementById('pe-phone').value.trim(),
+        whatsapp: document.getElementById('pe-whatsapp').value.trim()
       };
       await window.libSaveProfile(_user.uid, data);
       _profile = {..._profile,...data};
