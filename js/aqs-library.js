@@ -67,6 +67,7 @@ function _waitFirebase() {
   function _idx(){ var i=0; try{ i=parseInt(localStorage.getItem(IDX)||'0')||0; }catch(e){} return (isNaN(i)||i>=Math.max(1,_SLOTS.length))?0:i; }
   function _setIdx(i){ try{ localStorage.setItem(IDX, String(i%Math.max(1,_SLOTS.length))); }catch(e){} }
 
+  window._libKeyCount = function(){ return slots.length; };
   window.setLibGroqKeys = function(arr){
     _SLOTS.length=0;
     (arr||[]).map(function(r){ return r?r.split('').reverse().join(''):'' })
