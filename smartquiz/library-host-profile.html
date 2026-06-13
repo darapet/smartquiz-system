@@ -296,8 +296,6 @@
     try {
       const isNowFollowing = await window.libFollowToggle(_currentUser.uid, hostUid);
       setFollowUI(isNowFollowing);
-      const prev = parseInt(document.getElementById('lhp-followers-count').textContent) || 0;
-      document.getElementById('lhp-followers-count').textContent = isNowFollowing ? prev + 1 : Math.max(0, prev - 1);
       window.libToast(isNowFollowing ? '✅ Now following!' : 'Unfollowed');
     } catch(e) {
       window.libToast('Error: ' + e.message);
@@ -306,6 +304,7 @@
   };
 
   /* Load follower count + stats separately so profile renders fast */
+  let _unsubFollowers = null;
   async function loadCounts() {
     function withTimeout(promise, ms) {
       return Promise.race([
@@ -313,10 +312,18 @@
         new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
       ]);
     }
+    /* Real-time followers count */
     try {
-      const follCount = await withTimeout(window.libGetFollowerCount(hostUid), 8000);
-      document.getElementById('lhp-followers-count').textContent = follCount;
-    } catch(e) { document.getElementById('lhp-followers-count').textContent = '0'; }
+      if (_unsubFollowers) _unsubFollowers();
+      _unsubFollowers = await window.libFollowerCountRealtime(hostUid, function(count) {
+        document.getElementById('lhp-followers-count').textContent = count;
+        /* keep about-card followers count in sync if it exists */
+        const an = document.getElementById('about-followers-num');
+        if (an) an.textContent = count;
+      });
+    } catch(e) {
+      document.getElementById('lhp-followers-count').textContent = '0';
+    }
 
     try {
       const stats = await withTimeout(window.libGetMyStats(hostUid), 8000);

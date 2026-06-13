@@ -7,6 +7,6 @@ git config user.email "agent@replit.com"
 git config user.name "Replit Agent"
 git remote set-url origin "https://${TOKEN}@github.com/darapet/smartquiz-system.git"
 git add -A
-git commit -m "Fix: footer/header visibility, Firestore rules for follows/replies/views, AI Explain+MCQ on text books"
+git commit -m "Fix: all library bugs — footer visibility, Firestore rules, AI on text books, real-time followers count"
 git push origin HEAD
 echo "Done — pushed to GitHub."

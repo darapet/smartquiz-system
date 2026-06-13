@@ -11,7 +11,7 @@ import { getAuth, onAuthStateChanged }
 import {
   getFirestore, collection, doc, addDoc, setDoc, getDoc, getDocs,
   updateDoc, deleteDoc, query, where, orderBy, limit,
-  serverTimestamp, increment, getCountFromServer
+  serverTimestamp, increment, getCountFromServer, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
 /* Cloudinary direct-upload config (no server required) */
@@ -408,6 +408,11 @@ window.libGetFollowerCount=async function(hostUid){
     const snap=await getDocs(query(collection(_db,'library_follows'),where('hostUid','==',hostUid)));
     return snap.size;
   }
+};
+window.libFollowerCountRealtime=async function(hostUid,callback){
+  await _init();
+  const q=query(collection(_db,'library_follows'),where('hostUid','==',hostUid));
+  return onSnapshot(q,function(snap){callback(snap.size);},function(err){console.warn('[lib] followers rt error:',err.message);});
 };
 window.libGetFollowers=async function(hostUid){
   await _init();
