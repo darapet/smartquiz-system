@@ -2193,7 +2193,13 @@ async function actionSaveSettings(data) {
         'microsoft_client_id','microsoft_client_secret',
         'yahoo_client_id','yahoo_client_secret',
         'quoteGroqKeys',
-        'lib_groq_keys'
+        'lib_groq_keys',
+        'quiz_groq_keys',
+        'challenge_groq_keys',
+        'studyhub_groq_keys',
+        'textdocs_groq_keys',
+        'puzzle_groq_keys',
+        'quizstudio_groq_keys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
     /* Trim and validate Groq keys (up to 20) before saving */
@@ -2231,6 +2237,16 @@ async function actionSaveSettings(data) {
             .filter(function(k){ return k.length > 20; })
             .slice(0, 10);
     }
+    /* Trim and validate feature-specific Groq keys (up to 10 each) */
+    ['quiz_groq_keys','challenge_groq_keys','studyhub_groq_keys',
+     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys'].forEach(function(field) {
+        if (Array.isArray(payload[field])) {
+            payload[field] = payload[field]
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.length > 20; })
+                .slice(0, 10);
+        }
+    });
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
@@ -2258,6 +2274,19 @@ async function actionSaveSettings(data) {
     if (Array.isArray(payload.lib_groq_keys) && payload.lib_groq_keys.length) {
         if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(payload.lib_groq_keys);
     }
+    /* Immediately load feature-specific keys into their pools */
+    var _fpMap = {
+        quiz_groq_keys: 'quiz', challenge_groq_keys: 'challenge',
+        studyhub_groq_keys: 'studyhub', textdocs_groq_keys: 'textdocs',
+        puzzle_groq_keys: 'puzzle', quizstudio_groq_keys: 'quizstudio'
+    };
+    Object.keys(_fpMap).forEach(function(field) {
+        if (Array.isArray(payload[field]) && payload[field].length) {
+            if (typeof window.setFeatureGroqKeys === 'function') {
+                window.setFeatureGroqKeys(_fpMap[field], payload[field]);
+            }
+        }
+    });
     return { success: true, message: 'Settings saved.' };
 }
 
