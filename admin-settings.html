@@ -1978,71 +1978,185 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
     })();
 </script>
 <script>
-/* ═══════════ POOL STATUS DASHBOARD ═══════════ */
-(function(){
-    var POOLS=[
-        {id:'groq',label:'Main Groq',emoji:'⚡',fn:'groqFetch',max:20,
-          count:function(){return typeof window._aqsGroqKeyCount==='function'?window._aqsGroqKeyCount():(window._AQS_GROQ_MASTER_KEYS||[]).filter(function(k){return k&&k.length>19;}).length;}},
-        {id:'mistral',label:'Mistral',emoji:'🌟',fn:'groqFetch',max:20,
-          count:function(){return typeof window._aqsMistralKeyCount==='function'?window._aqsMistralKeyCount():(window._AQS_MISTRAL_MASTER_KEYS||[]).filter(function(k){return k&&k.length>19;}).length;}},
-        {id:'hf',label:'HuggingFace',emoji:'🤗',fn:'groqFetch',max:5,
-          count:function(){return typeof window._aqsHFKeyCount==='function'?window._aqsHFKeyCount():0;}},
-        {id:'library',label:'Library',emoji:'📚',fn:'libGroqFetch',max:10,
-          count:function(){return typeof window._libKeyCount==='function'?window._libKeyCount():0;}},
-        {id:'quiz',label:'Quiz Creation',emoji:'🧠',fn:'quizGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quiz'):0;}},
-        {id:'challenge',label:'Challenge',emoji:'⚔️',fn:'challengeGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('challenge'):0;}},
-        {id:'studyhub',label:'Study Hub',emoji:'📖',fn:'studyhubGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('studyhub'):0;}},
-        {id:'textdocs',label:'Text→Docs',emoji:'📄',fn:'textdocsGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('textdocs'):0;}},
-        {id:'puzzle',label:'Puzzle',emoji:'🧩',fn:'puzzleGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('puzzle'):0;}},
-        {id:'quizstudio',label:'Quiz Studio',emoji:'🎬',fn:'quizstudioGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quizstudio'):0;}}
-    ];
-    function _dots(n,m){var s='';for(var i=0;i<m;i++)s+=i<n?'<span style="color:#10b981;font-size:.48rem;">●</span>':'<span style="color:#dde3ec;font-size:.4rem;">○</span>';return s;}
-    function _renderGrid(){
-        var grid=document.getElementById('aqs-pool-status-grid');if(!grid)return;
-        grid.innerHTML=POOLS.map(function(p){
-            var n=p.count(),m=p.max||10,bar=m>0?Math.round(n/m*100):0;
-            var col=n===0?'#ef4444':n<m?'#f59e0b':'#10b981';
-            return '<div id="aqs-dash-'+p.id+'" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:7px;">'
-                +'<div style="display:flex;align-items:center;gap:7px;"><span>'+p.emoji+'</span><span style="font-weight:700;color:#1e293b;font-size:.82rem;">'+p.label+'</span></div>'
-                +'<div style="letter-spacing:1.5px;">'+_dots(n,m)+'</div>'
-                +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
-                +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+n+'/'+m+'</span></div>'
-                +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-                +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">—</span>'
-                +'<button onclick="window._aqsTestPool(''+p.id+'')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
-                +'</div></div>';
-        }).join('');
-    }
-    async function _testPool(id){
-        var p=POOLS.find(function(x){return x.id===id;}),r=document.getElementById('aqs-dash-result-'+id);
-        if(!p)return;if(r){r.textContent='🔄 Testing…';r.style.color='#f59e0b';}
-        try{
-            var fn=window[p.fn];
-            if(typeof fn!=='function'){if(r)r.innerHTML='<span style="color:#ef4444;">❌ Not loaded</span>';return;}
-            var res=await fn({messages:[{role:'user',content:'Reply with just "ok".'}],max_tokens:3});
-            if(r)r.innerHTML=res&&res.ok?'<span style="color:#10b981;font-weight:700;">✅ Working</span>':'<span style="color:#ef4444;">❌ HTTP '+(res?res.status:'?')+'</span>';
-        }catch(e){if(r)r.innerHTML='<span style="color:#ef4444;">❌ '+(e.message||'Error').slice(0,26)+'</span>';}
-    }
-    window._aqsTestPool=_testPool;
-    window._aqsRefreshPoolStatus=_renderGrid;
-    var taBtn=document.getElementById('aqs-test-all-btn');
-    if(taBtn)taBtn.addEventListener('click',async function(){
-        taBtn.disabled=true;taBtn.textContent='⏳ Testing All…';
-        for(var i=0;i<POOLS.length;i++)await _testPool(POOLS[i].id);
-        taBtn.disabled=false;taBtn.textContent='🧪 Test All Pools';
-    });
-    if(window._aqsFirebaseReady){setTimeout(_renderGrid,1400);}
-    else{document.addEventListener('aqs:firebase:ready',function(){setTimeout(_renderGrid,1400);},{once:true});}
-})();
-</script>
+  /* ═══════════ POOL STATUS DASHBOARD v2 — real per-key API tests ═══════════ */
+  (function(){
+      var GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
+      var MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+      var HF_URL_BASE = 'https://api-inference.huggingface.co/models/';
+
+      var POOLS = [
+          { id:'groq',       label:'Main Groq',    emoji:'⚡', provider:'groq',    inputPrefix:'aqs-groq-key-',            slots:20, dotPrefix:'aqs-gk-dot-' },
+          { id:'mistral',    label:'Mistral',       emoji:'🌟', provider:'mistral', inputPrefix:'aqs-mistral-key-',         slots:20, dotPrefix:'aqs-mk-dot-' },
+          { id:'hf',         label:'HuggingFace',   emoji:'🤗', provider:'hf',      inputPrefix:'aqs-hf-key-',              slots:5,  dotPrefix:'aqs-hf-dot-' },
+          { id:'library',    label:'Library',       emoji:'📚', provider:'groq',    inputPrefix:'aqs-lib-key-',             slots:10 },
+          { id:'quiz',       label:'Quiz Creation', emoji:'🧠', provider:'groq',    inputPrefix:'aqs-quiz-groq-key-',       slots:10, dotPrefix:'aqs-qgk-dot-' },
+          { id:'challenge',  label:'Challenge',     emoji:'⚔️', provider:'groq',    inputPrefix:'aqs-challenge-groq-key-',  slots:10, dotPrefix:'aqs-cgk-dot-' },
+          { id:'studyhub',   label:'Study Hub',     emoji:'📖', provider:'groq',    inputPrefix:'aqs-studyhub-groq-key-',   slots:10, dotPrefix:'aqs-sgk-dot-' },
+          { id:'textdocs',   label:'Text→Docs',     emoji:'📄', provider:'groq',    inputPrefix:'aqs-textdocs-groq-key-',   slots:10, dotPrefix:'aqs-tgk-dot-' },
+          { id:'puzzle',     label:'Puzzle',        emoji:'🧩', provider:'groq',    inputPrefix:'aqs-puzzle-groq-key-',     slots:10, dotPrefix:'aqs-pgk-dot-' },
+          { id:'quizstudio', label:'Quiz Studio',   emoji:'🎬', provider:'groq',    inputPrefix:'aqs-quizstudio-groq-key-', slots:10, dotPrefix:'aqs-qsgk-dot-' }
+      ];
+
+      /* ── Real direct API ping — returns { ok, status, ms, msg } ── */
+      async function pingKey(key, provider) {
+          var tStart = Date.now(), ms, res, errBody, errMsg;
+          try {
+              if (provider === 'groq') {
+                  var model = window._AQS_GROQ_MODEL || 'llama-3.1-8b-instant';
+                  res = await fetch(GROQ_URL, {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
+                      signal:AbortSignal.timeout(13000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) {
+                      var data = await res.json();
+                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
+                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
+                  }
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = (errBody.error&&errBody.error.message) ? errBody.error.message.slice(0,110) : 'HTTP '+res.status;
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
+                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+
+              } else if (provider === 'mistral') {
+                  var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
+                  res = await fetch(MISTRAL_URL, {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
+                      signal:AbortSignal.timeout(15000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) {
+                      var data = await res.json();
+                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
+                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
+                  }
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = errBody.message||errBody.error||(errBody.error&&errBody.error.message)||'HTTP '+res.status;
+                  if (typeof errMsg !== 'string') errMsg = JSON.stringify(errMsg);
+                  errMsg = errMsg.slice(0,110);
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
+                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+
+              } else if (provider === 'hf') {
+                  var hfModel = window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
+                  res = await fetch(HF_URL_BASE + hfModel, {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+                      body:JSON.stringify({inputs:'Say OK',parameters:{max_new_tokens:3}}),
+                      signal:AbortSignal.timeout(20000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms'};
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = (typeof errBody.error==='string' ? errBody.error : JSON.stringify(errBody.error||errBody)).slice(0,110);
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
+                  if (res.status===401||res.status===403) return {ok:false, status:res.status, ms:ms, msg:'❌ Invalid token ('+res.status+') — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+              }
+          } catch(e) {
+              ms = Date.now() - tStart;
+              return {ok:false, status:'err', ms:ms, msg:'❌ '+(e.name==='TimeoutError'?'Timeout (13s)':e.message||'Network error')};
+          }
+      }
+
+      function _getPoolKeys(p) {
+          var keys = [], minLen = p.provider === 'hf' ? 8 : 20;
+          for (var i = 1; i <= p.slots; i++) {
+              var el = document.getElementById(p.inputPrefix + i);
+              if (el && el.value.trim().length > minLen) keys.push({slot:i, key:el.value.trim()});
+          }
+          return keys;
+      }
+
+      function _dots(n, m) {
+          var s = '';
+          for (var i = 0; i < m; i++)
+              s += i < n ? '<span style="color:#10b981;font-size:.48rem;">●</span>' : '<span style="color:#dde3ec;font-size:.4rem;">○</span>';
+          return s;
+      }
+
+      function _renderGrid() {
+          var grid = document.getElementById('aqs-pool-status-grid');
+          if (!grid) return;
+          grid.innerHTML = POOLS.map(function(p) {
+              var n = _getPoolKeys(p).length, m = p.slots, bar = m > 0 ? Math.round(n/m*100) : 0;
+              var col = n === 0 ? '#ef4444' : n < m ? '#f59e0b' : '#10b981';
+              return '<div id="aqs-dash-'+p.id+'" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:7px;">'
+                  +'<div style="display:flex;align-items:center;gap:7px;"><span>'+p.emoji+'</span><span style="font-weight:700;color:#1e293b;font-size:.82rem;">'+p.label+'</span></div>'
+                  +'<div style="letter-spacing:1.5px;">'+_dots(n,m)+'</div>'
+                  +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
+                  +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+n+'/'+m+'</span></div>'
+                  +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+                  +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">—</span>'
+                  +'<button onclick="window._aqsTestPool(''+p.id+'')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
+                  +'</div>'
+                  +'<div id="aqs-pool-detail-'+p.id+'" style="display:none;flex-direction:column;gap:4px;margin-top:2px;"></div>'
+                  +'</div>';
+          }).join('');
+      }
+
+      async function _testPool(id) {
+          var p   = POOLS.find(function(x){ return x.id===id; });
+          var r   = document.getElementById('aqs-dash-result-'+id);
+          var det = document.getElementById('aqs-pool-detail-'+id);
+          if (!p) return;
+
+          var keys = _getPoolKeys(p);
+          if (!keys.length) {
+              if (r) r.innerHTML = '<span style="color:#ef4444;">⚠️ No keys saved in slots</span>';
+              if (det) det.style.display = 'none';
+              return;
+          }
+          if (r) { r.textContent = '🔄 Testing '+keys.length+' key(s)…'; r.style.color = '#f59e0b'; }
+          if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;">Testing in parallel…</span>'; }
+
+          var results = await Promise.all(keys.map(async function(entry) {
+              var masked = entry.key.slice(0,7)+'…'+entry.key.slice(-4);
+              var ping   = await pingKey(entry.key, p.provider);
+              if (p.dotPrefix) {
+                  var dotEl = document.getElementById(p.dotPrefix+entry.slot);
+                  if (dotEl) { dotEl.textContent = ping.ok ? '✅' : (ping.status===429 ? '⚠️' : '❌'); dotEl.style.fontSize='.9rem'; }
+              }
+              var bg = ping.ok ? '#052e16' : (ping.status===429 ? '#1c1001' : '#1c0101');
+              var bc = ping.ok ? '#166534' : (ping.status===429 ? '#78350f' : '#7f1d1d');
+              var mc = ping.ok ? '#86efac' : (ping.status===429 ? '#fde68a' : '#fca5a5');
+              return {
+                  ok: ping.ok,
+                  html: '<div style="padding:5px 8px;background:'+bg+';border:1px solid '+bc+';border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:5px;">'
+                      +'<span style="color:'+mc+';font-weight:700;min-width:46px;font-size:.72rem;">Slot '+entry.slot+'</span>'
+                      +'<code style="color:'+mc+';font-size:.68rem;opacity:.8;background:rgba(0,0,0,.25);padding:0 5px;border-radius:4px;">'+masked+'</code>'
+                      +'<span style="margin-left:auto;color:'+mc+';font-size:.7rem;text-align:right;">'+ping.msg+'</span>'
+                      +'</div>'
+              };
+          }));
+
+          var active = results.filter(function(r){ return r.ok; }).length, total = results.length;
+          var sc = active===total ? '#10b981' : (active>0 ? '#f59e0b' : '#ef4444');
+          var st = active===total ? '✅ All '+total+' keys working' : (active===0 ? '❌ All '+total+' keys failed' : '⚠️ '+active+'/'+total+' active');
+          if (r) r.innerHTML = '<span style="color:'+sc+';font-weight:700;">'+st+'</span>';
+          if (det) det.innerHTML = results.map(function(r){ return r.html; }).join('');
+      }
+
+      window._aqsTestPool = _testPool;
+      window._aqsRefreshPoolStatus = _renderGrid;
+
+      var taBtn = document.getElementById('aqs-test-all-btn');
+      if (taBtn) taBtn.addEventListener('click', async function() {
+          taBtn.disabled = true; taBtn.textContent = '⏳ Testing All…';
+          await Promise.all(POOLS.map(function(p){ return _testPool(p.id); }));
+          taBtn.disabled = false; taBtn.textContent = '🧪 Test All Pools';
+      });
+
+      if (window._aqsFirebaseReady) { setTimeout(_renderGrid, 1400); }
+      else { document.addEventListener('aqs:firebase:ready', function(){ setTimeout(_renderGrid,1400); }, {once:true}); }
+  })();
+  </script>
 
 
-<script src="js/aqs-quotes.js"></script>
-</body>
-</html>
+<script src="js/aqs-quotes.js">
