@@ -1,8 +1,8 @@
 {
-  "version": "1.319",
-  "versionCode": 297,
+  "version": "1.320",
+  "versionCode": 298,
   "releaseDate": "2026-06-13",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.319/daraquiz-v1.319.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.319/daraquiz-v1.319.apk"
+  "notes": "Cover image fix: book covers now display correctly on library profile. Update popup fix: shows Install button after download instead of auto-closing.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.320/daraquiz-v1.320.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.320/daraquiz-v1.320.apk"
 }

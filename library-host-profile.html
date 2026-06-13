@@ -268,7 +268,7 @@
       ? `<img src="${upPhoto}" alt="">`
       : `<span style="font-size:.55rem;font-weight:800;">${window.libInitials(upName)}</span>`;
     const thumb = b.thumbnailUrl
-      ? `<img src="${b.thumbnailUrl}" alt="" loading="lazy">`
+      ? `<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\"lib-card-thumb-placeholder\\"><div class=\\"lib-card-thumb-icon\\">📖</div></div>'">`
       : `<div class="lib-card-thumb-placeholder"><div class="lib-card-thumb-icon">📖</div><div class="lib-card-thumb-label">${(b.course||'').substring(0,18)}</div></div>`;
     return `<div class="lib-card" onclick="location.href='library-read.html?id=${b.id}'">
       <div class="lib-card-thumb">${thumb}</div>

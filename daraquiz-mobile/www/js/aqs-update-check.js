@@ -32,7 +32,8 @@ var AQS_APP_VERSION_CODE = 297;
   /* ── Inject styles ────────────────────────────────────────────────────── */
   var style = document.createElement('style');
   style.textContent = [
-    '#aqs-upd-overlay{display:none;position:fixed;inset:0;z-index:99999;',
+    /* z-index above quotes overlay (999999) and any other overlay */
+    '#aqs-upd-overlay{display:none;position:fixed;inset:0;z-index:9999999;',
       'background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);',
       '-webkit-backdrop-filter:blur(6px);',
       'align-items:center;justify-content:center;padding:20px;}',
@@ -172,8 +173,15 @@ var AQS_APP_VERSION_CODE = 297;
       }
       setProgress(pct);
       if (pct >= 100) {
-        btn.textContent = '✅ Installing…';
-        setTimeout(hidePopup, 4000);
+        /* Download complete — keep popup open, show install instructions */
+        btn.disabled = false;
+        btn.textContent = '📲 Install Now';
+        btnLater.textContent = 'Dismiss';
+        btnLater.style.display = '';
+        document.getElementById('aqs-upd-notes').textContent =
+          '✅ Download complete! Tap "Install Now" below or check your notifications / Downloads folder to install the update.';
+        /* Suppress quote popup while update is pending */
+        window._aqsUpdatePending = true;
       }
     };
 
@@ -230,6 +238,15 @@ var AQS_APP_VERSION_CODE = 297;
   document.getElementById('aqs-upd-close').addEventListener('click', snoozeUpdate);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
+    /* After download, "Install Now" button tries to re-open the file via bridge */
+    if (window._aqsUpdatePending) {
+      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.openDownload === 'function') {
+        window.AqsDownloadBridge.openDownload('daraquiz-update.apk');
+      } else {
+        alert('Check your notifications or Downloads folder to find the APK and tap it to install.');
+      }
+      return;
+    }
     if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
       alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
       return;

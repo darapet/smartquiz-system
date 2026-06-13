@@ -293,6 +293,8 @@
           var u     = window._aqsFirebaseUser;
           var name  = (u && (u.displayName || (u.email || '').split('@')[0])) || 'Scholar';
 
+          /* Don't show quote if an app update was just downloaded */
+          if (window._aqsUpdatePending) return;
           setTimeout(function() { showPopup(quote, name); }, force ? 0 : 900);
       }
 

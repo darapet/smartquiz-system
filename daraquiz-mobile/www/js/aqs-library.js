@@ -529,7 +529,8 @@ function _cldXHR(url,formData){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  const resourceType=isThumb?'image':'raw';
+  /* Use /auto/upload for documents — Cloudinary detects type; avoids /raw/upload CORS block */
+  const resourceType=isThumb?'image':'auto';
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
   const formData=new FormData();
   formData.append('file',file);
@@ -653,7 +654,7 @@ window.libPopulateLevels=function(sel,type){
 /* ── BOOK CARD HTML ── */
 window.libBookCardHTML=function(b,uploaderProfile){
   const thumb=b.thumbnailUrl
-    ?`<img src="${b.thumbnailUrl}" alt="${b.title||''}" loading="lazy">`
+    ?`<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\"lib-card-thumb-placeholder\\"><div class=\\"lib-card-thumb-icon\\">📖</div><div class=\\"lib-card-thumb-label\\">${(b.course||b.subject||'').substring(0,20).replace(/'/g,'&#39;')}</div></div>'">`
     :`<div class="lib-card-thumb-placeholder">
         <div class="lib-card-thumb-icon">📖</div>
         <div class="lib-card-thumb-label">${(b.course||b.subject||'').substring(0,20)}</div>
