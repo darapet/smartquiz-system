@@ -588,10 +588,10 @@
             <span class="lib-book-row-stat">💬 ${b.commentCount||0}</span>
           </div>
         </div>
-        <div class="lib-book-row-actions">
-          <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="viewActivity('${b.id}','${(b.title||'').replace(/'/g,"\\'")}')">Activity</button>
-          <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="openEdit(${JSON.stringify(b)})">Edit</button>
-          <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteBook('${b.id}')">Delete</button>
+        <div class="lib-book-row-actions" style="flex-direction:column;gap:5px;min-width:72px;">
+          <button class="lib-btn lib-btn-ghost lib-btn-sm" style="width:100%" onclick="viewActivity('${b.id}','${(b.title||'').replace(/'/g,"\\'")}')">📊 Activity</button>
+          <button class="lib-btn lib-btn-ghost lib-btn-sm" style="width:100%" onclick="openEdit(${JSON.stringify(b)})">✏️ Edit</button>
+          <button class="lib-btn lib-btn-danger lib-btn-sm" style="width:100%" onclick="deleteBook('${b.id}')">🗑️ Delete</button>
         </div>
       </div>`;
     }).join('');
