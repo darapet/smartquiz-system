@@ -7,6 +7,12 @@ android {
         minSdkVersion project.hasProperty('minSdkVersion') ? rootProject.ext.minSdkVersion : 23
         targetSdkVersion project.hasProperty('targetSdkVersion') ? rootProject.ext.targetSdkVersion : 35
     }
+    sourceSets {
+        main {
+            // No Java sources — this module exists only to merge AndroidManifest.xml
+            java.srcDirs = []
+        }
+    }
 }
 
 repositories {
@@ -16,6 +22,4 @@ repositories {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    // compileOnly prevents Capacitor core classes being bundled twice (DEX duplicate error)
-    compileOnly "com.capacitorjs:android:6.1.0"
 }
