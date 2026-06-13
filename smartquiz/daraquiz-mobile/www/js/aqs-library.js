@@ -561,7 +561,7 @@ window.libAiExplain=async function(pdfUrl,title){
 };
 window.libAiExplainText=async function(text,title){
   if(!text||!text.trim()) throw new Error('No text content to analyse.');
-  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)\n\nIMPORTANT: Use LaTeX notation for ALL mathematical expressions — inline math with $...$ and display/block math with $$...$$. For example write $E = mc^2$ not E=mc^2, and write $$\\int_0^\\infty f(x)\\,dx$$ for standalone equations.'}],max_tokens:2000});
+  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)\n\nIMPORTANT: Use LaTeX notation for ALL mathematical expressions — inline math with $...$ and display/block math with $$...$$. For example write $E = mc^2$ not E=mc^2, and write $$\\int_0^\\infty f(x)\\,dx$$ for standalone equations.'}],max_tokens:4000});
   if(!res.ok) throw new Error('AI request failed ('+res.status+')');
   const d=await res.json(); return d.choices[0].message.content;
 };
@@ -572,7 +572,7 @@ window.libAiMCQ=async function(pdfUrl,title){
 };
 window.libAiMCQFromText=async function(text,title){
   if(!text||!text.trim()) throw new Error('No text content to analyse.');
-  const res=await window.libGroqFetch({messages:[{role:'user',content:'Generate 10 multiple-choice exam questions from "'+title+'":\n\n'+text.substring(0,12000)+'\n\nReturn ONLY valid JSON array, no markdown:\n[{"q":"Question","opts":["A. opt1","B. opt2","C. opt3","D. opt4"],"ans":0}]'}],max_tokens:2000});
+  const res=await window.libGroqFetch({messages:[{role:'user',content:'Generate 10 multiple-choice exam questions from "'+title+'":\n\n'+text.substring(0,8000)+'\n\nReturn ONLY a valid JSON array (no markdown, no commentary):\n[{"q":"Question text","opts":["A. option","B. option","C. option","D. option"],"ans":0}]\nans is the 0-based index of the correct option.'}],max_tokens:4000});
   if(!res.ok) throw new Error('AI request failed');
   const d=await res.json();
   let raw=d.choices[0].message.content.trim().replace(/^```(?:json)?/,'').replace(/```$/,'').trim();
