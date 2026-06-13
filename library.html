@@ -8,11 +8,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
 <style>
-.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;}
-.lib-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;}
-@media(max-width:540px){
-  .lib-grid,.lib-skeleton-grid{grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
-  .lib-card-thumb{aspect-ratio:2/3!important;}
+.lib-grid{display:grid;grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+.lib-skeleton-grid{display:grid;grid-template-columns:repeat(2,1fr)!important;gap:10px!important;}
+.lib-card-thumb{aspect-ratio:2/3;}
+@media(min-width:540px){
+  .lib-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important;gap:14px!important;}
+  .lib-skeleton-grid{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))!important;gap:14px!important;}
 }
 </style>
 </head>
