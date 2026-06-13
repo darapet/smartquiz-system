@@ -2015,7 +2015,7 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
                 +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+n+'/'+m+'</span></div>'
                 +'<div style="display:flex;align-items:center;justify-content:space-between;">'
                 +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">—</span>'
-                +'<button onclick="window._aqsTestPool(''+p.id+'')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
+                +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
                 +'</div></div>';
         }).join('');
     }
@@ -2034,6 +2034,7 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
     var taBtn=document.getElementById('aqs-test-all-btn');
     if(taBtn)taBtn.addEventListener('click',async function(){
         taBtn.disabled=true;taBtn.textContent='⏳ Testing All…';
+        _renderGrid();
         for(var i=0;i<POOLS.length;i++)await _testPool(POOLS[i].id);
         taBtn.disabled=false;taBtn.textContent='🧪 Test All Pools';
     });
