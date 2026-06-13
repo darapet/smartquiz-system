@@ -179,10 +179,22 @@ var AQS_APP_VERSION_CODE = 300;
         btnLater.textContent = 'Dismiss';
         btnLater.style.display = '';
         document.getElementById('aqs-upd-notes').textContent =
-          '✅ Download complete! Tap "Install Now" below or check your notifications / Downloads folder to install the update.';
+          '✅ Download complete! The installer will open automatically. If nothing happens, tap "Install Now".';
         /* Suppress quote popup while update is pending */
         window._aqsUpdatePending = true;
       }
+    };
+
+    /* Called by MainActivity if "Install unknown apps" permission is not granted.
+       The native side opens the Settings screen automatically — we just update the UI. */
+    window.aqsNativeInstallBlocked = function () {
+      btn.disabled = false;
+      btn.textContent = '📲 Install Now';
+      btnLater.textContent = 'Dismiss';
+      btnLater.style.display = '';
+      document.getElementById('aqs-upd-notes').textContent =
+        '⚙️ One-time setup needed: In the Settings screen that just opened, enable "Allow from this source", then come back here and tap "Install Now".';
+      window._aqsUpdatePending = true;
     };
 
     /* Call native bridge — MainActivity registers this on the WebView */
