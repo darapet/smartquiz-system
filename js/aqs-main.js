@@ -1843,12 +1843,12 @@
 
         /* ── Groq direct call — fastest/best quality (uses master keys from Firebase) ── */
         async function _groqCall(prompt) {
-            if (typeof window.groqFetch !== 'function') throw new Error('groqFetch not available');
+            if (typeof window.dashboardGroqFetch !== 'function') throw new Error('No AI keys configured for Dashboard. Add keys in Admin Settings → dashboard pool.');
             var isMath = isMathSubject('', prompt);
             var groqModel = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
             var ctrl = new AbortController();
             var tid  = setTimeout(function() { ctrl.abort(); }, 25000);
-            var res  = await window.groqFetch({
+            var res  = await window.dashboardGroqFetch({
                 model:       groqModel,
                 messages:    [{ role: 'system', content: _DIRECT_SYS }, { role: 'user', content: prompt }],
                 temperature: 0.35,
