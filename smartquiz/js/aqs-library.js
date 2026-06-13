@@ -91,7 +91,7 @@ function _waitFirebase() {
           var res=await fetch(URL_,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(Object.assign({},bodyObj,{model:model}))});
           if(res.status===429){ _markRL(key); _setIdx(idx+1); continue; }
           if(res.status===413){ _setIdx(idx+1); continue; }
-          if(res.status===401){ _setIdx(idx+1); continue; }
+          if(res.status===401){ _rl[_h(key)]=Date.now()+600000; _setIdx(idx+1); continue; }
           _setIdx(idx+1); return res;
         }catch(e){ console.warn('[lib-ai] slot '+(idx+1)+' err',e.message); }
       }
