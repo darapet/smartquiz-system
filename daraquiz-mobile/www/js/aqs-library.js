@@ -335,8 +335,13 @@ window.libAddComment=async function(bookId,uid,name,photoURL,text){
 };
 window.libGetComments=async function(bookId){
   await _init();
-  const s=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',bookId),orderBy('createdAt','desc'),limit(50)));
-  return s.docs.map(function(d){return{id:d.id,...d.data()};});
+  const s=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',bookId),limit(50)));
+  const docs=s.docs.map(function(d){return{id:d.id,...d.data()};});
+  return docs.sort(function(a,b){
+    const ta=a.createdAt?.toMillis?a.createdAt.toMillis():0;
+    const tb=b.createdAt?.toMillis?b.createdAt.toMillis():0;
+    return tb-ta;
+  });
 };
 
 /* ── REPLIES ── */
@@ -347,8 +352,13 @@ window.libAddReply=async function(commentId,uid,name,photoURL,text,isHost){
 };
 window.libGetReplies=async function(commentId){
   await _init();
-  const s=await getDocs(query(collection(_db,'library_replies'),where('commentId','==',commentId),orderBy('createdAt','asc'),limit(30)));
-  return s.docs.map(function(d){return{id:d.id,...d.data()};});
+  const s=await getDocs(query(collection(_db,'library_replies'),where('commentId','==',commentId),limit(30)));
+  const docs=s.docs.map(function(d){return{id:d.id,...d.data()};});
+  return docs.sort(function(a,b){
+    const ta=a.createdAt?.toMillis?a.createdAt.toMillis():0;
+    const tb=b.createdAt?.toMillis?b.createdAt.toMillis():0;
+    return ta-tb;
+  });
 };
 
 /* ── HOST: Get all comments on their books ── */
