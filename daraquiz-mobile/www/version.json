@@ -1,8 +1,8 @@
 {
-  "version": "1.303",
-  "versionCode": 281,
+  "version": "1.304",
+  "versionCode": 282,
   "releaseDate": "2026-06-13",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.303/daraquiz-v1.303.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.303/daraquiz-v1.303.apk"
+  "notes": "Library sync update — all library files now match web.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.304/daraquiz-v1.304.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.304/daraquiz-v1.304.apk"
 }
