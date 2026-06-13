@@ -13,9 +13,11 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, limit,
   serverTimestamp, increment, getCountFromServer, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import {
-  getStorage, ref as storageRef, uploadBytesResumable, getDownloadURL
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
+
+/* Cloudinary direct-upload config (no server required) */
+var _CLD_CLOUD = 'du7misvms';
+var _CLD_THUMB_PRESET = 'smartquiz_thumbs';
+var _CLD_FILE_PRESET  = 'smartquiz_docs';
 
 function _waitFirebase() {
   return new Promise(function(res){
@@ -298,28 +300,28 @@ window.libSaveProfile=async function(uid,data){
   await setDoc(doc(_db,'library_profiles',uid),{...data,updatedAt:serverTimestamp()},{merge:true});
 };
 window.libUploadCoverPhoto=async function(uid,file){
-  await _init();
-  const storage=getStorage(getApp());
-  const path='library/covers/'+uid+'.'+( file.name.split('.').pop()||'jpg');
-  const snap=await new Promise(function(resolve,reject){
-    const task=uploadBytesResumable(storageRef(storage,path),file,{contentType:file.type||'image/jpeg'});
-    task.on('state_changed',null,reject,function(){resolve(task.snapshot);});
-  });
-  const url=await getDownloadURL(snap.ref);
-  await window.libSaveProfile(uid,{coverURL:url});
-  return url;
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/covers/'+uid);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Cover upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{coverURL:data.secure_url});
+  return data.secure_url;
 };
 window.libUploadProfilePhoto=async function(uid,file){
-  await _init();
-  const storage=getStorage(getApp());
-  const path='library/avatars/'+uid+'.'+( file.name.split('.').pop()||'jpg');
-  const snap=await new Promise(function(resolve,reject){
-    const task=uploadBytesResumable(storageRef(storage,path),file,{contentType:file.type||'image/jpeg'});
-    task.on('state_changed',null,reject,function(){resolve(task.snapshot);});
-  });
-  const url=await getDownloadURL(snap.ref);
-  await window.libSaveProfile(uid,{photoURL:url});
-  return url;
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/avatars/'+uid);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Photo upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{photoURL:data.secure_url});
+  return data.secure_url;
 };
 
 /* ── BOOKS ── */
@@ -503,46 +505,43 @@ window.libGetFollowingCount=async function(followerUid){
   }
 };
 
-/* ── FILE UPLOADS — Firebase Storage ── */
-async function _fbStorageUpload(file, storagePath, onProgress) {
-  await _init();
-  const storage = getStorage(getApp());
-  return new Promise(function(resolve, reject) {
-    const task = uploadBytesResumable(
-      storageRef(storage, storagePath),
-      file,
-      { contentType: file.type || 'application/octet-stream' }
-    );
-    task.on('state_changed',
-      function(snap) {
-        if (onProgress) {
-          onProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100));
-        }
-      },
-      function(err) { reject(new Error('Upload failed: ' + err.message)); },
-      async function() {
-        try {
-          const url = await getDownloadURL(task.snapshot.ref);
-          resolve(url);
-        } catch(e) { reject(e); }
-      }
-    );
-  });
-}
-
-window.libUploadFile = async function(file, bookId, type) {
-  const isThumb = (type === 'thumb');
-  const ext = file.name ? file.name.split('.').pop().toLowerCase() : (isThumb ? 'jpg' : 'pdf');
-  const folder = isThumb ? 'library/thumbnails' : 'library/books';
-  const path = folder + '/' + bookId + '.' + ext;
-  return _fbStorageUpload(file, path);
+/* ── FILE UPLOADS ── */
+window.libUploadFile=async function(file,bookId,type){
+  const isThumb=(type==='thumb');
+  const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
+  const resourceType=isThumb?'image':'auto';
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',preset);
+  if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
+  const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
+  const res=await fetch(url,{method:'POST',body:formData});
+  if(!res.ok){
+    let msg='Upload failed ('+res.status+')';
+    try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
+    throw new Error(msg);
+  }
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned from Cloudinary');
+  return data.secure_url;
 };
 
-window.libUploadParsed = async function(pages, bookId) {
-  const payload = JSON.stringify({ totalPages: pages.length, pages: pages });
-  const blob = new Blob([payload], { type: 'application/json' });
-  const path = 'library/parsed/' + bookId + '.json';
-  return _fbStorageUpload(blob, path);
+window.libUploadParsed=async function(pages,bookId){
+  const payload=JSON.stringify({totalPages:pages.length,pages:pages});
+  const blob=new Blob([payload],{type:'application/json'});
+  const formData=new FormData();
+  formData.append('file',blob,bookId+'_parsed.json');
+  formData.append('upload_preset',_CLD_FILE_PRESET);
+  formData.append('public_id','library/parsed/'+bookId);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/raw/upload',{method:'POST',body:formData});
+  if(!res.ok){
+    let msg='Parsed upload failed ('+res.status+')';
+    try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
+    throw new Error(msg);
+  }
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned for parsed content');
+  return data.secure_url;
 };
 
 /* ── AI ── */
