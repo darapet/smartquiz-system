@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#080910">
 <title>📖 Reading — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
@@ -43,7 +43,8 @@ html,body{height:100%;overflow:hidden;}
 
 /* ── STAGE ── */
 .rdr-stage{
-  position:fixed;top:54px;bottom:62px;left:0;right:0;
+  position:fixed;top:54px;left:0;right:0;
+  bottom:calc(62px + env(safe-area-inset-bottom,0px));
   overflow-y:auto;background:#090a18;
   -webkit-overflow-scrolling:touch;
 }
@@ -114,25 +115,29 @@ html,body{height:100%;overflow:hidden;}
 
 /* ── FOOTER ── */
 .rdr-footer{
-  position:fixed;bottom:0;left:0;right:0;height:62px;z-index:300;
+  position:fixed;bottom:0;left:0;right:0;z-index:300;
   display:flex;align-items:center;justify-content:space-between;
-  padding:0 16px;gap:10px;
+  padding:0 16px;gap:8px;
   background:rgba(8,9,16,.97);border-top:1px solid rgba(255,255,255,.08);
   backdrop-filter:blur(18px);
+  /* Safe area for iPhone home bar */
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  min-height:62px;
+  height:calc(62px + env(safe-area-inset-bottom,0px));
 }
-.rdr-nav-grp{display:flex;align-items:center;gap:8px;}
+.rdr-nav-grp{display:flex;align-items:center;gap:6px;}
 .rdr-pg-btn{
-  padding:8px 14px;border-radius:9px;
+  padding:7px 12px;border-radius:9px;
   border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.05);
-  color:#94a3b8;font-size:.8rem;font-weight:700;
-  cursor:pointer;font-family:inherit;transition:all .18s;
+  color:#94a3b8;font-size:.78rem;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:all .18s;white-space:nowrap;
 }
 .rdr-pg-btn:not(:disabled):hover{border-color:rgba(99,102,241,.4);color:#a5b4fc;background:rgba(99,102,241,.08);}
 .rdr-pg-btn:disabled{opacity:.3;cursor:not-allowed;}
 .rdr-pg-btn.nxt{background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.3);color:#a5b4fc;}
 .rdr-pg-btn.nxt:not(:disabled):hover{background:rgba(99,102,241,.22);border-color:rgba(99,102,241,.55);}
-.rdr-pg-num{font-size:.78rem;font-weight:700;color:#475569;min-width:64px;text-align:center;}
-.rdr-act-grp{display:flex;align-items:center;gap:6px;}
+.rdr-pg-num{font-size:.76rem;font-weight:700;color:#475569;min-width:52px;text-align:center;}
+.rdr-act-grp{display:flex;align-items:center;gap:5px;}
 .rdr-act-btn{
   padding:7px 11px;border-radius:9px;
   border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
@@ -238,6 +243,21 @@ html,body{height:100%;overflow:hidden;}
   .rdr-page-booklabel{display:none;}
   .rdr-uploader-strip{padding:10px 16px;}
   .rdr-page-outer{padding:20px 16px 60px;}
+}
+/* Ultra-compact footer for very small screens */
+@media(max-width:400px){
+  .rdr-footer{padding:0 10px;gap:4px;}
+  .rdr-pg-btn{padding:6px 8px;font-size:.72rem;}
+  .rdr-pg-num{min-width:40px;font-size:.7rem;}
+  .rdr-like-btn{padding:6px 9px;font-size:.73rem;}
+  .rdr-act-btn{padding:6px 8px;font-size:.7rem;}
+  .rdr-hbtn{padding:5px 8px;font-size:.69rem;}
+}
+/* Shrink "Prev/Next" text to arrows only on very narrow */
+@media(max-width:360px){
+  #rdr-prev::after{content:'';} 
+  #rdr-next::after{content:'';}
+  .rdr-act-btn span,.rdr-pg-btn .btn-text{display:none;}
 }
 </style>
 </head>
