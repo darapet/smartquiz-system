@@ -90,6 +90,17 @@
       <textarea class="lib-textarea" id="p-bio" rows="2" placeholder="Tell readers about yourself…"></textarea>
     </div>
 
+    <div class="lib-form-row">
+      <div class="lib-form-group">
+        <label class="lib-label">Phone Number (optional)</label>
+        <input class="lib-input" id="p-phone" placeholder="e.g. 08012345678" type="tel">
+      </div>
+      <div class="lib-form-group">
+        <label class="lib-label">WhatsApp Number (optional)</label>
+        <input class="lib-input" id="p-whatsapp" placeholder="e.g. +2348012345678" type="tel">
+      </div>
+    </div>
+
     <div class="lib-form-group" style="margin-bottom:12px">
       <label class="lib-label">Institution Type *</label>
       <select class="lib-select-inp" id="p-type" onchange="profileTypeChange(this.value)">
@@ -179,9 +190,15 @@
         <input class="lib-input" id="u-title" placeholder="e.g. Organic Chemistry — 3rd Edition">
       </div>
 
-      <div class="lib-form-group" style="margin-bottom:14px">
-        <label class="lib-label">Author (optional)</label>
-        <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
+      <div class="lib-form-row">
+        <div class="lib-form-group">
+          <label class="lib-label">Author (optional)</label>
+          <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
+        </div>
+        <div class="lib-form-group">
+          <label class="lib-label">Course Code (optional)</label>
+          <input class="lib-input" id="u-coursecode" placeholder="e.g. MCS102, CHM204" maxlength="20" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        </div>
       </div>
 
       <!-- Thumbnail -->
@@ -349,6 +366,7 @@
       level:document.getElementById('u-level').value,
       title:document.getElementById('u-title').value.trim(),
       author:document.getElementById('u-author').value.trim(),
+      courseCode:(document.getElementById('u-coursecode').value||'').trim().toUpperCase(),
       pages:_detectedPages||0
     };
   }
@@ -494,6 +512,8 @@
     const sc=document.getElementById('p-school').value;
     const dp=document.getElementById('p-dept').value;
     const bio=document.getElementById('p-bio').value.trim();
+    const phone=document.getElementById('p-phone').value.trim();
+    const whatsapp=document.getElementById('p-whatsapp').value.trim();
     if(!fn||!ln||!it||!sc||!dp){window.libToast('Please fill all required fields.');return;}
     const saveBtn=document.getElementById('po-save-txt');saveBtn.textContent='Saving…';
     try{
@@ -505,8 +525,8 @@
         try{ photoURL=await window.libUploadProfilePhoto(_user.uid,photoInp._file); }
         catch(e){window.libToast('Photo upload failed, continuing...',4000);}
       }
-      await window.libSaveProfile(_user.uid,{displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL});
-      _profile={displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL};
+      await window.libSaveProfile(_user.uid,{displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL,phone,whatsapp});
+      _profile={displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL,phone,whatsapp};
       document.getElementById('profile-overlay').style.display='none';
       document.getElementById('main-content').style.display='block';
       document.getElementById('hdr-manage').style.display='inline-flex';
