@@ -225,11 +225,11 @@
         }];
 
         /* Try Groq vision first (meta-llama/llama-4-scout supports vision) */
-        if (typeof window.groqFetch === 'function') {
+        if (typeof window.docsgenGroqFetch === 'function') {
             try {
                 var ctrl = new AbortController();
                 setTimeout(function () { ctrl.abort(); }, 30000);
-                var res = await window.groqFetch({
+                var res = await window.docsgenGroqFetch({
                     model: 'meta-llama/llama-4-scout-17b-16e-instruct',
                     messages: visionMsg,
                     max_tokens: 4096,
@@ -315,10 +315,10 @@
 
     /* Mistral primary — auto-retries with next key on 429 */
     function callGroq(messages) {
-        if (typeof window.groqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
+        if (typeof window.docsgenGroqFetch !== 'function') return Promise.reject(new Error('No AI key — add keys in Admin Settings → docsgen pool.'));
         var ctrl = new AbortController();
         var tid  = setTimeout(function () { ctrl.abort(); }, 25000);
-        return window.groqFetch(
+        return window.docsgenGroqFetch(
             { model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.5 },
             { signal: ctrl.signal }
         )
@@ -333,9 +333,9 @@
 
     /* Sequential: Groq first → Pollinations direct → proxy last resort */
     async function raceAI(messages) {
-        /* 1. Mistral primary — fastest & best quality (groqFetch handles key rotation) */
+        /* 1. Docsgen pool primary */
         try {
-            if (typeof window.groqFetch === 'function') {
+            if (typeof window.docsgenGroqFetch === 'function') {
                 var gt = await callGroq(messages);
                 if (gt) return gt;
             }
