@@ -69,7 +69,7 @@ function _waitFirebase() {
 
   window.setLibGroqKeys = function(arr){
     _SLOTS.length=0;
-    (arr||[]).map(function(r){ return (r||'').replace(/[^\x20-\x7E]/g,'').trim(); })
+    (arr||[]).map(function(r){ return r?r.split('').reverse().join(''):'' })
              .filter(function(k){ return k.length>20 })
              .forEach(function(k){ _SLOTS.push(k); });
     try{ localStorage.setItem(IDX,'0'); }catch(e){}
@@ -546,7 +546,7 @@ window.libAiExplain=async function(pdfUrl,title){
 };
 window.libAiExplainText=async function(text,title){
   if(!text||!text.trim()) throw new Error('No text content to analyse.');
-  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)'}],max_tokens:2000});
+  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)\n\nIMPORTANT: Use LaTeX notation for ALL mathematical expressions — inline math with $...$ and display/block math with $$...$$. For example write $E = mc^2$ not E=mc^2, and write $$\\int_0^\\infty f(x)\\,dx$$ for standalone equations.'}],max_tokens:2000});
   if(!res.ok) throw new Error('AI request failed ('+res.status+')');
   const d=await res.json(); return d.choices[0].message.content;
 };
