@@ -2148,13 +2148,21 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
 
       var taBtn = document.getElementById('aqs-test-all-btn');
       if (taBtn) taBtn.addEventListener('click', async function() {
+          _renderGrid();
           taBtn.disabled = true; taBtn.textContent = '⏳ Testing All…';
           await Promise.all(POOLS.map(function(p){ return _testPool(p.id); }));
           taBtn.disabled = false; taBtn.textContent = '🧪 Test All Pools';
       });
 
-      if (window._aqsFirebaseReady) { setTimeout(_renderGrid, 1400); }
-      else { document.addEventListener('aqs:firebase:ready', function(){ setTimeout(_renderGrid,1400); }, {once:true}); }
+      /* Render immediately — grid reads DOM inputs, no Firebase needed */
+      _renderGrid();
+      /* Re-render after settings may have loaded into inputs */
+      setTimeout(_renderGrid, 1500);
+      setTimeout(_renderGrid, 4000);
+      /* Also re-render when Firebase fires (keys may be freshly populated) */
+      if (!window._aqsFirebaseReady) {
+          document.addEventListener('aqs:firebase:ready', function(){ setTimeout(_renderGrid, 400); }, {once:true});
+      }
   })();
   </script>
 
