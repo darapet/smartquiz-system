@@ -510,20 +510,30 @@ window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
   const resourceType=isThumb?'image':'raw';
-  const formData=new FormData();
-  formData.append('file',file);
-  formData.append('upload_preset',preset);
-  if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
-  const res=await fetch(url,{method:'POST',body:formData});
-  if(!res.ok){
-    let msg='Upload failed ('+res.status+')';
-    try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
-    throw new Error(msg);
+  var lastErr=null;
+  for(var attempt=0;attempt<3;attempt++){
+    if(attempt>0) await new Promise(function(r){setTimeout(r,attempt*1500);});
+    try{
+      const formData=new FormData();
+      formData.append('file',file);
+      formData.append('upload_preset',preset);
+      if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
+      const res=await fetch(url,{method:'POST',body:formData});
+      if(!res.ok){
+        let msg='Upload failed ('+res.status+')';
+        try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
+        throw new Error(msg);
+      }
+      const data=await res.json();
+      if(!data.secure_url) throw new Error('No URL returned from Cloudinary');
+      return data.secure_url;
+    }catch(e){
+      lastErr=e;
+      if(e.message&&e.message.indexOf('Upload failed (')===0) throw e;
+    }
   }
-  const data=await res.json();
-  if(!data.secure_url) throw new Error('No URL returned from Cloudinary');
-  return data.secure_url;
+  throw new Error('Network error — check your connection and try again ('+(lastErr?lastErr.message:'Failed to fetch')+')');
 };
 
 window.libUploadParsed=async function(pages,bookId){
@@ -572,11 +582,28 @@ window.libAiMCQ=async function(pdfUrl,title){
 };
 window.libAiMCQFromText=async function(text,title){
   if(!text||!text.trim()) throw new Error('No text content to analyse.');
-  const res=await window.libGroqFetch({messages:[{role:'user',content:'Generate 10 multiple-choice exam questions from "'+title+'":\n\n'+text.substring(0,8000)+'\n\nReturn ONLY a valid JSON array (no markdown, no commentary):\n[{"q":"Question text","opts":["A. option","B. option","C. option","D. option"],"ans":0}]\nans is the 0-based index of the correct option.'}],max_tokens:4000});
-  if(!res.ok) throw new Error('AI request failed');
+  const res=await window.libGroqFetch({
+    messages:[
+      {role:'system',content:'You are a JSON-only quiz generator. You MUST respond with a raw JSON array only — no prose, no markdown fences, no explanation. Start your response with [ and end with ].'},
+      {role:'user',content:'Generate 10 multiple-choice exam questions from the document titled "'+title+'".\n\nDocument:\n'+text.substring(0,8000)+'\n\nRespond with ONLY this JSON array format:\n[{"q":"Question text","opts":["A. option","B. option","C. option","D. option"],"ans":0}]\nwhere "ans" is the 0-based index of the correct option. No extra text.'}
+    ],
+    max_tokens:4000
+  });
+  if(!res.ok) throw new Error('AI request failed ('+res.status+')');
   const d=await res.json();
-  let raw=d.choices[0].message.content.trim().replace(/^```(?:json)?/,'').replace(/```$/,'').trim();
-  return JSON.parse(raw);
+  let raw=d.choices[0].message.content||'';
+  /* Strip any markdown fences */
+  raw=raw.trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+  /* If the model wrapped the array in an object, extract it */
+  if(raw.startsWith('{')){ const m=raw.match(/\[[\s\S]*\]/); if(m) raw=m[0]; }
+  /* Find the array boundaries robustly */
+  const start=raw.indexOf('['), end=raw.lastIndexOf(']');
+  if(start>=0&&end>start) raw=raw.substring(start,end+1);
+  try{
+    return JSON.parse(raw);
+  }catch(e){
+    throw new Error('Quiz generation failed — AI returned an unexpected format. Please try again.');
+  }
 };
 
 /* ── UTILS ── */
