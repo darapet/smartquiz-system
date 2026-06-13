@@ -379,8 +379,10 @@ body>*:not(.lib-page-bg){position:relative;z-index:1;}
 .lhp-tab-body{display:none;}
 .lhp-tab-body.active{display:block;}
 
-/* Books grid on profile */
-.lhp-books-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:14px;}
+/* Books grid on profile — 2 columns side by side always */
+.lhp-books-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+@media(min-width:600px){.lhp-books-grid{grid-template-columns:repeat(3,1fr);}}
+@media(min-width:860px){.lhp-books-grid{grid-template-columns:repeat(4,1fr);}}
 
 /* Followers list */
 .lhp-follower-item{
