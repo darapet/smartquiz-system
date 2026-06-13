@@ -2000,7 +2000,21 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
         {id:'puzzle',label:'Puzzle',emoji:'🧩',fn:'puzzleGroqFetch',max:10,
           count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('puzzle'):0;}},
         {id:'quizstudio',label:'Quiz Studio',emoji:'🎬',fn:'quizstudioGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quizstudio'):0;}}
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quizstudio'):0;}},
+        {id:'docsgen',label:'Docs Gen',emoji:'📝',fn:'docsgenGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('docsgen'):0;}},
+        {id:'imagegen',label:'Image Gen',emoji:'🖼️',fn:'imagegenGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('imagegen'):0;}},
+        {id:'animate',label:'AI Animate',emoji:'✨',fn:'animateGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('animate'):0;}},
+        {id:'designstudio',label:'Design Studio',emoji:'🎨',fn:'designstudioGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('designstudio'):0;}},
+        {id:'dashboard',label:'Dashboard AI',emoji:'🏠',fn:'dashboardGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('dashboard'):0;}},
+        {id:'tts',label:'TTS / Translate',emoji:'🔊',fn:'ttsGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('tts'):0;}},
+        {id:'quotes',label:'AI Quotes',emoji:'💬',fn:'quotesGroqFetch',max:10,
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quotes'):0;}}
     ];
     function _dots(n,m){var s='';for(var i=0;i<m;i++)s+=i<n?'<span style="color:#10b981;font-size:.48rem;">●</span>':'<span style="color:#dde3ec;font-size:.4rem;">○</span>';return s;}
     function _renderGrid(){
