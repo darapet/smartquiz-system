@@ -185,8 +185,11 @@
     }
     /* Fetch uploader profiles for avatar display */
     await fetchUploaderProfiles(books);
+    /* Count how many books each uploader has in this result set */
+    const _uploaderCount = {};
+    books.forEach(function(b){ if(b.uploaderUid) _uploaderCount[b.uploaderUid] = (_uploaderCount[b.uploaderUid]||0)+1; });
     grid.innerHTML = '<div class="lib-grid">' +
-      books.map(b => window.libBookCardHTML(b, _profileCache[b.uploaderUid])).join('') +
+      books.map(b => window.libBookCardHTML(b, _profileCache[b.uploaderUid], _uploaderCount[b.uploaderUid]||1)).join('') +
     '</div>';
   }
 
