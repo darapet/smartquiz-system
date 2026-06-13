@@ -289,6 +289,35 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Library AI Keys -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">📚</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Library AI Keys — Dedicated Pool (up to 10 keys)</h2>
+            <p class="aqs-settings-card-desc">These keys are used <strong>exclusively</strong> by Library AI features (Explain &amp; MCQ). They never share with the main AI pool. Get free Groq keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>. Leave extra slots blank.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 1 (Primary) <span id="aqs-lk-dot-1"></span></label><input type="password" id="aqs-lib-key-1" placeholder="Paste Groq API key…" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 2 <span id="aqs-lk-dot-2"></span></label><input type="password" id="aqs-lib-key-2" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 3 <span id="aqs-lk-dot-3"></span></label><input type="password" id="aqs-lib-key-3" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 4 <span id="aqs-lk-dot-4"></span></label><input type="password" id="aqs-lib-key-4" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 5 <span id="aqs-lk-dot-5"></span></label><input type="password" id="aqs-lib-key-5" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 6 <span id="aqs-lk-dot-6"></span></label><input type="password" id="aqs-lib-key-6" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 7 <span id="aqs-lk-dot-7"></span></label><input type="password" id="aqs-lib-key-7" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 8 <span id="aqs-lk-dot-8"></span></label><input type="password" id="aqs-lib-key-8" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 9 <span id="aqs-lk-dot-9"></span></label><input type="password" id="aqs-lib-key-9" placeholder="(optional)" autocomplete="off" /></div>
+            <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Library Key 10 <span id="aqs-lk-dot-10"></span></label><input type="password" id="aqs-lib-key-10" placeholder="(optional)" autocomplete="off" /></div>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-lib-keys-btn">💾 Save Library Keys</button>
+            <span id="aqs-lib-key-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
 <!-- Background Music -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
@@ -1026,6 +1055,77 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
             loadQuoteKeys();
         } else {
             document.addEventListener('aqs:firebase:ready', loadQuoteKeys, { once: true });
+        }
+    })();
+
+    /* ═══════════════════════════════════════════════════════════════════
+       Library Groq Keys — Save / Load
+       Stored as lib_groq_keys in settings/main.
+       Never merged with the main pool.
+    ═══════════════════════════════════════════════════════════════════ */
+    (function () {
+        var STATUS = document.getElementById('aqs-lib-key-status');
+        var DOTS   = [1,2,3,4,5,6,7,8,9,10].map(function(i){ return document.getElementById('aqs-lk-dot-'+i); });
+
+        function setStatus(msg, ok) {
+            if (!STATUS) return;
+            STATUS.textContent = msg;
+            STATUS.style.color = ok ? '#10b981' : '#ef4444';
+            if (ok) setTimeout(function(){ STATUS.textContent = ''; }, 3000);
+        }
+
+        function dotColor(el, val) {
+            if (!el) return;
+            el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+        }
+
+        async function loadLibKeys() {
+            try {
+                var snap = await getDoc(doc(db, 'settings', 'main'));
+                if (snap.exists()) {
+                    var keys = snap.data().lib_groq_keys || [];
+                    for (var i = 0; i < 10; i++) {
+                        var el = document.getElementById('aqs-lib-key-' + (i+1));
+                        if (el) el.value = keys[i] || '';
+                        dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
+                    }
+                }
+            } catch(e) { /* silently ignore */ }
+        }
+
+        var saveBtn = document.getElementById('aqs-save-lib-keys-btn');
+        if (saveBtn) {
+            saveBtn.addEventListener('click', async function () {
+                saveBtn.disabled = true;
+                saveBtn.textContent = '⏳ Saving…';
+                var keys = [];
+                for (var i = 1; i <= 10; i++) {
+                    var v = (document.getElementById('aqs-lib-key-' + i) || {}).value || '';
+                    if (v.trim()) keys.push(v.trim());
+                }
+                if (!keys.length) {
+                    setStatus('❌ Add at least one key.', false);
+                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Library Keys';
+                    return;
+                }
+                try {
+                    await setDoc(doc(db, 'settings', 'main'), { lib_groq_keys: keys }, { merge: true });
+                    if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(keys);
+                    keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
+                    setStatus('✅ Saved ' + keys.length + ' library key(s)!', true);
+                    saveBtn.textContent = '✅ Saved!';
+                    setTimeout(function(){ saveBtn.disabled = false; saveBtn.textContent = '💾 Save Library Keys'; }, 2200);
+                } catch(e) {
+                    setStatus('❌ Save failed: ' + e.message, false);
+                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Library Keys';
+                }
+            });
+        }
+
+        if (typeof db !== 'undefined' && typeof getDoc !== 'undefined') {
+            loadLibKeys();
+        } else {
+            document.addEventListener('aqs:firebase:ready', loadLibKeys, { once: true });
         }
     })();
 </script>
