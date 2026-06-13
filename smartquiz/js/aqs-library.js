@@ -299,6 +299,18 @@ window.libSaveProfile=async function(uid,data){
   await _init();
   await setDoc(doc(_db,'library_profiles',uid),{...data,updatedAt:serverTimestamp()},{merge:true});
 };
+window.libUploadCoverPhoto=async function(uid,file){
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/covers/'+uid);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Cover upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{coverURL:data.secure_url});
+  return data.secure_url;
+};
 window.libUploadProfilePhoto=async function(uid,file){
   const formData=new FormData();
   formData.append('file',file);
