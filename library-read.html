@@ -262,10 +262,13 @@ html,body{height:100%;overflow:hidden;}
 }
 .rdr-comment-input:focus{border-color:rgba(99,102,241,.4);}
 .rdr-comment-submit{
-  width:100%;padding:10px;border-radius:9px;border:none;
+  width:100%;padding:11px;border-radius:9px;border:none;
   background:linear-gradient(135deg,#6366f1,#8b5cf6);
   color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px;
+  transition:opacity .18s,transform .18s;display:flex;align-items:center;justify-content:center;gap:6px;
 }
+.rdr-comment-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.rdr-comment-submit:disabled{opacity:.45;cursor:not-allowed;transform:none;}
 
 /* Comment items with replies */
 .rdr-ci{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
@@ -289,7 +292,9 @@ html,body{height:100%;overflow:hidden;}
 .rdr-reply-form{margin-top:8px;display:none;}
 .rdr-reply-inp{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:.78rem;font-family:inherit;outline:none;resize:none;min-height:46px;transition:border-color .18s;}
 .rdr-reply-inp:focus{border-color:rgba(99,102,241,.4);}
-.rdr-reply-submit{margin-top:4px;padding:5px 12px;border-radius:7px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.rdr-reply-submit{margin-top:4px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .18s,transform .15s;display:inline-flex;align-items:center;gap:4px;}
+.rdr-reply-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.rdr-reply-submit:disabled{opacity:.45;cursor:not-allowed;}
 
 @media(max-width:580px){
   .rdr-hdr-acts .hide-mob{display:none;}
@@ -717,13 +722,13 @@ html,body{height:100%;overflow:hidden;}
           </div>
         </div>`;
     } else if(panel==='comments'){
-      title.textContent='💬 Feedback';
+      title.textContent='💬 Comments';
       body.innerHTML=(_user?`
         <div style="margin-bottom:14px">
           <textarea class="rdr-comment-input" id="p-cmnt-inp" placeholder="Share your thoughts or ask a question…" rows="3"></textarea>
-          <button class="rdr-comment-submit" onclick="submitComment()">Post Feedback</button>
+          <button class="rdr-comment-submit" onclick="submitComment()">Comment</button>
         </div>`:`<div style="font-size:.8rem;color:#64748b;margin-bottom:14px;padding:10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06);">
-          <a href="login.html" style="color:#a5b4fc;font-weight:700">Sign in</a> to leave feedback
+          <a href="login.html" style="color:#a5b4fc;font-weight:700">Sign in</a> to comment
         </div>`)+
         `<div id="p-cmnt-list"><div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">Loading…</div></div>`;
       loadComments();
@@ -808,7 +813,7 @@ html,body{height:100%;overflow:hidden;}
     const el=document.getElementById('p-cmnt-list');
     try{
       const list=await window.libGetComments(bookId);
-      if(!list.length){el.innerHTML='<div data-empty style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No feedback yet. Be the first!</div>';return;}
+      if(!list.length){el.innerHTML='<div data-empty style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No comments yet. Be the first!</div>';return;}
       el.innerHTML=list.map(function(c,ci){
         const avHtml=c.photoURL?`<img src="${c.photoURL}" alt="">`:
           `<span style="font-size:.6rem;font-weight:800;">${window.libInitials(c.displayName||'?')}</span>`;
@@ -883,7 +888,7 @@ html,body{height:100%;overflow:hidden;}
     btn.disabled=true;btn.textContent='Posting…';
 
     const list=document.getElementById('p-cmnt-list');
-    /* Remove "no feedback yet" placeholder if present */
+    /* Remove "no comments yet" placeholder if present */
     const emptyMsg=list.querySelector('[data-empty]');
     if(emptyMsg) emptyMsg.remove();
 
@@ -905,14 +910,14 @@ html,body{height:100%;overflow:hidden;}
 
     try{
       await window.libAddComment(bookId,_user.uid,name,_user.photoURL||'',text);
-      window.libToast('✓ Feedback posted!');
+      window.libToast('✓ Comment posted!');
     }catch(e){
       /* Roll back on failure */
       document.getElementById(tempId)?.remove();
       inp.value=text;
       window.libToast('Error: '+e.message);
     }
-    btn.disabled=false;btn.textContent='Post Feedback';
+    btn.disabled=false;btn.textContent='Comment';
   };
 
   /* Signal that module functions (openPanel etc.) are ready */
