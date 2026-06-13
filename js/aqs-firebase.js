@@ -2192,7 +2192,8 @@ async function actionSaveSettings(data) {
         'github_client_id','github_client_secret',
         'microsoft_client_id','microsoft_client_secret',
         'yahoo_client_id','yahoo_client_secret',
-        'quoteGroqKeys'
+        'quoteGroqKeys',
+        'lib_groq_keys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
     /* Trim and validate Groq keys (up to 20) before saving */
@@ -2223,6 +2224,13 @@ async function actionSaveSettings(data) {
             .filter(function(k){ return k.length > 20; })
             .slice(0, 5);
     }
+    /* Trim and validate Library Groq keys (up to 10) before saving */
+    if (Array.isArray(payload.lib_groq_keys)) {
+        payload.lib_groq_keys = payload.lib_groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 10);
+    }
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
@@ -2246,6 +2254,10 @@ async function actionSaveSettings(data) {
         window._AQS_HF_MASTER_KEYS = _hfMerged;
     }
     if (payload.hf_model) window._AQS_HF_MODEL = payload.hf_model;
+    /* Immediately load library keys into the dedicated library pool */
+    if (Array.isArray(payload.lib_groq_keys) && payload.lib_groq_keys.length) {
+        if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(payload.lib_groq_keys);
+    }
     return { success: true, message: 'Settings saved.' };
 }
 
