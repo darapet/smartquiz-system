@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.Manifest;
+import android.provider.Settings;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
@@ -31,6 +32,9 @@ public class MainActivity extends BridgeActivity {
     private volatile long activeDownloadId = -1;
     private WebView appWebView;
     private DownloadManager downloadManager;
+
+    /* Stored so we can retry install after the user grants permission in Settings */
+    private Uri pendingInstallUri = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -120,6 +124,24 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
+    /**
+     * When the user returns from the Settings screen (after granting "Install unknown apps"),
+     * retry the pending install automatically.
+     */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (pendingInstallUri != null) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O
+                    || getPackageManager().canRequestPackageInstalls()) {
+                Uri uri = pendingInstallUri;
+                pendingInstallUri = null;
+                triggerInstallIntent(uri);
+            }
+            /* If still not granted, keep pendingInstallUri so next resume retries again */
+        }
+    }
+
     private void notifyJs(final int pct) {
         if (appWebView == null) return;
         runOnUiThread(() -> appWebView.evaluateJavascript(
@@ -134,7 +156,33 @@ public class MainActivity extends BridgeActivity {
             null));
     }
 
+    /**
+     * Opens the APK installer.
+     * On Android 8+ checks for REQUEST_INSTALL_PACKAGES permission first.
+     * If not granted → sends user to Settings and stores URI to retry on resume.
+     */
     private void openInstaller(Uri apkUri) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!getPackageManager().canRequestPackageInstalls()) {
+                /* Save URI so onResume() can retry once permission is granted */
+                pendingInstallUri = apkUri;
+                /* Notify JS so the "Install Now" button stays visible with guidance */
+                runOnUiThread(() -> appWebView.evaluateJavascript(
+                    "if(typeof window.aqsNativeInstallBlocked==='function')window.aqsNativeInstallBlocked();",
+                    null));
+                /* Open the exact Settings page for this app's install permission */
+                Intent settings = new Intent(
+                    Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName()));
+                settings.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                try { startActivity(settings); } catch (Exception e) { e.printStackTrace(); }
+                return;
+            }
+        }
+        triggerInstallIntent(apkUri);
+    }
+
+    private void triggerInstallIntent(Uri apkUri) {
         Intent install = new Intent(Intent.ACTION_VIEW);
         install.setDataAndType(apkUri, "application/vnd.android.package-archive");
         install.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
