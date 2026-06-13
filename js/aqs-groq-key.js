@@ -370,15 +370,6 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 try { localStorage.setItem(IDX, '0'); } catch(e) {}
             },
             keyCount: function() { return slots.length; },
-            getKey: function() {
-                if (!slots.length) return null;
-                var start = _idx();
-                for (var i = 0; i < slots.length; i++) {
-                    var k = slots[(start + i) % slots.length];
-                    if (!_isRL(k)) return k;
-                }
-                return slots[start % slots.length]; /* all rate-limited — return current anyway */
-            },
             fetch: async function(bodyObj) {
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
                 if (slots.length) {
@@ -399,15 +390,15 @@ window._aqsKeysReady = new Promise(function(resolve) {
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
-                /* No keys configured or all rate-limited — do NOT fall back to main pool */
-                throw new Error('No AI keys configured for this feature. Add keys in Admin Settings → ' + id + ' pool.');
+                /* Own keys exhausted or empty — fall back to main pool */
+                if (typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
+                throw new Error('No AI keys configured. Add keys in Admin Settings → ' + id + '.');
             }
         };
     }
 
     /* Initialise all feature pools */
-    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio',
-     'docsgen', 'imagegen', 'animate', 'designstudio', 'dashboard', 'tts', 'quotes'].forEach(function(id) {
+    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
         _pools[id] = _createPool(id);
     });
 
@@ -418,30 +409,12 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.getFeatureGroqKeyCount = function(id) {
         return _pools[id] ? _pools[id].keyCount() : 0;
     };
-    /* Returns first available key from a feature pool, falling back to
-       the main Groq pool — used for endpoints that need a raw key
-       (e.g. Whisper audio/transcriptions). Never returns a hardcoded key. */
-    window.getFeatureGroqKey = function(id) {
-        if (_pools[id]) {
-            var k = _pools[id].getKey();
-            if (k) return k;
-        }
-        /* Fall back to main admin pool */
-        return (typeof window.getGroqKey === 'function' ? window.getGroqKey() : null) || null;
-    };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.quizGroqFetch          = function(b) { return _pools.quiz.fetch(b); };
-    window.challengeGroqFetch     = function(b) { return _pools.challenge.fetch(b); };
-    window.studyhubGroqFetch      = function(b) { return _pools.studyhub.fetch(b); };
-    window.textdocsGroqFetch      = function(b) { return _pools.textdocs.fetch(b); };
-    window.puzzleGroqFetch        = function(b) { return _pools.puzzle.fetch(b); };
-    window.quizstudioGroqFetch    = function(b) { return _pools.quizstudio.fetch(b); };
-    window.docsgenGroqFetch       = function(b) { return _pools.docsgen.fetch(b); };
-    window.imagegenGroqFetch      = function(b) { return _pools.imagegen.fetch(b); };
-    window.animateGroqFetch       = function(b) { return _pools.animate.fetch(b); };
-    window.designstudioGroqFetch  = function(b) { return _pools.designstudio.fetch(b); };
-    window.dashboardGroqFetch     = function(b) { return _pools.dashboard.fetch(b); };
-    window.ttsGroqFetch           = function(b) { return _pools.tts.fetch(b); };
-    window.quotesGroqFetch        = function(b) { return _pools.quotes.fetch(b); };
+    window.quizGroqFetch       = function(b) { return _pools.quiz.fetch(b); };
+    window.challengeGroqFetch  = function(b) { return _pools.challenge.fetch(b); };
+    window.studyhubGroqFetch   = function(b) { return _pools.studyhub.fetch(b); };
+    window.textdocsGroqFetch   = function(b) { return _pools.textdocs.fetch(b); };
+    window.puzzleGroqFetch     = function(b) { return _pools.puzzle.fetch(b); };
+    window.quizstudioGroqFetch = function(b) { return _pools.quizstudio.fetch(b); };
 })();
