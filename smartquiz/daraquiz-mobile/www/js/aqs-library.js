@@ -509,7 +509,7 @@ window.libGetFollowingCount=async function(followerUid){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  const resourceType=isThumb?'image':'auto';
+  const resourceType=isThumb?'image':'raw';
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
