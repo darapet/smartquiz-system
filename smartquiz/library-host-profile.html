@@ -20,8 +20,14 @@
 </header>
 
 <!-- COVER -->
-<div class="lhp-cover">
-  <div class="lhp-cover-grid"></div>
+<div class="lhp-cover" id="lhp-cover">
+  <img class="lhp-cover-img" id="lhp-cover-img" src="" alt="">
+  <div class="lhp-cover-grid" id="lhp-cover-grid"></div>
+  <div class="lhp-cover-bottom-grad"></div>
+  <label class="lhp-cover-change-btn" id="lhp-cover-change-btn" for="lhp-cover-input" style="display:none">
+    📷 Change Cover
+    <input type="file" id="lhp-cover-input" accept="image/*" style="display:none" onchange="uploadCover(this)">
+  </label>
 </div>
 
 <!-- PROFILE BODY -->
@@ -136,6 +142,7 @@
     if (isOwn) {
       document.getElementById('lhp-edit-btn').style.display = 'inline-flex';
       document.getElementById('hdr-manage').style.display = 'inline-flex';
+      document.getElementById('lhp-cover-change-btn').style.display = '';
       document.getElementById('lhp-follow-btn').style.display = 'none';
     } else if (user) {
       const followBtn = document.getElementById('lhp-follow-btn');
@@ -163,6 +170,12 @@
         return;
       }
 
+      /* Cover photo */
+      if (_profile.coverURL) {
+        const cImg = document.getElementById('lhp-cover-img');
+        cImg.src = _profile.coverURL; cImg.style.display = '';
+        document.getElementById('lhp-cover').classList.add('has-photo');
+      }
       /* Avatar */
       const avEl = document.getElementById('lhp-avatar');
       if (_profile.photoURL) {
@@ -424,6 +437,23 @@
     }
   }
   window.loadFollowers = loadFollowers;
+
+  async function uploadCover(input) {
+    const file = input.files[0];
+    if (!file || !_currentUser) return;
+    const btn = document.getElementById('lhp-cover-change-btn');
+    btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none';
+    btn.firstChild.textContent = ' Uploading…';
+    try {
+      const url = await window.libUploadCoverPhoto(_currentUser.uid, file);
+      const cImg = document.getElementById('lhp-cover-img');
+      cImg.src = url; cImg.style.display = '';
+      document.getElementById('lhp-cover').classList.add('has-photo');
+      window.libToast('Cover photo updated! ✅');
+    } catch(e) { window.libToast('Upload failed: ' + e.message); }
+    btn.style.opacity = ''; btn.style.pointerEvents = '';
+    btn.firstChild.textContent = '📷 Change Cover';
+  }
 
   document.addEventListener('aqs:firebase:ready', init);
   if (window._aqsFirebaseReady) init();
