@@ -2000,21 +2000,7 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
         {id:'puzzle',label:'Puzzle',emoji:'🧩',fn:'puzzleGroqFetch',max:10,
           count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('puzzle'):0;}},
         {id:'quizstudio',label:'Quiz Studio',emoji:'🎬',fn:'quizstudioGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quizstudio'):0;}},
-        {id:'docsgen',label:'Docs Gen',emoji:'📝',fn:'docsgenGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('docsgen'):0;}},
-        {id:'imagegen',label:'Image Gen',emoji:'🖼️',fn:'imagegenGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('imagegen'):0;}},
-        {id:'animate',label:'AI Animate',emoji:'✨',fn:'animateGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('animate'):0;}},
-        {id:'designstudio',label:'Design Studio',emoji:'🎨',fn:'designstudioGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('designstudio'):0;}},
-        {id:'dashboard',label:'Dashboard AI',emoji:'🏠',fn:'dashboardGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('dashboard'):0;}},
-        {id:'tts',label:'TTS / Translate',emoji:'🔊',fn:'ttsGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('tts'):0;}},
-        {id:'quotes',label:'AI Quotes',emoji:'💬',fn:'quotesGroqFetch',max:10,
-          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quotes'):0;}}
+          count:function(){return typeof window.getFeatureGroqKeyCount==='function'?window.getFeatureGroqKeyCount('quizstudio'):0;}}
     ];
     function _dots(n,m){var s='';for(var i=0;i<m;i++)s+=i<n?'<span style="color:#10b981;font-size:.48rem;">●</span>':'<span style="color:#dde3ec;font-size:.4rem;">○</span>';return s;}
     function _renderGrid(){
@@ -2029,7 +2015,7 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
                 +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+n+'/'+m+'</span></div>'
                 +'<div style="display:flex;align-items:center;justify-content:space-between;">'
                 +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">—</span>'
-                +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
+                +'<button onclick="window._aqsTestPool(''+p.id+'')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
                 +'</div></div>';
         }).join('');
     }
@@ -2048,7 +2034,6 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
     var taBtn=document.getElementById('aqs-test-all-btn');
     if(taBtn)taBtn.addEventListener('click',async function(){
         taBtn.disabled=true;taBtn.textContent='⏳ Testing All…';
-        _renderGrid();
         for(var i=0;i<POOLS.length;i++)await _testPool(POOLS[i].id);
         taBtn.disabled=false;taBtn.textContent='🧪 Test All Pools';
     });
