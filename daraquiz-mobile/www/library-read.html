@@ -8,6 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"
+  onload="window._katexReady=true;document.dispatchEvent(new Event('aqs:katex:ready'))"></script>
 <style>
 html,body{height:100%;overflow:hidden;}
 
@@ -403,6 +407,34 @@ html,body{height:100%;overflow:hidden;}
 
 <div class="lib-toast" id="lib-toast"></div>
 
+<script>
+/* Early stubs — header buttons clickable before module scripts load.
+   The real openPanel (defined in the module below) overrides once ready.
+   Any early click shows a "loading" state and replays on aqs:lib:ready. */
+(function(){
+  var _pendingPanel = null;
+  window.openPanel = function(panel) {
+    _pendingPanel = panel;
+    var o = document.getElementById('rdr-overlay');
+    if (o) o.classList.add('open');
+    var t = document.getElementById('rdr-panel-title');
+    if (t) t.textContent = panel==='ai' ? '✨ AI Explain' : panel==='mcq' ? '🎯 Quiz' : '💬 Comments';
+    var b = document.getElementById('rdr-panel-body');
+    if (b) b.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;font-size:.9rem;">⏳ Initialising…</div>';
+    document.addEventListener('aqs:lib:ready', function(){
+      if (_pendingPanel) { window.openPanel(_pendingPanel); _pendingPanel = null; }
+    }, {once:true});
+  };
+  window.closePanel = function(){
+    var o = document.getElementById('rdr-overlay');
+    if (o) o.classList.remove('open');
+  };
+  window.goBack    = function(){ history.back(); };
+  window.shareBook = function(){};
+  window.prevPage  = function(){};
+  window.nextPage  = function(){};
+})();
+</script>
 <script type="module" src="js/aqs-firebase.js"></script>
 <script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
@@ -882,6 +914,28 @@ html,body{height:100%;overflow:hidden;}
     }
     btn.disabled=false;btn.textContent='Post Feedback';
   };
+
+  /* Signal that module functions (openPanel etc.) are ready */
+  document.dispatchEvent(new Event('aqs:lib:ready'));
+
+  /* Auto-render KaTeX whenever rdr-panel-body content changes */
+  (function(){
+    function _renderMath(el) {
+      if (typeof renderMathInElement !== 'undefined') {
+        renderMathInElement(el, {
+          delimiters:[
+            {left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},
+            {left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}
+          ], throwOnError:false
+        });
+      }
+    }
+    var _panelBody = document.getElementById('rdr-panel-body');
+    if (_panelBody && typeof MutationObserver !== 'undefined') {
+      new MutationObserver(function(){ _renderMath(_panelBody); })
+        .observe(_panelBody, {childList:true, subtree:true});
+    }
+  })();
 
   document.addEventListener('aqs:firebase:ready',init);
   if(window._aqsFirebaseReady) init();
