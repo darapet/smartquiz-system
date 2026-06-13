@@ -318,6 +318,181 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+
+<!-- Quiz Creation AI Keys -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header">
+    <span class="aqs-settings-card-icon">🧠</span>
+    <div>
+      <h2 class="aqs-settings-card-title">Quiz Creation AI — Dedicated Pool (up to 10 keys)</h2>
+      <p class="aqs-settings-card-desc">These Groq keys power <strong>AI quiz generation</strong>. Falls back to the main Mistral pool if all keys are busy. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>.</p>
+    </div>
+  </div>
+  <div class="aqs-settings-card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 1 (Primary) <span id="aqs-qz-dot-1"></span></label><input type="password" id="aqs-qz-key-1" placeholder="Paste Groq API key…" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 2 <span id="aqs-qz-dot-2"></span></label><input type="password" id="aqs-qz-key-2" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 3 <span id="aqs-qz-dot-3"></span></label><input type="password" id="aqs-qz-key-3" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 4 <span id="aqs-qz-dot-4"></span></label><input type="password" id="aqs-qz-key-4" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 5 <span id="aqs-qz-dot-5"></span></label><input type="password" id="aqs-qz-key-5" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 6 <span id="aqs-qz-dot-6"></span></label><input type="password" id="aqs-qz-key-6" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 7 <span id="aqs-qz-dot-7"></span></label><input type="password" id="aqs-qz-key-7" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 8 <span id="aqs-qz-dot-8"></span></label><input type="password" id="aqs-qz-key-8" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 9 <span id="aqs-qz-dot-9"></span></label><input type="password" id="aqs-qz-key-9" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 10 <span id="aqs-qz-dot-10"></span></label><input type="password" id="aqs-qz-key-10" placeholder="(optional)" autocomplete="off"/></div>
+    </div>
+    <div class="aqs-settings-actions">
+      <button class="aqs-btn aqs-btn-primary" id="aqs-save-quiz-keys-btn">💾 Save Quiz AI Keys</button>
+      <span id="aqs-quiz-key-status" class="aqs-status-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Challenge AI Keys -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header">
+    <span class="aqs-settings-card-icon">⚔️</span>
+    <div>
+      <h2 class="aqs-settings-card-title">Challenge AI — Dedicated Pool (up to 10 keys)</h2>
+      <p class="aqs-settings-card-desc">These Groq keys power <strong>Challenge Mode</strong> AI. Falls back to the main Mistral pool if all keys are busy.</p>
+    </div>
+  </div>
+  <div class="aqs-settings-card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 1 (Primary) <span id="aqs-ch-dot-1"></span></label><input type="password" id="aqs-ch-key-1" placeholder="Paste Groq API key…" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 2 <span id="aqs-ch-dot-2"></span></label><input type="password" id="aqs-ch-key-2" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 3 <span id="aqs-ch-dot-3"></span></label><input type="password" id="aqs-ch-key-3" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 4 <span id="aqs-ch-dot-4"></span></label><input type="password" id="aqs-ch-key-4" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 5 <span id="aqs-ch-dot-5"></span></label><input type="password" id="aqs-ch-key-5" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 6 <span id="aqs-ch-dot-6"></span></label><input type="password" id="aqs-ch-key-6" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 7 <span id="aqs-ch-dot-7"></span></label><input type="password" id="aqs-ch-key-7" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 8 <span id="aqs-ch-dot-8"></span></label><input type="password" id="aqs-ch-key-8" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 9 <span id="aqs-ch-dot-9"></span></label><input type="password" id="aqs-ch-key-9" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 10 <span id="aqs-ch-dot-10"></span></label><input type="password" id="aqs-ch-key-10" placeholder="(optional)" autocomplete="off"/></div>
+    </div>
+    <div class="aqs-settings-actions">
+      <button class="aqs-btn aqs-btn-primary" id="aqs-save-challenge-keys-btn">💾 Save Challenge AI Keys</button>
+      <span id="aqs-challenge-key-status" class="aqs-status-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Study Hub AI Keys -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header">
+    <span class="aqs-settings-card-icon">📖</span>
+    <div>
+      <h2 class="aqs-settings-card-title">Study Hub AI — Dedicated Pool (up to 10 keys)</h2>
+      <p class="aqs-settings-card-desc">These Groq keys power <strong>Study Hub</strong> AI features (chat, summaries, voice). Falls back to the main Mistral pool if all keys are busy.</p>
+    </div>
+  </div>
+  <div class="aqs-settings-card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 1 (Primary) <span id="aqs-sh-dot-1"></span></label><input type="password" id="aqs-sh-key-1" placeholder="Paste Groq API key…" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 2 <span id="aqs-sh-dot-2"></span></label><input type="password" id="aqs-sh-key-2" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 3 <span id="aqs-sh-dot-3"></span></label><input type="password" id="aqs-sh-key-3" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 4 <span id="aqs-sh-dot-4"></span></label><input type="password" id="aqs-sh-key-4" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 5 <span id="aqs-sh-dot-5"></span></label><input type="password" id="aqs-sh-key-5" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 6 <span id="aqs-sh-dot-6"></span></label><input type="password" id="aqs-sh-key-6" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 7 <span id="aqs-sh-dot-7"></span></label><input type="password" id="aqs-sh-key-7" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 8 <span id="aqs-sh-dot-8"></span></label><input type="password" id="aqs-sh-key-8" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 9 <span id="aqs-sh-dot-9"></span></label><input type="password" id="aqs-sh-key-9" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 10 <span id="aqs-sh-dot-10"></span></label><input type="password" id="aqs-sh-key-10" placeholder="(optional)" autocomplete="off"/></div>
+    </div>
+    <div class="aqs-settings-actions">
+      <button class="aqs-btn aqs-btn-primary" id="aqs-save-studyhub-keys-btn">💾 Save Study Hub AI Keys</button>
+      <span id="aqs-studyhub-key-status" class="aqs-status-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Text-to-Docs AI Keys -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header">
+    <span class="aqs-settings-card-icon">📄</span>
+    <div>
+      <h2 class="aqs-settings-card-title">Text → Docs AI — Dedicated Pool (up to 10 keys)</h2>
+      <p class="aqs-settings-card-desc">These Groq keys power <strong>Text-to-Docs</strong> AI generation. Falls back to the main Mistral pool if all keys are busy.</p>
+    </div>
+  </div>
+  <div class="aqs-settings-card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 1 (Primary) <span id="aqs-td-dot-1"></span></label><input type="password" id="aqs-td-key-1" placeholder="Paste Groq API key…" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 2 <span id="aqs-td-dot-2"></span></label><input type="password" id="aqs-td-key-2" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 3 <span id="aqs-td-dot-3"></span></label><input type="password" id="aqs-td-key-3" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 4 <span id="aqs-td-dot-4"></span></label><input type="password" id="aqs-td-key-4" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 5 <span id="aqs-td-dot-5"></span></label><input type="password" id="aqs-td-key-5" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 6 <span id="aqs-td-dot-6"></span></label><input type="password" id="aqs-td-key-6" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 7 <span id="aqs-td-dot-7"></span></label><input type="password" id="aqs-td-key-7" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 8 <span id="aqs-td-dot-8"></span></label><input type="password" id="aqs-td-key-8" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 9 <span id="aqs-td-dot-9"></span></label><input type="password" id="aqs-td-key-9" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 10 <span id="aqs-td-dot-10"></span></label><input type="password" id="aqs-td-key-10" placeholder="(optional)" autocomplete="off"/></div>
+    </div>
+    <div class="aqs-settings-actions">
+      <button class="aqs-btn aqs-btn-primary" id="aqs-save-textdocs-keys-btn">💾 Save Text→Docs AI Keys</button>
+      <span id="aqs-textdocs-key-status" class="aqs-status-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Puzzle AI Keys -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header">
+    <span class="aqs-settings-card-icon">🧩</span>
+    <div>
+      <h2 class="aqs-settings-card-title">Puzzle AI — Dedicated Pool (up to 10 keys)</h2>
+      <p class="aqs-settings-card-desc">These Groq keys power <strong>Puzzle</strong> generation. Falls back to the main Mistral pool if all keys are busy.</p>
+    </div>
+  </div>
+  <div class="aqs-settings-card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 1 (Primary) <span id="aqs-pz-dot-1"></span></label><input type="password" id="aqs-pz-key-1" placeholder="Paste Groq API key…" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 2 <span id="aqs-pz-dot-2"></span></label><input type="password" id="aqs-pz-key-2" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 3 <span id="aqs-pz-dot-3"></span></label><input type="password" id="aqs-pz-key-3" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 4 <span id="aqs-pz-dot-4"></span></label><input type="password" id="aqs-pz-key-4" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 5 <span id="aqs-pz-dot-5"></span></label><input type="password" id="aqs-pz-key-5" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 6 <span id="aqs-pz-dot-6"></span></label><input type="password" id="aqs-pz-key-6" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 7 <span id="aqs-pz-dot-7"></span></label><input type="password" id="aqs-pz-key-7" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 8 <span id="aqs-pz-dot-8"></span></label><input type="password" id="aqs-pz-key-8" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 9 <span id="aqs-pz-dot-9"></span></label><input type="password" id="aqs-pz-key-9" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 10 <span id="aqs-pz-dot-10"></span></label><input type="password" id="aqs-pz-key-10" placeholder="(optional)" autocomplete="off"/></div>
+    </div>
+    <div class="aqs-settings-actions">
+      <button class="aqs-btn aqs-btn-primary" id="aqs-save-puzzle-keys-btn">💾 Save Puzzle AI Keys</button>
+      <span id="aqs-puzzle-key-status" class="aqs-status-msg"></span>
+    </div>
+  </div>
+</div>
+
+<!-- Quiz Studio AI Keys -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header">
+    <span class="aqs-settings-card-icon">🎬</span>
+    <div>
+      <h2 class="aqs-settings-card-title">Quiz Studio AI — Dedicated Pool (up to 10 keys)</h2>
+      <p class="aqs-settings-card-desc">These Groq keys power <strong>Quiz Studio</strong> AI. Falls back to the main Mistral pool if all keys are busy.</p>
+    </div>
+  </div>
+  <div class="aqs-settings-card-body">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 1 (Primary) <span id="aqs-qs-dot-1"></span></label><input type="password" id="aqs-qs-key-1" placeholder="Paste Groq API key…" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 2 <span id="aqs-qs-dot-2"></span></label><input type="password" id="aqs-qs-key-2" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 3 <span id="aqs-qs-dot-3"></span></label><input type="password" id="aqs-qs-key-3" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 4 <span id="aqs-qs-dot-4"></span></label><input type="password" id="aqs-qs-key-4" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 5 <span id="aqs-qs-dot-5"></span></label><input type="password" id="aqs-qs-key-5" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 6 <span id="aqs-qs-dot-6"></span></label><input type="password" id="aqs-qs-key-6" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 7 <span id="aqs-qs-dot-7"></span></label><input type="password" id="aqs-qs-key-7" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 8 <span id="aqs-qs-dot-8"></span></label><input type="password" id="aqs-qs-key-8" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 9 <span id="aqs-qs-dot-9"></span></label><input type="password" id="aqs-qs-key-9" placeholder="(optional)" autocomplete="off"/></div>
+      <div class="aqs-field-group"><label style="display:flex;align-items:center;gap:6px;">Key 10 <span id="aqs-qs-dot-10"></span></label><input type="password" id="aqs-qs-key-10" placeholder="(optional)" autocomplete="off"/></div>
+    </div>
+    <div class="aqs-settings-actions">
+      <button class="aqs-btn aqs-btn-primary" id="aqs-save-quizstudio-keys-btn">💾 Save Quiz Studio AI Keys</button>
+      <span id="aqs-quizstudio-key-status" class="aqs-status-msg"></span>
+    </div>
+  </div>
+</div>
+
 <!-- Background Music -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
@@ -1105,6 +1280,61 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
         _whenFirebaseReady(loadLibKeys);
     })();
 </script>
+    /* ═══════════════════════════════════════════════════════════════════
+       FEATURE KEY PANELS — Generic factory wires up each feature card.
+       Pattern identical to Library keys: load via aqsAjax, save via
+       saveSettings. Immediately pushes keys to the live feature pool.
+    ═══════════════════════════════════════════════════════════════════ */
+    function _featureKeyPanel(cfg) {
+        var DOTS = [];
+        for (var _di = 1; _di <= 10; _di++) { DOTS.push(document.getElementById(cfg.dotPfx + _di)); }
+
+        function dotColor(el, val) {
+            if (!el) return;
+            el.innerHTML = val
+                ? '<span style="color:#10b981;font-size:1rem;">●</span>'
+                : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+        }
+
+        function loadKeys() {
+            if (typeof jQuery === 'undefined' || !window.AQS) return;
+            jQuery.post(window.AQS.ajax_url, { action: 'aqs_get_settings', nonce: '' }, function(res) {
+                var keys = (res && res.success && res.data && res.data.settings && res.data.settings[cfg.field]) || [];
+                for (var i = 0; i < 10; i++) {
+                    var el = document.getElementById(cfg.inputPfx + (i + 1));
+                    if (el) el.value = keys[i] || '';
+                    dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
+                }
+            });
+        }
+
+        var saveBtn = document.getElementById(cfg.saveBtnId);
+        if (saveBtn) {
+            saveBtn.addEventListener('click', function() {
+                var keys = [];
+                for (var i = 1; i <= 10; i++) {
+                    var v = (document.getElementById(cfg.inputPfx + i) || {}).value || '';
+                    if (v.trim()) keys.push(v.trim());
+                }
+                if (!keys.length) { _showStatus(cfg.statusId, false, 'Add at least one key.'); return; }
+                var data = {}; data[cfg.field] = keys;
+                saveSettings('/api/settings', data, cfg.statusId, saveBtn, cfg.btnText);
+                keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
+                if (typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(cfg.poolId, keys);
+            });
+        }
+
+        _whenFirebaseReady(loadKeys);
+    }
+
+    /* Wire up each feature panel */
+    _featureKeyPanel({ field:'quiz_groq_keys',        dotPfx:'aqs-qz-dot-', inputPfx:'aqs-qz-key-', saveBtnId:'aqs-save-quiz-keys-btn',       statusId:'aqs-quiz-key-status',       btnText:'💾 Save Quiz AI Keys',        poolId:'quiz'       });
+    _featureKeyPanel({ field:'challenge_groq_keys',   dotPfx:'aqs-ch-dot-', inputPfx:'aqs-ch-key-', saveBtnId:'aqs-save-challenge-keys-btn',  statusId:'aqs-challenge-key-status',  btnText:'💾 Save Challenge AI Keys',   poolId:'challenge'  });
+    _featureKeyPanel({ field:'studyhub_groq_keys',    dotPfx:'aqs-sh-dot-', inputPfx:'aqs-sh-key-', saveBtnId:'aqs-save-studyhub-keys-btn',   statusId:'aqs-studyhub-key-status',   btnText:'💾 Save Study Hub AI Keys',   poolId:'studyhub'   });
+    _featureKeyPanel({ field:'textdocs_groq_keys',    dotPfx:'aqs-td-dot-', inputPfx:'aqs-td-key-', saveBtnId:'aqs-save-textdocs-keys-btn',   statusId:'aqs-textdocs-key-status',   btnText:'💾 Save Text→Docs AI Keys',   poolId:'textdocs'   });
+    _featureKeyPanel({ field:'puzzle_groq_keys',      dotPfx:'aqs-pz-dot-', inputPfx:'aqs-pz-key-', saveBtnId:'aqs-save-puzzle-keys-btn',     statusId:'aqs-puzzle-key-status',     btnText:'💾 Save Puzzle AI Keys',      poolId:'puzzle'     });
+    _featureKeyPanel({ field:'quizstudio_groq_keys',  dotPfx:'aqs-qs-dot-', inputPfx:'aqs-qs-key-', saveBtnId:'aqs-save-quizstudio-keys-btn', statusId:'aqs-quizstudio-key-status', btnText:'💾 Save Quiz Studio AI Keys', poolId:'quizstudio' });
+
 <script src="js/aqs-quotes.js"></script>
 </body>
 </html>
