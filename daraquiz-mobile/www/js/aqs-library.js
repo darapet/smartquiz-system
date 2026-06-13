@@ -348,7 +348,14 @@ window.libSearchBooks=async function(f){
   if(f.level)  docs=docs.filter(function(b){ return b.level===f.level; });
   if(f.keyword){
     const kw=f.keyword.toLowerCase();
-    docs=docs.filter(function(b){ return (b.title||'').toLowerCase().includes(kw)||(b.course||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw); });
+    docs=docs.filter(function(b){
+      return (b.title||'').toLowerCase().includes(kw)
+          ||(b.course||'').toLowerCase().includes(kw)
+          ||(b.courseCode||'').toLowerCase().includes(kw)
+          ||(b.author||'').toLowerCase().includes(kw)
+          ||(b.institution||'').toLowerCase().includes(kw)
+          ||(b.uploaderName||'').toLowerCase().includes(kw);
+    });
   }
   docs.sort(function(a,b){ return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)); });
   return docs;
