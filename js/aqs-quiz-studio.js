@@ -80,11 +80,11 @@
 
     /* ── Groq browser call — auto-retries with next key on 429 ── */
     async function callGroq(apiMessages) {
-        if (typeof window.groqFetch !== 'function') return null;
+        if (typeof window.quizstudioGroqFetch !== 'function') return null;
         try {
             var ctrl = new AbortController();
             var tid  = setTimeout(function () { ctrl.abort(); }, 20000);
-            var res  = await window.groqFetch({
+            var res  = await window.quizstudioGroqFetch({
                 model:       'llama-3.1-8b-instant',
                 messages:    apiMessages,
                 max_tokens:  2048,
