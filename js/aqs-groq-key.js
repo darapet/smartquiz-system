@@ -399,9 +399,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
-                /* Own keys exhausted or empty — fall back to main pool */
-                if (typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
-                throw new Error('No AI keys configured. Add keys in Admin Settings → ' + id + '.');
+                /* No keys configured or all rate-limited — do NOT fall back to main pool */
+                throw new Error('No AI keys configured for this feature. Add keys in Admin Settings → ' + id + ' pool.');
             }
         };
     }
