@@ -7,6 +7,7 @@
 <title>📤 Upload — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 </head>
 <body>
 
@@ -194,6 +195,12 @@
           <input type="file" id="file-input" accept=".pdf,.epub,.docx,.doc,.txt" onchange="onFileSelect(this)">
         </div>
         <div id="file-name-show" style="font-size:.75rem;color:#a5b4fc;margin-top:6px;display:none"></div>
+        <div id="parse-progress" style="display:none;margin-top:10px">
+          <div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+            <div id="parse-fill" style="height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);transition:width .25s;width:0%"></div>
+          </div>
+          <div id="parse-text" style="font-size:.72rem;color:#64748b;margin-top:5px;text-align:center"></div>
+        </div>
       </div>
 
       <!-- Batch queue -->
@@ -288,6 +295,7 @@
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
   let _user=null, _profile=null, _batch=[], _selFile=null, _selThumb=null;
+  let _detectedPages=0, _parsedPages=[];
 
   /* ── PROFILE CASCADE ── */
   window.profileTypeChange = function(type) {
@@ -322,14 +330,51 @@
     document.getElementById('thumb-preview').style.display = 'flex';
     document.getElementById('thumb-zone').style.borderColor = 'rgba(99,102,241,.5)';
   };
-  window.onFileSelect = function(inp) {
+  window.onFileSelect = async function(inp) {
     if (!inp.files[0]) return;
     if (inp.files[0].size > 52428800) { window.libToast('File exceeds 50MB limit.'); inp.value=''; return; }
-    _selFile = inp.files[0];
-    const el = document.getElementById('file-name-show');
-    el.textContent = '✅ ' + _selFile.name + ' (' + (_selFile.size/1048576).toFixed(1) + ' MB)';
-    el.style.display = 'block';
-    document.getElementById('file-zone').style.borderColor = 'rgba(34,197,94,.5)';
+    _selFile=inp.files[0]; _detectedPages=0; _parsedPages=[];
+    const nameEl   = document.getElementById('file-name-show');
+    const parseBar = document.getElementById('parse-progress');
+    const parseFill= document.getElementById('parse-fill');
+    const parseText= document.getElementById('parse-text');
+    const mb = (_selFile.size/1048576).toFixed(1);
+    nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB)';
+    nameEl.style.display='block';
+    document.getElementById('file-zone').style.borderColor='rgba(34,197,94,.5)';
+    /* Only parse PDFs */
+    const isPDF=_selFile.type==='application/pdf'||_selFile.name.toLowerCase().endsWith('.pdf');
+    if (!isPDF) return;
+    parseBar.style.display='block'; parseFill.style.width='5%'; parseText.textContent='Detecting pages…';
+    try {
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const ab  = await _selFile.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+      _detectedPages = pdf.numPages;
+      nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB) · '+_detectedPages+' pages';
+      parseFill.style.width='8%'; parseText.textContent='Parsing content (0 / '+_detectedPages+')…';
+      _parsedPages=[];
+      for (let i=1; i<=_detectedPages; i++) {
+        const page=await pdf.getPage(i);
+        const content=await page.getTextContent();
+        let lastY=null, text='';
+        for (const item of content.items) {
+          if ('str' in item) {
+            if (lastY!==null && Math.abs(item.transform[5]-lastY)>3) text+='\n';
+            text+=item.str; lastY=item.transform[5];
+          }
+        }
+        _parsedPages.push({n:i, text:text.trim()});
+        const pct=8+Math.round((i/_detectedPages)*90);
+        parseFill.style.width=pct+'%'; parseText.textContent='Parsing page '+i+' / '+_detectedPages+'…';
+      }
+      parseFill.style.width='100%'; parseText.textContent='✅ All '+_detectedPages+' pages parsed!';
+      setTimeout(function(){ parseBar.style.display='none'; }, 4000);
+    } catch(e) {
+      _detectedPages=0; _parsedPages=[];
+      parseBar.style.display='none';
+      nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB) — could not parse pages';
+    }
   };
 
   function getFormData() {
@@ -340,7 +385,7 @@
       level:           document.getElementById('u-level').value,
       title:           document.getElementById('u-title').value.trim(),
       author:          document.getElementById('u-author').value.trim(),
-      pages:           parseInt(document.getElementById('u-pages').value)||0
+      pages:           _detectedPages || parseInt(document.getElementById('u-pages').value)||0
     };
   }
 
@@ -359,12 +404,13 @@
     const err = validateForm(d);
     if (err) { window.libToast(err); return; }
     if (!_selFile) { window.libToast('Select a book file first.'); return; }
-    _batch.push({ data:d, file:_selFile, thumb:_selThumb, status:'pending' });
-    _selFile=null; _selThumb=null;
+    _batch.push({ data:d, file:_selFile, thumb:_selThumb, parsedPages:[..._parsedPages], status:'pending' });
+    _selFile=null; _selThumb=null; _detectedPages=0; _parsedPages=[];
     document.getElementById('file-input').value='';
     document.getElementById('thumb-input').value='';
     document.getElementById('file-name-show').style.display='none';
     document.getElementById('thumb-preview').style.display='none';
+    document.getElementById('parse-progress').style.display='none';
     document.getElementById('thumb-zone').style.borderColor='';
     document.getElementById('file-zone').style.borderColor='';
     document.getElementById('u-title').value='';
@@ -389,8 +435,8 @@
     if (_selFile) {
       const err = validateForm(d);
       if (err) { window.libToast(err); return; }
-      _batch.unshift({ data:d, file:_selFile, thumb:_selThumb, status:'pending' });
-      _selFile=null; _selThumb=null;
+      _batch.unshift({ data:d, file:_selFile, thumb:_selThumb, parsedPages:[..._parsedPages], status:'pending' });
+      _selFile=null; _selThumb=null; _detectedPages=0; _parsedPages=[];
     }
 
     const btn = document.getElementById('upload-btn');
@@ -406,13 +452,18 @@
       setProgress(Math.round((i/_batch.length)*80), 'Uploading: '+item.data.title+'…');
       try {
         const bookId='lib_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-        let thumbnailUrl='', fileUrl='';
+        let thumbnailUrl='', fileUrl='', parsedUrl='';
         if (item.thumb) { setProgress(null,'Uploading cover…'); thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb'); }
         setProgress(null,'Saving book file — this may take a moment…');
         fileUrl=await window.libUploadFile(item.file,bookId,'file');
+        if (item.parsedPages && item.parsedPages.length>0) {
+          setProgress(null,'Saving parsed content…');
+          try { parsedUrl=await window.libUploadParsed(item.parsedPages,bookId); }
+          catch(pe){ console.warn('[upload] parsed upload failed:',pe.message); }
+        }
         setProgress(null,'Saving to library database…');
         await window.libAddBook({
-          ...item.data, thumbnailUrl, fileUrl,
+          ...item.data, thumbnailUrl, fileUrl, parsedUrl,
           uploaderUid: _user.uid,
           uploaderName: ((_profile.firstName||'')+' '+(_profile.lastName||'')).trim()
         });
