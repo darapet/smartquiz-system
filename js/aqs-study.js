@@ -827,12 +827,12 @@ async function aiChatVision(messages, temp) {
 
 /* checkAI — silently check AI readiness; badge is hidden from users */
 function checkAI() {
-    var mistralCount = typeof window._aqsMistralKeyCount === 'function' ? window._aqsMistralKeyCount() : 0;
-    var hasKey = mistralCount > 0 ||
-        (Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) && window._AQS_MISTRAL_MASTER_KEYS.length > 0);
-    S.aiReady = hasKey;
+    var studyhubCount = typeof window.getFeatureGroqKeyCount === 'function' ? window.getFeatureGroqKeyCount('studyhub') : 0;
+    var groqCount     = typeof window._aqsGroqKeyCount    === 'function' ? window._aqsGroqKeyCount()    : 0;
+    var mistralCount  = typeof window._aqsMistralKeyCount === 'function' ? window._aqsMistralKeyCount() : 0;
+    S.aiReady = studyhubCount > 0 || groqCount > 0 || mistralCount > 0;
     /* Silently retry until key loads — badge UI is hidden from students */
-    if (!hasKey) setTimeout(checkAI, 3000);
+    if (!S.aiReady) setTimeout(checkAI, 3000);
 }
 
 /* ── EVENTS ─────────────────────────────────────────────────── */
