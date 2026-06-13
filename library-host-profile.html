@@ -7,6 +7,20 @@
 <title>Host Profile — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
+<style>
+/* Book-cover change button — visible only to the owner */
+.lib-card-cover-btn{
+  display:none;position:absolute;bottom:6px;right:6px;
+  background:rgba(0,0,0,.72);color:#fff;border:none;border-radius:8px;
+  padding:4px 9px;font-size:.7rem;font-weight:700;cursor:pointer;
+  backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+  z-index:3;font-family:inherit;line-height:1.4;
+  transition:background .15s;
+}
+.lib-card-cover-btn:hover{background:rgba(99,102,241,.85);}
+body.lhp-is-owner .lib-card-cover-btn{display:block;}
+.lib-card-thumb-uploading{opacity:.45;pointer-events:none;}
+</style>
 </head>
 <body>
 <div class="lib-page-bg"></div>
@@ -118,6 +132,7 @@
 </div>
 
 <div class="lib-toast" id="lib-toast"></div>
+<input type="file" id="lhp-book-cover-input" accept="image/*" style="display:none">
 
 <script type="module" src="js/aqs-firebase.js"></script>
 <script type="module" src="js/aqs-groq-key.js"></script>
@@ -144,6 +159,7 @@
       document.getElementById('hdr-manage').style.display = 'inline-flex';
       document.getElementById('lhp-cover-change-btn').style.display = '';
       document.getElementById('lhp-follow-btn').style.display = 'none';
+      document.body.classList.add('lhp-is-owner');
     } else if (user) {
       const followBtn = document.getElementById('lhp-follow-btn');
       followBtn.style.display = 'inline-flex';
@@ -270,8 +286,8 @@
     const thumb = b.thumbnailUrl
       ? `<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\"lib-card-thumb-placeholder\\"><div class=\\"lib-card-thumb-icon\\">📖</div></div>'">`
       : `<div class="lib-card-thumb-placeholder"><div class="lib-card-thumb-icon">📖</div><div class="lib-card-thumb-label">${(b.course||'').substring(0,18)}</div></div>`;
-    return `<div class="lib-card" onclick="location.href='library-read.html?id=${b.id}'">
-      <div class="lib-card-thumb">${thumb}</div>
+    return `<div class="lib-card" data-book-id="${b.id}" onclick="location.href='library-read.html?id=${b.id}'">
+      <div class="lib-card-thumb">${thumb}<button class="lib-card-cover-btn" onclick="event.stopPropagation();window.triggerBookCover('${b.id}')" title="Change cover">📷 Cover</button></div>
       <div class="lib-card-body">
         <div class="lib-card-title">${b.title||'Untitled'}</div>
         <div class="lib-card-uploader" onclick="event.stopPropagation()">
@@ -430,6 +446,36 @@
     btn.style.opacity = ''; btn.style.pointerEvents = '';
     btn.firstChild.textContent = '📷 Change Cover';
   }
+
+  /* ── Book cover re-upload ────────────────────────────────────── */
+  let _coverBookId = null;
+  const _bookCoverInput = document.getElementById('lhp-book-cover-input');
+  window.triggerBookCover = function(bookId) {
+    _coverBookId = bookId;
+    _bookCoverInput.value = '';
+    _bookCoverInput.click();
+  };
+  _bookCoverInput.addEventListener('change', async function() {
+    const file = this.files[0];
+    if (!file || !_coverBookId) return;
+    const bookId = _coverBookId;
+    _coverBookId = null;
+    const card = document.querySelector('[data-book-id="'+bookId+'"]');
+    const thumbDiv = card ? card.querySelector('.lib-card-thumb') : null;
+    if (thumbDiv) thumbDiv.classList.add('lib-card-thumb-uploading');
+    try {
+      window.libToast('Uploading cover…');
+      const url = await window.libUploadFile(file, bookId, 'thumb');
+      await window.libUpdateBook(bookId, { thumbnailUrl: url });
+      const bk = _books.find(x => x.id === bookId);
+      if (bk) bk.thumbnailUrl = url;
+      document.getElementById('lhp-books-grid').innerHTML = _books.map(b => bookCardHTML(b)).join('');
+      window.libToast('✅ Cover updated!');
+    } catch(e) {
+      window.libToast('Upload failed: ' + e.message);
+      if (thumbDiv) thumbDiv.classList.remove('lib-card-thumb-uploading');
+    }
+  });
 
   document.addEventListener('aqs:firebase:ready', init);
   if (window._aqsFirebaseReady) init();
