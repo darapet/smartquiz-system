@@ -980,11 +980,11 @@
     var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
     /* Route through groqFetch (now Mistral-primary with key rotation) */
-    if (typeof window.groqFetch !== 'function') {
+    if (typeof window.textdocsGroqFetch !== 'function') {
       wpSetAIStatus('error', 'AI not ready');
       return Promise.reject(new Error('AI not ready — no keys configured.'));
     }
-    return window.groqFetch(
+    return window.textdocsGroqFetch(
       { messages: messages, max_tokens: safeMax, temperature: 0.3 }
     ).then(function(r) {
       if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
