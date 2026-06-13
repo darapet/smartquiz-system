@@ -651,19 +651,31 @@ window.libPopulateLevels=function(sel,type){
   levels.forEach(function(l){const o=document.createElement('option');o.value=l;o.textContent=l;sel.appendChild(o);});
 };
 
+/* ── BOOK CARD THUMB ERROR FALLBACK ── */
+window._libThumbErr=function(img,label){
+  const ph=document.createElement('div');
+  ph.className='lib-card-thumb-placeholder';
+  ph.innerHTML='<div class="lib-card-thumb-icon">📖</div><div class="lib-card-thumb-label">'+label+'</div>';
+  img.parentNode.replaceChild(ph,img);
+};
+
 /* ── BOOK CARD HTML ── */
-window.libBookCardHTML=function(b,uploaderProfile){
+window.libBookCardHTML=function(b,uploaderProfile,bookCount){
+  const courseLabel=(b.course||b.subject||'').substring(0,20).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const thumb=b.thumbnailUrl
-    ?`<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\"lib-card-thumb-placeholder\\"><div class=\\"lib-card-thumb-icon\\">📖</div><div class=\\"lib-card-thumb-label\\">${(b.course||b.subject||'').substring(0,20).replace(/'/g,'&#39;')}</div></div>'">`
+    ?`<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="window._libThumbErr(this,'${courseLabel}')">`
     :`<div class="lib-card-thumb-placeholder">
         <div class="lib-card-thumb-icon">📖</div>
         <div class="lib-card-thumb-label">${(b.course||b.subject||'').substring(0,20)}</div>
       </div>`;
-  const upName=uploaderProfile?uploaderProfile.displayName:(b.uploaderName||'Unknown');
+  const upName=(uploaderProfile&&uploaderProfile.displayName)||b.uploaderName||'Unknown';
   const upPhoto=uploaderProfile?uploaderProfile.photoURL:b.uploaderPhotoURL;
   const upAv=upPhoto
     ?`<img src="${upPhoto}" alt="">`
     :`<span style="font-size:.55rem;font-weight:800;">${window.libInitials(upName)}</span>`;
+  const countBadge=bookCount>1
+    ?`<span style="font-size:.6rem;font-weight:700;color:#818cf8;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:1px 6px;flex-shrink:0;">${bookCount} books</span>`
+    :'';
   return `<div class="lib-card" onclick="libCardClick(event,'${b.id}','${b.uploaderUid||''}')">
     <div class="lib-card-thumb">${thumb}</div>
     <div class="lib-card-body">
@@ -671,6 +683,7 @@ window.libBookCardHTML=function(b,uploaderProfile){
       <div class="lib-card-uploader" onclick="event.stopPropagation();libGoHostProfile('${b.uploaderUid||''}')">
         <div class="lib-card-uploader-av">${upAv}</div>
         <span class="lib-card-uploader-name">${upName}</span>
+        ${countBadge}
       </div>
       <div class="lib-card-meta">
         ${b.level?`<div><span class="lib-card-level">${b.level}</span></div>`:''}
