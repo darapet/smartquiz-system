@@ -406,7 +406,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
     }
 
     /* Initialise all feature pools */
-    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
+    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio',
+     'docsgen', 'imagegen', 'animate', 'designstudio', 'dashboard', 'tts', 'quotes'].forEach(function(id) {
         _pools[id] = _createPool(id);
     });
 
@@ -430,10 +431,17 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.quizGroqFetch       = function(b) { return _pools.quiz.fetch(b); };
-    window.challengeGroqFetch  = function(b) { return _pools.challenge.fetch(b); };
-    window.studyhubGroqFetch   = function(b) { return _pools.studyhub.fetch(b); };
-    window.textdocsGroqFetch   = function(b) { return _pools.textdocs.fetch(b); };
-    window.puzzleGroqFetch     = function(b) { return _pools.puzzle.fetch(b); };
-    window.quizstudioGroqFetch = function(b) { return _pools.quizstudio.fetch(b); };
+    window.quizGroqFetch          = function(b) { return _pools.quiz.fetch(b); };
+    window.challengeGroqFetch     = function(b) { return _pools.challenge.fetch(b); };
+    window.studyhubGroqFetch      = function(b) { return _pools.studyhub.fetch(b); };
+    window.textdocsGroqFetch      = function(b) { return _pools.textdocs.fetch(b); };
+    window.puzzleGroqFetch        = function(b) { return _pools.puzzle.fetch(b); };
+    window.quizstudioGroqFetch    = function(b) { return _pools.quizstudio.fetch(b); };
+    window.docsgenGroqFetch       = function(b) { return _pools.docsgen.fetch(b); };
+    window.imagegenGroqFetch      = function(b) { return _pools.imagegen.fetch(b); };
+    window.animateGroqFetch       = function(b) { return _pools.animate.fetch(b); };
+    window.designstudioGroqFetch  = function(b) { return _pools.designstudio.fetch(b); };
+    window.dashboardGroqFetch     = function(b) { return _pools.dashboard.fetch(b); };
+    window.ttsGroqFetch           = function(b) { return _pools.tts.fetch(b); };
+    window.quotesGroqFetch        = function(b) { return _pools.quotes.fetch(b); };
 })();
