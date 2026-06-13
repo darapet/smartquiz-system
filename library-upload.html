@@ -747,10 +747,10 @@
           const ts=c.createdAt&&c.createdAt.toDate?c.createdAt.toDate().toLocaleDateString():'';
           return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px">'
             +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-            +'<span style="font-size:.78rem;font-weight:600;color:#a5b4fc">'+window.libSanitize(c.displayName||'Anonymous')+'</span>'
+            +'<span style="font-size:.78rem;font-weight:600;color:#a5b4fc">'+esc(c.displayName||'Anonymous')+'</span>'
             +'<span style="font-size:.68rem;color:#475569">'+ts+'</span>'
             +'</div>'
-            +'<div style="font-size:.82rem;color:#cbd5e1;line-height:1.5">'+window.libSanitize(c.text||'')+'</div>'
+            +'<div style="font-size:.82rem;color:#cbd5e1;line-height:1.5">'+esc(c.text||'')+'</div>'
             +'</div>';
         }).join('');
       }
