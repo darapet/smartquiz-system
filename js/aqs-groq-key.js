@@ -309,6 +309,19 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
             }
 
+            /* Load feature-specific pools */
+            var _fp = {
+                quiz: 'quiz_groq_keys', challenge: 'challenge_groq_keys',
+                studyhub: 'studyhub_groq_keys', textdocs: 'textdocs_groq_keys',
+                puzzle: 'puzzle_groq_keys', quizstudio: 'quizstudio_groq_keys'
+            };
+            Object.keys(_fp).forEach(function(id) {
+                var field = _fp[id];
+                if (Array.isArray(s[field]) && s[field].length && typeof window.setFeatureGroqKeys === 'function') {
+                    window.setFeatureGroqKeys(id, s[field]);
+                }
+            });
+
             /* Signal that keys are now available */
             if (typeof window._aqsKeysReadyResolve === 'function') {
                 window._aqsKeysReadyResolve();
@@ -322,4 +335,87 @@ window._aqsKeysReady = new Promise(function(resolve) {
     } else {
         document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
     }
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   FEATURE-SPECIFIC GROQ KEY POOLS
+   Each app feature has its own isolated 10-slot Groq key pool.
+   Pools auto-load from Firebase admin settings and fall back to the
+   main window.groqFetch (Groq → Mistral) if own keys are exhausted.
+   Exposed as: window.quizGroqFetch, window.challengeGroqFetch, etc.
+═══════════════════════════════════════════════════════════════════ */
+(function () {
+    var RL_MS = 62000;
+    var _pools = {};
+
+    function _createPool(id) {
+        var slots = [], rl = {}, IDX = 'aqs_fp_' + id;
+        function _h(k) { return k ? k.slice(-8) : '?'; }
+        function _isRL(k) { return (rl[_h(k)] || 0) > Date.now(); }
+        function _markRL(k) { rl[_h(k)] = Date.now() + RL_MS; }
+        function _idx() {
+            var i = 0;
+            try { i = parseInt(localStorage.getItem(IDX) || '0') || 0; } catch(e) {}
+            return (isNaN(i) || i >= Math.max(1, slots.length)) ? 0 : i;
+        }
+        function _setIdx(i) {
+            try { localStorage.setItem(IDX, String(i % Math.max(1, slots.length))); } catch(e) {}
+        }
+        return {
+            setKeys: function(arr) {
+                slots.length = 0;
+                (arr || []).map(function(k) { return (k || '').replace(/[^ -~]/g, '').trim(); })
+                           .filter(function(k) { return k.length > 20; })
+                           .forEach(function(k) { slots.push(k); });
+                try { localStorage.setItem(IDX, '0'); } catch(e) {}
+            },
+            keyCount: function() { return slots.length; },
+            fetch: async function(bodyObj) {
+                var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
+                if (slots.length) {
+                    var start = _idx();
+                    for (var i = 0; i < slots.length; i++) {
+                        var at = (start + i) % slots.length, key = slots[at];
+                        if (_isRL(key)) { _setIdx(at + 1); continue; }
+                        try {
+                            var res = await fetch(URL_, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                                body: JSON.stringify(bodyObj)
+                            });
+                            if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
+                            if (res.status === 413) { _setIdx(at + 1); continue; }
+                            _setIdx(at + 1);
+                            return res;
+                        } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
+                    }
+                }
+                /* Own keys exhausted or empty — fall back to main pool */
+                if (typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
+                throw new Error('No AI keys configured. Add keys in Admin Settings → ' + id + '.');
+            }
+        };
+    }
+
+    /* Initialise all feature pools */
+    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
+        _pools[id] = _createPool(id);
+    });
+
+    /* Public key management API */
+    window.setFeatureGroqKeys = function(id, arr) {
+        if (_pools[id]) _pools[id].setKeys(arr);
+    };
+    window.getFeatureGroqKeyCount = function(id) {
+        return _pools[id] ? _pools[id].keyCount() : 0;
+    };
+
+    /* Named fetch shortcuts (used by each feature JS file) */
+    window.quizGroqFetch       = function(b) { return _pools.quiz.fetch(b); };
+    window.challengeGroqFetch  = function(b) { return _pools.challenge.fetch(b); };
+    window.studyhubGroqFetch   = function(b) { return _pools.studyhub.fetch(b); };
+    window.textdocsGroqFetch   = function(b) { return _pools.textdocs.fetch(b); };
+    window.puzzleGroqFetch     = function(b) { return _pools.puzzle.fetch(b); };
+    window.quizstudioGroqFetch = function(b) { return _pools.quizstudio.fetch(b); };
 })();
