@@ -651,15 +651,24 @@ window.libPopulateLevels=function(sel,type){
   levels.forEach(function(l){const o=document.createElement('option');o.value=l;o.textContent=l;sel.appendChild(o);});
 };
 
+/* ── BOOK CARD THUMB ERROR FALLBACK ── */
+window._libThumbErr=function(img,label){
+  const ph=document.createElement('div');
+  ph.className='lib-card-thumb-placeholder';
+  ph.innerHTML='<div class="lib-card-thumb-icon">📖</div><div class="lib-card-thumb-label">'+label+'</div>';
+  img.parentNode.replaceChild(ph,img);
+};
+
 /* ── BOOK CARD HTML ── */
 window.libBookCardHTML=function(b,uploaderProfile,bookCount){
+  const courseLabel=(b.course||b.subject||'').substring(0,20).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
   const thumb=b.thumbnailUrl
-    ?`<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\"lib-card-thumb-placeholder\\"><div class=\\"lib-card-thumb-icon\\">📖</div><div class=\\"lib-card-thumb-label\\">${(b.course||b.subject||'').substring(0,20).replace(/'/g,'&#39;')}</div></div>'">`
+    ?`<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="window._libThumbErr(this,'${courseLabel}')">`
     :`<div class="lib-card-thumb-placeholder">
         <div class="lib-card-thumb-icon">📖</div>
         <div class="lib-card-thumb-label">${(b.course||b.subject||'').substring(0,20)}</div>
       </div>`;
-  const upName=uploaderProfile?uploaderProfile.displayName:(b.uploaderName||'Unknown');
+  const upName=(uploaderProfile&&uploaderProfile.displayName)||b.uploaderName||'Unknown';
   const upPhoto=uploaderProfile?uploaderProfile.photoURL:b.uploaderPhotoURL;
   const upAv=upPhoto
     ?`<img src="${upPhoto}" alt="">`
