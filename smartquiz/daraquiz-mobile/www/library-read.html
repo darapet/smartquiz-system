@@ -13,7 +13,7 @@ html,body{height:100%;overflow:hidden;}
 
 /* ── HEADER ── */
 .rdr-hdr{
-  position:fixed;top:0;left:0;right:0;z-index:300;height:54px;
+  position:fixed !important;top:0;left:0;right:0;z-index:300 !important;height:54px;
   display:flex;align-items:center;gap:10px;padding:0 16px;
   background:rgba(8,9,16,.97);border-bottom:1px solid rgba(255,255,255,.08);
   backdrop-filter:blur(18px);
@@ -43,10 +43,11 @@ html,body{height:100%;overflow:hidden;}
 
 /* ── STAGE ── */
 .rdr-stage{
-  position:fixed;top:54px;left:0;right:0;
+  position:fixed !important;top:54px;left:0;right:0;
   bottom:calc(62px + env(safe-area-inset-bottom,0px));
   overflow-y:auto;background:#090a18;
   -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
 }
 .rdr-prog-bar{position:sticky;top:0;height:3px;background:rgba(255,255,255,.05);z-index:10;}
 .rdr-prog-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);transition:width .35s;width:0%;}
@@ -115,7 +116,7 @@ html,body{height:100%;overflow:hidden;}
 
 /* ── FOOTER ── */
 .rdr-footer{
-  position:fixed;bottom:0;left:0;right:0;z-index:300;
+  position:fixed !important;bottom:0;left:0;right:0;z-index:300 !important;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 16px;gap:8px;
   background:rgba(8,9,16,.97);border-top:1px solid rgba(255,255,255,.08);
@@ -161,7 +162,7 @@ html,body{height:100%;overflow:hidden;}
 .rdr-like-btn svg{transition:all .22s;}
 
 /* ── SLIDE PANEL ── */
-.rdr-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);display:none;justify-content:flex-end;}
+.rdr-overlay{position:fixed !important;inset:0;z-index:500 !important;background:rgba(0,0,0,.6);display:none;justify-content:flex-end;}
 .rdr-overlay.open{display:flex;}
 .rdr-panel{
   width:min(490px,100vw);height:100%;
