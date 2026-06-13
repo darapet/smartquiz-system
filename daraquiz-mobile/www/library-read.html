@@ -45,7 +45,12 @@ html,body{height:100%;overflow:hidden;}
 .rdr-stage{
   position:fixed !important;top:54px;left:0;right:0;
   bottom:calc(62px + env(safe-area-inset-bottom,0px));
-  overflow-y:auto;background:#090a18;
+  overflow-y:auto;
+  background:#06070f;
+  background-image:
+    radial-gradient(ellipse 110% 45% at 50% -2%, rgba(99,102,241,.07) 0%, transparent 65%),
+    radial-gradient(ellipse 70% 35% at 15% 60%, rgba(139,92,246,.04) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 30% at 85% 90%, rgba(99,102,241,.03) 0%, transparent 55%);
   -webkit-overflow-scrolling:touch;
   overscroll-behavior:contain;
 }
@@ -74,37 +79,81 @@ html,body{height:100%;overflow:hidden;}
   background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
   padding:4px 8px;border-radius:6px;}
 
-.rdr-page-outer{max-width:800px;margin:0 auto;padding:32px 24px 60px;}
+.rdr-page-outer{
+  max-width:760px;margin:20px auto 20px;
+  padding:44px 52px 68px;
+  background:rgba(10,11,22,.9);
+  border-radius:6px;
+  border:1px solid rgba(255,255,255,.05);
+  box-shadow:0 8px 64px rgba(0,0,0,.55),0 1px 0 rgba(255,255,255,.04),inset 0 1px 0 rgba(255,255,255,.03);
+}
 
 /* Page tag */
 .rdr-page-tag{
   display:flex;align-items:center;justify-content:space-between;
-  margin-bottom:24px;padding-bottom:14px;
-  border-bottom:1px solid rgba(255,255,255,.07);
+  margin-bottom:32px;padding-bottom:16px;
+  border-bottom:1px solid rgba(255,255,255,.06);
 }
 .rdr-page-badge{
-  font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;
+  font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.12em;
   color:#6366f1;padding:4px 12px;border-radius:20px;
-  background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);
+  background:rgba(99,102,241,.09);border:1px solid rgba(99,102,241,.18);
+  font-family:'Inter',sans-serif;
 }
-.rdr-page-booklabel{font-size:.7rem;color:#334155;font-style:italic;}
+.rdr-page-booklabel{font-size:.68rem;color:#2d3748;font-style:italic;font-family:'Lora',Georgia,serif;}
 
 /* Content */
 .rdr-content{
-  font-family:'Lora',Georgia,serif;font-size:1.05rem;
-  line-height:1.95;color:#cbd5e1;word-break:break-word;overflow-wrap:anywhere;
+  font-family:'Lora',Georgia,serif;font-size:1.08rem;
+  line-height:2;color:#c8d6e5;
+  word-break:break-word;overflow-wrap:anywhere;
+  text-rendering:optimizeLegibility;
+  -webkit-font-smoothing:antialiased;
 }
-.rdr-content p{margin-bottom:1.15em;}
-.rdr-content h1{font-family:'Inter',sans-serif;font-size:1.4rem;font-weight:800;color:#e2e8f0;margin:1.6em 0 .5em;line-height:1.3;}
-.rdr-content h2{font-family:'Inter',sans-serif;font-size:1.05rem;font-weight:700;color:#a5b4fc;margin:1.4em 0 .4em;}
-.rdr-content h3{font-family:'Inter',sans-serif;font-size:.92rem;font-weight:700;color:#94a3b8;margin:1.2em 0 .3em;}
+.rdr-content p{
+  margin-bottom:1.35em;
+  text-indent:1.6em;
+}
+.rdr-content p:first-of-type{text-indent:0;}
+.rdr-content p:first-of-type::first-letter{
+  font-family:'Lora',Georgia,serif;font-size:3.2em;font-weight:700;
+  float:left;line-height:.78;margin:.06em .12em 0 0;
+  color:#a5b4fc;
+}
+/* h1 — Chapter / major title */
+.rdr-content h1{
+  font-family:'Inter',sans-serif;font-size:1.45rem;font-weight:800;
+  color:#e8edf5;margin:2.4em 0 .6em;line-height:1.25;
+  text-align:center;letter-spacing:-.01em;text-indent:0;
+  padding-bottom:.5em;
+  border-bottom:2px solid rgba(99,102,241,.25);
+}
+/* h2 — Section heading */
+.rdr-content h2{
+  font-family:'Inter',sans-serif;font-size:1.1rem;font-weight:700;
+  color:#a5b4fc;margin:2em 0 .55em;letter-spacing:-.01em;
+  line-height:1.35;text-indent:0;
+  padding-left:12px;
+  border-left:3px solid rgba(99,102,241,.5);
+}
+/* h3 — Sub-section */
+.rdr-content h3{
+  font-family:'Inter',sans-serif;font-size:.92rem;font-weight:700;
+  color:#94a3b8;margin:1.6em 0 .4em;letter-spacing:.04em;
+  text-transform:uppercase;font-size:.8rem;text-indent:0;
+}
 .rdr-content strong{color:#e2e8f0;font-weight:700;}
-.rdr-content em{color:#c4b5fd;}
-.rdr-content ul,.rdr-content ol{padding-left:1.6em;margin-bottom:1em;}
-.rdr-content li{margin-bottom:.4em;line-height:1.75;}
-.rdr-content table{width:100%;border-collapse:collapse;margin-bottom:1.2em;font-size:.88rem;}
-.rdr-content th{background:rgba(99,102,241,.12);color:#a5b4fc;font-family:'Inter',sans-serif;font-weight:700;padding:9px 12px;border:1px solid rgba(99,102,241,.2);text-align:left;}
-.rdr-content td{padding:8px 12px;border:1px solid rgba(255,255,255,.07);color:#cbd5e1;vertical-align:top;}
+.rdr-content em{color:#c4b5fd;font-style:italic;}
+.rdr-content ul,.rdr-content ol{padding-left:1.8em;margin-bottom:1.1em;text-indent:0;}
+.rdr-content li{margin-bottom:.5em;line-height:1.8;}
+.rdr-content blockquote{
+  border-left:3px solid rgba(99,102,241,.4);margin:1.4em 0;
+  padding:.6em 1.2em;background:rgba(99,102,241,.05);border-radius:0 6px 6px 0;
+  color:#94a3b8;font-style:italic;text-indent:0;
+}
+.rdr-content table{width:100%;border-collapse:collapse;margin-bottom:1.4em;font-size:.87rem;text-indent:0;}
+.rdr-content th{background:rgba(99,102,241,.11);color:#a5b4fc;font-family:'Inter',sans-serif;font-weight:700;padding:10px 13px;border:1px solid rgba(99,102,241,.18);text-align:left;}
+.rdr-content td{padding:9px 13px;border:1px solid rgba(255,255,255,.06);color:#cbd5e1;vertical-align:top;}
 .rdr-content tr:nth-child(even) td{background:rgba(255,255,255,.02);}
 
 /* Loading */
@@ -243,7 +292,8 @@ html,body{height:100%;overflow:hidden;}
   .rdr-panel{max-width:100vw;}
   .rdr-page-booklabel{display:none;}
   .rdr-uploader-strip{padding:10px 16px;}
-  .rdr-page-outer{padding:20px 16px 60px;}
+  .rdr-page-outer{padding:24px 20px 60px;margin:12px 8px;}
+  .rdr-content p:first-of-type::first-letter{font-size:2.6em;}
 }
 /* Ultra-compact footer for very small screens */
 @media(max-width:400px){
@@ -502,18 +552,52 @@ html,body{height:100%;overflow:hidden;}
 
   function formatText(raw){
     if(!raw||!raw.trim()) return '<p style="color:#475569;font-style:italic;text-align:center;padding:40px 0">No readable text on this page.</p>';
-    const lines=raw.split('\n');const out=[];let inPara=false;
+    const lines=raw.split('\n');
+    const out=[];
+    let inPara=false;
+
+    function closePara(){if(inPara){out.push('</p>');inPara=false;}}
+
+    /* Average non-empty line length — used to spot short standalone lines */
+    const nonEmpty=lines.filter(function(l){return l.trim().length>0;});
+    const avgLen=nonEmpty.length?Math.round(nonEmpty.reduce(function(s,l){return s+l.trim().length;},0)/nonEmpty.length):60;
+
     for(let i=0;i<lines.length;i++){
       const trimmed=lines[i].trim();
-      if(!trimmed){if(inPara){out.push('</p>');inPara=false;}continue;}
-      const isAllCaps=trimmed===trimmed.toUpperCase()&&/[A-Z]/.test(trimmed);
-      const isH1=isAllCaps&&trimmed.length<=80&&i<12;
-      const isH2=isAllCaps&&trimmed.length<=80&&!isH1;
-      if(isH1){if(inPara){out.push('</p>');inPara=false;}out.push('<h1>'+esc(trimmed)+'</h1>');}
-      else if(isH2){if(inPara){out.push('</p>');inPara=false;}out.push('<h2>'+esc(trimmed)+'</h2>');}
-      else{if(!inPara){out.push('<p>');inPara=true;}else out.push(' ');out.push(esc(trimmed));}
+      if(!trimmed){closePara();continue;}
+
+      const len=trimmed.length;
+      const prevBlank=i===0||!lines[i-1].trim();
+      const nextBlank=i>=lines.length-1||!lines[i+1].trim();
+
+      /* Character class helpers */
+      const isAllCaps=trimmed===trimmed.toUpperCase()&&/[A-Z]{2,}/.test(trimmed)&&!/\d{4,}/.test(trimmed);
+      const startsUpper=/^[A-Z"'"]/.test(trimmed);
+      const endsNoPunct=!/[.!?,;:)"'\u201d]$/.test(trimmed);
+      const isShort=len<=70;
+
+      /* Named patterns */
+      const chapterPat=/^(chapter|part|section|unit|module|lesson|appendix|preface|foreword|introduction|conclusion|epilogue|prologue)\b/i.test(trimmed);
+      const numberedSection=/^(\d{1,2}\.|\d{1,2}\))\s{1,3}[A-Z]/.test(trimmed)&&isShort;
+      const romanSection=/^[IVXLCDM]{1,6}\.?\s+[A-Z]/.test(trimmed)&&isShort;
+
+      /* Decide heading level */
+      let level=0;
+      if(chapterPat&&isShort) level=1;
+      else if(isAllCaps&&len<=72) level=len<=40?1:2;
+      else if(isShort&&prevBlank&&nextBlank&&endsNoPunct&&startsUpper&&len>2) level=2;
+      else if((numberedSection||romanSection)&&prevBlank) level=3;
+      else if(isShort&&prevBlank&&endsNoPunct&&startsUpper&&len<Math.round(avgLen*.65)&&!inPara) level=3;
+
+      if(level){
+        closePara();
+        out.push('<h'+level+'>'+esc(trimmed)+'</h'+level+'>');
+      } else {
+        if(!inPara){out.push('<p>');inPara=true;}else out.push(' ');
+        out.push(esc(trimmed));
+      }
     }
-    if(inPara) out.push('</p>');
+    closePara();
     return out.join('');
   }
   function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
@@ -692,7 +776,7 @@ html,body{height:100%;overflow:hidden;}
     const el=document.getElementById('p-cmnt-list');
     try{
       const list=await window.libGetComments(bookId);
-      if(!list.length){el.innerHTML='<div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No feedback yet. Be the first!</div>';return;}
+      if(!list.length){el.innerHTML='<div data-empty style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No feedback yet. Be the first!</div>';return;}
       el.innerHTML=list.map(function(c,ci){
         const avHtml=c.photoURL?`<img src="${c.photoURL}" alt="">`:
           `<span style="font-size:.6rem;font-weight:800;">${window.libInitials(c.displayName||'?')}</span>`;
@@ -715,7 +799,7 @@ html,body{height:100%;overflow:hidden;}
       }).join('');
       /* Load replies for comments with replies */
       list.forEach(function(c){if((c.replyCount||0)>0) loadReplies(c.id);});
-    }catch(e){el.innerHTML='<div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">Could not load comments.</div>';}
+    }catch(e){el.innerHTML='<div style="color:#ef4444;font-size:.82rem;text-align:center;padding:24px">Could not load comments — please try again.</div>';}
   }
 
   window.toggleReply=function(commentId,btn){
@@ -756,15 +840,47 @@ html,body{height:100%;overflow:hidden;}
 
   window.submitComment=async function(){
     if(!_user){window.libToast('Sign in to comment.');return;}
-    const text=document.getElementById('p-cmnt-inp').value.trim();
+    const inp=document.getElementById('p-cmnt-inp');
+    const text=inp.value.trim();
     if(!text) return;
     const name=_user.displayName||_user.email?.split('@')[0]||'Student';
+    const btn=document.querySelector('.rdr-comment-submit');
+
+    /* ── Optimistic instant render ── */
+    inp.value='';
+    btn.disabled=true;btn.textContent='Posting…';
+
+    const list=document.getElementById('p-cmnt-list');
+    /* Remove "no feedback yet" placeholder if present */
+    const emptyMsg=list.querySelector('[data-empty]');
+    if(emptyMsg) emptyMsg.remove();
+
+    const tempId='tmp_'+Date.now();
+    const avHtml=_user.photoURL
+      ?`<img src="${_user.photoURL}" alt="">`
+      :`<span style="font-size:.6rem;font-weight:800;">${window.libInitials(name)}</span>`;
+    const tempDiv=document.createElement('div');
+    tempDiv.id=tempId;
+    tempDiv.className='rdr-ci';
+    tempDiv.innerHTML=`
+      <div class="rdr-ci-hdr">
+        <div class="rdr-ci-av">${avHtml}</div>
+        <div class="rdr-ci-author">${esc(name)}</div>
+        <div class="rdr-ci-time">just now</div>
+      </div>
+      <div class="rdr-ci-text">${esc(text)}</div>`;
+    list.insertBefore(tempDiv,list.firstChild);
+
     try{
       await window.libAddComment(bookId,_user.uid,name,_user.photoURL||'',text);
-      document.getElementById('p-cmnt-inp').value='';
-      window.libToast('Feedback posted!');
-      loadComments();
-    }catch(e){window.libToast('Error: '+e.message);}
+      window.libToast('✓ Feedback posted!');
+    }catch(e){
+      /* Roll back on failure */
+      document.getElementById(tempId)?.remove();
+      inp.value=text;
+      window.libToast('Error: '+e.message);
+    }
+    btn.disabled=false;btn.textContent='Post Feedback';
   };
 
   document.addEventListener('aqs:firebase:ready',init);
