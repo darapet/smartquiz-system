@@ -529,8 +529,7 @@ function _cldXHR(url,formData){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  /* Use /auto/upload for documents — Cloudinary detects type; avoids /raw/upload CORS block */
-  const resourceType=isThumb?'image':'auto';
+  const resourceType=isThumb?'image':'raw';
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
   const formData=new FormData();
   formData.append('file',file);
