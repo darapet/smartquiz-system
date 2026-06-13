@@ -3,18 +3,45 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#0a0b14">
+<meta name="theme-color" content="#080910">
 <title>📤 Upload — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
+<style>
+.lib-upload-zone{border:2px dashed rgba(99,102,241,.3);border-radius:12px;padding:20px;text-align:center;cursor:pointer;background:rgba(99,102,241,.03);transition:all .2s;position:relative;}
+.lib-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.lib-upload-zone-icon{font-size:1.5rem;margin-bottom:6px;}
+.lib-upload-zone-text{font-size:.82rem;font-weight:600;color:#94a3b8;}
+.lib-upload-zone-hint{font-size:.7rem;color:#64748b;margin-top:3px;}
+.lib-batch-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:rgba(255,255,255,.04);border-radius:7px;margin-bottom:5px;font-size:.78rem;}
+.lib-batch-item-name{color:#e2e8f0;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lib-batch-status{font-size:.67rem;font-weight:700;padding:2px 7px;border-radius:9px;margin-left:7px;}
+.lib-batch-status.pending{background:rgba(99,102,241,.12);color:#a5b4fc;}
+.lib-batch-status.uploading{background:rgba(251,191,36,.12);color:#fbbf24;}
+.lib-batch-status.done{background:rgba(34,197,94,.12);color:#86efac;}
+.lib-batch-status.error{background:rgba(239,68,68,.12);color:#fca5a5;}
+.lib-progress-wrap{display:none;margin-top:14px;padding:10px 12px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.14);border-radius:10px;}
+.lib-progress-bar{height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:7px;}
+.lib-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);width:0%;transition:width .3s;border-radius:2px;}
+.lib-progress-text{font-size:.76rem;color:#a5b4fc;font-weight:600;}
+.lib-book-row{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;margin-bottom:8px;}
+.lib-book-row-thumb{width:38px;height:50px;border-radius:6px;object-fit:cover;flex-shrink:0;background:rgba(99,102,241,.1);}
+.lib-book-row-info{flex:1;min-width:0;}
+.lib-book-row-title{font-size:.84rem;font-weight:700;color:#e2e8f0;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lib-book-row-meta{font-size:.7rem;color:#64748b;margin-bottom:4px;}
+.lib-book-row-stats{display:flex;gap:8px;margin-bottom:5px;}
+.lib-book-row-stat{font-size:.67rem;color:#94a3b8;}
+.lib-book-row-actions{display:flex;gap:5px;flex-wrap:wrap;}
+</style>
 </head>
 <body>
+<div class="lib-page-bg"></div>
 
 <header class="lib-hdr">
   <span class="lib-logo">📤 Upload Hub</span>
   <div class="lib-hdr-actions">
+    <span class="lib-back" id="hdr-manage" style="display:none;cursor:pointer" onclick="location.href='library-host-view.html'">My Dashboard</span>
     <a href="library.html" class="lib-back">← Library</a>
-    <a href="dashboard.html" class="lib-back">Dashboard</a>
   </div>
 </header>
 
@@ -22,7 +49,7 @@
 <div id="auth-gate" class="lib-auth-gate" style="display:none">
   <div class="lib-auth-gate-icon">🔒</div>
   <div class="lib-auth-gate-title">Sign In Required</div>
-  <div class="lib-auth-gate-sub">You need to be logged in to upload books to the library.</div>
+  <div class="lib-auth-gate-sub">You need to be logged in to upload books.</div>
   <a href="login.html" class="lib-btn lib-btn-primary">Sign In</a>
 </div>
 
@@ -30,20 +57,36 @@
 <div id="profile-overlay" class="lib-profile-overlay" style="display:none">
   <div class="lib-profile-box">
     <div class="lib-profile-title">📋 Complete Your Uploader Profile</div>
-    <div class="lib-profile-sub">Set up your profile once — required before you can upload books.</div>
+    <div class="lib-profile-sub">Set up your profile before uploading books. You can also add a profile photo.</div>
+
+    <!-- Profile photo -->
+    <div class="lib-photo-wrap">
+      <div class="lib-photo-av" id="po-avatar">?</div>
+      <div class="lib-photo-info">
+        <div class="lib-photo-name">Profile Photo</div>
+        <div class="lib-photo-hint">Optional — JPG/PNG, max 5 MB</div>
+        <label class="lib-photo-change" for="po-photo-input">Upload Photo</label>
+        <input type="file" id="po-photo-input" accept="image/*" style="display:none" onchange="poPhotoChange(this)">
+      </div>
+    </div>
 
     <div class="lib-form-row">
       <div class="lib-form-group">
         <label class="lib-label">First Name *</label>
-        <input class="lib-input" id="p-fname" placeholder="e.g. Chukwuemeka">
+        <input class="lib-input" id="p-fname" placeholder="Chukwuemeka">
       </div>
       <div class="lib-form-group">
         <label class="lib-label">Last Name *</label>
-        <input class="lib-input" id="p-lname" placeholder="e.g. Okafor">
+        <input class="lib-input" id="p-lname" placeholder="Okafor">
       </div>
     </div>
 
-    <div class="lib-form-group" style="margin-bottom:12px">
+    <div class="lib-form-group" style="margin-bottom:10px">
+      <label class="lib-label">Bio (optional)</label>
+      <textarea class="lib-textarea" id="p-bio" rows="2" placeholder="Tell readers about yourself…"></textarea>
+    </div>
+
+    <div class="lib-form-group" style="margin-bottom:10px">
       <label class="lib-label">Institution Type *</label>
       <select class="lib-select-inp" id="p-type" onchange="profileTypeChange(this.value)">
         <option value="">— Select —</option>
@@ -52,36 +95,41 @@
         <option value="college_of_education">College of Education</option>
       </select>
     </div>
-
-    <div class="lib-form-group" style="margin-bottom:12px">
+    <div class="lib-form-group" style="margin-bottom:10px">
       <label class="lib-label">School *</label>
-      <select class="lib-select-inp" id="p-school" disabled>
-        <option value="">— Select type first —</option>
-      </select>
+      <select class="lib-select-inp" id="p-school" disabled><option value="">— Select type first —</option></select>
     </div>
-
     <div class="lib-form-group" style="margin-bottom:18px">
       <label class="lib-label">Department / Faculty *</label>
-      <select class="lib-select-inp" id="p-dept" disabled>
-        <option value="">— Select type first —</option>
-      </select>
+      <select class="lib-select-inp" id="p-dept" disabled><option value="">— Select type first —</option></select>
     </div>
 
     <button class="lib-btn lib-btn-primary" style="width:100%" onclick="saveProfile()">
-      Save Profile &amp; Continue →
+      <span id="po-save-txt">Save Profile &amp; Continue →</span>
     </button>
   </div>
 </div>
 
-<!-- MAIN DASHBOARD -->
+<!-- MAIN -->
 <div id="main-content" style="display:none">
   <div class="lib-up-body">
 
+    <!-- HOST STRIP -->
+    <div id="host-strip" style="display:none;margin-bottom:16px;padding:14px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.14);border-radius:14px;align-items:center;gap:12px;">
+      <div class="lib-photo-av" id="hs-avatar" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;"></div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.9rem;font-weight:800;color:#e2e8f0;" id="hs-name"></div>
+        <div style="font-size:.72rem;color:#64748b;" id="hs-inst"></div>
+      </div>
+      <a href="#" class="lib-btn lib-btn-ghost lib-btn-sm" id="hs-profile-link">Profile →</a>
+      <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">Dashboard</a>
+    </div>
+
     <!-- STATS -->
     <div class="lib-stats-row">
-      <div class="lib-stat-card"><div class="lib-stat-num" id="s-books">0</div><div class="lib-stat-lbl">Books Uploaded</div></div>
-      <div class="lib-stat-card"><div class="lib-stat-num" id="s-readers">0</div><div class="lib-stat-lbl">Total Readers</div></div>
-      <div class="lib-stat-card"><div class="lib-stat-num" id="s-likes">0</div><div class="lib-stat-lbl">Total Likes</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-books">0</div><div class="lib-stat-lbl">Books</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-readers">0</div><div class="lib-stat-lbl">Readers</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-likes">0</div><div class="lib-stat-lbl">Likes</div></div>
       <div class="lib-stat-card"><div class="lib-stat-num" id="s-comments">0</div><div class="lib-stat-lbl">Comments</div></div>
     </div>
 
@@ -89,7 +137,6 @@
     <div class="lib-card-form">
       <div class="lib-card-form-title">📖 Upload a New Book</div>
 
-      <!-- CASCADE: Type → School → Course → Level -->
       <div class="lib-form-row">
         <div class="lib-form-group">
           <label class="lib-label">① Institution Type *</label>
@@ -102,88 +149,62 @@
         </div>
         <div class="lib-form-group">
           <label class="lib-label">② School *</label>
-          <select class="lib-select-inp" id="u-school" disabled>
-            <option value="">— Select type first —</option>
-          </select>
+          <select class="lib-select-inp" id="u-school" disabled><option value="">— Select type first —</option></select>
         </div>
       </div>
-
       <div class="lib-form-row">
         <div class="lib-form-group">
-          <label class="lib-label">③ Course / Department *</label>
-          <select class="lib-select-inp" id="u-course" disabled>
-            <option value="">— Select type first —</option>
-          </select>
+          <label class="lib-label">③ Course *</label>
+          <select class="lib-select-inp" id="u-course" disabled><option value="">— Select type first —</option></select>
         </div>
         <div class="lib-form-group">
           <label class="lib-label">④ Level *</label>
-          <select class="lib-select-inp" id="u-level" disabled>
-            <option value="">— Select type first —</option>
-          </select>
+          <select class="lib-select-inp" id="u-level" disabled><option value="">— Select type first —</option></select>
         </div>
       </div>
 
-      <!-- Book details -->
-      <div class="lib-form-row">
-        <div class="lib-form-group full">
-          <label class="lib-label">Book Title *</label>
-          <input class="lib-input" id="u-title" placeholder="e.g. Organic Chemistry — 3rd Edition">
-        </div>
+      <div class="lib-form-group" style="margin-bottom:10px">
+        <label class="lib-label">Book Title *</label>
+        <input class="lib-input" id="u-title" placeholder="e.g. Organic Chemistry 3rd Edition">
+      </div>
+      <div class="lib-form-group" style="margin-bottom:12px">
+        <label class="lib-label">Author (optional)</label>
+        <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
       </div>
 
-      <div class="lib-form-row">
-        <div class="lib-form-group">
-          <label class="lib-label">Author (optional)</label>
-          <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
-        </div>
-        <div class="lib-form-group">
-          <label class="lib-label">Number of Pages (optional)</label>
-          <input class="lib-input" id="u-pages" type="number" min="1" placeholder="e.g. 320">
-        </div>
-      </div>
-
-      <!-- Thumbnail -->
-      <div class="lib-form-group" style="margin-bottom:14px">
+      <div class="lib-form-group" style="margin-bottom:12px">
         <label class="lib-label">Cover Image (optional)</label>
         <div class="lib-upload-zone" id="thumb-zone">
           <div class="lib-upload-zone-icon">🖼️</div>
-          <div class="lib-upload-zone-text">Click to select a <strong>cover image</strong></div>
-          <div class="lib-upload-zone-hint">JPG / PNG / WEBP — max 5MB</div>
+          <div class="lib-upload-zone-text">Tap to select a cover image</div>
+          <div class="lib-upload-zone-hint">JPG / PNG — max 5 MB</div>
           <input type="file" id="thumb-input" accept="image/*" onchange="onThumbSelect(this)">
         </div>
-        <div id="thumb-error" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);border-radius:8px;color:#f87171;font-size:.8rem;font-weight:500"></div>
-        <div id="thumb-preview" style="margin-top:8px;display:none;align-items:center;gap:10px">
-          <img id="thumb-img" style="height:72px;border-radius:8px;object-fit:cover;">
-          <span id="thumb-name" style="font-size:.75rem;color:#64748b"></span>
+        <div id="thumb-error" style="display:none;margin-top:7px;padding:9px 12px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:7px;color:#fca5a5;font-size:.78rem;"></div>
+        <div id="thumb-preview" style="margin-top:7px;display:none;align-items:center;gap:8px;">
+          <img id="thumb-img" style="height:60px;border-radius:7px;object-fit:cover;">
+          <span id="thumb-name" style="font-size:.72rem;color:#64748b"></span>
         </div>
       </div>
 
-      <!-- Book file -->
       <div class="lib-form-group" style="margin-bottom:18px">
         <label class="lib-label">Book File (PDF / EPUB / DOCX) *</label>
         <div class="lib-upload-zone" id="file-zone">
           <div class="lib-upload-zone-icon">📄</div>
-          <div class="lib-upload-zone-text">Click to select the <strong>book file</strong></div>
+          <div class="lib-upload-zone-text">Tap to select the book file</div>
           <div class="lib-upload-zone-hint">PDF · EPUB · DOCX — max 50 MB</div>
           <input type="file" id="file-input" accept=".pdf,.epub,.docx,.doc,.txt" onchange="onFileSelect(this)">
         </div>
-        <div id="file-name-show" style="font-size:.75rem;color:#a5b4fc;margin-top:6px;display:none"></div>
+        <div id="file-name-show" style="font-size:.74rem;color:#a5b4fc;margin-top:6px;display:none"></div>
       </div>
 
-      <!-- Batch queue -->
-      <div id="batch-queue" class="lib-batch-queue"></div>
+      <div id="batch-queue"></div>
 
-      <!-- Actions -->
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="lib-btn lib-btn-primary" id="upload-btn" onclick="doUpload()">
-          📤 Upload Book
-        </button>
-        <button class="lib-btn lib-btn-ghost" onclick="addToBatch()">
-          + Add Another (Batch Upload)
-        </button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="lib-btn lib-btn-primary" id="upload-btn" onclick="doUpload()">📤 Upload Book</button>
+        <button class="lib-btn lib-btn-ghost" onclick="addToBatch()">+ Add Another</button>
       </div>
 
-      <!-- Progress -->
       <div class="lib-progress-wrap" id="upload-progress">
         <div class="lib-progress-bar"><div class="lib-progress-fill" id="progress-fill"></div></div>
         <div class="lib-progress-text" id="progress-text">Uploading…</div>
@@ -192,8 +213,11 @@
 
     <!-- MY BOOKS -->
     <div class="lib-card-form">
-      <div class="lib-card-form-title">📚 My Uploaded Books <span id="my-books-count" style="font-size:.8rem;font-weight:500;color:#64748b"></span></div>
-      <div id="my-books-list"><div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">Loading…</div></div>
+      <div class="lib-card-form-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📚 My Books <span id="my-books-count" style="font-size:.75rem;color:#64748b"></span></span>
+        <a href="library-host-view.html" class="lib-btn lib-btn-ghost lib-btn-sm">Manage All →</a>
+      </div>
+      <div id="my-books-list"><div style="color:#64748b;font-size:.82rem;text-align:center;padding:18px">Loading…</div></div>
     </div>
 
   </div>
@@ -202,188 +226,150 @@
 <div class="lib-toast" id="lib-toast"></div>
 
 <script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
-  let _user=null, _profile=null, _batch=[], _selFile=null, _selThumb=null;
+  let _user=null,_profile=null,_batch=[],_selFile=null,_selThumb=null;
+  let _poPhotoURL='';
 
-  /* ── PROFILE CASCADE ── */
-  window.profileTypeChange = function(type) {
-    const schoolSel = document.getElementById('p-school');
-    const deptSel   = document.getElementById('p-dept');
-    if (!type) { schoolSel.disabled=true; deptSel.disabled=true; return; }
-    window.libPopulateSchools(schoolSel, type); schoolSel.disabled=false;
-    window.libPopulateCourses(deptSel, type);   deptSel.disabled=false;
+  window.poPhotoChange=async function(inp){
+    const file=inp.files[0];if(!file)return;
+    const av=document.getElementById('po-avatar');
+    const url=URL.createObjectURL(file);
+    av.innerHTML=`<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    inp._file=file;
   };
 
-  /* ── UPLOAD FORM CASCADE ── */
-  window.uploadTypeChange = function(type) {
-    const school = document.getElementById('u-school');
-    const course = document.getElementById('u-course');
-    const level  = document.getElementById('u-level');
-    if (!type) {
-      [school,course,level].forEach(function(s){ s.innerHTML='<option value="">— Select type first —</option>'; s.disabled=true; });
-      return;
+  window.profileTypeChange=function(type){
+    const s=document.getElementById('p-school');const d=document.getElementById('p-dept');
+    if(!type){s.disabled=true;d.disabled=true;return;}
+    window.libPopulateSchools(s,type);s.disabled=false;
+    window.libPopulateCourses(d,type);d.disabled=false;
+  };
+  window.uploadTypeChange=function(type){
+    const school=document.getElementById('u-school');
+    const course=document.getElementById('u-course');
+    const level=document.getElementById('u-level');
+    if(!type){[school,course,level].forEach(function(s){s.innerHTML='<option value="">— Select type first —</option>';s.disabled=true;});return;}
+    window.libPopulateSchools(school,type);school.disabled=false;
+    window.libPopulateCourses(course,type);course.disabled=false;
+    window.libPopulateLevels(level,type);level.disabled=false;
+  };
+
+  window.onThumbSelect=function(inp){
+    document.getElementById('thumb-error').style.display='none';
+    if(!inp.files[0])return;
+    if(inp.files[0].size>5242880){
+      inp.value='';_selThumb=null;
+      document.getElementById('thumb-preview').style.display='none';
+      document.getElementById('thumb-zone').style.borderColor='rgba(239,68,68,.5)';
+      document.getElementById('thumb-error').textContent='⚠️ Image too large (must be under 5 MB).';
+      document.getElementById('thumb-error').style.display='block';return;
     }
-    window.libPopulateSchools(school, type); school.disabled=false;
-    window.libPopulateCourses(course, type); course.disabled=false;
-    window.libPopulateLevels(level,  type);  level.disabled=false;
+    _selThumb=inp.files[0];
+    document.getElementById('thumb-zone').style.borderColor='rgba(99,102,241,.5)';
+    document.getElementById('thumb-img').src=URL.createObjectURL(_selThumb);
+    document.getElementById('thumb-name').textContent=_selThumb.name;
+    document.getElementById('thumb-preview').style.display='flex';
+  };
+  window.onFileSelect=function(inp){
+    if(!inp.files[0])return;
+    if(inp.files[0].size>52428800){window.libToast('File exceeds 50 MB limit.');inp.value='';return;}
+    _selFile=inp.files[0];
+    const el=document.getElementById('file-name-show');
+    el.textContent='✅ '+_selFile.name+' ('+(_selFile.size/1048576).toFixed(1)+' MB)';
+    el.style.display='block';
+    document.getElementById('file-zone').style.borderColor='rgba(34,197,94,.5)';
   };
 
-  /* ── File selectors ── */
-  window.onThumbSelect = function(inp) {
-    var errEl = document.getElementById('thumb-error');
-    errEl.style.display = 'none';
-    if (!inp.files[0]) return;
-    var mb = (inp.files[0].size / 1048576).toFixed(1);
-    if (inp.files[0].size > 5242880) {
-      inp.value = '';
-      _selThumb = null;
-      document.getElementById('thumb-preview').style.display = 'none';
-      document.getElementById('thumb-zone').style.borderColor = 'rgba(239,68,68,.5)';
-      errEl.textContent = '⚠️ Image too large (' + mb + ' MB). Cover image must be under 5 MB. Please choose a smaller image.';
-      errEl.style.display = 'block';
-      return;
-    }
-    _selThumb = inp.files[0];
-    document.getElementById('thumb-zone').style.borderColor = 'rgba(99,102,241,.5)';
-    document.getElementById('thumb-img').src = URL.createObjectURL(_selThumb);
-    document.getElementById('thumb-name').textContent = _selThumb.name + ' (' + mb + ' MB)';
-    document.getElementById('thumb-preview').style.display = 'flex';
-  };
-  window.onFileSelect = function(inp) {
-    if (!inp.files[0]) return;
-    if (inp.files[0].size > 52428800) { window.libToast('File exceeds 50MB limit.'); inp.value=''; return; }
-    _selFile = inp.files[0];
-    const el = document.getElementById('file-name-show');
-    el.textContent = '✅ ' + _selFile.name + ' (' + (_selFile.size/1048576).toFixed(1) + ' MB)';
-    el.style.display = 'block';
-    document.getElementById('file-zone').style.borderColor = 'rgba(34,197,94,.5)';
-  };
-
-  function getFormData() {
-    return {
-      institutionType: document.getElementById('u-type').value,
-      institution:     document.getElementById('u-school').value,
-      course:          document.getElementById('u-course').value,
-      level:           document.getElementById('u-level').value,
-      title:           document.getElementById('u-title').value.trim(),
-      author:          document.getElementById('u-author').value.trim(),
-      pages:           parseInt(document.getElementById('u-pages').value)||0
+  function getFormData(){
+    return{
+      institutionType:document.getElementById('u-type').value,
+      institution:document.getElementById('u-school').value,
+      course:document.getElementById('u-course').value,
+      level:document.getElementById('u-level').value,
+      title:document.getElementById('u-title').value.trim(),
+      author:document.getElementById('u-author').value.trim(),
+      pages:0
     };
   }
-
-  function validateForm(d) {
-    if (!d.institutionType) return 'Select an institution type.';
-    if (!d.institution)     return 'Select a school.';
-    if (!d.course)          return 'Select a course/department.';
-    if (!d.level)           return 'Select a level.';
-    if (!d.title)           return 'Enter the book title.';
+  function validateForm(d){
+    if(!d.institutionType)return'Select an institution type.';
+    if(!d.institution)return'Select a school.';
+    if(!d.course)return'Select a course.';
+    if(!d.level)return'Select a level.';
+    if(!d.title)return'Enter the book title.';
     return null;
   }
 
-  /* ── Batch ── */
-  window.addToBatch = function() {
-    const d = getFormData();
-    const err = validateForm(d);
-    if (err) { window.libToast(err); return; }
-    if (!_selFile) { window.libToast('Select a book file first.'); return; }
-    _batch.push({ data:d, file:_selFile, thumb:_selThumb, status:'pending' });
-    _selFile=null; _selThumb=null;
-    document.getElementById('file-input').value='';
-    document.getElementById('thumb-input').value='';
+  window.addToBatch=function(){
+    const d=getFormData();const err=validateForm(d);if(err){window.libToast(err);return;}
+    if(!_selFile){window.libToast('Select a book file first.');return;}
+    _batch.push({data:d,file:_selFile,thumb:_selThumb,status:'pending'});
+    resetFormFields();renderBatch();window.libToast('Added to batch!');
+  };
+  function resetFormFields(){
+    _selFile=null;_selThumb=null;
+    document.getElementById('file-input').value='';document.getElementById('thumb-input').value='';
     document.getElementById('file-name-show').style.display='none';
     document.getElementById('thumb-preview').style.display='none';
-    document.getElementById('thumb-zone').style.borderColor='';
-    document.getElementById('file-zone').style.borderColor='';
+    document.getElementById('thumb-zone').style.borderColor='';document.getElementById('file-zone').style.borderColor='';
     document.getElementById('u-title').value='';
-    renderBatch();
-    window.libToast('Added to batch! Fill next book details.');
-  };
-
-  function renderBatch() {
-    const el = document.getElementById('batch-queue');
-    if (!_batch.length) { el.innerHTML=''; return; }
-    el.innerHTML = _batch.map(function(b,i){
-      const cls = {done:'done',uploading:'uploading',error:'error',pending:'pending'}[b.status]||'pending';
-      return `<div class="lib-batch-item"><span class="lib-batch-item-name">${b.data.title}</span><span class="lib-batch-status ${cls}">${cls}</span></div>`;
+  }
+  function renderBatch(){
+    const el=document.getElementById('batch-queue');
+    if(!_batch.length){el.innerHTML='';return;}
+    el.innerHTML=_batch.map(function(b){
+      const cls={done:'done',uploading:'uploading',error:'error',pending:'pending'}[b.status]||'pending';
+      return`<div class="lib-batch-item"><span class="lib-batch-item-name">${b.data.title}</span><span class="lib-batch-status ${cls}">${cls}</span></div>`;
     }).join('');
   }
 
-  /* ── Upload ── */
-  window.doUpload = async function() {
-    const d = getFormData();
-    if (!_selFile && !_batch.length) { window.libToast('Select a book file.'); return; }
-
-    if (_selFile) {
-      const err = validateForm(d);
-      if (err) { window.libToast(err); return; }
-      _batch.unshift({ data:d, file:_selFile, thumb:_selThumb, status:'pending' });
-      _selFile=null; _selThumb=null;
+  window.doUpload=async function(){
+    const d=getFormData();
+    if(!_selFile&&!_batch.length){window.libToast('Select a book file.');return;}
+    if(_selFile){
+      const err=validateForm(d);if(err){window.libToast(err);return;}
+      _batch.unshift({data:d,file:_selFile,thumb:_selThumb,status:'pending'});
+      _selFile=null;_selThumb=null;
     }
-
-    const btn = document.getElementById('upload-btn');
-    btn.disabled=true;
+    const btn=document.getElementById('upload-btn');btn.disabled=true;
     document.getElementById('upload-progress').style.display='block';
-
-    let successCount = 0, failCount = 0, lastError = '';
-
-    for (let i=0; i<_batch.length; i++) {
+    let successCount=0,failCount=0,lastError='';
+    for(let i=0;i<_batch.length;i++){
       const item=_batch[i];
-      if (item.status==='done') { successCount++; continue; }
-      item.status='uploading'; renderBatch();
-      setProgress(Math.round((i/_batch.length)*80), 'Uploading: '+item.data.title+'…');
-      try {
+      if(item.status==='done'){successCount++;continue;}
+      item.status='uploading';renderBatch();
+      setProgress(Math.round((i/_batch.length)*60),'Uploading: '+item.data.title+'…');
+      try{
         const bookId='lib_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
-        let thumbnailUrl='', fileUrl='';
-        if (item.thumb) { setProgress(null,'Uploading cover…'); thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb'); }
-        setProgress(null,'Saving book file — this may take a moment…');
+        let thumbnailUrl='',fileUrl='';
+        if(item.thumb){thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb');}
         fileUrl=await window.libUploadFile(item.file,bookId,'file');
-        setProgress(null,'Saving to library database…');
         await window.libAddBook({
-          ...item.data, thumbnailUrl, fileUrl,
-          uploaderUid: _user.uid,
-          uploaderName: ((_profile.firstName||'')+' '+(_profile.lastName||'')).trim()
+          ...item.data,thumbnailUrl,fileUrl,
+          uploaderUid:_user.uid,
+          uploaderName:_profile.displayName||((_profile.firstName||'')+' '+(_profile.lastName||'')).trim(),
+          uploaderPhotoURL:_profile.photoURL||''
         });
-        item.status='done'; successCount++;
-        renderBatch();
-      } catch(e) {
-        item.status='error'; failCount++;
-        lastError = e.message;
-        renderBatch();
-        setProgress(null,'❌ Failed: ' + e.message);
-      }
+        item.status='done';successCount++;renderBatch();
+      }catch(e){item.status='error';failCount++;lastError=e.message;renderBatch();}
     }
-
     btn.disabled=false;
-
-    if (failCount > 0 && successCount === 0) {
-      setProgress(null,'❌ Upload failed — ' + lastError);
-      window.libToast('Upload failed: ' + lastError, 6000);
-    } else if (failCount > 0) {
-      setProgress(100, successCount + ' uploaded, ' + failCount + ' failed');
-      window.libToast(successCount + ' book(s) uploaded. ' + failCount + ' failed: ' + lastError);
-      setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 5000);
-      _batch = _batch.filter(function(b){ return b.status !== 'done'; });
-      renderBatch(); loadMyBooks(); loadStats();
-    } else {
-      setProgress(100,'✅ ' + successCount + ' book(s) uploaded successfully!');
-      setTimeout(function(){ document.getElementById('upload-progress').style.display='none'; }, 3000);
-      window.libToast('✅ Book(s) uploaded successfully!');
-      _batch=[]; renderBatch();
-      document.getElementById('file-input').value='';
-      document.getElementById('thumb-input').value='';
-      document.getElementById('file-name-show').style.display='none';
-      document.getElementById('thumb-preview').style.display='none';
-      loadMyBooks(); loadStats();
+    if(failCount>0&&successCount===0){setProgress(null,'❌ Upload failed — '+lastError);window.libToast('Upload failed: '+lastError,6000);}
+    else if(failCount>0){setProgress(100,successCount+' uploaded, '+failCount+' failed');_batch=_batch.filter(function(b){return b.status!=='done';});renderBatch();loadMyBooks();loadStats();}
+    else{
+      setProgress(100,'✅ '+successCount+' book(s) uploaded!');
+      setTimeout(function(){document.getElementById('upload-progress').style.display='none';},3000);
+      window.libToast('✅ Book(s) uploaded!');
+      _batch=[];renderBatch();resetFormFields();loadMyBooks();loadStats();
     }
   };
-
   function setProgress(pct,text){
-    if(pct!==null) document.getElementById('progress-fill').style.width=pct+'%';
-    if(text) document.getElementById('progress-text').textContent=text;
+    if(pct!==null)document.getElementById('progress-fill').style.width=pct+'%';
+    if(text)document.getElementById('progress-text').textContent=text;
   }
 
-  /* ── My Books ── */
   async function loadStats(){
     const s=await window.libGetMyStats(_user.uid);
     document.getElementById('s-books').textContent=s.books;
@@ -391,66 +377,81 @@
     document.getElementById('s-likes').textContent=s.likes;
     document.getElementById('s-comments').textContent=s.comments;
   }
-
   async function loadMyBooks(){
     const books=await window.libGetMyBooks(_user.uid);
     document.getElementById('my-books-count').textContent=books.length?'('+books.length+')':'';
     const el=document.getElementById('my-books-list');
-    if(!books.length){ el.innerHTML='<div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">No books uploaded yet.</div>'; return; }
-    el.innerHTML=books.map(function(b){
-      return `<div class="lib-book-row">
-        ${b.thumbnailUrl?`<img class="lib-book-row-thumb" src="${b.thumbnailUrl}" alt="">`:'<div class="lib-book-row-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;background:rgba(99,102,241,.1)">📖</div>'}
+    if(!books.length){el.innerHTML='<div style="color:#64748b;font-size:.82rem;text-align:center;padding:18px">No books yet. Upload one above!</div>';return;}
+    el.innerHTML=books.slice(0,4).map(function(b){
+      return`<div class="lib-book-row">
+        ${b.thumbnailUrl?`<img class="lib-book-row-thumb" src="${b.thumbnailUrl}" alt="">`:'<div class="lib-book-row-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.1rem;">📖</div>'}
         <div class="lib-book-row-info">
-          <div class="lib-book-row-title">${b.title}</div>
-          <div class="lib-book-row-meta">${b.institution||''} · ${b.course||b.subject||''} · ${b.level||''}</div>
+          <div class="lib-book-row-title">${b.title||'Untitled'}</div>
+          <div class="lib-book-row-meta">${b.institution||''} · ${b.course||''}</div>
           <div class="lib-book-row-stats">
-            <span class="lib-book-row-stat">👁️ ${b.views||0}</span>
-            <span class="lib-book-row-stat">❤️ ${b.likes||0}</span>
-            <span class="lib-book-row-stat">💬 ${b.commentCount||0}</span>
+            <span class="lib-book-row-stat">👁 ${b.views||0}</span>
+            <span class="lib-book-row-stat">♡ ${b.likes||0}</span>
+          </div>
+          <div class="lib-book-row-actions">
+            <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="location.href='library-read.html?id=${b.id}'">📖 Read</button>
+            <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">✏️ Manage</a>
           </div>
         </div>
-        <div class="lib-book-row-actions">
-          <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="location.href='library-read.html?id=${b.id}'">View</button>
-          <button class="lib-btn lib-btn-danger lib-btn-sm" onclick="deleteBook('${b.id}')">Delete</button>
-        </div>
       </div>`;
-    }).join('');
+    }).join('')+(books.length>4?`<div style="text-align:center;padding:10px"><a href="library-host-view.html" class="lib-btn lib-btn-ghost lib-btn-sm">View all ${books.length} →</a></div>`:'');
   }
 
-  window.deleteBook=async function(id){
-    if(!confirm('Delete this book? This cannot be undone.')) return;
-    try{ await window.libDeleteBook(id); window.libToast('Book deleted.'); loadMyBooks(); loadStats(); }
-    catch(e){ window.libToast('Error: '+e.message); }
-  };
+  function showHostStrip(profile,uid){
+    const strip=document.getElementById('host-strip');
+    const av=document.getElementById('hs-avatar');
+    if(profile.photoURL)av.innerHTML=`<img src="${profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    else av.textContent=window.libInitials(profile.displayName||'?');
+    document.getElementById('hs-name').textContent=profile.displayName||'Your Profile';
+    document.getElementById('hs-inst').textContent=profile.institution||'';
+    document.getElementById('hs-profile-link').href='library-host-profile.html?uid='+uid;
+    strip.style.display='flex';
+  }
 
-  /* ── Profile save ── */
   window.saveProfile=async function(){
     const fn=document.getElementById('p-fname').value.trim();
     const ln=document.getElementById('p-lname').value.trim();
     const it=document.getElementById('p-type').value;
     const sc=document.getElementById('p-school').value;
     const dp=document.getElementById('p-dept').value;
-    if(!fn||!ln||!it||!sc||!dp){ window.libToast('Please fill all profile fields.'); return; }
+    const bio=document.getElementById('p-bio').value.trim();
+    if(!fn||!ln||!it||!sc||!dp){window.libToast('Please fill all required fields.');return;}
+    const saveBtn=document.getElementById('po-save-txt');saveBtn.textContent='Saving…';
     try{
-      await window.libSaveProfile(_user.uid,{firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp});
-      _profile={firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp};
+      const displayName=(fn+' '+ln).trim();
+      let photoURL='';
+      const photoInp=document.getElementById('po-photo-input');
+      if(photoInp._file){
+        try{photoURL=await window.libUploadProfilePhoto(_user.uid,photoInp._file);}
+        catch(e){window.libToast('Photo upload failed, continuing...',3000);}
+      }
+      await window.libSaveProfile(_user.uid,{displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL});
+      _profile={displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL};
       document.getElementById('profile-overlay').style.display='none';
       document.getElementById('main-content').style.display='block';
-      loadStats(); loadMyBooks();
-      window.libToast('Profile saved! You can now upload books.');
-    }catch(e){ window.libToast('Save failed: '+e.message); }
+      document.getElementById('hdr-manage').style.display='inline-flex';
+      showHostStrip(_profile,_user.uid);
+      loadStats();loadMyBooks();
+      window.libToast('Profile saved!');
+    }catch(e){window.libToast('Save failed: '+e.message);}
+    saveBtn.textContent='Save Profile & Continue →';
   };
 
-  /* ── Auth ── */
   window.libOnAuth(async function(user){
-    if(!user){ document.getElementById('auth-gate').style.display='flex'; return; }
+    if(!user){document.getElementById('auth-gate').style.display='flex';return;}
     _user=user;
     _profile=await window.libGetProfile(user.uid);
     if(!_profile){
       document.getElementById('profile-overlay').style.display='flex';
     } else {
       document.getElementById('main-content').style.display='block';
-      loadStats(); loadMyBooks();
+      document.getElementById('hdr-manage').style.display='inline-flex';
+      showHostStrip(_profile,user.uid);
+      loadStats();loadMyBooks();
     }
   });
 </script>
