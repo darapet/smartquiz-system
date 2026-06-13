@@ -124,30 +124,15 @@
 <div id="main-content" style="display:none">
   <div class="lib-up-body">
 
-    <!-- HOST PROFILE CARD with cover photo -->
-    <div id="host-strip" style="display:none;margin-bottom:20px;overflow:hidden;border:1px solid rgba(99,102,241,.15);border-radius:16px;">
-      <!-- Cover banner -->
-      <div id="hs-cover-banner" style="width:100%;height:110px;background:linear-gradient(135deg,#1e1b4b,#312e81,#4c1d95);position:relative;display:flex;align-items:flex-end;justify-content:flex-end;padding:8px">
-        <img id="hs-cover-img" src="" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">
-        <label for="hs-cover-input" style="cursor:pointer;background:rgba(0,0,0,.55);color:#fff;font-size:.68rem;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.25);position:relative;z-index:1">
-          📷 Change Cover
-          <input type="file" id="hs-cover-input" accept="image/*" style="display:none" onchange="onCoverSelect(this)">
-        </label>
+    <!-- HOST PROFILE STRIP -->
+    <div id="host-strip" style="display:none;margin-bottom:20px;padding:16px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15);border-radius:16px;display:flex;align-items:center;gap:14px;">
+      <div class="lib-photo-av" id="hs-avatar" style="width:52px;height:52px;font-size:1.2rem;flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:.95rem;font-weight:800;color:#e2e8f0;" id="hs-name"></div>
+        <div style="font-size:.75rem;color:#64748b;" id="hs-inst"></div>
       </div>
-      <!-- Avatar + info row -->
-      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px 14px;margin-top:-28px;background:rgba(99,102,241,.07)">
-        <div style="position:relative;flex-shrink:0">
-          <div id="hs-avatar" style="width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:3px solid #0a0b14;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.3rem;font-weight:700;color:#fff"></div>
-          <label for="hs-photo-input" style="position:absolute;bottom:0;right:0;width:20px;height:20px;background:#6366f1;border-radius:50%;border:2px solid #0a0b14;display:flex;align-items:center;justify-content:center;font-size:.6rem;cursor:pointer" title="Change photo">
-            ✏️<input type="file" id="hs-photo-input" accept="image/*" style="display:none" onchange="onPhotoSelect(this)">
-          </label>
-        </div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:.92rem;font-weight:800;color:#e2e8f0;" id="hs-name"></div>
-          <div style="font-size:.72rem;color:#64748b;" id="hs-inst"></div>
-        </div>
-        <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">Dashboard</a>
-      </div>
+      <a href="#" class="lib-btn lib-btn-ghost lib-btn-sm" id="hs-profile-link">View Profile →</a>
+      <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">My Dashboard</a>
     </div>
 
     <!-- STATS -->
@@ -156,7 +141,6 @@
       <div class="lib-stat-card"><div class="lib-stat-num" id="s-readers">0</div><div class="lib-stat-lbl">Total Readers</div></div>
       <div class="lib-stat-card"><div class="lib-stat-num" id="s-likes">0</div><div class="lib-stat-lbl">Total Likes</div></div>
       <div class="lib-stat-card"><div class="lib-stat-num" id="s-comments">0</div><div class="lib-stat-lbl">Comments</div></div>
-      <div class="lib-stat-card"><div class="lib-stat-num" id="s-followers">—</div><div class="lib-stat-lbl">Followers</div></div>
     </div>
 
     <!-- UPLOAD FORM -->
@@ -262,59 +246,6 @@
 </div>
 
 <div class="lib-toast" id="lib-toast"></div>
-
-<!-- EDIT BOOK MODAL -->
-<div id="edit-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto;padding:20px 16px">
-  <div style="max-width:520px;margin:0 auto;background:#12131f;border:1px solid rgba(99,102,241,.25);border-radius:16px;padding:22px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px">
-      <div style="font-size:1rem;font-weight:700;color:#e2e8f0">✏️ Edit Book</div>
-      <button onclick="closeEdit()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer">✕</button>
-    </div>
-    <div class="lib-form-group" style="margin-bottom:12px">
-      <label class="lib-label">Book Title *</label>
-      <input class="lib-input" id="edit-title" placeholder="Book title">
-    </div>
-    <div class="lib-form-row">
-      <div class="lib-form-group">
-        <label class="lib-label">Author</label>
-        <input class="lib-input" id="edit-author" placeholder="Author name">
-      </div>
-      <div class="lib-form-group">
-        <label class="lib-label">Level</label>
-        <select class="lib-select-inp" id="edit-level">
-          <option value="">— Select —</option>
-          <option value="100L">100 Level</option>
-          <option value="200L">200 Level</option>
-          <option value="300L">300 Level</option>
-          <option value="400L">400 Level</option>
-          <option value="500L">500 Level</option>
-          <option value="postgraduate">Postgraduate</option>
-        </select>
-      </div>
-    </div>
-    <div id="edit-status" style="font-size:.8rem;margin-bottom:12px;min-height:18px"></div>
-    <div style="display:flex;gap:10px">
-      <button class="lib-btn lib-btn-primary" style="flex:1" onclick="saveEdit()">💾 Save Changes</button>
-      <button class="lib-btn lib-btn-ghost" onclick="closeEdit()">Cancel</button>
-    </div>
-  </div>
-</div>
-
-<!-- ACTIVITY MODAL -->
-<div id="activity-modal" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.75);backdrop-filter:blur(4px);overflow-y:auto;padding:20px 16px">
-  <div style="max-width:520px;margin:0 auto;background:#12131f;border:1px solid rgba(99,102,241,.25);border-radius:16px;padding:22px">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-      <div style="font-size:1rem;font-weight:700;color:#e2e8f0">📊 Book Activity</div>
-      <button onclick="closeActivity()" style="background:none;border:none;color:#64748b;font-size:1.2rem;cursor:pointer">✕</button>
-    </div>
-    <div id="activity-book-title" style="font-size:.78rem;color:#64748b;margin-bottom:14px"></div>
-    <div id="activity-stats-row" style="display:flex;gap:8px;margin-bottom:18px"></div>
-    <div style="font-size:.75rem;font-weight:600;color:#64748b;letter-spacing:.05em;text-transform:uppercase;margin-bottom:8px">Recent Comments</div>
-    <div id="activity-comments" style="display:flex;flex-direction:column;gap:8px">
-      <div style="color:#475569;font-size:.8rem;text-align:center;padding:16px">Loading…</div>
-    </div>
-  </div>
-</div>
 
 <script type="module" src="js/aqs-firebase.js"></script>
 <script type="module" src="js/aqs-groq-key.js"></script>
@@ -536,140 +467,25 @@
             <span class="lib-book-row-stat">♡ ${b.likes||0}</span>
             <span class="lib-book-row-stat">💬 ${b.commentCount||0}</span>
           </div>
-          <div class="lib-book-row-actions" style="flex-direction:column;gap:5px;min-width:72px;">
-            <button class="lib-btn lib-btn-ghost lib-btn-sm" style="width:100%" onclick="viewActivity('${b.id}','${(b.title||'').replace(/'/g,"\\'")}')">📊 Activity</button>
-            <button class="lib-btn lib-btn-ghost lib-btn-sm" style="width:100%" onclick="openEdit(${JSON.stringify(b)})">✏️ Edit</button>
-            <button class="lib-btn lib-btn-danger lib-btn-sm" style="width:100%" onclick="deleteBook('${b.id}')">🗑️ Delete</button>
+          <div class="lib-book-row-actions">
+            <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="location.href='library-read.html?id=${b.id}'">📖 Read</button>
+            <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">✏️ Manage</a>
           </div>
         </div>
       </div>`;
     }).join('')+(books.length>5?`<div style="text-align:center;padding:12px;"><a href="library-host-view.html" class="lib-btn lib-btn-ghost lib-btn-sm">View all ${books.length} books →</a></div>`:'');
   }
 
-  function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-
-  async function loadFollowers(){
-    try{
-      const count=await window.libGetFollowerCount(_user.uid);
-      document.getElementById('s-followers').textContent=count;
-    }catch(e){}
-  }
-
   function showHostStrip(profile,uid){
     const strip=document.getElementById('host-strip');
     const av=document.getElementById('hs-avatar');
     if(profile.photoURL){av.innerHTML=`<img src="${profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;}
-    else{av.textContent=(profile.displayName||'?').slice(0,2).toUpperCase();}
-    document.getElementById('hs-name').textContent=profile.displayName||(profile.firstName||'')+' '+(profile.lastName||'')||'Your Profile';
+    else{av.textContent=window.libInitials(profile.displayName||'?');}
+    document.getElementById('hs-name').textContent=profile.displayName||'Your Profile';
     document.getElementById('hs-inst').textContent=profile.institution||'';
-    if(profile.coverURL){
-      const ci=document.getElementById('hs-cover-img');
-      ci.src=profile.coverURL; ci.style.display='block';
-    }
-    strip.style.display='block';
+    document.getElementById('hs-profile-link').href='library-host-profile.html?uid='+uid;
+    strip.style.display='flex';
   }
-
-  window.onCoverSelect=async function(inp){
-    if(!inp.files[0]) return;
-    if(inp.files[0].size>8388608){window.libToast('Cover must be under 8MB.');inp.value='';return;}
-    const label=inp.closest('label');
-    if(label) label.childNodes[0].textContent='⏳ Uploading…';
-    try{
-      const url=await window.libUploadCoverPhoto(_user.uid,inp.files[0]);
-      const ci=document.getElementById('hs-cover-img');ci.src=url;ci.style.display='block';
-      window.libToast('✅ Cover photo updated!');
-    }catch(e){window.libToast('Cover upload failed: '+e.message);}
-    finally{if(label) label.childNodes[0].textContent='📷 Change Cover';inp.value='';}
-  };
-
-  window.onPhotoSelect=async function(inp){
-    if(!inp.files[0]) return;
-    if(inp.files[0].size>5242880){window.libToast('Photo must be under 5MB.');inp.value='';return;}
-    try{
-      const url=await window.libUploadProfilePhoto(_user.uid,inp.files[0]);
-      document.getElementById('hs-avatar').innerHTML=`<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
-      window.libToast('✅ Profile photo updated!');
-    }catch(e){window.libToast('Photo upload failed: '+e.message);}
-    finally{inp.value='';}
-  };
-
-  var _editId=null;
-  window.openEdit=function(book){
-    _editId=book.id;
-    document.getElementById('edit-title').value=book.title||'';
-    document.getElementById('edit-author').value=book.author||'';
-    document.getElementById('edit-level').value=book.level||'';
-    document.getElementById('edit-status').textContent='';
-    document.getElementById('edit-modal').style.display='block';
-    document.body.style.overflow='hidden';
-  };
-  window.closeEdit=function(){
-    document.getElementById('edit-modal').style.display='none';
-    document.body.style.overflow='';_editId=null;
-  };
-  window.saveEdit=async function(){
-    if(!_editId) return;
-    const title=document.getElementById('edit-title').value.trim();
-    if(!title){document.getElementById('edit-status').textContent='⚠️ Title is required.';return;}
-    const st=document.getElementById('edit-status');
-    st.style.color='#94a3b8';st.textContent='Saving…';
-    try{
-      await window.libUpdateBook(_editId,{
-        title,
-        author:document.getElementById('edit-author').value.trim(),
-        level:document.getElementById('edit-level').value
-      });
-      st.style.color='#4ade80';st.textContent='✅ Saved!';
-      setTimeout(function(){closeEdit();loadMyBooks();},800);
-    }catch(e){st.style.color='#f87171';st.textContent='❌ '+e.message;}
-  };
-
-  window.deleteBook=async function(id){
-    if(!confirm('Delete this book? This cannot be undone.')) return;
-    try{await window.libDeleteBook(id);window.libToast('Book deleted.');loadMyBooks();loadStats();}
-    catch(e){window.libToast('Error: '+e.message);}
-  };
-
-  window.viewActivity=async function(bookId,title){
-    document.getElementById('activity-modal').style.display='block';
-    document.body.style.overflow='hidden';
-    document.getElementById('activity-book-title').textContent=title;
-    document.getElementById('activity-stats-row').innerHTML='<div style="color:#64748b;font-size:.8rem">Loading…</div>';
-    document.getElementById('activity-comments').innerHTML='<div style="color:#475569;font-size:.8rem;text-align:center;padding:16px">Loading…</div>';
-    try{
-      const book=await window.libGetBook(bookId);
-      if(book){
-        document.getElementById('activity-stats-row').innerHTML=[
-          {icon:'👁️',label:'Views',val:book.views||0,color:'#6366f1'},
-          {icon:'❤️',label:'Likes',val:book.likes||0,color:'#ec4899'},
-          {icon:'💬',label:'Comments',val:book.commentCount||0,color:'#22c55e'}
-        ].map(function(s){
-          return '<div style="flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:10px 8px;text-align:center">'
-            +'<div style="font-size:1.4rem;font-weight:800;color:'+s.color+';line-height:1.1">'+s.val+'</div>'
-            +'<div style="font-size:.68rem;color:#64748b;margin-top:3px">'+s.icon+' '+s.label+'</div></div>';
-        }).join('');
-      }
-      const comments=await window.libGetComments(bookId);
-      if(!comments.length){
-        document.getElementById('activity-comments').innerHTML='<div style="color:#475569;font-size:.8rem;text-align:center;padding:16px">No comments yet.</div>';
-      } else {
-        document.getElementById('activity-comments').innerHTML=comments.slice(0,10).map(function(c){
-          const ts=c.createdAt&&c.createdAt.toDate?c.createdAt.toDate().toLocaleDateString():'';
-          return '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:10px 12px">'
-            +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-            +'<span style="font-size:.76rem;font-weight:600;color:#a5b4fc">'+esc(c.displayName||'Anonymous')+'</span>'
-            +'<span style="font-size:.66rem;color:#475569">'+ts+'</span></div>'
-            +'<div style="font-size:.8rem;color:#cbd5e1;line-height:1.5">'+esc(c.text||'')+'</div></div>';
-        }).join('');
-      }
-    }catch(e){
-      document.getElementById('activity-comments').innerHTML='<div style="color:#f87171;font-size:.8rem;text-align:center;padding:16px">Error: '+esc(e.message)+'</div>';
-    }
-  };
-  window.closeActivity=function(){
-    document.getElementById('activity-modal').style.display='none';
-    document.body.style.overflow='';
-  };
 
   window.saveProfile=async function(){
     const fn=document.getElementById('p-fname').value.trim();
@@ -711,7 +527,7 @@
       document.getElementById('main-content').style.display='block';
       document.getElementById('hdr-manage').style.display='inline-flex';
       showHostStrip(_profile,user.uid);
-      loadStats();loadMyBooks();loadFollowers();
+      loadStats();loadMyBooks();
     }
   });
 </script>

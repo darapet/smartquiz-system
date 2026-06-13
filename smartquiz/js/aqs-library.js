@@ -70,7 +70,7 @@ function _waitFirebase() {
   window._libKeyCount = function(){ return _SLOTS.length; };
   window.setLibGroqKeys = function(arr){
     _SLOTS.length=0;
-    (arr||[]).map(function(k){ return (k||'').replace(/[^\x20-\x7E]/g,'').trim(); })
+    (arr||[]).map(function(k){ return (k||'').replace(/[^ -~]/g,'').trim(); })
              .filter(function(k){ return k.length>20 })
              .forEach(function(k){ _SLOTS.push(k); });
     try{ localStorage.setItem(IDX,'0'); }catch(e){}
@@ -323,6 +323,18 @@ window.libUploadProfilePhoto=async function(uid,file){
   await window.libSaveProfile(uid,{photoURL:data.secure_url});
   return data.secure_url;
 };
+window.libUploadCoverPhoto=async function(uid,file){
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/covers/'+uid);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Cover upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{coverURL:data.secure_url});
+  return data.secure_url;
+};
 
 /* ── BOOKS ── */
 window.libAddBook=async function(data){
@@ -340,15 +352,26 @@ window.libGetBook=async function(id){
 
 window.libSearchBooks=async function(f){
   await _init();
-  const constraints=[where('status','==','approved'),limit(300)];
-  if(f.institution) constraints.push(where('institution','==',f.institution));
-  else if(f.institutionType) constraints.push(where('institutionType','==',f.institutionType));
-  let docs=(await getDocs(query(collection(_db,'library_books'),...constraints))).docs.map(function(d){return{id:d.id,...d.data()};});
-  if(f.course) docs=docs.filter(function(b){ return b.course===f.course; });
-  if(f.level)  docs=docs.filter(function(b){ return b.level===f.level; });
+  /* Fetch all approved books (client-side filtering avoids missing composite indexes) */
+  let docs=(await getDocs(query(collection(_db,'library_books'),where('status','==','approved'),limit(500)))).docs.map(function(d){return{id:d.id,...d.data()};});
+  /* Institution type filter — broadest level */
+  if(f.institutionType) docs=docs.filter(function(b){ return (b.institutionType||'').toLowerCase()===f.institutionType.toLowerCase(); });
+  /* School filter — narrows within type */
+  if(f.institution) docs=docs.filter(function(b){ return (b.institution||'').toLowerCase()===f.institution.toLowerCase(); });
+  /* Course / department */
+  if(f.course) docs=docs.filter(function(b){ return (b.course||'').toLowerCase()===f.course.toLowerCase(); });
+  /* Level */
+  if(f.level) docs=docs.filter(function(b){ return (b.level||'').toLowerCase()===f.level.toLowerCase(); });
+  /* Keyword: title, course, author, courseCode, institution */
   if(f.keyword){
     const kw=f.keyword.toLowerCase();
-    docs=docs.filter(function(b){ return (b.title||'').toLowerCase().includes(kw)||(b.course||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw); });
+    docs=docs.filter(function(b){
+      return (b.title||'').toLowerCase().includes(kw)
+          ||(b.course||'').toLowerCase().includes(kw)
+          ||(b.author||'').toLowerCase().includes(kw)
+          ||(b.courseCode||'').toLowerCase().includes(kw)
+          ||(b.institution||'').toLowerCase().includes(kw);
+    });
   }
   docs.sort(function(a,b){ return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)); });
   return docs;
@@ -509,28 +532,15 @@ window.libGetFollowingCount=async function(followerUid){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  /* Use 'image' for thumbnails, 'raw' for documents (PDF/EPUB/DOCX).
-     Cloudinary 'auto' can fail silently for raw files on restricted presets. */
-  const resourceType=isThumb?'image':'raw';
+  const resourceType=isThumb?'image':'auto';
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
   if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
-  else formData.append('public_id','library/books/'+bookId);
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
-  let res;
-  try {
-    res = await fetch(url, { method:'POST', body:formData });
-  } catch(networkErr) {
-    /* fetch() itself threw — network unreachable, CORS blocked, or wrong URL */
-    throw new Error(
-      'Network error — could not reach the upload server. ' +
-      'Check your internet connection or Cloudinary preset settings. (' +
-      networkErr.message + ')'
-    );
-  }
+  const res=await fetch(url,{method:'POST',body:formData});
   if(!res.ok){
-    let msg='Upload failed (HTTP '+res.status+')';
+    let msg='Upload failed ('+res.status+')';
     try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
     throw new Error(msg);
   }
@@ -574,7 +584,7 @@ window.libAiExplain=async function(pdfUrl,title){
 };
 window.libAiExplainText=async function(text,title){
   if(!text||!text.trim()) throw new Error('No text content to analyse.');
-  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)\n\nIMPORTANT: Use LaTeX notation for ALL mathematical expressions — inline math with $...$ and display/block math with $$...$$. For example write $E = mc^2$ not E=mc^2, and write $$\\int_0^\\infty f(x)\\,dx$$ for standalone equations.'}],max_tokens:2000});
+  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)'}],max_tokens:2000});
   if(!res.ok) throw new Error('AI request failed ('+res.status+')');
   const d=await res.json(); return d.choices[0].message.content;
 };
