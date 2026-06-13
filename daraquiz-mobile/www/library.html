@@ -147,7 +147,12 @@
     const kw = this.value.toLowerCase();
     if (!kw) { await renderGrid(_allBooks); return; }
     await renderGrid(_allBooks.filter(function(b){
-      return (b.title||'').toLowerCase().includes(kw)||(b.course||b.subject||'').toLowerCase().includes(kw)||(b.institution||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw)||(b.uploaderName||'').toLowerCase().includes(kw);
+      return (b.title||'').toLowerCase().includes(kw)
+          ||(b.course||b.subject||'').toLowerCase().includes(kw)
+          ||(b.courseCode||'').toLowerCase().includes(kw)
+          ||(b.institution||'').toLowerCase().includes(kw)
+          ||(b.author||'').toLowerCase().includes(kw)
+          ||(b.uploaderName||'').toLowerCase().includes(kw);
     }));
   });
 
