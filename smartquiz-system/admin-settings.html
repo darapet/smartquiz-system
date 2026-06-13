@@ -1061,72 +1061,48 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
     /* ═══════════════════════════════════════════════════════════════════
        Library Groq Keys — Save / Load
        Stored as lib_groq_keys in settings/main.
-       Never merged with the main pool.
+       Uses jQuery.post + saveSettings — same pattern as every other
+       save button on this page. No direct Firestore access needed.
     ═══════════════════════════════════════════════════════════════════ */
     (function () {
-        var STATUS = document.getElementById('aqs-lib-key-status');
-        var DOTS   = [1,2,3,4,5,6,7,8,9,10].map(function(i){ return document.getElementById('aqs-lk-dot-'+i); });
-
-        function setStatus(msg, ok) {
-            if (!STATUS) return;
-            STATUS.textContent = msg;
-            STATUS.style.color = ok ? '#10b981' : '#ef4444';
-            if (ok) setTimeout(function(){ STATUS.textContent = ''; }, 3000);
-        }
+        var DOTS = [1,2,3,4,5,6,7,8,9,10].map(function(i){ return document.getElementById('aqs-lk-dot-'+i); });
 
         function dotColor(el, val) {
             if (!el) return;
             el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
         }
 
-        async function loadLibKeys() {
-            try {
-                var snap = await getDoc(doc(db, 'settings', 'main'));
-                if (snap.exists()) {
-                    var keys = snap.data().lib_groq_keys || [];
-                    for (var i = 0; i < 10; i++) {
-                        var el = document.getElementById('aqs-lib-key-' + (i+1));
-                        if (el) el.value = keys[i] || '';
-                        dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
-                    }
+        function loadLibKeys() {
+            if (typeof jQuery === 'undefined' || !window.AQS) return;
+            jQuery.post(window.AQS.ajax_url, { action: 'aqs_get_settings', nonce: '' }, function(res) {
+                var keys = (res && res.success && res.data && res.data.settings && res.data.settings.lib_groq_keys) || [];
+                for (var i = 0; i < 10; i++) {
+                    var el = document.getElementById('aqs-lib-key-' + (i + 1));
+                    if (el) el.value = keys[i] || '';
+                    dotColor(DOTS[i], !!(keys[i] && keys[i].trim()));
                 }
-            } catch(e) { /* silently ignore */ }
+            });
         }
 
         var saveBtn = document.getElementById('aqs-save-lib-keys-btn');
         if (saveBtn) {
-            saveBtn.addEventListener('click', async function () {
-                saveBtn.disabled = true;
-                saveBtn.textContent = '⏳ Saving…';
+            saveBtn.addEventListener('click', function () {
                 var keys = [];
                 for (var i = 1; i <= 10; i++) {
                     var v = (document.getElementById('aqs-lib-key-' + i) || {}).value || '';
                     if (v.trim()) keys.push(v.trim());
                 }
                 if (!keys.length) {
-                    setStatus('❌ Add at least one key.', false);
-                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Library Keys';
+                    _showStatus('aqs-lib-key-status', false, 'Add at least one key.');
                     return;
                 }
-                try {
-                    await setDoc(doc(db, 'settings', 'main'), { lib_groq_keys: keys }, { merge: true });
-                    if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(keys);
-                    keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
-                    setStatus('✅ Saved ' + keys.length + ' library key(s)!', true);
-                    saveBtn.textContent = '✅ Saved!';
-                    setTimeout(function(){ saveBtn.disabled = false; saveBtn.textContent = '💾 Save Library Keys'; }, 2200);
-                } catch(e) {
-                    setStatus('❌ Save failed: ' + e.message, false);
-                    saveBtn.disabled = false; saveBtn.textContent = '💾 Save Library Keys';
-                }
+                saveSettings('/api/settings', { lib_groq_keys: keys }, 'aqs-lib-key-status', saveBtn, '💾 Save Library Keys');
+                keys.forEach(function(k, i) { dotColor(DOTS[i], true); });
+                if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(keys);
             });
         }
 
-        if (typeof db !== 'undefined' && typeof getDoc !== 'undefined') {
-            loadLibKeys();
-        } else {
-            document.addEventListener('aqs:firebase:ready', loadLibKeys, { once: true });
-        }
+        _whenFirebaseReady(loadLibKeys);
     })();
 </script>
 <script src="js/aqs-quotes.js"></script>
