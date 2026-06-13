@@ -113,8 +113,15 @@
     }
 
     function hasMath(str) {
-        return str && /\$|\\\[|\\\(|\\[a-z]/.test(str);
-    }
+          if (!str) return false;
+          /* LaTeX delimiters, bare \commands, superscripts, OR Unicode math symbols */
+          if (/\$|\\\[|\\\(|\\[a-zA-Z]/.test(str)) return true;
+          /* bare superscript/subscript: x^2, x^{n}, x_i */
+          if (/[A-Za-z]\^[\{\d]|[A-Za-z]_[\{a-zA-Z0-9]/.test(str)) return true;
+          /* Unicode math: √∫∑∏∂∞ Greek ²³±≤≥≠≈×÷·π θ λ μ σ φ ω Δ Σ Ω Π */
+          if (/[\u221a\u222b\u2211\u220f\u2202\u221e\u03b1-\u03c9\u00b2\u00b3\u00b1\u2264\u2265\u2260\u2248\u00d7\u00f7\u00b7\u0391-\u03a9]/.test(str)) return true;
+          return false;
+      }
 
     /* renderMath — same algorithm as admin, uses KaTeX */
     function renderMath(text) {
@@ -279,7 +286,7 @@
     }
 
     async function callGroqDirect(prompt) {
-        if (typeof window.groqFetch !== 'function') return null;
+        if (typeof window.quizGroqFetch !== 'function') return null;
         var isMath = isMathPrompt(prompt);
         var groqModel  = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
         var groqTokens = isMath ? 6144 : 4096;
@@ -294,7 +301,7 @@
             try {
                 var ctrl = new AbortController();
                 var tid  = setTimeout(function() { ctrl.abort(); }, to);
-                var res  = await window.groqFetch({
+                var res  = await window.quizGroqFetch({
                     model: m,
                     messages: [
                         { role: 'system', content: 'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.' },
@@ -482,17 +489,57 @@
     }
 
     /* ── Math normaliser — applied AFTER full AI response received ── */
-    /* Converts \( \) → $ $  and \[ \] → $$ $$ so KaTeX renders properly */
-    function normalizeMath(text) {
-        if (!text || typeof text !== 'string') return text || '';
-        /* \[ ... \] → $$ ... $$ (display) */
-        text = text.replace(/\\\[([\s\S]+?)\\\]/g, function(_, m) { return '$$' + m.trim() + '$$'; });
-        /* \( ... \) → $ ... $ (inline) */
-        text = text.replace(/\\\(([\s\S]+?)\\\)/g, function(_, m) { return '$' + m.trim() + '$'; });
-        /* \begin{equation} ... \end{equation} → $$ ... $$ */
-        text = text.replace(/\\begin\{(?:equation|align)\*?\}([\s\S]+?)\\end\{(?:equation|align)\*?\}/g, function(_, m) { return '$$' + m.trim() + '$$'; });
-        return text;
-    }
+      /* Converts \( \) → $ $,  \[ \] → $$ $$, bare \commands, Unicode → LaTeX */
+      function normalizeMath(text) {
+          if (!text || typeof text !== 'string') return text || '';
+          /* 1. \[ ... \] → $$ ... $$ (display) */
+          text = text.replace(/\\\[([\s\S]+?)\\\]/g, function(_, m) { return '$$' + m.trim() + '$$'; });
+          /* 2. \( ... \) → $ ... $ (inline) */
+          text = text.replace(/\\\(([\s\S]+?)\\\)/g, function(_, m) { return '$' + m.trim() + '$'; });
+          /* 3. \begin{equation/align} ... \end{...} → $$ ... $$ */
+          text = text.replace(/\\begin\{(?:equation|align)\*?\}([\s\S]+?)\\end\{(?:equation|align)\*?\}/g, function(_, m) { return '$$' + m.trim() + '$$'; });
+          /* 4. Wrap bare \LaTeX commands (not already in $...$) in $...$ */
+          var segs = [], lastIdx = 0, mm;
+          var reMath = /\$\$[\s\S]+?\$\$|\$[^$\n]{1,500}?\$/g;
+          reMath.lastIndex = 0;
+          while ((mm = reMath.exec(text)) !== null) {
+              if (mm.index > lastIdx) segs.push([false, text.slice(lastIdx, mm.index)]);
+              segs.push([true, mm[0]]);
+              lastIdx = mm.index + mm[0].length;
+          }
+          if (lastIdx < text.length) segs.push([false, text.slice(lastIdx)]);
+          text = segs.map(function(seg) {
+              if (seg[0]) return seg[1]; /* already-delimited math — leave alone */
+              var s = seg[1];
+              /* Wrap bare \command or \command{...}{...} — skip \n \t etc */
+              s = s.replace(/\\(?!n\b|t\b|r\b)[a-zA-Z]+(?:\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}|\{[^{}]*\})*/g, function(cmd) { return '$' + cmd + '$'; });
+              /* Wrap bare x^2, x^{n+1}, x_i, x_{ij} */
+              s = s.replace(/([A-Za-z]\w*)\^(\{[^}]+\}|[A-Za-z0-9])/g, function(m, b, e) { return '$' + b + '^' + e + '$'; });
+              s = s.replace(/([A-Za-z]\w*)_(\{[^}]+\}|[A-Za-z0-9])/g, function(m, b, sub) { return '$' + b + '_' + sub + '$'; });
+              /* Unicode math → LaTeX */
+              s = s.replace(/√([A-Za-z0-9({][^\s,;.!?]*)/g, function(_, a) { return '$\\sqrt{' + a.replace(/[()]/g,'') + '}$'; });
+              s = s.replace(/([A-Za-z0-9}])²/g, '$$$1^{2}$$');
+              s = s.replace(/([A-Za-z0-9}])³/g, '$$$1^{3}$$');
+              s = s.replace(/([A-Za-z0-9}])¹/g, '$$$1^{1}$$');
+              s = s.replace(/∞/g, '$\\infty$');  s = s.replace(/∫/g, '$\\int$');
+              s = s.replace(/∑/g, '$\\sum$');    s = s.replace(/∏/g, '$\\prod$');
+              s = s.replace(/∂/g, '$\\partial$');s = s.replace(/±/g, '$\\pm$');
+              s = s.replace(/≤/g, '$\\leq$');    s = s.replace(/≥/g, '$\\geq$');
+              s = s.replace(/≠/g, '$\\neq$');    s = s.replace(/≈/g, '$\\approx$');
+              s = s.replace(/×/g, '$\\times$');  s = s.replace(/÷/g, '$\\div$');
+              s = s.replace(/·/g,  '$\\cdot$');  s = s.replace(/π/g,  '$\\pi$');
+              s = s.replace(/α/g, '$\\alpha$');  s = s.replace(/β/g,  '$\\beta$');
+              s = s.replace(/γ/g, '$\\gamma$');  s = s.replace(/δ/g,  '$\\delta$');
+              s = s.replace(/ε/g, '$\\epsilon$');s = s.replace(/θ/g,  '$\\theta$');
+              s = s.replace(/λ/g, '$\\lambda$'); s = s.replace(/μ/g,  '$\\mu$');
+              s = s.replace(/σ/g, '$\\sigma$');  s = s.replace(/φ/g,  '$\\phi$');
+              s = s.replace(/ω/g, '$\\omega$');  s = s.replace(/Δ/g,  '$\\Delta$');
+              s = s.replace(/Σ/g, '$\\Sigma$');  s = s.replace(/Ω/g,  '$\\Omega$');
+              s = s.replace(/Π/g, '$\\Pi$');
+              return s;
+          }).join('');
+          return text;
+      }
     function normalizeQuestionsMath(qs) {
         return qs.map(function(q) {
             return Object.assign({}, q, {
