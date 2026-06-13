@@ -15,7 +15,7 @@
  */
 
 /* ══ CI patches this automatically — do NOT edit by hand ══════════════════ */
-var AQS_APP_VERSION_CODE = 304;
+var AQS_APP_VERSION_CODE = 305;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
