@@ -190,9 +190,15 @@
         <input class="lib-input" id="u-title" placeholder="e.g. Organic Chemistry — 3rd Edition">
       </div>
 
-      <div class="lib-form-group" style="margin-bottom:14px">
-        <label class="lib-label">Author (optional)</label>
-        <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
+      <div class="lib-form-row">
+        <div class="lib-form-group">
+          <label class="lib-label">Author (optional)</label>
+          <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
+        </div>
+        <div class="lib-form-group">
+          <label class="lib-label">Course Code (optional)</label>
+          <input class="lib-input" id="u-coursecode" placeholder="e.g. MCS102, CHM204" maxlength="20" style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+        </div>
       </div>
 
       <!-- Thumbnail -->
@@ -360,6 +366,7 @@
       level:document.getElementById('u-level').value,
       title:document.getElementById('u-title').value.trim(),
       author:document.getElementById('u-author').value.trim(),
+      courseCode:(document.getElementById('u-coursecode').value||'').trim().toUpperCase(),
       pages:_detectedPages||0
     };
   }
