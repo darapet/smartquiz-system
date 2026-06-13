@@ -27,8 +27,10 @@ function _waitFirebase() {
 }
 
 /* ══════════════════════════════════════════════════════
-   10-SLOT LIBRARY GROQ KEY POOL (round-robin + fallback)
-   Paste reversed key (gsk_… reversed) into each slot.
+   10-SLOT LIBRARY GROQ KEY POOL (round-robin, no main-pool fallback)
+   Keys are loaded automatically from Firebase admin settings
+   (field: lib_groq_keys) — no need to hardcode here.
+   To hardcode manually: paste reversed key (gsk_… reversed) into a slot.
    To reverse in console: "gsk_yourkey".split('').reverse().join('')
 ══════════════════════════════════════════════════════ */
 (function(){
@@ -51,15 +53,24 @@ function _waitFirebase() {
   ].map(function(r){ return r ? r.split('').reverse().join('') : ''; })
    .filter(function(k){ return k.length > 20; });
 
+  /* Keys-ready promise — resolves once the Firebase auto-loader finishes
+     (or after 5 s timeout). libGroqFetch awaits this before throwing
+     "not configured", so a slow Firestore read never causes a false error. */
+  window._libKeysReady = new Promise(function(resolve){
+    window._libKeysReadyResolve = resolve;
+    setTimeout(resolve, 5000);
+  });
+
   function _h(k){ return k ? k.slice(-8) : '?'; }
   function _isRL(k){ return (_rl[_h(k)]||0) > Date.now(); }
   function _markRL(k){ _rl[_h(k)] = Date.now() + RL_MS; }
   function _idx(){ var i=0; try{ i=parseInt(localStorage.getItem(IDX)||'0')||0; }catch(e){} return (isNaN(i)||i>=Math.max(1,_SLOTS.length))?0:i; }
   function _setIdx(i){ try{ localStorage.setItem(IDX, String(i%Math.max(1,_SLOTS.length))); }catch(e){} }
 
+  window._libKeyCount = function(){ return _SLOTS.length; };
   window.setLibGroqKeys = function(arr){
     _SLOTS.length=0;
-    (arr||[]).map(function(r){ return r?r.split('').reverse().join(''):'' })
+    (arr||[]).map(function(k){ return (k||'').replace(/[^\x20-\x7E]/g,'').trim(); })
              .filter(function(k){ return k.length>20 })
              .forEach(function(k){ _SLOTS.push(k); });
     try{ localStorage.setItem(IDX,'0'); }catch(e){}
@@ -67,6 +78,9 @@ function _waitFirebase() {
   window.getLibGroqKeyCount = function(){ return _SLOTS.length; };
 
   window.libGroqFetch = async function(bodyObj){
+    /* Wait for Firebase auto-loader before deciding no keys are set */
+    if(!_SLOTS.length) await window._libKeysReady;
+
     var model = 'llama-3.3-70b-versatile';
     if(_SLOTS.length){
       var start=_idx();
@@ -77,37 +91,51 @@ function _waitFirebase() {
           var res=await fetch(URL_,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},body:JSON.stringify(Object.assign({},bodyObj,{model:model}))});
           if(res.status===429){ _markRL(key); _setIdx(idx+1); continue; }
           if(res.status===413){ _setIdx(idx+1); continue; }
+          if(res.status===401){ _rl[_h(key)]=Date.now()+600000; _setIdx(idx+1); continue; }
           _setIdx(idx+1); return res;
         }catch(e){ console.warn('[lib-ai] slot '+(idx+1)+' err',e.message); }
       }
+      throw new Error('All library AI keys are busy or rate-limited. Please wait a moment and try again.');
     }
-    if(typeof window.groqFetch==='function'){ console.warn('[lib-ai] falling back to main pool'); return window.groqFetch(bodyObj); }
-    throw new Error('No Library AI keys configured. Add keys in Admin → Settings → Library AI Keys.');
+    /* No library keys configured — do NOT fall back to main pool */
+    throw new Error('Library AI keys not configured. Please add lib_groq_keys in Admin Settings.');
   };
 })();
 
 /* ══════════════════════════════════════════════════════
-   LIBRARY AI — AUTO-LOADER
-   Reads lib_groq_keys from Firestore settings/main on every
-   page that includes this file — no manual key pasting needed.
-   Keys added in Admin → Settings → Library AI Keys are live
-   immediately on all pages for all users.
+   LIBRARY KEY AUTO-LOADER
+   Reads lib_groq_keys from Firebase admin settings and
+   loads them into the library pool automatically.
+   Fires once per page load after Firebase is ready.
 ══════════════════════════════════════════════════════ */
 (function(){
-  function _loadLibKeys(){
-    if(typeof window.aqsAjax!=='function') return;
-    window.aqsAjax({action:'aqs_get_settings'},function(res){
-      var s=(res&&res.success&&res.data&&res.data.settings)?res.data.settings:{};
-      if(Array.isArray(s.lib_groq_keys)&&s.lib_groq_keys.length){
-        if(typeof window.setLibGroqKeys==='function'){
-          window.setLibGroqKeys(s.lib_groq_keys);
-          console.info('[lib-ai] Auto-loaded '+s.lib_groq_keys.length+' library key(s) from settings.');
-        }
+  function _loadLibKeysFromFirebase(){
+    if(typeof window.aqsAjax !== 'function'){
+      /* aqs-firebase.js not present on this page — resolve immediately */
+      if(typeof window._libKeysReadyResolve === 'function'){
+        window._libKeysReadyResolve();
+        window._libKeysReadyResolve = null;
+      }
+      return;
+    }
+    window.aqsAjax({ action: 'aqs_get_settings' }, function(res){
+      var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
+      if(Array.isArray(s.lib_groq_keys) && s.lib_groq_keys.length){
+        window.setLibGroqKeys(s.lib_groq_keys);
+        console.log('[aqs-library] loaded '+window.getLibGroqKeyCount()+' library Groq key(s) from admin settings.');
+      }
+      if(typeof window._libKeysReadyResolve === 'function'){
+        window._libKeysReadyResolve();
+        window._libKeysReadyResolve = null;
       }
     });
   }
-  if(window._aqsFirebaseReady){ _loadLibKeys(); }
-  else{ document.addEventListener('aqs:firebase:ready',_loadLibKeys,{once:true}); }
+
+  if(window._aqsFirebaseReady){
+    _loadLibKeysFromFirebase();
+  } else {
+    document.addEventListener('aqs:firebase:ready', _loadLibKeysFromFirebase, { once: true });
+  }
 })();
 
 /* ══════════════════════════════════════════════════════
@@ -271,18 +299,6 @@ window.libSaveProfile=async function(uid,data){
   await _init();
   await setDoc(doc(_db,'library_profiles',uid),{...data,updatedAt:serverTimestamp()},{merge:true});
 };
-window.libUploadProfilePhoto=async function(uid,file){
-  const formData=new FormData();
-  formData.append('file',file);
-  formData.append('upload_preset',_CLD_THUMB_PRESET);
-  formData.append('public_id','library/avatars/'+uid);
-  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
-  if(!res.ok) throw new Error('Photo upload failed');
-  const data=await res.json();
-  if(!data.secure_url) throw new Error('No URL returned');
-  await window.libSaveProfile(uid,{photoURL:data.secure_url});
-  return data.secure_url;
-};
 window.libUploadCoverPhoto=async function(uid,file){
   const formData=new FormData();
   formData.append('file',file);
@@ -293,6 +309,18 @@ window.libUploadCoverPhoto=async function(uid,file){
   const data=await res.json();
   if(!data.secure_url) throw new Error('No URL returned');
   await window.libSaveProfile(uid,{coverURL:data.secure_url});
+  return data.secure_url;
+};
+window.libUploadProfilePhoto=async function(uid,file){
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/avatars/'+uid);
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Photo upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{photoURL:data.secure_url});
   return data.secure_url;
 };
 
@@ -312,26 +340,15 @@ window.libGetBook=async function(id){
 
 window.libSearchBooks=async function(f){
   await _init();
-  /* Fetch all approved books (client-side filtering avoids missing composite indexes) */
-  let docs=(await getDocs(query(collection(_db,'library_books'),where('status','==','approved'),limit(500)))).docs.map(function(d){return{id:d.id,...d.data()};});
-  /* Institution type filter — broadest level */
-  if(f.institutionType) docs=docs.filter(function(b){ return (b.institutionType||'').toLowerCase()===f.institutionType.toLowerCase(); });
-  /* School filter — narrows within type */
-  if(f.institution) docs=docs.filter(function(b){ return (b.institution||'').toLowerCase()===f.institution.toLowerCase(); });
-  /* Course / department */
-  if(f.course) docs=docs.filter(function(b){ return (b.course||'').toLowerCase()===f.course.toLowerCase(); });
-  /* Level */
-  if(f.level) docs=docs.filter(function(b){ return (b.level||'').toLowerCase()===f.level.toLowerCase(); });
-  /* Keyword: title, course, author, courseCode, institution */
+  const constraints=[where('status','==','approved'),limit(300)];
+  if(f.institution) constraints.push(where('institution','==',f.institution));
+  else if(f.institutionType) constraints.push(where('institutionType','==',f.institutionType));
+  let docs=(await getDocs(query(collection(_db,'library_books'),...constraints))).docs.map(function(d){return{id:d.id,...d.data()};});
+  if(f.course) docs=docs.filter(function(b){ return b.course===f.course; });
+  if(f.level)  docs=docs.filter(function(b){ return b.level===f.level; });
   if(f.keyword){
     const kw=f.keyword.toLowerCase();
-    docs=docs.filter(function(b){
-      return (b.title||'').toLowerCase().includes(kw)
-          ||(b.course||'').toLowerCase().includes(kw)
-          ||(b.author||'').toLowerCase().includes(kw)
-          ||(b.courseCode||'').toLowerCase().includes(kw)
-          ||(b.institution||'').toLowerCase().includes(kw);
-    });
+    docs=docs.filter(function(b){ return (b.title||'').toLowerCase().includes(kw)||(b.course||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw); });
   }
   docs.sort(function(a,b){ return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)); });
   return docs;
@@ -415,8 +432,9 @@ window.libGetHostComments=async function(uploaderUid){
   if(!books.length) return [];
   const result=[];
   for(const book of books){
-    const snap=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',book.id),orderBy('createdAt','desc'),limit(20)));
-    if(snap.size) result.push({book,comments:snap.docs.map(function(d){return{id:d.id,...d.data()};})});
+    const snap=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',book.id),limit(50)));
+    const comments=snap.docs.map(function(d){return{id:d.id,...d.data()};}).sort(function(a,b){const ta=a.createdAt?.toMillis?a.createdAt.toMillis():0;const tb=b.createdAt?.toMillis?b.createdAt.toMillis():0;return tb-ta;});
+    if(comments.length) result.push({book,comments});
   }
   return result;
 };
@@ -491,15 +509,28 @@ window.libGetFollowingCount=async function(followerUid){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  const resourceType=isThumb?'image':'auto';
+  /* Use 'image' for thumbnails, 'raw' for documents (PDF/EPUB/DOCX).
+     Cloudinary 'auto' can fail silently for raw files on restricted presets. */
+  const resourceType=isThumb?'image':'raw';
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
   if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
+  else formData.append('public_id','library/books/'+bookId);
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
-  const res=await fetch(url,{method:'POST',body:formData});
+  let res;
+  try {
+    res = await fetch(url, { method:'POST', body:formData });
+  } catch(networkErr) {
+    /* fetch() itself threw — network unreachable, CORS blocked, or wrong URL */
+    throw new Error(
+      'Network error — could not reach the upload server. ' +
+      'Check your internet connection or Cloudinary preset settings. (' +
+      networkErr.message + ')'
+    );
+  }
   if(!res.ok){
-    let msg='Upload failed ('+res.status+')';
+    let msg='Upload failed (HTTP '+res.status+')';
     try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
     throw new Error(msg);
   }
@@ -543,7 +574,7 @@ window.libAiExplain=async function(pdfUrl,title){
 };
 window.libAiExplainText=async function(text,title){
   if(!text||!text.trim()) throw new Error('No text content to analyse.');
-  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)'}],max_tokens:2000});
+  const res=await window.libGroqFetch({messages:[{role:'user',content:'You are an expert academic tutor. A student is reading: "'+title+'".\n\nDocument:\n\n'+text.substring(0,12000)+'\n\n---\nExplain with:\n1. **Overview** (2-3 sentences)\n2. **Key Concepts** (5-7 ideas explained simply)\n3. **Summary** (concise paragraph)\n4. **Study Tips** (3 tips)\n\nIMPORTANT: Use LaTeX notation for ALL mathematical expressions — inline math with $...$ and display/block math with $$...$$. For example write $E = mc^2$ not E=mc^2, and write $$\\int_0^\\infty f(x)\\,dx$$ for standalone equations.'}],max_tokens:2000});
   if(!res.ok) throw new Error('AI request failed ('+res.status+')');
   const d=await res.json(); return d.choices[0].message.content;
 };

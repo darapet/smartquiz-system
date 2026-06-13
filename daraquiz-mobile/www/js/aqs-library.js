@@ -509,15 +509,28 @@ window.libGetFollowingCount=async function(followerUid){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
-  const resourceType=isThumb?'image':'auto';
+  /* Use 'image' for thumbnails, 'raw' for documents (PDF/EPUB/DOCX).
+     Cloudinary 'auto' can fail silently for raw files on restricted presets. */
+  const resourceType=isThumb?'image':'raw';
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
   if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
+  else formData.append('public_id','library/books/'+bookId);
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
-  const res=await fetch(url,{method:'POST',body:formData});
+  let res;
+  try {
+    res = await fetch(url, { method:'POST', body:formData });
+  } catch(networkErr) {
+    /* fetch() itself threw — network unreachable, CORS blocked, or wrong URL */
+    throw new Error(
+      'Network error — could not reach the upload server. ' +
+      'Check your internet connection or Cloudinary preset settings. (' +
+      networkErr.message + ')'
+    );
+  }
   if(!res.ok){
-    let msg='Upload failed ('+res.status+')';
+    let msg='Upload failed (HTTP '+res.status+')';
     try{const d=await res.json();if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
     throw new Error(msg);
   }
