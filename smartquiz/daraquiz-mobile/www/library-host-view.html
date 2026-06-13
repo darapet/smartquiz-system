@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#080910">
+<title>My Library Dashboard — xzily</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-library.css">
+</head>
+<body>
+<div class="lib-page-bg"></div>
+
+<header class="lib-hdr">
+  <span class="lib-logo">📚 Host Dashboard</span>
+  <div class="lib-hdr-actions">
+    <a href="library.html" class="lib-back">← Library</a>
+    <a href="library-upload.html" class="lib-back">Upload</a>
+  </div>
+</header>
+
+<!-- AUTH GATE -->
+<div id="auth-gate" class="lib-auth-gate" style="display:none">
+  <div class="lib-auth-gate-icon">🔒</div>
+  <div class="lib-auth-gate-title">Sign In Required</div>
+  <div class="lib-auth-gate-sub">You need to be logged in to manage your library content.</div>
+  <a href="login.html" class="lib-btn lib-btn-primary">Sign In</a>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="main-content" style="display:none">
+  <div class="lhv-wrap">
+
+    <!-- PROFILE HEADER -->
+    <div class="lhv-header" id="lhv-profile-header">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;padding:20px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.14);border-radius:16px;">
+        <div class="lib-photo-av" id="lhv-avatar" style="width:60px;height:60px;font-size:1.4rem;"></div>
+        <div style="flex:1;">
+          <div style="font-size:1.1rem;font-weight:800;" id="lhv-name">Loading…</div>
+          <div style="font-size:.78rem;color:#64748b;" id="lhv-inst"></div>
+        </div>
+        <a id="lhv-view-profile-btn" class="lib-btn lib-btn-ghost lib-btn-sm" href="#">View Public Profile →</a>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="lib-stats-row" id="lhv-stats">
+      <div class="lib-stat-card"><div class="lib-stat-num" id="sv-books">0</div><div class="lib-stat-lbl">Books</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="sv-readers">0</div><div class="lib-stat-lbl">Readers</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="sv-likes">0</div><div class="lib-stat-lbl">Likes</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="sv-comments">0</div><div class="lib-stat-lbl">Comments</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="lhv-tabs">
+      <div class="lhv-tab active" onclick="switchSection('books',this)">📚 My Books</div>
+      <div class="lhv-tab" onclick="switchSection('comments',this)">💬 Comments</div>
+      <div class="lhv-tab" onclick="switchSection('profile',this)">👤 Edit Profile</div>
+    </div>
+
+    <!-- BOOKS SECTION -->
+    <div class="lhv-section active" id="sec-books">
+      <div id="lhv-books-list">
+        <div style="color:#64748b;font-size:.85rem;text-align:center;padding:40px">Loading your books…</div>
+      </div>
+    </div>
+
+    <!-- COMMENTS SECTION -->
+    <div class="lhv-section" id="sec-comments">
+      <div id="lhv-comments-list">
+        <div style="color:#64748b;font-size:.85rem;text-align:center;padding:40px">Loading comments…</div>
+      </div>
+    </div>
+
+    <!-- PROFILE EDIT SECTION -->
+    <div class="lhv-section" id="sec-profile">
+      <div class="lib-card-form">
+        <div class="lib-card-form-title">👤 Edit Profile</div>
+
+        <!-- Photo -->
+        <div class="lib-photo-wrap">
+          <div class="lib-photo-av" id="pe-avatar"></div>
+          <div class="lib-photo-info">
+            <div class="lib-photo-name" id="pe-name-disp">Your Name</div>
+            <div class="lib-photo-hint">JPG or PNG, max 5 MB</div>
+            <label class="lib-photo-change" for="pe-photo-input">Change Photo</label>
+            <input type="file" id="pe-photo-input" accept="image/*" style="display:none" onchange="uploadPhoto(this)">
+          </div>
+        </div>
+
+        <div class="lib-form-row">
+          <div class="lib-form-group">
+            <label class="lib-label">First Name *</label>
+            <input class="lib-input" id="pe-fname" placeholder="First name">
+          </div>
+          <div class="lib-form-group">
+            <label class="lib-label">Last Name *</label>
+            <input class="lib-input" id="pe-lname" placeholder="Last name">
+          </div>
+        </div>
+
+        <div class="lib-form-group" style="margin-bottom:12px">
+          <label class="lib-label">Bio (optional)</label>
+          <textarea class="lib-textarea" id="pe-bio" placeholder="Tell readers about yourself…" rows="3"></textarea>
+        </div>
+
+        <div class="lib-form-group" style="margin-bottom:12px">
+          <label class="lib-label">Institution Type</label>
+          <select class="lib-select-inp" id="pe-type" onchange="peTypeChange(this.value)">
+            <option value="">— Select —</option>
+            <option value="university">University</option>
+            <option value="polytechnic">Polytechnic</option>
+            <option value="college_of_education">College of Education</option>
+          </select>
+        </div>
+        <div class="lib-form-group" style="margin-bottom:12px">
+          <label class="lib-label">School</label>
+          <select class="lib-select-inp" id="pe-school" disabled>
+            <option value="">— Select type first —</option>
+          </select>
+        </div>
+        <div class="lib-form-group" style="margin-bottom:12px">
+          <label class="lib-label">Department / Faculty</label>
+          <select class="lib-select-inp" id="pe-dept" disabled>
+            <option value="">— Select type first —</option>
+          </select>
+        </div>
+
+        <div class="lib-form-row">
+          <div class="lib-form-group">
+            <label class="lib-label">Phone Number (optional)</label>
+            <input class="lib-input" id="pe-phone" placeholder="e.g. 08012345678" type="tel">
+          </div>
+          <div class="lib-form-group">
+            <label class="lib-label">WhatsApp Number (optional)</label>
+            <input class="lib-input" id="pe-whatsapp" placeholder="e.g. +2348012345678" type="tel">
+          </div>
+        </div>
+
+        <!-- Cover Photo -->
+        <div class="lib-form-group" style="margin-bottom:20px">
+          <label class="lib-label">Profile Cover Photo (optional — banner behind your profile header)</label>
+          <div style="display:flex;align-items:center;gap:14px;margin-top:8px">
+            <div id="pe-cover-prev" style="width:100%;max-width:280px;height:72px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.10));border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:.72rem;color:#64748b;flex-shrink:0;"></div>
+            <div>
+              <label class="lib-photo-change" for="pe-cover-input" style="font-size:.75rem">📷 Upload Cover</label>
+              <input type="file" id="pe-cover-input" accept="image/*" style="display:none" onchange="uploadCover(this)">
+              <div style="font-size:.68rem;color:#475569;margin-top:6px">Recommended: wide landscape image (min 800×200 px)</div>
+              <div id="pe-cover-progress" style="display:none;font-size:.72rem;color:#a5b4fc;margin-top:4px">Uploading…</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="lib-btn lib-btn-primary" onclick="saveProfile()" id="pe-save-btn">
+          Save Profile
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT BOOK MODAL -->
+<div class="lib-modal-overlay" id="edit-modal">
+  <div class="lib-modal">
+    <div class="lib-modal-title">✏️ Edit Book</div>
+    <input type="hidden" id="em-book-id">
+
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">Title *</label>
+      <input class="lib-input" id="em-title">
+    </div>
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">Author</label>
+      <input class="lib-input" id="em-author">
+    </div>
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">Description</label>
+      <textarea class="lib-textarea" id="em-desc" rows="3"></textarea>
+    </div>
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">Level</label>
+      <input class="lib-input" id="em-level">
+    </div>
+
+    <!-- Thumbnail change -->
+    <div class="lib-form-group" style="margin-bottom:16px">
+      <label class="lib-label">Thumbnail (optional — change)</label>
+      <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+        <div id="em-thumb-prev" style="width:56px;height:72px;border-radius:8px;overflow:hidden;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:1.4rem;flex-shrink:0;"></div>
+        <label class="lib-photo-change" for="em-thumb-input" style="font-size:.75rem">Change Cover</label>
+        <input type="file" id="em-thumb-input" accept="image/*" style="display:none">
+      </div>
+      <div class="lib-progress" id="em-thumb-prog">
+        <div class="lib-progress-bar"><div class="lib-progress-fill" id="em-thumb-fill"></div></div>
+        <div class="lib-progress-txt" id="em-thumb-txt"></div>
+      </div>
+    </div>
+
+    <div class="lib-modal-actions">
+      <button class="lib-btn lib-btn-ghost" onclick="closeEditModal()">Cancel</button>
+      <button class="lib-btn lib-btn-danger" onclick="deleteBook()">🗑 Delete</button>
+      <button class="lib-btn lib-btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="lib-toast" id="lib-toast"></div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-groq-key.js"></script>
+<script type="module" src="js/aqs-library.js"></script>
+<script type="module">
+  let _user = null;
+  let _profile = null;
+  let _books = [];
+  let _commentGroups = [];
+  let _editBookId = null;
+
+  window.libOnAuth(async function(user) {
+    if (!user) {
+      document.getElementById('auth-gate').style.display = 'block';
+      return;
+    }
+    _user = user;
+    document.getElementById('main-content').style.display = 'block';
+    await Promise.all([loadProfile(), loadStats()]);
+    loadBooks();
+  });
+
+  async function loadProfile() {
+    _profile = await window.libGetProfile(_user.uid);
+    if (!_profile) return;
+    const av = document.getElementById('lhv-avatar');
+    const peAv = document.getElementById('pe-avatar');
+    if (_profile.photoURL) {
+      av.innerHTML = `<img src="${_profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      peAv.innerHTML = `<img src="${_profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    } else {
+      av.textContent = window.libInitials(_profile.displayName||'?');
+      peAv.textContent = window.libInitials(_profile.displayName||'?');
+    }
+    document.getElementById('lhv-name').textContent = _profile.displayName || 'Your Name';
+    document.getElementById('lhv-inst').textContent = _profile.institution || '';
+    document.getElementById('lhv-view-profile-btn').href = 'library-host-profile.html?uid='+_user.uid;
+
+    // Prefill edit form
+    const nameParts = (_profile.displayName||'').split(' ');
+    document.getElementById('pe-fname').value = nameParts[0]||'';
+    document.getElementById('pe-lname').value = nameParts.slice(1).join(' ')||'';
+    document.getElementById('pe-bio').value = _profile.bio||'';
+    document.getElementById('pe-name-disp').textContent = _profile.displayName||'Your Name';
+    document.getElementById('pe-phone').value = _profile.phone||'';
+    document.getElementById('pe-whatsapp').value = _profile.whatsapp||'';
+    if (_profile.coverURL) {
+      const prev = document.getElementById('pe-cover-prev');
+      prev.style.background = 'none';
+      prev.innerHTML = `<img src="${_profile.coverURL}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+    }
+    if (_profile.institutionType) {
+      document.getElementById('pe-type').value = _profile.institutionType;
+      peTypeChange(_profile.institutionType);
+      setTimeout(function(){
+        if(_profile.institution) document.getElementById('pe-school').value=_profile.institution;
+        if(_profile.department) document.getElementById('pe-dept').value=_profile.department;
+      },200);
+    }
+  }
+
+  async function loadStats() {
+    const stats = await window.libGetMyStats(_user.uid);
+    document.getElementById('sv-books').textContent = stats.books;
+    document.getElementById('sv-readers').textContent = stats.readers;
+    document.getElementById('sv-likes').textContent = stats.likes;
+    document.getElementById('sv-comments').textContent = stats.comments;
+  }
+
+  async function loadBooks() {
+    _books = await window.libGetMyBooks(_user.uid);
+    const el = document.getElementById('lhv-books-list');
+    if (!_books.length) {
+      el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">No books yet</div><div class="lib-empty-sub">Upload your first book to get started</div></div>`;
+      return;
+    }
+    el.innerHTML = _books.map(b => `
+      <div class="lib-my-book-item">
+        <div class="lib-my-book-thumb">
+          ${b.thumbnailUrl?`<img src="${b.thumbnailUrl}" alt="">`:'<div style="font-size:1.4rem;display:flex;align-items:center;justify-content:center;height:100%">📖</div>'}
+        </div>
+        <div class="lib-my-book-info">
+          <div class="lib-my-book-title">${b.title||'Untitled'}</div>
+          <div class="lib-my-book-meta">${b.course||''} ${b.level?'· '+b.level:''}</div>
+          <div class="lib-my-book-stats">
+            <span class="lib-my-book-stat">👁 ${b.views||0} readers</span>
+            <span class="lib-my-book-stat">♡ ${b.likes||0} likes</span>
+            <span class="lib-my-book-stat">💬 ${b.commentCount||0} comments</span>
+          </div>
+          <div class="lib-my-book-actions">
+            <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="location.href='library-read.html?id=${b.id}'">📖 Read</button>
+            <button class="lib-btn lib-btn-primary lib-btn-sm" onclick="openEditModal('${b.id}')">✏️ Edit</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }
+
+  async function loadComments() {
+    const el = document.getElementById('lhv-comments-list');
+    el.innerHTML = `<div style="color:#64748b;font-size:.85rem;text-align:center;padding:40px">Loading…</div>`;
+    _commentGroups = await window.libGetHostComments(_user.uid);
+    if (!_commentGroups.length) {
+      el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">💬</div><div class="lib-empty-title">No comments yet</div><div class="lib-empty-sub">When readers comment on your books, they'll appear here</div></div>`;
+      return;
+    }
+    el.innerHTML = _commentGroups.map((g,gi) => `
+      <div class="lhv-book-comment-group">
+        <div class="lhv-book-comment-header">
+          <div class="lhv-book-thumb-sm">${g.book.thumbnailUrl?`<img src="${g.book.thumbnailUrl}" alt="">`:''}</div>
+          <div class="lhv-book-title-sm">${g.book.title||'Untitled'}</div>
+          <div class="lhv-book-ccount">${g.comments.length} comment${g.comments.length!==1?'s':''}</div>
+        </div>
+        <div class="lhv-comments-list">
+          ${g.comments.map((c,ci) => commentItemHTML(gi,ci,c)).join('')}
+        </div>
+      </div>`).join('');
+  }
+
+  function commentItemHTML(gi,ci,c) {
+    const avHtml = c.photoURL
+      ? `<img src="${c.photoURL}" alt="">`
+      : `<span style="font-size:.6rem;font-weight:800;">${window.libInitials(c.displayName||'?')}</span>`;
+    return `<div class="lhv-comment-item" id="lhvc-${gi}-${ci}">
+      <div class="lhv-comment-meta">
+        <div class="lhv-comment-av">${avHtml}</div>
+        <div class="lhv-comment-author">${c.displayName||'Anonymous'}</div>
+        <div class="lhv-comment-time">${window.libFormatTime(c.createdAt)}</div>
+      </div>
+      <div class="lhv-comment-text">${c.text}</div>
+      <div class="lhv-comment-action-row">
+        <button class="lhv-reply-toggle" onclick="toggleReplyArea('${c.id}',this)">↩ Reply</button>
+      </div>
+      <div class="lhv-reply-area" id="lhvra-${c.id}">
+        <textarea class="lhv-reply-input" id="lhvri-${c.id}" placeholder="Write your reply as the host…" rows="2"></textarea>
+        <button class="lhv-reply-submit" onclick="submitReply('${c.id}')">Send Reply</button>
+      </div>
+      <div class="lhv-replies-wrap" id="lhvrw-${c.id}"></div>
+    </div>`;
+  }
+
+  window.toggleReplyArea = function(commentId, btn) {
+    const area = document.getElementById('lhvra-'+commentId);
+    const isOpen = area.style.display === 'block';
+    area.style.display = isOpen ? 'none' : 'block';
+    btn.textContent = isOpen ? '↩ Reply' : '✕ Cancel';
+    if (!isOpen) loadReplies(commentId);
+  };
+
+  async function loadReplies(commentId) {
+    const wrap = document.getElementById('lhvrw-'+commentId);
+    const replies = await window.libGetReplies(commentId);
+    if (!replies.length) { wrap.innerHTML=''; return; }
+    wrap.innerHTML = replies.map(r => `
+      <div class="lhv-reply-item">
+        <div class="lhv-reply-meta">
+          <span class="lhv-reply-author ${r.isHost?'host':'user'}">${r.displayName||'Anonymous'}</span>
+          ${r.isHost?`<span class="lhv-host-badge">HOST</span>`:''}
+          <span style="font-size:.65rem;color:#475569;margin-left:auto">${window.libFormatTime(r.createdAt)}</span>
+        </div>
+        <div class="lhv-reply-text">${r.text}</div>
+      </div>`).join('');
+  }
+
+  window.submitReply = async function(commentId) {
+    if (!_user) return;
+    const inp = document.getElementById('lhvri-'+commentId);
+    const text = inp.value.trim();
+    if (!text) return;
+    try {
+      await window.libAddReply(commentId, _user.uid, _profile?.displayName||'Host', _profile?.photoURL||'', text, true);
+      inp.value = '';
+      window.libToast('Reply sent!');
+      await loadReplies(commentId);
+    } catch(e) { window.libToast('Error: '+e.message); }
+  };
+
+  /* ── Edit modal ── */
+  window.openEditModal = function(bookId) {
+    _editBookId = bookId;
+    const b = _books.find(x => x.id===bookId);
+    if (!b) return;
+    document.getElementById('em-book-id').value = bookId;
+    document.getElementById('em-title').value = b.title||'';
+    document.getElementById('em-author').value = b.author||'';
+    document.getElementById('em-desc').value = b.description||'';
+    document.getElementById('em-level').value = b.level||'';
+    const tp = document.getElementById('em-thumb-prev');
+    tp.innerHTML = b.thumbnailUrl ? `<img src="${b.thumbnailUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">` : '📖';
+    document.getElementById('edit-modal').classList.add('open');
+
+    // Thumb input change preview
+    document.getElementById('em-thumb-input').onchange = function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        tp.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+      }
+    };
+  };
+  window.closeEditModal = function() {
+    document.getElementById('edit-modal').classList.remove('open');
+    _editBookId = null;
+  };
+  window.saveEdit = async function() {
+    if (!_editBookId) return;
+    const data = {
+      title: document.getElementById('em-title').value.trim(),
+      author: document.getElementById('em-author').value.trim(),
+      description: document.getElementById('em-desc').value.trim(),
+      level: document.getElementById('em-level').value.trim()
+    };
+    if (!data.title) { window.libToast('Title is required'); return; }
+
+    // Upload new thumb if selected
+    const thumbFile = document.getElementById('em-thumb-input').files[0];
+    if (thumbFile) {
+      try {
+        document.getElementById('em-thumb-prog').style.display='block';
+        document.getElementById('em-thumb-txt').textContent='Uploading cover…';
+        data.thumbnailUrl = await window.libUploadFile(thumbFile, _editBookId, 'thumb');
+        document.getElementById('em-thumb-prog').style.display='none';
+      } catch(e) { window.libToast('Cover upload failed: '+e.message); return; }
+    }
+
+    try {
+      await window.libUpdateBook(_editBookId, data);
+      window.libToast('Book updated!');
+      closeEditModal();
+      await loadBooks();
+      await loadStats();
+    } catch(e) { window.libToast('Save failed: '+e.message); }
+  };
+  window.deleteBook = async function() {
+    if (!_editBookId || !confirm('Delete this book permanently?')) return;
+    try {
+      await window.libDeleteBook(_editBookId);
+      window.libToast('Book deleted');
+      closeEditModal();
+      await loadBooks();
+      await loadStats();
+    } catch(e) { window.libToast('Delete failed: '+e.message); }
+  };
+
+  /* ── Section switch ── */
+  window.switchSection = function(sec, el) {
+    document.querySelectorAll('.lhv-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.lhv-section').forEach(s => s.classList.remove('active'));
+    if (el) el.classList.add('active');
+    document.getElementById('sec-'+sec).classList.add('active');
+    if (sec === 'comments') loadComments();
+  };
+
+  /* ── Profile edit ── */
+  window.peTypeChange = function(type) {
+    const schoolSel = document.getElementById('pe-school');
+    const deptSel   = document.getElementById('pe-dept');
+    if (!type) { schoolSel.disabled=true; deptSel.disabled=true; return; }
+    window.libPopulateSchools(schoolSel, type);
+    window.libPopulateCourses(deptSel, type);
+    schoolSel.disabled = false; deptSel.disabled = false;
+  };
+
+  window.uploadPhoto = async function(input) {
+    const file = input.files[0];
+    if (!file || !_user) return;
+    const av = document.getElementById('pe-avatar');
+    av.innerHTML = '<span class="lib-spinner"></span>';
+    try {
+      const url = await window.libUploadProfilePhoto(_user.uid, file);
+      av.innerHTML = `<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+      document.getElementById('lhv-avatar').innerHTML = av.innerHTML;
+      window.libToast('Photo updated!');
+    } catch(e) { window.libToast('Photo upload failed: '+e.message); av.textContent=window.libInitials(_profile?.displayName||'?'); }
+  };
+
+  window.uploadCover = async function(input) {
+    const file = input.files[0];
+    if (!file || !_user) return;
+    const prog = document.getElementById('pe-cover-progress');
+    const prev = document.getElementById('pe-cover-prev');
+    prog.style.display = 'block'; prog.textContent = 'Uploading cover…';
+    /* Preview locally first */
+    const localUrl = URL.createObjectURL(file);
+    prev.style.background = 'none';
+    prev.innerHTML = `<img src="${localUrl}" alt="" style="width:100%;height:100%;object-fit:cover;">`;
+    try {
+      const url = await window.libUploadCoverPhoto(_user.uid, file);
+      _profile = {..._profile, coverURL: url};
+      prog.textContent = '✅ Cover saved!';
+      setTimeout(function(){ prog.style.display='none'; }, 3000);
+      window.libToast('Cover photo updated!');
+    } catch(e) {
+      prog.textContent = '❌ ' + e.message;
+      setTimeout(function(){ prog.style.display='none'; }, 4000);
+      window.libToast('Cover upload failed: '+e.message);
+    }
+  };
+
+  window.saveProfile = async function() {
+    const fname = document.getElementById('pe-fname').value.trim();
+    const lname = document.getElementById('pe-lname').value.trim();
+    if (!fname) { window.libToast('First name is required'); return; }
+    const btn = document.getElementById('pe-save-btn');
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const data = {
+        displayName: (fname+' '+lname).trim(),
+        bio: document.getElementById('pe-bio').value.trim(),
+        institutionType: document.getElementById('pe-type').value,
+        institution: document.getElementById('pe-school').value,
+        department: document.getElementById('pe-dept').value,
+        phone: document.getElementById('pe-phone').value.trim(),
+        whatsapp: document.getElementById('pe-whatsapp').value.trim()
+      };
+      await window.libSaveProfile(_user.uid, data);
+      _profile = {..._profile,...data};
+      document.getElementById('pe-name-disp').textContent = data.displayName;
+      document.getElementById('lhv-name').textContent = data.displayName;
+      document.getElementById('lhv-inst').textContent = data.institution;
+      window.libToast('Profile saved!');
+    } catch(e) { window.libToast('Save failed: '+e.message); }
+    btn.disabled=false; btn.textContent='Save Profile';
+  };
+</script>
+</body>
+</html>
