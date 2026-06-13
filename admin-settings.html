@@ -1377,7 +1377,7 @@ btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
 
 btn('aqs-save-quiz-groq-btn') && btn('aqs-save-quiz-groq-btn').addEventListener('click', function(){
     var _k=[];
-    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-qgk-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-quiz-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
     if(!_k.length){var _s=document.getElementById('aqs-quiz-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
     if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('quiz',_k);
     var _d={};_d['quiz_groq_keys']=_k;
@@ -1387,7 +1387,7 @@ btn('aqs-save-quiz-groq-btn') && btn('aqs-save-quiz-groq-btn').addEventListener(
 
 btn('aqs-save-challenge-groq-btn') && btn('aqs-save-challenge-groq-btn').addEventListener('click', function(){
     var _k=[];
-    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-cgk-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-challenge-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
     if(!_k.length){var _s=document.getElementById('aqs-challenge-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
     if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('challenge',_k);
     var _d={};_d['challenge_groq_keys']=_k;
@@ -1397,7 +1397,7 @@ btn('aqs-save-challenge-groq-btn') && btn('aqs-save-challenge-groq-btn').addEven
 
 btn('aqs-save-studyhub-groq-btn') && btn('aqs-save-studyhub-groq-btn').addEventListener('click', function(){
     var _k=[];
-    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-sgk-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-studyhub-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
     if(!_k.length){var _s=document.getElementById('aqs-studyhub-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
     if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('studyhub',_k);
     var _d={};_d['studyhub_groq_keys']=_k;
@@ -1407,7 +1407,7 @@ btn('aqs-save-studyhub-groq-btn') && btn('aqs-save-studyhub-groq-btn').addEventL
 
 btn('aqs-save-textdocs-groq-btn') && btn('aqs-save-textdocs-groq-btn').addEventListener('click', function(){
     var _k=[];
-    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-tgk-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-textdocs-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
     if(!_k.length){var _s=document.getElementById('aqs-textdocs-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
     if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('textdocs',_k);
     var _d={};_d['textdocs_groq_keys']=_k;
@@ -1417,7 +1417,7 @@ btn('aqs-save-textdocs-groq-btn') && btn('aqs-save-textdocs-groq-btn').addEventL
 
 btn('aqs-save-puzzle-groq-btn') && btn('aqs-save-puzzle-groq-btn').addEventListener('click', function(){
     var _k=[];
-    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-pgk-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-puzzle-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
     if(!_k.length){var _s=document.getElementById('aqs-puzzle-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
     if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('puzzle',_k);
     var _d={};_d['puzzle_groq_keys']=_k;
@@ -1427,7 +1427,7 @@ btn('aqs-save-puzzle-groq-btn') && btn('aqs-save-puzzle-groq-btn').addEventListe
 
 btn('aqs-save-quizstudio-groq-btn') && btn('aqs-save-quizstudio-groq-btn').addEventListener('click', function(){
     var _k=[];
-    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-qsgk-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-quizstudio-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
     if(!_k.length){var _s=document.getElementById('aqs-quizstudio-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
     if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('quizstudio',_k);
     var _d={};_d['quizstudio_groq_keys']=_k;
