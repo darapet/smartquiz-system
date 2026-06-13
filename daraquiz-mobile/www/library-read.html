@@ -708,11 +708,15 @@ html,body{height:100%;overflow:hidden;}
       body.innerHTML=`
         <div style="font-size:.8rem;color:#64748b;margin-bottom:14px;line-height:1.7">Generate 10 multiple-choice questions based on this document.</div>
         <button class="rdr-panel-btn" id="p-mcq-btn" onclick="doMCQ()">🎯 Generate Questions</button>
+        <div id="p-score-live" style="display:none;margin-bottom:12px;padding:10px 16px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;align-items:center;justify-content:space-between;">
+          <span style="font-size:.8rem;color:#94a3b8;font-weight:600;">Score so far:</span>
+          <span id="p-score-live-num" style="font-size:1.1rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">0 / 0</span>
+        </div>
         <div class="rdr-mcq-wrap" id="p-mcq-wrap">
           <div id="p-mcq-qs"></div>
           <div class="rdr-score" id="p-score">
             <div class="rdr-score-num" id="p-score-num">0/10</div>
-            <div class="rdr-score-lbl">Practice complete!</div>
+            <div class="rdr-score-lbl" id="p-score-lbl">Practice complete!</div>
             <button class="rdr-panel-btn" style="margin-top:14px" onclick="resetMCQ()">↺ Try Again</button>
           </div>
         </div>`;
@@ -778,12 +782,25 @@ html,body{height:100%;overflow:hidden;}
     btn.disabled=false;btn.innerHTML='🎯 Generate Questions';
   };
   function renderMCQ(){
-    document.getElementById('p-mcq-qs').innerHTML=_mcqData.map(function(q,qi){
+    const liveBar=document.getElementById('p-score-live');
+    if(liveBar){liveBar.style.display='none';}
+    const qs=document.getElementById('p-mcq-qs');
+    qs.innerHTML=_mcqData.map(function(q,qi){
       return`<div class="rdr-mcq-q" id="mcq-q-${qi}">
         <div class="rdr-mcq-qt">${qi+1}. ${q.q}</div>
-        <div class="rdr-mcq-opts">${q.opts.map(function(opt,oi){return`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${opt}</button>`;}).join('')}</div>
+        <div class="rdr-mcq-opts">${q.opts.map(function(opt,oi){return`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${esc(opt)}</button>`;}).join('')}</div>
       </div>`;
     }).join('');
+    if(typeof renderMathInElement!=='undefined'){
+      renderMathInElement(qs,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});
+    }
+  }
+  function updateLiveScore(){
+    const liveBar=document.getElementById('p-score-live');
+    const liveNum=document.getElementById('p-score-live-num');
+    if(!liveBar||!liveNum) return;
+    liveBar.style.display='flex';
+    liveNum.textContent=_mcqScore+' / '+_mcqAnswered;
   }
   window.answerMCQ=function(qi,oi){
     const q=_mcqData[qi];
@@ -797,8 +814,17 @@ html,body{height:100%;overflow:hidden;}
     });
     if(oi===q.ans) _mcqScore++;
     _mcqAnswered++;
+    updateLiveScore();
     if(_mcqAnswered>=_mcqData.length){
-      setTimeout(function(){document.getElementById('p-score-num').textContent=_mcqScore+' / '+_mcqData.length;document.getElementById('p-score').style.display='block';},600);
+      const pct=Math.round((_mcqScore/_mcqData.length)*100);
+      const grade=pct>=80?'🏆 Excellent!':pct>=60?'👍 Good job!':pct>=40?'📚 Keep studying':'💪 Keep practising!';
+      setTimeout(function(){
+        document.getElementById('p-score-num').textContent=_mcqScore+' / '+_mcqData.length;
+        document.getElementById('p-score-lbl').textContent=grade+' ('+pct+'%)';
+        document.getElementById('p-score').style.display='block';
+        const liveBar=document.getElementById('p-score-live');
+        if(liveBar) liveBar.style.display='none';
+      },600);
     }
   };
   window.resetMCQ=function(){_mcqScore=0;_mcqAnswered=0;document.getElementById('p-score').style.display='none';renderMCQ();};
