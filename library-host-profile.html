@@ -200,7 +200,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
       /* Cover photo */
       if (_profile.coverURL) {
         const cImg = document.getElementById('lhp-cover-img');
-        cImg.src = _profile.coverURL; cImg.style.display = '';
+        cImg.src = _profile.coverURL; cImg.style.display = 'block';
         document.getElementById('lhp-cover').classList.add('has-photo');
       }
       /* Avatar */
@@ -450,7 +450,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
     try {
       const url = await window.libUploadCoverPhoto(_currentUser.uid, file);
       const cImg = document.getElementById('lhp-cover-img');
-      cImg.src = url; cImg.style.display = '';
+      cImg.src = url; cImg.style.display = 'block';
       document.getElementById('lhp-cover').classList.add('has-photo');
       window.libToast('Cover photo updated! ✅');
     } catch(e) { window.libToast('Upload failed: ' + e.message); }
