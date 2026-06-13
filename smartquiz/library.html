@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#080910">
+<title>📚 Library — xzily AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-library.css">
+</head>
+<body>
+<div class="lib-page-bg"></div>
+
+<header class="lib-hdr">
+  <a href="library.html" class="lib-logo">📚 xzily Library</a>
+  <div class="lib-hdr-actions">
+    <a href="dashboard.html" class="lib-back">← Dashboard</a>
+    <a href="library-host-view.html" class="lib-back" id="hdr-mybooks" style="display:none">My Books</a>
+    <button class="lib-upload-btn" onclick="location.href='library-upload.html'">+ Upload</button>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="lib-hero">
+  <div class="lib-hero-title">Nigerian Academic Library</div>
+  <div class="lib-hero-sub">Browse study materials by school, course and level — click any book to see the author's profile first</div>
+  <div class="lib-search-wrap">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <input class="lib-search" id="lib-search" type="search" placeholder="Search by title, author or course…">
+  </div>
+</section>
+
+<!-- CASCADE FILTERS -->
+<section class="lib-filters">
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">① Institution Type</label>
+    <select class="lib-select" id="f-type" onchange="onTypeChange(this.value)">
+      <option value="">All Types</option>
+      <option value="university">University</option>
+      <option value="polytechnic">Polytechnic</option>
+      <option value="college_of_education">College of Education</option>
+    </select>
+  </div>
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">② School</label>
+    <select class="lib-select" id="f-school" disabled>
+      <option value="">— Select type first —</option>
+    </select>
+  </div>
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">③ Course / Department</label>
+    <select class="lib-select" id="f-course" disabled>
+      <option value="">— Select type first —</option>
+    </select>
+  </div>
+  <div class="lib-filter-group">
+    <label class="lib-filter-label">④ Level</label>
+    <select class="lib-select" id="f-level" disabled>
+      <option value="">— Select type first —</option>
+    </select>
+  </div>
+  <button class="lib-filter-search-btn" onclick="doSearch()">🔍 Search</button>
+</section>
+
+<!-- RESULTS -->
+<main class="lib-main">
+  <div class="lib-section-hdr">
+    <span class="lib-section-title" id="grid-title">All Recent Books</span>
+    <span class="lib-count" id="grid-count"></span>
+  </div>
+  <div id="lib-grid">
+    <div class="lib-skeleton-grid" id="lib-skeleton">
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+    </div>
+  </div>
+</main>
+
+<div class="lib-toast" id="lib-toast"></div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-groq-key.js"></script>
+<script type="module" src="js/aqs-library.js"></script>
+<script type="module">
+  let _allBooks = [];
+  let _profileCache = {};
+
+  /* Show My Books button if logged in */
+  window.libOnAuth(function(user){
+    if(user) document.getElementById('hdr-mybooks').style.display='inline-flex';
+  });
+
+  /* ── CASCADE ── */
+  window.onTypeChange = function(type) {
+    ['f-school','f-course','f-level'].forEach(function(id){
+      const el = document.getElementById(id);
+      el.innerHTML = '<option value="">— Select type first —</option>';
+      el.disabled = !type;
+    });
+    if (type) {
+      window.libPopulateSchools(document.getElementById('f-school'), type);
+      window.libPopulateCourses(document.getElementById('f-course'), type);
+      window.libPopulateLevels(document.getElementById('f-level'), type);
+    }
+  };
+
+  /* ── SEARCH ── */
+  window.doSearch = async function() {
+    const type    = document.getElementById('f-type').value;
+    const school  = document.getElementById('f-school').value;
+    const course  = document.getElementById('f-course').value;
+    const level   = document.getElementById('f-level').value;
+    const keyword = document.getElementById('lib-search').value.trim();
+    showSkeleton();
+    const label = [school||type||'All', course, level].filter(Boolean).join(' · ');
+    document.getElementById('grid-title').textContent = label ? 'Results: ' + label : 'All Books';
+    try {
+      const filters = {};
+      if (type)    filters.institutionType = type;
+      if (school)  filters.institution     = school;
+      if (course)  filters.course          = course;
+      if (level)   filters.level           = level;
+      if (keyword) filters.keyword         = keyword;
+      const books = await window.libSearchBooks(filters);
+      _allBooks = books;
+      await renderGrid(books);
+    } catch(e) {
+      document.getElementById('lib-grid').innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-title">Search failed</div><div class="lib-empty-sub">${e.message}</div></div>`;
+    }
+  };
+
+  /* Live search filter */
+  document.getElementById('lib-search').addEventListener('input', async function(){
+    const kw = this.value.toLowerCase();
+    if (!kw) { await renderGrid(_allBooks); return; }
+    await renderGrid(_allBooks.filter(function(b){
+      return (b.title||'').toLowerCase().includes(kw)
+          ||(b.course||b.subject||'').toLowerCase().includes(kw)
+          ||(b.courseCode||'').toLowerCase().includes(kw)
+          ||(b.institution||'').toLowerCase().includes(kw)
+          ||(b.author||'').toLowerCase().includes(kw)
+          ||(b.uploaderName||'').toLowerCase().includes(kw);
+    }));
+  });
+
+  function showSkeleton() {
+    document.getElementById('lib-grid').innerHTML = `<div class="lib-skeleton-grid">
+      ${Array(6).fill(`<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>`).join('')}
+    </div>`;
+  }
+
+  /* Fetch uploader profiles in batch (cached) */
+  async function fetchUploaderProfiles(books) {
+    const uids = [...new Set(books.map(b => b.uploaderUid).filter(Boolean))];
+    const missing = uids.filter(uid => !_profileCache[uid]);
+    if (missing.length) {
+      const fetched = await Promise.all(missing.map(uid => window.libGetProfile(uid)));
+      missing.forEach((uid,i) => { _profileCache[uid] = fetched[i] || null; });
+    }
+  }
+
+  async function renderGrid(books) {
+    const grid = document.getElementById('lib-grid');
+    document.getElementById('grid-count').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
+    if (!books.length) {
+      grid.innerHTML = `<div class="lib-empty">
+        <div class="lib-empty-icon">📭</div>
+        <div class="lib-empty-title">No books found</div>
+        <div class="lib-empty-sub">Be the first to <a href="library-upload.html" style="color:#6366f1;font-weight:700">upload one!</a></div>
+      </div>`;
+      return;
+    }
+    /* Fetch uploader profiles for avatar display */
+    await fetchUploaderProfiles(books);
+    grid.innerHTML = '<div class="lib-grid">' +
+      books.map(b => window.libBookCardHTML(b, _profileCache[b.uploaderUid])).join('') +
+    '</div>';
+  }
+
+  async function loadRecent() {
+    try {
+      const books = await window.libSearchBooks({});
+      _allBooks = books;
+      await renderGrid(books);
+    } catch(e) {
+      document.getElementById('lib-grid').innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">Could not load books</div></div>`;
+    }
+  }
+
+  document.addEventListener('aqs:firebase:ready', loadRecent);
+  if (window._aqsFirebaseReady) loadRecent();
+</script>
+</body>
+</html>
