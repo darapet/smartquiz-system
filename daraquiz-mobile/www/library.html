@@ -3,25 +3,27 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#0a0b14">
+<meta name="theme-color" content="#080910">
 <title>📚 Library — xzily AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
 </head>
 <body>
+<div class="lib-page-bg"></div>
 
 <header class="lib-hdr">
   <span class="lib-logo">📚 xzily Library</span>
   <div class="lib-hdr-actions">
     <a href="dashboard.html" class="lib-back">← Dashboard</a>
-    <button class="lib-upload-btn" onclick="location.href='library-upload.html'">+ Upload Book</button>
+    <span class="lib-back" id="hdr-mybooks" style="display:none;cursor:pointer" onclick="location.href='library-host-view.html'">My Books</span>
+    <button class="lib-upload-btn" onclick="location.href='library-upload.html'">+ Upload</button>
   </div>
 </header>
 
 <!-- HERO -->
 <section class="lib-hero">
   <div class="lib-hero-title">Nigerian Academic Library</div>
-  <div class="lib-hero-sub">Browse study materials by your school, course and level — upload yours too</div>
+  <div class="lib-hero-sub">Browse study materials by school, course and level — click any book to see the author's profile first</div>
   <div class="lib-search-wrap">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <input class="lib-search" id="lib-search" type="search" placeholder="Search by title, author or course…">
@@ -30,7 +32,6 @@
 
 <!-- CASCADE FILTERS -->
 <section class="lib-filters">
-  <!-- Step 1: Type -->
   <div class="lib-filter-group">
     <label class="lib-filter-label">① Institution Type</label>
     <select class="lib-select" id="f-type" onchange="onTypeChange(this.value)">
@@ -40,28 +41,25 @@
       <option value="college_of_education">College of Education</option>
     </select>
   </div>
-  <!-- Step 2: School -->
   <div class="lib-filter-group">
     <label class="lib-filter-label">② School</label>
     <select class="lib-select" id="f-school" disabled>
       <option value="">— Select type first —</option>
     </select>
   </div>
-  <!-- Step 3: Course -->
   <div class="lib-filter-group">
     <label class="lib-filter-label">③ Course / Department</label>
     <select class="lib-select" id="f-course" disabled>
       <option value="">— Select type first —</option>
     </select>
   </div>
-  <!-- Step 4: Level -->
   <div class="lib-filter-group">
     <label class="lib-filter-label">④ Level</label>
     <select class="lib-select" id="f-level" disabled>
       <option value="">— Select type first —</option>
     </select>
   </div>
-  <button class="lib-filter-search-btn" id="search-btn" onclick="doSearch()">🔍 Search</button>
+  <button class="lib-filter-search-btn" onclick="doSearch()">🔍 Search</button>
 </section>
 
 <!-- RESULTS -->
@@ -71,9 +69,7 @@
     <span class="lib-count" id="grid-count"></span>
   </div>
   <div id="lib-grid">
-    <div class="lib-skeleton-grid" id="lib-skeleton">
-      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
-      <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
+    <div class="lib-skeleton-grid">
       <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
       <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
       <div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>
@@ -85,97 +81,96 @@
 <div class="lib-toast" id="lib-toast"></div>
 
 <script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
-  let _allBooks = [];
+  let _allBooks=[];
+  let _profileCache={};
 
-  /* ── STEP 1: Type selected — unlock schools, courses, levels ── */
-  window.onTypeChange = function(type) {
-    const schoolSel  = document.getElementById('f-school');
-    const courseSel  = document.getElementById('f-course');
-    const levelSel   = document.getElementById('f-level');
+  window.libOnAuth(function(user){
+    if(user) document.getElementById('hdr-mybooks').style.display='inline-flex';
+  });
 
-    if (!type) {
-      ['f-school','f-course','f-level'].forEach(function(id){
-        const el = document.getElementById(id);
-        el.innerHTML = '<option value="">— Select type first —</option>';
-        el.disabled = true;
-      });
-      return;
+  window.onTypeChange=function(type){
+    ['f-school','f-course','f-level'].forEach(function(id){
+      const el=document.getElementById(id);
+      el.innerHTML='<option value="">— Select type first —</option>';
+      el.disabled=!type;
+    });
+    if(type){
+      window.libPopulateSchools(document.getElementById('f-school'),type);
+      window.libPopulateCourses(document.getElementById('f-course'),type);
+      window.libPopulateLevels(document.getElementById('f-level'),type);
     }
-
-    window.libPopulateSchools(schoolSel, type);
-    window.libPopulateCourses(courseSel, type);
-    window.libPopulateLevels(levelSel,   type);
-
-    schoolSel.disabled = false;
-    courseSel.disabled = false;
-    levelSel.disabled  = false;
   };
 
-  /* ── SEARCH ── */
-  window.doSearch = async function() {
-    const type    = document.getElementById('f-type').value;
-    const school  = document.getElementById('f-school').value;
-    const course  = document.getElementById('f-course').value;
-    const level   = document.getElementById('f-level').value;
-    const keyword = document.getElementById('lib-search').value.trim();
-
+  window.doSearch=async function(){
+    const type=document.getElementById('f-type').value;
+    const school=document.getElementById('f-school').value;
+    const course=document.getElementById('f-course').value;
+    const level=document.getElementById('f-level').value;
+    const keyword=document.getElementById('lib-search').value.trim();
     showSkeleton();
-
-    const label = [school||type||'All', course, level].filter(Boolean).join(' · ');
-    document.getElementById('grid-title').textContent = label ? 'Results for: ' + label : 'All Books';
-
-    try {
-      const filters = {};
-      if (type)    filters.institutionType = type;
-      if (school)  filters.institution     = school;
-      if (course)  filters.course          = course;
-      if (level)   filters.level           = level;
-      if (keyword) filters.keyword         = keyword;
-      const books = await window.libSearchBooks(filters);
-      _allBooks = books;
-      renderGrid(books);
-    } catch(e) {
-      document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-text">Search failed: '+e.message+'</div></div>';
+    document.getElementById('grid-title').textContent=[school||type||'All',course,level].filter(Boolean).join(' · ')||'All Books';
+    try{
+      const filters={};
+      if(type)    filters.institutionType=type;
+      if(school)  filters.institution=school;
+      if(course)  filters.course=course;
+      if(level)   filters.level=level;
+      if(keyword) filters.keyword=keyword;
+      const books=await window.libSearchBooks(filters);
+      _allBooks=books;
+      await renderGrid(books);
+    }catch(e){
+      document.getElementById('lib-grid').innerHTML='<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-title">Search failed</div></div>';
     }
   };
 
-  /* ── search input live filter ── */
-  document.getElementById('lib-search').addEventListener('input', function(){
-    const kw = this.value.toLowerCase();
-    if (!kw) { renderGrid(_allBooks); return; }
-    renderGrid(_allBooks.filter(function(b){
-      return (b.title||'').toLowerCase().includes(kw)||(b.course||b.subject||'').toLowerCase().includes(kw)||(b.institution||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw);
+  document.getElementById('lib-search').addEventListener('input',async function(){
+    const kw=this.value.toLowerCase();
+    if(!kw){await renderGrid(_allBooks);return;}
+    await renderGrid(_allBooks.filter(function(b){
+      return(b.title||'').toLowerCase().includes(kw)||(b.course||b.subject||'').toLowerCase().includes(kw)||(b.institution||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw)||(b.uploaderName||'').toLowerCase().includes(kw);
     }));
   });
 
-  function showSkeleton() {
-    document.getElementById('lib-grid').innerHTML = document.getElementById('lib-skeleton').outerHTML;
+  function showSkeleton(){
+    document.getElementById('lib-grid').innerHTML='<div class="lib-skeleton-grid">'+Array(4).fill('<div class="lib-skeleton-card"><div class="lib-skeleton-thumb"></div><div class="lib-skeleton-body"><div class="lib-skeleton-line"></div><div class="lib-skeleton-line short"></div></div></div>').join('')+'</div>';
   }
 
-  function renderGrid(books) {
-    const grid = document.getElementById('lib-grid');
-    document.getElementById('grid-count').textContent = books.length + ' book' + (books.length !== 1 ? 's' : '');
-    if (!books.length) {
-      grid.innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">No books found for this selection.<br><span style="font-size:.8rem">Be the first to <a href="library-upload.html" style="color:#6366f1;font-weight:700">upload one!</a></span></div></div>';
+  async function fetchUploaderProfiles(books){
+    const uids=[...new Set(books.map(function(b){return b.uploaderUid;}).filter(Boolean))];
+    const missing=uids.filter(function(uid){return!_profileCache[uid];});
+    if(missing.length){
+      const fetched=await Promise.all(missing.map(function(uid){return window.libGetProfile(uid);}));
+      missing.forEach(function(uid,i){_profileCache[uid]=fetched[i]||null;});
+    }
+  }
+
+  async function renderGrid(books){
+    const grid=document.getElementById('lib-grid');
+    document.getElementById('grid-count').textContent=books.length+' book'+(books.length!==1?'s':'');
+    if(!books.length){
+      grid.innerHTML='<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">No books found</div><div class="lib-empty-sub">Be the first to <a href="library-upload.html" style="color:#6366f1;font-weight:700">upload one!</a></div></div>';
       return;
     }
-    grid.innerHTML = '<div class="lib-grid">' + books.map(window.libBookCardHTML).join('') + '</div>';
+    await fetchUploaderProfiles(books);
+    grid.innerHTML='<div class="lib-grid">'+books.map(function(b){return window.libBookCardHTML(b,_profileCache[b.uploaderUid]);}).join('')+'</div>';
   }
 
-  async function loadRecent() {
-    try {
-      const books = await window.libSearchBooks({});
-      _allBooks = books;
-      renderGrid(books);
-    } catch(e) {
-      document.getElementById('lib-grid').innerHTML = '<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-text">Could not load books.</div></div>';
+  async function loadRecent(){
+    try{
+      const books=await window.libSearchBooks({});
+      _allBooks=books;
+      await renderGrid(books);
+    }catch(e){
+      document.getElementById('lib-grid').innerHTML='<div class="lib-empty"><div class="lib-empty-icon">📭</div><div class="lib-empty-title">Could not load books</div></div>';
     }
   }
 
-  document.addEventListener('aqs:firebase:ready', loadRecent);
-  if (window._aqsFirebaseReady) loadRecent();
+  document.addEventListener('aqs:firebase:ready',loadRecent);
+  if(window._aqsFirebaseReady) loadRecent();
 </script>
 </body>
 </html>
