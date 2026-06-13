@@ -59,7 +59,7 @@ function _waitFirebase() {
 
   window.setLibGroqKeys = function(arr){
     _SLOTS.length=0;
-    (arr||[]).map(function(r){ return r?r.split('').reverse().join(''):'' })
+    (arr||[]).map(function(k){ return (k||'').replace(/[^\x20-\x7E]/g,'').trim(); })
              .filter(function(k){ return k.length>20 })
              .forEach(function(k){ _SLOTS.push(k); });
     try{ localStorage.setItem(IDX,'0'); }catch(e){}
