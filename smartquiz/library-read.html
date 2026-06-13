@@ -272,6 +272,7 @@ html,body{height:100%;overflow:hidden;}
     <a href="dashboard.html" class="rdr-hbtn hide-mob">🏠 Home</a>
     <button class="rdr-hbtn ac hide-mob" onclick="openPanel('ai')">✨ Explain</button>
     <button class="rdr-hbtn ac" onclick="openPanel('mcq')">🎯 Quiz</button>
+    <button class="rdr-hbtn" id="rdr-share-btn" onclick="shareBook()">🔗 Share</button>
     <button class="rdr-hbtn" id="rdr-back-btn" onclick="goBack()">← Back</button>
   </div>
 </header>
@@ -537,6 +538,21 @@ html,body{height:100%;overflow:hidden;}
 
   window.prevPage=function(){if(_cur>1)showPage(_cur-1);};
   window.nextPage=function(){if(_cur<_total)showPage(_cur+1);};
+
+  /* ── Share ── */
+  window.shareBook=async function(){
+    const url=location.href;
+    const title=_book?.title||'Check out this book';
+    if(navigator.share){
+      try{await navigator.share({title,text:'Read "'+title+'" on xzily Library',url});return;}catch(e){if(e.name==='AbortError')return;}
+    }
+    try{
+      await navigator.clipboard.writeText(url);
+      window.libToast('📋 Link copied to clipboard!');
+    }catch(e){
+      window.libToast('Share link: '+url);
+    }
+  };
 
   /* ── Real Like (SVG heart) ── */
   window.toggleLike=async function(){
