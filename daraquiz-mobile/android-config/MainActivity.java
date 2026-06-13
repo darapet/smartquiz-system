@@ -129,7 +129,7 @@ public class MainActivity extends BridgeActivity {
      * retry the pending install automatically.
      */
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         if (pendingInstallUri != null) {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O
