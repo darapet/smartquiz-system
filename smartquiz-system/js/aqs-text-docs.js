@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.0
+   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.4
    Features: AI Format/Write/Translate/Summarize/Expand
              30+ Google Fonts · Image Upload & Resize
              Excel-Style Tables · Chart from Data
@@ -16,7 +16,8 @@
   var wpCtxCell = null, wpCtxTable = null;
   var wpChartType = 'bar', wpChartInstance = null;
   var wpSavedSelection = null;
-  var PAGE_CHAR_LIMIT = 3200, MAX_PAGES = 9999; /* no practical limit */
+  var wpReflowTimer = null;
+  var PAGE_CHAR_LIMIT = 2800, MAX_PAGES = 9999 /* no practical limit */;
 
   /* ── Color palettes ─────────────────────────────────────────── */
   var TEXT_COLORS = [
@@ -48,9 +49,60 @@
     wpSetupContextMenu();
     wpSetupImageDrop();
     wpUpdateStats();
-    wpSetStatus('Word Processor ready — v3.1');
+    /* ── Import study content sent from study.html ── */
+    (function() {
+      try {
+        var raw = localStorage.getItem('aqs_wdoc_import');
+        if (!raw) return;
+        var imp = JSON.parse(raw);
+        if (!imp || !imp.html || (Date.now() - imp.ts) > 120000) return; /* ignore if older than 2 min */
+        localStorage.removeItem('aqs_wdoc_import');
+        /* Split imported HTML into pages by heading boundaries */
+        var parser = new DOMParser();
+        var doc2   = parser.parseFromString(imp.html, 'text/html');
+        /* Chunk into rough page-sized pieces (~2500 chars each) */
+        var chunks = [], curChunk = '';
+        Array.from(doc2.body.childNodes).forEach(function(node) {
+          var piece = node.outerHTML || (node.textContent ? '<p>' + node.textContent + '</p>' : '');
+          if (!piece.trim()) return;
+          if (curChunk.length + piece.length > 2500 && curChunk) {
+            chunks.push(curChunk); curChunk = piece;
+          } else { curChunk += piece; }
+        });
+        if (curChunk) chunks.push(curChunk);
+        if (!chunks.length) return;
+        wpPages = chunks;
+        wpCurrentPage = 0;
+        wpRenderPages();
+        wpUpdateStats();
+        wpSetStatus('📚 Study content imported from AI Study ✅');
+      } catch(e) { /* silently ignore import errors */ }
+    })();
+    wpSetStatus('Word Processor ready — v3.4');
     wpAdjustHeaderOffset();
+    wpSetupDocSettingsListeners();
   });
+
+  /* ── Live-apply Document Style on any setting change ─────────── */
+  function wpSetupDocSettingsListeners() {
+    var ids = [
+      'wp-ds-font','wp-ds-size','wp-ds-lspace','wp-ds-pspace',
+      'wp-ds-margin','wp-ds-page','wp-ds-divider',
+      'dsm-font','dsm-size','dsm-h1','dsm-h2','dsm-h3',
+      'dsm-h4','dsm-h5','dsm-h6','dsm-lspace','dsm-pspace',
+      'dsm-margin','dsm-page'
+    ];
+    ids.forEach(function(id) {
+      var el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('change', function() {
+        wpApplyDocSettings(wpGetDocSettings());
+      });
+    });
+    /* Also handle the dsm-divider checkbox if present */
+    var dsmDiv = document.getElementById('dsm-divider');
+    if (dsmDiv) dsmDiv.addEventListener('change', function() { wpApplyDocSettings(wpGetDocSettings()); });
+  }
 
   /* ── Dynamic header height offset ──────────────────────────── */
   function wpAdjustHeaderOffset() {
@@ -61,10 +113,13 @@
     h = Math.ceil(h) + 1; // +1 to avoid sub-pixel gap
     document.documentElement.style.setProperty('--wp-header-h', h + 'px');
     var sidebar = document.getElementById('wp-sidebar');
-    if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
+    if (window.innerWidth > 768) {
+      if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
+    }
     var layout = document.querySelector('.wp-layout');
     if (layout) layout.style.marginTop = h + 'px';
   }
+  window.addEventListener('resize', function() { setTimeout(wpAdjustHeaderOffset, 100); });
 
   /* ── Active editor ─────────────────────────────────────────── */
   function wpGetEditor() {
@@ -598,17 +653,31 @@
 
   function wrapInlineStyle(styles) {
     var sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-    var range = sel.getRangeAt(0);
-    var span  = document.createElement('span');
-    Object.assign(span.style, styles);
-    try { range.surroundContents(span); }
-    catch (e) {
-      var frag = range.extractContents();
-      span.appendChild(frag); range.insertNode(span);
+    if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+      var range = sel.getRangeAt(0);
+      var span  = document.createElement('span');
+      Object.assign(span.style, styles);
+      try { range.surroundContents(span); }
+      catch (e) {
+        var frag = range.extractContents();
+        span.appendChild(frag); range.insertNode(span);
+      }
+      sel.removeAllRanges();
+      var nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
+    } else {
+      /* No selection — apply to entire editor (useful on mobile) */
+      var ed = wpGetEditor();
+      if (!ed) return;
+      if (styles.fontFamily) ed.style.fontFamily = styles.fontFamily;
+      if (styles.fontSize)   ed.style.fontSize   = styles.fontSize;
+      if (styles.lineHeight) ed.style.lineHeight  = styles.lineHeight;
+      /* Also stamp on existing paragraphs so content inherits */
+      ed.querySelectorAll('p,li,td,th,h1,h2,h3,h4,h5,h6').forEach(function(el) {
+        if (styles.fontFamily) el.style.fontFamily = styles.fontFamily;
+        if (styles.fontSize)   el.style.fontSize   = styles.fontSize;
+        if (styles.lineHeight) el.style.lineHeight  = styles.lineHeight;
+      });
     }
-    sel.removeAllRanges();
-    var nr = document.createRange(); nr.selectNodeContents(span); sel.addRange(nr);
   }
 
   /* ── Insert helpers ─────────────────────────────────────────── */
@@ -664,33 +733,57 @@
 
   /* ── Paper / style ──────────────────────────────────────────── */
   window.wpSetPaper = function(v) {
+    v = (v || 'a4').toLowerCase();
     document.querySelectorAll('.wp-page-item').forEach(function(pg) {
-      pg.className = 'wp-page wp-page-item sz-' + (v || 'a4');
+      pg.className = 'wp-page wp-page-item sz-' + v;
     });
-    var sel = document.getElementById('tb-paper'); if(sel) sel.value = v;
+    /* Sync toolbar select (lowercase) */
+    var tbSel = document.getElementById('tb-paper'); if(tbSel) tbSel.value = v;
+    /* Sync sidebar + modal selects (Title Case: A4, Letter, Legal) */
+    var tc = v === 'a4' ? 'A4' : (v.charAt(0).toUpperCase() + v.slice(1));
+    var ds1 = document.getElementById('wp-ds-page'); if(ds1) ds1.value = tc;
+    var ds2 = document.getElementById('dsm-page');   if(ds2) ds2.value = tc;
   };
 
   window.wpApplyStyle = function() {
     var hf  = getV('wp-hfont',  'Georgia, serif');
     var bf  = getV('wp-bfont',  'Georgia, serif');
-    var h1  = getV('wp-h1',  24);
-    var h2  = getV('wp-h2',  18);
-    var h3  = getV('wp-h3',  14);
-    var bd  = getV('wp-body', 12);
+    var h1  = parseFloat(getV('wp-h1',  24));
+    var h2  = parseFloat(getV('wp-h2',  18));
+    var h3  = parseFloat(getV('wp-h3',  14));
+    var bd  = parseFloat(getV('wp-body', 12));
     var mg  = getV('wp-margin', 20);
     var lh  = getV('wp-lh',  '1.6');
+    var h4pt = Math.round(bd * 1.1);
     document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      /* CSS custom props (cascade fallback) */
       pg.style.setProperty('--wp-hfont', hf);
       pg.style.setProperty('--wp-bfont', bf);
       pg.style.setProperty('--wp-h1',    h1 + 'pt');
       pg.style.setProperty('--wp-h2',    h2 + 'pt');
       pg.style.setProperty('--wp-h3',    h3 + 'pt');
-      pg.style.setProperty('--wp-h4',    Math.round(Number(bd) * 1.1) + 'pt');
+      pg.style.setProperty('--wp-h4',    h4pt + 'pt');
       pg.style.setProperty('--wp-bsize', bd + 'pt');
       pg.style.setProperty('--wp-lh',    lh);
       pg.style.padding = mg + 'mm';
+      /* Also stamp inline styles directly so AI-generated inline styles are overridden */
+      var ed = pg.querySelector('.wp-page-editor');
+      if (!ed) return;
+      ed.style.fontFamily = bf;
+      ed.style.fontSize   = bd + 'pt';
+      ed.style.lineHeight = lh;
+      ed.querySelectorAll('p, li, td, th').forEach(function(el) {
+        el.style.fontFamily = bf;
+        el.style.fontSize   = bd + 'pt';
+        el.style.lineHeight = lh;
+      });
+      ed.querySelectorAll('h1').forEach(function(el){ el.style.fontSize = h1 + 'pt'; el.style.fontFamily = hf; });
+      ed.querySelectorAll('h2').forEach(function(el){ el.style.fontSize = h2 + 'pt'; el.style.fontFamily = hf; });
+      ed.querySelectorAll('h3').forEach(function(el){ el.style.fontSize = h3 + 'pt'; el.style.fontFamily = hf; });
+      ed.querySelectorAll('h4,h5,h6').forEach(function(el){ el.style.fontSize = h4pt + 'pt'; el.style.fontFamily = hf; });
     });
     var tbm = document.getElementById('tb-margin'); if(tbm) tbm.value = mg;
+    wpSavePageState();
   };
 
   function getV(id, def) {
@@ -877,21 +970,21 @@
 
   /* ── AI calls — Groq key pool ───────────────────────────────── */
   function callAI(prompt, maxTokens) {
-    /* Cap to avoid HTTP 413 — Groq rejects oversized prompts.
-       Prompt capped at 8000 chars (~2000 tokens); output up to 6000 tokens
-       so full documents still come back complete without triggering 413. */
-    var safeMax    = Math.min(maxTokens || 2000, 6000);
-    var wasTrimmed = prompt.length > 8000;
-    var safePrompt = wasTrimmed ? prompt.slice(0, 8000) + '\n\n[Content truncated to fit AI limit]' : prompt;
+    /* Safety caps — avoids HTTP 413 (Groq rejects oversized prompts).
+       Prompt capped at 5000 chars (~1250 tokens); output up to 4000 tokens.
+       Total request stays well within Groq/Mistral per-request limits. */
+    var safeMax = Math.min(maxTokens || 2000, 4000);
+    var wasTrimmed = prompt.length > 5000;
+    var safePrompt = wasTrimmed ? prompt.slice(0, 5000) + '\n\n[Content trimmed to fit AI limit — split long documents into smaller sections for better results]' : prompt;
     if (wasTrimmed) wpShowTruncToast();
     var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
-    /* Route through groqFetch (Groq → Mistral → HuggingFace key rotation) */
-    if (typeof window.groqFetch !== 'function') {
+    /* Route through groqFetch (now Mistral-primary with key rotation) */
+    if (typeof window.textdocsGroqFetch !== 'function') {
       wpSetAIStatus('error', 'AI not ready');
       return Promise.reject(new Error('AI not ready — no keys configured.'));
     }
-    return window.groqFetch(
+    return window.textdocsGroqFetch(
       { messages: messages, max_tokens: safeMax, temperature: 0.3 }
     ).then(function(r) {
       if (!r.ok) { wpSetAIStatus('error', 'Something went wrong'); throw new Error('AI error: ' + r.status); }
@@ -914,7 +1007,7 @@
     ['wp-ai-status-icon','wp-ai-si'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = icon; });
     ['wp-ai-status-text','wp-ai-st'].forEach(function(id){ var e = document.getElementById(id); if(e) e.textContent = msg; });
     var stat = document.getElementById('wp-ai-status');
-    if (stat) stat.className = 'wp-ai-status ' + state;
+    if (stat) stat.className = 'wp-ai-indicator ' + state;
   }
 
   /* ── Truncation toast — shown when AI prompt is auto-trimmed ─── */
@@ -933,33 +1026,181 @@
     setTimeout(function(){ var t = document.getElementById('_wp-trunc-toast'); if(t) t.remove(); }, 7000);
   }
 
+  /* ── Document Settings helpers ───────────────────────────────── */
+  function wpGetDocSettings() {
+    var getV2 = function(id, def) { var el = document.getElementById(id); return (el && el.value) ? el.value : def; };
+    var chk   = function(id, def) { var el = document.getElementById(id); return el ? el.checked : def; };
+    /* Heading sizes: prefer modal values (dsm-*), fallback to sidebar or defaults */
+    return {
+      font:    getV2('wp-ds-font',    'Times New Roman, Times, Georgia, serif'),
+      size:    getV2('wp-ds-size',    '12pt'),
+      lspace:  getV2('wp-ds-lspace', '1.15'),
+      pspace:  getV2('wp-ds-pspace', '6pt'),
+      margin:  getV2('wp-ds-margin', 'normal'),
+      page:    getV2('wp-ds-page',   'A4'),
+      divider: chk('wp-ds-divider', true),
+      h1: getV2('dsm-h1', '26pt'),
+      h2: getV2('dsm-h2', '20pt'),
+      h3: getV2('dsm-h3', '16pt'),
+      h4: getV2('dsm-h4', '14pt'),
+      h5: getV2('dsm-h5', '12pt'),
+      h6: getV2('dsm-h6', '11pt')
+    };
+  }
+
+  function wpDocSettingsPrompt(ds) {
+    var marginMap = { narrow: '0.5in (1.27cm)', normal: '1in (2.54cm)', wide: '1.5in (3.81cm)' };
+    return '\n\nDOCUMENT FORMATTING REQUIREMENTS — apply these as inline style attributes on every relevant HTML element:\n' +
+      '• Font family: ' + ds.font + ' (add style="font-family:' + ds.font + '" on body-text elements)\n' +
+      '• Body font size: ' + ds.size + ' (add style="font-size:' + ds.size + '" on p, li, td elements)\n' +
+      '• Heading sizes: H1=' + (ds.h1||'26pt') + ' H2=' + (ds.h2||'20pt') + ' H3=' + (ds.h3||'16pt') + ' H4=' + (ds.h4||'14pt') + ' H5=' + (ds.h5||'12pt') + ' H6=' + (ds.h6||'11pt') + ' (apply as style="font-size:X" on each heading tag)\n' +
+      '• Line height: ' + ds.lspace + ' (add style="line-height:' + ds.lspace + '" on p, li elements)\n' +
+      '• Paragraph spacing: ' + ds.pspace + ' after each paragraph (add style="margin-bottom:' + ds.pspace + '" on every <p>)\n' +
+      '• Page margins: ' + (marginMap[ds.margin] || '1in') + '\n' +
+      '• Page size: ' + ds.page + '\n' +
+      (ds.divider ? '• Insert <hr style="border:none;border-top:1px solid #e2e8f0;margin:1em 0;"> between every major section (before each <h2>)\n' : '') +
+      'Do NOT use separate <style> blocks — only inline style attributes.\n\n' +
+      '━━━ HUMANIZATION — MANDATORY ━━━\n' +
+      'Write in a natural, authentic human voice so the content passes any AI detection tool:\n' +
+      '• Vary sentence length — mix short punchy sentences with longer elaborative ones\n' +
+      '• Use natural transitions: "However,", "In practice,", "Worth noting here is", "That said,"\n' +
+      '• Include occasional rhetorical questions or observations to add human depth\n' +
+      '• Use contractions naturally where appropriate (e.g. "it\'s", "don\'t", "we\'re")\n' +
+      '• Vary paragraph length — not every paragraph should be the same size\n' +
+      '• NEVER use robotic AI phrases: "It is important to note that", "In conclusion,", "It can be seen that", "It is worth mentioning that", "Furthermore, it is essential"\n' +
+      '• Every sentence must feel uniquely crafted — no template-sounding repetition\n' +
+      '• Ground claims in specifics — real numbers, scenarios, or examples where possible\n' +
+      '• Write like a knowledgeable human expert, not an AI summarizer';
+  }
+
+  function wpApplyDocSettings(ds) {
+    var editors = document.querySelectorAll('.wp-page-editor');
+    if (!editors.length) return;
+    var ptToPx = function(pt) { return Math.round(parseFloat(pt) * 1.333) + 'px'; };
+    var sizeMap = { '10pt':'13.3px','11pt':'14.7px','12pt':'16px','13pt':'17.3px','14pt':'18.7px','16pt':'21.3px' };
+    var px = sizeMap[ds.size] || ptToPx(ds.size) || '16px';
+    /* Standard Word margins: narrow=0.5in, normal=1in, wide=1.5in */
+    var marginMM = { narrow:'12.7mm', normal:'25.4mm', wide:'38.1mm' };
+    var hMap = { H1: ds.h1||'26pt', H2: ds.h2||'20pt', H3: ds.h3||'16pt', H4: ds.h4||'14pt', H5: ds.h5||'12pt', H6: ds.h6||'11pt' };
+
+    editors.forEach(function(ed) {
+      ed.style.fontFamily = ds.font;
+      ed.style.fontSize   = px;
+      ed.style.lineHeight = ds.lspace;
+      ed.querySelectorAll('p,li,td,th').forEach(function(el) {
+        el.style.fontFamily = ds.font;
+        el.style.fontSize   = px;
+        el.style.lineHeight = ds.lspace;
+      });
+      ed.querySelectorAll('p').forEach(function(p) {
+        if (ds.pspace && ds.pspace !== '0') p.style.marginBottom = ds.pspace;
+      });
+      /* Apply heading sizes */
+      Object.keys(hMap).forEach(function(tag) {
+        ed.querySelectorAll(tag.toLowerCase()).forEach(function(el) {
+          el.style.fontSize = ptToPx(hMap[tag]);
+          el.style.fontFamily = ds.font;
+        });
+      });
+      var page = ed.closest('.wp-page');
+      if (page) { var m = marginMM[ds.margin] || '25.4mm'; page.style.padding = m; }
+      if (ds.divider) {
+        ed.querySelectorAll('h2').forEach(function(h2, i) {
+          if (i === 0) return;
+          var prev = h2.previousElementSibling;
+          if (!prev || prev.tagName !== 'HR') {
+            var hr = document.createElement('hr');
+            hr.style.cssText = 'border:none;border-top:1px solid #e2e8f0;margin:1em 0;';
+            h2.parentNode.insertBefore(hr, h2);
+          }
+        });
+      }
+    });
+    /* Apply paper size to all pages */
+    var pageSzMap = { 'A4':'a4','a4':'a4','Letter':'letter','letter':'letter','Legal':'legal','legal':'legal' };
+    var paperV = pageSzMap[ds.page] || 'a4';
+    document.querySelectorAll('.wp-page-item').forEach(function(pg) {
+      pg.className = 'wp-page wp-page-item sz-' + paperV;
+    });
+    var tbP = document.getElementById('tb-paper'); if(tbP) tbP.value = paperV;
+    wpSavePageState();
+    /* After style changes layout may shift — schedule overflow reflow */
+    wpScheduleReflow();
+  }
+
+  /* ── Sidebar toggle (mobile) ─────────────────────────────────── */
+  window.wpToggleSidebar = function() {
+    var sb = document.getElementById('wp-sidebar');
+    if (sb && sb.classList.contains('mob-open')) { wpCloseSidebar(); } else { wpOpenSidebar(); }
+  };
+  window.wpOpenSidebar = function() {
+    var sb = document.getElementById('wp-sidebar');
+    var bd = document.getElementById('wp-sidebar-backdrop');
+    var fab = document.getElementById('wp-sb-fab');
+    if (sb) sb.classList.add('mob-open');
+    if (bd) bd.classList.add('open');
+    if (fab) { fab.innerHTML = '&#x2715;'; fab.title = 'Close AI Tools'; fab.classList.add('is-open'); }
+  };
+  window.wpCloseSidebar = function() {
+    var sb = document.getElementById('wp-sidebar');
+    var bd = document.getElementById('wp-sidebar-backdrop');
+    var fab = document.getElementById('wp-sb-fab');
+    if (sb) sb.classList.remove('mob-open');
+    if (bd) bd.classList.remove('open');
+    if (fab) { fab.innerHTML = '&#9776;'; fab.title = 'AI Tools'; fab.classList.remove('is-open'); }
+  };
+
   /* ── AI Format ──────────────────────────────────────────────── */
   window.wpFormatAI = function() {
     var src = document.getElementById('wp-source');
     if (!src || !src.value.trim()) { showHint('wp-ai-hint', 'Please paste some text first.', 'warn'); return; }
     if (wpIsProcessing) return;
-    var text  = src.value.trim().slice(0, 6000);
+    /* Truncate to 4000 chars to reliably avoid HTTP 413 from Groq.
+       4000 chars ≈ 1000 tokens — leaves safe budget for the full prompt
+       template + up to 4000 output tokens within per-request limits. */
+    var rawText = src.value.trim();
+    var text  = rawText.length > 4000 ? rawText.slice(0, 4000) : rawText;
+    if (rawText.length > 4000) { showHint('wp-ai-hint', '⚠️ Text trimmed to 4000 chars to fit AI limit. Paste in smaller sections for longer documents.', 'warn'); }
     var tone  = getV('wp-tone',    'Professional');
     var dtype = getV('wp-doctype', 'General Document');
+    var rawPages = parseFloat(getV('wp-format-pages', '1'));
+    var unlimited = (rawPages === 0 || isNaN(rawPages));
+    var pages = unlimited ? 20 : (rawPages || 1);
+    var ds    = wpGetDocSettings();
     var btn   = document.getElementById('wp-ai-btn');
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
+    /* Scale max tokens: cap at 4000 to stay within Groq per-request limits */
+    var fmtMaxTokens = Math.min(4000, Math.max(2000, Math.round(pages * 600 + text.length / 10)));
 
-    var prompt = 'You are a professional document formatter.\n\n' +
-      'STEP 1 — ALIGNMENT CHECK: Does the text below fit a "' + dtype + '"? If clearly not, reply ONLY: MISMATCH:[one sentence why + suggest a better document type]\n\n' +
-      'STEP 2 — FORMAT: If content aligns, format it as a well-structured ' + dtype + ' with ' + tone + ' tone.\n\n' +
-      'OUTPUT: Return ONLY clean HTML using ONLY: h1, h2, h3, h4, p, strong, em, u, ul, ol, li, blockquote, hr, table, thead, tbody, tr, th, td. ' +
-      'NO html/head/body/style/script tags.\n\n' +
-      'RULES:\n' +
-      '1. Main title → <h1>\n2. Major sections → <h2>\n3. Sub-sections → <h3>\n' +
-      '4. Key terms → <strong>\n5. ALL body text in <p> tags\n' +
-      '6. Bullets → <ul><li>\n7. Numbers → <ol><li>\n8. Quotes → <blockquote>\n' +
-      '9. Fix grammar/spelling\n10. Match ' + tone + ' tone throughout\n' +
-      '11. Data/comparison tables → use <table> with proper thead/tbody\n\n' +
-      'TEXT:\n' + text;
+    var prompt = 'You are an expert document formatter. Convert the text below into professional, well-structured HTML. Your ONLY job is to FORMAT — preserve every single word, sentence, and paragraph exactly as given.\n\n' +
+      'STEP 1 — TYPE CHECK: Does the text fit a "' + dtype + '"? If clearly not, reply ONLY with: MISMATCH:[one sentence why, plus a better document type suggestion]\n\n' +
+      'STEP 2 — FORMAT: Structure it as a ' + dtype + ' with ' + tone + ' tone.\n\n' +
+      (unlimited ? '━━━ LENGTH REQUIREMENT ━━━\nWrite the COMPLETE formatted document — do NOT stop early, truncate, or skip any section. Cover 100% of the input text.\n\n' : '') +
+      '━━━ ABSOLUTE RULES ━━━\n' +
+      '✦ PRESERVE EVERY WORD — do NOT summarize, shorten, condense, or omit anything\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no explanations\n' +
+      '✦ Use ONLY these tags: h1 h2 h3 h4 p strong em u ul ol li blockquote hr table thead tbody tr th td\n' +
+      '✦ NO html/head/body/style/script/div/span tags\n' +
+      '✦ NO markdown syntax (**bold** → use <strong>, # headings → use <h1> etc.)\n\n' +
+      '━━━ STRUCTURE RULES ━━━\n' +
+      '1. Document title → <h1> (one per document)\n' +
+      '2. Major section headings → <h2>\n' +
+      '3. Sub-section headings → <h3>\n' +
+      '4. Key terms, important phrases → <strong>\n' +
+      '5. Emphasis, citations → <em>\n' +
+      '6. ALL body text wrapped in <p> tags — never bare text\n' +
+      '7. Bullet lists → <ul><li>…</li></ul>\n' +
+      '8. Numbered lists → <ol><li>…</li></ol>\n' +
+      '9. Pull-quotes, callouts → <blockquote>\n' +
+      '10. Data tables → <table><thead>…</thead><tbody>…</tbody></table>\n' +
+      '11. Section dividers → <hr>\n' +
+      '12. Match ' + tone + ' tone — formal language, no slang\n\n' +
+      wpDocSettingsPrompt(ds) + '\n\n' +
+      '━━━ TEXT TO FORMAT (preserve ALL of it) ━━━\n' + text;
 
-    callAI(prompt, 2500)
+    callAI(prompt, fmtMaxTokens)
       .then(function(html) {
         var trimmed = html.trim();
         if (trimmed.toUpperCase().startsWith('MISMATCH:')) {
@@ -970,6 +1211,7 @@
         var clean = sanitizeHTML(trimmed);
         if (clean) {
           wpLoadContent(clean);
+          wpApplyDocSettings(ds);
           var title = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || text.slice(0,50) || 'Formatted Doc';
           wpSaveHistory(title.replace(/<[^>]+>/g,''), wpGetFullContent());
           wpSetStatus('Document formatted ✅');
@@ -978,7 +1220,11 @@
       .catch(function(err) {
         var ed = wpGetEditor();
         if (ed) { ed.innerHTML = basicFormat(text); wpUpdateStats(); }
-        showHint('wp-ai-hint', '⚠️ ' + (err.message || 'AI busy') + ' — basic formatting applied.', 'error');
+        var errMsg = (err.message || '');
+        var hint = errMsg.indexOf('413') !== -1
+          ? '⚠️ Text too long for AI — basic formatting applied. Paste in smaller sections for full AI results.'
+          : '⚠️ ' + (errMsg || 'AI busy') + ' — basic formatting applied.';
+        showHint('wp-ai-hint', hint, 'error');
         wpSetStatus('Basic formatting applied (AI unavailable)');
       })
       .finally(function() {
@@ -1002,44 +1248,60 @@
     if (wpIsProcessing) return;
     var tone   = getV('wp-wtone',    'Professional');
     var dtype  = getV('wp-wdoctype', 'General Document');
-    var length = getV('wp-length',   'medium');
+    var rawPages = parseFloat(getV('wp-length-sel', '1'));
+    var unlimited = (rawPages === 0 || isNaN(rawPages));
+    var pages  = unlimited ? 20 : (rawPages || 1);
+    var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
-    var lengths = { short: '250-350 words', medium: '500-700 words', long: '900-1100 words', detailed: '1300-1700 words' };
-    var wTarget = lengths[length] || '500-700 words';
+    var pageLabel = unlimited ? 'Unlimited (as long as needed)' : (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
+    /* Tokens: A4 page ≈ 450 words ≈ 600 tokens (with HTML); cap at 6000 */
+    var strictWords = unlimited ? null : Math.round(pages * 450);
+    var aiMaxTokens = unlimited ? 6000 : Math.min(6000, Math.max(2000, Math.round(pages * 600) + 400));
+    var sectionCount = unlimited ? 6 : Math.max(2, Math.round(pages * 1.5));
 
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Writing…'; }
     hideHint('wp-write-hint');
 
-    var lengthWords = { short: 300, medium: 600, long: 1000, detailed: 1500 };
-    var strictWords = lengthWords[length] || 600;
-    var strictMax   = Math.round(strictWords * 1.1);
-    var aiMaxTok    = Math.min(6000, Math.max(1500, Math.round(strictWords * 1.4)));
-
     var aiPrompt = 'You are a professional document writer. Write a ' + dtype + ' with a ' + tone + ' tone.\n\n' +
       '━━━ STRICT LENGTH RULE (MANDATORY) ━━━\n' +
-      'Target word count: approximately ' + strictWords + ' words of body text.\n' +
-      'HARD LIMIT: Do NOT write more than ' + strictMax + ' words total.\n' +
-      'Stop writing when you reach the word limit.\n\n' +
+      (unlimited
+        ? 'Length: Write a complete, thorough document. Cover the topic fully.\n'
+        : 'Required length: ' + pageLabel + ' of A4 content.\n' +
+          'Target word count: approximately ' + strictWords + ' words of body text.\n' +
+          'HARD LIMIT: Do NOT write more than ' + Math.round(strictWords * 1.1) + ' words total.\n' +
+          'An A4 page holds ~450 words. Stop when you reach the word limit.\n') +
+      '• Include ' + sectionCount + ' major sections\n' +
+      '• Write a Conclusion at the end\n\n' +
       '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
-      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
       '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
       '✦ NO html/head/body/style/script/div/span tags\n' +
       '✦ Start immediately with <h1> — no text before or after the HTML\n\n' +
-      'REQUEST: ' + prompt;
+      '━━━ STRUCTURE ━━━\n' +
+      '• <h1> title • <h2> major sections • <h3> sub-sections\n' +
+      '• <p> ALL body text • <strong> key terms\n' +
+      '• <ul>/<ol> lists • <blockquote> quotes • <table> data\n\n' +
+      'REQUEST: ' + prompt + '\n' +
+      wpDocSettingsPrompt(ds);
 
-    callAI(aiPrompt, aiMaxTok)
+    callAI(aiPrompt, aiMaxTokens)
       .then(function(result) {
         var clean = sanitizeHTML(result);
         if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
         wpLoadContent(clean);
+        wpApplyDocSettings(ds);
         var wTitle = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Document';
         wpSaveHistory(wTitle.replace(/<[^>]+>/g,''), wpGetFullContent());
         wpSwitchTab('format');
         wpSetStatus('Document written ✅');
       })
       .catch(function(err) {
-        showHint('wp-write-hint', '⚠️ ' + (err.message || 'AI failed') + ' — please try again.', 'error');
+        var errMsg = (err.message || '');
+        var hint = errMsg.indexOf('413') !== -1
+          ? '⚠️ Prompt too large — please shorten your request or choose fewer pages and try again.'
+          : '⚠️ ' + (errMsg || 'AI failed') + ' — please try again.';
+        showHint('wp-write-hint', hint, 'error');
         wpSetStatus('AI writing failed — please retry');
       })
       .finally(function() {
@@ -1056,7 +1318,7 @@
     if (wpIsProcessing) return;
     wpIsProcessing = true;
     wpSetStatus('Summarizing…');
-    callAI('Summarize the following document in a well-structured HTML format. Use h1 for title, h2 for key sections, bullet points for key findings. Be concise but comprehensive. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote):\n\n' + text, 1200)
+    callAI('Summarize the following document in a well-structured HTML format. Use h1 for title, h2 for key sections, bullet points for key findings. Be concise but comprehensive. Return ONLY clean HTML (h1,h2,h3,p,ul,ol,li,strong,em,blockquote). IMPORTANT: Write in a natural human voice — vary sentence length, use contractions, avoid robotic AI phrases like "It is important to note" or "Furthermore". Sound like a knowledgeable human summarizing, not an AI tool:\n\n' + text, 1200)
       .then(function(html) {
         var clean = sanitizeHTML(html);
         if (clean) { wpLoadContent(clean); wpSetStatus('Summary generated ✅'); }
@@ -1073,7 +1335,7 @@
     if (wpIsProcessing) return;
     wpIsProcessing = true;
     wpSetStatus('Expanding document…');
-    callAI('Expand and elaborate on the following document content. Add more detail, examples, context, and depth. Maintain the same structure but make it significantly more comprehensive. Return ONLY clean HTML (h1,h2,h3,h4,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td):\n\n' + text, 2500)
+    callAI('Expand and elaborate on the following document content. Add more detail, examples, context, and depth. Maintain the same structure but make it significantly more comprehensive. Return ONLY clean HTML (h1,h2,h3,h4,p,ul,ol,li,strong,em,blockquote,table,thead,tbody,tr,th,td). HUMANIZATION REQUIRED: Write in a natural, authentic human voice — mix short and long sentences, use contractions where natural, include real examples and specifics, avoid robotic AI phrases. The output must pass AI detection tools as genuine human writing:\n\n' + text, 2500)
       .then(function(html) {
         var clean = sanitizeHTML(html);
         if (clean) { wpLoadContent(clean); wpSetStatus('Document expanded ✅'); }
@@ -1084,6 +1346,100 @@
 
   /* ── AI Translate ────────────────────────────────────────────── */
   window.wpAITranslate = function() { wpShowModal('wp-translate-modal'); };
+
+  /* ── AI Rewrite ──────────────────────────────────────────────── */
+  window.wpAIRewrite = function() { wpShowModal('wp-rewrite-modal'); };
+
+  window.wpDoRewrite = function() {
+    var content = wpGetFullContent();
+    var text    = stripHtml(content);
+    if (!text.trim() || text.length < 30) { alert('Please add some content to rewrite.'); return; }
+    var tone    = getV('wp-rw-tone',    'Professional');
+    var style   = getV('wp-rw-style',   'Full Rewrite');
+    var reading = getV('wp-rw-reading', 'Standard');
+    var ds      = wpGetDocSettings();
+    var btn     = document.getElementById('wp-rw-btn');
+    wpHideModal('wp-rewrite-modal');
+    if (wpIsProcessing) return;
+    wpIsProcessing = true;
+    if (btn) { btn.disabled = true; }
+    wpSetStatus('Rewriting document…');
+    wpSetAIStatus('working', 'Rewriting…');
+
+    var styleInstructions = {
+      'Full Rewrite':       'Completely rewrite the entire document from scratch while preserving all the key facts, data, and meaning.',
+      'Polish & Refine':    'Polish and refine the existing writing — improve flow, fix awkward phrasing, strengthen sentences. Keep the structure and most original wording intact.',
+      'Simplify Language':  'Rewrite using simpler, clearer language. Replace complex vocabulary with everyday words. Keep sentences short and easy to understand.',
+      'Make More Formal':   'Rewrite in a formal, professional register. Remove colloquialisms, use precise vocabulary, and ensure a polished academic/business tone.',
+      'Make More Casual':   'Rewrite in a friendly, conversational tone. Make it feel approachable and natural — as if explaining to a friend.'
+    };
+    var readingInstructions = {
+      'Simple':      'Target a simple reading level (Grade 6–8) — short sentences, common words, clear explanations.',
+      'Standard':    'Target a standard reading level (Grade 9–12) — clear, balanced prose suitable for a general audience.',
+      'Advanced':    'Target an advanced reading level (college+) — sophisticated vocabulary, complex sentence structures where appropriate.',
+      'Expert':      'Target an expert-level audience — assume deep domain knowledge, use technical terminology precisely.'
+    };
+
+    var rwMaxTokens = Math.min(8000, Math.max(2500, Math.round(text.length / 4 + 1000)));
+
+    var rwPrompt = 'You are an expert professional writer and editor. Rewrite the document below according to these exact requirements.\n\n' +
+      '━━━ REWRITE INSTRUCTIONS ━━━\n' +
+      '• Style: ' + (styleInstructions[style] || styleInstructions['Full Rewrite']) + '\n' +
+      '• Tone: ' + tone + ' — authoritative, clear, and purposeful\n' +
+      '• Reading Level: ' + (readingInstructions[reading] || readingInstructions['Standard']) + '\n\n' +
+      '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
+      '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
+      '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
+      '✦ NO html/head/body/style/script/div/span tags — start immediately with <h1>\n' +
+      '✦ Preserve ALL key facts, statistics, names, and data — do NOT invent or remove information\n' +
+      '✦ Keep the same document structure (same number of sections, same logical flow)\n\n' +
+      '━━━ HUMANIZATION — MANDATORY ━━━\n' +
+      '✦ Write in a natural human voice that passes AI detection tools\n' +
+      '✦ Vary sentence length — mix short punchy sentences with longer elaborative ones\n' +
+      '✦ Use natural transitions and contractions where appropriate\n' +
+      '✦ NEVER use: "It is important to note that", "Furthermore,", "In conclusion,", "It can be seen that"\n\n' +
+      wpDocSettingsPrompt(ds) + '\n\n' +
+      '━━━ DOCUMENT TO REWRITE ━━━\n' + text;
+
+    callAI(rwPrompt, rwMaxTokens)
+      .then(function(result) {
+        var clean = sanitizeHTML(result);
+        if (!clean || clean.length < 30) throw new Error('AI returned insufficient content');
+        wpLoadContent(clean);
+        wpApplyDocSettings(ds);
+        var wTitle = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || 'Rewritten Document';
+        wpSaveHistory(wTitle.replace(/<[^>]+>/g,''), wpGetFullContent());
+        wpSetStatus('Document rewritten ✅ — ' + style + ' · ' + tone);
+        wpSetAIStatus('ready', 'AI Ready');
+      })
+      .catch(function(err) {
+        wpSetStatus('Rewrite failed — ' + (err.message || 'AI error'));
+        wpSetAIStatus('error', 'Rewrite failed');
+      })
+      .finally(function() {
+        wpIsProcessing = false;
+        if (btn) { btn.disabled = false; }
+      });
+  };
+
+  window.wpAIFix = function() {
+    var ed = wpGetEditor(); if (!ed) return;
+    var content = ed.innerHTML;
+    if (!content || content.replace(/<[^>]+>/g,'').trim().length < 5) {
+      wpSetStatus('Nothing to fix — document is empty.'); return;
+    }
+    wpSetAIStatus('working', 'Fixing grammar…');
+    var text = ed.innerText || ed.textContent || '';
+    callAI('Fix all grammar, spelling, punctuation and style issues in the following text. Return ONLY the corrected text with no extra commentary:\n\n' + text, 3000)
+      .then(function(fixed) {
+        if (fixed && fixed.trim()) {
+          var ds = wpGetDocSettings();
+          ed.innerHTML = basicFormat ? basicFormat(fixed) : ('<p>' + fixed.replace(/\n/g,'</p><p>') + '</p>');
+          wpApplyDocSettings(ds);
+          wpSetStatus('Grammar fixed ✅');
+        }
+      }).catch(function(e) { wpSetStatus('Fix failed: ' + (e.message || 'AI error')); });
+  };
   window.wpDoTranslate = function() {
     var lang = getV('wp-trans-lang', 'Spanish');
     var content = wpGetFullContent();
@@ -1159,14 +1515,15 @@
     el.style.display = 'block';
   }
 
-  /* ── Char counter ───────────────────────────────────────────── */
+  /* ── Char counter (no limit — shows current length only) ──── */
   window.wpCharCount = function() {
     var el  = document.getElementById('wp-source');
     var n   = el ? el.value.length : 0;
     var cnt = document.getElementById('wp-count');
     if (!cnt) return;
-    cnt.textContent = n.toLocaleString() + ' / 12,000';
-    cnt.className   = 'wp-char-count' + (n >= 12000 ? ' full' : n >= 9000 ? ' warn' : '');
+    var words = el ? el.value.trim().split(/\s+/).filter(Boolean).length : 0;
+    cnt.textContent = n.toLocaleString() + ' chars · ' + words.toLocaleString() + ' words';
+    cnt.className   = 'wp-char-count';
   };
 
   /* ── File upload ────────────────────────────────────────────── */
@@ -1182,7 +1539,7 @@
     wpShowUploadStatus('📤 Reading ' + file.name + '…', false);
     var fillSource = function(text) {
       var src = document.getElementById('wp-source');
-      if (src) { src.value = text.slice(0, 12000); wpCharCount(); }
+      if (src) { src.value = text; wpCharCount(); }  /* No character limit */
       var words = text.trim().split(/\s+/).filter(Boolean).length;
       var preview = text.slice(0, 100).replace(/\s+/g,' ').trim();
       wpShowUploadStatus('✅ ' + file.name + ' — ' + words + ' words\n"' + preview + (text.length > 100 ? '…' : '') + '"', false);
@@ -1289,10 +1646,7 @@
       if (pan) pan.classList.toggle('active', t === tab);
     });
     if (tab === 'history') wpRenderHistory();
-    if (window.innerWidth <= 820) {
-      var sb = document.getElementById('wp-sidebar');
-      if (sb && !sb.classList.contains('mob-open')) wpMobOpen && wpMobOpen();
-    }
+    /* Do NOT auto-open sidebar on mobile — user controls it via the FAB button */
   };
 
   /* ── Document History ───────────────────────────────────────── */
@@ -1342,19 +1696,22 @@
     localStorage.setItem(WP_HIST_KEY, JSON.stringify(hist));
     wpRenderHistory();
   };
+  window.wpShowCellColorModal = function() { wpShowModal('wp-cell-color-modal'); };
   window.wpClearHistory = function() {
     if (!confirm('Clear all document history?')) return;
     localStorage.removeItem(WP_HIST_KEY); wpRenderHistory();
   };
 
   /* ── Multi-page engine ──────────────────────────────────────── */
-  function wpRenderPages() {
+  function wpRenderPages(skipSave) {
     var container = document.getElementById('wp-pages');
     if (!container) return;
 
-    // Save current page content first
-    var activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
-    if (activeEd) wpPages[wpCurrentPage] = activeEd.innerHTML;
+    // Save current page content first (skip when loading fresh content to avoid overwriting)
+    if (!skipSave) {
+      var activeEd = document.getElementById('wp-editor-' + wpCurrentPage);
+      if (activeEd) wpPages[wpCurrentPage] = activeEd.innerHTML;
+    }
 
     var paperVal = getV('tb-paper', 'a4');
     var hf  = getV('wp-hfont', 'Georgia, serif');
@@ -1400,9 +1757,13 @@
           wpPages[idx] = ed.innerHTML;
           wpUpdateToolbarState();
           wpUpdateStats();
+          wpScheduleFullReflow();
         });
         ed.addEventListener('keydown', function(e) {
-          // Already handled via document keydown handler
+          if (e.key === 'Enter') {
+            /* Trigger reflow immediately after the browser inserts the new block */
+            setTimeout(wpRunFullReflow, 0);
+          }
         });
         ed.addEventListener('mouseup', wpUpdateToolbarState);
         ed.addEventListener('keyup', wpUpdateToolbarState);
@@ -1437,6 +1798,12 @@
 
     wpUpdatePageNav();
     wpUpdateStats();
+    /* Apply default doc settings so pages show proper margins/font by default */
+    setTimeout(function() {
+      if (typeof wpGetDocSettings === 'function' && typeof wpApplyDocSettings === 'function') {
+        wpApplyDocSettings(wpGetDocSettings());
+      }
+    }, 80);
   }
 
   function wpSavePageState() {
@@ -1469,8 +1836,209 @@
     wpUpdatePageNav();
   };
 
-  window.wpAddPage = function() {
+  /* ── Push one or more elements to the top of the next page ────── */
+  /* ════════════════════════════════════════════════════════════════
+     BIDIRECTIONAL PAGINATION ENGINE
+     — overflow:  push content forward to next page
+     — backflow:  pull content back when a page has space (like Word)
+     — runs synchronously to stable state on every edit
+     ════════════════════════════════════════════════════════════════ */
+  var WP_OVERFLOW_BUF = 4; /* px tolerance */
+
+  function wpScheduleFullReflow() {
+    clearTimeout(wpReflowTimer);
+    wpReflowTimer = setTimeout(wpRunFullReflow, 150);
+  }
+  /* Keep old alias so any remaining callers still work */
+  function wpScheduleReflow() { wpScheduleFullReflow(); }
+
+  function wpRunFullReflow() {
+    var MAX_ITER = 80;
+    var anythingChanged = false;
+
+    for (var iter = 0; iter < MAX_ITER; iter++) {
+      var changed = false;
+
+      /* ── Forward pass: push overflow to next page ── */
+      for (var pi = 0; pi < wpPages.length; pi++) {
+        var ed = document.getElementById('wp-editor-' + pi);
+        if (!ed) continue;
+        if (ed.scrollHeight > ed.clientHeight + WP_OVERFLOW_BUF) {
+          if (_wpPushOverflow(pi, ed)) { changed = true; break; }
+        }
+      }
+      if (changed) { anythingChanged = true; continue; }
+
+      /* ── Backward pass: pull underflow back from next page ── */
+      for (var pi2 = 0; pi2 < wpPages.length - 1; pi2++) {
+        var ed2 = document.getElementById('wp-editor-' + pi2);
+        var ned = document.getElementById('wp-editor-' + (pi2 + 1));
+        if (!ed2 || !ned) continue;
+        if (_wpPullUnderflow(pi2, ed2, ned)) { changed = true; break; }
+      }
+      if (changed) { anythingChanged = true; continue; }
+
+      /* ── Heading-orphan pass: push a lone heading at the bottom of a page
+             forward so it stays with its following content (like Word's
+             "Keep with next" paragraph setting) ── */
+      for (var pi3 = 0; pi3 < wpPages.length - 1; pi3++) {
+        var ed3 = document.getElementById('wp-editor-' + pi3);
+        if (!ed3 || ed3.children.length < 2) continue; /* need at least 2 children */
+        var lastEl3 = ed3.lastElementChild;
+        if (!lastEl3) continue;
+        var t3 = lastEl3.tagName && lastEl3.tagName.toUpperCase();
+        if (t3 !== 'H1' && t3 !== 'H2' && t3 !== 'H3') continue;
+        /* Lone heading at page bottom — push to next page */
+        ed3.removeChild(lastEl3);
+        wpPages[pi3] = ed3.innerHTML;
+        var ned3 = document.getElementById('wp-editor-' + (pi3 + 1));
+        if (ned3) {
+          ned3.insertBefore(lastEl3, ned3.firstChild || null);
+          wpPages[pi3 + 1] = ned3.innerHTML;
+        } else if (true) { /* no page limit */
+          wpPages.splice(pi3 + 1, 0, lastEl3.outerHTML || '');
+          wpRenderPages(true);
+        } else {
+          ed3.appendChild(lastEl3); wpPages[pi3] = ed3.innerHTML; /* nowhere to put it */
+          continue;
+        }
+        changed = true; break;
+      }
+      if (changed) { anythingChanged = true; continue; }
+
+      break; /* stable */
+    }
+
+    if (anythingChanged) {
+      _wpCleanEmptyPages();
+      wpUpdatePageNav();
+      wpUpdateStats();
+    }
+  }
+
+  /* Push the overflowing tail of page `pi` to page `pi+1`.
+     Returns true if anything was moved. */
+  function _wpPushOverflow(pi, ed) {
+    var maxH = ed.clientHeight;
+    if (ed.scrollHeight <= maxH + WP_OVERFLOW_BUF) return false;
+
+    var lastEl = ed.lastElementChild;
+    if (!lastEl) return false;
+    var blockToMove = null;
+
+    if (ed.children.length >= 2) {
+      /* Multiple blocks: move the last block */
+      ed.removeChild(lastEl);
+      blockToMove = lastEl;
+    } else {
+      /* Single child only */
+      var isEmpty = !lastEl.textContent.trim() ||
+                    lastEl.innerHTML.replace(/&nbsp;/gi, '').trim() === '' ||
+                    lastEl.innerHTML.trim() === '<br>';
+      if (isEmpty) {
+        ed.removeChild(lastEl);
+        blockToMove = lastEl;
+      } else if (lastEl.childNodes.length > 1) {
+        /* Multiple inline children — peel from the end */
+        var moved = [];
+        while (lastEl.childNodes.length > 1 && ed.scrollHeight > maxH + WP_OVERFLOW_BUF) {
+          var ln = lastEl.lastChild;
+          moved.unshift(ln.cloneNode(true));
+          lastEl.removeChild(ln);
+        }
+        if (moved.length) {
+          var wrapper = document.createElement(lastEl.tagName.toLowerCase());
+          moved.forEach(function(n) { wrapper.appendChild(n); });
+          blockToMove = wrapper;
+        }
+      } else {
+        /* Single text node in a single block: binary-search word split */
+        var textEl = ed.firstElementChild || ed;
+        var full   = textEl.textContent || '';
+        if (!full) return false;
+        var words  = full.split(/(\s+)/);
+        if (words.length <= 2) return false;
+        var lo = 1, hi = words.length - 1;
+        while (lo < hi) {
+          var mid = Math.floor((lo + hi + 1) / 2);
+          textEl.textContent = words.slice(0, mid).join('');
+          if (ed.scrollHeight <= maxH + WP_OVERFLOW_BUF) { lo = mid; } else { hi = mid - 1; }
+        }
+        var keepT = words.slice(0, lo).join('');
+        var overT = words.slice(lo).join('').trim();
+        if (!keepT || !overT) { textEl.textContent = full; return false; }
+        textEl.textContent = keepT;
+        var overEl = document.createElement((textEl.tagName || 'P').toLowerCase());
+        overEl.textContent = overT;
+        blockToMove = overEl;
+      }
+    }
+
+    if (!blockToMove) return false;
+    wpPages[pi] = ed.innerHTML;
+
+    /* Insert into existing next page */
+    if (pi + 1 < wpPages.length) {
+      var nextEd = document.getElementById('wp-editor-' + (pi + 1));
+      if (nextEd) {
+        nextEd.insertBefore(blockToMove, nextEd.firstChild || null);
+        wpPages[pi + 1] = nextEd.innerHTML;
+        return true;
+      }
+    }
+    /* Create a new page */
     /* page limit removed */
+    wpPages.splice(pi + 1, 0, blockToMove.outerHTML || '');
+    wpRenderPages(true);
+    return true;
+  }
+
+  /* Pull the first block of page `pi+1` back to page `pi` if it fits.
+     This is the "backflow" behaviour — like Word pulling content up on delete.
+     Returns true if anything was moved. */
+  function _wpPullUnderflow(pi, ed, nextEd) {
+    var firstBlock = nextEd.firstElementChild;
+    if (!firstBlock) return false;
+
+    /* Keep-heading-with-next: never pull a heading back to the previous page.
+       Headings belong at the TOP of their following content, not orphaned
+       at the bottom of the page before. */
+    var fTag = firstBlock.tagName && firstBlock.tagName.toUpperCase();
+    if (fTag === 'H1' || fTag === 'H2' || fTag === 'H3') return false;
+
+    /* Measure with a clone to avoid mutating the DOM */
+    var clone = firstBlock.cloneNode(true);
+    ed.appendChild(clone);
+    var fits = ed.scrollHeight <= ed.clientHeight + WP_OVERFLOW_BUF;
+    ed.removeChild(clone);
+    if (!fits) return false;
+
+    /* Fits — move the real element */
+    nextEd.removeChild(firstBlock);
+    ed.appendChild(firstBlock);
+    wpPages[pi]     = ed.innerHTML;
+    wpPages[pi + 1] = nextEd.innerHTML;
+    return true;
+  }
+
+  /* Remove trailing pages that are fully empty (always keep at least 1) */
+  function _wpCleanEmptyPages() {
+    var changed = false;
+    for (var pi = wpPages.length - 1; pi > 0; pi--) {
+      var ed = document.getElementById('wp-editor-' + pi);
+      var hasContent = ed
+        ? (ed.textContent.trim() || ed.querySelector('img,table,hr'))
+        : wpPages[pi].trim();
+      if (!hasContent) {
+        wpPages.splice(pi, 1);
+        changed = true;
+      }
+    }
+    if (changed) wpRenderPages(true);
+  }
+
+
+  window.wpAddPage = function() {
     wpSavePageState();
     wpPages.splice(wpCurrentPage + 1, 0, '');
     wpCurrentPage++;
@@ -1510,8 +2078,10 @@
     blocks.forEach(function(b) {
       var bh = b.outerHTML || ('<p>' + b.textContent + '</p>');
       var bl = (b.textContent || '').length;
+      /* Only break at H1 if there's already substantial content (800+ chars)
+         so headings don't get pushed to a new page prematurely */
       var isH1 = b.tagName === 'H1';
-      if ((isH1 && curC > 150) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
+      if ((isH1 && curC > 800) || (curC + bl > PAGE_CHAR_LIMIT && curC > 0)) {
         pages.push(cur); cur = bh; curC = bl;
       } else { cur += bh; curC += bl; }
     });
@@ -1520,12 +2090,9 @@
   }
 
   function wpLoadContent(html) {
-    /* Set wpCurrentPage to -1 BEFORE replacing wpPages so that wpRenderPages()
-       cannot overwrite wpPages[0] with the old DOM's empty first editor. */
-    wpCurrentPage = -1;
     wpPages = wpSplitIntoPages(html);
     wpCurrentPage = 0;
-    wpRenderPages();
+    wpRenderPages(true); /* skipSave=true: don't overwrite freshly-split content */
     var pcEl = document.getElementById('tb-page-count');
     if (pcEl) pcEl.value = String(Math.min(wpPages.length, MAX_PAGES));
     setTimeout(function() {
@@ -1533,6 +2100,8 @@
       var ed = document.getElementById('wp-editor-0'); if(ed) { wpAddColResizeHandles(ed); wpSetupImageHandlers(ed); }
     }, 100);
     wpUpdateStats();
+    /* Schedule overflow reflow so content that doesn't fit flows to next pages */
+    wpScheduleReflow();
   }
 
   function wpGetFullContent() {
@@ -1576,97 +2145,358 @@
     setTimeout(function(){ if(el.textContent === msg) el.textContent = ''; }, 4000);
   }
 
-  /* ── Print ──────────────────────────────────────────────────── */
+  /* ── Print / Export — Format Picker + Preview ───────────────── */
+  var _wpPrintFormat = 'pdf';
+
   window.wpPrint = function() {
-    var printRoot = document.getElementById('wp-print-root');
-    if (!printRoot) { window.print(); return; }
-    var container = document.getElementById('wp-pages');
-    if (!container) { window.print(); return; }
+    wpShowPrintFormatModal();
+  };
 
-    /* ── Save ALL editors into wpPages first ── */
-    container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
-      var m = ed.id.match(/wp-editor-(\d+)/);
-      if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
-    });
+  window.wpShowPrintFormatModal = function() {
+    wpShowModal('wp-print-fmt-modal');
+  };
 
-    /* ── Collect non-empty pages directly from wpPages ── */
-    var nonEmpty = wpPages.filter(function(pg) {
+  window.wpSelectPrintFormat = function(fmt) {
+    _wpPrintFormat = fmt;
+    wpHideModal('wp-print-fmt-modal');
+    wpShowPrintPreview(fmt);
+  };
+
+  window.wpShowPrintPreview = function(fmt) {
+    var content = wpGetFullContent();
+    var title   = wpGetDocTitle(content);
+    var previewEl = document.getElementById('wp-print-preview-body');
+    var badgeEl   = document.getElementById('wp-preview-fmt-badge');
+    var dlBtn     = document.getElementById('wp-preview-dl-btn');
+    if (!previewEl) return;
+
+    var fmtLabels = {
+      pdf:'📄 PDF', csv:'📊 Excel / CSV',
+      html:'🌐 HTML', txt:'📃 Plain Text', rtf:'📄 RTF',
+      md:'📋 Markdown', latex:'Σ LaTeX', json:'{ } JSON'
+    };
+    if (badgeEl) badgeEl.textContent = fmtLabels[fmt] || fmt.toUpperCase();
+    if (dlBtn) dlBtn.textContent = '⬇️ Download ' + (fmtLabels[fmt] || fmt.toUpperCase());
+
+    /* Build a clean print preview of the document */
+    var pageStyle = (function() {
+      var mg = getV('wp-margin', 20);
+      var bf = getV('wp-bfont', 'Georgia, serif');
+      var bd = getV('wp-body', 12);
+      var lh = getV('wp-lh', '1.6');
+      var h1 = getV('wp-h1', 24); var h2 = getV('wp-h2', 18); var h3 = getV('wp-h3', 14);
+      return 'font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';' +
+             '--h1-size:' + h1 + 'pt;--h2-size:' + h2 + 'pt;--h3-size:' + h3 + 'pt;';
+    })();
+
+    previewEl.innerHTML = '';
+    var notice = document.createElement('div');
+    notice.style.cssText = 'margin-bottom:14px;padding:9px 12px;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;font-size:12px;color:#0369a1;font-weight:600;';
+    notice.textContent = '📄 Document: "' + title + '" · Format: ' + (fmtLabels[fmt] || fmt.toUpperCase()) + ' · ' + wpPages.length + ' page(s)';
+    previewEl.appendChild(notice);
+
+    /* Save ALL editor states before building preview */
+    var _previewContainer = document.getElementById('wp-pages');
+    if (_previewContainer) {
+      _previewContainer.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+        var _m = ed.id.match(/wp-editor-(\d+)/);
+        if (_m) wpPages[parseInt(_m[1], 10)] = ed.innerHTML;
+      });
+    }
+    /* Collect all non-empty pages */
+    var _printPages = wpPages.filter(function(pg) {
       if (!pg) return false;
-      return pg.replace(/<[^>]+>/g, '').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+      return pg.replace(/<[^>]+>/g,'').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
     });
-    if (!nonEmpty.length) { window.print(); return; }
+    if (!_printPages.length) _printPages = [wpPages[wpCurrentPage] || ''];
 
-    /* ── Document settings ── */
-    var bf   = getV('wp-bfont', "'Times New Roman', Georgia, serif");
-    var bd   = Number(getV('wp-body',   12)) || 12;
-    var mg   = Number(getV('wp-margin', 20)) || 20;
+    _printPages.forEach(function(pgHtml, idx) {
+      var pageWrap = document.createElement('div');
+      pageWrap.style.cssText = 'background:#fff;border:1px solid #e2e8f0;border-radius:6px;margin-bottom:20px;' +
+        'box-shadow:0 2px 10px rgba(0,0,0,.08);position:relative;overflow:hidden;';
+      var pageLabel = document.createElement('div');
+      pageLabel.style.cssText = 'background:#f8f9ff;border-bottom:1px solid #e2e8f0;padding:6px 14px;font-size:10.5px;color:#6b7280;font-weight:700;';
+      pageLabel.textContent = 'Page ' + (idx + 1) + ' of ' + _printPages.length;
+      var pageContent = document.createElement('div');
+      pageContent.style.cssText = 'padding:24px 28px;' + pageStyle;
+      /* Parse + clean HTML so raw tags never show as text */
+      var cleanHtml = (function(raw) {
+        if (!raw) return '';
+        try {
+          var parsed = (new DOMParser()).parseFromString(raw, 'text/html');
+          var body = parsed.body;
+          /* Strip editor-only attributes that can confuse rendering */
+          body.querySelectorAll('[contenteditable]').forEach(function(el){ el.removeAttribute('contenteditable'); });
+          body.querySelectorAll('[data-gramm],[data-gramm_editor],[data-enable-grammarly]').forEach(function(el){
+            ['data-gramm','data-gramm_editor','data-enable-grammarly'].forEach(function(a){ el.removeAttribute(a); });
+          });
+          return body.innerHTML;
+        } catch(e) { return raw; }
+      })(pgHtml);
+      pageContent.innerHTML = cleanHtml || '<em style="color:#9ca3af;">Empty page</em>';
+      /* Apply inline heading sizes */
+      pageContent.querySelectorAll('h1').forEach(function(h){ h.style.fontSize = getV('wp-h1',24) + 'pt'; });
+      pageContent.querySelectorAll('h2').forEach(function(h){ h.style.fontSize = getV('wp-h2',18) + 'pt'; });
+      pageContent.querySelectorAll('h3').forEach(function(h){ h.style.fontSize = getV('wp-h3',14) + 'pt'; });
+      /* Make tables look clean */
+      pageContent.querySelectorAll('table').forEach(function(t){
+        t.style.cssText = 'border-collapse:collapse;width:100%;margin:10px 0;font-size:11pt;';
+      });
+      pageContent.querySelectorAll('td,th').forEach(function(c){
+        c.style.border = '1px solid #d1d5db';
+        c.style.padding = '6px 10px';
+      });
+      pageWrap.appendChild(pageLabel);
+      pageWrap.appendChild(pageContent);
+      previewEl.appendChild(pageWrap);
+    });
+
+    wpShowModal('wp-print-preview-modal');
+  };
+
+  /* ── Open a self-contained download/print page in Chrome (Capacitor Browser).
+     Same pattern as the quiz's aqsPrintQuiz — build complete HTML, open it in
+     the system browser where print/download APIs work reliably.
+     On desktop web browsers the page opens in a new window as usual. ── */
+
+  window.wpConfirmPrintDownload = function() {
+    var fmt = _wpPrintFormat;
+    wpHideModal('wp-print-preview-modal');
+
+    var content  = wpGetFullContent();
+    var title    = wpGetDocTitle(content);
+    var fname    = wpSafeName(title);
+    var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+
+    /* ── Shared document styles ── */
+    var bf   = getV('wp-bfont','Georgia, serif');
+    var bd   = getV('wp-body', 12);
+    var mg   = getV('wp-margin', 20);
     var lh   = getV('wp-lh', '1.6');
-    var h1sz = Number(getV('wp-h1', 24)) || 24;
-    var h2sz = Number(getV('wp-h2', 18)) || 18;
-    var h3sz = Number(getV('wp-h3', 14)) || 14;
-
-    var docTitle = 'Document';
-    try { if (window.wpGetDocTitle) docTitle = wpGetDocTitle(nonEmpty.join('')) || 'Document'; } catch(e) {}
-    var dateStr = new Date().toLocaleDateString(undefined, { year:'numeric', month:'long', day:'numeric' });
-    var esc = function(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); };
-
-    var total = nonEmpty.length;
-    var mgB   = Math.round(mg * 0.8);
-
-    var STYLE = [
-      '@page{size:A4 portrait;margin:0;}',
-      'html,body{margin:0;padding:0;background:#fff;color:#000;}',
-      '.wp-pp{box-sizing:border-box;width:100%;background:#fff;',
-        'padding:' + mg + 'mm ' + mg + 'mm ' + mgB + 'mm;',
-        'font-family:' + bf + ';font-size:' + bd + 'pt;',
-        'line-height:' + lh + ';color:#000;}',
-      '.wp-pp:not(:last-child){break-after:page;page-break-after:always;}',
-      '.wp-pp-hdr{display:flex;justify-content:space-between;',
-        'border-bottom:0.5pt solid #ccc;padding-bottom:4pt;',
-        'margin-bottom:12pt;font-size:8.5pt;color:#777;}',
-      '.wp-pp-ftr{border-top:0.5pt solid #ccc;padding-top:4pt;',
-        'margin-top:12pt;font-size:8.5pt;color:#777;text-align:center;}',
-      '.wp-pp h1{font-size:' + h1sz + 'pt!important;font-weight:700;',
-        'margin:.4em 0 .2em;line-height:1.2;color:#000;page-break-after:avoid;}',
-      '.wp-pp h2{font-size:' + h2sz + 'pt!important;font-weight:700;',
-        'margin:.35em 0 .15em;line-height:1.25;color:#000;page-break-after:avoid;}',
-      '.wp-pp h3{font-size:' + h3sz + 'pt!important;font-weight:700;',
-        'margin:.3em 0 .1em;line-height:1.3;color:#000;page-break-after:avoid;}',
-      '.wp-pp h4,.wp-pp h5,.wp-pp h6{font-size:' + (bd + 2) + 'pt!important;',
-        'font-weight:700;margin:.25em 0;color:#000;}',
-      '.wp-pp p{margin:0 0 6pt;}',
-      '.wp-pp ul,.wp-pp ol{padding-left:16pt;margin:0 0 6pt;}',
-      '.wp-pp li{margin-bottom:2pt;}',
-      '.wp-pp strong,.wp-pp b{font-weight:700;}',
-      '.wp-pp em,.wp-pp i{font-style:italic;}',
-      '.wp-pp a{color:#000;text-decoration:none;}',
-      '.wp-pp img{max-width:100%;height:auto;display:block;}',
-      '.wp-pp blockquote{border-left:2pt solid #aaa;padding-left:10pt;margin:6pt 0;color:#444;font-style:italic;}',
-      '.wp-pp pre,.wp-pp code{font-family:"Courier New",Courier,monospace;font-size:9pt;}',
-      '.wp-pp pre{background:#f5f5f5;border:0.5pt solid #ccc;padding:6pt;white-space:pre-wrap;page-break-inside:avoid;}',
-      '.wp-pp table{border-collapse:collapse;width:100%;margin:8pt 0;}',
-      '.wp-pp td,.wp-pp th{border:0.5pt solid #888;padding:4pt 6pt;font-size:' + (bd - 1) + 'pt;}',
-      '.wp-pp th{background:#f0f0f0;font-weight:700;}',
-      '.wp-pp tr{page-break-inside:avoid;}'
+    var h1sz = getV('wp-h1',24); var h2sz = getV('wp-h2',18); var h3sz = getV('wp-h3',14);
+    var docCss = [
+      'body{font-family:' + bf + ';font-size:' + bd + 'pt;line-height:' + lh + ';margin:0;color:#1a1a1a;}',
+      'h1{font-size:' + h1sz + 'pt;margin:.5em 0;}',
+      'h2{font-size:' + h2sz + 'pt;margin:.45em 0;}',
+      'h3{font-size:' + h3sz + 'pt;margin:.4em 0;}',
+      'p{margin:.5em 0;}',
+      'table{border-collapse:collapse;width:100%;margin:10px 0;}',
+      'td,th{border:1px solid #ccc;padding:6px 10px;}',
+      'th{background:#f1f5f9;font-weight:700;}',
+      'img{max-width:100%;height:auto;}',
+      'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}',
+      'pre{background:#1e293b;color:#e2e8f0;padding:12px;border-radius:6px;font-size:10pt;white-space:pre-wrap;}',
+      '@media print{@page{margin:' + mg + 'mm;}}'
     ].join('');
 
-    var pagesHtml = nonEmpty.map(function(pg, idx) {
-      return '<div class="wp-pp">' +
-        '<div class="wp-pp-hdr"><span>' + esc(docTitle) + '</span><span>' + dateStr + '</span></div>' +
-        pg +
-        '<div class="wp-pp-ftr">Page ' + (idx + 1) + ' of ' + total + '</div>' +
-        '</div>';
+    /* Save ALL editor states before building download */
+    var _dlContainer = document.getElementById('wp-pages');
+    if (_dlContainer) {
+      _dlContainer.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+        var _m = ed.id.match(/wp-editor-(\d+)/);
+        if (_m) wpPages[parseInt(_m[1], 10)] = ed.innerHTML;
+      });
+    }
+    /* Collect all non-empty pages */
+    var _nonEmptyPages = wpPages.filter(function(pg) {
+      if (!pg) return false;
+      return pg.replace(/<[^>]+>/g,'').trim().length > 0 || /<img|<canvas|<table|<svg/i.test(pg);
+    });
+    if (!_nonEmptyPages.length) _nonEmptyPages = [wpPages[wpCurrentPage] || ''];
+    var allPages = _nonEmptyPages.map(function(pg, i) {
+      return '<div style="margin-bottom:24px;' +
+        (i < _nonEmptyPages.length - 1 ? 'padding-bottom:24px;border-bottom:2px dashed #e5e7eb;' : '') +
+        '">' + (pg || '') + '</div>';
     }).join('');
 
-    printRoot.innerHTML = '<style>' + STYLE + '</style>' + pagesHtml;
-    document.body.classList.add('wp-printing');
-    setTimeout(function() {
-      window.print();
-      setTimeout(function() {
-        printRoot.innerHTML = '';
-        document.body.classList.remove('wp-printing');
-      }, 800);
-    }, 150);
+    /* ── Build the self-contained page ── */
+    function buildPage(opts) {
+      /* opts: { subtitle, btnLabel, isPdf, fileB64, fileMime, fileName } */
+      var downloadFn;
+      if (opts.isPdf) {
+        downloadFn = 'function doDownload(){window.print();}';
+      } else {
+        downloadFn = [
+          'var _b=' + JSON.stringify(opts.fileB64 || '') + ';',
+          'var _m=' + JSON.stringify(opts.fileMime || 'text/plain') + ';',
+          'var _n=' + JSON.stringify(opts.fileName || 'document') + ';',
+          'function doDownload(){',
+          '  var a=document.createElement("a");',
+          '  a.href="data:"+_m+";base64,"+_b;',
+          '  a.download=_n;',
+          '  document.body.appendChild(a);',
+          '  a.click();',
+          '  setTimeout(function(){a.remove();},600);',
+          '}'
+        ].join('');
+      }
+      var scriptBlock = [
+        downloadFn,
+        'function doYes(){',
+        '  document.getElementById("dl-overlay").style.display="none";',
+        '  doDownload();',
+        '}',
+        'function doNo(){',
+        '  try{ window.close(); }catch(e){}',
+        '  setTimeout(function(){',
+        '    document.getElementById("dl-overlay").style.display="none";',
+        '  }, 200);',
+        '}',
+        'window.addEventListener("load",function(){',
+        '  document.getElementById("dl-overlay").style.display="flex";',
+        '});'
+      ].join('');
+      return [
+        '<!DOCTYPE html><html><head>',
+        '<meta charset="UTF-8">',
+        '<meta name="viewport" content="width=device-width,initial-scale=1">',
+        '<title>' + escHtml(title) + '</title>',
+        '<style>',
+        '*{box-sizing:border-box;}',
+        'body{margin:0;background:#f1f5f9;font-family:Georgia,serif;}',
+        /* document content */
+        '.doc-wrap{max-width:840px;margin:24px auto 40px;background:#fff;',
+        '  padding:32px 24px;border-radius:12px;',
+        '  box-shadow:0 1px 6px rgba(0,0,0,.08);}',
+        docCss,
+        /* modal overlay */
+        '#dl-overlay{display:none;position:fixed;inset:0;z-index:99999;',
+        '  background:rgba(15,23,42,.55);',
+        '  align-items:center;justify-content:center;padding:20px;}',
+        '.dl-card{background:#fff;border-radius:20px;padding:28px 24px;',
+        '  max-width:340px;width:100%;text-align:center;',
+        '  box-shadow:0 12px 40px rgba(0,0,0,.25);}',
+        '.dl-icon{font-size:40px;margin-bottom:10px;}',
+        '.dl-title{margin:0 0 4px;font-size:19px;font-weight:700;color:#1e293b;}',
+        '.dl-fname{margin:0 0 6px;font-size:13px;color:#6366f1;font-weight:600;',
+        '  word-break:break-all;}',
+        '.dl-hint{margin:0 0 22px;font-size:13px;color:#94a3b8;}',
+        '.dl-yes{width:100%;background:#4f46e5;color:#fff;border:none;',
+        '  border-radius:14px;padding:16px;font-size:16px;font-weight:700;',
+        '  cursor:pointer;margin-bottom:10px;letter-spacing:.3px;}',
+        '.dl-yes:active{background:#4338ca;}',
+        '.dl-no{width:100%;background:#f1f5f9;color:#64748b;border:none;',
+        '  border-radius:14px;padding:13px;font-size:14px;cursor:pointer;}',
+        '.dl-no:active{background:#e2e8f0;}',
+        '@media print{',
+        '  #dl-overlay{display:none!important;}',
+        '  body{background:#fff;}',
+        '  .doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}',
+        '}',
+        '</style>',
+        '</head><body>',
+        /* popup */
+        '<div id="dl-overlay">',
+        '  <div class="dl-card">',
+        '    <div class="dl-icon">' + (opts.isPdf ? '🖨️' : '📥') + '</div>',
+        '    <p class="dl-title">Continue to download?</p>',
+        '    <p class="dl-fname">' + escHtml(opts.fileName || (title + (opts.isPdf ? '.pdf' : ''))) + '</p>',
+        '    <p class="dl-hint">' + escHtml(opts.subtitle) + '</p>',
+        '    <button class="dl-yes" onclick="doYes()">✅ Yes, Download</button>',
+        '    <button class="dl-no" onclick="doNo()">✕ No, Go Back</button>',
+        '  </div>',
+        '</div>',
+        /* document preview */
+        '<div class="doc-wrap">',
+        allPages,
+        '</div>',
+        '<script>' + scriptBlock + '<\/script>',
+        '</body></html>'
+      ].join('\n');
+    }
+
+    /* ── Open page: Capacitor Browser on native, window.open on web ── */
+    function openPage(pageHtml) {
+      if (isNative) {
+        /* Chrome on Android blocks data: URL navigation (since Chrome 65).
+           Instead, encode the document as a #printjob= hash on the real hosted
+           page — the hash never leaves the browser, so it is safe for content.
+           The web page detects the hash, loads the document, and auto-triggers
+           print/download without requiring the user to log in again. */
+        try {
+          var jobData = {
+            pages:    wpPages.slice(),
+            fmt:      fmt,
+            title:    title,
+            settings: {
+              bfont:  getV('wp-bfont',  'Georgia, serif'),
+              body:   getV('wp-body',   12),
+              margin: getV('wp-margin', 20),
+              lh:     getV('wp-lh',     '1.6'),
+              h1:     getV('wp-h1',     24),
+              h2:     getV('wp-h2',     18),
+              h3:     getV('wp-h3',     14)
+            }
+          };
+          var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(jobData))));
+          var webUrl  = 'https://darapet.github.io/smartquiz-system/text-to-docs.html#printjob=' + encoded;
+          var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+          if (Browser && Browser.open) {
+            Browser.open({ url: webUrl });
+            wpSetStatus('📄 Opening in browser — tap the button to ' + (fmt === 'pdf' ? 'print / save as PDF' : 'download'));
+            return;
+          }
+        } catch(e) {}
+        /* Plugin unavailable — share the page HTML as a file */
+        try {
+          var f = new File([pageHtml], fname + '.html', { type: 'text/html' });
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+            navigator.share({ files: [f] }); return;
+          }
+        } catch(e2) {}
+      }
+      /* Web / fallback: window.open */
+      var win = window.open('', '_blank', 'width=900,height=700');
+      if (win) {
+        win.document.write(pageHtml);
+        win.document.close();
+        win.focus();
+        if (fmt === 'pdf') { setTimeout(function() { win.print(); }, 600); }
+      } else {
+        alert('Pop-up blocked. Please allow pop-ups and try again.');
+      }
+    }
+
+    /* ── Format-specific handling ── */
+    if (fmt === 'pdf') {
+      openPage(buildPage({
+        subtitle: 'Tap to open the print dialog — choose "Save as PDF"',
+        btnLabel: '🖨️ Print / Save as PDF',
+        isPdf: true
+      }));
+
+    } else {
+      /* Text-based formats — convert synchronously */
+      var textContent, fileMime, fileExt;
+      if (fmt === 'html') {
+        textContent = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) +
+          '</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a;}</style></head><body>' + content + '</body></html>';
+        fileMime = 'text/html'; fileExt = 'html';
+      } else if (fmt === 'txt')   { textContent = stripHtml(content);          fileMime = 'text/plain';        fileExt = 'txt'; }
+      else if (fmt === 'md')      { textContent = htmlToMarkdown(content);      fileMime = 'text/markdown';     fileExt = 'md'; }
+      else if (fmt === 'rtf')     { textContent = htmlToRTF(content, title);    fileMime = 'application/rtf';  fileExt = 'rtf'; }
+      else if (fmt === 'latex')   { textContent = htmlToLaTeX(content, title);  fileMime = 'text/plain';        fileExt = 'tex'; }
+      else if (fmt === 'json')    { textContent = htmlToJSON(content, title);   fileMime = 'application/json'; fileExt = 'json'; }
+      else if (fmt === 'csv')     { textContent = htmlToCSV(content);           fileMime = 'text/csv';          fileExt = 'csv'; }
+      else                        { textContent = stripHtml(content);           fileMime = 'text/plain';        fileExt = 'txt'; }
+
+      /* On desktop web browsers, skip the page — blob download works fine */
+      if (!isNative) {
+        _wpBlobDownload(textContent, fname + '.' + fileExt, fileMime);
+        wpSetStatus('Downloaded as ' + fileExt.toUpperCase() + ' ✅');
+        return;
+      }
+
+      var fileB64 = btoa(unescape(encodeURIComponent(textContent)));
+      openPage(buildPage({
+        subtitle: 'Tap to download as ' + fileExt.toUpperCase(),
+        btnLabel: '📥 Download ' + fileExt.toUpperCase(),
+        isPdf: false,
+        fileB64: fileB64,
+        fileMime: fileMime,
+        fileName: fname + '.' + fileExt
+      }));
+    }
   };
 
   /* ── New document ───────────────────────────────────────────── */
@@ -1687,7 +2517,6 @@
     var fname   = wpSafeName(title);
 
     if (format === 'pdf') { wpDownloadPDF(content, title); return; }
-    if (format === 'docx') { wpDownloadDOCX(content, title); return; }
     if (format === 'html') {
       var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a;}h1{font-size:24pt;}h2{font-size:18pt;}h3{font-size:14pt;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;}</style></head><body>' + content + '</body></html>';
       wpSaveText(fullHtml, fname + '.html', 'text/html');
@@ -1709,11 +2538,18 @@
 
   function wpDownloadPDF(content, title) {
     if (typeof jspdf === 'undefined' && typeof window.jspdf === 'undefined') {
-      // Fallback: print-based PDF
-      var printWin = window.open('', '_blank');
-      printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;margin:20mm;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:5px 8px;}@media print{body{margin:0;}}</style></head><body>' + content + '</body></html>');
-      printWin.document.close();
-      setTimeout(function(){ printWin.print(); printWin.close(); }, 500);
+      // Fallback: iframe-based print (window.open shows about:blank in Capacitor WebView)
+      var printHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;margin:20mm;line-height:1.6;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #ccc;padding:5px 8px;}@media print{body{margin:0;}}</style></head><body>' + content + '</body></html>';
+      var old2 = document.getElementById('wp-print-iframe2');
+      if (old2) old2.remove();
+      var pf2 = document.createElement('iframe');
+      pf2.id = 'wp-print-iframe2';
+      pf2.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:210mm;height:297mm;border:none;visibility:hidden;';
+      document.body.appendChild(pf2);
+      pf2.contentDocument.open();
+      pf2.contentDocument.write(printHtml);
+      pf2.contentDocument.close();
+      setTimeout(function(){ pf2.contentWindow.focus(); pf2.contentWindow.print(); setTimeout(function(){ pf2.remove(); }, 3000); }, 500);
       return;
     }
     // Try jsPDF with html2canvas
@@ -1741,215 +2577,117 @@
     });
   }
 
-  function wpDownloadDOCX(content, title) {
-    if (typeof docx === 'undefined') { wpSaveText(stripHtml(content), wpSafeName(title) + '.txt', 'text/plain'); wpSetStatus('DOCX library not loaded — saved as TXT'); return; }
-    wpSetStatus('Generating DOCX…');
+  function wpOpenInChrome(dataUri, filename) {
+    var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+    if (Browser && Browser.open) {
+      Browser.open({ url: dataUri, presentationStyle: 'fullscreen' });
+      var toast = document.createElement('div');
+      toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:11px 20px;border-radius:22px;font-size:13px;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.35);max-width:290px;text-align:center;line-height:1.4;';
+      toast.innerHTML = '📥 Chrome opened!<br><span style="font-size:11px;opacity:.8;">Tap <b>⋮ → Download</b> or <b>Share → Save to Files</b></span>';
+      document.body.appendChild(toast);
+      setTimeout(function(){ toast.remove(); }, 5000);
+      wpSetStatus('📥 Opened in Chrome — tap ⋮ → Download');
+      return true;
+    }
+    return false;
+  }
+
+  /* ── Blob download helpers (text content and binary blob) ── */
+  function _wpBlobDownload(content, filename, mimeType) {
+    /* Standard anchor-click blob download — works in web browsers.
+       NOTE: on Android Capacitor WebView the download attribute is silently
+       ignored — callers should prefer wpSaveText() which has proper fallbacks. */
     try {
-      var parser = new DOMParser();
-      var doc2   = parser.parseFromString(content, 'text/html');
-      var children = [];
-      doc2.body.childNodes.forEach(function(node) {
-        if (node.nodeType !== 1) return;
-        var tag = node.tagName.toUpperCase();
-        var txt = node.textContent.trim();
-        if (!txt && tag !== 'TABLE' && tag !== 'HR') return;
-        var headingMap = { H1: 'Heading1', H2: 'Heading2', H3: 'Heading3', H4: 'Heading4' };
-        if (headingMap[tag]) {
-          children.push(new docx.Paragraph({ text: txt, heading: docx.HeadingLevel[headingMap[tag].toUpperCase()] }));
-        } else if (tag === 'P') {
-          var runs = parseInline(node);
-          children.push(new docx.Paragraph({ children: runs }));
-        } else if (tag === 'BLOCKQUOTE') {
-          children.push(new docx.Paragraph({ text: txt, style: 'IntenseQuote' }));
-        } else if (tag === 'UL' || tag === 'OL') {
-          node.querySelectorAll('li').forEach(function(li, li_i) {
-            children.push(new docx.Paragraph({
-              text: li.textContent.trim(),
-              bullet: tag === 'UL' ? { level: 0 } : undefined,
-              numbering: tag === 'OL' ? { reference: 'default-numbering', level: 0 } : undefined
-            }));
-          });
-        } else if (tag === 'HR') {
-          children.push(new docx.Paragraph({ text: '', border: { bottom: { color: 'CCCCCC', size: 6, space: 1, style: docx.BorderStyle.SINGLE } } }));
-        } else if (tag === 'TABLE') {
-          var tableRows = [];
-          node.querySelectorAll('tr').forEach(function(tr) {
-            var tCells = [];
-            tr.querySelectorAll('td,th').forEach(function(tc) {
-              tCells.push(new docx.TableCell({ children: [new docx.Paragraph({ text: tc.textContent.trim() })], shading: tc.tagName === 'TH' ? { fill: 'F1F5F9' } : undefined }));
-            });
-            if (tCells.length) tableRows.push(new docx.TableRow({ children: tCells }));
-          });
-          if (tableRows.length) children.push(new docx.Table({ rows: tableRows, width: { size: 100, type: docx.WidthType.PERCENTAGE } }));
-        }
-      });
+      var b = new Blob([content], { type: mimeType });
+      var u = URL.createObjectURL(b);
+      var a = document.createElement('a');
+      a.href = u; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(u); }, 1000);
+    } catch(err) { /* silent */ }
+  }
+  function _wpBlobDownload2(blob, filename) {
+    try {
+      var u = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = u; a.download = filename;
+      document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(u); }, 1000);
+    } catch(err) { /* silent */ }
+  }
 
-      function parseInline(el) {
-        var runs = [];
-        el.childNodes.forEach(function(n) {
-          if (n.nodeType === 3) { if(n.textContent) runs.push(new docx.TextRun({ text: n.textContent })); return; }
-          var t = (n.tagName || '').toUpperCase();
-          var txt2 = n.textContent;
-          runs.push(new docx.TextRun({ text: txt2, bold: t==='STRONG'||t==='B', italics: t==='EM'||t==='I', underline: t==='U' ? {} : undefined }));
-        });
-        return runs.length ? runs : [new docx.TextRun({ text: el.textContent })];
+  /* ── Open file content as a base64 data URI in the Capacitor Browser (Chrome).
+     Chrome renders data URIs and lets the user tap ⋮ → Download or Share → Save.
+     Falls back gracefully when the Browser plugin isn't available. ── */
+  function _wpDataUriOpen(text, filename, mimeType) {
+    try {
+      /* base64-encode the content */
+      var b64 = btoa(unescape(encodeURIComponent(text)));
+      var dataUri = 'data:' + mimeType + ';base64,' + b64;
+      var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+      if (Browser && Browser.open) {
+        Browser.open({ url: dataUri });
+        _wpShowToast('📥 File opened in browser — tap ⋮ → Download to save');
+        wpSetStatus('📥 File opened — tap ⋮ → Download');
+        return true;
       }
-
-      var docFile = new docx.Document({ title: title, creator: 'XZily AI Word Processor', sections: [{ properties: {}, children: children }] });
-      docx.Packer.toBlob(docFile).then(function(blob) {
-        var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = wpSafeName(title) + '.docx'; a.click();
-        wpSetStatus('DOCX downloaded ✅');
-      });
-    } catch(e) {
-      console.error('DOCX error:', e);
-      wpSaveText(stripHtml(content), wpSafeName(title) + '.txt', 'text/plain');
-      wpSetStatus('DOCX failed — saved as TXT');
-    }
+    } catch(e) {}
+    return false;
   }
 
-  function htmlToMarkdown(html) {
-    var doc2 = new DOMParser().parseFromString(html, 'text/html');
-    var md = '';
-    function convertNode(node) {
-      if (node.nodeType === 3) return node.textContent;
-      var tag = (node.tagName || '').toUpperCase();
-      var inner = Array.from(node.childNodes).map(convertNode).join('');
-      var txt = node.textContent.trim();
-      if (tag === 'H1') return '\n# ' + txt + '\n\n';
-      if (tag === 'H2') return '\n## ' + txt + '\n\n';
-      if (tag === 'H3') return '\n### ' + txt + '\n\n';
-      if (tag === 'H4') return '\n#### ' + txt + '\n\n';
-      if (tag === 'P')  return inner + '\n\n';
-      if (tag === 'STRONG'||tag==='B') return '**' + inner + '**';
-      if (tag === 'EM'||tag==='I')     return '*' + inner + '*';
-      if (tag === 'U')  return '__' + inner + '__';
-      if (tag === 'S')  return '~~' + inner + '~~';
-      if (tag === 'CODE') return '`' + inner + '`';
-      if (tag === 'PRE')  return '\n```\n' + txt + '\n```\n\n';
-      if (tag === 'BLOCKQUOTE') return '\n> ' + txt.replace(/\n/g,'\n> ') + '\n\n';
-      if (tag === 'HR') return '\n---\n\n';
-      if (tag === 'A')  return '[' + inner + '](' + (node.href || '') + ')';
-      if (tag === 'LI') return '- ' + inner + '\n';
-      if (tag === 'UL'||tag==='OL') return inner + '\n';
-      if (tag === 'IMG') return '![' + (node.alt||'image') + '](' + (node.src||'') + ')';
-      if (tag === 'TABLE') {
-        var rows = Array.from(node.querySelectorAll('tr'));
-        if (!rows.length) return '';
-        var lines = rows.map(function(r, ri) {
-          var cols = Array.from(r.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim().replace(/\|/g,'\\|'); });
-          var line = '| ' + cols.join(' | ') + ' |';
-          if (ri === 0) line += '\n|' + cols.map(function(){ return ' --- |'; }).join('');
-          return line;
-        });
-        return '\n' + lines.join('\n') + '\n\n';
-      }
-      return inner;
-    }
-    Array.from(doc2.body.childNodes).forEach(function(n){ md += convertNode(n); });
-    return md.trim();
+  /* ── Show a non-blocking toast message ── */
+  function _wpShowToast(msg) {
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);' +
+      'background:#1e293b;color:#fff;padding:12px 20px;border-radius:22px;' +
+      'font-size:13px;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.35);' +
+      'max-width:300px;text-align:center;line-height:1.5;pointer-events:none;';
+    t.innerHTML = msg;
+    document.body.appendChild(t);
+    setTimeout(function(){ if(t.parentNode) t.remove(); }, 5000);
   }
 
-  function htmlToRTF(html, title) {
-    var txt = stripHtml(html);
-    var rtf = '{\\rtf1\\ansi\\deff0{\\fonttbl{\\f0 Times New Roman;}{\\f1 Arial;}{\\f2 Courier New;}}\n';
-    rtf += '{\\colortbl ;\\red0\\green0\\blue0;\\red79\\green70\\blue229;}\n';
-    rtf += '\\pard\\f0\\fs24\\b ' + rtfEscape(title) + '\\b0\\par\\par\n';
-    var lines = txt.split('\n');
-    lines.forEach(function(line) {
-      var l = line.trim();
-      if (!l) { rtf += '\\par\n'; return; }
-      rtf += '\\pard\\f0\\fs22 ' + rtfEscape(l) + '\\par\n';
-    });
-    rtf += '}';
-    return rtf;
-  }
-  function rtfEscape(s) {
-    return (s||'').replace(/\\/g,'\\\\').replace(/\{/g,'\\{').replace(/\}/g,'\\}').replace(/[^\x00-\x7F]/g, function(c){ return '\\u'+c.charCodeAt(0)+'?'; });
-  }
-
-  function htmlToLaTeX(html, title) {
-    function ltxEsc(s) { return (s||'').replace(/\\/g,'\\textbackslash{}').replace(/[&%$#_{}~^]/g, function(c){ return '\\'+c; }); }
-    var doc2 = new DOMParser().parseFromString(html, 'text/html');
-    var body = '';
-    function node2ltx(node) {
-      if (node.nodeType === 3) return ltxEsc(node.textContent);
-      var tag = (node.tagName||'').toUpperCase();
-      var inner = Array.from(node.childNodes).map(node2ltx).join('');
-      var txt = ltxEsc(node.textContent.trim());
-      if (tag==='H1') return '\n\\section{' + txt + '}\n';
-      if (tag==='H2') return '\n\\subsection{' + txt + '}\n';
-      if (tag==='H3') return '\n\\subsubsection{' + txt + '}\n';
-      if (tag==='P')  return inner + '\n\n';
-      if (tag==='STRONG'||tag==='B') return '\\textbf{'+inner+'}';
-      if (tag==='EM'||tag==='I')     return '\\textit{'+inner+'}';
-      if (tag==='U')  return '\\underline{'+inner+'}';
-      if (tag==='BLOCKQUOTE') return '\\begin{quote}\n'+txt+'\n\\end{quote}\n';
-      if (tag==='HR') return '\n\\noindent\\rule{\\linewidth}{0.4pt}\n\n';
-      if (tag==='UL') return '\\begin{itemize}\n'+inner+'\\end{itemize}\n';
-      if (tag==='OL') return '\\begin{enumerate}\n'+inner+'\\end{enumerate}\n';
-      if (tag==='LI') return '  \\item '+inner+'\n';
-      if (tag==='TABLE') {
-        var rows = Array.from(node.querySelectorAll('tr'));
-        if (!rows.length) return '';
-        var cols = (rows[0].querySelectorAll('td,th').length) || 1;
-        var colSpec = Array(cols).fill('l').join(' | ');
-        var ltxRows = rows.map(function(r){ return Array.from(r.querySelectorAll('td,th')).map(function(c){ return ltxEsc(c.textContent.trim()); }).join(' & ') + ' \\\\'; }).join('\n\\hline\n');
-        return '\n\\begin{tabular}{|' + colSpec + '|}\n\\hline\n' + ltxRows + '\n\\hline\n\\end{tabular}\n\n';
-      }
-      return inner;
-    }
-    Array.from(doc2.body.childNodes).forEach(function(n){ body += node2ltx(n); });
-    var mg = getV('wp-margin', 20);
-    return '\\documentclass[12pt]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage{microtype}\n\\usepackage{ulem}\n\\usepackage{geometry}\n\\geometry{margin=' + mg + 'mm}\n\\setlength{\\parskip}{0.6em}\n\\setlength{\\parindent}{0em}\n\\title{' + ltxEsc(title) + '}\n\\date{\\today}\n\\begin{document}\n\\maketitle\n' + body + '\n\\end{document}';
-  }
-
-  function htmlToJSON(html, title) {
-    var doc2 = new DOMParser().parseFromString(html, 'text/html');
-    var blocks = [];
-    var wordCount = stripHtml(html).trim().split(/\s+/).filter(Boolean).length;
-    Array.from(doc2.body.children).forEach(function(el) {
-      var tag = el.tagName.toUpperCase();
-      var txt = el.textContent.trim();
-      if (!txt) return;
-      var typeMap = { H1:'heading1',H2:'heading2',H3:'heading3',H4:'heading4',P:'paragraph',BLOCKQUOTE:'quote',UL:'unordered_list',OL:'ordered_list',TABLE:'table',HR:'divider' };
-      if (tag === 'UL' || tag === 'OL') {
-        var items = Array.from(el.querySelectorAll('li')).map(function(li){ return li.textContent.trim(); });
-        blocks.push({ type: typeMap[tag] || 'list', items: items });
-      } else if (tag === 'TABLE') {
-        var trows = Array.from(el.querySelectorAll('tr')).map(function(tr){ return Array.from(tr.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim(); }); });
-        blocks.push({ type: 'table', rows: trows });
-      } else {
-        blocks.push({ type: typeMap[tag] || 'paragraph', content: txt, html: el.innerHTML });
-      }
-    });
-    return JSON.stringify({ title: title, createdAt: new Date().toISOString(), wordCount: wordCount, version: '3.0', blocks: blocks, rawHtml: html }, null, 2);
-  }
-
-  function htmlToCSV(html) {
-    var doc2 = new DOMParser().parseFromString(html, 'text/html');
-    var rows = [['type','content','level']];
-    var lvlMap = { H1:'1',H2:'2',H3:'3',H4:'4' };
-    Array.from(doc2.body.children).forEach(function(el) {
-      var tag = el.tagName.toUpperCase();
-      if (tag === 'TABLE') {
-        el.querySelectorAll('tr').forEach(function(tr){ rows.push(['table_row', Array.from(tr.querySelectorAll('td,th')).map(function(c){ return c.textContent.trim(); }).join(' | '), '']); });
-      } else if (tag === 'UL' || tag === 'OL') {
-        el.querySelectorAll('li').forEach(function(li){ rows.push(['list_item', li.textContent.trim(), '']); });
-      } else {
-        var txt = el.textContent.trim(); if (!txt) return;
-        var typeMap = { H1:'heading',H2:'heading',H3:'heading',H4:'heading',P:'paragraph',BLOCKQUOTE:'quote',HR:'divider' };
-        rows.push([typeMap[tag]||'paragraph', txt, lvlMap[tag]||'']);
-      }
-    });
-    return rows.map(function(r){ return r.map(function(c){ return '"'+(c||'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
-  }
-
+  /* ── Main save/download entry point for all text-based formats ──────────────
+     Priority order on native Capacitor:
+       1. navigator.share with File  →  native share sheet (Save to Files, Drive…)
+       2. Capacitor Browser data URI →  opens Chrome where user taps ⋮ → Download
+       3. Blob anchor click          →  web-browser fallback
+     ─────────────────────────────────────────────────────────────────────────── */
   function wpSaveText(text, filename, mimeType) {
-    var blob = new Blob([text], { type: mimeType });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = filename; a.click();
-    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    var isNative = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+
+    if (isNative) {
+      /* ── 1. Try native Web Share with File (Android 10+ / WebView 80+) ── */
+      if (navigator.share && navigator.canShare) {
+        try {
+          var shareFile = new File([text], filename, { type: mimeType });
+          if (navigator.canShare({ files: [shareFile] })) {
+            navigator.share({ files: [shareFile], title: filename })
+              .then(function() { wpSetStatus('✅ File saved / shared'); })
+              .catch(function(err) {
+                if (err && err.name !== 'AbortError') {
+                  /* Share dialog failed (not user cancel) — try data URI approach */
+                  if (!_wpDataUriOpen(text, filename, mimeType)) {
+                    _wpBlobDownload(text, filename, mimeType);
+                  }
+                }
+                /* If AbortError → user dismissed share sheet, nothing to do */
+              });
+            return;
+          }
+        } catch(ignore) {}
+      }
+
+      /* ── 2. Capacitor Browser plugin — open as base64 data URI in Chrome ── */
+      if (_wpDataUriOpen(text, filename, mimeType)) return;
+
+      /* ── 3. Last resort: blob anchor download ── */
+      _wpBlobDownload(text, filename, mimeType);
+      return;
+    }
+
+    /* Web browser (not Capacitor): standard blob download */
+    _wpBlobDownload(text, filename, mimeType);
   }
 
   /* ── Helpers ────────────────────────────────────────────────── */
@@ -1981,13 +2719,18 @@
   function sanitizeHTML(raw) {
     if (!raw) return '';
     var html = raw;
-    var fence = html.match(/```html?\n?([\s\S]*?)```/i); if (fence) html = fence[1];
+    /* Strip code fences: ```html ... ``` or ``` ... ``` */
+    html = html.replace(/```html?\n?([\s\S]*?)```/gi, '$1')
+               .replace(/```([\s\S]*?)```/gi, '$1');
+    /* Remove boilerplate wrapper tags and dangerous tags */
     html = html.replace(/<!(DOCTYPE|doctype)[^>]*>/g,'')
-               .replace(/<\/?(html|head|body|script|style|meta|link)[^>]*>/gi,'')
+               .replace(/<\/?(html|head|body|meta|link)[^>]*>/gi,'')
                .replace(/<style[\s\S]*?<\/style>/gi,'')
-               .replace(/<script[\s\S]*?<\/script>/gi,'');
+               .replace(/<script[\s\S]*?<\/script>/gi,'')
+               .replace(/<\/?(div|span|section|article|aside|nav|header|footer|main)[^>]*>/gi,'');
     html = html.trim();
-    if (html && !/<(h[1-6]|p|ul|ol|li|strong|em|blockquote|table)\b/.test(html)) {
+    /* If response has no block-level HTML tags, treat it as markdown/plain text */
+    if (html && !/<(h[1-6]|p|ul|ol|li|blockquote|table)\b/i.test(html)) {
       html = html
         .replace(/^#{4}\s+(.+)$/gm,'<h4>$1</h4>')
         .replace(/^#{3}\s+(.+)$/gm,'<h3>$1</h3>')
@@ -1995,10 +2738,14 @@
         .replace(/^#\s+(.+)$/gm,'<h1>$1</h1>')
         .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
         .replace(/\*(.+?)\*/g,'<em>$1</em>')
-        .replace(/^[\*\-]\s+(.+)$/gm,'<li>$1</li>')
-        .replace(/(<li>[\s\S]*?<\/li>\n?)+/g, function(m){ return '<ul>'+m+'</ul>'; })
-        .replace(/^(?!<[hulob]|$)(.+)$/gm,'<p>$1</p>');
+        .replace(/^[\*\-•]\s+(.+)$/gm,'<li>$1</li>')
+        .replace(/(<li>[\s\S]*?<\/li>\n?)+/g,function(m){ return '<ul>'+m+'</ul>'; })
+        .replace(/^(?!<[hupob]|$)(.+)$/gm,'<p>$1</p>');
     }
+    /* Wrap any bare text nodes (lines not inside a tag) in <p> */
+    html = html.replace(/^(?![\s]*<)(.*\S.*)$/gm, '<p>$1</p>');
+    /* Remove empty paragraphs */
+    html = html.replace(/<p>\s*(<br\s*\/?>)?\s*<\/p>/gi,'');
     return html.trim();
   }
 
