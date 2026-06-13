@@ -370,6 +370,15 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 try { localStorage.setItem(IDX, '0'); } catch(e) {}
             },
             keyCount: function() { return slots.length; },
+            getKey: function() {
+                if (!slots.length) return null;
+                var start = _idx();
+                for (var i = 0; i < slots.length; i++) {
+                    var k = slots[(start + i) % slots.length];
+                    if (!_isRL(k)) return k;
+                }
+                return slots[start % slots.length]; /* all rate-limited — return current anyway */
+            },
             fetch: async function(bodyObj) {
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
                 if (slots.length) {
@@ -408,6 +417,17 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
     window.getFeatureGroqKeyCount = function(id) {
         return _pools[id] ? _pools[id].keyCount() : 0;
+    };
+    /* Returns first available key from a feature pool, falling back to
+       the main Groq pool — used for endpoints that need a raw key
+       (e.g. Whisper audio/transcriptions). Never returns a hardcoded key. */
+    window.getFeatureGroqKey = function(id) {
+        if (_pools[id]) {
+            var k = _pools[id].getKey();
+            if (k) return k;
+        }
+        /* Fall back to main admin pool */
+        return (typeof window.getGroqKey === 'function' ? window.getGroqKey() : null) || null;
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
