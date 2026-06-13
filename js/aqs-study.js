@@ -827,12 +827,12 @@ async function aiChatVision(messages, temp) {
 
 /* checkAI — silently check AI readiness; badge is hidden from users */
 function checkAI() {
-    var studyhubCount = typeof window.getFeatureGroqKeyCount === 'function' ? window.getFeatureGroqKeyCount('studyhub') : 0;
-    var groqCount     = typeof window._aqsGroqKeyCount    === 'function' ? window._aqsGroqKeyCount()    : 0;
-    var mistralCount  = typeof window._aqsMistralKeyCount === 'function' ? window._aqsMistralKeyCount() : 0;
-    S.aiReady = studyhubCount > 0 || groqCount > 0 || mistralCount > 0;
+    var mistralCount = typeof window._aqsMistralKeyCount === 'function' ? window._aqsMistralKeyCount() : 0;
+    var hasKey = mistralCount > 0 ||
+        (Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) && window._AQS_MISTRAL_MASTER_KEYS.length > 0);
+    S.aiReady = hasKey;
     /* Silently retry until key loads — badge UI is hidden from students */
-    if (!S.aiReady) setTimeout(checkAI, 3000);
+    if (!hasKey) setTimeout(checkAI, 3000);
 }
 
 /* ── EVENTS ─────────────────────────────────────────────────── */
@@ -2149,7 +2149,7 @@ function summonMicTranscribe() {
     /* Derive file extension */
     var ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
 
-    var key = (typeof window.getFeatureGroqKey === 'function') ? window.getFeatureGroqKey('studyhub') : null;
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
     if (!key) {
         summonSetTranscript('❌ No API key found. Type your question instead.');
         summonSetState('listening');
@@ -2645,7 +2645,7 @@ function stdVoiceMicTranscribe() {
     _VP_MIC.chunks = [];
     var ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
 
-    var key = (typeof window.getFeatureGroqKey === 'function') ? window.getFeatureGroqKey('studyhub') : null;
+    var key = (typeof window.getGroqKey === 'function') ? window.getGroqKey() : null;
     if (!key) {
         stdVoiceAddMsg('ai', 'No API key available. Type your question instead.');
         return;
