@@ -573,7 +573,7 @@ window.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
-function btn(id){ return document.getElementById(id); }
+function btn(id){ var el=document.getElementById(id); return el||{addEventListener:function(){},disabled:false,textContent:''}; }
 
 btn('aqs-save-ai-btn').addEventListener('click', function(){
     var keys = [];
