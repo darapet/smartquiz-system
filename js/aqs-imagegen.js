@@ -318,11 +318,11 @@
       ═══════════════════════════════════════════════════════════════ */
       async function callAI(messages) {
           /* 1. Try Groq first — fastest, highest quality */
-          if (typeof window.groqFetch === 'function') {
+          if (typeof window.imagegenGroqFetch === 'function') {
               try {
                   var ctrl = new AbortController();
                   var tid  = setTimeout(function () { ctrl.abort(); }, 15000);
-                  var res  = await window.groqFetch({
+                  var res  = await window.imagegenGroqFetch({
                       model:       'llama-3.1-8b-instant',
                       messages:    messages,
                       max_tokens:  400,
