@@ -202,9 +202,9 @@
     async function translateText(text, targetLocale, targetLang) {
         if (!text || !targetLocale) return text;
         /* Skip if text is already in target language (very rough check: if <10 chars or no groqFetch) */
-        if (typeof window.groqFetch !== 'function') return text;
+        if (typeof window.ttsGroqFetch !== 'function') return text;
         try {
-            var res = await window.groqFetch({
+            var res = await window.ttsGroqFetch({
                 model: 'llama-3.1-8b-instant',
                 messages: [
                     { role: 'system', content: 'You are a professional translator. Translate the given text accurately to the target language. Return ONLY the translated text with no explanation, no quotes, no labels.' },
