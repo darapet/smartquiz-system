@@ -32,10 +32,10 @@
 <!-- HERO -->
 <section class="lib-hero">
   <div class="lib-hero-title">Nigerian Academic Library</div>
-  <div class="lib-hero-sub">Browse study materials by school, course and level — click any book to see the author's profile first</div>
+  <div class="lib-hero-sub">Pick institution type to start — add more filters to narrow down. Search by course code for exact results.</div>
   <div class="lib-search-wrap">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    <input class="lib-search" id="lib-search" type="search" placeholder="Search by title, author or course…">
+    <input class="lib-search" id="lib-search" type="search" placeholder="Search by course code, title, author…">
   </div>
 </section>
 
@@ -52,19 +52,19 @@
   </div>
   <div class="lib-filter-group">
     <label class="lib-filter-label">② School</label>
-    <select class="lib-select" id="f-school" disabled>
+    <select class="lib-select" id="f-school" disabled onchange="doSearch()">
       <option value="">— Select type first —</option>
     </select>
   </div>
   <div class="lib-filter-group">
     <label class="lib-filter-label">③ Course / Department</label>
-    <select class="lib-select" id="f-course" disabled>
+    <select class="lib-select" id="f-course" disabled onchange="doSearch()">
       <option value="">— Select type first —</option>
     </select>
   </div>
   <div class="lib-filter-group">
     <label class="lib-filter-label">④ Level</label>
-    <select class="lib-select" id="f-level" disabled>
+    <select class="lib-select" id="f-level" disabled onchange="doSearch()">
       <option value="">— Select type first —</option>
     </select>
   </div>
@@ -107,7 +107,7 @@
   window.onTypeChange = function(type) {
     ['f-school','f-course','f-level'].forEach(function(id){
       const el = document.getElementById(id);
-      el.innerHTML = '<option value="">— Select type first —</option>';
+      el.innerHTML = type ? '<option value="">— All —</option>' : '<option value="">— Select type first —</option>';
       el.disabled = !type;
     });
     if (type) {
@@ -115,45 +115,53 @@
       window.libPopulateCourses(document.getElementById('f-course'), type);
       window.libPopulateLevels(document.getElementById('f-level'), type);
     }
+    /* Auto-load books for this institution type immediately */
+    doSearch();
   };
 
   /* ── SEARCH ── */
+  var _searchTimer = null;
   window.doSearch = async function() {
-    const type    = document.getElementById('f-type').value;
-    const school  = document.getElementById('f-school').value;
-    const course  = document.getElementById('f-course').value;
-    const level   = document.getElementById('f-level').value;
-    const keyword = document.getElementById('lib-search').value.trim();
-    showSkeleton();
-    const label = [school||type||'All', course, level].filter(Boolean).join(' · ');
-    document.getElementById('grid-title').textContent = label ? 'Results: ' + label : 'All Books';
-    try {
-      const filters = {};
-      if (type)    filters.institutionType = type;
-      if (school)  filters.institution     = school;
-      if (course)  filters.course          = course;
-      if (level)   filters.level           = level;
-      if (keyword) filters.keyword         = keyword;
-      const books = await window.libSearchBooks(filters);
-      _allBooks = books;
-      await renderGrid(books);
-    } catch(e) {
-      document.getElementById('lib-grid').innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-title">Search failed</div><div class="lib-empty-sub">${e.message}</div></div>`;
-    }
+    clearTimeout(_searchTimer);
+    _searchTimer = setTimeout(async function(){
+      const type    = document.getElementById('f-type').value;
+      const school  = document.getElementById('f-school').value;
+      const course  = document.getElementById('f-course').value;
+      const level   = document.getElementById('f-level').value;
+      const keyword = document.getElementById('lib-search').value.trim();
+      showSkeleton();
+      /* Build a readable label for the results header */
+      const parts = [];
+      if (school) parts.push(school);
+      else if (type) parts.push(type.replace(/_/g,' '));
+      if (course) parts.push(course);
+      if (level)  parts.push(level);
+      if (keyword) parts.push('"'+keyword+'"');
+      document.getElementById('grid-title').textContent = parts.length ? 'Results: '+parts.join(' · ') : 'All Recent Books';
+      try {
+        const filters = {};
+        if (type)    filters.institutionType = type;
+        if (school)  filters.institution     = school;
+        if (course)  filters.course          = course;
+        if (level)   filters.level           = level;
+        if (keyword) filters.keyword         = keyword;
+        const books = await window.libSearchBooks(filters);
+        _allBooks = books;
+        await renderGrid(books);
+      } catch(e) {
+        document.getElementById('lib-grid').innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">⚠️</div><div class="lib-empty-title">Search failed</div><div class="lib-empty-sub">${e.message}</div></div>`;
+      }
+    }, 120);
   };
 
-  /* Live search filter */
-  document.getElementById('lib-search').addEventListener('input', async function(){
-    const kw = this.value.toLowerCase();
-    if (!kw) { await renderGrid(_allBooks); return; }
-    await renderGrid(_allBooks.filter(function(b){
-      return (b.title||'').toLowerCase().includes(kw)
-          ||(b.course||b.subject||'').toLowerCase().includes(kw)
-          ||(b.courseCode||'').toLowerCase().includes(kw)
-          ||(b.institution||'').toLowerCase().includes(kw)
-          ||(b.author||'').toLowerCase().includes(kw)
-          ||(b.uploaderName||'').toLowerCase().includes(kw);
-    }));
+  /* Live text-search — re-runs full DB query so course-code filter hits the DB */
+  var _liveTimer = null;
+  document.getElementById('lib-search').addEventListener('input', function(){
+    clearTimeout(_liveTimer);
+    _liveTimer = setTimeout(function(){ doSearch(); }, 350);
+  });
+  document.getElementById('lib-search').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') { clearTimeout(_liveTimer); doSearch(); }
   });
 
   function showSkeleton() {
