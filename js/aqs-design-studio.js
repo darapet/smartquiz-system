@@ -212,11 +212,11 @@
        AI TEXT — Groq primary, Pollinations text fallback
     ══════════════════════════════════════════════════════════════ */
     async function callAI(messages) {
-        if (typeof window.designstudioGroqFetch === 'function') {
+        if (typeof window.groqFetch === 'function') {
             try {
                 var ctrl = new AbortController();
                 var tid  = setTimeout(function () { ctrl.abort(); }, 15000);
-                var res  = await window.designstudioGroqFetch({
+                var res  = await window.groqFetch({
                     model: 'llama-3.1-8b-instant',
                     messages: messages,
                     max_tokens: 400,
