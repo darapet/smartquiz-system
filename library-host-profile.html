@@ -188,18 +188,10 @@
         document.getElementById('lhp-read-btn').style.display = 'inline-flex';
       }
 
-      /* Counts */
-      const [follCount, stats] = await Promise.all([
-        window.libGetFollowerCount(hostUid),
-        window.libGetMyStats(hostUid)
-      ]);
-      _stats = stats;
-      document.getElementById('lhp-followers-count').textContent = follCount;
-      document.getElementById('lhp-books-count').textContent = stats.books;
-      document.getElementById('lhp-readers-count').textContent = stats.readers;
-      document.getElementById('lhp-likes-count').textContent = stats.likes;
+      /* Load counts in background — don't block profile/books render */
+      loadCounts();
 
-      /* About card */
+      /* About card — shown immediately with placeholder numbers, counts fill in later */
       document.getElementById('lhp-about-card').innerHTML = `
         <div style="display:flex;flex-direction:column;gap:18px;">
           <div>
@@ -220,15 +212,15 @@
           </div>` : ''}
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding-top:4px;border-top:1px solid rgba(255,255,255,.06);">
             <div style="text-align:center;padding:12px 8px;background:rgba(99,102,241,.07);border-radius:10px;border:1px solid rgba(99,102,241,.14);">
-              <div style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${stats.books}</div>
+              <div id="about-books-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
               <div style="font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Books</div>
             </div>
             <div style="text-align:center;padding:12px 8px;background:rgba(99,102,241,.07);border-radius:10px;border:1px solid rgba(99,102,241,.14);">
-              <div style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${stats.readers}</div>
+              <div id="about-readers-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
               <div style="font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Readers</div>
             </div>
             <div style="text-align:center;padding:12px 8px;background:rgba(99,102,241,.07);border-radius:10px;border:1px solid rgba(99,102,241,.14);">
-              <div style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">${stats.likes}</div>
+              <div id="about-likes-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
               <div style="font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Likes</div>
             </div>
           </div>
@@ -313,6 +305,38 @@
     btn.disabled = false;
   };
 
+  /* Load follower count + stats separately so profile renders fast */
+  async function loadCounts() {
+    function withTimeout(promise, ms) {
+      return Promise.race([
+        promise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+      ]);
+    }
+    try {
+      const follCount = await withTimeout(window.libGetFollowerCount(hostUid), 8000);
+      document.getElementById('lhp-followers-count').textContent = follCount;
+    } catch(e) { document.getElementById('lhp-followers-count').textContent = '0'; }
+
+    try {
+      const stats = await withTimeout(window.libGetMyStats(hostUid), 8000);
+      _stats = stats;
+      document.getElementById('lhp-books-count').textContent = stats.books;
+      document.getElementById('lhp-readers-count').textContent = stats.readers;
+      document.getElementById('lhp-likes-count').textContent = stats.likes;
+      const bn = document.getElementById('about-books-num');
+      const rn = document.getElementById('about-readers-num');
+      const ln = document.getElementById('about-likes-num');
+      if (bn) bn.textContent = stats.books;
+      if (rn) rn.textContent = stats.readers;
+      if (ln) ln.textContent = stats.likes;
+    } catch(e) {
+      ['lhp-books-count','lhp-readers-count','lhp-likes-count'].forEach(id => {
+        document.getElementById(id).textContent = '0';
+      });
+    }
+  }
+
   window.switchTab = function(tab, el) {
     document.querySelectorAll('.lhp-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.lhp-tab-body').forEach(t => t.classList.remove('active'));
@@ -321,28 +345,54 @@
     if (tab === 'followers') loadFollowers();
   };
 
+  let _followersLoaded = false;
   async function loadFollowers() {
+    if (_followersLoaded) return;
     const el = document.getElementById('lhp-followers-list');
     el.innerHTML = `<div style="color:#64748b;font-size:.85rem;text-align:center;padding:24px;"><span class="lib-spinner"></span></div>`;
+
+    function withTimeout(promise, ms) {
+      return Promise.race([
+        promise,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Request timed out')), ms))
+      ]);
+    }
+
     try {
-      const uids = await window.libGetFollowers(hostUid);
+      const uids = await withTimeout(window.libGetFollowers(hostUid), 10000);
+      _followersLoaded = true;
       if (!uids.length) {
-        el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">👥</div><div class="lib-empty-title">No followers yet</div><div class="lib-empty-sub">Share your profile to grow your audience</div></div>`;
+        el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">👥</div><div class="lib-empty-title">No followers yet</div><div class="lib-empty-sub">Share your profile link to grow your audience</div></div>`;
         return;
       }
-      const profiles = await Promise.all(uids.map(uid => window.libGetProfile(uid)));
-      el.innerHTML = profiles.filter(Boolean).map(p => `
+      const profiles = await withTimeout(
+        Promise.all(uids.map(uid => window.libGetProfile(uid).catch(() => null))),
+        10000
+      );
+      const valid = profiles.filter(Boolean);
+      if (!valid.length) {
+        el.innerHTML = `<div class="lib-empty"><div class="lib-empty-title">No followers yet</div></div>`;
+        return;
+      }
+      el.innerHTML = valid.map(p => `
         <div class="lhp-follower-item">
           <div class="lhp-follower-av">${p.photoURL ? `<img src="${p.photoURL}" alt="">` : window.libInitials(p.displayName||'?')}</div>
           <div>
             <div class="lhp-follower-name">${p.displayName || 'Anonymous'}</div>
             <div class="lhp-follower-sub">${p.institution || ''}</div>
           </div>
-        </div>`).join('') || `<div class="lib-empty"><div class="lib-empty-title">No followers yet</div></div>`;
+        </div>`).join('');
     } catch(e) {
-      el.innerHTML = `<div style="color:#64748b;font-size:.85rem;text-align:center;padding:24px">Could not load followers</div>`;
+      _followersLoaded = false;
+      el.innerHTML = `<div style="color:#ef4444;font-size:.82rem;text-align:center;padding:24px;">
+        Could not load followers.<br>
+        <button onclick="loadFollowers()" style="margin-top:10px;padding:6px 16px;border-radius:8px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.1);color:#a5b4fc;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+          Try Again
+        </button>
+      </div>`;
     }
   }
+  window.loadFollowers = loadFollowers;
 
   document.addEventListener('aqs:firebase:ready', init);
   if (window._aqsFirebaseReady) init();
