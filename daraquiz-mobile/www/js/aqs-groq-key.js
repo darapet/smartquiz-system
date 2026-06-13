@@ -340,15 +340,16 @@ window._aqsKeysReady = new Promise(function(resolve) {
 /* ═══════════════════════════════════════════════════════════════════
    FEATURE-SPECIFIC GROQ KEY POOLS
    Each app feature has its own isolated 10-slot Groq key pool.
-   Pools auto-load from Firebase admin settings and fall back to the
-   main window.groqFetch (Groq → Mistral) if own keys are exhausted.
+   Pools auto-load from Firebase admin settings. Feature pools marked noFallback=true
+   will NOT fall back to the main pool — they throw a clear error instead.
    Exposed as: window.quizGroqFetch, window.challengeGroqFetch, etc.
 ═══════════════════════════════════════════════════════════════════ */
 (function () {
     var RL_MS = 62000;
     var _pools = {};
 
-    function _createPool(id) {
+    function _createPool(id, opts) {
+        opts = opts || {};
         var slots = [], rl = {}, IDX = 'aqs_fp_' + id;
         function _h(k) { return k ? k.slice(-8) : '?'; }
         function _isRL(k) { return (rl[_h(k)] || 0) > Date.now(); }
@@ -390,16 +391,17 @@ window._aqsKeysReady = new Promise(function(resolve) {
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
-                /* Own keys exhausted or empty — fall back to main pool */
-                if (typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
-                throw new Error('No AI keys configured. Add keys in Admin Settings → ' + id + '.');
+                /* Own keys exhausted or empty */
+                if (!opts.noFallback && typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
+                throw new Error('No quiz AI keys configured — add Groq keys in Admin Settings → Quiz AI Keys.');
             }
         };
     }
 
-    /* Initialise all feature pools */
+    /* Initialise all feature pools — quiz uses noFallback so it never silently uses the main pool */
+    var _poolOpts = { quiz: { noFallback: true } };
     ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
-        _pools[id] = _createPool(id);
+        _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
 
     /* Public key management API */
