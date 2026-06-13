@@ -404,6 +404,35 @@ html,body{height:100%;overflow:hidden;}
 
 <div class="lib-toast" id="lib-toast"></div>
 
+<script>
+/* Early stubs — header buttons are clickable before module scripts finish loading.
+   The real implementations (defined in the module below) override these once ready.
+   Any early click on openPanel shows a "loading" state and replays automatically. */
+(function(){
+  var _pendingPanel = null;
+  window.openPanel = function(panel) {
+    _pendingPanel = panel;
+    var o = document.getElementById('rdr-overlay');
+    if (o) o.classList.add('open');
+    var t = document.getElementById('rdr-panel-title');
+    if (t) t.textContent = panel==='ai' ? '✨ AI Explain' : panel==='mcq' ? '🎯 Quiz' : '💬 Comments';
+    var b = document.getElementById('rdr-panel-body');
+    if (b) b.innerHTML = '<div style="padding:40px;text-align:center;color:#94a3b8;font-size:.9rem;">⏳ Initialising…</div>';
+    document.addEventListener('aqs:lib:ready', function(){
+      window.openPanel(_pendingPanel);
+      _pendingPanel = null;
+    }, {once:true});
+  };
+  window.closePanel = function(){
+    var o = document.getElementById('rdr-overlay');
+    if (o) o.classList.remove('open');
+  };
+  window.goBack    = function(){ history.back(); };
+  window.shareBook = function(){};
+  window.prevPage  = function(){};
+  window.nextPage  = function(){};
+})();
+</script>
 <script type="module" src="js/aqs-firebase.js"></script>
 <script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
@@ -911,6 +940,8 @@ html,body{height:100%;overflow:hidden;}
 
   document.addEventListener('aqs:firebase:ready',init);
   if(window._aqsFirebaseReady) init();
+  /* Signal that all window.* handlers are now defined */
+  document.dispatchEvent(new Event('aqs:lib:ready'));
 </script>
 </body>
 </html>
