@@ -136,6 +136,18 @@ jobs:
             cp android-config/MainActivity.java android/app/src/main/java/com/darapet/smart/MainActivity.java
           fi
 
+      - name: Inject REQUEST_INSTALL_PACKAGES into AndroidManifest
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q "REQUEST_INSTALL_PACKAGES" "$MANIFEST"; then
+            sed -i 's|<application|<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n    <application|' "$MANIFEST"
+            echo "✅ Injected REQUEST_INSTALL_PACKAGES"
+          else
+            echo "✅ REQUEST_INSTALL_PACKAGES already present"
+          fi
+          grep "REQUEST_INSTALL_PACKAGES" "$MANIFEST" || echo "WARNING: injection may have failed"
+
       - name: Copy icons and splash
         if: steps.skip_check.outputs.skip != 'true'
         run: |
