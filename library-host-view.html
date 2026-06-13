@@ -77,6 +77,19 @@
       <div class="lib-card-form">
         <div class="lib-card-form-title">👤 Edit Profile</div>
 
+        <!-- Cover Photo -->
+        <div class="lib-form-group" style="margin-bottom:16px">
+          <label class="lib-label">🖼️ Cover Photo</label>
+          <label class="pe-cover-wrap" for="pe-cover-input" id="pe-cover-wrap">
+            <img id="pe-cover-img" src="" alt="" style="display:none">
+            <div class="pe-cover-placeholder" id="pe-cover-placeholder">
+              <span>🖼</span>
+              Click to upload a cover photo
+            </div>
+            <input type="file" id="pe-cover-input" accept="image/*" style="display:none" onchange="uploadCover(this)">
+          </label>
+        </div>
+
         <!-- Photo -->
         <div class="lib-photo-wrap">
           <div class="lib-photo-av" id="pe-avatar"></div>
@@ -207,7 +220,12 @@
     if (!_profile) return;
     const av = document.getElementById('lhv-avatar');
     const peAv = document.getElementById('pe-avatar');
-    if (_profile.photoURL) {
+    if (_profile.coverURL) {
+    const cImg = document.getElementById('pe-cover-img');
+    cImg.src = _profile.coverURL; cImg.style.display = 'block';
+    document.getElementById('pe-cover-placeholder').style.display = 'none';
+  }
+  if (_profile.photoURL) {
       av.innerHTML = `<img src="${_profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
       peAv.innerHTML = `<img src="${_profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
     } else {
@@ -458,6 +476,23 @@
       document.getElementById('lhv-avatar').innerHTML = av.innerHTML;
       window.libToast('Photo updated!');
     } catch(e) { window.libToast('Photo upload failed: '+e.message); av.textContent=window.libInitials(_profile?.displayName||'?'); }
+  };
+
+  window.uploadCover = async function(input) {
+    const file = input.files[0];
+    if (!file || !_user) return;
+    const ph = document.getElementById('pe-cover-placeholder');
+    ph.innerHTML = '<span class="lib-spinner" style="width:20px;height:20px;border-width:2px;"></span>';
+    try {
+      const url = await window.libUploadCoverPhoto(_user.uid, file);
+      const cImg = document.getElementById('pe-cover-img');
+      cImg.src = url; cImg.style.display = 'block';
+      ph.style.display = 'none';
+      window.libToast('Cover photo updated! ✅');
+    } catch(e) {
+      ph.innerHTML = '<span>🖼</span> Click to upload a cover photo';
+      window.libToast('Cover upload failed: ' + e.message);
+    }
   };
 
   window.saveProfile = async function() {
