@@ -107,7 +107,12 @@ body:has(.lib-page-bg)>*:not(.lib-page-bg){position:relative;z-index:1;}
   padding:3px 10px;border-radius:20px;}
 
 /* ── BOOK CARDS ─────────────────────────────────── */
-.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:18px;}
+.lib-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;}
+@media(max-width:540px){
+  .lib-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .lib-skeleton-grid{grid-template-columns:repeat(2,1fr);gap:10px;}
+  .lib-card-thumb{aspect-ratio:2/3;}
+}
 .lib-card{
   background:var(--card-bg);border:1px solid var(--border);border-radius:16px;
   overflow:hidden;cursor:pointer;transition:all .22s;
