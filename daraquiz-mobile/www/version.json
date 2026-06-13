@@ -1,8 +1,8 @@
 {
-  "version": "1.323",
-  "versionCode": 301,
+  "version": "1.324",
+  "versionCode": 302,
   "releaseDate": "2026-06-13",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.323/daraquiz-v1.323.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.323/daraquiz-v1.323.apk"
+  "notes": "Library page now shows 2 books per row on mobile with proper cover thumbnails and uploader badges.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.324/daraquiz-v1.324.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.324/daraquiz-v1.324.apk"
 }
