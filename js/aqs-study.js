@@ -1,6 +1,6 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload · Voice AI
    ─────────────────────────────────────────────────────────────────────
-   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
+   Uses window.studyhubGroqFetch() from aqs-groq-key.js — no manual key needed.
    ─────────────────────────────────────────────────────────────────────── */
 (function () {
 'use strict';
@@ -520,9 +520,9 @@ async function streamToPanel(panelTitle, messages, temp) {
     if (!bE) return;
 
     // groqFetch: Groq key rotation (62s cooldown) → Mistral fallback → throw
-    if (typeof window.groqFetch === 'function') {
+    if (typeof window.studyhubGroqFetch === 'function') {
         try {
-            var res = await window.groqFetch(
+            var res = await window.studyhubGroqFetch(
                 {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true},
                 {signal:_sig(60000)}
             );
@@ -794,10 +794,10 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 async function aiChat(messages, temp) {
     // groqFetch handles: Groq rotation → Mistral fallback → throws if all fail
-    if (typeof window.groqFetch !== 'function') {
+    if (typeof window.studyhubGroqFetch !== 'function') {
         throw new Error('No AI key configured. Please add a Groq key in Settings.');
     }
-    var rg = await window.groqFetch(
+    var rg = await window.studyhubGroqFetch(
         {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
         {signal:_sig(60000)}
     );
@@ -814,8 +814,8 @@ async function aiChat(messages, temp) {
 async function aiChatVision(messages, temp) {
     /* Use groqFetch (Mistral) — Mistral large models support vision via pixtral.
        Falls back gracefully if no key configured. */
-    if (typeof window.groqFetch !== 'function') throw new Error('AI not ready — no keys configured.');
-    var r = await window.groqFetch(
+    if (typeof window.studyhubGroqFetch !== 'function') throw new Error('AI not ready — no keys configured.');
+    var r = await window.studyhubGroqFetch(
         { messages: messages, temperature: temp || 0.7, max_tokens: 2000 },
         { signal: AbortSignal.timeout ? AbortSignal.timeout(60000) : undefined }
     );
@@ -1548,7 +1548,7 @@ async function summonStreamResponse(messages) {
     /* groqFetch: Groq key rotation + Mistral fallback — no direct fetch */
     summonStopListening();
 
-    if (typeof window.groqFetch !== 'function') {
+    if (typeof window.studyhubGroqFetch !== 'function') {
         summonSetAiText('⚠️ No AI key configured. Add Mistral keys in Admin Settings.');
         summonSetState('listening'); summonStartListening();
         return;
@@ -1561,7 +1561,7 @@ async function summonStreamResponse(messages) {
 
     var res;
     try {
-        res = await window.groqFetch(
+        res = await window.studyhubGroqFetch(
             {model:GROQ_MODEL, messages:messages, temperature:0.7, max_tokens:1200, stream:true},
             {signal:signal}
         );
