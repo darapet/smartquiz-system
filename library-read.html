@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#0a0b14">
+<meta name="theme-color" content="#080910">
 <title>📖 Reading — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
@@ -15,8 +15,8 @@ html,body{height:100%;overflow:hidden;}
 .rdr-hdr{
   position:fixed;top:0;left:0;right:0;z-index:300;height:54px;
   display:flex;align-items:center;gap:10px;padding:0 16px;
-  background:rgba(10,11,20,.97);border-bottom:1px solid rgba(255,255,255,.08);
-  backdrop-filter:blur(16px);
+  background:rgba(8,9,16,.97);border-bottom:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
 }
 .rdr-logo{
   font-size:.82rem;font-weight:900;
@@ -39,20 +39,42 @@ html,body{height:100%;overflow:hidden;}
 }
 .rdr-hbtn:hover{border-color:rgba(255,255,255,.16);color:#e2e8f0;}
 .rdr-hbtn.ac{border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.08);color:#a5b4fc;}
-.rdr-hbtn.ac:hover{background:rgba(99,102,241,.16);border-color:rgba(99,102,241,.55);}
+.rdr-hbtn.ac:hover{background:rgba(99,102,241,.18);border-color:rgba(99,102,241,.55);}
 
 /* ── STAGE ── */
 .rdr-stage{
   position:fixed;top:54px;bottom:62px;left:0;right:0;
-  overflow-y:auto;background:#0b0c1a;
+  overflow-y:auto;background:#090a18;
   -webkit-overflow-scrolling:touch;
 }
-.rdr-prog-bar{position:sticky;top:0;height:3px;background:rgba(255,255,255,.05);z-index:10;flex-shrink:0;}
+.rdr-prog-bar{position:sticky;top:0;height:3px;background:rgba(255,255,255,.05);z-index:10;}
 .rdr-prog-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);transition:width .35s;width:0%;}
+
+/* Uploader strip (inside stage, pinned at top after load) */
+.rdr-uploader-strip{
+  display:flex;align-items:center;gap:14px;padding:12px 24px;
+  background:rgba(99,102,241,.07);border-bottom:1px solid rgba(99,102,241,.14);
+  cursor:pointer;transition:background .18s;
+}
+.rdr-uploader-strip:hover{background:rgba(99,102,241,.12);}
+.rdr-uploader-av{
+  width:38px;height:38px;border-radius:50%;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6);
+  display:flex;align-items:center;justify-content:center;
+  font-size:.88rem;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden;
+  border:2px solid rgba(99,102,241,.35);}
+.rdr-uploader-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.rdr-uploader-info{flex:1;min-width:0;}
+.rdr-uploader-name{font-size:.85rem;font-weight:700;color:#e2e8f0;}
+.rdr-uploader-sub{font-size:.7rem;color:#94a3b8;margin-top:1px;}
+.rdr-uploader-arrow{
+  font-size:.72rem;font-weight:600;color:#94a3b8;
+  background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);
+  padding:4px 8px;border-radius:6px;}
 
 .rdr-page-outer{max-width:800px;margin:0 auto;padding:32px 24px 60px;}
 
-/* Page tag row */
+/* Page tag */
 .rdr-page-tag{
   display:flex;align-items:center;justify-content:space-between;
   margin-bottom:24px;padding-bottom:14px;
@@ -71,45 +93,22 @@ html,body{height:100%;overflow:hidden;}
   line-height:1.95;color:#cbd5e1;word-break:break-word;overflow-wrap:anywhere;
 }
 .rdr-content p{margin-bottom:1.15em;}
-.rdr-content h1{
-  font-family:'Inter',sans-serif;font-size:1.4rem;font-weight:800;
-  color:#e2e8f0;margin:1.6em 0 .5em;line-height:1.3;
-}
-.rdr-content h2{
-  font-family:'Inter',sans-serif;font-size:1.05rem;font-weight:700;
-  color:#a5b4fc;margin:1.4em 0 .4em;line-height:1.3;
-}
-.rdr-content h3{
-  font-family:'Inter',sans-serif;font-size:.92rem;font-weight:700;
-  color:#94a3b8;margin:1.2em 0 .3em;
-}
+.rdr-content h1{font-family:'Inter',sans-serif;font-size:1.4rem;font-weight:800;color:#e2e8f0;margin:1.6em 0 .5em;line-height:1.3;}
+.rdr-content h2{font-family:'Inter',sans-serif;font-size:1.05rem;font-weight:700;color:#a5b4fc;margin:1.4em 0 .4em;}
+.rdr-content h3{font-family:'Inter',sans-serif;font-size:.92rem;font-weight:700;color:#94a3b8;margin:1.2em 0 .3em;}
 .rdr-content strong{color:#e2e8f0;font-weight:700;}
 .rdr-content em{color:#c4b5fd;}
 .rdr-content ul,.rdr-content ol{padding-left:1.6em;margin-bottom:1em;}
 .rdr-content li{margin-bottom:.4em;line-height:1.75;}
 .rdr-content table{width:100%;border-collapse:collapse;margin-bottom:1.2em;font-size:.88rem;}
-.rdr-content th{
-  background:rgba(99,102,241,.12);color:#a5b4fc;font-family:'Inter',sans-serif;
-  font-weight:700;padding:9px 12px;border:1px solid rgba(99,102,241,.2);text-align:left;
-}
-.rdr-content td{
-  padding:8px 12px;border:1px solid rgba(255,255,255,.07);color:#cbd5e1;vertical-align:top;
-}
+.rdr-content th{background:rgba(99,102,241,.12);color:#a5b4fc;font-family:'Inter',sans-serif;font-weight:700;padding:9px 12px;border:1px solid rgba(99,102,241,.2);text-align:left;}
+.rdr-content td{padding:8px 12px;border:1px solid rgba(255,255,255,.07);color:#cbd5e1;vertical-align:top;}
 .rdr-content tr:nth-child(even) td{background:rgba(255,255,255,.02);}
 
 /* Loading */
-.rdr-loading{
-  display:flex;flex-direction:column;align-items:center;
-  gap:16px;padding:80px 20px;color:#64748b;font-size:.88rem;
-}
-.rdr-spinner{
-  width:38px;height:38px;
-  border:3px solid rgba(99,102,241,.2);border-top-color:#6366f1;
-  border-radius:50%;animation:rdr-spin .8s linear infinite;
-}
+.rdr-loading{display:flex;flex-direction:column;align-items:center;gap:16px;padding:80px 20px;color:#64748b;font-size:.88rem;}
+.rdr-spinner{width:38px;height:38px;border:3px solid rgba(99,102,241,.2);border-top-color:#6366f1;border-radius:50%;animation:rdr-spin .8s linear infinite;}
 @keyframes rdr-spin{100%{transform:rotate(360deg)}}
-
-/* Canvas fallback */
 .rdr-canvas-wrap{display:flex;justify-content:center;}
 #rdr-canvas{max-width:100%;box-shadow:0 8px 48px rgba(0,0,0,.7);border-radius:3px;display:none;}
 
@@ -118,8 +117,8 @@ html,body{height:100%;overflow:hidden;}
   position:fixed;bottom:0;left:0;right:0;height:62px;z-index:300;
   display:flex;align-items:center;justify-content:space-between;
   padding:0 16px;gap:10px;
-  background:rgba(10,11,20,.97);border-top:1px solid rgba(255,255,255,.08);
-  backdrop-filter:blur(16px);
+  background:rgba(8,9,16,.97);border-top:1px solid rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
 }
 .rdr-nav-grp{display:flex;align-items:center;gap:8px;}
 .rdr-pg-btn{
@@ -139,119 +138,112 @@ html,body{height:100%;overflow:hidden;}
   border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
   color:#94a3b8;font-size:.76rem;font-weight:700;
   cursor:pointer;font-family:inherit;transition:all .18s;
-  display:inline-flex;align-items:center;gap:4px;text-decoration:none;
+  display:inline-flex;align-items:center;gap:5px;text-decoration:none;
 }
 .rdr-act-btn:hover{border-color:rgba(255,255,255,.18);color:#e2e8f0;}
-.rdr-act-btn.liked{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fca5a5;}
+/* Real like button */
+.rdr-like-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:7px 14px;border-radius:20px;
+  border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);
+  color:#94a3b8;font-size:.8rem;font-weight:700;
+  cursor:pointer;font-family:inherit;transition:all .22s;
+}
+.rdr-like-btn:hover{border-color:rgba(99,102,241,.35);background:rgba(99,102,241,.08);color:#a5b4fc;}
+.rdr-like-btn.liked{
+  background:rgba(99,102,241,.14);border-color:rgba(99,102,241,.45);color:#a5b4fc;}
+.rdr-like-btn.liked svg{fill:#a5b4fc;transform:scale(1.15);}
+.rdr-like-btn svg{transition:all .22s;}
 
 /* ── SLIDE PANEL ── */
-.rdr-overlay{
-  position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);
-  display:none;justify-content:flex-end;
-}
+.rdr-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);display:none;justify-content:flex-end;}
 .rdr-overlay.open{display:flex;}
 .rdr-panel{
   width:min(490px,100vw);height:100%;
-  background:#0d0e1c;border-left:1px solid rgba(255,255,255,.08);
+  background:#0c0d1c;border-left:1px solid rgba(255,255,255,.08);
   display:flex;flex-direction:column;
   animation:rdr-slide-in .22s cubic-bezier(.22,1,.36,1);
 }
 @keyframes rdr-slide-in{from{transform:translateX(100%)}to{transform:translateX(0)}}
-.rdr-panel-hdr{
-  display:flex;align-items:center;justify-content:space-between;
-  padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;
-}
+.rdr-panel-hdr{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0;}
 .rdr-panel-title{font-size:.95rem;font-weight:800;color:#e2e8f0;}
-.rdr-panel-close{
-  width:32px;height:32px;border-radius:8px;
-  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);
-  color:#94a3b8;font-size:1.1rem;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .18s;
-}
+.rdr-panel-close{width:32px;height:32px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#94a3b8;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;transition:all .18s;}
 .rdr-panel-close:hover{background:rgba(255,255,255,.1);color:#e2e8f0;}
 .rdr-panel-body{flex:1;overflow-y:auto;padding:20px;-webkit-overflow-scrolling:touch;}
-
-/* Panel content */
 .rdr-panel-btn{
   width:100%;padding:12px 16px;border-radius:10px;
   border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.08);color:#a5b4fc;
   font-size:.88rem;font-weight:700;cursor:pointer;font-family:inherit;
-  transition:all .18s;display:flex;align-items:center;justify-content:center;
-  gap:8px;margin-bottom:10px;
+  transition:all .18s;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;
 }
 .rdr-panel-btn:hover{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.5);}
 .rdr-panel-btn:disabled{opacity:.4;cursor:not-allowed;}
-.rdr-ai-out{
-  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);
-  border-radius:10px;padding:16px;font-size:.83rem;line-height:1.85;color:#cbd5e1;
-  display:none;margin-bottom:10px;
-}
+.rdr-ai-out{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:16px;font-size:.83rem;line-height:1.85;color:#cbd5e1;display:none;margin-bottom:10px;}
 .rdr-ai-out strong{color:#e2e8f0;}
 .rdr-ai-out h2{color:#a5b4fc;font-size:.88rem;margin:12px 0 5px;font-family:'Inter',sans-serif;}
 
 /* MCQ */
 .rdr-mcq-wrap{display:none;}
-.rdr-mcq-q{
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-  border-radius:10px;padding:14px;margin-bottom:10px;
-}
+.rdr-mcq-q{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:14px;margin-bottom:10px;}
 .rdr-mcq-qt{font-size:.85rem;font-weight:600;color:#e2e8f0;margin-bottom:10px;line-height:1.5;}
 .rdr-mcq-opts{display:flex;flex-direction:column;gap:6px;}
-.rdr-mcq-opt{
-  padding:9px 12px;border-radius:8px;
-  border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);
-  color:#94a3b8;font-size:.8rem;cursor:pointer;transition:all .18s;
-  text-align:left;font-family:inherit;
-}
+.rdr-mcq-opt{padding:9px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#94a3b8;font-size:.8rem;cursor:pointer;transition:all .18s;text-align:left;font-family:inherit;}
 .rdr-mcq-opt:hover:not(:disabled){border-color:rgba(99,102,241,.4);color:#e2e8f0;}
 .rdr-mcq-opt.correct{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.4);color:#86efac;}
 .rdr-mcq-opt.wrong{background:rgba(239,68,68,.1);border-color:rgba(239,68,68,.3);color:#fca5a5;}
-.rdr-score{
-  background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.08));
-  border:1px solid rgba(99,102,241,.25);border-radius:12px;
-  padding:24px;text-align:center;display:none;margin-top:12px;
-}
-.rdr-score-num{
-  font-size:2.6rem;font-weight:900;
-  background:linear-gradient(135deg,#6366f1,#a78bfa);
-  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-}
+.rdr-score{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.08));border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:24px;text-align:center;display:none;margin-top:12px;}
+.rdr-score-num{font-size:2.6rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
 .rdr-score-lbl{font-size:.85rem;color:#64748b;margin-top:4px;}
 
-/* Comments */
-.rdr-ci{
-  background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);
-  border-radius:10px;padding:12px 14px;margin-bottom:8px;margin-top:12px;
-}
-.rdr-ci-author{font-size:.72rem;font-weight:700;color:#a5b4fc;margin-bottom:5px;}
-.rdr-ci-text{font-size:.82rem;color:#cbd5e1;line-height:1.6;}
-.rdr-ci-time{font-size:.67rem;color:#475569;margin-top:4px;}
+/* Comments panel */
 .rdr-comment-input{
-  width:100%;background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.1);border-radius:9px;
-  padding:11px 13px;color:#e2e8f0;font-size:.85rem;
-  font-family:inherit;outline:none;resize:none;min-height:80px;
-  margin-bottom:8px;transition:border-color .2s;
+  width:100%;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:9px;
+  padding:11px 13px;color:#e2e8f0;font-size:.85rem;font-family:inherit;outline:none;resize:none;
+  min-height:80px;margin-bottom:8px;transition:border-color .2s;
 }
 .rdr-comment-input:focus{border-color:rgba(99,102,241,.4);}
 .rdr-comment-submit{
   width:100%;padding:10px;border-radius:9px;border:none;
   background:linear-gradient(135deg,#6366f1,#8b5cf6);
-  color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;
+  color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px;
 }
 
-/* Responsive */
+/* Comment items with replies */
+.rdr-ci{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
+.rdr-ci-hdr{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.rdr-ci-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:800;color:#fff;flex-shrink:0;overflow:hidden;}
+.rdr-ci-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.rdr-ci-author{font-size:.72rem;font-weight:700;color:#a5b4fc;}
+.rdr-ci-time{font-size:.65rem;color:#475569;margin-left:auto;}
+.rdr-ci-text{font-size:.82rem;color:#cbd5e1;line-height:1.6;margin-bottom:8px;}
+.rdr-ci-actions{display:flex;gap:8px;}
+.rdr-ci-reply-btn{font-size:.7rem;font-weight:700;color:#64748b;background:none;border:none;cursor:pointer;font-family:inherit;padding:0;transition:color .15s;}
+.rdr-ci-reply-btn:hover{color:#a5b4fc;}
+.rdr-ci-replies{padding-left:12px;border-left:2px solid rgba(99,102,241,.2);margin-top:8px;}
+.rdr-reply-item{padding:6px 0;border-bottom:1px solid rgba(255,255,255,.03);}
+.rdr-reply-item:last-child{border-bottom:none;}
+.rdr-reply-meta{display:flex;align-items:center;gap:5px;margin-bottom:2px;}
+.rdr-reply-author{font-size:.68rem;font-weight:700;color:#64748b;}
+.rdr-reply-author.host{color:#a5b4fc;}
+.rdr-host-badge{font-size:.57rem;background:rgba(99,102,241,.18);border:1px solid rgba(99,102,241,.28);color:#a5b4fc;padding:1px 5px;border-radius:4px;font-weight:700;}
+.rdr-reply-text{font-size:.78rem;color:#94a3b8;line-height:1.5;}
+.rdr-reply-form{margin-top:8px;display:none;}
+.rdr-reply-inp{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:.78rem;font-family:inherit;outline:none;resize:none;min-height:46px;transition:border-color .18s;}
+.rdr-reply-inp:focus{border-color:rgba(99,102,241,.4);}
+.rdr-reply-submit{margin-top:4px;padding:5px 12px;border-radius:7px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;}
+
 @media(max-width:580px){
   .rdr-hdr-acts .hide-mob{display:none;}
-  .rdr-act-grp .rdr-dl-btn{display:none;}
   .rdr-panel{max-width:100vw;}
   .rdr-page-booklabel{display:none;}
+  .rdr-uploader-strip{padding:10px 16px;}
+  .rdr-page-outer{padding:20px 16px 60px;}
 }
 </style>
 </head>
 <body>
 
-<!-- STICKY HEADER -->
+<!-- HEADER -->
 <header class="rdr-hdr">
   <a href="library.html" class="rdr-logo">📚 xzily Library</a>
   <span class="rdr-book-title" id="rdr-title">Loading…</span>
@@ -259,13 +251,23 @@ html,body{height:100%;overflow:hidden;}
     <a href="dashboard.html" class="rdr-hbtn hide-mob">🏠 Home</a>
     <button class="rdr-hbtn ac hide-mob" onclick="openPanel('ai')">✨ Explain</button>
     <button class="rdr-hbtn ac" onclick="openPanel('mcq')">🎯 Quiz</button>
-    <button class="rdr-hbtn" onclick="history.back()">← Back</button>
+    <button class="rdr-hbtn" id="rdr-back-btn" onclick="goBack()">← Back</button>
   </div>
 </header>
 
 <!-- READING STAGE -->
 <div class="rdr-stage" id="rdr-stage">
   <div class="rdr-prog-bar"><div class="rdr-prog-fill" id="rdr-prog"></div></div>
+
+  <!-- UPLOADER STRIP (shown after book loads) -->
+  <div class="rdr-uploader-strip" id="rdr-uploader-strip" style="display:none" onclick="goHostProfile()">
+    <div class="rdr-uploader-av" id="rdr-up-av">?</div>
+    <div class="rdr-uploader-info">
+      <div class="rdr-uploader-name" id="rdr-up-name">Loading…</div>
+      <div class="rdr-uploader-sub">View author's profile & other books →</div>
+    </div>
+    <div class="rdr-uploader-arrow">View Profile</div>
+  </div>
 
   <div class="rdr-page-outer" id="rdr-page-outer">
     <!-- Loading -->
@@ -274,13 +276,13 @@ html,body{height:100%;overflow:hidden;}
       <span>Loading document…</span>
     </div>
 
-    <!-- Page header tag -->
+    <!-- Page header -->
     <div class="rdr-page-tag" id="rdr-page-tag" style="display:none">
       <span class="rdr-page-badge" id="rdr-page-badge">Page 1 of 1</span>
       <span class="rdr-page-booklabel" id="rdr-page-booklabel"></span>
     </div>
 
-    <!-- Parsed text content -->
+    <!-- Parsed text -->
     <div class="rdr-content" id="rdr-content" style="display:none"></div>
 
     <!-- PDF canvas fallback -->
@@ -298,11 +300,21 @@ html,body{height:100%;overflow:hidden;}
     <button class="rdr-pg-btn nxt" id="rdr-next" onclick="nextPage()" disabled>Next ▶</button>
   </div>
   <div class="rdr-act-grp">
-    <button class="rdr-act-btn" id="rdr-like-btn" onclick="toggleLike()">
-      <span id="rdr-like-icon">🤍</span><span id="rdr-like-count">0</span>
+    <!-- Real SVG Like Button -->
+    <button class="rdr-like-btn" id="rdr-like-btn" onclick="toggleLike()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" id="rdr-like-svg">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+      </svg>
+      <span id="rdr-like-count">0</span>
     </button>
-    <button class="rdr-act-btn" onclick="openPanel('comments')">💬 Feedback</button>
-    <a id="rdr-dl" class="rdr-act-btn rdr-dl-btn" style="display:none">⬇ Download</a>
+    <button class="rdr-act-btn" onclick="openPanel('comments')">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Feedback
+    </button>
+    <a id="rdr-dl" class="rdr-act-btn" style="display:none">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download
+    </a>
   </div>
 </footer>
 
@@ -324,11 +336,30 @@ html,body{height:100%;overflow:hidden;}
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
   let _book=null,_user=null,_pages=[],_cur=1,_total=1;
-  let _pdfDoc=null;
+  let _pdfDoc=null,_uploaderProfile=null;
   let _mcqData=[],_mcqScore=0,_mcqAnswered=0,_explainText='';
 
-  const bookId=new URLSearchParams(location.search).get('id');
-  if(!bookId) window.libToast('No book ID.');
+  const params=new URLSearchParams(location.search);
+  const bookId=params.get('id');
+  if(!bookId){ window.libToast('No book ID.'); }
+
+  /* Back: after last page go to host profile */
+  window.goBack=function(){
+    if(_book&&_book.uploaderUid){
+      const fromHost=document.referrer&&document.referrer.includes('library-host-profile');
+      if(fromHost||_cur>=_total){
+        location.href='library-host-profile.html?uid='+_book.uploaderUid;
+        return;
+      }
+    }
+    if(history.length>1) history.back();
+    else location.href='library.html';
+  };
+
+  /* Go to host profile */
+  window.goHostProfile=function(){
+    if(_book&&_book.uploaderUid) location.href='library-host-profile.html?uid='+_book.uploaderUid;
+  };
 
   /* ── Auth ── */
   window.libOnAuth(async function(user){
@@ -336,7 +367,10 @@ html,body{height:100%;overflow:hidden;}
     if(bookId&&_book) window.libRecordView(bookId,user?user.uid:null);
     if(_user&&bookId){
       const liked=await window.libHasLiked(bookId,_user.uid);
-      if(liked){document.getElementById('rdr-like-btn').classList.add('liked');document.getElementById('rdr-like-icon').textContent='❤️';}
+      if(liked){
+        document.getElementById('rdr-like-btn').classList.add('liked');
+        document.getElementById('rdr-like-svg').setAttribute('fill','#a5b4fc');
+      }
     }
   });
 
@@ -352,113 +386,116 @@ html,body{height:100%;overflow:hidden;}
       document.getElementById('rdr-like-count').textContent=_book.likes||0;
       const dlBtn=document.getElementById('rdr-dl');
       if(_book.fileUrl){dlBtn.href=_book.fileUrl;dlBtn.download=_book.title||'document';dlBtn.style.display='inline-flex';}
+
+      /* Load uploader profile */
+      if(_book.uploaderUid){
+        _uploaderProfile=await window.libGetProfile(_book.uploaderUid);
+        renderUploaderStrip();
+      }
+
       if(_book.parsedUrl){
         await loadParsed(_book.parsedUrl);
       } else if(_book.fileUrl){
         await loadPdfFallback(_book.fileUrl);
       } else {
-        showErr('No content available for this book.');
+        showErr('No content available.');
       }
     }catch(e){showErr('Load error: '+e.message);}
   }
 
-  /* ── Load parsed JSON from Cloudinary ── */
+  function renderUploaderStrip(){
+    const strip=document.getElementById('rdr-uploader-strip');
+    const avEl=document.getElementById('rdr-up-av');
+    const nameEl=document.getElementById('rdr-up-name');
+    const name=_uploaderProfile?_uploaderProfile.displayName:(_book.uploaderName||'Unknown Uploader');
+    const photo=_uploaderProfile?_uploaderProfile.photoURL:_book.uploaderPhotoURL;
+    nameEl.textContent=name;
+    if(photo){avEl.innerHTML=`<img src="${photo}" alt="">`;}
+    else{avEl.textContent=window.libInitials(name);}
+    strip.style.display='flex';
+  }
+
+  /* ── Load parsed JSON ── */
   async function loadParsed(url){
     try{
       const res=await fetch(url);
       if(!res.ok) throw new Error('fetch failed');
       const data=await res.json();
-      _pages=data.pages||[];
-      _total=_pages.length;
+      _pages=data.pages||[];_total=_pages.length;
       if(!_total) throw new Error('empty');
       showPage(1);
     }catch(e){
       if(_book.fileUrl) await loadPdfFallback(_book.fileUrl);
-      else showErr('Could not load document content.');
+      else showErr('Could not load content.');
     }
   }
 
-  /* ── PDF.js fallback (for books without parsedUrl) ── */
+  /* ── PDF.js fallback ── */
   async function loadPdfFallback(url){
     pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     try{
       _pdfDoc=await pdfjsLib.getDocument({url,withCredentials:false}).promise;
-      _total=_pdfDoc.numPages;
-      _pages=[];
-      showPage(1);
+      _total=_pdfDoc.numPages;_pages=[];showPage(1);
     }catch(e){
-      showErr('Could not render this document.<br><a href="'+url+'" target="_blank" style="color:#a5b4fc">Open original file ↗</a>');
+      showErr('Could not render this document.<br><a href="'+url+'" target="_blank" style="color:#a5b4fc">Open original ↗</a>');
     }
   }
 
-  /* ── Render a page ── */
+  /* ── Show page ── */
   async function showPage(n){
     _cur=n;
     document.getElementById('rdr-stage').scrollTop=0;
-
-    // Progress bar
     document.getElementById('rdr-prog').style.width=Math.round((_cur/_total)*100)+'%';
-
-    // Counters
     document.getElementById('rdr-pg-num').textContent=_cur+' / '+_total;
     document.getElementById('rdr-page-badge').textContent='Page '+_cur+' of '+_total;
     document.getElementById('rdr-page-tag').style.display='flex';
     document.getElementById('rdr-loading').style.display='none';
-
-    // Buttons
     document.getElementById('rdr-prev').disabled=_cur<=1;
     document.getElementById('rdr-next').disabled=_cur>=_total;
 
     if(_pages.length>0){
-      // Parsed text mode
       document.getElementById('rdr-canvas-wrap').style.display='none';
       const el=document.getElementById('rdr-content');
       el.style.display='block';
       const pg=_pages[n-1];
       el.innerHTML=formatText(pg?pg.text||'':'');
     } else if(_pdfDoc){
-      // Canvas mode
       document.getElementById('rdr-content').style.display='none';
       document.getElementById('rdr-canvas-wrap').style.display='flex';
       await renderCanvas(n);
     }
+
+    /* On last page — prompt to visit host profile */
+    if(_cur===_total&&_book&&_book.uploaderUid){
+      const notif=document.getElementById('rdr-last-notif');
+      if(!notif){
+        const div=document.createElement('div');
+        div.id='rdr-last-notif';
+        div.style.cssText='margin:24px 0;padding:16px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:14px;text-align:center;cursor:pointer;';
+        div.innerHTML='<div style="font-size:.85rem;font-weight:700;color:#a5b4fc;margin-bottom:6px">🎉 You\'ve finished this book!</div><div style="font-size:.8rem;color:#64748b;margin-bottom:10px">Visit the author\'s profile to find more books like this</div><button style="padding:8px 18px;border-radius:20px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;" onclick="goHostProfile()">View Author Profile →</button>';
+        document.getElementById('rdr-content').after(div);
+      }
+    }
   }
 
-  /* ── Text formatter ── */
   function formatText(raw){
     if(!raw||!raw.trim()) return '<p style="color:#475569;font-style:italic;text-align:center;padding:40px 0">No readable text on this page.</p>';
-    const lines=raw.split('\n');
-    const out=[];
-    let inPara=false;
+    const lines=raw.split('\n');const out=[];let inPara=false;
     for(let i=0;i<lines.length;i++){
-      const line=lines[i];
-      const trimmed=line.trim();
-      if(!trimmed){
-        if(inPara){out.push('</p>');inPara=false;}
-        continue;
-      }
-      // Heading detection: short + ALL CAPS or starts a section
+      const trimmed=lines[i].trim();
+      if(!trimmed){if(inPara){out.push('</p>');inPara=false;}continue;}
       const isAllCaps=trimmed===trimmed.toUpperCase()&&/[A-Z]/.test(trimmed);
       const isH1=isAllCaps&&trimmed.length<=80&&i<12;
       const isH2=isAllCaps&&trimmed.length<=80&&!isH1;
-      if(isH1){
-        if(inPara){out.push('</p>');inPara=false;}
-        out.push('<h1>'+esc(trimmed)+'</h1>');
-      } else if(isH2){
-        if(inPara){out.push('</p>');inPara=false;}
-        out.push('<h2>'+esc(trimmed)+'</h2>');
-      } else {
-        if(!inPara){out.push('<p>');inPara=true;}
-        else out.push(' ');
-        out.push(esc(trimmed));
-      }
+      if(isH1){if(inPara){out.push('</p>');inPara=false;}out.push('<h1>'+esc(trimmed)+'</h1>');}
+      else if(isH2){if(inPara){out.push('</p>');inPara=false;}out.push('<h2>'+esc(trimmed)+'</h2>');}
+      else{if(!inPara){out.push('<p>');inPara=true;}else out.push(' ');out.push(esc(trimmed));}
     }
     if(inPara) out.push('</p>');
     return out.join('');
   }
   function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-  /* ── PDF canvas render ── */
   async function renderCanvas(n){
     const canvas=document.getElementById('rdr-canvas');
     const wrap=document.getElementById('rdr-canvas-wrap');
@@ -473,20 +510,27 @@ html,body{height:100%;overflow:hidden;}
     canvas.style.display='block';
   }
 
-  /* ── Page nav ── */
+  function showErr(msg){
+    document.getElementById('rdr-loading').innerHTML='<div style="color:#64748b;font-size:.85rem;text-align:center;padding:40px">'+msg+'</div>';
+  }
+
   window.prevPage=function(){if(_cur>1)showPage(_cur-1);};
   window.nextPage=function(){if(_cur<_total)showPage(_cur+1);};
 
-  /* ── Like ── */
+  /* ── Real Like (SVG heart) ── */
   window.toggleLike=async function(){
     if(!_user){window.libToast('Sign in to like.');return;}
-    const btn=document.getElementById('rdr-like-btn');btn.disabled=true;
+    const btn=document.getElementById('rdr-like-btn');
+    const svg=document.getElementById('rdr-like-svg');
+    btn.disabled=true;
     try{
       const liked=await window.libToggleLike(bookId,_user.uid);
-      document.getElementById('rdr-like-icon').textContent=liked?'❤️':'🤍';
       btn.classList.toggle('liked',liked);
+      svg.setAttribute('fill',liked?'#a5b4fc':'none');
+      svg.setAttribute('stroke',liked?'#a5b4fc':'currentColor');
       const cur=parseInt(document.getElementById('rdr-like-count').textContent)||0;
       document.getElementById('rdr-like-count').textContent=cur+(liked?1:-1);
+      window.libToast(liked?'Liked!':'Removed like');
     }catch(e){window.libToast('Error: '+e.message);}
     btn.disabled=false;
   };
@@ -500,20 +544,16 @@ html,body{height:100%;overflow:hidden;}
     if(panel==='ai'){
       title.textContent='✨ AI Explain';
       body.innerHTML=`
-        <div style="font-size:.8rem;color:#64748b;margin-bottom:14px;line-height:1.7">
-          AI reads this document and breaks down the key concepts, ideas, and summary.
-        </div>
+        <div style="font-size:.8rem;color:#64748b;margin-bottom:14px;line-height:1.7">AI reads this document and breaks down the key concepts, ideas, and summary.</div>
         <button class="rdr-panel-btn" id="p-explain-btn" onclick="doExplain()">✨ Generate Explanation</button>
         <div class="rdr-ai-out" id="p-ai-out"></div>
         <div id="p-dl-wrap" style="display:none">
-          <button class="rdr-panel-btn" onclick="downloadExplanation()" style="margin-top:2px;background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12);color:#94a3b8">⬇ Download as Text</button>
+          <button class="rdr-panel-btn" onclick="downloadExplanation()" style="background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.12);color:#94a3b8">⬇ Download as Text</button>
         </div>`;
     } else if(panel==='mcq'){
       title.textContent='🎯 Practice Quiz';
       body.innerHTML=`
-        <div style="font-size:.8rem;color:#64748b;margin-bottom:14px;line-height:1.7">
-          Generate 10 multiple-choice questions based on this document.
-        </div>
+        <div style="font-size:.8rem;color:#64748b;margin-bottom:14px;line-height:1.7">Generate 10 multiple-choice questions based on this document.</div>
         <button class="rdr-panel-btn" id="p-mcq-btn" onclick="doMCQ()">🎯 Generate Questions</button>
         <div class="rdr-mcq-wrap" id="p-mcq-wrap">
           <div id="p-mcq-qs"></div>
@@ -529,7 +569,9 @@ html,body{height:100%;overflow:hidden;}
         <div style="margin-bottom:14px">
           <textarea class="rdr-comment-input" id="p-cmnt-inp" placeholder="Share your thoughts or ask a question…" rows="3"></textarea>
           <button class="rdr-comment-submit" onclick="submitComment()">Post Feedback</button>
-        </div>`:`<div style="font-size:.8rem;color:#64748b;margin-bottom:14px">Sign in to leave feedback.</div>`)+
+        </div>`:`<div style="font-size:.8rem;color:#64748b;margin-bottom:14px;padding:10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06);">
+          <a href="login.html" style="color:#a5b4fc;font-weight:700">Sign in</a> to leave feedback
+        </div>`)+
         `<div id="p-cmnt-list"><div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">Loading…</div></div>`;
       loadComments();
     }
@@ -542,16 +584,14 @@ html,body{height:100%;overflow:hidden;}
     const btn=document.getElementById('p-explain-btn');
     btn.disabled=true;btn.innerHTML='<span class="lib-spinner"></span> Reading document…';
     const out=document.getElementById('p-ai-out');
-    out.style.display='none';
-    document.getElementById('p-dl-wrap').style.display='none';
+    out.style.display='none';document.getElementById('p-dl-wrap').style.display='none';
     try{
       const result=await window.libAiExplain(_book.fileUrl,_book.title);
       _explainText=result;
       out.innerHTML=result.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');
-      out.style.display='block';
-      document.getElementById('p-dl-wrap').style.display='block';
+      out.style.display='block';document.getElementById('p-dl-wrap').style.display='block';
     }catch(e){window.libToast('AI error: '+e.message);}
-    btn.disabled=false;btn.innerHTML='↺ Regenerate Explanation';
+    btn.disabled=false;btn.innerHTML='✨ Generate Explanation';
   };
   window.downloadExplanation=function(){
     if(!_explainText) return;
@@ -566,73 +606,119 @@ html,body{height:100%;overflow:hidden;}
     const btn=document.getElementById('p-mcq-btn');
     btn.disabled=true;btn.innerHTML='<span class="lib-spinner"></span> Generating questions…';
     const wrap=document.getElementById('p-mcq-wrap');wrap.style.display='none';
+    document.getElementById('p-score').style.display='none';
     try{
       _mcqData=await window.libAiMCQ(_book.fileUrl,_book.title);
-      _mcqScore=0;_mcqAnswered=0;
+      _mcqAnswered=0;_mcqScore=0;
       renderMCQ();wrap.style.display='block';
     }catch(e){window.libToast('AI error: '+e.message);}
-    btn.disabled=false;btn.innerHTML='↺ Regenerate Questions';
+    btn.disabled=false;btn.innerHTML='🎯 Generate Questions';
   };
   function renderMCQ(){
-    document.getElementById('p-mcq-qs').innerHTML=_mcqData.map((q,qi)=>
-      `<div class="rdr-mcq-q" id="pmq-${qi}">
+    document.getElementById('p-mcq-qs').innerHTML=_mcqData.map(function(q,qi){
+      return`<div class="rdr-mcq-q" id="mcq-q-${qi}">
         <div class="rdr-mcq-qt">${qi+1}. ${q.q}</div>
-        <div class="rdr-mcq-opts">
-          ${q.opts.map((opt,oi)=>`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="pmqo-${qi}-${oi}">${opt}</button>`).join('')}
-        </div>
-      </div>`
-    ).join('');
-    document.getElementById('p-score').style.display='none';
+        <div class="rdr-mcq-opts">${q.opts.map(function(opt,oi){return`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${opt}</button>`;}).join('')}</div>
+      </div>`;
+    }).join('');
   }
   window.answerMCQ=function(qi,oi){
-    const q=_mcqData[qi];const qEl=document.getElementById('pmq-'+qi);
-    if(qEl.dataset.answered) return;
-    qEl.dataset.answered='1';
-    q.opts.forEach((_,i)=>{
-      const b=document.getElementById('pmqo-'+qi+'-'+i);b.disabled=true;
-      if(i===q.ans)b.classList.add('correct');
-      else if(i===oi)b.classList.add('wrong');
+    const q=_mcqData[qi];
+    if(document.getElementById('mcq-q-'+qi).dataset.answered) return;
+    document.getElementById('mcq-q-'+qi).dataset.answered='1';
+    q.opts.forEach(function(_,i){
+      const btn=document.getElementById('mcq-opt-'+qi+'-'+i);
+      btn.disabled=true;
+      if(i===q.ans) btn.classList.add('correct');
+      else if(i===oi) btn.classList.add('wrong');
     });
-    if(oi===q.ans)_mcqScore++;
+    if(oi===q.ans) _mcqScore++;
     _mcqAnswered++;
     if(_mcqAnswered>=_mcqData.length){
-      setTimeout(()=>{
-        document.getElementById('p-score-num').textContent=_mcqScore+'/'+_mcqData.length;
-        document.getElementById('p-score').style.display='block';
-      },600);
+      setTimeout(function(){document.getElementById('p-score-num').textContent=_mcqScore+' / '+_mcqData.length;document.getElementById('p-score').style.display='block';},600);
     }
   };
-  window.resetMCQ=function(){_mcqScore=0;_mcqAnswered=0;renderMCQ();};
+  window.resetMCQ=function(){_mcqScore=0;_mcqAnswered=0;document.getElementById('p-score').style.display='none';renderMCQ();};
 
-  /* ── Comments ── */
+  /* ── Comments with replies ── */
   async function loadComments(){
+    const el=document.getElementById('p-cmnt-list');
     try{
       const list=await window.libGetComments(bookId);
-      const el=document.getElementById('p-cmnt-list');if(!el)return;
-      if(!list.length){el.innerHTML='<div style="color:#64748b;font-size:.82rem;text-align:center;padding:20px">No feedback yet. Be the first!</div>';return;}
-      el.innerHTML=list.map(c=>
-        `<div class="rdr-ci">
-          <div class="rdr-ci-author">${c.displayName||'Anonymous'}</div>
+      if(!list.length){el.innerHTML='<div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No feedback yet. Be the first!</div>';return;}
+      el.innerHTML=list.map(function(c,ci){
+        const avHtml=c.photoURL?`<img src="${c.photoURL}" alt="">`:
+          `<span style="font-size:.6rem;font-weight:800;">${window.libInitials(c.displayName||'?')}</span>`;
+        return`<div class="rdr-ci" id="rdr-ci-${ci}">
+          <div class="rdr-ci-hdr">
+            <div class="rdr-ci-av">${avHtml}</div>
+            <div class="rdr-ci-author">${c.displayName||'Anonymous'}</div>
+            <div class="rdr-ci-time">${window.libFormatTime(c.createdAt)}</div>
+          </div>
           <div class="rdr-ci-text">${c.text}</div>
-          <div class="rdr-ci-time">${window.libFormatTime(c.createdAt)}</div>
-        </div>`
-      ).join('');
-    }catch(e){}
+          <div class="rdr-ci-actions">
+            ${_user?`<button class="rdr-ci-reply-btn" onclick="toggleReply('${c.id}',this)">↩ Reply</button>`:''}
+          </div>
+          <div class="rdr-ci-replies" id="rdr-rep-${c.id}"></div>
+          <div class="rdr-reply-form" id="rdr-rf-${c.id}">
+            <textarea class="rdr-reply-inp" id="rdr-ri-${c.id}" placeholder="Write a reply…" rows="2"></textarea>
+            <button class="rdr-reply-submit" onclick="submitReply('${c.id}')">Reply</button>
+          </div>
+        </div>`;
+      }).join('');
+      /* Load replies for comments with replies */
+      list.forEach(function(c){if((c.replyCount||0)>0) loadReplies(c.id);});
+    }catch(e){el.innerHTML='<div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">Could not load comments.</div>';}
   }
-  window.submitComment=async function(){
-    if(!_user){window.libToast('Sign in to comment.');return;}
-    const input=document.getElementById('p-cmnt-inp');
-    const text=input?.value.trim();if(!text)return;
+
+  window.toggleReply=function(commentId,btn){
+    const form=document.getElementById('rdr-rf-'+commentId);
+    const isOpen=form.style.display==='block';
+    form.style.display=isOpen?'none':'block';
+    btn.textContent=isOpen?'↩ Reply':'✕ Cancel';
+    if(!isOpen) loadReplies(commentId);
+  };
+
+  async function loadReplies(commentId){
+    const wrap=document.getElementById('rdr-rep-'+commentId);
+    if(!wrap) return;
+    const replies=await window.libGetReplies(commentId);
+    if(!replies.length){wrap.innerHTML='';return;}
+    wrap.innerHTML=replies.map(function(r){
+      return`<div class="rdr-reply-item">
+        <div class="rdr-reply-meta">
+          <span class="rdr-reply-author${r.isHost?' host':''}">${r.displayName||'Anonymous'}</span>
+          ${r.isHost?`<span class="rdr-host-badge">HOST</span>`:''}
+        </div>
+        <div class="rdr-reply-text">${r.text}</div>
+      </div>`;
+    }).join('');
+  }
+
+  window.submitReply=async function(commentId){
+    if(!_user){window.libToast('Sign in to reply.');return;}
+    const inp=document.getElementById('rdr-ri-'+commentId);
+    const text=inp.value.trim();if(!text) return;
     const name=_user.displayName||_user.email?.split('@')[0]||'Student';
     try{
-      await window.libAddComment(bookId,_user.uid,name,text);
-      input.value='';window.libToast('Feedback posted!');loadComments();
+      await window.libAddReply(commentId,_user.uid,name,_user.photoURL||'',text,false);
+      inp.value='';window.libToast('Reply posted!');
+      await loadReplies(commentId);
     }catch(e){window.libToast('Error: '+e.message);}
   };
 
-  function showErr(msg){
-    document.getElementById('rdr-loading').innerHTML=`<div style="color:#ef4444;font-size:.88rem;text-align:center;max-width:360px">⚠️ ${msg}</div>`;
-  }
+  window.submitComment=async function(){
+    if(!_user){window.libToast('Sign in to comment.');return;}
+    const text=document.getElementById('p-cmnt-inp').value.trim();
+    if(!text) return;
+    const name=_user.displayName||_user.email?.split('@')[0]||'Student';
+    try{
+      await window.libAddComment(bookId,_user.uid,name,_user.photoURL||'',text);
+      document.getElementById('p-cmnt-inp').value='';
+      window.libToast('Feedback posted!');
+      loadComments();
+    }catch(e){window.libToast('Error: '+e.message);}
+  };
 
   document.addEventListener('aqs:firebase:ready',init);
   if(window._aqsFirebaseReady) init();
