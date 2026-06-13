@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#080910">
+<title>📤 Upload — xzily Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-library.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+.lib-upload-zone{border:2px dashed rgba(99,102,241,.3);border-radius:12px;padding:24px;text-align:center;cursor:pointer;background:rgba(99,102,241,.03);transition:all .2s;position:relative;}
+.lib-upload-zone:hover,.lib-upload-zone.drag{border-color:rgba(99,102,241,.6);background:rgba(99,102,241,.07);}
+.lib-upload-zone input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.lib-upload-zone-icon{font-size:1.8rem;margin-bottom:8px;}
+.lib-upload-zone-text{font-size:.85rem;font-weight:600;color:#94a3b8;}
+.lib-upload-zone-hint{font-size:.72rem;color:#64748b;margin-top:4px;}
+.lib-book-row{display:flex;align-items:flex-start;gap:12px;padding:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;margin-bottom:10px;transition:border-color .18s;}
+.lib-book-row:hover{border-color:rgba(99,102,241,.3);}
+.lib-book-row-thumb{width:44px;height:58px;border-radius:7px;object-fit:cover;flex-shrink:0;background:rgba(99,102,241,.1);}
+.lib-book-row-info{flex:1;min-width:0;}
+.lib-book-row-title{font-size:.88rem;font-weight:700;color:#e2e8f0;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lib-book-row-meta{font-size:.72rem;color:#64748b;margin-bottom:6px;}
+.lib-book-row-stats{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px;}
+.lib-book-row-stat{font-size:.7rem;color:#94a3b8;}
+.lib-book-row-actions{display:flex;gap:6px;flex-wrap:wrap;}
+.lib-batch-queue{margin-bottom:12px;}
+.lib-batch-item{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;margin-bottom:6px;font-size:.8rem;}
+.lib-batch-item-name{color:#e2e8f0;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lib-batch-status{font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:10px;margin-left:8px;}
+.lib-batch-status.pending{background:rgba(99,102,241,.12);color:#a5b4fc;}
+.lib-batch-status.uploading{background:rgba(251,191,36,.12);color:#fbbf24;}
+.lib-batch-status.done{background:rgba(34,197,94,.12);color:#86efac;}
+.lib-batch-status.error{background:rgba(239,68,68,.12);color:#fca5a5;}
+.lib-progress-wrap{display:none;margin-top:14px;padding:12px 14px;background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.15);border-radius:10px;}
+.lib-progress-bar{height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden;margin-bottom:8px;}
+.lib-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);width:0%;transition:width .3s;border-radius:3px;}
+.lib-progress-text{font-size:.78rem;color:#a5b4fc;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="lib-page-bg"></div>
+
+<header class="lib-hdr">
+  <a href="library-host-view.html" class="lib-logo">📤 Upload Hub</a>
+  <div class="lib-hdr-actions">
+    <a href="library-host-view.html" class="lib-back" id="hdr-manage" style="display:none">My Dashboard</a>
+    <a href="library.html" class="lib-back">← Library</a>
+  </div>
+</header>
+
+<!-- AUTH GATE -->
+<div id="auth-gate" class="lib-auth-gate" style="display:none">
+  <div class="lib-auth-gate-icon">🔒</div>
+  <div class="lib-auth-gate-title">Sign In Required</div>
+  <div class="lib-auth-gate-sub">You need to be logged in to upload books to the library.</div>
+  <a href="login.html" class="lib-btn lib-btn-primary">Sign In</a>
+</div>
+
+<!-- PROFILE SETUP OVERLAY -->
+<div id="profile-overlay" class="lib-profile-overlay" style="display:none">
+  <div class="lib-profile-box">
+    <div class="lib-profile-title">📋 Complete Your Uploader Profile</div>
+    <div class="lib-profile-sub">Set up your profile once — required before uploading books. You can add a profile photo too.</div>
+
+    <!-- Profile photo -->
+    <div class="lib-photo-wrap">
+      <div class="lib-photo-av" id="po-avatar">?</div>
+      <div class="lib-photo-info">
+        <div class="lib-photo-name">Profile Photo</div>
+        <div class="lib-photo-hint">Optional — JPG/PNG, max 5 MB</div>
+        <label class="lib-photo-change" for="po-photo-input">Upload Photo</label>
+        <input type="file" id="po-photo-input" accept="image/*" style="display:none" onchange="poPhotoChange(this)">
+      </div>
+    </div>
+
+    <div class="lib-form-row">
+      <div class="lib-form-group">
+        <label class="lib-label">First Name *</label>
+        <input class="lib-input" id="p-fname" placeholder="e.g. Chukwuemeka">
+      </div>
+      <div class="lib-form-group">
+        <label class="lib-label">Last Name *</label>
+        <input class="lib-input" id="p-lname" placeholder="e.g. Okafor">
+      </div>
+    </div>
+
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">Bio (optional)</label>
+      <textarea class="lib-textarea" id="p-bio" rows="2" placeholder="Tell readers about yourself…"></textarea>
+    </div>
+
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">Institution Type *</label>
+      <select class="lib-select-inp" id="p-type" onchange="profileTypeChange(this.value)">
+        <option value="">— Select —</option>
+        <option value="university">University</option>
+        <option value="polytechnic">Polytechnic</option>
+        <option value="college_of_education">College of Education</option>
+      </select>
+    </div>
+
+    <div class="lib-form-group" style="margin-bottom:12px">
+      <label class="lib-label">School *</label>
+      <select class="lib-select-inp" id="p-school" disabled>
+        <option value="">— Select type first —</option>
+      </select>
+    </div>
+
+    <div class="lib-form-group" style="margin-bottom:20px">
+      <label class="lib-label">Department / Faculty *</label>
+      <select class="lib-select-inp" id="p-dept" disabled>
+        <option value="">— Select type first —</option>
+      </select>
+    </div>
+
+    <button class="lib-btn lib-btn-primary" style="width:100%" onclick="saveProfile()">
+      <span id="po-save-txt">Save Profile &amp; Continue →</span>
+    </button>
+  </div>
+</div>
+
+<!-- MAIN DASHBOARD -->
+<div id="main-content" style="display:none">
+  <div class="lib-up-body">
+
+    <!-- HOST PROFILE STRIP -->
+    <div id="host-strip" style="display:none;margin-bottom:20px;padding:16px;background:rgba(99,102,241,.07);border:1px solid rgba(99,102,241,.15);border-radius:16px;display:flex;align-items:center;gap:14px;">
+      <div class="lib-photo-av" id="hs-avatar" style="width:52px;height:52px;font-size:1.2rem;flex-shrink:0;"></div>
+      <div style="flex:1;">
+        <div style="font-size:.95rem;font-weight:800;color:#e2e8f0;" id="hs-name"></div>
+        <div style="font-size:.75rem;color:#64748b;" id="hs-inst"></div>
+      </div>
+      <a href="#" class="lib-btn lib-btn-ghost lib-btn-sm" id="hs-profile-link">View Profile →</a>
+      <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">My Dashboard</a>
+    </div>
+
+    <!-- STATS -->
+    <div class="lib-stats-row">
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-books">0</div><div class="lib-stat-lbl">Books Uploaded</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-readers">0</div><div class="lib-stat-lbl">Total Readers</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-likes">0</div><div class="lib-stat-lbl">Total Likes</div></div>
+      <div class="lib-stat-card"><div class="lib-stat-num" id="s-comments">0</div><div class="lib-stat-lbl">Comments</div></div>
+    </div>
+
+    <!-- UPLOAD FORM -->
+    <div class="lib-card-form">
+      <div class="lib-card-form-title">📖 Upload a New Book</div>
+
+      <div class="lib-form-row">
+        <div class="lib-form-group">
+          <label class="lib-label">① Institution Type *</label>
+          <select class="lib-select-inp" id="u-type" onchange="uploadTypeChange(this.value)">
+            <option value="">— Select —</option>
+            <option value="university">University</option>
+            <option value="polytechnic">Polytechnic</option>
+            <option value="college_of_education">College of Education</option>
+          </select>
+        </div>
+        <div class="lib-form-group">
+          <label class="lib-label">② School *</label>
+          <select class="lib-select-inp" id="u-school" disabled><option value="">— Select type first —</option></select>
+        </div>
+      </div>
+
+      <div class="lib-form-row">
+        <div class="lib-form-group">
+          <label class="lib-label">③ Course / Department *</label>
+          <select class="lib-select-inp" id="u-course" disabled><option value="">— Select type first —</option></select>
+        </div>
+        <div class="lib-form-group">
+          <label class="lib-label">④ Level *</label>
+          <select class="lib-select-inp" id="u-level" disabled><option value="">— Select type first —</option></select>
+        </div>
+      </div>
+
+      <div class="lib-form-group" style="margin-bottom:12px">
+        <label class="lib-label">Book Title *</label>
+        <input class="lib-input" id="u-title" placeholder="e.g. Organic Chemistry — 3rd Edition">
+      </div>
+
+      <div class="lib-form-group" style="margin-bottom:14px">
+        <label class="lib-label">Author (optional)</label>
+        <input class="lib-input" id="u-author" placeholder="e.g. P.W. Atkins">
+      </div>
+
+      <!-- Thumbnail -->
+      <div class="lib-form-group" style="margin-bottom:14px">
+        <label class="lib-label">Cover Image (optional)</label>
+        <div class="lib-upload-zone" id="thumb-zone">
+          <div class="lib-upload-zone-icon">🖼️</div>
+          <div class="lib-upload-zone-text">Click to select a <strong>cover image</strong></div>
+          <div class="lib-upload-zone-hint">JPG / PNG / WEBP — max 5 MB</div>
+          <input type="file" id="thumb-input" accept="image/*" onchange="onThumbSelect(this)">
+        </div>
+        <div id="thumb-error" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;color:#fca5a5;font-size:.8rem;"></div>
+        <div id="thumb-preview" style="margin-top:8px;display:none;align-items:center;gap:10px;">
+          <img id="thumb-img" style="height:72px;border-radius:8px;object-fit:cover;">
+          <span id="thumb-name" style="font-size:.75rem;color:#64748b"></span>
+        </div>
+      </div>
+
+      <!-- Book file -->
+      <div class="lib-form-group" style="margin-bottom:20px">
+        <label class="lib-label">Book File (PDF / EPUB / DOCX) *</label>
+        <div class="lib-upload-zone" id="file-zone">
+          <div class="lib-upload-zone-icon">📄</div>
+          <div class="lib-upload-zone-text">Click to select the <strong>book file</strong></div>
+          <div class="lib-upload-zone-hint">PDF · EPUB · DOCX — max 50 MB · Pages auto-detected</div>
+          <input type="file" id="file-input" accept=".pdf,.epub,.docx,.doc,.txt" onchange="onFileSelect(this)">
+        </div>
+        <div id="file-name-show" style="font-size:.76rem;color:#a5b4fc;margin-top:8px;display:none;line-height:1.7"></div>
+        <div id="parse-progress" style="display:none;margin-top:10px">
+          <div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden">
+            <div id="parse-fill" style="height:100%;background:linear-gradient(90deg,#6366f1,#a78bfa);transition:width .25s;width:0%"></div>
+          </div>
+          <div id="parse-text" style="font-size:.72rem;color:#64748b;margin-top:5px;text-align:center"></div>
+        </div>
+      </div>
+
+      <!-- Batch queue -->
+      <div id="batch-queue" class="lib-batch-queue"></div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="lib-btn lib-btn-primary" id="upload-btn" onclick="doUpload()">📤 Upload Book</button>
+        <button class="lib-btn lib-btn-ghost" onclick="addToBatch()">+ Add Another (Batch)</button>
+      </div>
+
+      <div class="lib-progress-wrap" id="upload-progress">
+        <div class="lib-progress-bar"><div class="lib-progress-fill" id="progress-fill"></div></div>
+        <div class="lib-progress-text" id="progress-text">Uploading…</div>
+      </div>
+    </div>
+
+    <!-- MY BOOKS (quick list) -->
+    <div class="lib-card-form">
+      <div class="lib-card-form-title" style="display:flex;align-items:center;justify-content:space-between;">
+        <span>📚 My Books <span id="my-books-count" style="font-size:.78rem;font-weight:500;color:#64748b"></span></span>
+        <a href="library-host-view.html" class="lib-btn lib-btn-ghost lib-btn-sm">Manage All →</a>
+      </div>
+      <div id="my-books-list"><div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">Loading…</div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="lib-toast" id="lib-toast"></div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-groq-key.js"></script>
+<script type="module" src="js/aqs-library.js"></script>
+<script type="module">
+  let _user=null,_profile=null,_batch=[],_selFile=null,_selThumb=null;
+  let _detectedPages=0,_parsedPages=[];
+  let _poPhotoURL='';
+
+  /* ── Profile photo in overlay ── */
+  window.poPhotoChange = async function(inp) {
+    const file=inp.files[0];if(!file) return;
+    const av=document.getElementById('po-avatar');
+    av.innerHTML='<span class="lib-spinner"></span>';
+    const url=URL.createObjectURL(file);
+    av.innerHTML=`<img src="${url}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+    _poPhotoURL=url;
+    inp._file=file; // store for later upload
+  };
+
+  /* ── CASCADE ── */
+  window.profileTypeChange=function(type){
+    const schoolSel=document.getElementById('p-school');
+    const deptSel=document.getElementById('p-dept');
+    if(!type){schoolSel.disabled=true;deptSel.disabled=true;return;}
+    window.libPopulateSchools(schoolSel,type);schoolSel.disabled=false;
+    window.libPopulateCourses(deptSel,type);deptSel.disabled=false;
+  };
+  window.uploadTypeChange=function(type){
+    const school=document.getElementById('u-school');
+    const course=document.getElementById('u-course');
+    const level=document.getElementById('u-level');
+    if(!type){[school,course,level].forEach(function(s){s.innerHTML='<option value="">— Select type first —</option>';s.disabled=true;});return;}
+    window.libPopulateSchools(school,type);school.disabled=false;
+    window.libPopulateCourses(course,type);course.disabled=false;
+    window.libPopulateLevels(level,type);level.disabled=false;
+  };
+
+  /* ── Thumbnail ── */
+  window.onThumbSelect=function(inp){
+    document.getElementById('thumb-error').style.display='none';
+    if(!inp.files[0]) return;
+    if(inp.files[0].size>5242880){
+      inp.value='';_selThumb=null;
+      document.getElementById('thumb-preview').style.display='none';
+      document.getElementById('thumb-zone').style.borderColor='rgba(239,68,68,.5)';
+      document.getElementById('thumb-error').textContent='⚠️ Image too large. Must be under 5 MB.';
+      document.getElementById('thumb-error').style.display='block';return;
+    }
+    _selThumb=inp.files[0];
+    document.getElementById('thumb-zone').style.borderColor='rgba(99,102,241,.5)';
+    document.getElementById('thumb-img').src=URL.createObjectURL(_selThumb);
+    document.getElementById('thumb-name').textContent=_selThumb.name;
+    document.getElementById('thumb-preview').style.display='flex';
+  };
+
+  /* ── File selector — auto-parse PDF ── */
+  window.onFileSelect=async function(inp){
+    if(!inp.files[0]) return;
+    if(inp.files[0].size>52428800){window.libToast('File exceeds 50 MB limit.');inp.value='';return;}
+    _selFile=inp.files[0];_detectedPages=0;_parsedPages=[];
+    const nameEl=document.getElementById('file-name-show');
+    const parseBar=document.getElementById('parse-progress');
+    const parseFill=document.getElementById('parse-fill');
+    const parseText=document.getElementById('parse-text');
+    const mb=(_selFile.size/1048576).toFixed(1);
+    nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB)';
+    nameEl.style.display='block';
+    document.getElementById('file-zone').style.borderColor='rgba(34,197,94,.5)';
+    const isPDF=_selFile.type==='application/pdf'||_selFile.name.toLowerCase().endsWith('.pdf');
+    if(!isPDF) return;
+    parseBar.style.display='block';parseFill.style.width='5%';parseText.textContent='Detecting pages…';
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const ab=await _selFile.arrayBuffer();
+      const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+      _detectedPages=pdf.numPages;
+      nameEl.textContent='✅ '+_selFile.name+' ('+mb+' MB) · '+_detectedPages+' pages';
+      parseFill.style.width='8%';parseText.textContent='Parsing content (0 / '+_detectedPages+')…';
+      _parsedPages=[];
+      for(let i=1;i<=_detectedPages;i++){
+        const page=await pdf.getPage(i);const content=await page.getTextContent();
+        let lastY=null;let text='';
+        for(const item of content.items){
+          if('str' in item){if(lastY!==null&&Math.abs(item.transform[5]-lastY)>3)text+='\n';text+=item.str;lastY=item.transform[5];}
+        }
+        _parsedPages.push({n:i,text:text.trim()});
+        const pct=8+Math.round((i/_detectedPages)*90);
+        parseFill.style.width=pct+'%';parseText.textContent='Parsing page '+i+' / '+_detectedPages+'…';
+      }
+      parseFill.style.width='100%';parseText.textContent='✅ All '+_detectedPages+' pages parsed!';
+      setTimeout(function(){parseBar.style.display='none';},4000);
+    }catch(e){_detectedPages=0;_parsedPages=[];parseBar.style.display='none';}
+  };
+
+  function getFormData(){
+    return{
+      institutionType:document.getElementById('u-type').value,
+      institution:document.getElementById('u-school').value,
+      course:document.getElementById('u-course').value,
+      level:document.getElementById('u-level').value,
+      title:document.getElementById('u-title').value.trim(),
+      author:document.getElementById('u-author').value.trim(),
+      pages:_detectedPages||0
+    };
+  }
+  function validateForm(d){
+    if(!d.institutionType) return 'Select an institution type.';
+    if(!d.institution) return 'Select a school.';
+    if(!d.course) return 'Select a course/department.';
+    if(!d.level) return 'Select a level.';
+    if(!d.title) return 'Enter the book title.';
+    return null;
+  }
+
+  window.addToBatch=function(){
+    const d=getFormData();const err=validateForm(d);
+    if(err){window.libToast(err);return;}
+    if(!_selFile){window.libToast('Select a book file first.');return;}
+    _batch.push({data:d,file:_selFile,thumb:_selThumb,parsedPages:[..._parsedPages],status:'pending'});
+    resetForm();renderBatch();window.libToast('Added to batch!');
+  };
+  function resetForm(){
+    _selFile=null;_selThumb=null;_detectedPages=0;_parsedPages=[];
+    document.getElementById('file-input').value='';document.getElementById('thumb-input').value='';
+    document.getElementById('file-name-show').style.display='none';document.getElementById('parse-progress').style.display='none';
+    document.getElementById('thumb-preview').style.display='none';
+    document.getElementById('thumb-zone').style.borderColor='';document.getElementById('file-zone').style.borderColor='';
+    document.getElementById('u-title').value='';
+  }
+  function renderBatch(){
+    const el=document.getElementById('batch-queue');
+    if(!_batch.length){el.innerHTML='';return;}
+    el.innerHTML=_batch.map(function(b){
+      const cls={done:'done',uploading:'uploading',error:'error',pending:'pending'}[b.status]||'pending';
+      return`<div class="lib-batch-item"><span class="lib-batch-item-name">${b.data.title}</span><span class="lib-batch-status ${cls}">${cls}</span></div>`;
+    }).join('');
+  }
+
+  window.doUpload=async function(){
+    const d=getFormData();
+    if(!_selFile&&!_batch.length){window.libToast('Select a book file.');return;}
+    if(_selFile){
+      const err=validateForm(d);if(err){window.libToast(err);return;}
+      _batch.unshift({data:d,file:_selFile,thumb:_selThumb,parsedPages:[..._parsedPages],status:'pending'});
+      _selFile=null;_selThumb=null;_detectedPages=0;_parsedPages=[];
+    }
+    const btn=document.getElementById('upload-btn');btn.disabled=true;
+    document.getElementById('upload-progress').style.display='block';
+    let successCount=0,failCount=0,lastError='';
+    for(let i=0;i<_batch.length;i++){
+      const item=_batch[i];
+      if(item.status==='done'){successCount++;continue;}
+      item.status='uploading';renderBatch();
+      setProgress(Math.round((i/_batch.length)*60),'Uploading: '+item.data.title+'…');
+      try{
+        const bookId='lib_'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+        let thumbnailUrl='',fileUrl='',parsedUrl='';
+        if(item.thumb){setProgress(null,'Uploading cover…');thumbnailUrl=await window.libUploadFile(item.thumb,bookId,'thumb');}
+        setProgress(null,'Uploading book file…');
+        fileUrl=await window.libUploadFile(item.file,bookId,'file');
+        if(item.parsedPages&&item.parsedPages.length>0){
+          setProgress(null,'Saving parsed content…');
+          try{parsedUrl=await window.libUploadParsed(item.parsedPages,bookId);}catch(pe){console.warn('[upload] parsed failed:',pe.message);}
+        }
+        setProgress(null,'Saving to database…');
+        await window.libAddBook({
+          ...item.data,thumbnailUrl,fileUrl,parsedUrl,
+          uploaderUid:_user.uid,
+          uploaderName:_profile.displayName||(_profile.firstName||'')+' '+(_profile.lastName||''),
+          uploaderPhotoURL:_profile.photoURL||''
+        });
+        item.status='done';successCount++;renderBatch();
+      }catch(e){item.status='error';failCount++;lastError=e.message;renderBatch();}
+    }
+    btn.disabled=false;
+    if(failCount>0&&successCount===0){
+      setProgress(null,'❌ Upload failed — '+lastError);
+      window.libToast('Upload failed: '+lastError,6000);
+    } else if(failCount>0){
+      setProgress(100,successCount+' uploaded, '+failCount+' failed');
+      _batch=_batch.filter(function(b){return b.status!=='done';});
+      renderBatch();loadMyBooks();loadStats();
+    } else {
+      setProgress(100,'✅ '+successCount+' book(s) uploaded!');
+      setTimeout(function(){document.getElementById('upload-progress').style.display='none';},3000);
+      window.libToast('✅ Book(s) uploaded!');
+      _batch=[];renderBatch();resetForm();
+      loadMyBooks();loadStats();
+    }
+  };
+  function setProgress(pct,text){
+    if(pct!==null)document.getElementById('progress-fill').style.width=pct+'%';
+    if(text)document.getElementById('progress-text').textContent=text;
+  }
+
+  async function loadStats(){
+    const s=await window.libGetMyStats(_user.uid);
+    document.getElementById('s-books').textContent=s.books;
+    document.getElementById('s-readers').textContent=s.readers;
+    document.getElementById('s-likes').textContent=s.likes;
+    document.getElementById('s-comments').textContent=s.comments;
+  }
+
+  async function loadMyBooks(){
+    const books=await window.libGetMyBooks(_user.uid);
+    document.getElementById('my-books-count').textContent=books.length?'('+books.length+')':'';
+    const el=document.getElementById('my-books-list');
+    if(!books.length){el.innerHTML='<div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">No books yet. Upload one above!</div>';return;}
+    el.innerHTML=books.slice(0,5).map(function(b){
+      const parsedBadge=b.parsedUrl?'<span style="font-size:.62rem;padding:1px 7px;border-radius:8px;background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#86efac;margin-left:5px">✓ Parsed</span>':'';
+      return`<div class="lib-book-row">
+        ${b.thumbnailUrl?`<img class="lib-book-row-thumb" src="${b.thumbnailUrl}" alt="">`:'<div class="lib-book-row-thumb" style="display:flex;align-items:center;justify-content:center;font-size:1.2rem;">📖</div>'}
+        <div class="lib-book-row-info">
+          <div class="lib-book-row-title">${b.title||'Untitled'}${parsedBadge}</div>
+          <div class="lib-book-row-meta">${b.institution||''} · ${b.course||''} · ${b.level||''}</div>
+          <div class="lib-book-row-stats">
+            <span class="lib-book-row-stat">👁 ${b.views||0}</span>
+            <span class="lib-book-row-stat">♡ ${b.likes||0}</span>
+            <span class="lib-book-row-stat">💬 ${b.commentCount||0}</span>
+          </div>
+          <div class="lib-book-row-actions">
+            <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="location.href='library-read.html?id=${b.id}'">📖 Read</button>
+            <a href="library-host-view.html" class="lib-btn lib-btn-primary lib-btn-sm">✏️ Manage</a>
+          </div>
+        </div>
+      </div>`;
+    }).join('')+(books.length>5?`<div style="text-align:center;padding:12px;"><a href="library-host-view.html" class="lib-btn lib-btn-ghost lib-btn-sm">View all ${books.length} books →</a></div>`:'');
+  }
+
+  function showHostStrip(profile,uid){
+    const strip=document.getElementById('host-strip');
+    const av=document.getElementById('hs-avatar');
+    if(profile.photoURL){av.innerHTML=`<img src="${profile.photoURL}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;}
+    else{av.textContent=window.libInitials(profile.displayName||'?');}
+    document.getElementById('hs-name').textContent=profile.displayName||'Your Profile';
+    document.getElementById('hs-inst').textContent=profile.institution||'';
+    document.getElementById('hs-profile-link').href='library-host-profile.html?uid='+uid;
+    strip.style.display='flex';
+  }
+
+  window.saveProfile=async function(){
+    const fn=document.getElementById('p-fname').value.trim();
+    const ln=document.getElementById('p-lname').value.trim();
+    const it=document.getElementById('p-type').value;
+    const sc=document.getElementById('p-school').value;
+    const dp=document.getElementById('p-dept').value;
+    const bio=document.getElementById('p-bio').value.trim();
+    if(!fn||!ln||!it||!sc||!dp){window.libToast('Please fill all required fields.');return;}
+    const saveBtn=document.getElementById('po-save-txt');saveBtn.textContent='Saving…';
+    try{
+      const displayName=(fn+' '+ln).trim();
+      let photoURL='';
+      // Upload photo if selected
+      const photoInp=document.getElementById('po-photo-input');
+      if(photoInp._file){
+        try{ photoURL=await window.libUploadProfilePhoto(_user.uid,photoInp._file); }
+        catch(e){window.libToast('Photo upload failed, continuing...',4000);}
+      }
+      await window.libSaveProfile(_user.uid,{displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL});
+      _profile={displayName,firstName:fn,lastName:ln,institutionType:it,institution:sc,department:dp,bio,photoURL};
+      document.getElementById('profile-overlay').style.display='none';
+      document.getElementById('main-content').style.display='block';
+      document.getElementById('hdr-manage').style.display='inline-flex';
+      showHostStrip(_profile,_user.uid);
+      loadStats();loadMyBooks();
+      window.libToast('Profile saved!');
+    }catch(e){window.libToast('Save failed: '+e.message);}
+    saveBtn.textContent='Save Profile & Continue →';
+  };
+
+  window.libOnAuth(async function(user){
+    if(!user){document.getElementById('auth-gate').style.display='flex';return;}
+    _user=user;
+    _profile=await window.libGetProfile(user.uid);
+    if(!_profile){
+      document.getElementById('profile-overlay').style.display='flex';
+    } else {
+      document.getElementById('main-content').style.display='block';
+      document.getElementById('hdr-manage').style.display='inline-flex';
+      showHostStrip(_profile,user.uid);
+      loadStats();loadMyBooks();
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,843 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manage Quiz — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<style>
+*{box-sizing:border-box;}
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.qm-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
+.qm-back{color:#6b7280;text-decoration:none;font-size:.85rem;display:flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;white-space:nowrap;}
+.qm-back:hover{background:#f9fafb;}
+.qm-header-title{font-weight:700;font-size:1rem;color:#0f172a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qm-status-badge{font-size:.72rem;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
+.badge-published{background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;}
+.badge-draft{background:#fffbeb;color:#92400e;border:1px solid #fcd34d;}
+.badge-disabled{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5;}
+.qm-main{max-width:1100px;margin:0 auto;padding:24px 18px;}
+.qm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
+.qm-btn{padding:9px 18px;border-radius:9px;font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid transparent;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
+.qm-btn-outline{background:#fff;border-color:#e2e8f0;color:#374151;}
+.qm-btn-outline:hover{border-color:#c7d2fe;background:#f5f3ff;color:#4f46e5;}
+.qm-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
+.qm-btn-primary:hover{background:#4338ca;}
+.qm-btn-success{background:#059669;color:#fff;border-color:#059669;}
+.qm-btn-success:hover{background:#047857;}
+.qm-btn-warn{background:#d97706;color:#fff;border-color:#d97706;}
+.qm-btn-warn:hover{background:#b45309;}
+.qm-btn-danger{background:#dc2626;color:#fff;border-color:#dc2626;}
+.qm-btn-danger:hover{background:#b91c1c;}
+.qm-btn-sm{padding:6px 12px;font-size:.78rem;}
+.qm-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.qm-stat{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:16px;text-align:center;}
+.qm-stat-num{font-size:1.7rem;font-weight:800;color:#4f46e5;line-height:1.1;}
+.qm-stat-label{font-size:.74rem;color:#64748b;margin-top:4px;font-weight:500;}
+.qm-tabs{display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:20px;}
+.qm-tab{padding:11px 20px;font-size:.88rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+.qm-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.qm-tab:hover:not(.active){color:#374151;}
+.qm-panel{display:none;}
+.qm-panel.active{display:block;}
+.qm-card{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:22px 24px;margin-bottom:18px;}
+.qm-card-title{font-size:.95rem;font-weight:700;color:#0f172a;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.qm-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.qm-detail-item label{font-size:.75rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:3px;}
+.qm-detail-item span{font-size:.92rem;color:#0f172a;font-weight:500;}
+.qm-question-item{border:1px solid #e5e7eb;border-radius:11px;padding:16px;margin-bottom:12px;background:#fafafa;}
+.qm-q-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
+.qm-q-num{background:#4f46e5;color:#fff;font-size:.78rem;font-weight:700;padding:3px 9px;border-radius:6px;flex-shrink:0;margin-top:1px;}
+.qm-q-text{font-size:.9rem;font-weight:600;color:#1e293b;line-height:1.5;}
+.qm-options{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;}
+.qm-option{padding:7px 12px;border-radius:7px;font-size:.83rem;border:1px solid #e2e8f0;color:#374151;}
+.qm-option.correct{background:#ecfdf5;border-color:#6ee7b7;color:#065f46;font-weight:600;}
+.qm-explanation{margin-top:8px;padding:7px 12px;background:#f0f9ff;border-radius:7px;font-size:.8rem;color:#0369a1;border-left:3px solid #38bdf8;}
+.att-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:14px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;}
+.att-toolbar-label{font-size:.78rem;font-weight:700;color:#374151;margin-right:4px;white-space:nowrap;}
+.att-export-btns{display:flex;flex-wrap:wrap;gap:6px;}
+.att-sep{width:100%;height:0;border-top:1px dashed #e2e8f0;margin:6px 0;}
+.att-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0;}
+.att-table{width:100%;border-collapse:collapse;font-size:.85rem;}
+.att-table th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:700;color:#374151;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e2e8f0;}
+.att-table td{padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#374151;vertical-align:middle;}
+.att-table tr:last-child td{border-bottom:none;}
+.att-table tr:hover td{background:#f9fafb;}
+.att-pass{color:#065f46;background:#ecfdf5;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;border:1px solid #6ee7b7;}
+.att-fail{color:#991b1b;background:#fef2f2;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;border:1px solid #fca5a5;}
+.att-empty{text-align:center;padding:40px 20px;color:#94a3b8;}
+.att-empty-icon{font-size:2.5rem;margin-bottom:8px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal-box{background:#fff;border-radius:16px;padding:28px 26px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.18);}
+.modal-title{font-size:1.05rem;font-weight:800;color:#0f172a;margin-bottom:10px;}
+.modal-body{font-size:.9rem;color:#374151;line-height:1.6;margin-bottom:18px;}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+.modal-export-btns{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0;}
+.share-url-box{display:flex;gap:8px;margin:10px 0;}
+.share-url-box input{flex:1;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:.83rem;color:#374151;background:#f8fafc;}
+.loading-spinner{display:inline-block;width:18px;height:18px;border:2px solid #e2e8f0;border-top-color:#4f46e5;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:30px;font-size:.87rem;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast.show{opacity:1;}
+@media(max-width:700px){
+  .qm-stats-row{grid-template-columns:1fr 1fr;}
+  .qm-detail-grid{grid-template-columns:1fr;}
+  .qm-options{grid-template-columns:1fr;}
+  .qm-actions{gap:6px;}
+  .qm-btn{padding:8px 12px;font-size:.8rem;}
+  .qm-main{padding:14px 12px;}
+}
+/* ── Print styles ── */
+@media print{
+  body *{visibility:hidden;}
+  #print-area,#print-area *{visibility:visible;}
+  #print-area{position:absolute;inset:0;padding:20px;}
+  .no-print{display:none!important;}
+}
+</style>
+<script>
+window.AQS = {
+  ajax_url:'firebase', nonce:'', auth_nonce:'',
+  home_url:'index.html', create_page_url:'create-quiz.html',
+  is_logged_in:true, is_host:true, is_admin:false,
+  current_user_name:'User', plugin_url:'./'
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<header class="qm-header no-print">
+  <a href="user-dashboard.html" class="qm-back">← My Profile</a>
+  <div class="qm-header-title" id="qm-header-title">Loading quiz…</div>
+  <span class="qm-status-badge badge-draft" id="qm-header-badge">Draft</span>
+</header>
+
+<main class="qm-main">
+
+  <!-- Action buttons -->
+  <div class="qm-actions no-print" id="qm-actions">
+    <span style="color:#94a3b8;font-size:.85rem;padding:9px 0;"><span class="loading-spinner"></span>Loading…</span>
+  </div>
+
+  <!-- Stats row -->
+  <div class="qm-stats-row">
+    <div class="qm-stat"><div class="qm-stat-num" id="qs-attempts">—</div><div class="qm-stat-label">Total Attempts</div></div>
+    <div class="qm-stat"><div class="qm-stat-num" id="qs-pass">—</div><div class="qm-stat-label">Pass Rate</div></div>
+    <div class="qm-stat"><div class="qm-stat-num" id="qs-avg">—</div><div class="qm-stat-label">Avg Score</div></div>
+    <div class="qm-stat"><div class="qm-stat-num" id="qs-questions">—</div><div class="qm-stat-label">Questions</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="qm-tabs no-print">
+    <button class="qm-tab active" data-tab="details">📋 Details</button>
+    <button class="qm-tab" data-tab="questions">❓ Questions</button>
+    <button class="qm-tab" data-tab="attendance">👥 Attendance</button>
+  </div>
+
+  <!-- Details tab -->
+  <div class="qm-panel active" id="tab-details">
+    <div class="qm-card">
+      <div class="qm-card-title">📋 Quiz Information</div>
+      <div class="qm-detail-grid" id="qm-detail-grid">
+        <div style="color:#94a3b8;font-size:.87rem;padding:12px 0;">Loading quiz details…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Questions tab -->
+  <div class="qm-panel" id="tab-questions">
+    <div class="qm-card">
+      <div class="qm-card-title">❓ Quiz Questions <span style="font-weight:400;color:#94a3b8;font-size:.8rem;" id="qm-q-count"></span></div>
+      <div id="qm-questions-list"><div style="color:#94a3b8;padding:12px 0;">Loading questions…</div></div>
+    </div>
+  </div>
+
+  <!-- Attendance tab -->
+  <div class="qm-panel" id="tab-attendance">
+    <div class="qm-card">
+      <div class="qm-card-title" style="flex-wrap:wrap;gap:8px;">
+        👥 Attendance
+        <span style="font-weight:400;color:#94a3b8;font-size:.8rem;" id="att-count-label"></span>
+      </div>
+
+      <div class="att-toolbar no-print">
+        <span class="att-toolbar-label">📤 Export Attendance:</span>
+        <div class="att-export-btns">
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('print')">🖨️ Print</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('pdf')">📄 PDF</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('excel')">📊 Excel</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('csv')">📝 CSV</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('word')">📃 Word</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('json')">🗂️ JSON</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('tsv')">📋 TSV</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('html')">🌐 HTML</button>
+        </div>
+        <div class="att-sep"></div>
+        <span class="att-toolbar-label">📤 Export Quiz:</span>
+        <div class="att-export-btns">
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportQuiz('print')">🖨️ Print Quiz</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportQuiz('pdf')">📄 Quiz PDF</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportQuiz('word')">📃 Quiz Word</button>
+          <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportQuiz('excel')">📊 Quiz Excel</button>
+        </div>
+      </div>
+
+      <div id="att-table-container">
+        <div class="att-empty"><div class="att-empty-icon">⏳</div><div>Loading attendance…</div></div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Hidden print area -->
+<div id="print-area" style="display:none;"></div>
+
+<!-- Share modal -->
+<div class="modal-overlay" id="modal-share" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">🔗 Share Quiz Link</div>
+    <div class="modal-body">Anyone with this link can take the quiz.</div>
+    <div class="share-url-box">
+      <input type="text" id="share-url-input" readonly>
+      <button class="qm-btn qm-btn-primary qm-btn-sm" onclick="copyShareUrl()">Copy</button>
+    </div>
+    <div class="modal-actions">
+      <button class="qm-btn qm-btn-outline" onclick="closeModal('modal-share')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete modal -->
+<div class="modal-overlay" id="modal-delete" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title">🗑️ Delete Quiz</div>
+    <div class="modal-body" id="modal-delete-body">
+      You must <strong>export or print the attendance</strong> before deleting this quiz. This action cannot be undone — all quiz data will be permanently removed.
+    </div>
+    <div class="modal-export-btns no-print" id="modal-export-gate">
+      <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('print');markExported()">🖨️ Print Attendance</button>
+      <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('pdf');markExported()">📄 PDF</button>
+      <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('excel');markExported()">📊 Excel</button>
+      <button class="qm-btn qm-btn-outline qm-btn-sm" onclick="exportAtt('csv');markExported()">📝 CSV</button>
+    </div>
+    <div id="modal-delete-confirm-hint" style="display:none;padding:10px 14px;background:#fef2f2;border-radius:8px;font-size:.85rem;color:#991b1b;margin:10px 0;border:1px solid #fca5a5;">
+      ⚠️ You have exported the attendance. Confirm below to permanently delete this quiz.
+    </div>
+    <div class="modal-actions" style="margin-top:14px;">
+      <button class="qm-btn qm-btn-outline" onclick="closeModal('modal-delete')">Cancel</button>
+      <button class="qm-btn qm-btn-danger" id="confirm-delete-btn" disabled onclick="confirmDelete()">Delete Quiz</button>
+    </div>
+  </div>
+</div>
+
+<!-- Disable modal -->
+<div class="modal-overlay" id="modal-disable" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-disable-title">Disable Quiz</div>
+    <div class="modal-body" id="modal-disable-body">Disabling this quiz will prevent anyone from taking it. You can re-enable it at any time.</div>
+    <div class="modal-actions">
+      <button class="qm-btn qm-btn-outline" onclick="closeModal('modal-disable')">Cancel</button>
+      <button class="qm-btn qm-btn-warn" id="confirm-toggle-btn" onclick="confirmToggle()">Disable</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  var quizId   = new URLSearchParams(location.search).get('id') || '';
+  var quizData = null;
+  var attData  = null;
+  var hostStatus = 'active';
+
+  /* ── Helpers ── */
+  function toast(msg, dur){
+    var el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    setTimeout(function(){ el.classList.remove('show'); }, dur||2500);
+  }
+  function closeModal(id){ document.getElementById(id).style.display = 'none'; }
+  function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function pct(score, total){ return total ? Math.round((score/total)*100) : 0; }
+
+  /* ── Track export (required before delete) ── */
+  var EXPORT_KEY = 'aqsExported_' + quizId;
+  function markExported(){
+    sessionStorage.setItem(EXPORT_KEY, '1');
+    document.getElementById('modal-export-gate').style.display = 'none';
+    document.getElementById('modal-delete-confirm-hint').style.display = 'block';
+    document.getElementById('confirm-delete-btn').disabled = false;
+  }
+  window.markExported = markExported;
+
+  function hasExported(){ return !!sessionStorage.getItem(EXPORT_KEY); }
+
+  /* ── Tab switching ── */
+  document.querySelectorAll('.qm-tab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.qm-tab').forEach(function(b){ b.classList.remove('active'); });
+      document.querySelectorAll('.qm-panel').forEach(function(p){ p.classList.remove('active'); });
+      btn.classList.add('active');
+      document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+    });
+  });
+
+  /* ── Wait for Firebase ── */
+  function waitReady(fn, t){
+    t = t||0;
+    if(window._aqsFirebaseReady && typeof jQuery !== 'undefined'){ fn(); }
+    else if(t < 60){ setTimeout(function(){ waitReady(fn, t+1); }, 250); }
+    else { document.getElementById('qm-actions').innerHTML = '<span style="color:#ef4444;">Firebase not ready. Please refresh.</span>'; }
+  }
+
+  /* ── Load quiz details ── */
+  function loadQuiz(){
+    jQuery.post(AQS.ajax_url, {action:'aqs_get_quiz_for_edit', quiz_id: quizId}).then(function(d){
+      if(!d) return;
+      quizData = d;
+      hostStatus = d.host_status || 'active';
+
+      document.getElementById('qm-header-title').textContent = d.title || 'Untitled Quiz';
+
+      var published = d.status === 'published';
+      var disabled  = hostStatus === 'disabled';
+      var badge = document.getElementById('qm-header-badge');
+      if(disabled){ badge.textContent='Disabled'; badge.className='qm-status-badge badge-disabled'; }
+      else if(published){ badge.textContent='Published'; badge.className='qm-status-badge badge-published'; }
+      else { badge.textContent='Draft'; badge.className='qm-status-badge badge-draft'; }
+
+      document.getElementById('qs-questions').textContent = (d.questions||[]).length;
+
+      renderDetails(d);
+      renderQuestions(d.questions||[]);
+      renderActions(d);
+    }).catch(function(e){
+      document.getElementById('qm-actions').innerHTML = '<span style="color:#ef4444;">Error: ' + esc(e.message) + '</span>';
+    });
+  }
+
+  /* ── Load attendance ── */
+  function loadAttendance(){
+    jQuery.post(AQS.ajax_url, {action:'aqs_get_attendance', quiz_id: quizId}).then(function(d){
+      if(!d) return;
+      attData = d;
+      var attempts = d.attempts || [];
+
+      document.getElementById('qs-attempts').textContent = attempts.length;
+      var passed  = attempts.filter(function(a){ return pct(a.score,a.total) >= 50; });
+      var passRate = attempts.length ? Math.round((passed.length/attempts.length)*100) : 0;
+      document.getElementById('qs-pass').textContent = attempts.length ? passRate + '%' : '—';
+      var totalPct = attempts.reduce(function(s,a){ return s + pct(a.score,a.total); },0);
+      document.getElementById('qs-avg').textContent  = attempts.length ? Math.round(totalPct/attempts.length) + '%' : '—';
+
+      document.getElementById('att-count-label').textContent = attempts.length ? '(' + attempts.length + ' participant' + (attempts.length!==1?'s':'') + ')' : '';
+      renderAttendance(d);
+    }).catch(function(){ });
+  }
+
+  /* ── Render details ── */
+  function renderDetails(d){
+    var items = [
+      ['Title',       d.title],
+      ['Subject',     d.subject],
+      ['Mode',        d.mode || 'exam'],
+      ['Questions',   (d.questions||[]).length],
+      ['Time Limit',  (d.time_limit||30) + ' min'],
+      ['Max Attempts',d.allow_retakes == 0 ? 'Unlimited' : d.allow_retakes],
+      ['Show Results',d.show_results ? 'Yes' : 'No'],
+      ['Status',      (d.host_status==='disabled'?'Disabled':(d.status==='published'?'Published':'Draft'))],
+    ];
+    document.getElementById('qm-detail-grid').innerHTML = items.map(function(i){
+      return '<div class="qm-detail-item"><label>'+esc(i[0])+'</label><span>'+esc(String(i[1]||'—'))+'</span></div>';
+    }).join('');
+  }
+
+  /* ── Render questions ── */
+  function renderQuestions(qs){
+    document.getElementById('qm-q-count').textContent = '(' + qs.length + ' question' + (qs.length!==1?'s':'') + ')';
+    if(!qs.length){
+      document.getElementById('qm-questions-list').innerHTML = '<div style="color:#94a3b8;padding:12px 0;">No questions found.</div>';
+      return;
+    }
+    document.getElementById('qm-questions-list').innerHTML = qs.map(function(q,i){
+      var opts = (q.options||[]).map(function(o,oi){
+        return '<div class="qm-option'+(oi===q.correct_answer_index?' correct':'')+'">'+
+          '<strong>'+ String.fromCharCode(65+oi) + '.</strong> '+esc(o)+
+          (oi===q.correct_answer_index?' ✓':'') + '</div>';
+      }).join('');
+      var expl = q.explanation ? '<div class="qm-explanation">💡 ' + esc(q.explanation) + '</div>' : '';
+      return '<div class="qm-question-item">'+
+        '<div class="qm-q-header"><span class="qm-q-num">Q'+(i+1)+'</span><div class="qm-q-text">'+esc(q.question)+'</div></div>'+
+        '<div class="qm-options">'+opts+'</div>'+expl+'</div>';
+    }).join('');
+  }
+
+  /* ── Render attendance table ── */
+  function renderAttendance(d){
+    var attempts = d.attempts || [];
+    var customForm = d.custom_form || [];
+    var container = document.getElementById('att-table-container');
+
+    if(!attempts.length){
+      container.innerHTML = '<div class="att-empty"><div class="att-empty-icon">📭</div><div style="font-weight:600;color:#64748b;">No one has taken this quiz yet</div></div>';
+      return;
+    }
+
+    var extraCols = customForm.map(function(f){ return f.label || f.name || ''; }).filter(Boolean);
+
+    var headerCols = ['#','Participant','Score','%','Result','Date/Time'].concat(extraCols);
+    var thead = '<tr>' + headerCols.map(function(c){ return '<th>'+esc(c)+'</th>'; }).join('') + '</tr>';
+
+    var tbody = attempts.map(function(a, i){
+      var p  = pct(a.score, a.total);
+      var pass = p >= 50;
+      var badge = pass ? '<span class="att-pass">Pass</span>' : '<span class="att-fail">Fail</span>';
+      var date = (a.finished_at||'').substring(0,16);
+      var custom = {};
+      try{ custom = typeof a.custom_form_data === 'string' ? JSON.parse(a.custom_form_data||'{}') : (a.custom_form_data||{}); }catch(_){}
+      var extraCells = extraCols.map(function(k){ return '<td>'+esc(custom[k]||'—')+'</td>'; }).join('');
+      return '<tr>'+
+        '<td>'+esc(i+1)+'</td>'+
+        '<td style="font-weight:600;">'+esc(a.participant_name)+'</td>'+
+        '<td>'+esc(a.score)+'/'+esc(a.total)+'</td>'+
+        '<td><strong>'+p+'%</strong></td>'+
+        '<td>'+badge+'</td>'+
+        '<td style="white-space:nowrap;">'+esc(date)+'</td>'+
+        extraCells+
+      '</tr>';
+    }).join('');
+
+    container.innerHTML = '<div class="att-table-wrap"><table class="att-table"><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table></div>';
+  }
+
+  /* ── Render action buttons ── */
+  function renderActions(d){
+    var isPublished = d.status === 'published';
+    var isDisabled  = (d.host_status || 'active') === 'disabled';
+    var editUrl     = 'create-quiz.html?edit=' + quizId;
+    var shareUrl    = d.quiz_url || '';
+
+    var btns = '<a href="'+esc(editUrl)+'" class="qm-btn qm-btn-outline">✏️ Edit Quiz</a>';
+
+    if(isPublished && shareUrl){
+      btns += '<button class="qm-btn qm-btn-primary" onclick="openShareModal()">🔗 Share Link</button>';
+    }
+
+    if(isDisabled){
+      btns += '<button class="qm-btn qm-btn-success" onclick="openToggleModal(\'enable\')">✅ Enable Quiz</button>';
+    } else {
+      btns += '<button class="qm-btn qm-btn-warn" onclick="openToggleModal(\'disable\')">⛔ Disable Quiz</button>';
+    }
+
+    btns += '<a href="quiz-leaderboard.html?id=' + quizId + '&from=quiz-manage.html%3Fid%3D' + quizId + '" class="qm-btn qm-btn-outline">🏆 Leaderboard</a>';
+    btns += '<button class="qm-btn qm-btn-danger" onclick="openDeleteModal()">🗑️ Delete</button>';
+
+    document.getElementById('qm-actions').innerHTML = btns;
+  }
+
+  /* ── Share modal ── */
+  window.openShareModal = function(){
+    var url = (quizData && quizData.quiz_url) || '';
+    document.getElementById('share-url-input').value = url;
+    document.getElementById('modal-share').style.display = 'flex';
+  };
+  window.copyShareUrl = function(){
+    var inp = document.getElementById('share-url-input');
+    inp.select(); document.execCommand('copy');
+    toast('Link copied!');
+  };
+  window.closeModal = closeModal;
+
+  /* ── Toggle disable/enable modal ── */
+  var pendingToggle = null;
+  window.openToggleModal = function(action){
+    pendingToggle = action;
+    var isDisable = action === 'disable';
+    document.getElementById('modal-disable-title').textContent = isDisable ? '⛔ Disable Quiz' : '✅ Enable Quiz';
+    document.getElementById('modal-disable-body').textContent  = isDisable
+      ? 'Disabling this quiz will prevent anyone from taking it. You can re-enable it at any time.'
+      : 'Re-enabling this quiz will allow participants to take it again.';
+    document.getElementById('confirm-toggle-btn').textContent  = isDisable ? 'Disable' : 'Enable';
+    document.getElementById('confirm-toggle-btn').className    = isDisable ? 'qm-btn qm-btn-warn' : 'qm-btn qm-btn-success';
+    document.getElementById('modal-disable').style.display = 'flex';
+  };
+  window.confirmToggle = function(){
+    closeModal('modal-disable');
+    jQuery.post(AQS.ajax_url, {action:'aqs_toggle_quiz_status', quiz_id: quizId, toggle_action: pendingToggle}).then(function(res){
+      hostStatus = res.host_status || 'active';
+      toast(pendingToggle === 'disable' ? 'Quiz disabled.' : 'Quiz enabled.');
+      if(quizData){ quizData.host_status = hostStatus; renderActions(quizData); }
+      var badge = document.getElementById('qm-header-badge');
+      if(hostStatus === 'disabled'){ badge.textContent='Disabled'; badge.className='qm-status-badge badge-disabled'; }
+      else if(quizData && quizData.status === 'published'){ badge.textContent='Published'; badge.className='qm-status-badge badge-published'; }
+      else { badge.textContent='Draft'; badge.className='qm-status-badge badge-draft'; }
+    }).catch(function(e){ toast('Error: ' + e.message); });
+  };
+
+  /* ── Delete modal ── */
+  window.openDeleteModal = function(){
+    var alreadyExported = hasExported();
+    document.getElementById('modal-export-gate').style.display       = alreadyExported ? 'none' : 'flex';
+    document.getElementById('modal-delete-confirm-hint').style.display = alreadyExported ? 'block' : 'none';
+    document.getElementById('confirm-delete-btn').disabled             = !alreadyExported;
+    document.getElementById('modal-delete').style.display = 'flex';
+  };
+  window.confirmDelete = function(){
+    closeModal('modal-delete');
+    jQuery.post(AQS.ajax_url, {action:'aqs_delete_quiz', quiz_id: quizId}).then(function(){
+      sessionStorage.removeItem(EXPORT_KEY);
+      toast('Quiz deleted.');
+      setTimeout(function(){ location.href = 'user-dashboard.html'; }, 1200);
+    }).catch(function(e){ toast('Error: ' + e.message); });
+  };
+
+  /* ============================================================
+     EXPORT FUNCTIONS
+     ============================================================ */
+
+  function getAttRows(){
+    if(!attData) return { headers:[], rows:[] };
+    var attempts = attData.attempts || [];
+    var customForm = attData.custom_form || [];
+    var extraCols = customForm.map(function(f){ return f.label || f.name || ''; }).filter(Boolean);
+    var headers = ['#','Participant','Score','Total','Percentage','Result','Date/Time'].concat(extraCols);
+    var rows = attempts.map(function(a,i){
+      var p = pct(a.score,a.total);
+      var custom = {};
+      try{ custom = typeof a.custom_form_data==='string' ? JSON.parse(a.custom_form_data||'{}') : (a.custom_form_data||{}); }catch(_){}
+      var base = [i+1, a.participant_name||'Anonymous', a.score, a.total, p+'%', p>=50?'Pass':'Fail', (a.finished_at||'').substring(0,16)];
+      var extras = extraCols.map(function(k){ return custom[k]||''; });
+      return base.concat(extras);
+    });
+    return { headers: headers, rows: rows };
+  }
+
+  function quizTitle(){ return (attData && attData.quiz_title) || (quizData && quizData.title) || 'Quiz'; }
+
+  window.exportAtt = function(fmt){
+    var data = getAttRows();
+    var title = quizTitle();
+    if(fmt === 'print'){
+      var html = buildPrintAttHtml(data, title);
+      var pa = document.getElementById('print-area');
+      pa.style.display = 'block';
+      pa.innerHTML = html;
+      window.print();
+      pa.style.display = 'none';
+      pa.innerHTML = '';
+    } else if(fmt === 'pdf')   { exportPdf(data, title, false); }
+    else if(fmt === 'excel')   { exportExcel(data, title, false); }
+    else if(fmt === 'csv')     { exportCsv(data, title); }
+    else if(fmt === 'word')    { exportWord(data, title, false); }
+    else if(fmt === 'json')    { exportJson(title); }
+    else if(fmt === 'tsv')     { exportTsv(data, title); }
+    else if(fmt === 'html')    { exportHtmlFile(data, title); }
+  };
+
+  window.exportQuiz = function(fmt){
+    if(!quizData) { toast('Quiz data not loaded yet.'); return; }
+    if(fmt === 'print')   { printFullQuiz(); }
+    else if(fmt === 'pdf') { exportQuizPdf(); }
+    else if(fmt === 'word'){ exportQuizWord(); }
+    else if(fmt === 'excel'){ exportQuizExcel(); }
+  };
+
+  /* ── Print attendance HTML ── */
+  function buildPrintAttHtml(data, title){
+    var att = attData ? attData.attempts||[] : [];
+    var passCount = att.filter(function(a){ return pct(a.score,a.total)>=50; }).length;
+    var avgScore  = att.length ? Math.round(att.reduce(function(s,a){ return s+pct(a.score,a.total); },0)/att.length) : 0;
+
+    var thead = '<tr>'+data.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:8px 12px;text-align:left;font-size:12px;">'+h+'</th>'; }).join('')+'</tr>';
+    var tbody = data.rows.map(function(r){
+      var result = r[5];
+      var color  = result==='Pass'?'#065f46':'#991b1b';
+      return '<tr>'+r.map(function(c,ci){
+        var style = 'padding:7px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;';
+        if(ci===5) style += 'color:'+color+';font-weight:700;';
+        return '<td style="'+style+'">'+esc(String(c||''))+'</td>';
+      }).join('')+'</tr>';
+    }).join('');
+
+    return '<div style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;">'+
+      '<h2 style="color:#4f46e5;margin-bottom:4px;">'+esc(title)+'</h2>'+
+      '<p style="color:#6b7280;font-size:13px;margin:0 0 8px;">Subject: '+esc(attData&&attData.quiz_subject||'')+'</p>'+
+      '<div style="display:flex;gap:24px;margin-bottom:16px;">'+
+        '<span style="font-size:13px;"><strong>Total:</strong> '+att.length+'</span>'+
+        '<span style="font-size:13px;"><strong>Passed:</strong> '+passCount+'</span>'+
+        '<span style="font-size:13px;"><strong>Avg Score:</strong> '+avgScore+'%</span>'+
+        '<span style="font-size:13px;color:#6b7280;">Printed: '+new Date().toLocaleString()+'</span>'+
+      '</div>'+
+      '<table style="width:100%;border-collapse:collapse;"><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>'+
+    '</div>';
+  }
+
+  /* ── PDF export ── */
+  function exportPdf(data, title, isQuiz){
+    var { jsPDF } = window.jspdf || {};
+    if(!jsPDF){ toast('PDF library loading, try again in a moment.'); return; }
+    var doc = new jsPDF({ orientation:'landscape' });
+    doc.setFontSize(16); doc.setTextColor(79,70,229);
+    doc.text(title, 14, 16);
+    doc.setFontSize(10); doc.setTextColor(100,116,139);
+    if(attData) doc.text('Subject: '+(attData.quiz_subject||''), 14, 23);
+    doc.text('Exported: '+new Date().toLocaleString(), 14, isQuiz?23:29);
+    doc.autoTable({
+      head: [data.headers],
+      body: data.rows,
+      startY: isQuiz ? 28 : 34,
+      headStyles:{ fillColor:[79,70,229], textColor:255, fontStyle:'bold', fontSize:9 },
+      bodyStyles:{ fontSize:8.5 },
+      alternateRowStyles:{ fillColor:[248,250,252] },
+      columnStyles:{ 5:{ cellWidth:16 } }
+    });
+    doc.save(sanitize(title) + '-attendance.pdf');
+    toast('PDF downloaded!');
+  }
+
+  /* ── Excel export ── */
+  function exportExcel(data, title, isQuiz){
+    if(!window.XLSX){ toast('Excel library loading, try again.'); return; }
+    var wsData = [data.headers].concat(data.rows);
+    var ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = data.headers.map(function(){ return { wch: 18 }; });
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
+    XLSX.writeFile(wb, sanitize(title) + '-attendance.xlsx');
+    toast('Excel downloaded!');
+  }
+
+  /* ── CSV export ── */
+  function exportCsv(data, title){
+    var rows = [data.headers].concat(data.rows);
+    var csv  = rows.map(function(r){ return r.map(function(c){ var s=String(c||''); return s.indexOf(',')!==-1||s.indexOf('"')!==-1?'"'+s.replace(/"/g,'""')+'"':s; }).join(','); }).join('\n');
+    download(csv, sanitize(title)+'-attendance.csv', 'text/csv');
+    toast('CSV downloaded!');
+  }
+
+  /* ── TSV export ── */
+  function exportTsv(data, title){
+    var rows = [data.headers].concat(data.rows);
+    var tsv  = rows.map(function(r){ return r.join('\t'); }).join('\n');
+    download(tsv, sanitize(title)+'-attendance.tsv', 'text/tab-separated-values');
+    toast('TSV downloaded!');
+  }
+
+  /* ── Word (HTML) export ── */
+  function exportWord(data, title, isQuiz){
+    var thead = '<tr>'+data.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:7px 10px;font-size:11pt;">'+h+'</th>'; }).join('')+'</tr>';
+    var tbody = data.rows.map(function(r){
+      return '<tr>'+r.map(function(c){ return '<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11pt;">'+esc(String(c||''))+'</td>'; }).join('')+'</tr>';
+    }).join('');
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">'+
+      '<head><meta charset="UTF-8"><title>'+esc(title)+'</title></head><body>'+
+      '<h2 style="color:#4f46e5;font-family:Arial;">'+esc(title)+'</h2>'+
+      '<p style="font-size:11pt;font-family:Arial;color:#6b7280;">Exported: '+new Date().toLocaleString()+'</p>'+
+      '<table style="border-collapse:collapse;width:100%;font-family:Arial;"><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>'+
+      '</body></html>';
+    download(html, sanitize(title)+'-attendance.doc', 'application/msword');
+    toast('Word file downloaded!');
+  }
+
+  /* ── JSON export ── */
+  function exportJson(title){
+    var out = { quiz_title: quizTitle(), quiz_subject: attData&&attData.quiz_subject||'', exported_at: new Date().toISOString(), attempts: (attData&&attData.attempts)||[] };
+    download(JSON.stringify(out, null, 2), sanitize(title)+'-attendance.json', 'application/json');
+    toast('JSON downloaded!');
+  }
+
+  /* ── HTML file export ── */
+  function exportHtmlFile(data, title){
+    var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(title)+'</title>'+
+      '<style>body{font-family:Arial,sans-serif;padding:20px;}h2{color:#4f46e5;}table{border-collapse:collapse;width:100%;}th{background:#4f46e5;color:#fff;padding:8px 12px;text-align:left;}td{padding:7px 12px;border-bottom:1px solid #e5e7eb;}</style></head><body>'+
+      '<h2>'+esc(title)+'</h2><p>Exported: '+new Date().toLocaleString()+'</p>'+
+      '<table><thead><tr>'+data.headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')+'</tr></thead>'+
+      '<tbody>'+data.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(String(c||''))+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></body></html>';
+    download(html, sanitize(title)+'-attendance.html', 'text/html');
+    toast('HTML file downloaded!');
+  }
+
+  /* ── Print full quiz ── */
+  function printFullQuiz(){
+    if(!quizData){ toast('Quiz not loaded yet.'); return; }
+    var att = attData ? attData.attempts||[] : [];
+    var attRows = getAttRows();
+    var thead = '<tr>'+attRows.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:7px 10px;font-size:11px;">'+h+'</th>'; }).join('')+'</tr>';
+    var tbody = attRows.rows.map(function(r){
+      return '<tr>'+r.map(function(c,ci){
+        var s = 'padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;';
+        if(ci===5) s += (String(c)==='Pass'?'color:#065f46;':'color:#991b1b;')+'font-weight:700;';
+        return '<td style="'+s+'">'+esc(String(c||''))+'</td>';
+      }).join('')+'</tr>';
+    }).join('');
+
+    var qHtml = (quizData.questions||[]).map(function(q,i){
+      var opts = (q.options||[]).map(function(o,oi){
+        var bg = oi===q.correct_answer_index ? 'background:#ecfdf5;border:1px solid #6ee7b7;' : 'border:1px solid #e5e7eb;';
+        return '<div style="padding:5px 10px;border-radius:6px;margin:3px 0;font-size:11px;'+bg+'">'+
+          String.fromCharCode(65+oi)+'. '+esc(o)+(oi===q.correct_answer_index?' ✓':'')+
+        '</div>';
+      }).join('');
+      return '<div style="margin-bottom:14px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">'+
+        '<div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:7px;"><strong>Q'+(i+1)+'.</strong> '+esc(q.question)+'</div>'+
+        opts+
+        (q.explanation?'<div style="margin-top:6px;padding:5px 10px;background:#f0f9ff;border-radius:5px;font-size:10px;color:#0369a1;">💡 '+esc(q.explanation)+'</div>':'')+
+      '</div>';
+    }).join('');
+
+    var html = '<div style="font-family:Arial,sans-serif;">'+
+      '<h2 style="color:#4f46e5;margin-bottom:4px;">'+esc(quizTitle())+'</h2>'+
+      '<table style="font-size:12px;border-collapse:collapse;margin-bottom:12px;"><tbody>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Subject:</strong></td><td>'+esc(quizData.subject||'')+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Mode:</strong></td><td>'+esc(quizData.mode||'exam')+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Questions:</strong></td><td>'+esc((quizData.questions||[]).length)+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Time Limit:</strong></td><td>'+esc(quizData.time_limit||30)+' min</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Printed:</strong></td><td>'+new Date().toLocaleString()+'</td></tr>'+
+      '</tbody></table>'+
+      '<h3 style="color:#374151;margin:16px 0 10px;font-size:13px;">QUESTIONS</h3>'+qHtml+
+      (att.length?'<h3 style="color:#374151;margin:20px 0 10px;font-size:13px;">ATTENDANCE ('+att.length+' participants)</h3>'+
+        '<table style="width:100%;border-collapse:collapse;"><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>':'')+
+    '</div>';
+
+    var pa = document.getElementById('print-area');
+    pa.style.display = 'block';
+    pa.innerHTML = html;
+    window.print();
+    pa.style.display = 'none';
+    pa.innerHTML = '';
+    toast('Printing…');
+  }
+
+  /* ── Quiz PDF ── */
+  function exportQuizPdf(){
+    var { jsPDF } = window.jspdf || {};
+    if(!jsPDF){ toast('PDF library loading, try again.'); return; }
+    var qs = quizData.questions||[];
+    var doc = new jsPDF();
+    doc.setFontSize(18); doc.setTextColor(79,70,229);
+    doc.text(quizTitle(), 14, 20);
+    doc.setFontSize(10); doc.setTextColor(100);
+    doc.text('Subject: '+(quizData.subject||'') + '   Mode: '+(quizData.mode||'exam') + '   Questions: '+qs.length, 14, 28);
+    doc.text('Printed: '+new Date().toLocaleString(), 14, 34);
+
+    var body = qs.map(function(q,i){
+      var opts = (q.options||[]).map(function(o,oi){ return String.fromCharCode(65+oi)+(oi===q.correct_answer_index?'✓':' ')+'. '+o; }).join('  |  ');
+      return ['Q'+(i+1), q.question, opts, q.explanation||''];
+    });
+    doc.autoTable({
+      head:[['#','Question','Options','Explanation']],
+      body: body,
+      startY:40,
+      headStyles:{ fillColor:[79,70,229], textColor:255, fontStyle:'bold', fontSize:9 },
+      bodyStyles:{ fontSize:8 },
+      columnStyles:{ 0:{cellWidth:10}, 1:{cellWidth:60}, 2:{cellWidth:80}, 3:{cellWidth:35} },
+      alternateRowStyles:{ fillColor:[248,250,252] }
+    });
+
+    var attRows = getAttRows();
+    if(attRows.rows.length){
+      doc.addPage();
+      doc.setFontSize(14); doc.setTextColor(79,70,229);
+      doc.text('Attendance ('+attRows.rows.length+' participants)', 14, 16);
+      doc.autoTable({
+        head:[attRows.headers], body:attRows.rows, startY:22,
+        headStyles:{ fillColor:[79,70,229], textColor:255, fontStyle:'bold', fontSize:9 },
+        bodyStyles:{ fontSize:8.5 }, alternateRowStyles:{ fillColor:[248,250,252] }
+      });
+    }
+    doc.save(sanitize(quizTitle())+'-full.pdf');
+    toast('Full PDF downloaded!');
+  }
+
+  /* ── Quiz Word export ── */
+  function exportQuizWord(){
+    var qs = quizData.questions||[];
+    var attRows = getAttRows();
+    var qHtml = qs.map(function(q,i){
+      var opts = (q.options||[]).map(function(o,oi){
+        return '<li style="'+(oi===q.correct_answer_index?'color:#065f46;font-weight:bold;':'')+'">'+ String.fromCharCode(65+oi)+'. '+esc(o)+(oi===q.correct_answer_index?' ✓':'')+' </li>';
+      }).join('');
+      return '<p><strong>Q'+(i+1)+'.</strong> '+esc(q.question)+'</p><ul>'+opts+'</ul>'+(q.explanation?'<p style="color:#0369a1;font-size:10pt;">Explanation: '+esc(q.explanation)+'</p>':'');
+    }).join('<hr style="border:none;border-top:1px solid #e5e7eb;"/>');
+
+    var attHtml = '';
+    if(attRows.rows.length){
+      var at = '<thead><tr>'+attRows.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:6px 10px;font-size:11pt;">'+h+'</th>'; }).join('')+'</tr></thead>';
+      at += '<tbody>'+attRows.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td style="padding:5px 10px;border-bottom:1px solid #e5e7eb;font-size:11pt;">'+esc(String(c||''))+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
+      attHtml = '<h3 style="color:#4f46e5;">Attendance</h3><table style="border-collapse:collapse;width:100%;">'+at+'</table>';
+    }
+
+    var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">'+
+      '<head><meta charset="UTF-8"><title>'+esc(quizTitle())+'</title></head><body style="font-family:Arial;padding:30px;">'+
+      '<h2 style="color:#4f46e5;">'+esc(quizTitle())+'</h2>'+
+      '<p>Subject: '+esc(quizData.subject||'')+'  |  Mode: '+esc(quizData.mode||'exam')+'  |  Exported: '+new Date().toLocaleString()+'</p>'+
+      '<h3 style="color:#374151;">Questions</h3>'+qHtml+attHtml+
+      '</body></html>';
+    download(html, sanitize(quizTitle())+'-quiz.doc', 'application/msword');
+    toast('Quiz Word file downloaded!');
+  }
+
+  /* ── Quiz Excel export ── */
+  function exportQuizExcel(){
+    if(!window.XLSX){ toast('Excel library loading, try again.'); return; }
+    var qs = quizData.questions||[];
+    var qData2 = [['Q#','Question','Option A','Option B','Option C','Option D','Correct','Explanation']].concat(
+      qs.map(function(q,i){
+        return [i+1, q.question||''].concat((q.options||[]).concat(['','','','']).slice(0,4)).concat([
+          String.fromCharCode(65+(q.correct_answer_index||0)), q.explanation||''
+        ]);
+      })
+    );
+    var ws1 = XLSX.utils.aoa_to_sheet(qData2);
+    ws1['!cols'] = [{wch:5},{wch:50},{wch:25},{wch:25},{wch:25},{wch:25},{wch:10},{wch:40}];
+
+    var attRows = getAttRows();
+    var ws2 = XLSX.utils.aoa_to_sheet([attRows.headers].concat(attRows.rows));
+    ws2['!cols'] = attRows.headers.map(function(){ return {wch:18}; });
+
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws1, 'Questions');
+    XLSX.utils.book_append_sheet(wb, ws2, 'Attendance');
+    XLSX.writeFile(wb, sanitize(quizTitle())+'-quiz.xlsx');
+    toast('Quiz Excel downloaded!');
+  }
+
+  /* ── Utils ── */
+  function sanitize(s){ return String(s||'quiz').replace(/[^a-zA-Z0-9_-]/g,'-').substring(0,50); }
+  function download(content, filename, mime){
+    var blob = new Blob([content], {type:mime});
+    var url  = URL.createObjectURL(blob);
+    var a    = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  }
+
+  /* ── Init ── */
+  if(!quizId){
+    document.getElementById('qm-header-title').textContent = 'No quiz specified';
+    document.getElementById('qm-actions').innerHTML = '<a href="user-dashboard.html" class="qm-btn qm-btn-outline">← Back to Profile</a>';
+  } else {
+    waitReady(function(){
+      loadQuiz();
+      loadAttendance();
+    });
+  }
+})();
+</script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-auth.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-update-check.js"></script>
+<script src="js/aqs-whats-new.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

@@ -1,0 +1,253 @@
+name: Build & Release Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'daraquiz-mobile/**'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version name e.g. 1.22 (leave blank to auto-increment)'
+        required: false
+        default: ''
+      notes:
+        description: 'Release notes shown in the update popup'
+        required: false
+        default: 'Bug fixes and improvements.'
+
+concurrency:
+  group: android-release
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+
+    defaults:
+      run:
+        working-directory: daraquiz-mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Skip CI-generated commits
+        id: skip_check
+        run: |
+          MSG=$(git log -1 --pretty=%B)
+          if echo "$MSG" | grep -q '\[skip ci\]'; then
+            echo "CI commit — skipping."
+            echo "skip=true" >> $GITHUB_OUTPUT
+          else
+            echo "skip=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set up Node.js 20
+        if: steps.skip_check.outputs.skip != 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up JDK 17
+        if: steps.skip_check.outputs.skip != 'true'
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        if: steps.skip_check.outputs.skip != 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Install npm dependencies
+        if: steps.skip_check.outputs.skip != 'true'
+        run: npm install
+
+      # ── Compute version BEFORE cap sync so the APK bakes in the right code ──
+      - name: Compute version numbers
+        if: steps.skip_check.outputs.skip != 'true'
+        id: ver
+        run: |
+          CUR_VER=$(grep '"version"' www/version.json | head -1 | sed 's/.*"\([0-9][^"]*\)".*/\1/')
+          CUR_CODE=$(grep '"versionCode"' www/version.json | grep -o '[0-9][0-9]*' | head -1)
+          NEW_CODE=$((CUR_CODE + 1))
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            NEW_VER="${{ github.event.inputs.version }}"
+          else
+            MAJOR=$(echo "$CUR_VER" | cut -d'.' -f1)
+            MINOR=$(echo "$CUR_VER" | cut -d'.' -f2)
+            NEW_VER="${MAJOR}.$((MINOR + 1))"
+          fi
+          NOTES="${{ github.event.inputs.notes }}"
+          [ -z "$NOTES" ] && NOTES="Bug fixes and improvements."
+          echo "new_ver=$NEW_VER"                    >> $GITHUB_OUTPUT
+          echo "new_code=$NEW_CODE"                  >> $GITHUB_OUTPUT
+          echo "tag=v${NEW_VER}"                     >> $GITHUB_OUTPUT
+          echo "apk_name=daraquiz-v${NEW_VER}.apk"   >> $GITHUB_OUTPUT
+          echo "notes=$NOTES"                         >> $GITHUB_OUTPUT
+          echo "Computed: version=$NEW_VER  code=$NEW_CODE"
+
+      # ── Patch aqs-update-check.js BEFORE cap sync so the APK carries the correct code ──
+      - name: Patch AQS_APP_VERSION_CODE in update checker
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          NEW_CODE="${{ steps.ver.outputs.new_code }}"
+          # Use .* to handle any broken state (empty, wrong value, etc.)
+          sed -i "s/^var AQS_APP_VERSION_CODE = .*/var AQS_APP_VERSION_CODE = ${NEW_CODE};/" \
+            www/js/aqs-update-check.js
+          # Verify the patch succeeded
+          PATCHED=$(grep "AQS_APP_VERSION_CODE" www/js/aqs-update-check.js)
+          echo "After patch: $PATCHED"
+          echo "$PATCHED" | grep -q "= ${NEW_CODE};" || { echo "ERROR: patch failed!"; exit 1; }
+
+      - name: Add Android platform
+        if: steps.skip_check.outputs.skip != 'true'
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        if: steps.skip_check.outputs.skip != 'true'
+        run: npx cap sync android
+
+      - name: Copy custom build.gradle
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          if [ -f android-config/app-build.gradle ]; then
+            cp android-config/app-build.gradle android/app/build.gradle
+          fi
+
+      - name: Patch versionCode in build.gradle
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          sed -i "s/versionCode [0-9]*/versionCode ${{ steps.ver.outputs.new_code }}/" android/app/build.gradle
+          sed -i "s/versionName \"[^\"]*\"/versionName \"${{ steps.ver.outputs.new_ver }}\"/" android/app/build.gradle
+
+      - name: Copy custom MainActivity
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          mkdir -p android/app/src/main/java/com/darapet/smart
+          if [ -f android-config/MainActivity.java ]; then
+            cp android-config/MainActivity.java android/app/src/main/java/com/darapet/smart/MainActivity.java
+          fi
+
+      - name: Copy icons and splash
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            src="resources/android/icon/mipmap-${density}"
+            dst="android/app/src/main/res/mipmap-${density}"
+            mkdir -p "$dst"
+            cp "${src}/ic_launcher.png"            "$dst/" 2>/dev/null || true
+            cp "${src}/ic_launcher_round.png"      "$dst/" 2>/dev/null || true
+            cp "${src}/ic_launcher_foreground.png" "$dst/" 2>/dev/null || true
+          done
+          mkdir -p android/app/src/main/res/drawable
+          cp resources/android/splash/drawable/splash.png android/app/src/main/res/drawable/ 2>/dev/null || true
+
+      - name: Bootstrap signing keystore
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          B64_FILE="../.daraquiz-keystore.b64"
+          KS_FILE="android/app/daraquiz-release.keystore"
+          if [ -f "$B64_FILE" ]; then
+            echo "Reusing keystore from repo"
+            base64 -d "$B64_FILE" > "$KS_FILE"
+            echo "NEW_KEYSTORE=false" >> $GITHUB_ENV
+          else
+            echo "Generating new keystore (first run only)..."
+            keytool -genkeypair \
+              -alias daraquiz \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -keystore "$KS_FILE" \
+              -storepass DaraQuiz_Release2024 \
+              -keypass DaraQuiz_Release2024 \
+              -dname "CN=DaraQuiz AI,OU=Mobile,O=Darapet Technology,L=Lagos,S=Lagos,C=NG" \
+              -noprompt
+            base64 -w 0 "$KS_FILE" > "$B64_FILE"
+            echo "NEW_KEYSTORE=true" >> $GITHUB_ENV
+          fi
+
+      - name: Make Gradlew executable
+        if: steps.skip_check.outputs.skip != 'true'
+        run: chmod +x android/gradlew
+
+      - name: Build signed release APK
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          cd android
+          ./gradlew assembleRelease \
+            -Pandroid.injected.signing.store.file="$(pwd)/app/daraquiz-release.keystore" \
+            -Pandroid.injected.signing.store.password="DaraQuiz_Release2024" \
+            -Pandroid.injected.signing.key.alias="daraquiz" \
+            -Pandroid.injected.signing.key.password="DaraQuiz_Release2024"
+
+      - name: Locate and rename APK
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          APK_DIR="android/app/build/outputs/apk/release"
+          echo "Files in APK dir:"
+          ls -la "$APK_DIR/" || { echo "APK directory not found!"; exit 1; }
+          FOUND=$(find "$APK_DIR" -name "*.apk" | head -1)
+          if [ -z "$FOUND" ]; then
+            echo "ERROR: No APK file found after build!"
+            exit 1
+          fi
+          echo "Found APK: $FOUND"
+          mv "$FOUND" "$APK_DIR/${{ steps.ver.outputs.apk_name }}"
+          echo "Renamed to: ${{ steps.ver.outputs.apk_name }}"
+
+      - name: Create GitHub Release
+        if: steps.skip_check.outputs.skip != 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: DaraQuiz AI v${{ steps.ver.outputs.new_ver }}
+          body: |
+            ## What's new in v${{ steps.ver.outputs.new_ver }}
+            ${{ steps.ver.outputs.notes }}
+
+            ---
+            Download the APK below and open it on your Android device.
+            Enable "Install from unknown sources" in Settings if needed.
+          files: daraquiz-mobile/android/app/build/outputs/apk/release/${{ steps.ver.outputs.apk_name }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update version.json
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          APK_URL="https://github.com/darapet/smartquiz-system/releases/download/${{ steps.ver.outputs.tag }}/${{ steps.ver.outputs.apk_name }}"
+          TODAY=$(date +%Y-%m-%d)
+          printf '{\n  "version": "%s",\n  "versionCode": %s,\n  "releaseDate": "%s",\n  "notes": "%s",\n  "downloadUrl": "%s",\n  "apkUrl": "%s"\n}\n' \
+            "${{ steps.ver.outputs.new_ver }}" \
+            "${{ steps.ver.outputs.new_code }}" \
+            "$TODAY" \
+            "${{ steps.ver.outputs.notes }}" \
+            "$APK_URL" \
+            "$APK_URL" > www/version.json
+
+      - name: Commit and push version bumps
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add www/version.json www/js/aqs-update-check.js
+          if [ "$NEW_KEYSTORE" = "true" ]; then
+            git add ../.daraquiz-keystore.b64
+          fi
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: release v${{ steps.ver.outputs.new_ver }} (build ${{ steps.ver.outputs.new_code }}) [skip ci]"
+          git pull --rebase -Xtheirs origin main
+          git push
+
+      - name: Summary
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          echo "Released DaraQuiz AI v${{ steps.ver.outputs.new_ver }} (code ${{ steps.ver.outputs.new_code }})"
+          echo "APK baked with AQS_APP_VERSION_CODE=${{ steps.ver.outputs.new_code }} ✅"
+          echo "APK: https://github.com/darapet/smartquiz-system/releases/download/${{ steps.ver.outputs.tag }}/${{ steps.ver.outputs.apk_name }}"

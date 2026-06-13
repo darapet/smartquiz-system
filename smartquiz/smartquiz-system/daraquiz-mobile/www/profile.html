@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Profile — DaraQuiz AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-style.css">
+<style>
+:root{--indigo:#6366f1;--violet:#8b5cf6;--dark:#0f172a;--card:#1e293b;--border:rgba(99,102,241,.18);--text:#e2e8f0;--muted:#94a3b8;--green:#22c55e;--red:#e11d48;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{min-height:100vh;background:linear-gradient(135deg,#0f0c29 0%,#1a1545 50%,#0f172a 100%);font-family:'Inter',sans-serif;color:var(--text);}
+
+/* ── Header ── */
+.prf-header{position:sticky;top:0;z-index:9500;backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);background:rgba(15,12,41,.85);border-bottom:1px solid var(--border);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
+.prf-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#e0e7ff;font-weight:800;font-size:1.05rem;}
+.prf-logo svg{flex-shrink:0;}
+.prf-nav{display:flex;gap:8px;align-items:center;}
+.prf-nav a{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:.82rem;font-weight:600;text-decoration:none;color:var(--muted);transition:background .15s,color .15s;}
+.prf-nav a:hover{background:rgba(99,102,241,.15);color:#e0e7ff;}
+.prf-nav a.active{background:rgba(99,102,241,.2);color:var(--indigo);}
+
+/* ── Page ── */
+.prf-page{max-width:880px;margin:0 auto;padding:32px 20px 100px;}
+@media(max-width:640px){.prf-page{padding:20px 14px 90px;}}
+
+/* ── Hero Card ── */
+.prf-hero{background:linear-gradient(135deg,rgba(99,102,241,.15),rgba(139,92,246,.1));border:1px solid var(--border);border-radius:24px;padding:40px 32px 32px;text-align:center;position:relative;overflow:hidden;margin-bottom:24px;}
+.prf-hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:280px;height:280px;background:radial-gradient(circle,rgba(99,102,241,.2) 0%,transparent 70%);pointer-events:none;}
+.prf-avatar-wrap{position:relative;display:inline-block;margin-bottom:16px;}
+.prf-avatar{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:2.4rem;font-weight:800;color:#fff;border:4px solid rgba(255,255,255,.1);box-shadow:0 0 0 4px rgba(99,102,241,.3),0 8px 32px rgba(0,0,0,.4);position:relative;z-index:1;text-transform:uppercase;}
+.prf-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.prf-online-dot{position:absolute;bottom:4px;right:4px;width:16px;height:16px;background:#22c55e;border-radius:50%;border:3px solid #1e293b;z-index:2;}
+.prf-name{font-size:1.6rem;font-weight:800;color:#e0e7ff;margin-bottom:4px;letter-spacing:-.02em;}
+.prf-username{color:var(--muted);font-size:.88rem;margin-bottom:12px;}
+.prf-role-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:100px;padding:5px 14px;font-size:.75rem;font-weight:700;letter-spacing:.05em;color:#a5b4fc;text-transform:uppercase;margin-bottom:28px;}
+.prf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:480px;margin:0 auto;}
+.prf-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px 12px;}
+.prf-stat-num{font-size:1.8rem;font-weight:800;color:#e0e7ff;line-height:1;margin-bottom:4px;}
+.prf-stat-label{font-size:.72rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+@media(max-width:480px){.prf-hero{padding:28px 16px 24px;}.prf-stats{gap:10px;}.prf-stat-num{font-size:1.4rem;}}
+
+/* ── Quick Actions ── */
+.prf-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px;}
+@media(max-width:540px){.prf-actions{grid-template-columns:repeat(2,1fr);}}
+.prf-action{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 10px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:16px;text-decoration:none;color:var(--text);transition:transform .15s,background .15s,border-color .15s;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.prf-action:hover,.prf-action:active{transform:translateY(-2px);background:rgba(99,102,241,.12);border-color:rgba(99,102,241,.35);}
+.prf-action-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;}
+.prf-action-label{font-size:.78rem;font-weight:600;text-align:center;color:var(--muted);}
+
+/* ── Cards ── */
+.prf-card{background:rgba(30,41,59,.6);border:1px solid var(--border);border-radius:20px;margin-bottom:16px;overflow:hidden;backdrop-filter:blur(8px);}
+.prf-card-header{display:flex;align-items:center;justify-content:space-between;padding:18px 24px;border-bottom:1px solid var(--border);}
+.prf-card-title{font-size:.88rem;font-weight:700;color:#e0e7ff;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em;}
+.prf-card-action{font-size:.8rem;font-weight:600;color:var(--indigo);background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.25);border-radius:8px;padding:5px 12px;cursor:pointer;transition:background .15s;text-decoration:none;border:none;font-family:inherit;}
+.prf-card-action:hover{background:rgba(99,102,241,.2);}
+.prf-card-body{padding:20px 24px;}
+@media(max-width:540px){.prf-card-body{padding:16px;}.prf-card-header{padding:14px 16px;}}
+
+/* ── Info rows ── */
+.prf-info-row{display:flex;align-items:center;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.prf-info-row:last-child{border-bottom:none;}
+.prf-info-icon{width:34px;height:34px;border-radius:9px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:14px;}
+.prf-info-label{font-size:.75rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.prf-info-value{font-size:.92rem;font-weight:500;color:#e0e7ff;word-break:break-all;}
+.prf-info-edit{margin-left:auto;padding-left:12px;}
+.prf-edit-btn{background:none;border:1px solid rgba(99,102,241,.3);border-radius:7px;color:var(--indigo);padding:4px 10px;font-size:.75rem;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;}
+.prf-edit-btn:hover{background:rgba(99,102,241,.15);}
+
+/* ── Recent Activity ── */
+.prf-activity-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.prf-activity-item:last-child{border-bottom:none;}
+.prf-activity-dot{width:8px;height:8px;border-radius:50%;background:var(--indigo);flex-shrink:0;margin-top:6px;}
+.prf-activity-text{font-size:.85rem;color:#cbd5e1;line-height:1.5;}
+.prf-activity-text b{color:#e0e7ff;font-weight:600;}
+.prf-activity-time{font-size:.72rem;color:var(--muted);margin-top:3px;}
+.prf-empty{text-align:center;padding:32px 16px;color:var(--muted);font-size:.88rem;}
+.prf-empty-icon{font-size:2.2rem;margin-bottom:10px;opacity:.5;}
+
+/* ── Danger zone ── */
+.prf-danger-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid rgba(255,255,255,.05);}
+.prf-danger-row:last-child{border-bottom:none;}
+.prf-danger-label{font-size:.88rem;font-weight:600;color:#e2e8f0;}
+.prf-danger-sub{font-size:.75rem;color:var(--muted);margin-top:2px;}
+.prf-danger-btn{padding:7px 16px;border-radius:9px;font-size:.82rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:transform .1s,opacity .15s;}
+.prf-danger-btn:active{transform:scale(0.97);}
+.prf-btn-red{background:rgba(225,29,72,.12);color:#f87171;border:1px solid rgba(225,29,72,.3);}
+.prf-btn-red:hover{background:rgba(225,29,72,.22);}
+.prf-btn-gray{background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid rgba(255,255,255,.1);}
+.prf-btn-gray:hover{background:rgba(255,255,255,.1);}
+
+/* ── Skeleton loader ── */
+.prf-skeleton{background:rgba(255,255,255,.06);border-radius:6px;animation:_skPulse 1.4s ease infinite;}
+@keyframes _skPulse{0%,100%{opacity:.4}50%{opacity:.8}}
+
+/* ── Avatar upload ── */
+.prf-avatar-wrap{cursor:pointer;position:relative;}
+.prf-avatar-upload-overlay{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.6);border-radius:0 0 50px 50px;display:flex;align-items:center;justify-content:center;padding:5px 0 3px;z-index:3;opacity:0;transition:opacity .2s;pointer-events:none;}
+.prf-avatar-wrap:hover .prf-avatar-upload-overlay,.prf-avatar-wrap:focus .prf-avatar-upload-overlay{opacity:1;}
+.prf-avatar-upload-overlay svg{display:block;}
+.prf-avatar-uploading{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;z-index:4;display:none;}
+.prf-avatar-uploading.visible{display:flex;}
+.prf-avatar-uploading-spinner{width:24px;height:24px;border:3px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:_spin .7s linear infinite;}
+@keyframes _spin{to{transform:rotate(360deg)}}
+</style>
+<script>
+window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',create_page_url:'create-quiz.html',studio_url:'studio.html',dashboard_url:'dashboard.html',user_dashboard_url:'user-dashboard.html',is_logged_in:true,is_host:false,is_admin:false,current_user_name:'',groq_key:'',plugin_url:'./'};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body>
+
+<header class="prf-header">
+  <a href="index.html" class="prf-logo">
+    <svg width="28" height="28" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
+    DaraQuiz AI
+  </a>
+  <nav class="prf-nav">
+    <a href="create-quiz.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      Create Quiz
+    </a>
+    <a href="studio.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      AI Studio
+    </a>
+    <a href="profile.html" class="active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+  </nav>
+</header>
+
+<div class="prf-page">
+
+  <!-- Hero -->
+  <div class="prf-hero">
+    <div class="prf-avatar-wrap" id="prf-avatar-wrap" title="Tap to change photo" tabindex="0" role="button" aria-label="Change profile photo">
+      <div class="prf-avatar" id="prf-avatar-el">U</div>
+      <div class="prf-online-dot"></div>
+      <div class="prf-avatar-upload-overlay">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <div class="prf-avatar-uploading" id="prf-avatar-uploading">
+        <div class="prf-avatar-uploading-spinner"></div>
+      </div>
+    </div>
+    <input type="file" id="prf-avatar-input" accept="image/*" capture="environment" style="opacity:0;position:absolute;width:1px;height:1px;top:0;left:0;pointer-events:none;" aria-hidden="true">
+    <div class="prf-name" id="prf-name">Loading…</div>
+    <div class="prf-username" id="prf-username">@—</div>
+    <div class="prf-role-badge" id="prf-role-badge">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+      Member
+    </div>
+    <div class="prf-stats">
+      <div class="prf-stat">
+        <div class="prf-stat-num" id="prf-stat-taken">—</div>
+        <div class="prf-stat-label">Quizzes Taken</div>
+      </div>
+      <div class="prf-stat">
+        <div class="prf-stat-num" id="prf-stat-created">—</div>
+        <div class="prf-stat-label">Created</div>
+      </div>
+      <div class="prf-stat">
+        <div class="prf-stat-num" id="prf-stat-streak">🔥 0</div>
+        <div class="prf-stat-label">Day Streak</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="prf-actions">
+    <a href="create-quiz.html" class="prf-action">
+      <div class="prf-action-icon" style="background:rgba(99,102,241,.18);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+      </div>
+      <span class="prf-action-label">Create Quiz</span>
+    </a>
+    <a href="studio.html" class="prf-action">
+      <div class="prf-action-icon" style="background:rgba(139,92,246,.18);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" stroke-width="2.2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      </div>
+      <span class="prf-action-label">AI Studio</span>
+    </a>
+    <a href="study.html" class="prf-action">
+      <div class="prf-action-icon" style="background:rgba(16,185,129,.15);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      </div>
+      <span class="prf-action-label">Study</span>
+    </a>
+    <a href="challenge.html" class="prf-action">
+      <div class="prf-action-icon" style="background:rgba(245,158,11,.15);">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.2"><path d="M17.657 18.657A8 8 0 0 1 4 12a8 8 0 0 1 8-8"/><path d="M20 12a8 8 0 0 1-2.343 5.657"/><polyline points="18 8 22 8 22 12"/></svg>
+      </div>
+      <span class="prf-action-label">Challenge</span>
+    </a>
+  </div>
+
+  <!-- Account Info -->
+  <div class="prf-card">
+    <div class="prf-card-header">
+      <span class="prf-card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Account Info
+      </span>
+    </div>
+    <div class="prf-card-body">
+      <div class="prf-info-row">
+        <div class="prf-info-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div>
+          <div class="prf-info-label">Full Name</div>
+          <div class="prf-info-value" id="info-name">—</div>
+        </div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div>
+        <div>
+          <div class="prf-info-label">Email</div>
+          <div class="prf-info-value" id="info-email">—</div>
+        </div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg></div>
+        <div>
+          <div class="prf-info-label">Username</div>
+          <div class="prf-info-value" id="info-username">—</div>
+        </div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+        <div>
+          <div class="prf-info-label">Member Since</div>
+          <div class="prf-info-value" id="info-joined">—</div>
+        </div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+        <div>
+          <div class="prf-info-label">Last Login</div>
+          <div class="prf-info-value" id="info-lastlogin">—</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="prf-card">
+    <div class="prf-card-header">
+      <span class="prf-card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Recent Activity
+      </span>
+      <a href="create-quiz.html" class="prf-card-action" style="background:none;border:none;cursor:pointer;color:#6366f1;font-size:.8rem;font-weight:600;text-decoration:none;">+ Create Quiz</a>
+    </div>
+    <div class="prf-card-body" id="prf-activity-list">
+      <div class="prf-empty"><div class="prf-empty-icon">📋</div>No recent activity yet.<br>Take or create a quiz to get started!</div>
+    </div>
+  </div>
+
+  <!-- Settings & Danger Zone -->
+  <div class="prf-card">
+    <div class="prf-card-header">
+      <span class="prf-card-title">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#818cf8" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </span>
+    </div>
+    <div class="prf-card-body">
+      <div class="prf-danger-row">
+        <div>
+          <div class="prf-danger-label">Sign Out</div>
+          <div class="prf-danger-sub">Sign out of your account on this device</div>
+        </div>
+        <button class="prf-danger-btn prf-btn-gray" id="prf-logout-btn">Sign Out</button>
+      </div>
+      <div class="prf-danger-row">
+        <div>
+          <div class="prf-danger-label">Visit Web App</div>
+          <div class="prf-danger-sub">Access full features including TTS &amp; Voice Chat</div>
+        </div>
+        <a href="https://darapet.github.io/smartquiz-system" target="_blank" class="prf-danger-btn prf-btn-gray" style="text-decoration:none;display:inline-flex;align-items:center;gap:5px;">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+          Open Web
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end page -->
+
+<script>
+window.AQS = window.AQS || {};
+
+function _fmt(ts) {
+  if (!ts) return '—';
+  var d;
+  if (ts && ts.seconds) { d = new Date(ts.seconds * 1000); }
+  else if (ts && ts.toDate) { d = ts.toDate(); }
+  else { d = new Date(ts); }
+  if (isNaN(d)) return '—';
+  return d.toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'});
+}
+
+function populateProfile(user, profile) {
+  var name     = (profile && profile.name)     || user.displayName || '';
+  var username = (profile && profile.username) || '';
+  var email    = user.email || '';
+  var role     = (profile && profile.role)     || 'member';
+  var joined   = (profile && profile.created_at) || null;
+  var lastLogin= (profile && profile.last_login) || null;
+  var initial  = (name || email || 'U').charAt(0).toUpperCase();
+  var avatarEl = document.getElementById('prf-avatar-el');
+
+  /* Show profile photo if saved, otherwise show initial letter */
+  if (profile && profile.avatar) {
+    avatarEl.innerHTML = '<img src="' + profile.avatar + '" alt="Profile photo" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+  } else {
+    avatarEl.textContent = initial;
+  }
+
+  document.getElementById('prf-name').textContent      = name || email || 'User';
+  document.getElementById('prf-username').textContent  = username ? '@' + username : (email ? '@' + email.split('@')[0] : '');
+  document.getElementById('prf-role-badge').innerHTML  =
+    '<svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg> '
+    + (role.charAt(0).toUpperCase() + role.slice(1));
+
+  document.getElementById('info-name').textContent     = name || '—';
+  document.getElementById('info-email').textContent    = email || '—';
+  document.getElementById('info-username').textContent = username ? '@' + username : '—';
+  document.getElementById('info-joined').textContent   = _fmt(joined);
+  document.getElementById('info-lastlogin').textContent= _fmt(lastLogin);
+
+  /* Update AQS globals */
+  window.AQS.current_user_name = name;
+}
+
+document.addEventListener('aqs:authchange', function(ev) {
+  var user = ev.detail && ev.detail.user;
+  if (!user) { window.location.href = 'login.html'; return; }
+
+  /* Get profile from Firestore */
+  if (window.aqsAjax) {
+    window.aqsAjax({ action: 'aqs_get_my_profile' }, function(res) {
+      var profile = (res && res.success && res.data) ? res.data : {};
+      populateProfile(user, profile);
+
+      /* Load stats */
+      window.aqsAjax({ action: 'aqs_get_my_stats' }, function(statsRes) {
+        var s = (statsRes && statsRes.success && statsRes.data) ? statsRes.data : {};
+        document.getElementById('prf-stat-taken').textContent   = s.quizzes_taken   || '0';
+        document.getElementById('prf-stat-created').textContent = s.quizzes_created || '0';
+        document.getElementById('prf-stat-streak').textContent  = (s.streak || 0) > 0 ? '🔥 ' + s.streak : '0';
+
+        /* Recent activity */
+        var list = document.getElementById('prf-activity-list');
+        var activities = s.recent_activity || [];
+        if (activities.length > 0) {
+          list.innerHTML = activities.slice(0, 5).map(function(a) {
+            return '<div class="prf-activity-item">'
+              + '<div class="prf-activity-dot"></div>'
+              + '<div><div class="prf-activity-text">' + a.text + '</div>'
+              + '<div class="prf-activity-time">' + a.time + '</div></div>'
+              + '</div>';
+          }).join('');
+        }
+      }, null);
+    }, null);
+  } else {
+    /* Fallback: use cached user data */
+    populateProfile(user, {});
+    document.getElementById('prf-stat-taken').textContent   = '—';
+    document.getElementById('prf-stat-created').textContent = '—';
+    document.getElementById('prf-stat-streak').textContent  = '—';
+    document.addEventListener('aqs:firebase:ready', function() {
+      if (window.aqsAjax) {
+        window.aqsAjax({ action: 'aqs_get_my_profile' }, function(r) {
+          if (r && r.success) populateProfile(user, r.data || {});
+        }, null);
+      }
+    }, { once: true });
+  }
+});
+
+/* ── Avatar photo upload ── */
+(function() {
+  var wrap  = document.getElementById('prf-avatar-wrap');
+  var input = document.getElementById('prf-avatar-input');
+  var spinner = document.getElementById('prf-avatar-uploading');
+
+  /* Clicking the avatar (or pressing Enter/Space on it) opens the file picker */
+  wrap.addEventListener('click', function() { input.click(); });
+  wrap.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); }
+  });
+
+  input.addEventListener('change', function(e) {
+    var file = e.target.files && e.target.files[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    input.value = '';   /* reset so same file can be picked again */
+
+    var reader = new FileReader();
+    reader.onload = function(ev) {
+      var img = new Image();
+      img.onload = function() {
+        /* Crop square and scale to 200×200 */
+        var canvas = document.createElement('canvas');
+        canvas.width = 200; canvas.height = 200;
+        var ctx = canvas.getContext('2d');
+        var s  = Math.min(img.width, img.height);
+        var sx = (img.width  - s) / 2;
+        var sy = (img.height - s) / 2;
+        ctx.drawImage(img, sx, sy, s, s, 0, 0, 200, 200);
+        var dataUrl = canvas.toDataURL('image/jpeg', 0.80);
+
+        /* Show preview immediately */
+        document.getElementById('prf-avatar-el').innerHTML =
+          '<img src="' + dataUrl + '" alt="Profile photo" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">';
+
+        /* Upload to Firestore via firebase bridge */
+        if (spinner) spinner.classList.add('visible');
+        if (window.aqsAjax) {
+          window.aqsAjax({ action: 'aqs_update_avatar', avatar: dataUrl }, function(res) {
+            if (spinner) spinner.classList.remove('visible');
+            if (!res || !res.success) {
+              alert('Could not save photo. Please try again.');
+            }
+          }, function() {
+            if (spinner) spinner.classList.remove('visible');
+            alert('Could not save photo. Please check your connection and try again.');
+          });
+        } else {
+          /* aqsAjax not ready yet — wait for firebase:ready event */
+          document.addEventListener('aqs:firebase:ready', function onReady() {
+            document.removeEventListener('aqs:firebase:ready', onReady);
+            window.aqsAjax({ action: 'aqs_update_avatar', avatar: dataUrl }, function(res) {
+              if (spinner) spinner.classList.remove('visible');
+              if (!res || !res.success) alert('Could not save photo. Please try again.');
+            }, function() {
+              if (spinner) spinner.classList.remove('visible');
+            });
+          });
+        }
+      };
+      img.onerror = function() { alert('Could not read image. Please try a different file.'); };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+})();
+
+/* Logout */
+document.getElementById('prf-logout-btn').addEventListener('click', function() {
+  if (window.aqsAjax) {
+    window.aqsAjax({ action: 'aqs_logout' }, function() { window.location.href = 'login.html'; },
+      function() { window.location.href = 'login.html'; });
+  } else {
+    window.location.href = 'login.html';
+  }
+});
+</script>
+<script src="js/aqs-session.js"></script>
+<script src="capacitor-bridge.js"></script>
+</body>
+</html>

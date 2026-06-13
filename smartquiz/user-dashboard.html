@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Profile — xzily AI</title>
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
+.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.1rem;}
+.aqs-page-main{padding:32px 20px;max-width:1100px;margin:0 auto;}
+.aqs-hdr-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.aqs-hdr-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px;cursor:pointer;}
+.aqs-hdr-hamburger span{display:block;width:18px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
+.aqs-hdr-drawer{display:none;position:fixed;top:calc(var(--aqs-cd-bar-h,0px)+60px);left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:6px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);max-height:70vh;overflow-y:auto;}
+.aqs-hdr-drawer.open{display:flex;}
+.aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;font-size:.9rem;}
+/* Stats bar */
+.udash-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
+.udash-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;text-align:center;}
+.udash-stat-num{font-size:1.9rem;font-weight:800;color:#4f46e5;line-height:1;}
+.udash-stat-label{font-size:.78rem;color:#64748b;margin-top:6px;font-weight:500;}
+/* Topbar */
+.aqs-user-topbar{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+.aqs-user-topbar-left{display:flex;align-items:center;gap:16px;}
+.aqs-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:1.4rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.aqs-user-name{font-size:1.25rem;font-weight:800;color:#0f172a;}
+.aqs-user-role-badge{display:inline-block;margin-top:4px;font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:20px;background:#ede9fe;color:#6d28d9;}
+.aqs-user-topbar-actions{display:flex;gap:8px;flex-wrap:wrap;}
+/* Account card */
+.udash-account-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 24px;margin-bottom:18px;}
+.udash-account-title{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:14px;}
+.udash-table{width:100%;border-collapse:collapse;}
+.udash-table td{padding:9px 0;font-size:.9rem;border-bottom:1px solid #f1f5f9;}
+.udash-table td:first-child{color:#64748b;width:130px;}
+.udash-table td:last-child{font-weight:500;color:#0f172a;}
+.udash-table tr:last-child td{border-bottom:none;}
+/* Quick links */
+.udash-quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
+.udash-quick-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;text-decoration:none;transition:all .18s;display:block;}
+.udash-quick-card:hover{border-color:#c7d2fe;background:#f5f3ff;transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,70,229,.1);}
+.udash-quick-icon{font-size:1.6rem;margin-bottom:8px;}
+.udash-quick-name{font-size:.88rem;font-weight:700;color:#1e293b;margin-bottom:3px;}
+.udash-quick-desc{font-size:.76rem;color:#64748b;line-height:1.4;}
+/* Loading skeleton */
+.udash-skeleton{background:linear-gradient(90deg,#f1f5f9 0%,#e2e8f0 50%,#f1f5f9 100%);background-size:200% 100%;animation:udash-shimmer 1.5s infinite;border-radius:8px;height:16px;margin:8px 0;}
+@keyframes udash-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* Responsive */
+@media(max-width:768px){
+  .aqs-hdr-nav{display:none;}
+  .aqs-hdr-hamburger{display:flex;}
+  .aqs-page-main{padding:14px 12px;}
+  .aqs-user-topbar{padding:16px;}
+  .aqs-user-topbar-actions .aqs-btn{flex:1 1 auto;min-width:0;font-size:.82rem;}
+  .udash-stats{grid-template-columns:repeat(3,1fr);gap:8px;}
+  .udash-stat-num{font-size:1.4rem;}
+}
+@media(max-width:480px){
+  .udash-stats{grid-template-columns:1fr 1fr 1fr;}
+  .udash-quick-grid{grid-template-columns:1fr 1fr;}
+}
+</style>
+<script>
+window.AQS = {
+    ajax_url: 'firebase', nonce:'', auth_nonce:'',
+    home_url:'index.html', create_page_url:'create-quiz.html',
+    studio_url:'studio.html', dashboard_url:'dashboard.html',
+    imagegen_url:'',
+    is_logged_in:true, is_host:true, is_admin:false,
+    current_user_name:'User', current_user_email:'',
+    current_user_role:'Member', groq_key:'', plugin_url:'./'
+};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+  <script src="js/aqs-nav-loader.js"></script>
+</head>
+<body>
+<header class="aqs-site-header">
+    <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
+    <button class="aqs-hdr-hamburger" id="udash-hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <nav class="aqs-hdr-nav">
+        <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
+        <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
+        <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
+        <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+        <a href="study.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
+    
+        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
+    </nav>
+</header>
+<div class="aqs-hdr-drawer" id="udash-drawer">
+    <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
+    <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
+    <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
+    <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+    <a href="study.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
+
+    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
+</div>
+<script>(function(){var b=document.getElementById('udash-hamburger'),d=document.getElementById('udash-drawer');if(b&&d){b.addEventListener('click',function(){d.classList.toggle('open');b.classList.toggle('open');});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');}});}}());</script>
+
+<main class="aqs-page-main">
+
+  <!-- Profile Header -->
+  <div class="aqs-user-topbar">
+    <div class="aqs-user-topbar-left">
+      <div class="aqs-avatar" id="aqs-user-avatar-initial">?</div>
+      <div>
+        <div class="aqs-user-name" id="aqs-user-display-name">Loading…</div>
+        <div class="aqs-user-role-badge" id="aqs-user-role-badge">Member</div>
+      </div>
+    </div>
+    <div class="aqs-user-topbar-actions">
+      <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
+      <a href="studio.html"      class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;">⬡ xzily Ai</a>
+      <button class="aqs-btn aqs-btn-sm" id="aqs-user-logout-btn" style="color:#dc2626;border-color:#fecaca;">Log Out</button>
+    </div>
+  </div>
+
+  <!-- Stats Row -->
+  <div class="udash-stats">
+    <div class="udash-stat-card">
+      <div class="udash-stat-num" id="udash-stat-taken">—</div>
+      <div class="udash-stat-label">Quizzes Taken</div>
+    </div>
+    <div class="udash-stat-card">
+      <div class="udash-stat-num" id="udash-stat-created">—</div>
+      <div class="udash-stat-label">Quizzes Created</div>
+    </div>
+    <div class="udash-stat-card">
+      <div class="udash-stat-num" id="udash-stat-streak" style="font-size:1.4rem;">—</div>
+      <div class="udash-stat-label">🔥 Streak</div>
+    </div>
+  </div>
+
+  <!-- Quick Links -->
+  <div class="udash-quick-grid">
+    <a href="create-quiz.html" class="udash-quick-card">
+      <div class="udash-quick-icon">✏️</div>
+      <div class="udash-quick-name">Create Quiz</div>
+      <div class="udash-quick-desc">Build and share a new quiz</div>
+    </a>
+    <a href="puzzle.html" class="udash-quick-card">
+      <div class="udash-quick-icon">🧩</div>
+      <div class="udash-quick-name">Puzzle Battle</div>
+      <div class="udash-quick-desc">Play 4 puzzle modes, up to 10 players</div>
+    </a>
+    <a href="challenge.html" class="udash-quick-card">
+      <div class="udash-quick-icon">⚔️</div>
+      <div class="udash-quick-name">Challenge Mode</div>
+      <div class="udash-quick-desc">Host or join a live quiz battle</div>
+    </a>
+    <a href="studio.html" class="udash-quick-card">
+      <div class="udash-quick-icon">⬡</div>
+      <div class="udash-quick-name">AI Studio</div>
+      <div class="udash-quick-desc">Chat with XZILY AI, web search</div>
+    </a>
+    <a href="study.html" class="udash-quick-card">
+      <div class="udash-quick-icon">📚</div>
+      <div class="udash-quick-name">Study AI</div>
+      <div class="udash-quick-desc">Study any subject with AI help</div>
+    </a>
+    <a href="image-gen.html" class="udash-quick-card">
+      <div class="udash-quick-icon">🖼️</div>
+      <div class="udash-quick-name">Image Creator</div>
+      <div class="udash-quick-desc">Generate AI images with FLUX</div>
+    </a>
+  </div>
+
+
+  </div>
+
+  <!-- Account -->
+  <div class="udash-account-card">
+    <div class="udash-account-title">👤 Account Details</div>
+    <table class="udash-table">
+      <tr><td>Name</td><td id="aqs-account-name">—</td></tr>
+      <tr><td>Username</td><td id="aqs-account-username">—</td></tr>
+      <tr><td>Email</td><td id="aqs-account-email">—</td></tr>
+      <tr><td>Role</td><td id="aqs-account-role">Member</td></tr>
+    </table>
+    <div style="margin-top:14px;">
+      <button class="aqs-btn aqs-btn-sm" id="aqs-user-logout-btn2" style="color:#dc2626;border:1px solid #fecaca;background:#fef2f2;">Log Out</button>
+    </div>
+  </div>
+
+
+  <!-- View All Quiz Activity link -->
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
+      <div>
+        <div style="font-weight:700;font-size:.9rem;color:#1e293b;">Quiz Activity</div>
+        <div style="font-size:.76rem;color:#94a3b8;margin-top:2px;">See all quizzes you have taken</div>
+      </div>
+    </div>
+    <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
+  </div>
+</main>
+
+<div id="pz-toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;pointer-events:none;display:flex;flex-direction:column;gap:8px;align-items:center"></div>
+
+<script>
+(function(){
+    /* Unwrap the {success, data} envelope that the Firebase jQuery patch adds */
+    function unwrap(res){ return (res && res.data !== undefined) ? res.data : res; }
+
+    function waitReady(fn){
+        if(typeof window.onAqsAuthChange === 'function'){
+            window.onAqsAuthChange(fn);
+        } else {
+            document.addEventListener('aqs:firebase:ready', function(){
+                window.onAqsAuthChange(fn);
+            }, { once: true });
+        }
+    }
+
+    function loadProfile(){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_profile'}).then(function(res){
+            var d = unwrap(res);
+            if(!d) return;
+            var name = d.name || '';
+            if(name){
+                document.getElementById('aqs-user-avatar-initial').textContent = name.charAt(0).toUpperCase();
+                document.getElementById('aqs-user-display-name').textContent   = 'Hello, '+name+'!';
+                document.getElementById('aqs-account-name').textContent        = name;
+                AQS.current_user_name = name;
+            }
+            if(d.email)    document.getElementById('aqs-account-email').textContent    = d.email;
+            if(d.role){
+                document.getElementById('aqs-account-role').textContent      = d.role;
+                document.getElementById('aqs-user-role-badge').textContent   = d.role;
+            }
+            if(d.username) document.getElementById('aqs-account-username').textContent = '@'+d.username;
+        }).catch(function(e){ console.warn('[udash] profile error', e); });
+    }
+
+    function loadStats(){
+        jQuery.post(AQS.ajax_url, {action:'aqs_get_my_stats'}).then(function(res){
+            var d = unwrap(res);
+            if(!d) return;
+            document.getElementById('udash-stat-taken').textContent   = d.quizzes_taken||0;
+            document.getElementById('udash-stat-created').textContent = d.quizzes_created||0;
+            var streak = d.streak||0;
+            document.getElementById('udash-stat-streak').textContent  = streak ? streak+' day'+(streak!==1?'s':'') : '—';
+        }).catch(function(){});
+    }
+
+            el.innerHTML = items.map(function(a, i){
+                var score  = a.score||0, total = a.total||0;
+                var pct    = total ? Math.round((score/total)*100) : 0;
+                var color  = pct>=70?'#10b981':pct>=50?'#f59e0b':'#ef4444';
+                var bg     = pct>=70?'#ecfdf5':pct>=50?'#fffbeb':'#fef2f2';
+                var label  = pct>=70?'Passed':pct>=50?'Average':'Needs Work';
+                var date   = a.finished_at ? a.finished_at.substring(0,16) : '—';
+                var border = i===items.length-1?'border-bottom:none':'border-bottom:1px solid #f1f5f9';
+                return '<div style="display:flex;align-items:center;gap:14px;padding:13px 0;'+border+'">'+
+                    '<div style="width:52px;height:52px;border-radius:12px;background:'+bg+';border:2px solid '+color+';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">'+
+                    '<span style="font-size:.95rem;font-weight:800;color:'+color+';">'+pct+'%</span>'+
+                    '</div>'+
+                    '<div style="flex:1;min-width:0;">'+
+                    '<div style="font-weight:600;font-size:.9rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(a.quiz_title||'Quiz')+'</div>'+
+                    (a.subject?'<div style="font-size:.75rem;color:#6366f1;margin:2px 0;">'+a.subject+'</div>':'')+
+                    '<div style="font-size:.78rem;color:#94a3b8;">'+date+' &middot; '+score+'/'+total+' correct</div>'+
+                    '</div>'+
+                    '<span style="font-size:.75rem;font-weight:700;color:'+color+';background:'+bg+';padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid '+color+'33;">'+label+'</span>'+
+                    '</div>';
+            }).join('');
+        }).catch(function(){
+            el.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Could not load activity. <a href="#" onclick="location.reload()">Retry</a></p>';
+        });
+    }
+
+    function doLogout(){
+        jQuery.post(AQS.ajax_url, {action:'aqs_logout'}).always(function(){
+            window.location.href = 'index.html';
+        });
+    }
+
+    document.getElementById('aqs-user-logout-btn').addEventListener('click', doLogout);
+    document.getElementById('aqs-user-logout-btn2').addEventListener('click', doLogout);
+
+    waitReady(function(user){
+        if(!user){
+            document.getElementById('aqs-user-display-name').textContent = 'Please log in';
+            document.getElementById('aqs-user-avatar-initial').textContent = '?';
+            document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your activity.</p>';
+            return;
+        }
+        loadProfile();
+        loadStats();
+    });
+})();
+</script>
+<script src="js/aqs-main.js"></script>
+<script src="js/aqs-auth.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

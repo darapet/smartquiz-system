@@ -1,0 +1,91 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email == 'daramolapeter98@gmail.com';
+    }
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // ─── Quizzes ────────────────────────────────────────────────────
+    match /quizzes/{quizId} {
+      allow read: if true;
+      allow update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+      allow create: if isSignedIn();
+    }
+
+    // ─── Attempts ───────────────────────────────────────────────────
+    match /attempts/{attemptId} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid);
+    }
+
+    // ─── Users ──────────────────────────────────────────────────────
+    match /users/{userId} {
+      allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+    }
+
+    // ─── Usernames ──────────────────────────────────────────────────
+    match /usernames/{username} {
+      allow read: if true;
+      allow write: if isAdmin() || isSignedIn();
+    }
+
+    // ─── Settings ───────────────────────────────────────────────────
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Ads ────────────────────────────────────────────────────────
+    match /ads/{adId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ─── Deleted Quizzes ────────────────────────────────────────────
+    match /deleted_quizzes/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ─── Challenges ─────────────────────────────────────────────────
+    match /challenges/{challengeId} {
+      allow read: if true;
+      allow write: if isAdmin() || isSignedIn();
+    }
+
+    // ─── Library Books ──────────────────────────────────────────────
+    match /library_books/{bookId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.uploaderUid == request.auth.uid);
+    }
+
+    // ─── Library Profiles ───────────────────────────────────────────
+    match /library_profiles/{uid} {
+      allow read: if true;
+      allow write: if isAdmin() || (isSignedIn() && request.auth.uid == uid);
+    }
+
+    // ─── Library Likes ──────────────────────────────────────────────
+    match /library_likes/{likeId} {
+      allow read: if true;
+      allow create, delete: if isSignedIn();
+    }
+
+    // ─── Library Comments ───────────────────────────────────────────
+    match /library_comments/{commentId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
+    }
+
+  }
+}

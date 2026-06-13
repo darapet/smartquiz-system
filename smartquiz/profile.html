@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#080910">
+<title>My Profile — xzily AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/aqs-style.css">
+<link rel="stylesheet" href="css/aqs-library.css">
+<style>
+/* Profile page specific styles */
+.prf-header{position:sticky;top:0;z-index:9500;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:rgba(8,9,16,.88);border-bottom:1px solid rgba(255,255,255,.08);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
+.prf-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#e0e7ff;font-weight:800;font-size:1.05rem;}
+.prf-nav{display:flex;gap:6px;align-items:center;}
+.prf-nav a{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;font-size:.82rem;font-weight:600;text-decoration:none;color:#94a3b8;transition:background .15s,color .15s;}
+.prf-nav a:hover{background:rgba(99,102,241,.15);color:#e0e7ff;}
+
+/* Page */
+.prf-page{max-width:860px;margin:0 auto;padding:32px 20px 100px;}
+@media(max-width:640px){.prf-page{padding:20px 14px 90px;}}
+
+/* Hero card */
+.prf-hero{background:linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.09));border:1px solid rgba(99,102,241,.18);border-radius:24px;padding:40px 32px 32px;text-align:center;position:relative;overflow:hidden;margin-bottom:24px;}
+.prf-hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:280px;height:280px;background:radial-gradient(circle,rgba(99,102,241,.18) 0%,transparent 70%);pointer-events:none;}
+
+.prf-avatar-wrap{position:relative;display:inline-block;margin-bottom:16px;}
+.prf-avatar{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:2.4rem;font-weight:800;color:#fff;border:4px solid rgba(255,255,255,.1);box-shadow:0 0 0 4px rgba(99,102,241,.25),0 8px 32px rgba(0,0,0,.4);position:relative;z-index:1;text-transform:uppercase;overflow:hidden;}
+.prf-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
+.prf-avatar-edit{position:absolute;bottom:2px;right:2px;width:28px;height:28px;background:#6366f1;border-radius:50%;border:2px solid #080910;display:flex;align-items:center;justify-content:center;font-size:.75rem;cursor:pointer;z-index:2;}
+
+.prf-name{font-size:1.55rem;font-weight:800;color:#e0e7ff;margin-bottom:3px;letter-spacing:-.02em;}
+.prf-email-hide{color:#64748b;font-size:.82rem;margin-bottom:12px;}
+.prf-role-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:100px;padding:5px 14px;font-size:.73rem;font-weight:700;letter-spacing:.05em;color:#a5b4fc;text-transform:uppercase;margin-bottom:28px;}
+.prf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:440px;margin:0 auto 28px;}
+.prf-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 10px;}
+.prf-stat-num{font-size:1.75rem;font-weight:800;color:#e0e7ff;line-height:1;margin-bottom:4px;}
+.prf-stat-label{font-size:.7rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em;}
+.prf-hero-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
+@media(max-width:480px){.prf-hero{padding:28px 16px 24px;}.prf-stats{gap:10px;}.prf-stat-num{font-size:1.3rem;}}
+
+/* Cards */
+.prf-card{background:rgba(15,16,30,.85);border:1px solid rgba(99,102,241,.15);border-radius:20px;margin-bottom:16px;overflow:hidden;backdrop-filter:blur(8px);}
+.prf-card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid rgba(255,255,255,.06);}
+.prf-card-title{font-size:.85rem;font-weight:700;color:#e0e7ff;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em;}
+.prf-card-action{font-size:.78rem;font-weight:600;color:#6366f1;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:5px 11px;cursor:pointer;transition:background .15s;text-decoration:none;font-family:inherit;}
+.prf-card-action:hover{background:rgba(99,102,241,.2);}
+.prf-card-body{padding:18px 22px;}
+@media(max-width:540px){.prf-card-body{padding:14px 16px;}.prf-card-header{padding:13px 16px;}}
+
+/* Info rows */
+.prf-info-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.prf-info-row:last-child{border-bottom:none;}
+.prf-info-icon{width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:13px;font-size:.95rem;}
+.prf-info-label{font-size:.72rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.prf-info-value{font-size:.9rem;font-weight:500;color:#e0e7ff;word-break:break-all;}
+.prf-info-edit{margin-left:auto;padding-left:12px;}
+.prf-edit-btn{background:none;border:1px solid rgba(99,102,241,.3);border-radius:7px;color:#6366f1;padding:4px 10px;font-size:.73rem;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;}
+.prf-edit-btn:hover{background:rgba(99,102,241,.12);}
+
+/* Activity */
+.prf-activity-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.prf-activity-item:last-child{border-bottom:none;}
+.prf-activity-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:6px;}
+.prf-activity-text{font-size:.84rem;color:#cbd5e1;line-height:1.5;}
+.prf-activity-text b{color:#e0e7ff;font-weight:600;}
+.prf-activity-time{font-size:.7rem;color:#64748b;margin-top:2px;}
+.prf-empty{text-align:center;padding:30px 16px;color:#64748b;font-size:.85rem;}
+
+/* Danger */
+.prf-danger-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.04);}
+.prf-danger-row:last-child{border-bottom:none;}
+.prf-danger-label{font-size:.88rem;font-weight:600;color:#e2e8f0;}
+.prf-danger-sub{font-size:.73rem;color:#64748b;margin-top:2px;}
+.prf-danger-btn{padding:7px 14px;border-radius:9px;font-size:.8rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .15s;}
+.prf-btn-red{background:rgba(225,29,72,.1);color:#f87171;border:1px solid rgba(225,29,72,.25);}
+.prf-btn-red:hover{background:rgba(225,29,72,.2);}
+
+/* Inline edit overlay */
+.prf-field-edit{
+  display:none;position:fixed;inset:0;z-index:999;
+  background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:20px;
+  backdrop-filter:blur(8px);}
+.prf-field-edit.open{display:flex;}
+.prf-field-box{background:#0c0d1c;border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:26px;max-width:400px;width:100%;}
+.prf-field-box-title{font-size:.95rem;font-weight:800;margin-bottom:16px;}
+.prf-field-box-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+</style>
+</head>
+<body style="background:#080910;min-height:100vh;">
+
+<!-- HEADER -->
+<header class="prf-header">
+  <a href="dashboard.html" class="prf-logo">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    xzily AI
+  </a>
+  <nav class="prf-nav">
+    <a href="dashboard.html">Dashboard</a>
+    <a href="library.html">Library</a>
+    <a href="library-host-view.html">My Books</a>
+  </nav>
+</header>
+
+<!-- PAGE -->
+<div class="prf-page" id="prf-loading" style="text-align:center;padding:80px 20px;color:#64748b;">
+  Loading profile…
+</div>
+
+<div class="prf-page" id="prf-main" style="display:none">
+
+  <!-- HERO -->
+  <div class="prf-hero">
+    <div class="prf-avatar-wrap">
+      <div class="prf-avatar" id="prf-avatar">?</div>
+      <label class="prf-avatar-edit" for="prf-photo-input" title="Change photo">✏️</label>
+      <input type="file" id="prf-photo-input" accept="image/*" style="display:none" onchange="handlePhotoChange(this)">
+    </div>
+    <div class="prf-name" id="prf-name">Loading…</div>
+    <div class="prf-email-hide" id="prf-email-display"></div>
+    <div class="prf-role-badge" id="prf-role">Reader</div>
+    <div class="prf-stats">
+      <div class="prf-stat">
+        <div class="prf-stat-num" id="ps-books">0</div>
+        <div class="prf-stat-label">Books Uploaded</div>
+      </div>
+      <div class="prf-stat">
+        <div class="prf-stat-num" id="ps-readers">0</div>
+        <div class="prf-stat-label">Total Readers</div>
+      </div>
+      <div class="prf-stat">
+        <div class="prf-stat-num" id="ps-followers">0</div>
+        <div class="prf-stat-label">Followers</div>
+      </div>
+    </div>
+    <div class="prf-hero-btns">
+      <a href="library-host-profile.html" id="prf-view-public" class="lib-btn lib-btn-ghost lib-btn-sm" style="display:none">
+        View Public Profile →
+      </a>
+      <a href="library-upload.html" class="lib-btn lib-btn-primary lib-btn-sm">
+        📤 Upload a Book
+      </a>
+    </div>
+  </div>
+
+  <!-- ACCOUNT INFO -->
+  <div class="prf-card">
+    <div class="prf-card-header">
+      <div class="prf-card-title">👤 Account Info</div>
+    </div>
+    <div class="prf-card-body">
+      <div class="prf-info-row">
+        <div class="prf-info-icon">🏷</div>
+        <div style="flex:1">
+          <div class="prf-info-label">Display Name</div>
+          <div class="prf-info-value" id="pi-name">—</div>
+        </div>
+        <div class="prf-info-edit">
+          <button class="prf-edit-btn" onclick="openFieldEdit('name')">Edit</button>
+        </div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon">🎓</div>
+        <div style="flex:1">
+          <div class="prf-info-label">Institution</div>
+          <div class="prf-info-value" id="pi-inst">—</div>
+        </div>
+      </div>
+      <div class="prf-info-row">
+        <div class="prf-info-icon">📘</div>
+        <div style="flex:1">
+          <div class="prf-info-label">Department</div>
+          <div class="prf-info-value" id="pi-dept">—</div>
+        </div>
+        <div class="prf-info-edit">
+          <a href="library-host-view.html#profile" class="prf-edit-btn">Edit</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIBRARY ACTIVITY -->
+  <div class="prf-card">
+    <div class="prf-card-header">
+      <div class="prf-card-title">📚 Library Activity</div>
+      <a href="library-host-view.html" class="prf-card-action">Manage →</a>
+    </div>
+    <div class="prf-card-body">
+      <div id="prf-activity">
+        <div class="prf-empty">Loading activity…</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DANGER ZONE -->
+  <div class="prf-card">
+    <div class="prf-card-header">
+      <div class="prf-card-title">⚠️ Account</div>
+    </div>
+    <div class="prf-card-body">
+      <div class="prf-danger-row">
+        <div>
+          <div class="prf-danger-label">Sign Out</div>
+          <div class="prf-danger-sub">Sign out of your account on this device</div>
+        </div>
+        <button class="prf-danger-btn prf-btn-red" onclick="signOut()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FIELD EDIT OVERLAY -->
+<div class="prf-field-edit" id="fe-overlay">
+  <div class="prf-field-box">
+    <div class="prf-field-box-title" id="fe-title">Edit Field</div>
+    <div id="fe-content"></div>
+    <div class="prf-field-box-actions">
+      <button class="lib-btn lib-btn-ghost lib-btn-sm" onclick="closeFieldEdit()">Cancel</button>
+      <button class="lib-btn lib-btn-primary lib-btn-sm" onclick="saveFieldEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="lib-toast" id="lib-toast"></div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-library.js"></script>
+<script type="module">
+  import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+  import { getAuth, signOut as fbSignOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+
+  let _user = null;
+  let _profile = null;
+  let _editField = null;
+
+  window.libOnAuth(async function(user) {
+    document.getElementById('prf-loading').style.display='none';
+    if (!user) { location.href='login.html'; return; }
+    _user = user;
+    document.getElementById('prf-main').style.display='block';
+    await loadProfile();
+  });
+
+  async function loadProfile() {
+    _profile = await window.libGetProfile(_user.uid) || {};
+    const name = _profile.displayName || _user.displayName || 'User';
+    const av = document.getElementById('prf-avatar');
+    const photo = _profile.photoURL || _user.photoURL;
+    if (photo) { av.innerHTML=`<img src="${photo}" alt="">`; }
+    else { av.textContent = window.libInitials(name); }
+
+    document.getElementById('prf-name').textContent = name;
+    document.getElementById('pi-name').textContent = name;
+    document.getElementById('pi-inst').textContent = _profile.institution || '—';
+    document.getElementById('pi-dept').textContent = _profile.department || '—';
+
+    // Role badge
+    const hasBooks = !!_profile.displayName;
+    document.getElementById('prf-role').textContent = hasBooks ? '📚 Host & Reader' : '📖 Reader';
+    if (hasBooks) {
+      const vpBtn = document.getElementById('prf-view-public');
+      vpBtn.href = 'library-host-profile.html?uid='+_user.uid;
+      vpBtn.style.display='inline-flex';
+    }
+
+    const [stats, follCount] = await Promise.all([
+      window.libGetMyStats(_user.uid),
+      window.libGetFollowerCount(_user.uid)
+    ]);
+    document.getElementById('ps-books').textContent = stats.books;
+    document.getElementById('ps-readers').textContent = stats.readers;
+    document.getElementById('ps-followers').textContent = follCount;
+
+    // Activity
+    const books = await window.libGetMyBooks(_user.uid);
+    const actEl = document.getElementById('prf-activity');
+    if (!books.length) {
+      actEl.innerHTML=`<div class="prf-empty">No library activity yet. Upload your first book!</div>`;
+    } else {
+      actEl.innerHTML = books.slice(0,5).map(b=>`
+        <div class="prf-activity-item">
+          <div class="prf-activity-dot"></div>
+          <div>
+            <div class="prf-activity-text">Uploaded <b>${b.title||'Untitled'}</b></div>
+            <div class="prf-activity-time">${window.libFormatTime(b.createdAt)} · ${b.views||0} readers · ${b.likes||0} likes</div>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  window.handlePhotoChange = async function(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const av = document.getElementById('prf-avatar');
+    av.innerHTML='<span class="lib-spinner"></span>';
+    try {
+      const url = await window.libUploadProfilePhoto(_user.uid, file);
+      av.innerHTML=`<img src="${url}" alt="">`;
+      window.libToast('Profile photo updated!');
+    } catch(e) { window.libToast('Failed: '+e.message); av.textContent=window.libInitials(_profile?.displayName||'?'); }
+  };
+
+  window.openFieldEdit = function(field) {
+    _editField = field;
+    const overlay = document.getElementById('fe-overlay');
+    const content = document.getElementById('fe-content');
+    if (field==='name') {
+      document.getElementById('fe-title').textContent='Edit Display Name';
+      const parts=(_profile.displayName||'').split(' ');
+      content.innerHTML=`
+        <div class="lib-form-group" style="margin-bottom:10px">
+          <label class="lib-label">First Name</label>
+          <input class="lib-input" id="fe-fname" value="${parts[0]||''}" placeholder="First name">
+        </div>
+        <div class="lib-form-group">
+          <label class="lib-label">Last Name</label>
+          <input class="lib-input" id="fe-lname" value="${parts.slice(1).join(' ')||''}" placeholder="Last name">
+        </div>`;
+    }
+    overlay.classList.add('open');
+  };
+  window.closeFieldEdit=function(){document.getElementById('fe-overlay').classList.remove('open');};
+  window.saveFieldEdit=async function(){
+    if(_editField==='name'){
+      const fname=document.getElementById('fe-fname').value.trim();
+      const lname=document.getElementById('fe-lname').value.trim();
+      if(!fname){window.libToast('Name required');return;}
+      const name=(fname+' '+lname).trim();
+      await window.libSaveProfile(_user.uid,{displayName:name});
+      _profile.displayName=name;
+      document.getElementById('prf-name').textContent=name;
+      document.getElementById('pi-name').textContent=name;
+      document.getElementById('prf-avatar').textContent=window.libInitials(name);
+      window.libToast('Name updated!');
+    }
+    closeFieldEdit();
+  };
+
+  window.signOut=async function(){
+    if(!confirm('Sign out?'))return;
+    const auth=getAuth(getApp());
+    await fbSignOut(auth);
+    location.href='login.html';
+  };
+</script>
+</body>
+</html>

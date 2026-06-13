@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Animate — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-animate.css">
+
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ SIDEBAR TOGGLE (MOBILE) ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY <span style="font-size:.55rem;font-weight:700;background:rgba(99,102,241,0.2);color:#a5b4fc;border-radius:4px;padding:1px 5px;margin-left:4px;letter-spacing:.03em;">v2.9.0</span></div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        How to Install
+    </a>
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home
+        </a>
+        <a href="studio.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio
+        </a>
+        
+
+        <a href="ai-animate.html" class="aqs-sidebar-link active">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></span>AI Animate
+        </a>
+        <a href="docs-gen.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator
+        </a>
+        <a href="study.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study
+        </a>
+        <a href="studyhub.html" class="aqs-sidebar-link " style="color:#6366f1;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>Study Hub
+        </a>
+        <a href="tts.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech
+        </a>
+        <a href="create-quiz.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz
+        </a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge
+        </a>
+    </nav>
+    <div class="aqs-sidebar-footer">
+        <div class="aqs-sidebar-user">
+            <div class="aqs-sidebar-avatar">U</div>
+            <div class="aqs-sidebar-user-name">User</div>
+        </div>
+    </div>
+</nav>
+
+<!-- ══ MAIN BODY ══ -->
+<div class="aqs-sidebar-body">
+<main class="aqs-page-main">
+
+<div class="aqs-wrap aqs-anim-wrap" id="aqs-anim-wrap">
+
+    <!-- Hero -->
+    <div class="aqs-anim-hero">
+        <div class="aqs-anim-hero-inner">
+            <div class="aqs-anim-hero-icon">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <div>
+                <h1 class="aqs-anim-title">AI Animate</h1>
+                <p class="aqs-anim-sub">Upload any photo or image, describe how you want it animated, use the prompt enhancer, and generate AI-powered animated frames — all in your browser.</p>
+                <p class="aqs-anim-credit">Powered by Darapet Technology &mdash; Omomo Excellence</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Two-column layout -->
+    <div class="aqs-anim-layout">
+
+        <!-- LEFT: Upload + controls -->
+        <div class="aqs-anim-left">
+
+            <!-- Upload zone -->
+            <div class="aqs-anim-upload-card" id="aqs-anim-upload-card">
+                <div class="aqs-anim-dropzone" id="aqs-anim-dropzone">
+                    <div class="aqs-anim-drop-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    </div>
+                    <p class="aqs-anim-drop-title">Drop your photo or image here</p>
+                    <p class="aqs-anim-drop-sub">or click to browse — PNG, JPG, WebP, GIF</p>
+                    <input type="file" id="aqs-anim-file" accept="image/*" style="display:none">
+                    <button class="aqs-btn aqs-btn-primary aqs-anim-browse-btn" id="aqs-anim-browse-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        Browse Files
+                    </button>
+                </div>
+            </div>
+
+            <!-- Preview (hidden until image uploaded) -->
+            <div class="aqs-anim-preview-card" id="aqs-anim-preview-card" style="display:none">
+                <div class="aqs-anim-preview-wrap" id="aqs-anim-preview-wrap">
+                    <img id="aqs-anim-preview-img" src="" alt="Uploaded image" class="aqs-anim-preview-img">
+                    <div class="aqs-anim-preview-overlay">
+                        <button class="aqs-anim-play-btn" id="aqs-anim-play-btn" title="Preview animation">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </button>
+                    </div>
+                    <div class="aqs-anim-preview-badge" id="aqs-anim-preview-badge">Paused</div>
+                </div>
+                <div class="aqs-anim-preview-footer">
+                    <span class="aqs-anim-file-name" id="aqs-anim-file-name"></span>
+                    <button class="aqs-btn aqs-btn-sm" id="aqs-anim-change-btn">Change Image</button>
+                </div>
+            </div>
+
+            <!-- Controls card -->
+            <div class="aqs-anim-controls-card">
+
+                <!-- Prompt -->
+                <div class="aqs-anim-field">
+                    <label class="aqs-ds-label">Animation Prompt</label>
+                    <div class="aqs-anim-prompt-row">
+                        <textarea id="aqs-anim-prompt" class="aqs-ds-textarea" rows="3"
+                            placeholder="e.g. 'Make the sky move with dramatic clouds, add cinematic depth of field' or 'Neon glow effect, futuristic city energy, vivid colors'"></textarea>
+                        <button id="aqs-anim-enhance-btn" class="aqs-btn aqs-ds-enhance-btn aqs-anim-enhance-btn" title="Enhance your prompt">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            Enhance
+                        </button>
+                    </div>
+                    <p class="aqs-anim-tip">Hit <strong>Enhance</strong> to auto-add professional animation keywords to your prompt.</p>
+                </div>
+
+                <!-- Animation style -->
+                <div class="aqs-anim-field">
+                    <label class="aqs-ds-label">Animation Style</label>
+                    <div class="aqs-anim-styles" id="aqs-anim-styles">
+                        <button class="aqs-anim-style active" data-style="cinematic" data-css="aqs-anim-css-cinematic">
+                            <span class="aqs-anim-style-name">Cinematic</span>
+                            <span class="aqs-anim-style-desc">Slow dramatic zoom</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="pulse" data-css="aqs-anim-css-pulse">
+                            <span class="aqs-anim-style-name">Energy Pulse</span>
+                            <span class="aqs-anim-style-desc">Breathing glow</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="float" data-css="aqs-anim-css-float">
+                            <span class="aqs-anim-style-name">Float</span>
+                            <span class="aqs-anim-style-desc">Gentle up-down</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="kenburns" data-css="aqs-anim-css-kenburns">
+                            <span class="aqs-anim-style-name">Ken Burns</span>
+                            <span class="aqs-anim-style-desc">Pan &amp; zoom</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="glitch" data-css="aqs-anim-css-glitch">
+                            <span class="aqs-anim-style-name">Glitch Art</span>
+                            <span class="aqs-anim-style-desc">Digital distortion</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="neon" data-css="aqs-anim-css-neon">
+                            <span class="aqs-anim-style-name">Neon Glow</span>
+                            <span class="aqs-anim-style-desc">Vivid hue shift</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="reveal" data-css="aqs-anim-css-reveal">
+                            <span class="aqs-anim-style-name">Reveal</span>
+                            <span class="aqs-anim-style-desc">Left-to-right wipe</span>
+                        </button>
+                        <button class="aqs-anim-style" data-style="vortex" data-css="aqs-anim-css-vortex">
+                            <span class="aqs-anim-style-name">Vortex</span>
+                            <span class="aqs-anim-style-desc">Slow rotation</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="aqs-ds-actions">
+                    <button id="aqs-anim-preview-btn" class="aqs-btn" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        Preview
+                    </button>
+                    <button id="aqs-anim-generate-btn" class="aqs-btn aqs-btn-primary aqs-ds-generate-btn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                        Generate AI Frames
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: AI frames output -->
+        <div class="aqs-anim-right">
+            <div class="aqs-anim-frames-card">
+                <div class="aqs-anim-frames-header">
+                    <div>
+                        <h3>AI Generated Frames</h3>
+                        <p class="aqs-anim-frames-sub">4 unique frames from your prompt and animation style</p>
+                    </div>
+                    <button id="aqs-anim-regen-frames-btn" class="aqs-btn aqs-btn-sm" style="display:none">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Regenerate
+                    </button>
+                </div>
+
+                <!-- Status -->
+                <div id="aqs-anim-status" class="aqs-ds-status" style="display:none">
+                    <div class="aqs-ds-spinner"></div>
+                    <span id="aqs-anim-status-text">Generating AI frames&hellip;</span>
+                </div>
+                <div id="aqs-anim-error" class="aqs-ds-error" style="display:none"></div>
+
+                <!-- Empty state -->
+                <div class="aqs-anim-empty" id="aqs-anim-empty">
+                    <div class="aqs-anim-empty-icon">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                    </div>
+                    <p class="aqs-anim-empty-title">No frames generated yet</p>
+                    <p class="aqs-anim-empty-sub">Upload an image, write your prompt, then hit Generate AI Frames</p>
+                </div>
+
+                <!-- Frames grid -->
+                <div id="aqs-anim-frames-grid" class="aqs-anim-frames-grid" style="display:none"></div>
+
+                <!-- Info tip -->
+                <div class="aqs-anim-info-tip">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                    <span>Preview uses CSS animation on your uploaded photo. AI Frames generates 4 unique Pollinations FLUX images from your prompt &amp; style — download each frame individually.</span>
+                </div>
+            </div>
+        </div>
+
+    </div><!-- /.aqs-anim-layout -->
+</div><!-- /.aqs-anim-wrap -->
+
+</main>
+</div><!-- /.aqs-sidebar-body -->
+
+<script>
+var AQS = {
+    ajax_url:'', nonce:'', public_nonce:'', home_url:'index.html',
+    studio_url:'studio.html', imagegen_url:'image-gen.html',
+    imageedit_url:'image-editor.html', docsgen_url:'docs-gen.html',
+    tts_url:'tts.html', groq_key:'', plugin_url:'./'
+};
+</script>
+<script src="js/aqs-animate.js"></script>
+<script>
+(function(){
+    var toggle  = document.getElementById('aqs-sidebar-toggle');
+    var sidebar = document.getElementById('aqs-sidebar');
+    var overlay = document.getElementById('aqs-sidebar-overlay');
+    if (!toggle || !sidebar || !overlay) return;
+    toggle.addEventListener('click',  function(){ sidebar.classList.add('open');    overlay.classList.add('open'); });
+    overlay.addEventListener('click', function(){ sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+})();
+</script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+</html>

@@ -1,0 +1,779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Studio — DaraQuiz AI</title>
+    <meta name="description" content="xzily AI — Your intelligent learning assistant.">
+    <script src="js/aqs-nav-loader.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link rel="stylesheet" href="css/aqs-pwa.css">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-studio.css">
+    <link rel="stylesheet" href="css/aqs-splash.css">
+    <style>
+        .aqs-full-page-body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)!important}
+        html,body{overflow:hidden;height:100vh}
+
+        /* ── Base layout vars ── */
+        :root{
+          --mob-topbar-h: 52px;
+          --mob-hist-w: min(280px, 82vw);
+        }
+
+        #dts-app{display:flex;flex-direction:column;height:100vh;height:100dvh;overflow:hidden}
+        #dts-main{flex:1;overflow:hidden;position:relative;padding-bottom:var(--dts-footer-h,80px)}
+        /* FIX: welcome overlay fills parent — suggestion & send buttons now always clickable */
+        .dts-welcome{inset:0!important;padding-bottom:28px!important}
+        .dts-footer{left:var(--aqs-sidebar-w,260px)!important}
+
+        /* History + misc shared styles */
+        .dts-history-section{margin-top:16px}
+        .dts-history-label{font-size:0.7rem;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;padding:0 12px;margin-bottom:6px}
+        .dts-history-list{display:flex;flex-direction:column;gap:2px;max-height:280px;overflow-y:auto}
+        .dts-history-item{display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:0.82rem;color:#d1d5db;transition:background .15s}
+        .dts-history-item:hover{background:rgba(255,255,255,0.08)}
+        .dts-history-item.active{background:rgba(99,102,241,0.3);color:white}
+        .dts-history-item-title{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+        .dts-history-item-del{opacity:0;font-size:0.75rem;color:#9ca3af;background:none;border:none;cursor:pointer;padding:2px 4px;border-radius:4px;flex-shrink:0}
+        .dts-history-item:hover .dts-history-item-del{opacity:1}
+        .dts-history-item-del:hover{color:#ef4444;background:rgba(239,68,68,0.15)}
+        .dts-history-empty{font-size:0.78rem;color:#6b7280;padding:8px 12px;font-style:italic}
+        .dts-nav-divider{height:1px;background:rgba(255,255,255,0.1);margin:10px 0}
+        .dts-welcome-credit{font-size:0.78rem;color:#9ca3af;margin-top:4px;margin-bottom:20px}
+        .dts-katex-display{overflow-x:auto;padding:6px 0}
+        .katex-display{overflow-x:auto;overflow-y:hidden}
+        .dts-quiz-import-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:10px 14px;background:rgba(99,102,241,0.13);border:1px solid rgba(99,102,241,0.4);border-radius:8px;flex-wrap:wrap}
+        .dts-quiz-import-info{font-size:0.84rem;color:#c7d2fe;font-weight:500}
+        .dts-create-quiz-btn{background:#6366f1;color:#fff;border:none;padding:7px 16px;border-radius:6px;font-size:0.83rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .15s,transform .1s}
+        .dts-create-quiz-btn:hover{background:#4f46e5;transform:translateY(-1px)}
+        .dts-nav-challenge{background:rgba(245,158,11,0.12);border-radius:8px;color:#fcd34d!important}
+        .dts-nav-challenge:hover{background:rgba(245,158,11,0.22)!important}
+        .dts-nav-imagegen{background:rgba(124,58,237,0.1);border-radius:8px;color:#a78bfa!important}
+        .dts-nav-imagegen:hover{background:rgba(124,58,237,0.2)!important}
+        .dts-nav-tts{background:rgba(217,70,239,0.1);border-radius:8px;color:#f0abfc!important}
+        .dts-nav-tts:hover{background:rgba(217,70,239,0.2)!important}
+
+        /* ══ LAYOUT OFFSETS (countdown bar top / news ticker bottom) ══ */
+        #dts-app{
+          display:flex;flex-direction:column;overflow:hidden;
+          height:calc(100dvh - var(--aqs-cd-bar-h,0px));
+          transition:.2s,height .2s
+        }
+        .aqs-sidebar{
+          top:var(--aqs-cd-bar-h,0px)!important;
+          height:calc(100dvh - var(--aqs-cd-bar-h,0px))!important;
+          transition:top .2s,height .2s
+        }
+        .dts-footer{
+          bottom:var(--aqs-ticker-bar-h,0px)!important;
+          transition:bottom .2s
+        }
+        #dts-main{
+          padding-bottom:calc(var(--dts-footer-h,80px) + var(--aqs-ticker-bar-h,0px))!important
+        }
+
+        /* ══════════════════════════════════════════
+           MOBILE APP — hamburger drawer history
+           (≤768px: hamburger opens slide-in drawer)
+           ══════════════════════════════════════════ */
+        @media(max-width:768px){
+
+          /* 1. Kill old desktop sidebar elements */
+          #aqs-sidebar-toggle,
+          #aqs-sidebar,
+          .aqs-sidebar-overlay { display:none!important; }
+
+          /* 2. sidebar-body fills full width */
+          .aqs-sidebar-body{
+            margin-left:0!important;
+            padding-left:0!important;
+            width:100%!important;
+          }
+
+          /* 3. dts-app fills height below topbar */
+          #dts-app{
+            height:calc(100dvh
+              - var(--mob-topbar-h)
+              - var(--aqs-cd-bar-h,0px)
+              - var(--aqs-ticker-bar-h,0px))!important;
+            margin-top:0!important;
+          }
+
+          /* 4. Footer spans full width */
+          .dts-footer{
+            left:0!important;
+          }
+
+          /* 5. Show mobile topbar */
+          #dts-mobile-topbar{ display:flex!important; }
+        }
+
+        /* ── Mobile history drawer (slide-in) ── */
+        #dts-mobile-hist-sidebar{
+          position:fixed;
+          top:calc(var(--aqs-cd-bar-h,0px) + var(--mob-topbar-h));
+          left:0;
+          width:var(--mob-hist-w);
+          bottom:var(--aqs-ticker-bar-h,0px);
+          z-index:960;
+          display:flex;
+          flex-direction:column;
+          background:linear-gradient(180deg,#0d0b24 0%,#0f0c29 100%);
+          border-right:1px solid rgba(99,102,241,0.18);
+          overflow:hidden;
+          transform:translateX(-100%);
+          transition:transform .25s cubic-bezier(.4,0,.2,1);
+          box-shadow:4px 0 24px rgba(0,0,0,.55);
+        }
+        #dts-mobile-hist-sidebar.open{
+          transform:translateX(0);
+        }
+        /* Overlay backdrop for drawer — opacity-driven so swipe can fade it */
+        #dts-mob-hist-overlay{
+          position:fixed;
+          inset:0;
+          z-index:950;
+          background:rgba(0,0,0,.5);
+          backdrop-filter:blur(2px);
+          -webkit-backdrop-filter:blur(2px);
+          opacity:0;
+          pointer-events:none;
+          transition:opacity .25s cubic-bezier(.4,0,.2,1);
+        }
+        #dts-mob-hist-overlay.open{
+          opacity:1;
+          pointer-events:auto;
+        }
+
+        /* ── Drawer: user profile strip ── */
+        .mob-hist-user{
+          display:flex;align-items:center;gap:10px;
+          padding:14px 14px 10px;
+          border-bottom:1px solid rgba(255,255,255,0.08);
+          flex-shrink:0;
+        }
+        .mob-hist-avatar{
+          width:34px;height:34px;border-radius:50%;
+          background:linear-gradient(135deg,#6366f1,#8b5cf6);
+          display:flex;align-items:center;justify-content:center;
+          font-size:0.88rem;font-weight:700;color:#fff;
+          flex-shrink:0;
+          box-shadow:0 2px 8px rgba(99,102,241,.4);
+        }
+        .mob-hist-userinfo{flex:1;min-width:0;}
+        .mob-hist-username{
+          font-size:0.82rem;font-weight:600;color:#e0e7ff;
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+        }
+        .mob-hist-usersub{
+          font-size:0.68rem;color:#6b7280;margin-top:1px;
+        }
+        .mob-hist-close{
+          display:flex;align-items:center;justify-content:center;
+          background:rgba(255,255,255,0.06);
+          border:1px solid rgba(255,255,255,0.10);
+          border-radius:6px;
+          color:#6b7280;
+          width:28px;height:28px;
+          cursor:pointer;
+          flex-shrink:0;
+          font-size:0.9rem;
+          transition:background .15s,color .15s;
+        }
+        .mob-hist-close:hover{ background:rgba(239,68,68,.15);color:#f87171;border-color:rgba(239,68,68,.25); }
+
+        /* ── Drawer: new chat button ── */
+        .mob-hist-new{
+          display:flex;align-items:center;gap:8px;
+          margin:10px 10px 6px;
+          padding:9px 12px;
+          background:rgba(99,102,241,0.16);
+          border:1px solid rgba(99,102,241,0.32);
+          border-radius:9px;
+          color:#a5b4fc;
+          font-size:0.82rem;font-weight:600;
+          cursor:pointer;
+          transition:background .15s;
+          flex-shrink:0;
+        }
+        .mob-hist-new:hover{ background:rgba(99,102,241,0.28); }
+        .mob-hist-new svg{ flex-shrink:0; }
+
+        /* ── Drawer: section label ── */
+        .mob-hist-section{
+          font-size:0.64rem;font-weight:700;
+          letter-spacing:.1em;text-transform:uppercase;
+          color:#4b5563;
+          padding:6px 14px 4px;
+          flex-shrink:0;
+        }
+
+        /* ── Mobile top bar ── */
+        #dts-mobile-topbar{
+          display:none;
+          position:fixed;
+          top:var(--aqs-cd-bar-h,0px);
+          left:0; right:0;
+          height:var(--mob-topbar-h);
+          z-index:940;
+          align-items:center;
+          justify-content:space-between;
+          padding:0 12px;
+          background:rgba(8,6,28,0.97);
+          backdrop-filter:blur(14px);
+          -webkit-backdrop-filter:blur(14px);
+          border-bottom:1px solid rgba(255,255,255,0.08);
+          box-shadow:0 2px 10px rgba(0,0,0,.4);
+          gap:10px;
+        }
+        .mob-hamburger-btn{
+          display:flex;align-items:center;justify-content:center;
+          background:rgba(99,102,241,0.16);
+          border:1px solid rgba(99,102,241,0.3);
+          border-radius:7px;
+          color:#a5b4fc;
+          padding:6px 10px;
+          cursor:pointer;
+          flex-shrink:0;
+          transition:background .15s;
+        }
+        .mob-hamburger-btn:hover{ background:rgba(99,102,241,0.28); }
+        .mob-topbar-title{
+          flex:1;text-align:center;
+          font-size:0.9rem;font-weight:700;color:#e0e7ff;
+          letter-spacing:.02em;pointer-events:none;
+        }
+        .mob-new-btn{
+          display:flex;align-items:center;gap:5px;
+          background:rgba(99,102,241,0.22);
+          border:1px solid rgba(99,102,241,0.38);
+          border-radius:7px;
+          color:#a5b4fc;
+          font-size:0.8rem;font-weight:600;
+          cursor:pointer;
+          padding:5px 11px;
+          white-space:nowrap;
+          flex-shrink:0;
+          transition:background .15s;
+        }
+        .mob-new-btn:hover{ background:rgba(99,102,241,0.36); }
+
+        /* ── Drawer: scrollable history list ── */
+        .mob-hist-scroll{
+          flex:1;
+          overflow-y:auto;
+          -webkit-overflow-scrolling:touch;
+          padding:4px 6px 16px;
+        }
+        .mob-hist-scroll::-webkit-scrollbar{ width:3px; }
+        .mob-hist-scroll::-webkit-scrollbar-track{ background:transparent; }
+        .mob-hist-scroll::-webkit-scrollbar-thumb{ background:rgba(99,102,241,.3);border-radius:3px; }
+
+        /* ── dts-drawer-item styles inside the mobile sidebar ── */
+        #dts-mobile-hist-sidebar .dts-drawer-item{
+          display:flex!important;align-items:center!important;gap:8px!important;
+          padding:9px 10px!important;
+          border-radius:8px!important;
+          cursor:pointer!important;
+          font-size:0.82rem!important;
+          color:#c4c9d4!important;
+          transition:background .15s!important;
+          margin-bottom:2px!important;
+          border:1px solid transparent!important;
+        }
+        #dts-mobile-hist-sidebar .dts-drawer-item:hover{
+          background:rgba(99,102,241,0.12)!important;
+          color:#e0e7ff!important;
+          border-color:rgba(99,102,241,0.2)!important;
+        }
+        #dts-mobile-hist-sidebar .dts-drawer-item.active{
+          background:rgba(99,102,241,0.22)!important;
+          color:#c7d2fe!important;
+          border-color:rgba(99,102,241,0.35)!important;
+        }
+        #dts-mobile-hist-sidebar .dts-drawer-item-title{
+          flex:1!important;
+          white-space:nowrap!important;
+          overflow:hidden!important;
+          text-overflow:ellipsis!important;
+          font-size:0.82rem!important;
+        }
+        /* Delete btn: always visible on mobile (tap target) */
+        #dts-mobile-hist-sidebar .dts-drawer-item-del{
+          opacity:0.55!important;
+          font-size:0.78rem!important;
+          color:#6b7280!important;
+          background:none!important;
+          border:none!important;
+          cursor:pointer!important;
+          padding:3px 5px!important;
+          border-radius:4px!important;
+          flex-shrink:0!important;
+          transition:opacity .15s,color .15s!important;
+        }
+        #dts-mobile-hist-sidebar .dts-drawer-item:hover .dts-drawer-item-del,
+        #dts-mobile-hist-sidebar .dts-drawer-item-del:hover{
+          opacity:1!important;color:#f87171!important;
+        }
+        #dts-history-empty{
+          font-size:0.8rem!important;
+          color:#4b5563!important;
+          padding:16px 10px!important;
+          font-style:italic!important;
+          text-align:center!important;
+        }
+
+        /* Push main content (aqs-sidebar-body) below topbar */
+        @media(max-width:768px){
+          .aqs-sidebar-body{
+            padding-top:calc(var(--mob-topbar-h) + var(--aqs-cd-bar-h,0px))!important;
+          }
+        }
+
+    </style>
+
+<script>
+(function(){
+  function syncTicker(){
+    var t=document.getElementById('aqs-news-ticker-bar');
+    var h=t&&window.getComputedStyle(t).display!=='none'?t.offsetHeight:0;
+    document.documentElement.style.setProperty('--aqs-ticker-bar-h',h+'px');
+  }
+  [200,600,1200,2500].forEach(function(d){setTimeout(syncTicker,d);});
+  document.addEventListener('DOMContentLoaded',function(){
+    new MutationObserver(syncTicker)
+      .observe(document.body,{childList:true,subtree:false,attributes:true,attributeFilter:['style']});
+    syncTicker();
+  });
+})();
+</script>
+
+<!-- Firebase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script type="module" src="js/aqs-firebase.js"></script>
+</head>
+<body class="dts-body aqs-full-page-body">
+
+<!-- ══ MOBILE TOP BAR (app only — hidden on desktop) ══ -->
+<div id="dts-mobile-topbar">
+    <button class="mob-hamburger-btn" id="dts-mob-hist-toggle" aria-label="Chat history">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <span class="mob-topbar-title">xzily AI</span>
+    <button class="mob-new-btn" id="dts-mob-new-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New
+    </button>
+</div>
+
+<!-- ══ HISTORY DRAWER OVERLAY (mobile) ══ -->
+<div id="dts-mob-hist-overlay"></div>
+
+<!-- ══ HISTORY SIDEBAR DRAWER (mobile, slide-in via hamburger) ══ -->
+<div id="dts-mobile-hist-sidebar">
+
+    <!-- User profile strip -->
+    <div class="mob-hist-user">
+        <div class="mob-hist-avatar" id="dts-mob-hist-avatar">U</div>
+        <div class="mob-hist-userinfo">
+            <div class="mob-hist-username" id="dts-mob-hist-name">xzily AI</div>
+            <div class="mob-hist-usersub">Chat History</div>
+        </div>
+        <button class="mob-hist-close" id="dts-mob-hist-close" aria-label="Close history">✕</button>
+    </div>
+
+    <!-- New Chat shortcut -->
+    <button class="mob-hist-new" id="dts-mob-hist-new-btn">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Chat
+    </button>
+
+    <!-- Recents label -->
+    <div class="mob-hist-section">Recents</div>
+
+    <!-- Scrollable history list (dts-history-list moved here by JS) -->
+    <div class="mob-hist-scroll" id="dts-mob-hist-scroll"></div>
+
+</div>
+
+<!-- ══ DESKTOP SIDEBAR (web ≥769px only — hidden on mobile) ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon">
+            <svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg>
+        </div>
+        <div class="aqs-sidebar-logo-text">
+            <div class="aqs-sidebar-logo-name">xzily AI</div>
+            <div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div>
+        </div>
+    </div>
+
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        How to Install
+    </a>
+
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home
+        </a>
+        <a href="studio.html" class="aqs-sidebar-link active">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio
+        </a>
+        <a href="tts.html" class="aqs-sidebar-link dts-nav-tts">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech
+        </a>
+        <a href="docs-gen.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator
+        </a>
+        <a href="study.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study
+        </a>
+        <a href="create-quiz.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz
+        </a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge
+        </a>
+    </nav>
+
+    <div class="aqs-sidebar-nav-label" style="margin-top:14px;">QUIZ</div>
+    <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home
+        </a>
+        <a href="create-quiz.html" class="aqs-sidebar-link">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz
+        </a>
+        <a href="challenge.html" class="aqs-sidebar-link" style="color:#e11d48;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge
+        </a>
+    </nav>
+
+    <!-- ── New Chat + History (desktop sidebar) ── -->
+    <button id="dts-new-chat" style="display:flex;align-items:center;gap:8px;width:calc(100% - 24px);margin:14px 12px 2px;padding:9px 14px;background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.35);border-radius:10px;color:#a5b4fc;font-size:0.85rem;font-weight:600;cursor:pointer;transition:background .15s;" onmouseover="this.style.background='rgba(99,102,241,0.3)'" onmouseout="this.style.background='rgba(99,102,241,0.18)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        New Chat
+    </button>
+    <div class="dts-nav-divider" style="margin:10px 0 4px;"></div>
+    <div class="dts-history-section" id="dts-sidebar-history-section" style="flex:1;overflow:hidden;display:flex;flex-direction:column;min-height:0;">
+        <div class="dts-history-label">Chat History</div>
+        <div id="dts-history-list" class="dts-history-list" style="flex:1;overflow-y:auto;">
+            <div id="dts-history-empty" class="dts-history-empty">No conversations yet</div>
+        </div>
+    </div>
+
+    <div class="aqs-sidebar-footer">
+        <div class="aqs-sidebar-user">
+            <div class="aqs-sidebar-avatar">U</div>
+            <div class="aqs-sidebar-user-name">User</div>
+        </div>
+    </div>
+</nav>
+
+<!-- ══ MAIN CONTENT ══ -->
+<div class="aqs-sidebar-body" id="aqs-sidebar-body">
+<div id="dts-app">
+    <main id="dts-main" class="dts-main">
+        <div id="dts-messages" class="dts-messages"></div>
+        <div id="dts-welcome" class="dts-welcome">
+            <div class="dts-welcome-icon">
+                <svg width="64" height="64" viewBox="0 0 36 36" fill="none">
+                    <polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1"/>
+                    <circle cx="18" cy="18" r="6" fill="white"/>
+                </svg>
+            </div>
+            <h1 class="dts-welcome-title">xzily AI</h1>
+            <p class="dts-welcome-sub">Your intelligent learning assistant. Ask anything — from quiz prep to complex math.</p>
+            <p class="dts-welcome-credit">Developed by omomo excellence in corporation with Darapet Technology</p>
+            <div class="dts-suggestions">
+                <button class="dts-suggestion-btn" data-prompt="Help me prepare for a biology exam. What are the most important topics to study?">📚 Help me prepare for an exam</button>
+                <button class="dts-suggestion-btn" data-prompt="Explain the quadratic formula and solve: 2x² + 5x - 3 = 0. Show all steps clearly.">🧮 Solve a math problem</button>
+                <button class="dts-suggestion-btn" data-prompt="Explain Newton's three laws of motion with real-world examples.">⚛️ Explain a science concept</button>
+                <button class="dts-suggestion-btn" data-prompt="Give me 5 multiple choice practice questions on the topic of World War II.">✏️ Generate practice questions</button>
+            </div>
+        </div>
+        <div id="dts-typing" class="dts-typing" style="display:none;">
+            <div class="dts-typing-dots"><span></span><span></span><span></span></div>
+        </div>
+    </main>
+</div>
+
+<footer id="dts-footer" class="dts-footer">
+    <input type="file" id="dts-file-input" accept=".txt,.md,.csv,.json,.pdf,.docx,.doc" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <input type="file" id="dts-image-input" accept="image/*" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">
+    <div id="dts-file-status" class="dts-file-status" style="display:none"></div>
+    <div class="dts-input-wrap" id="dts-input-wrap">
+        <label id="dts-file-btn" for="dts-file-input" class="dts-file-btn" tabindex="0" role="button" title="Attach file (TXT, MD, CSV, JSON, PDF, DOCX — max 10 MB)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+        </label>
+        <label id="dts-image-btn" for="dts-image-input" class="dts-file-btn" tabindex="0" role="button" title="Upload image (JPG, PNG, GIF, WebP — max 5 MB)">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+        </label>
+        <textarea id="dts-input" class="dts-input" placeholder="Ask anything…" rows="1"></textarea>
+        <button id="dts-send" class="dts-send-btn" title="Send">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+    </div>
+    <p class="dts-disclaimer">xzily AI may make mistakes. Verify important information.</p>
+</footer>
+</div><!-- /.aqs-sidebar-body -->
+
+<script>
+var DTS_CONFIG = {
+    ajax_url:'',nonce:'',public_nonce:'',groq_key:'',
+    is_logged_in:true,is_host:true,user_name:'User',plugin_url:'./',
+    studio_url:'studio.html',imagegen_url:'studio.html',
+    imageedit_url:'image-editor.html',docsgen_url:'docs-gen.html',
+    tts_url:'studio.html',create_url:'create-quiz.html',challenge_url:'challenge.html'
+};
+var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'DaraQuiz AI',tagline:'Powered by Darapet Technology',logo_url:'',color_primary:'#6366f1',color_bg:'',color_text:'',duration:'3',sound:'0',music_url:'audio/quiz-background.mp3'};
+</script>
+<script src="js/aqs-splash.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
+<script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
+<script src="js/aqs-capacitor-speech.js"></script>
+<script src="js/aqs-studio.js"></script>
+<script>
+(function(){
+    /* ── Desktop sidebar toggle ── */
+    var toggle  = document.getElementById('aqs-sidebar-toggle');
+    var sidebar = document.getElementById('aqs-sidebar');
+    var overlay = document.getElementById('aqs-sidebar-overlay');
+    if (toggle && sidebar && overlay) {
+        function openSb()  { sidebar.classList.add('open'); overlay.classList.add('open'); }
+        function closeSb() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+        toggle.addEventListener('click', openSb);
+        overlay.addEventListener('click', closeSb);
+    }
+
+    /* PWA install prompt */
+    var pwaBtn = document.getElementById('aqs-sidebar-pwa-btn');
+    var deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', function(e){ e.preventDefault(); deferredPrompt = e; });
+    if (pwaBtn) {
+        pwaBtn.addEventListener('click', function(e){
+            e.preventDefault();
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(function(){ deferredPrompt = null; });
+            } else {
+                alert('To install:\n• Chrome/Edge: ⋮ menu → "Install app"\n• Safari: Share → "Add to Home Screen"');
+            }
+        });
+    }
+
+    /* ── Mobile layout wiring ── */
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.innerWidth > 768) return; /* desktop — skip */
+
+        var histList   = document.getElementById('dts-history-list');
+        var mobScroll  = document.getElementById('dts-mob-hist-scroll');
+        var newChatBtn = document.getElementById('dts-new-chat');
+
+        /* Move history list into the mobile sidebar drawer */
+        if (histList && mobScroll) {
+            mobScroll.appendChild(histList);
+            histList.style.maxHeight = 'none';
+        }
+
+        /* Mobile topbar "New" button → triggers desktop new-chat button */
+        var mobNew = document.getElementById('dts-mob-new-btn');
+        if (mobNew && newChatBtn) {
+            mobNew.addEventListener('click', function() { newChatBtn.click(); });
+        }
+
+        /* Hamburger toggle for history drawer */
+        var histToggle  = document.getElementById('dts-mob-hist-toggle');
+        var histSidebar = document.getElementById('dts-mobile-hist-sidebar');
+        var histOverlay = document.getElementById('dts-mob-hist-overlay');
+
+        function openHist() {
+            histSidebar && histSidebar.classList.add('open');
+            histOverlay && histOverlay.classList.add('open');
+        }
+        function closeHist() {
+            histSidebar && histSidebar.classList.remove('open');
+            histOverlay && histOverlay.classList.remove('open');
+        }
+
+        if (histToggle)  histToggle.addEventListener('click', openHist);
+        if (histOverlay) histOverlay.addEventListener('click', closeHist);
+
+        /* Close (✕) button inside the drawer */
+        var histClose = document.getElementById('dts-mob-hist-close');
+        if (histClose) histClose.addEventListener('click', closeHist);
+
+        /* In-drawer "New Chat" button */
+        var drawerNew = document.getElementById('dts-mob-hist-new-btn');
+        if (drawerNew && newChatBtn) {
+            drawerNew.addEventListener('click', function() {
+                closeHist();
+                newChatBtn.click();
+            });
+        }
+
+        /* Close drawer when a history item is tapped */
+        if (histSidebar) {
+            histSidebar.addEventListener('click', function(e) {
+                if (e.target.closest('.dts-drawer-item')) closeHist();
+            });
+        }
+
+        /* ── Professional swipe gesture — open (edge→right) / close (left swipe) ── */
+        (function() {
+            var EDGE_W      = 44;   /* px from left edge that activates swipe-to-open */
+            var VEL_THRESH  = 0.3;  /* px/ms — fast flick overrides distance check */
+            var DIST_THRESH = 0.38; /* fraction of drawer width needed to commit */
+            var MIN_HORIZ   = 8;    /* px of horiz movement before we decide direction */
+            var VERT_RATIO  = 1.5;  /* if |dy| > |dx|*ratio → treat as vertical scroll */
+
+            var tx0 = 0, ty0 = 0, tLastX = 0, tLastT = 0;
+            var dragging = false, openGesture = false, dirDecided = false;
+
+            function drawerW() { return histSidebar ? histSidebar.offsetWidth : 280; }
+
+            function setProgress(p) {
+                p = Math.max(0, Math.min(1, p));
+                if (!histSidebar || !histOverlay) return;
+                histSidebar.style.transition = 'none';
+                histSidebar.style.transform  = 'translateX(' + (-(1 - p) * drawerW()) + 'px)';
+                histOverlay.style.transition = 'none';
+                histOverlay.style.opacity    = String(p * 0.95 + 0.05);
+                histOverlay.style.pointerEvents = 'none';
+            }
+
+            function commit(open) {
+                /* Restore CSS transitions so the snap feels natural */
+                if (histSidebar) {
+                    histSidebar.style.transition = '';
+                    histSidebar.style.transform  = '';
+                }
+                if (histOverlay) {
+                    histOverlay.style.transition    = '';
+                    histOverlay.style.opacity       = '';
+                    histOverlay.style.pointerEvents = '';
+                }
+                open ? openHist() : closeHist();
+                dragging = false;
+            }
+
+            document.addEventListener('touchstart', function(e) {
+                if (!histSidebar) return;
+                var t = e.touches[0];
+                tx0 = t.clientX; ty0 = t.clientY;
+                tLastX = t.clientX; tLastT = Date.now();
+                dragging = false; dirDecided = false;
+
+                var isOpen = histSidebar.classList.contains('open');
+                /* Swipe-to-open: only activate from left edge when drawer is closed */
+                if (!isOpen && tx0 > EDGE_W) return;
+                /* Swipe-to-close: only on the open drawer itself */
+                if (isOpen && !e.target.closest('#dts-mobile-hist-sidebar')) return;
+                openGesture = !isOpen;
+            }, { passive: true });
+
+            document.addEventListener('touchmove', function(e) {
+                if (!histSidebar) return;
+                var t     = e.touches[0];
+                var dx    = t.clientX - tx0;
+                var dy    = t.clientY - ty0;
+                var isOpen = histSidebar.classList.contains('open');
+
+                /* Decide direction on first significant movement */
+                if (!dirDecided) {
+                    if (Math.abs(dx) < MIN_HORIZ && Math.abs(dy) < MIN_HORIZ) return;
+                    dirDecided = true;
+                    if (Math.abs(dy) > Math.abs(dx) * VERT_RATIO) return; /* vertical scroll */
+                    if (!isOpen && tx0 <= EDGE_W && dx > 0) {
+                        dragging = true; openGesture = true;
+                        /* Show overlay immediately so it fades in with the drag */
+                        if (histOverlay) histOverlay.style.display = '';
+                    } else if (isOpen && dx < 0) {
+                        dragging = true; openGesture = false;
+                    }
+                }
+
+                if (!dragging) return;
+
+                var w = drawerW();
+                var progress = openGesture
+                    ? Math.min(1, dx / w)
+                    : Math.max(0, 1 + dx / w);
+                setProgress(progress);
+
+                /* Rolling velocity snapshot (last 80ms window) */
+                var now = Date.now();
+                if (now - tLastT > 0) { tLastX = t.clientX; tLastT = now; }
+            }, { passive: true });
+
+            function onTouchEnd(e) {
+                if (!dragging) return;
+                var t  = (e.changedTouches || e.touches)[0];
+                var dx = t.clientX - tx0;
+                var dt = Date.now() - tLastT;
+                /* Velocity in px/ms from the last rolling snapshot */
+                var vel = dt > 0 ? Math.abs(t.clientX - tLastX) / dt : 0;
+                var w   = drawerW();
+                var ratio = Math.abs(dx) / w;
+
+                var shouldOpen;
+                if (openGesture) {
+                    shouldOpen = vel >= VEL_THRESH || ratio >= DIST_THRESH;
+                } else {
+                    shouldOpen = !(vel >= VEL_THRESH || ratio >= DIST_THRESH);
+                }
+                commit(shouldOpen);
+            }
+            document.addEventListener('touchend',    onTouchEnd, { passive: true });
+            document.addEventListener('touchcancel', onTouchEnd, { passive: true });
+        })();
+
+        /* Populate user avatar + name from DTS_CONFIG or Firebase auth */
+        function setDrawerUser(name) {
+            var initial = (name && name.trim().charAt(0) || 'U').toUpperCase();
+            var ava = document.getElementById('dts-mob-hist-avatar');
+            var nm  = document.getElementById('dts-mob-hist-name');
+            if (ava) ava.textContent = initial;
+            if (nm)  nm.textContent  = name || 'xzily AI';
+        }
+
+        /* Try DTS_CONFIG first (fastest) */
+        if (window.DTS_CONFIG && window.DTS_CONFIG.user_name && window.DTS_CONFIG.user_name !== 'User') {
+            setDrawerUser(window.DTS_CONFIG.user_name);
+        }
+
+        /* Also listen for Firebase auth changes (comes later) */
+        document.addEventListener('aqs:authchange', function(e) {
+            var user = e.detail && e.detail.user;
+            if (user) {
+                var name = user.displayName || (user.email ? user.email.split('@')[0] : '') || 'User';
+                setDrawerUser(name);
+            }
+        });
+    });
+})();
+</script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-update-check.js"></script>
+<script src="js/aqs-whats-new.js"></script>
+<script src="js/aqs-session.js"></script>
+<script src="capacitor-bridge.js"></script>
+</body>
+</html>

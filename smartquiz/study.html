@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Study — XZILY AI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap">
+    <link rel="stylesheet" href="css/aqs-style.css">
+    <link rel="stylesheet" href="css/aqs-sidebar.css">
+    <link rel="stylesheet" href="css/aqs-study.css">
+    <style>
+    html,body{background:#09091a!important}
+    .aqs-page-main{padding:0!important;background:#09091a!important}
+    .aqs-sidebar-body{background:#09091a}
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script type="module" src="js/aqs-firebase.js"></script>
+  <script src="js/aqs-nav-loader.js"></script>
+</head>
+<body class="aqs-full-page-body">
+
+<!-- ══ SIDEBAR TOGGLE ══ -->
+<button class="aqs-sidebar-mobile-toggle" id="aqs-sidebar-toggle" aria-label="Open navigation">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+</button>
+<div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="aqs-sidebar" id="aqs-sidebar">
+    <div class="aqs-sidebar-logo">
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY <span style="font-size:.55rem;font-weight:700;background:rgba(99,102,241,0.2);color:#a5b4fc;border-radius:4px;padding:1px 5px;margin-left:4px;letter-spacing:.03em;">v2.9.0</span></div></div>
+    </div>
+    <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
+        <nav class="aqs-sidebar-nav">
+        <a href="index.html" class="aqs-sidebar-link ">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></span>Home
+        </a>
+        <a href="studio.html" class="aqs-sidebar-link ">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg></span>Studio
+        </a>
+        
+        <a href="docs-gen.html" class="aqs-sidebar-link ">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></span>Docs Generator
+        </a>
+        <a href="study.html" class="aqs-sidebar-link active">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study
+        </a>
+        <a href="studyhub.html" class="aqs-sidebar-link " style="color:#6366f1;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>Study Hub
+        </a>
+        <a href="library.html" class="aqs-sidebar-link " style="color:#a5b4fc;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Library
+        </a>
+        <a href="tts.html" class="aqs-sidebar-link ">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech
+        </a>
+        <a href="create-quiz.html" class="aqs-sidebar-link ">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>Create Quiz
+        </a>
+        <a href="challenge.html" class="aqs-sidebar-link " style="color:#e11d48;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 17.5L3 6V3h3l11.5 11.5"/><path d="M13 19l6-6"/><path d="M2 2l20 20"/><path d="M3 6l3.5 3.5"/></svg></span>Challenge
+        </a>
+        <a href="puzzle.html" class="aqs-sidebar-link " style="color:#7c3aed;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg></span>Puzzle Battle
+        </a>
+    </nav>
+
+    <div class="aqs-sidebar-footer"><div class="aqs-sidebar-user"><div class="aqs-sidebar-avatar">U</div><div class="aqs-sidebar-user-name">User</div></div></div>
+</nav>
+
+<div class="aqs-sidebar-body">
+<main class="aqs-page-main">
+<div class="std-main">
+
+    <!-- ══════════════════ HOME VIEW ══════════════════ -->
+    <div id="std-home">
+        <div class="std-hero">
+            <div class="std-hero-icon">📚</div>
+            <div>
+                <h1 class="std-hero-title">AI Study</h1>
+                <p class="std-hero-sub">Search any topic, subject, or book. The AI searches the internet (Wikipedia &amp; Google Books), organises it into chapters, and gives you summaries, explanations, practice tests, and a live voice conversation with your AI tutor.</p>
+            </div>
+        </div>
+
+        <div class="std-search-section">
+            <form class="std-search-form" id="std-search-form" autocomplete="off" onsubmit="return false">
+                <input type="text" class="std-search-input" id="std-search-input"
+                    placeholder="Type a topic, subject or book title… e.g. 'Photosynthesis', 'World War 2', 'The Great Gatsby'" />
+                <button type="submit" class="std-search-btn">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    Study It
+                </button>
+            </form>
+            <div class="std-ai-status" style="display:none">
+                <span>AI Status:</span>
+                <span id="std-groq-badge" class="std-groq-badge">Checking…</span>
+            </div>
+        </div>
+
+        <div class="std-hist-section">
+            <div class="std-sec-label">📅 Recent Topics</div>
+            <div class="std-hist-list" id="std-history-list"></div>
+        </div>
+    </div>
+
+    <!-- ══════════════════ LOADING VIEW ══════════════════ -->
+    <div id="std-loading-view" style="display:none">
+        <div class="std-loading-view">
+            <div class="std-spinner lg"></div>
+            <p id="std-loading-msg">Searching…</p>
+        </div>
+    </div>
+
+    <!-- ══════════════════ RESULTS VIEW ══════════════════ -->
+    <div id="std-results-view" style="display:none" class="std-results-view">
+        <button class="std-results-back" id="std-results-back">← Back to Search</button>
+        <div id="std-results-container"></div>
+    </div>
+
+    <!-- ══════════════════ STUDY VIEW ══════════════════ -->
+    <div id="std-study-view" style="display:none">
+
+        <!-- Study Header -->
+        <div class="std-study-header">
+            <button class="std-back-btn" id="std-back-btn">← Back</button>
+            <button class="std-ch-toggle-mobile" id="std-chapters-toggle">☰ Chapters</button>
+            <div class="std-study-head-info">
+                <div class="std-topic-title" id="std-topic-title">Topic</div>
+                <div class="std-topic-source" id="std-topic-source"></div>
+            </div>
+            <div class="std-study-head-btns">
+                <button class="std-btn" id="std-test-hdr-btn"
+                    style="background:rgba(16,185,129,.12);border-color:rgba(16,185,129,.4);color:#10b981">
+                    🎯 Practice Test
+                </button>
+            </div>
+        </div>
+
+        <!-- Study Body -->
+        <div class="std-study-body">
+
+            <!-- Chapters panel -->
+            <div class="std-chapters-panel" id="std-chapters-panel">
+                <div class="std-ch-panel-head">Chapters / Sections</div>
+                <div id="std-chapters-list"></div>
+            </div>
+
+            <!-- Content area -->
+            <div class="std-content-area">
+                <div id="std-chapter-content"></div>
+
+                <!-- Action toolbar -->
+                <div class="std-actions-bar">
+                    <button class="std-act-btn" id="std-summary-btn">📋 Summarise</button>
+                    <button class="std-act-btn" id="std-explain-btn">💡 Explanation</button>
+                    <button class="std-act-btn test-btn" id="std-test-btn">🎯 Practice Test</button>
+                </div>
+
+                <!-- AI output panel -->
+                <div id="std-ai-panel" class="std-ai-panel" style="display:none">
+                    <div class="std-ai-panel-head">
+                        <div class="std-ai-panel-title" id="std-ai-panel-title"></div>
+                        <button class="std-ai-close" id="std-close-ai-btn" title="Close">✕</button>
+                    </div>
+                    <div id="std-ai-panel-body"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div><!-- /.std-main -->
+</main>
+</div>
+
+<!-- ══ PRACTICE TEST MODAL ══ -->
+<div id="std-test-modal" class="std-modal" style="display:none"></div>
+
+<!-- ══ XZILY AI VOICE TUTOR — FAB always hardcoded here so it shows before JS loads ══ -->
+<div id="std-summon-fab" title="XZILY AI Tutor">✦</div>
+<style>
+/* FAB baseline styles — JS also injects these but having them here guarantees visibility */
+#std-summon-fab{
+  position:fixed!important;
+  bottom:28px!important;
+  right:28px!important;
+  z-index:99998!important;
+  width:60px;height:60px;
+  border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,#a78bfa,#7c3aed 60%,#4c1d95);
+  display:flex!important;
+  align-items:center;justify-content:center;
+  cursor:pointer;
+  box-shadow:0 0 22px 6px rgba(139,92,246,.55);
+  font-size:1.6rem;color:#fff;
+  user-select:none;
+  animation:sfab-pulse 3s ease-in-out infinite;
+}
+@keyframes sfab-pulse{
+  0%,100%{box-shadow:0 0 14px 3px rgba(139,92,246,.4)}
+  50%{box-shadow:0 0 36px 14px rgba(139,92,246,.65)}
+}
+#std-summon-fab:hover{transform:scale(1.1)}
+</style>
+
+<!-- ══ GLOBAL ERROR TOAST ══ -->
+<div id="std-global-error" class="std-global-error"></div>
+
+<script src="js/aqs-capacitor-speech.js"></script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-study.js"></script>
+<script>
+(function(){
+    var t=document.getElementById('aqs-sidebar-toggle'),
+        s=document.getElementById('aqs-sidebar'),
+        o=document.getElementById('aqs-sidebar-overlay');
+    if(t&&s&&o){
+        t.addEventListener('click',function(){s.classList.add('open');o.classList.add('open');});
+        o.addEventListener('click',function(){s.classList.remove('open');o.classList.remove('open');});
+    }
+})();
+</script>
+<script src="js/aqs-notifs-bar.js"></script>
+<script src="js/aqs-session.js"></script>
+</body>
+<script src="js/median-bridge.js"></script>
+</html>

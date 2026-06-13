@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0d1b6e">
+<title>Visit Website — xzily AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Inter',sans-serif;background:linear-gradient(135deg,#0d1b6e 0%,#050510 100%);min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;color:#e2e8f0;}
+.card{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:36px 28px;max-width:360px;width:100%;text-align:center;}
+.icon{font-size:3.5rem;margin-bottom:18px;filter:drop-shadow(0 0 20px rgba(99,102,241,0.5));}
+h1{font-size:1.35rem;font-weight:800;color:#e2e8f0;margin-bottom:10px;line-height:1.35;}
+p{color:#94a3b8;font-size:.9rem;line-height:1.7;margin-bottom:24px;}
+.feature-name{display:inline-block;background:rgba(99,102,241,0.18);border:1px solid rgba(99,102,241,0.35);border-radius:8px;padding:4px 14px;font-size:.85rem;font-weight:700;color:#a5b4fc;margin-bottom:18px;}
+.btn{display:block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;border-radius:13px;padding:14px 24px;font-size:1rem;font-weight:700;margin-bottom:12px;letter-spacing:.2px;transition:opacity .2s;}
+.btn:active{opacity:.85;}
+.btn-ghost{display:block;color:#94a3b8;text-decoration:none;border:1px solid rgba(255,255,255,0.1);border-radius:13px;padding:13px 24px;font-size:.9rem;font-weight:600;transition:opacity .2s;}
+.btn-ghost:active{opacity:.75;}
+.logo{margin-bottom:28px;font-size:1rem;font-weight:700;color:#6366f1;letter-spacing:.5px;}
+</style>
+</head>
+<body>
+<div class="logo">⚡ xzily AI</div>
+<div class="card">
+  <div class="icon">🌐</div>
+  <div class="feature-name" id="feature-name">This Feature</div>
+  <h1>Available on our website!</h1>
+  <p>This feature is fully available on the <strong style="color:#e2e8f0;">xzily AI web platform</strong>. Open the link below in your browser to access it — no download needed!</p>
+  <a href="https://darapet.github.io/smartquiz-system" class="btn" target="_blank">🚀 Open Website</a>
+  <a href="index.html" class="btn-ghost">← Back to Home</a>
+</div>
+
+<script>
+var params = new URLSearchParams(window.location.search);
+var f = params.get('f');
+if(f){
+  var el = document.getElementById('feature-name');
+  if(el) el.textContent = f;
+}
+</script>
+</body>
+</html>

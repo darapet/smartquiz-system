@@ -1,0 +1,56 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'daraquiz-mobile/**'
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    timeout-minutes: 90
+
+    defaults:
+      run:
+        working-directory: daraquiz-mobile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Add iOS platform
+        run: npx cap add ios
+
+      - name: Sync Capacitor
+        run: npx cap sync ios
+
+      - name: Install CocoaPods
+        run: cd ios/App && pod install
+
+      - name: Build iOS simulator (unsigned)
+        run: |
+          xcodebuild -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -sdk iphonesimulator \
+            -configuration Debug \
+            -derivedDataPath ios/build \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Upload iOS build
+        uses: actions/upload-artifact@v4
+        with:
+          name: daraquiz-ai-ios-simulator
+          path: daraquiz-mobile/ios/build/Build/Products/Debug-iphonesimulator/App.app
+          retention-days: 30

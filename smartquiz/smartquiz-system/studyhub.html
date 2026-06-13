@@ -1,0 +1,2511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="theme-color" content="#0a0b14">
+<title>📚 AI Study Hub — xzily AI</title>
+<!-- App Version: 2.7.0 -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<!-- MathJax for math rendering -->
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+<!-- PDF.js for PDF rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#0a0b14;--surface:rgba(255,255,255,.04);--border:rgba(255,255,255,.08);
+  --text:#e2e8f0;--muted:#64748b;--accent:#6366f1;--accent2:#8b5cf6;
+  --green:#22c55e;--red:#ef4444;--gold:#f59e0b;--blue:#3b82f6;--teal:#14b8a6;
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+a{text-decoration:none;color:inherit;}
+
+/* HEADER */
+.sh-hdr{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;backdrop-filter:blur(12px);}
+.sh-logo{font-size:1rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#8b5cf6,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.sh-logo-ver{font-size:.6rem;font-weight:700;color:var(--muted);margin-left:6px;background:none;-webkit-text-fill-color:var(--muted);}
+.sh-back{color:var(--muted);font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:all .18s;}
+.sh-back:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
+
+/* TABS */
+.sh-tabs-wrap{background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.sh-tabs{display:flex;padding:0 16px;gap:0;min-width:max-content;}
+.sh-tab{padding:14px 18px;font-size:.83rem;font-weight:700;color:var(--muted);border:none;background:none;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap;}
+.sh-tab.active{color:var(--text);border-bottom-color:var(--accent);}
+.sh-tab:hover:not(.active){color:#94a3b8;}
+.sh-tab-ai-timer{position:relative;}
+.sh-tab-ai-timer::after{content:'NEW';position:absolute;top:6px;right:4px;font-size:.48rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;padding:1px 4px;border-radius:4px;letter-spacing:.06em;}
+
+/* PANELS */
+.sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
+.sh-panel.active{display:block;}
+
+/* SHARED COMPONENTS */
+.sh-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:22px;margin-bottom:16px;}
+.sh-label{font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;display:block;}
+.sh-input{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.92rem;font-family:inherit;outline:none;transition:border-color .2s;resize:none;}
+.sh-input:focus{border-color:rgba(99,102,241,.5);background:rgba(99,102,241,.04);}
+.sh-select{width:100%;background:rgba(255,255,255,.06);border:1px solid var(--border);border-radius:10px;padding:12px 14px;color:var(--text);font-size:.88rem;font-family:inherit;outline:none;cursor:pointer;-webkit-appearance:none;}
+.sh-select option{background:#0f1124;color:var(--text);}
+.sh-row{display:flex;gap:12px;flex-wrap:wrap;}
+.sh-row .sh-input,.sh-row .sh-select{flex:1;min-width:140px;}
+.sh-btn{padding:12px 24px;border-radius:10px;border:none;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;display:inline-flex;align-items:center;gap:8px;}
+.sh-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 18px rgba(99,102,241,.3);}
+.sh-btn-primary:hover{opacity:.9;transform:translateY(-1px);}
+.sh-btn-primary:disabled{opacity:.4;cursor:not-allowed;transform:none;}
+.sh-btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
+.sh-btn-ghost:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
+.sh-btn-danger{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.sh-section-title{font-size:1.3rem;font-weight:900;color:var(--text);margin-bottom:6px;}
+.sh-section-sub{font-size:.85rem;color:var(--muted);margin-bottom:20px;line-height:1.6;}
+.sh-divider{height:1px;background:var(--border);margin:20px 0;}
+.sh-badge{display:inline-block;font-size:.68rem;font-weight:700;padding:3px 10px;border-radius:20px;}
+.sh-badge-purple{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;}
+.sh-badge-green{background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:#86efac;}
+.sh-badge-gold{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:#fcd34d;}
+.sh-badge-red{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.sh-skeleton{background:linear-gradient(90deg,rgba(255,255,255,.04) 25%,rgba(255,255,255,.08) 50%,rgba(255,255,255,.04) 75%);background-size:200% 100%;animation:sh-shimmer 1.4s infinite;border-radius:6px;height:16px;margin-bottom:8px;}
+@keyframes sh-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+.sh-spinner{display:inline-block;width:20px;height:20px;border:3px solid rgba(255,255,255,.15);border-top-color:var(--accent);border-radius:50%;animation:sh-spin .8s linear infinite;}
+@keyframes sh-spin{100%{transform:rotate(360deg)}}
+
+/* ══════════════════════════════
+   1. AI STUDY NOTES
+══════════════════════════════ */
+.sh-notes-output{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:12px;padding:20px;font-size:.88rem;line-height:1.9;color:#cbd5e1;min-height:200px;display:none;position:relative;}
+.sh-notes-output h1,.sh-notes-output h2,.sh-notes-output h3{color:var(--text);font-weight:800;margin:18px 0 8px;line-height:1.3;}
+.sh-notes-output h1{font-size:1.2rem;border-bottom:2px solid rgba(99,102,241,.3);padding-bottom:8px;}
+.sh-notes-output h2{font-size:1rem;color:#a5b4fc;}
+.sh-notes-output h3{font-size:.92rem;color:#86efac;}
+.sh-notes-output p{margin-bottom:10px;}
+.sh-notes-output ul,.sh-notes-output ol{margin:8px 0 12px 20px;}
+.sh-notes-output li{margin-bottom:6px;}
+.sh-notes-output strong{color:#fcd34d;font-weight:700;}
+.sh-notes-output em{color:#a5b4fc;font-style:normal;font-weight:600;}
+.sh-notes-output code{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.25);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:.83rem;color:#c4b5fd;}
+.sh-notes-output blockquote{border-left:3px solid var(--accent);padding-left:14px;color:var(--muted);margin:12px 0;font-style:italic;}
+.sh-notes-toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;flex-wrap:wrap;}
+
+/* ══════════════════════════════
+   2. FLASHCARDS
+══════════════════════════════ */
+.sh-fc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-top:16px;}
+.sh-fc-card{height:180px;perspective:1000px;cursor:pointer;}
+.sh-fc-inner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .5s cubic-bezier(.4,0,.2,1);}
+.sh-fc-card.flipped .sh-fc-inner{transform:rotateY(180deg);}
+.sh-fc-front,.sh-fc-back{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px;text-align:center;}
+.sh-fc-front{background:rgba(99,102,241,.08);border:2px solid rgba(99,102,241,.25);}
+.sh-fc-back{background:rgba(34,197,94,.06);border:2px solid rgba(34,197,94,.2);transform:rotateY(180deg);}
+.sh-fc-label{font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;}
+.sh-fc-front .sh-fc-label{color:rgba(165,180,252,.6);}
+.sh-fc-back .sh-fc-label{color:rgba(134,239,172,.6);}
+.sh-fc-text{font-size:.88rem;font-weight:700;color:var(--text);line-height:1.5;}
+.sh-fc-back .sh-fc-text{font-size:.82rem;font-weight:500;color:#cbd5e1;}
+.sh-fc-hint{font-size:.7rem;color:var(--muted);margin-top:8px;}
+.sh-fc-nav{display:flex;align-items:center;justify-content:space-between;margin-top:14px;gap:12px;}
+.sh-fc-solo{height:220px;max-width:460px;margin:0 auto;}
+.sh-fc-progress{text-align:center;font-size:.82rem;color:var(--muted);font-weight:600;margin-top:8px;}
+.sh-fc-counter{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:10px;}
+.sh-fc-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.12);cursor:pointer;transition:all .18s;}
+.sh-fc-dot.known{background:var(--green);border-color:var(--green);}
+.sh-fc-dot.unknown{background:var(--red);border-color:var(--red);}
+.sh-fc-dot.current{outline:2px solid var(--accent);outline-offset:2px;}
+
+/* ══════════════════════════════
+   3. GPA CALCULATOR
+══════════════════════════════ */
+.sh-gpa-row{display:grid;grid-template-columns:1fr 100px 90px 28px;gap:8px;align-items:center;margin-bottom:8px;}
+.sh-gpa-row.header{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.sh-gpa-add-btn{display:flex;align-items:center;gap:8px;background:rgba(99,102,241,.08);border:1px dashed rgba(99,102,241,.3);border-radius:10px;padding:10px 16px;color:#a5b4fc;font-size:.85rem;font-weight:700;cursor:pointer;width:100%;margin-top:4px;font-family:inherit;transition:all .18s;}
+.sh-gpa-add-btn:hover{background:rgba(99,102,241,.15);}
+.sh-gpa-result{background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.1));border:1px solid rgba(99,102,241,.25);border-radius:14px;padding:20px;text-align:center;margin-top:16px;}
+.sh-gpa-score{font-size:3rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+.sh-gpa-class{font-size:.95rem;font-weight:800;color:var(--text);margin-top:4px;}
+.sh-gpa-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.sh-gpa-stat{background:rgba(255,255,255,.04);border-radius:10px;padding:12px;text-align:center;}
+.sh-gpa-stat-val{font-size:1.1rem;font-weight:800;color:var(--text);}
+.sh-gpa-stat-lbl{font-size:.68rem;color:var(--muted);font-weight:600;margin-top:3px;}
+.sh-gpa-del{width:28px;height:28px;border-radius:6px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:#fca5a5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.8rem;flex-shrink:0;}
+.sh-gpa-del:hover{background:rgba(239,68,68,.2);}
+
+/* ══════════════════════════════
+   4. STUDY TIMER
+══════════════════════════════ */
+.sh-timer-wrap{text-align:center;padding:20px 0;}
+.sh-timer-ring{position:relative;display:inline-block;margin-bottom:20px;}
+.sh-timer-svg{transform:rotate(-90deg);}
+.sh-timer-track{fill:none;stroke:rgba(255,255,255,.05);stroke-width:8;}
+.sh-timer-fill{fill:none;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .8s linear,stroke .5s;}
+.sh-timer-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.sh-timer-display{font-size:3rem;font-weight:900;color:var(--text);font-variant-numeric:tabular-nums;line-height:1;}
+.sh-timer-mode{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);margin-top:4px;}
+.sh-timer-controls{display:flex;gap:12px;justify-content:center;margin-bottom:20px;}
+.sh-timer-btn{width:56px;height:56px;border-radius:50%;border:none;font-size:1.3rem;cursor:pointer;font-family:inherit;transition:all .18s;display:flex;align-items:center;justify-content:center;}
+.sh-timer-btn-main{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;box-shadow:0 4px 18px rgba(99,102,241,.35);}
+.sh-timer-btn-main:hover{transform:scale(1.05);}
+.sh-timer-btn-sm{background:rgba(255,255,255,.07);border:1px solid var(--border);color:var(--muted);}
+.sh-timer-btn-sm:hover{background:rgba(255,255,255,.12);color:var(--text);}
+.sh-timer-modes{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:20px;}
+.sh-timer-mode-btn{padding:8px 16px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.sh-timer-mode-btn.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
+.sh-timer-sessions{display:flex;gap:6px;justify-content:center;margin-bottom:16px;}
+.sh-timer-session-dot{width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);}
+.sh-timer-session-dot.done{background:var(--accent);}
+.sh-timer-tips{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:10px;padding:14px;font-size:.8rem;color:#94a3b8;line-height:1.7;}
+.sh-timer-task-wrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;}
+.sh-timer-task-input{flex:1;background:none;border:none;color:var(--text);font-size:.88rem;font-family:inherit;outline:none;}
+
+/* ══════════════════════════════
+   5. MOCK EXAM
+══════════════════════════════ */
+.sh-exam-setup{display:block;}
+.sh-exam-active{display:none;}
+.sh-exam-results{display:none;}
+.sh-exam-progress-bar{height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-bottom:20px;overflow:hidden;}
+.sh-exam-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:3px;transition:width .4s ease;}
+.sh-exam-q-num{font-size:.78rem;font-weight:800;color:var(--muted);margin-bottom:8px;}
+.sh-exam-q-text{font-size:1rem;font-weight:700;color:var(--text);line-height:1.6;background:rgba(255,255,255,.04);border-radius:10px;padding:16px;margin-bottom:16px;}
+.sh-exam-opts{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+.sh-exam-opt{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:10px;border:2px solid var(--border);background:rgba(255,255,255,.03);color:var(--text);font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;text-align:left;width:100%;transition:all .18s;}
+.sh-exam-opt:hover:not(:disabled){border-color:rgba(99,102,241,.4);background:rgba(99,102,241,.06);}
+.sh-exam-opt.correct{border-color:#22c55e;background:rgba(34,197,94,.1);color:#86efac;}
+.sh-exam-opt.wrong{border-color:#ef4444;background:rgba(239,68,68,.1);color:#fca5a5;}
+.sh-exam-opt:disabled{cursor:default;}
+.sh-exam-opt-letter{width:28px;height:28px;border-radius:7px;background:rgba(255,255,255,.07);display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;flex-shrink:0;}
+.sh-exam-timer-bar{height:4px;background:rgba(245,158,11,.12);border-radius:2px;margin-bottom:16px;overflow:hidden;}
+.sh-exam-timer-fill{height:100%;background:linear-gradient(90deg,#f59e0b,#fcd34d);border-radius:2px;transition:width 1s linear;}
+.sh-exam-timer-fill.low{background:linear-gradient(90deg,#ef4444,#f87171);}
+.sh-exam-explanation{background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:12px;font-size:.8rem;color:#94a3b8;line-height:1.6;display:none;margin-top:-6px;margin-bottom:14px;}
+.sh-exam-skip-btn{background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--muted);font-size:.8rem;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;font-family:inherit;}
+.sh-result-stat{text-align:center;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:18px 12px;}
+.sh-result-stat-val{font-size:1.8rem;font-weight:900;}
+.sh-result-stat-lbl{font-size:.7rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.sh-result-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;}
+.sh-result-q-item{display:flex;gap:10px;padding:12px 14px;border-radius:10px;background:rgba(255,255,255,.03);border:1px solid var(--border);margin-bottom:8px;}
+.sh-result-q-item.sh-correct{border-left:3px solid var(--green);}
+.sh-result-q-item.sh-wrong{border-left:3px solid var(--red);}
+
+/* ══════════════════════════════
+   6. AI STUDY TIMER (NEW)
+══════════════════════════════ */
+
+/* Setup Screens */
+.ait-setup-screen{display:none;}
+.ait-setup-screen.active{display:block;}
+.ait-name-form{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06));border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:30px 24px;text-align:center;margin-bottom:0;}
+.ait-name-title{font-size:1.5rem;font-weight:900;color:var(--text);margin-bottom:6px;}
+.ait-name-sub{font-size:.88rem;color:var(--muted);margin-bottom:24px;line-height:1.6;}
+.ait-voice-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:12px 0 20px;}
+.ait-voice-btn{background:rgba(255,255,255,.05);border:2px solid var(--border);border-radius:10px;padding:10px 6px;cursor:pointer;text-align:center;transition:all .2s;font-family:inherit;}
+.ait-voice-btn.selected{border-color:var(--accent);background:rgba(99,102,241,.12);}
+.ait-voice-btn .v-icon{font-size:1.4rem;margin-bottom:4px;}
+.ait-voice-btn .v-name{font-size:.62rem;font-weight:700;color:var(--muted);}
+.ait-voice-btn.selected .v-name{color:#a5b4fc;}
+.ait-session-form{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;}
+.ait-keys-section{background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.15);border-radius:12px;padding:16px;margin-bottom:16px;}
+.ait-keys-title{font-size:.75rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;}
+.ait-key-row{display:flex;gap:8px;align-items:center;margin-bottom:7px;}
+.ait-key-label{font-size:.7rem;color:var(--muted);font-weight:700;min-width:40px;}
+.ait-key-input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:.78rem;font-family:monospace;outline:none;}
+.ait-key-input:focus{border-color:rgba(99,102,241,.4);}
+.ait-doc-upload{border:2px dashed rgba(99,102,241,.3);border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(99,102,241,.03);}
+.ait-doc-upload:hover{border-color:rgba(99,102,241,.6);background:rgba(99,102,241,.06);}
+.ait-doc-name{font-size:.78rem;color:#a5b4fc;margin-top:8px;word-break:break-all;}
+.ait-speed-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+.ait-speed-btn{padding:6px 12px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.03);color:var(--muted);font-size:.75rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.ait-speed-btn.active{background:rgba(99,102,241,.15);border-color:rgba(99,102,241,.4);color:#a5b4fc;}
+
+/* Session Screen */
+#ait-session-screen{display:none;position:fixed;inset:0;background:var(--bg);z-index:200;flex-direction:column;overflow:hidden;}
+#ait-session-screen.active{display:flex;}
+.ait-ses-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(255,255,255,.025);border-bottom:1px solid var(--border);flex-shrink:0;}
+.ait-ses-subject{font-size:.85rem;font-weight:800;color:#a5b4fc;}
+.ait-ses-timer-badge{background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:6px 14px;font-size:1rem;font-weight:900;font-variant-numeric:tabular-nums;color:var(--text);}
+.ait-ses-timer-badge.warning{background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.4);color:#fca5a5;animation:ait-blink .8s infinite;}
+@keyframes ait-blink{0%,100%{opacity:1}50%{opacity:.6}}
+.ait-ses-body{display:flex;flex:1;overflow:hidden;gap:0;}
+.ait-ses-left{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px 16px;border-right:1px solid var(--border);overflow-y:auto;}
+.ait-ses-right{width:320px;flex-shrink:0;display:flex;flex-direction:column;background:rgba(255,255,255,.015);overflow:hidden;}
+
+/* AI Avatar */
+.ait-avatar-wrap{position:relative;margin-bottom:16px;flex-shrink:0;}
+.ait-avatar-glow{width:120px;height:120px;border-radius:50%;position:relative;display:flex;align-items:center;justify-content:center;}
+.ait-avatar-glow::before{content:'';position:absolute;inset:-4px;border-radius:50%;background:conic-gradient(from 0deg, #6366f1, #8b5cf6, #a78bfa, #6366f1);animation:ait-spin 3s linear infinite;opacity:0;}
+.ait-avatar-glow.speaking::before{opacity:1;}
+.ait-avatar-glow::after{content:'';position:absolute;inset:-8px;border-radius:50%;background:conic-gradient(from 180deg, rgba(99,102,241,.3), rgba(139,92,246,.2), rgba(167,139,250,.3), rgba(99,102,241,.3));animation:ait-spin 2s linear infinite reverse;opacity:0;filter:blur(6px);}
+.ait-avatar-glow.speaking::after{opacity:1;}
+@keyframes ait-spin{100%{transform:rotate(360deg)}}
+.ait-avatar-inner{width:112px;height:112px;border-radius:50%;background:linear-gradient(135deg,#1a1b2e,#0f1124);border:2px solid rgba(99,102,241,.3);display:flex;align-items:center;justify-content:center;position:relative;z-index:1;overflow:hidden;}
+.ait-avatar-inner svg{width:64px;height:64px;}
+.ait-avatar-pulse{position:absolute;inset:-20px;border-radius:50%;border:2px solid rgba(99,102,241,.2);animation:ait-pulse-ring 2s ease-out infinite;opacity:0;}
+.ait-avatar-glow.speaking .ait-avatar-pulse{opacity:1;}
+@keyframes ait-pulse-ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.4);opacity:0}}
+.ait-avatar-status{font-size:.7rem;font-weight:800;color:var(--muted);text-align:center;margin-top:8px;text-transform:uppercase;letter-spacing:.1em;}
+.ait-ai-name{font-size:1rem;font-weight:900;color:var(--text);text-align:center;margin-bottom:2px;}
+
+/* Transcript / Content area */
+.ait-transcript-wrap{flex:1;overflow-y:auto;padding:8px 12px;width:100%;}
+.ait-transcript-bubble{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.18);border-radius:12px;padding:14px 16px;margin-bottom:10px;font-size:.88rem;line-height:1.8;color:#cbd5e1;}
+.ait-transcript-bubble.math-topic{background:rgba(20,184,166,.06);border-color:rgba(20,184,166,.2);}
+.ait-transcript-bubble .ait-tb-label{font-size:.62rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.ait-transcript-bubble.math-topic .ait-tb-label{color:#5eead4;}
+.ait-typing-cursor{display:inline-block;width:2px;height:1em;background:#a5b4fc;margin-left:2px;animation:ait-cursor-blink .7s step-end infinite;vertical-align:text-bottom;}
+@keyframes ait-cursor-blink{0%,100%{opacity:1}50%{opacity:0}}
+.ait-q-bubble{background:rgba(245,158,11,.07);border:2px solid rgba(245,158,11,.25);border-radius:12px;padding:14px 16px;margin-bottom:10px;}
+.ait-q-bubble .ait-qb-label{font-size:.62rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;}
+.ait-q-bubble .ait-qb-text{font-size:.9rem;font-weight:700;color:var(--text);line-height:1.6;}
+.ait-user-answer{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:.85rem;color:#86efac;}
+.ait-user-answer .ait-ua-label{font-size:.6rem;font-weight:800;color:#86efac;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4px;}
+
+/* Controls panel (right side) */
+.ait-ctrl-wrap{padding:12px;display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--border);}
+.ait-ctrl-row{display:flex;gap:8px;align-items:center;}
+.ait-ctrl-btn{flex:1;padding:10px 8px;border-radius:10px;border:none;font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;}
+.ait-ctrl-btn-pause{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fcd34d;}
+.ait-ctrl-btn-pause.paused{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.3);color:#86efac;}
+.ait-ctrl-btn-mic{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;}
+.ait-ctrl-btn-mic.listening{background:rgba(239,68,68,.12);border-color:rgba(239,68,68,.3);color:#fca5a5;animation:ait-mic-pulse .8s ease-in-out infinite;}
+@keyframes ait-mic-pulse{0%,100%{box-shadow:0 0 0 0 rgba(239,68,68,.3)}50%{box-shadow:0 0 0 6px rgba(239,68,68,0)}}
+.ait-ctrl-btn-end{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#fca5a5;}
+.ait-ctrl-btn-ask{background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;width:100%;}
+.ait-ctrl-btn-continue{background:rgba(20,184,166,.18);border:1.5px solid rgba(20,184,166,.45);color:#5eead4;width:100%;font-weight:800;animation:ait-cont-pulse 1.4s ease-in-out infinite;}
+@keyframes ait-cont-pulse{0%,100%{box-shadow:0 0 0 0 rgba(20,184,166,.0)}50%{box-shadow:0 0 10px 3px rgba(20,184,166,.4)}}
+.ait-voice-notice{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.15);border-radius:8px;padding:10px 12px;font-size:.72rem;color:#94a3b8;line-height:1.6;text-align:center;}
+.ait-type-answer-wrap{display:none;padding:0 12px 10px;}
+.ait-type-answer-wrap.show{display:block;}
+.ait-type-answer-input{width:100%;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.83rem;font-family:inherit;outline:none;resize:none;height:60px;}
+.ait-type-answer-input:focus{border-color:rgba(99,102,241,.4);}
+.ait-send-btn{width:100%;margin-top:6px;padding:8px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.8rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;}
+
+/* Right panel top: doc/notes preview */
+.ait-ses-right-top{flex:1;overflow-y:auto;padding:12px;}
+.ait-doc-preview{font-size:.78rem;color:#94a3b8;line-height:1.7;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;padding:12px;max-height:300px;overflow-y:auto;white-space:pre-wrap;word-break:break-word;}
+.ait-progress-strip{height:3px;background:rgba(99,102,241,.12);width:100%;flex-shrink:0;}
+.ait-progress-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);transition:width 1s linear;}
+
+/* Q&A End mode */
+.ait-qa-wrap{flex:1;overflow-y:auto;padding:12px;}
+.ait-qa-msg{padding:10px 14px;border-radius:10px;margin-bottom:8px;font-size:.85rem;line-height:1.6;}
+.ait-qa-msg.ai{background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15);color:#cbd5e1;}
+.ait-qa-msg.user{background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);color:#86efac;text-align:right;}
+.ait-qa-input-row{display:flex;gap:8px;padding:12px;border-top:1px solid var(--border);flex-shrink:0;}
+.ait-qa-input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:.83rem;font-family:inherit;outline:none;}
+.ait-qa-input:focus{border-color:rgba(99,102,241,.4);}
+.ait-qa-send{padding:10px 14px;border-radius:8px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.85rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;}
+
+/* ══════════════════════════════
+   PROGRESS / HISTORY (localStorage)
+══════════════════════════════ */
+.ait-hist-wrap{max-width:780px;margin:0 auto;}
+.ait-hist-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;}
+.ait-hist-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.ait-hist-stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;}
+.ait-hist-stat-val{font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+.ait-hist-stat-lbl{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.ait-hist-list{display:flex;flex-direction:column;gap:10px;}
+.ait-hist-item{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;align-items:flex-start;gap:14px;transition:border-color .18s;}
+.ait-hist-item:hover{border-color:rgba(99,102,241,.3);}
+.ait-hist-icon{width:42px;height:42px;border-radius:10px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;}
+.ait-hist-body{flex:1;min-width:0;}
+.ait-hist-subject{font-size:.72rem;font-weight:800;color:#a5b4fc;text-transform:uppercase;letter-spacing:.06em;}
+.ait-hist-topic{font-size:.92rem;font-weight:800;color:var(--text);margin:2px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ait-hist-meta{display:flex;gap:8px;flex-wrap:wrap;}
+.ait-hist-tag{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:12px;}
+.ait-hist-tag-time{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);color:#86efac;}
+.ait-hist-tag-date{background:rgba(255,255,255,.05);border:1px solid var(--border);color:var(--muted);}
+.ait-hist-tag-teacher{background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.2);color:#c4b5fd;}
+.ait-hist-tag-doc{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.2);color:#fcd34d;}
+.ait-hist-empty{text-align:center;padding:40px 20px;color:var(--muted);}
+.ait-hist-empty-icon{font-size:3rem;margin-bottom:12px;}
+.ait-streak-bar{background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06));border:1px solid rgba(99,102,241,.2);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;margin-bottom:16px;}
+.ait-streak-fire{font-size:2rem;}
+.ait-streak-text{flex:1;}
+.ait-streak-count{font-size:1.3rem;font-weight:900;color:var(--text);}
+.ait-streak-sub{font-size:.75rem;color:var(--muted);margin-top:2px;}
+.ait-cal-wrap{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:18px;}
+.ait-cal-day{width:14px;height:14px;border-radius:3px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.05);}
+.ait-cal-day.has-session{background:var(--accent);border-color:rgba(99,102,241,.5);}
+.ait-cal-day.today{outline:2px solid #fcd34d;outline-offset:1px;}
+.ait-subj-bar-wrap{margin-bottom:18px;}
+.ait-subj-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.ait-subj-name{font-size:.78rem;font-weight:700;color:var(--text);min-width:100px;}
+.ait-subj-bar-bg{flex:1;height:8px;background:rgba(255,255,255,.05);border-radius:4px;overflow:hidden;}
+.ait-subj-bar-fill{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:4px;transition:width .6s ease;}
+.ait-subj-mins{font-size:.72rem;color:var(--muted);font-weight:700;min-width:48px;text-align:right;}
+
+/* Math Board — right panel position, resizable */
+.ait-math-board-panel{flex-shrink:0;border-bottom:1px solid var(--border);padding:12px 12px 0 12px;display:none;position:relative;}
+.ait-math-board-panel.visible{display:block;}
+.ait-math-board-panel-header{font-size:.62rem;font-weight:900;color:#5eead4;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;display:flex;align-items:center;gap:6px;}
+.ait-math-board-panel-body{font-size:.9rem;color:#e2e8f0;line-height:1.9;word-break:break-word;height:160px;min-height:80px;max-height:420px;overflow-y:auto;background:linear-gradient(135deg,rgba(20,184,166,.07),rgba(6,182,212,.05));border:1px solid rgba(20,184,166,.2);border-radius:8px;padding:10px 12px;}
+.ait-math-resize-handle{height:10px;cursor:ns-resize;display:flex;align-items:center;justify-content:center;margin-top:4px;margin-bottom:0;opacity:.5;transition:opacity .2s;}
+.ait-math-resize-handle:hover{opacity:1;}
+.ait-math-resize-handle::before{content:'';display:block;width:32px;height:3px;border-radius:2px;background:rgba(20,184,166,.5);}
+
+/* Session Summary Overlay */
+#ait-summary-screen{display:none;position:fixed;inset:0;background:rgba(10,11,20,.97);z-index:300;flex-direction:column;align-items:center;justify-content:center;padding:20px;}
+#ait-summary-screen.active{display:flex;}
+.ait-summ-card{background:rgba(255,255,255,.04);border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:28px 24px;max-width:480px;width:100%;text-align:center;box-shadow:0 0 60px rgba(99,102,241,.12);}
+.ait-summ-trophy{font-size:3rem;margin-bottom:10px;animation:ait-pop .4s cubic-bezier(.34,1.56,.64,1);}
+@keyframes ait-pop{0%{transform:scale(.5);opacity:0}100%{transform:scale(1);opacity:1}}
+.ait-summ-title{font-size:1.35rem;font-weight:900;color:var(--text);margin-bottom:4px;}
+.ait-summ-sub{font-size:.83rem;color:var(--muted);margin-bottom:22px;line-height:1.5;}
+.ait-summ-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;}
+.ait-summ-stat{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:12px;padding:12px 6px;}
+.ait-summ-stat-val{font-size:1.45rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1;}
+.ait-summ-stat-lbl{font-size:.62rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.ait-summ-detail{background:rgba(99,102,241,.05);border:1px solid rgba(99,102,241,.12);border-radius:10px;padding:12px 14px;margin-bottom:18px;text-align:left;font-size:.8rem;color:#94a3b8;line-height:1.9;}
+.ait-summ-detail strong{color:#a5b4fc;}
+.ait-summ-encourage{font-size:.82rem;font-weight:700;color:#86efac;background:rgba(34,197,94,.07);border:1px solid rgba(34,197,94,.18);border-radius:8px;padding:10px 14px;margin-bottom:18px;}
+.ait-summ-btns{display:flex;gap:10px;}
+.ait-summ-btn{flex:1;padding:11px;border-radius:10px;font-size:.86rem;font-weight:800;border:none;cursor:pointer;font-family:inherit;transition:all .2s;}
+.ait-summ-btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;}
+.ait-summ-btn-primary:hover{opacity:.9;}
+.ait-summ-btn-ghost{background:rgba(255,255,255,.06);border:1px solid var(--border);color:#94a3b8;}
+.ait-summ-btn-ghost:hover{border-color:rgba(255,255,255,.2);color:var(--text);}
+
+/* Mobile responsive */
+@media(max-width:640px){
+  .ait-ses-body{flex-direction:column;}
+  .ait-ses-right{width:100%;border-right:none;border-top:1px solid var(--border);max-height:260px;}
+  .ait-ses-left{padding:12px 10px;}
+  .ait-avatar-glow{width:90px;height:90px;}
+  .ait-avatar-inner{width:82px;height:82px;}
+  .ait-voice-grid{grid-template-columns:repeat(5,1fr);gap:5px;}
+}
+
+/* TOAST */
+#sh-toast{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
+.sh-toast{background:rgba(15,17,36,.95);border:1px solid rgba(255,255,255,.12);color:var(--text);border-radius:10px;padding:10px 16px;font-size:.82rem;font-weight:600;backdrop-filter:blur(12px);}
+
+/* Responsive */
+@media(max-width:600px){
+  .sh-panel{padding:16px 14px;}
+  .sh-gpa-row{grid-template-columns:1fr 90px 80px 28px;}
+  .sh-result-grid{grid-template-columns:repeat(2,1fr);}
+  .sh-timer-display{font-size:2.4rem;}
+  .ait-voice-grid{grid-template-columns:repeat(3,1fr);}
+}
+</style>
+</head>
+<body>
+<div id="sh-toast"></div>
+
+<!-- HEADER -->
+<header class="sh-hdr">
+  <div style="display:flex;align-items:baseline;gap:4px;">
+    <div class="sh-logo">📚 AI Study Hub</div>
+    <span class="sh-logo-ver">v2.7.0</span>
+  </div>
+  <a href="index.html" class="sh-back">🏠 Back to Home</a>
+</header>
+
+<!-- TABS -->
+<div class="sh-tabs-wrap">
+  <div class="sh-tabs">
+    <button class="sh-tab active" onclick="shTab('notes')">📄 AI Notes</button>
+    <button class="sh-tab" onclick="shTab('flashcards')">🗂️ Flashcards</button>
+    <button class="sh-tab" onclick="shTab('gpa')">📊 GPA Calculator</button>
+    <button class="sh-tab" onclick="shTab('timer')">⏱️ Study Timer</button>
+    <button class="sh-tab" onclick="shTab('exam')">📝 Mock Exam</button>
+    <button class="sh-tab sh-tab-ai-timer" onclick="shTab('aitimer')">🤖 AI Teacher</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 1: AI STUDY NOTES
+═══════════════════════════════════ -->
+<div id="sh-panel-notes" class="sh-panel active">
+  <div class="sh-section-title">📄 AI Study Notes Generator</div>
+  <div class="sh-section-sub">Enter any course topic and get comprehensive, structured study notes instantly — key concepts, definitions, examples and exam tips included.</div>
+
+  <div class="sh-card">
+    <label class="sh-label">Topic / Course</label>
+    <input class="sh-input" id="notes-topic" placeholder="e.g. Krebs Cycle, Supply and Demand, Newton's Laws of Motion…" style="margin-bottom:12px;">
+    <div class="sh-row">
+      <div style="flex:1;">
+        <label class="sh-label">Depth</label>
+        <select class="sh-select" id="notes-depth">
+          <option value="overview">Overview (Quick Summary)</option>
+          <option value="standard" selected>Standard (Comprehensive)</option>
+          <option value="detailed">Detailed (Exam-Ready)</option>
+        </select>
+      </div>
+      <div style="flex:1;">
+        <label class="sh-label">Level</label>
+        <select class="sh-select" id="notes-level">
+          <option value="100 level">100 Level</option>
+          <option value="200 level" selected>200 Level</option>
+          <option value="300 level">300 Level</option>
+          <option value="400 level">400 Level</option>
+          <option value="postgraduate">Postgraduate</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="sh-btn sh-btn-primary" id="notes-gen-btn" onclick="shGenerateNotes()">
+      <span class="sh-spinner" id="notes-spinner" style="display:none;"></span>
+      <span id="notes-btn-text">✨ Generate Notes</span>
+    </button>
+    <button class="sh-btn sh-btn-ghost" onclick="shCopyNotes()" id="notes-copy-btn" style="display:none;">📋 Copy</button>
+    <button class="sh-btn sh-btn-ghost" onclick="shPrintNotes()" id="notes-print-btn" style="display:none;">🖨️ Print / Save PDF</button>
+  </div>
+
+  <div id="notes-loading" style="display:none;">
+    <div class="sh-skeleton" style="width:60%;height:22px;"></div>
+    <div class="sh-skeleton" style="width:90%;margin-top:12px;"></div>
+    <div class="sh-skeleton" style="width:85%;"></div>
+    <div class="sh-skeleton" style="width:80%;"></div>
+    <div class="sh-skeleton" style="width:40%;height:18px;margin-top:16px;"></div>
+    <div class="sh-skeleton" style="width:95%;"></div>
+    <div class="sh-skeleton" style="width:88%;"></div>
+  </div>
+
+  <div class="sh-notes-output" id="notes-output"></div>
+
+  <div style="background:rgba(245,158,11,.05);border:1px solid rgba(245,158,11,.15);border-radius:10px;padding:14px;font-size:.8rem;color:#94a3b8;line-height:1.8;">
+    💡 <strong style="color:#fcd34d;">Pro tips:</strong> Use specific topic names for better notes. You can generate notes for any subject — science, arts, social science, engineering, law and more. Print or copy to paste into your notebook!
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 2: FLASHCARDS
+═══════════════════════════════════ -->
+<div id="sh-panel-flashcards" class="sh-panel">
+  <div class="sh-section-title">🗂️ Smart Flashcards</div>
+  <div class="sh-section-sub">Generate AI-powered flashcards for any topic. Tap each card to reveal the answer. Mark what you know — track your mastery progress.</div>
+
+  <div class="sh-card">
+    <div class="sh-row" style="margin-bottom:12px;">
+      <div style="flex:2;">
+        <label class="sh-label">Topic</label>
+        <input class="sh-input" id="fc-topic" placeholder="e.g. Organic Chemistry, African History, Calculus…">
+      </div>
+      <div style="flex:1;">
+        <label class="sh-label">Cards</label>
+        <select class="sh-select" id="fc-count">
+          <option value="6">6 cards</option>
+          <option value="10" selected>10 cards</option>
+          <option value="15">15 cards</option>
+        </select>
+      </div>
+    </div>
+    <button class="sh-btn sh-btn-primary" id="fc-gen-btn" onclick="shGenerateFlashcards()">
+      <span class="sh-spinner" id="fc-spinner" style="display:none;"></span>
+      <span id="fc-btn-text">🃏 Generate Flashcards</span>
+    </button>
+  </div>
+
+  <div id="fc-solo-mode" style="display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+      <div style="display:flex;gap:8px;">
+        <span class="sh-badge sh-badge-green" id="fc-known-count">Known: 0</span>
+        <span class="sh-badge sh-badge-red" id="fc-unknown-count">Study: 0</span>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <button class="sh-btn sh-btn-ghost" style="padding:8px 14px;font-size:.8rem;" onclick="shFC_view('solo')">🔍 One at a Time</button>
+        <button class="sh-btn sh-btn-ghost" style="padding:8px 14px;font-size:.8rem;" onclick="shFC_view('grid')">📋 Grid View</button>
+      </div>
+    </div>
+
+    <!-- Solo View -->
+    <div id="fc-solo-wrap">
+      <div class="sh-fc-card sh-fc-solo" id="fc-solo-card" onclick="this.classList.toggle('flipped')">
+        <div class="sh-fc-inner">
+          <div class="sh-fc-front">
+            <div class="sh-fc-label">Question</div>
+            <div class="sh-fc-text" id="fc-solo-q">—</div>
+            <div class="sh-fc-hint">Tap to reveal answer</div>
+          </div>
+          <div class="sh-fc-back">
+            <div class="sh-fc-label">Answer</div>
+            <div class="sh-fc-text" id="fc-solo-a">—</div>
+          </div>
+        </div>
+      </div>
+      <div class="sh-fc-progress" id="fc-solo-progress">Card 1 of 10</div>
+      <div class="sh-fc-counter" id="fc-dots"></div>
+      <div class="sh-fc-nav" style="margin-top:16px;">
+        <button class="sh-btn sh-btn-ghost" onclick="shFC_move(-1)">← Prev</button>
+        <div style="display:flex;gap:8px;">
+          <button class="sh-btn" onclick="shFC_mark(false)" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.25);color:#fca5a5;padding:10px 16px;font-size:.82rem;">✕ Still Learning</button>
+          <button class="sh-btn" onclick="shFC_mark(true)" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.25);color:#86efac;padding:10px 16px;font-size:.82rem;">✓ Got It!</button>
+        </div>
+        <button class="sh-btn sh-btn-ghost" onclick="shFC_move(1)">Next →</button>
+      </div>
+    </div>
+
+    <!-- Grid View -->
+    <div id="fc-grid-wrap" style="display:none;">
+      <div class="sh-fc-grid" id="fc-grid"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 3: GPA CALCULATOR
+═══════════════════════════════════ -->
+<div id="sh-panel-gpa" class="sh-panel">
+  <div class="sh-section-title">📊 GPA / CGPA Calculator</div>
+  <div class="sh-section-sub">Nigerian university grading system (5-point scale). Add your courses, select grades, and calculate your semester GPA or cumulative CGPA instantly.</div>
+
+  <div class="sh-card">
+    <div class="sh-gpa-row header"><span>Course Name</span><span>Credit Units</span><span>Grade</span><span></span></div>
+    <div id="gpa-courses"></div>
+    <button class="sh-gpa-add-btn" onclick="shGpaAddRow()">+ Add Course</button>
+  </div>
+
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
+    <button class="sh-btn sh-btn-primary" onclick="shCalcGPA()">📊 Calculate GPA</button>
+    <button class="sh-btn sh-btn-ghost" onclick="shGpaReset()">🔄 Reset</button>
+  </div>
+
+  <div id="gpa-result" style="display:none;" class="sh-gpa-result">
+    <div class="sh-gpa-score" id="gpa-score">0.00</div>
+    <div class="sh-gpa-class" id="gpa-class">—</div>
+    <div class="sh-gpa-breakdown">
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-total-cu">0</div><div class="sh-gpa-stat-lbl">Credit Units</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-total-qp">0</div><div class="sh-gpa-stat-lbl">Quality Points</div></div>
+      <div class="sh-gpa-stat"><div class="sh-gpa-stat-val" id="gpa-courses-count">0</div><div class="sh-gpa-stat-lbl">Courses</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 4: STUDY TIMER
+═══════════════════════════════════ -->
+<div id="sh-panel-timer" class="sh-panel">
+  <div class="sh-section-title">⏱️ Pomodoro Study Timer</div>
+  <div class="sh-section-sub">Stay focused with structured study sessions. Work in deep focus sprints, take proper breaks, and track your productivity.</div>
+
+  <div class="sh-card">
+    <div class="sh-timer-task-wrap">
+      <span style="font-size:1rem;">📚</span>
+      <input class="sh-timer-task-input" id="timer-task" placeholder="What are you studying? (optional)…">
+    </div>
+
+    <div class="sh-timer-modes">
+      <button class="sh-timer-mode-btn active" onclick="shTimerSetMode('pomodoro',25,5)" id="tm-pomodoro">🍅 Pomodoro 25min</button>
+      <button class="sh-timer-mode-btn" onclick="shTimerSetMode('deep',50,10)" id="tm-deep">🧠 Deep Work 50min</button>
+      <button class="sh-timer-mode-btn" onclick="shTimerSetMode('quick',15,3)" id="tm-quick">⚡ Quick 15min</button>
+      <button class="sh-timer-mode-btn" onclick="shTimerSetMode('custom',0,0)" id="tm-custom">⚙️ Custom</button>
+    </div>
+
+    <div id="timer-custom-row" style="display:none;margin-bottom:14px;">
+      <div class="sh-row">
+        <div style="flex:1;"><label class="sh-label">Focus (min)</label><input class="sh-input" id="timer-custom-focus" type="number" value="25" min="1" max="120" oninput="shTimerCustom()"></div>
+        <div style="flex:1;"><label class="sh-label">Break (min)</label><input class="sh-input" id="timer-custom-break" type="number" value="5" min="1" max="30" oninput="shTimerCustom()"></div>
+      </div>
+    </div>
+
+    <div class="sh-timer-wrap">
+      <div class="sh-timer-ring">
+        <svg class="sh-timer-svg" width="180" height="180" viewBox="0 0 180 180">
+          <circle class="sh-timer-track" cx="90" cy="90" r="82"/>
+          <circle class="sh-timer-fill" id="timer-ring-fill" cx="90" cy="90" r="82"
+            stroke="#6366f1" stroke-dasharray="515.2" stroke-dashoffset="0"/>
+        </svg>
+        <div class="sh-timer-text">
+          <div class="sh-timer-display" id="timer-display">25:00</div>
+          <div class="sh-timer-mode" id="timer-mode-label">Focus Time</div>
+        </div>
+      </div>
+
+      <div class="sh-timer-sessions" id="timer-session-dots">
+        <div class="sh-timer-session-dot" id="ts0"></div>
+        <div class="sh-timer-session-dot" id="ts1"></div>
+        <div class="sh-timer-session-dot" id="ts2"></div>
+        <div class="sh-timer-session-dot" id="ts3"></div>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-bottom:14px;">Sessions completed today</div>
+
+      <div class="sh-timer-controls">
+        <button class="sh-timer-btn sh-timer-btn-sm" onclick="shTimerSkip()" title="Skip">⏭️</button>
+        <button class="sh-timer-btn sh-timer-btn-main" id="timer-main-btn" onclick="shTimerToggle()">▶</button>
+        <button class="sh-timer-btn sh-timer-btn-sm" onclick="shTimerReset()" title="Reset">🔄</button>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:center;font-size:.8rem;color:var(--muted);margin-bottom:14px;flex-wrap:wrap;">
+      <span>✅ Sessions: <strong style="color:var(--text);" id="timer-stat-sessions">0</strong></span>
+      <span>⏱️ Total Focus: <strong style="color:var(--text);" id="timer-stat-total">0 min</strong></span>
+    </div>
+  </div>
+
+  <div class="sh-timer-tips">
+    <strong style="color:#a5b4fc;">📌 Pomodoro Technique:</strong><br>
+    ① Work focused for 25 minutes — no distractions, no phone<br>
+    ② Take a 5-minute break — stand up, stretch, breathe<br>
+    ③ After 4 sessions, take a longer 15–30 minute break<br>
+    ④ Repeat — your brain will thank you during exams! 🧠
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 5: MOCK EXAM
+═══════════════════════════════════ -->
+<div id="sh-panel-exam" class="sh-panel">
+
+  <!-- Setup -->
+  <div id="exam-setup" class="sh-exam-setup">
+    <div class="sh-section-title">📝 AI Mock Exam</div>
+    <div class="sh-section-sub">Generate a timed mock exam on any subject. Get your score, see explanations for every answer, and identify where to improve.</div>
+    <div class="sh-card">
+      <label class="sh-label">Subject / Topic</label>
+      <input class="sh-input" id="exam-topic" placeholder="e.g. Organic Chemistry, Macroeconomics, Nigerian History…" style="margin-bottom:12px;">
+      <div class="sh-row">
+        <div style="flex:1;">
+          <label class="sh-label">Questions</label>
+          <select class="sh-select" id="exam-count">
+            <option value="5">5 questions</option>
+            <option value="10" selected>10 questions</option>
+            <option value="15">15 questions</option>
+            <option value="20">20 questions</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="sh-label">Difficulty</label>
+          <select class="sh-select" id="exam-diff">
+            <option value="easy">Easy (100 level)</option>
+            <option value="medium" selected>Medium (200–300)</option>
+            <option value="hard">Hard (400 level)</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label class="sh-label">Time per Q</label>
+          <select class="sh-select" id="exam-time">
+            <option value="0">No timer</option>
+            <option value="30">30 seconds</option>
+            <option value="60" selected>60 seconds</option>
+            <option value="90">90 seconds</option>
+            <option value="120">2 minutes</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <button class="sh-btn sh-btn-primary" id="exam-start-btn" onclick="shStartExam()" style="margin-bottom:16px;">
+      <span class="sh-spinner" id="exam-spinner" style="display:none;"></span>
+      <span id="exam-btn-text">🚀 Generate & Start Exam</span>
+    </button>
+  </div>
+
+  <!-- Active Exam -->
+  <div id="exam-active" class="sh-exam-active">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+      <span class="sh-badge sh-badge-purple" id="exam-subject-label">Subject</span>
+      <span class="sh-badge sh-badge-gold" id="exam-q-badge">Q 1/10</span>
+    </div>
+    <div class="sh-exam-progress-bar"><div class="sh-exam-progress-fill" id="exam-prog-fill" style="width:10%"></div></div>
+    <div id="exam-timer-bar-wrap" class="sh-exam-timer-bar"><div class="sh-exam-timer-fill" id="exam-q-timer-fill" style="width:100%"></div></div>
+    <div class="sh-exam-q-num" id="exam-q-num">Question 1 of 10</div>
+    <div class="sh-exam-q-text" id="exam-q-text">Loading question…</div>
+    <div class="sh-exam-opts" id="exam-opts"></div>
+    <div class="sh-exam-explanation" id="exam-explanation"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="sh-btn sh-btn-primary" id="exam-next-btn" onclick="shExamNext()" style="display:none;">Next Question →</button>
+      <button class="sh-exam-skip-btn" onclick="shExamSkip()">⏭ Skip</button>
+    </div>
+  </div>
+
+  <!-- Results -->
+  <div id="exam-results" class="sh-exam-results">
+    <div class="sh-section-title" id="exam-result-title">Results</div>
+    <div class="sh-result-grid" id="exam-result-stats" style="margin-top:14px;"></div>
+    <div class="sh-card" style="margin-top:14px;">
+      <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Question Review</div>
+      <div id="exam-result-qs"></div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="sh-btn sh-btn-primary" onclick="shExamRetry()">🔄 Retry Same Topic</button>
+      <button class="sh-btn sh-btn-ghost" onclick="shExamSetup()">📝 New Exam</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     TAB 6: AI TEACHER (NEW)
+═══════════════════════════════════ -->
+<div id="sh-panel-aitimer" class="sh-panel">
+  <div class="sh-section-title">🤖 AI Teacher — Timed Study</div>
+  <div class="sh-section-sub">Your personal AI teacher that talks with you, teaches you like a real human teacher, asks you questions to test your understanding, and keeps time for your study session.</div>
+
+  <!-- SCREEN 1: NAME FORM -->
+  <div id="ait-screen-name" class="ait-setup-screen active">
+    <div class="ait-name-form">
+      <div style="font-size:2.5rem;margin-bottom:8px;">🎓</div>
+      <div class="ait-name-title">Welcome to AI Teacher</div>
+      <div class="ait-name-sub">Let's personalise your learning experience. First, tell me your name and choose your AI teacher's voice — you can name your teacher too!</div>
+
+      <div style="text-align:left;">
+        <label class="sh-label">Your Name (so the AI can address you)</label>
+        <input class="sh-input" id="ait-student-name" placeholder="e.g. Chukwuemeka, Fatima, Tunde…" style="margin-bottom:16px;">
+
+        <label class="sh-label">Name Your AI Teacher (optional)</label>
+        <input class="sh-input" id="ait-teacher-name" placeholder="e.g. Prof. Ada, Mr. Emeka, Dr. Sarah… (leave blank for default)" style="margin-bottom:16px;">
+
+        <label class="sh-label">Choose AI Voice</label>
+        <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.18);border-radius:12px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:.75rem;color:#94a3b8;margin-bottom:10px;line-height:1.6;">Click <strong style="color:#a5b4fc">▶ Preview</strong> on any voice to hear a sample, then select the one you prefer.</div>
+          <div id="ait-voice-list" style="display:flex;flex-direction:column;gap:6px;"><!-- Populated by JS --></div>
+          <button onclick="aitDemoAllVoices()" style="margin-top:10px;width:100%;padding:8px;border-radius:8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:.78rem;font-weight:800;cursor:pointer;font-family:inherit;">▶ Demo All Voices in Order</button>
+        </div>
+
+        <label class="sh-label">Speech Speed</label>
+        <div class="ait-speed-row" id="ait-speed-row">
+          <button class="ait-speed-btn" onclick="aitSetSpeed(0.7,this)">🐢 Slow</button>
+          <button class="ait-speed-btn active" onclick="aitSetSpeed(1.0,this)">🚶 Normal</button>
+          <button class="ait-speed-btn" onclick="aitSetSpeed(1.3,this)">🏃 Fast</button>
+          <button class="ait-speed-btn" onclick="aitSetSpeed(1.6,this)">⚡ Very Fast</button>
+        </div>
+
+        <div style="margin-top:20px;">
+          <button class="sh-btn sh-btn-primary" style="width:100%;justify-content:center;" onclick="aitGoToSession()">Continue →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress button (visible on name screen) -->
+  <div style="text-align:center;margin-top:12px;">
+    <button onclick="aitShowProgress()" style="background:none;border:none;color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:underline;">📊 View My Study Progress</button>
+  </div>
+
+  <!-- SCREEN 3: PROGRESS HISTORY -->
+  <div id="ait-screen-progress" class="ait-setup-screen">
+    <div class="ait-hist-wrap">
+      <div class="ait-hist-header">
+        <div>
+          <div class="sh-section-title" style="margin-bottom:2px;">📊 My Study Progress</div>
+          <div style="font-size:.8rem;color:var(--muted);">All sessions saved in your browser — no account needed.</div>
+        </div>
+        <button onclick="aitBackFromProgress()" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">← Back</button>
+      </div>
+
+      <!-- Streak -->
+      <div class="ait-streak-bar" id="ait-streak-bar">
+        <div class="ait-streak-fire">🔥</div>
+        <div class="ait-streak-text">
+          <div class="ait-streak-count" id="ait-streak-count">0 day streak</div>
+          <div class="ait-streak-sub" id="ait-streak-sub">Complete a session today to start your streak!</div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="ait-hist-stats" id="ait-hist-stats"></div>
+
+      <!-- 30-day activity calendar -->
+      <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Last 30 Days</div>
+      <div class="ait-cal-wrap" id="ait-cal-wrap"></div>
+
+      <!-- Subject breakdown -->
+      <div id="ait-subj-section" style="display:none;">
+        <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Time by Subject</div>
+        <div class="ait-subj-bar-wrap" id="ait-subj-bars"></div>
+      </div>
+
+      <!-- Session list -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:.72rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;">Session History</div>
+        <button onclick="aitClearHistory()" style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:6px;padding:4px 10px;color:#fca5a5;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;">🗑 Clear All</button>
+      </div>
+      <div class="ait-hist-list" id="ait-hist-list"></div>
+    </div>
+  </div>
+
+  <!-- SCREEN 2: SESSION SETUP -->
+  <div id="ait-screen-setup" class="ait-setup-screen">
+    <div class="ait-session-form">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px;">
+        <button onclick="aitBack()" style="background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--muted);font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;">← Back</button>
+        <div>
+          <div style="font-size:.78rem;color:var(--muted);">Setting up your session,</div>
+          <div style="font-size:1rem;font-weight:900;color:var(--text);" id="ait-greet-name">Student</div>
+        </div>
+      </div>
+
+      <!-- API Keys Section — hidden from students, managed by admin -->
+      <div class="ait-keys-section" id="ait-keys-section" style="display:none">
+        <div class="ait-keys-title">🔑 Mistral API Keys (paste up to 10 — they cycle automatically)</div>
+        <div id="ait-key-slots">
+          <!-- 10 key slots rendered by JS -->
+        </div>
+        <div style="font-size:.7rem;color:#94a3b8;margin-top:6px;">Keys are saved in your browser. Never shared. If one fails, the next is used automatically.</div>
+      </div>
+
+      <label class="sh-label">Subject</label>
+      <input class="sh-input" id="ait-subject" placeholder="e.g. Further Mathematics, Physics, Chemistry, Biology…" style="margin-bottom:12px;">
+
+      <label class="sh-label">Topic to Study</label>
+      <input class="sh-input" id="ait-topic" placeholder="e.g. Integration by Parts, Newton's Laws, Organic Chemistry…" style="margin-bottom:12px;">
+
+      <label class="sh-label">Study Duration</label>
+      <select class="sh-select" id="ait-duration" style="margin-bottom:12px;">
+        <option value="10">10 minutes</option>
+        <option value="20">20 minutes</option>
+        <option value="30" selected>30 minutes</option>
+        <option value="45">45 minutes</option>
+        <option value="60">60 minutes</option>
+        <option value="90">90 minutes</option>
+      </select>
+
+      <label class="sh-label">Upload Study Material (optional — PDF, TXT, images)</label>
+      <div class="ait-doc-upload" id="ait-doc-drop" onclick="document.getElementById('ait-doc-file').click()">
+        <div style="font-size:1.5rem;margin-bottom:6px;">📎</div>
+        <div style="font-size:.83rem;font-weight:700;color:#a5b4fc;">Click to upload PDF, TXT, or image</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:4px;">AI will use your document to teach you</div>
+        <div class="ait-doc-name" id="ait-doc-name" style="display:none;"></div>
+      </div>
+      <input type="file" id="ait-doc-file" style="display:none;" accept=".pdf,.txt,.md,.png,.jpg,.jpeg" onchange="aitHandleDoc(this)">
+
+      <div style="margin-top:18px;">
+        <button class="sh-btn sh-btn-primary" style="width:100%;justify-content:center;" onclick="aitStartSession()">
+          🚀 Start AI Teaching Session
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════
+     AI SESSION FULLSCREEN (Fixed overlay)
+═══════════════════════════════════ -->
+<div id="ait-session-screen">
+  <!-- Progress strip at very top -->
+  <div class="ait-progress-strip"><div class="ait-progress-fill" id="ait-prog-fill" style="width:100%"></div></div>
+
+  <!-- Header -->
+  <div class="ait-ses-header">
+    <div>
+      <div class="ait-ses-subject" id="ait-ses-subject-label">Subject</div>
+      <div style="font-size:.7rem;color:var(--muted);" id="ait-ses-topic-label">Topic</div>
+    </div>
+    <div class="ait-ses-timer-badge" id="ait-ses-timer">30:00</div>
+  </div>
+
+  <!-- Body: left = AI + transcript, right = controls -->
+  <div class="ait-ses-body">
+    <!-- LEFT: Avatar + transcript -->
+    <div class="ait-ses-left" id="ait-ses-left">
+      <div class="ait-avatar-wrap">
+        <div class="ait-avatar-glow" id="ait-avatar-glow">
+          <div class="ait-avatar-pulse"></div>
+          <div class="ait-avatar-inner">
+            <!-- Darapet-aligned AI avatar SVG -->
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="32" cy="32" r="28" fill="url(#ag)" opacity=".18"/>
+              <circle cx="32" cy="24" r="12" fill="url(#ag)"/>
+              <ellipse cx="32" cy="50" rx="18" ry="10" fill="url(#ag)" opacity=".7"/>
+              <circle cx="26" cy="22" r="2.5" fill="#fff" opacity=".9"/>
+              <circle cx="38" cy="22" r="2.5" fill="#fff" opacity=".9"/>
+              <path d="M26 30 Q32 35 38 30" stroke="#fff" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+              <defs>
+                <linearGradient id="ag" x1="10" y1="10" x2="54" y2="54" gradientUnits="userSpaceOnUse">
+                  <stop offset="0%" stop-color="#6366f1"/>
+                  <stop offset="100%" stop-color="#a78bfa"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+        </div>
+        <div class="ait-ai-name" id="ait-display-teacher-name">AI Teacher</div>
+        <div class="ait-avatar-status" id="ait-avatar-status">Ready</div>
+      </div>
+
+      <!-- Transcript bubbles — no math board here any more -->
+      <div class="ait-transcript-wrap" id="ait-transcript"></div>
+    </div>
+
+    <!-- RIGHT: Controls + math board + doc preview -->
+    <div class="ait-ses-right">
+      <!-- Math Board — lives here so it never interrupts the transcript -->
+      <div class="ait-math-board-panel" id="ait-math-board">
+        <div class="ait-math-board-panel-header">
+          📐 Math Board — <span id="ait-math-board-topic" style="font-weight:600;text-transform:none;letter-spacing:0;color:#94f0e8;font-size:.78rem;"></span>
+          <button onclick="aitCopyMathBoard(this)" style="margin-left:auto;padding:2px 9px;border-radius:5px;background:rgba(20,184,166,.12);border:1px solid rgba(20,184,166,.3);color:#5eead4;font-size:.65rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;">📋 Copy</button>
+        </div>
+        <div class="ait-math-board-panel-body" id="ait-math-board-body"></div>
+        <div class="ait-math-resize-handle" id="ait-math-resize" title="Drag to resize"></div>
+      </div>
+
+      <!-- Doc preview / notes area -->
+      <div class="ait-ses-right-top" id="ait-ses-right-top">
+        <div style="font-size:.68rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Study Material / Notes</div>
+        <div class="ait-doc-preview" id="ait-doc-preview">Your study document content and AI teaching notes will appear here…</div>
+      </div>
+
+      <!-- Q&A chat (shown in end mode) -->
+      <div class="ait-qa-wrap" id="ait-qa-wrap" style="display:none;">
+        <div style="font-size:.68rem;font-weight:800;color:#fcd34d;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">⏰ 1 min left — Any last questions?</div>
+        <div id="ait-qa-messages"></div>
+      </div>
+
+      <!-- Answer typing area (for AI questions) -->
+      <div class="ait-type-answer-wrap" id="ait-type-answer-wrap">
+        <textarea class="ait-type-answer-input" id="ait-type-answer" placeholder="Type your answer here…"></textarea>
+        <button class="ait-send-btn" onclick="aitSubmitAnswer()">Send Answer</button>
+      </div>
+
+      <!-- Q&A input (end mode) -->
+      <div id="ait-qa-input-row" class="ait-qa-input-row" style="display:none;">
+        <input class="ait-qa-input" id="ait-qa-input" placeholder="Ask your question…" onkeydown="if(event.key==='Enter')aitSendQA()">
+        <button class="ait-qa-send" onclick="aitSendQA()">Send</button>
+      </div>
+
+      <!-- Controls -->
+      <div class="ait-ctrl-wrap">
+        <div class="ait-voice-notice" id="ait-voice-notice">
+          🔊 AI teacher speaks to you — type your answers &amp; questions below.
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-pause" id="ait-pause-btn" onclick="aitTogglePause()">⏸ Pause AI</button>
+        </div>
+        <div class="ait-ctrl-row" id="ait-continue-row" style="display:none;">
+          <button class="ait-ctrl-btn ait-ctrl-btn-continue" id="ait-continue-btn" onclick="aitContinueTeaching()">▶ Continue Teaching</button>
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-ask" onclick="aitAskQuestion()">💬 I Have a Question</button>
+        </div>
+        <div class="ait-ctrl-row">
+          <button class="ait-ctrl-btn ait-ctrl-btn-end" onclick="aitEndSession()">⏹ End Session</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION SUMMARY OVERLAY -->
+<div id="ait-summary-screen">
+  <div class="ait-summ-card">
+    <div class="ait-summ-trophy" id="ait-summ-trophy">🏆</div>
+    <div class="ait-summ-title" id="ait-summ-title">Great session!</div>
+    <div class="ait-summ-sub" id="ait-summ-sub">Here's what you achieved today</div>
+    <div class="ait-summ-stats">
+      <div class="ait-summ-stat">
+        <div class="ait-summ-stat-val" id="ait-summ-time">—</div>
+        <div class="ait-summ-stat-lbl">Mins studied</div>
+      </div>
+      <div class="ait-summ-stat">
+        <div class="ait-summ-stat-val" id="ait-summ-steps">—</div>
+        <div class="ait-summ-stat-lbl">Topics covered</div>
+      </div>
+      <div class="ait-summ-stat">
+        <div class="ait-summ-stat-val" id="ait-summ-qa">—</div>
+        <div class="ait-summ-stat-lbl">Q&amp;A answered</div>
+      </div>
+    </div>
+    <div class="ait-summ-detail" id="ait-summ-detail"></div>
+    <div class="ait-summ-encourage" id="ait-summ-encourage"></div>
+    <div class="ait-summ-btns">
+      <button class="ait-summ-btn ait-summ-btn-ghost" onclick="aitCloseSummary()">🔄 Study Again</button>
+      <button class="ait-summ-btn ait-summ-btn-primary" onclick="aitCloseSummaryToHistory()">📊 View Progress</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/aqs-groq-key.js"></script>
+<script>
+/* ══════════════════════════════════════════════════
+   AI STUDY HUB v2.7.0 — Complete Engine
+══════════════════════════════════════════════════ */
+
+/* ── TABS ── */
+function shTab(name){
+  document.querySelectorAll('.sh-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('sh-panel-'+name).classList.add('active');
+  event.target.classList.add('active');
+  if(name !== 'aitimer') aitCleanupOnLeave();
+}
+
+/* ── TOAST ── */
+function shToast(msg, dur=3000){
+  const el=document.createElement('div');
+  el.className='sh-toast'; el.textContent=msg;
+  document.getElementById('sh-toast').appendChild(el);
+  setTimeout(()=>el.remove(), dur);
+}
+
+/* ══════════════════════════════
+   MISTRAL AI — 10 key cycling
+══════════════════════════════ */
+const AIT_DEFAULT_KEYS = [
+  'lGPCWwSD9DdQXxZV1tpgvrOIfgjDqkcJ',
+  '34v1vccfwrobTIL8aqH69dxRa9xQFgIx',
+  '6B56rUaoF9VEHXm3ab4XDqzepo6Q7AfS',
+  'B3BcwVcnG1HAZ9OOvJKwC5VhKwEQ5fJR',
+  '9tTqL4XzmKHQEBwTLWqb8CVsGwV92crS',
+  'pZ6AJekEECnlQpQiKKMjSjTxERGemlF1',
+  'bDIWZlfhuwfHRSSWxUXOd8YJtt2TGPTG',
+  '9ytdl4fetK9wW459kImNSHkuUrTulw2w',
+  'xOGvfjNNC1wRq8zuw5p57FET3YhieWBu',
+  'Uyij77eMFADFoptpf2A65VCYc0ybjmlW'
+];
+let _mkeyIdx = 0;
+
+function aitGetKeys(){
+  const saved = [];
+  for(let i=0;i<10;i++){
+    const el = document.getElementById('ait-key-'+i);
+    if(el && el.value.trim()) saved.push(el.value.trim());
+  }
+  return saved.length ? saved : AIT_DEFAULT_KEYS.filter(k=>k.length>8);
+}
+
+async function aitMistral(messages, maxTokens=1200){
+  const keys = aitGetKeys();
+  if(!keys.length){ shToast('⚠️ No Mistral API keys found'); return null; }
+  for(let attempt=0; attempt<keys.length; attempt++){
+    const key = keys[_mkeyIdx % keys.length];
+    _mkeyIdx++;
+    try{
+      const res = await fetch('https://api.mistral.ai/v1/chat/completions',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+        body:JSON.stringify({model:'mistral-small-latest',messages,max_tokens:maxTokens,temperature:0.75})
+      });
+      if(!res.ok){ console.warn('Mistral key failed:',res.status); continue; }
+      const d = await res.json();
+      return d.choices?.[0]?.message?.content || '';
+    }catch(e){ console.warn('Mistral fetch err',e); }
+  }
+  shToast('⚠️ All Mistral keys failed. Check your keys.');
+  return null;
+}
+
+/* ── Fallback: use groqFetch (original) for non-AI-timer features ── */
+async function shAI(prompt, maxTokens=1200){
+  /* Try Mistral first */
+  const r = await aitMistral([{role:'user',content:prompt}], maxTokens);
+  if(r) return r;
+  /* fallback to groq */
+  if(typeof window.groqFetch==='function'){
+    try{
+      const gr=await window.groqFetch({messages:[{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7});
+      return gr.choices[0].message.content||'';
+    }catch(e){ console.warn('Groq error',e); }
+  }
+  return null;
+}
+
+/* ══════════════════════════════
+   1. AI STUDY NOTES
+══════════════════════════════ */
+let _notesRaw = '';
+
+async function shGenerateNotes(){
+  const topic = document.getElementById('notes-topic').value.trim();
+  if(!topic){ shToast('⚠️ Please enter a topic first'); document.getElementById('notes-topic').focus(); return; }
+  const depth  = document.getElementById('notes-depth').value;
+  const level  = document.getElementById('notes-level').value;
+
+  document.getElementById('notes-gen-btn').disabled=true;
+  document.getElementById('notes-spinner').style.display='';
+  document.getElementById('notes-btn-text').textContent='Generating…';
+  document.getElementById('notes-loading').style.display='';
+  document.getElementById('notes-output').style.display='none';
+  document.getElementById('notes-copy-btn').style.display='none';
+  document.getElementById('notes-print-btn').style.display='none';
+
+  const depthMap={overview:'a concise overview with key definitions and 3 main points',standard:'comprehensive structured study notes covering all key concepts, definitions, mechanisms, examples, and applications',detailed:'extremely detailed exam-ready notes covering every subtopic, formulas, diagrams descriptions, worked examples, common misconceptions, and exam tips'};
+  const prompt=`You are an expert university lecturer. Write ${depthMap[depth]} about "${topic}" for a Nigerian ${level} university student.
+
+Format the notes using Markdown with clear headings (## for sections, ### for subsections), bullet points, bold key terms, and numbered lists where appropriate. Include:
+- A brief introduction
+- All major concepts clearly explained
+- Key definitions highlighted in **bold**
+- Relevant examples or case studies
+- A "Key Points to Remember" summary section
+- "Likely Exam Questions" section with 3 probable exam questions
+
+Make it thorough, academically rigorous, and student-friendly.`;
+
+  const raw = await shAI(prompt, 2000);
+  document.getElementById('notes-gen-btn').disabled=false;
+  document.getElementById('notes-spinner').style.display='none';
+  document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
+  document.getElementById('notes-loading').style.display='none';
+
+  if(!raw){ shToast('⚠️ Could not generate notes. Check API keys.'); return; }
+  _notesRaw=raw;
+  const out=document.getElementById('notes-output');
+  out.innerHTML=shMarkdown(raw);
+  out.style.display='';
+  document.getElementById('notes-copy-btn').style.display='';
+  document.getElementById('notes-print-btn').style.display='';
+  if(window.MathJax) MathJax.typesetPromise([out]);
+}
+
+function shMarkdown(md){
+  return md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/^### (.+)$/gm,'<h3>$1</h3>')
+    .replace(/^## (.+)$/gm,'<h2>$1</h2>')
+    .replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    .replace(/`(.+?)`/g,'<code>$1</code>')
+    .replace(/^> (.+)$/gm,'<blockquote>$1</blockquote>')
+    .replace(/^\d+\. (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,'<ol>$&</ol>')
+    .replace(/^[\-\*] (.+)$/gm,'<li>$1</li>').replace(/(<li>.*<\/li>\n?)+/g,m=>m.startsWith('<ol>')?m:'<ul>'+m+'</ul>')
+    .replace(/\n\n/g,'</p><p>').replace(/^(?!<[houlb])/gm,'<p>').replace(/$/gm,'</p>')
+    .replace(/<p><\/p>/g,'');
+}
+
+function shCopyNotes(){
+  navigator.clipboard.writeText(_notesRaw).then(()=>shToast('✅ Copied to clipboard!'));
+}
+function shPrintNotes(){
+  const w=window.open('','_blank');
+  w.document.write('<html><head><title>Study Notes</title><style>body{font-family:Georgia,serif;max-width:700px;margin:40px auto;line-height:1.8;color:#111;}h1,h2,h3{margin:20px 0 8px;}strong{color:#333;}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;}</style></head><body>'+document.getElementById('notes-output').innerHTML+'</body></html>');
+  w.document.close(); w.print();
+}
+
+/* ══════════════════════════════
+   2. FLASHCARDS
+══════════════════════════════ */
+let _fcCards=[],_fcIdx=0,_fcKnown=new Set(),_fcUnknown=new Set();
+
+async function shGenerateFlashcards(){
+  const topic=document.getElementById('fc-topic').value.trim();
+  if(!topic){ shToast('⚠️ Enter a topic'); return; }
+  const count=document.getElementById('fc-count').value;
+  document.getElementById('fc-gen-btn').disabled=true;
+  document.getElementById('fc-spinner').style.display='';
+  document.getElementById('fc-btn-text').textContent='Generating…';
+
+  const prompt=`Generate exactly ${count} flashcards about "${topic}" for university study.
+Return ONLY valid JSON:
+{"cards":[{"q":"Question text","a":"Answer text"},...]}}
+Make questions test key concepts, definitions, formulas, or applications. Keep answers concise but complete. Return ONLY JSON.`;
+
+  const raw=await shAI(prompt, 1500);
+  document.getElementById('fc-gen-btn').disabled=false;
+  document.getElementById('fc-spinner').style.display='none';
+  document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
+
+  if(!raw){ shToast('⚠️ Failed to generate flashcards'); return; }
+  try{
+    const match=raw.match(/\{[\s\S]*\}/);
+    if(match){ const obj=JSON.parse(match[0]); _fcCards=obj.cards||[]; }
+  }catch(e){ shToast('⚠️ Parse error, try again'); return; }
+
+  if(!_fcCards.length){ shToast('⚠️ No cards generated'); return; }
+  _fcIdx=0; _fcKnown=new Set(); _fcUnknown=new Set();
+  document.getElementById('fc-solo-mode').style.display='';
+  shFC_render();
+}
+
+function shFC_render(){
+  const c=_fcCards[_fcIdx];
+  document.getElementById('fc-solo-q').textContent=c.q;
+  document.getElementById('fc-solo-a').textContent=c.a;
+  document.getElementById('fc-solo-card').classList.remove('flipped');
+  document.getElementById('fc-solo-progress').textContent='Card '+(_fcIdx+1)+' of '+_fcCards.length;
+  document.getElementById('fc-known-count').textContent='Known: '+_fcKnown.size;
+  document.getElementById('fc-unknown-count').textContent='Study: '+_fcUnknown.size;
+  const dots=document.getElementById('fc-dots');
+  dots.innerHTML='';
+  _fcCards.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='sh-fc-dot'+(i===_fcIdx?' current':'')+(_fcKnown.has(i)?' known':'')+(_fcUnknown.has(i)?' unknown':'');
+    d.onclick=()=>{ _fcIdx=i; shFC_render(); };
+    dots.appendChild(d);
+  });
+  const grid=document.getElementById('fc-grid');
+  grid.innerHTML='';
+  _fcCards.forEach((c,i)=>{
+    grid.innerHTML+=`<div class="sh-fc-card" onclick="this.classList.toggle('flipped')"><div class="sh-fc-inner"><div class="sh-fc-front"><div class="sh-fc-label">Question</div><div class="sh-fc-text">${c.q}</div><div class="sh-fc-hint">Tap to flip</div></div><div class="sh-fc-back"><div class="sh-fc-label">Answer</div><div class="sh-fc-text">${c.a}</div></div></div></div>`;
+  });
+}
+
+function shFC_move(dir){ _fcIdx=(_fcIdx+dir+_fcCards.length)%_fcCards.length; shFC_render(); }
+function shFC_mark(known){ if(known){ _fcKnown.add(_fcIdx); _fcUnknown.delete(_fcIdx); } else { _fcUnknown.add(_fcIdx); _fcKnown.delete(_fcIdx); } shFC_move(1); }
+function shFC_view(v){
+  document.getElementById('fc-solo-wrap').style.display=v==='solo'?'':'none';
+  document.getElementById('fc-grid-wrap').style.display=v==='grid'?'':'none';
+}
+
+/* ══════════════════════════════
+   3. GPA CALCULATOR
+══════════════════════════════ */
+const GPA_GRADES={A:5,B:4,C:3,D:2,E:1,F:0};
+let _gpaCourses=[];
+
+function shGpaAddRow(){
+  const id=Date.now();
+  _gpaCourses.push(id);
+  const row=document.createElement('div');
+  row.className='sh-gpa-row'; row.id='gpa-row-'+id;
+  row.innerHTML=`<input class="sh-input" placeholder="Course name…" style="font-size:.82rem;padding:8px 10px;">
+<input class="sh-input" type="number" min="1" max="6" value="3" style="font-size:.82rem;padding:8px 10px;">
+<select class="sh-select" style="font-size:.82rem;padding:8px 10px;">${Object.keys(GPA_GRADES).map(g=>`<option value="${g}">${g}</option>`).join('')}</select>
+<button class="sh-gpa-del" onclick="shGpaDel(${id})">✕</button>`;
+  document.getElementById('gpa-courses').appendChild(row);
+}
+
+function shGpaDel(id){
+  document.getElementById('gpa-row-'+id)?.remove();
+  _gpaCourses=_gpaCourses.filter(i=>i!==id);
+}
+
+function shCalcGPA(){
+  const rows=document.querySelectorAll('#gpa-courses .sh-gpa-row');
+  if(!rows.length){ shToast('⚠️ Add at least one course'); return; }
+  let totalCU=0,totalQP=0,count=0;
+  rows.forEach(row=>{
+    const inputs=row.querySelectorAll('input');
+    const sel=row.querySelector('select');
+    const cu=parseFloat(inputs[1]?.value)||0;
+    const grade=sel?.value||'F';
+    const gp=GPA_GRADES[grade]||0;
+    totalCU+=cu; totalQP+=cu*gp; count++;
+  });
+  const gpa=totalCU?totalQP/totalCU:0;
+  const cls=gpa>=4.5?'First Class Honours':gpa>=3.5?'Second Class Upper (2:1)':gpa>=2.4?'Second Class Lower (2:2)':gpa>=1.5?'Third Class Honours':gpa>=1.0?'Pass':'Fail';
+  document.getElementById('gpa-score').textContent=gpa.toFixed(2);
+  document.getElementById('gpa-class').textContent=cls;
+  document.getElementById('gpa-total-cu').textContent=totalCU;
+  document.getElementById('gpa-total-qp').textContent=totalQP.toFixed(1);
+  document.getElementById('gpa-courses-count').textContent=count;
+  document.getElementById('gpa-result').style.display='';
+}
+
+function shGpaReset(){
+  document.getElementById('gpa-courses').innerHTML='';
+  document.getElementById('gpa-result').style.display='none';
+  _gpaCourses=[];
+  shGpaAddRow(); shGpaAddRow(); shGpaAddRow();
+}
+
+/* ══════════════════════════════
+   4. STUDY TIMER
+══════════════════════════════ */
+const CIRC=2*Math.PI*82;
+let _timer={running:false,mode:'focus',remaining:25*60,total:25*60,focusMins:25,breakMins:5,sessions:0,totalFocus:0,int:null};
+
+function shTimerSetMode(preset,focus,brk){
+  document.querySelectorAll('.sh-timer-mode-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  shTimerReset();
+  document.getElementById('timer-custom-row').style.display=preset==='custom'?'':'none';
+  if(preset!=='custom'){
+    _timer.focusMins=focus; _timer.breakMins=brk;
+    _timer.remaining=_timer.total=focus*60;
+    shTimerUpdateUI();
+  }
+}
+
+function shTimerCustom(){
+  const f=parseInt(document.getElementById('timer-custom-focus').value)||25;
+  const b=parseInt(document.getElementById('timer-custom-break').value)||5;
+  _timer.focusMins=f; _timer.breakMins=b;
+  _timer.remaining=_timer.total=f*60;
+  shTimerUpdateUI();
+}
+
+function shTimerToggle(){
+  if(_timer.running){ clearInterval(_timer.int); _timer.running=false; document.getElementById('timer-main-btn').textContent='▶'; }
+  else { _timer.running=true; document.getElementById('timer-main-btn').textContent='⏸'; _timer.int=setInterval(shTimerTick,1000); }
+}
+
+function shTimerTick(){
+  _timer.remaining--;
+  if(_timer.remaining<=0){
+    clearInterval(_timer.int); _timer.running=false;
+    document.getElementById('timer-main-btn').textContent='▶';
+    if(_timer.mode==='focus'){ _timer.sessions++; _timer.totalFocus+=_timer.focusMins; _timer.mode='break'; _timer.remaining=_timer.total=_timer.breakMins*60; shToast('🎉 Focus done! Take a break.'); }
+    else { _timer.mode='focus'; _timer.remaining=_timer.total=_timer.focusMins*60; shToast('💪 Break over! Time to focus.'); }
+  }
+  shTimerUpdateUI();
+}
+
+function shTimerSkip(){ clearInterval(_timer.int); _timer.running=false; document.getElementById('timer-main-btn').textContent='▶'; _timer.mode=_timer.mode==='focus'?'break':'focus'; _timer.remaining=_timer.total=(_timer.mode==='focus'?_timer.focusMins:_timer.breakMins)*60; shTimerUpdateUI(); }
+function shTimerReset(){ clearInterval(_timer.int); _timer.running=false; document.getElementById('timer-main-btn').textContent='▶'; _timer.mode='focus'; _timer.remaining=_timer.total=_timer.focusMins*60; shTimerUpdateUI(); }
+
+function shTimerUpdateUI(){
+  const disp=document.getElementById('timer-display');
+  const fill=document.getElementById('timer-ring-fill');
+  const label=document.getElementById('timer-mode-label');
+  const pct=_timer.remaining/_timer.total;
+  const offset=CIRC*(1-pct);
+  disp.textContent=shTimerFmt(_timer.remaining);
+  fill.style.strokeDashoffset=offset;
+  fill.style.stroke=_timer.mode==='focus'?'#6366f1':'#22c55e';
+  label.textContent=_timer.mode==='focus'?'Focus Time 🧠':'Break Time ☕';
+  document.getElementById('timer-mode-label').style.color=_timer.mode==='focus'?'#a5b4fc':'#86efac';
+  document.getElementById('timer-stat-sessions').textContent=_timer.sessions;
+  document.getElementById('timer-stat-total').textContent=_timer.totalFocus+' min';
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById('ts'+i);
+    if(dot) dot.className='sh-timer-session-dot'+(i<_timer.sessions%4||(_timer.sessions>=4&&i<4)?' done':'');
+  }
+}
+
+function shTimerFmt(sec){
+  const m=Math.floor(sec/60).toString().padStart(2,'0');
+  const s=(sec%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+/* ══════════════════════════════
+   5. MOCK EXAM
+══════════════════════════════ */
+let _exam={qs:[],current:0,answers:[],topic:'',timerInt:null,timeLeft:0,timerSecs:60};
+
+async function shStartExam(){
+  const topic=document.getElementById('exam-topic').value.trim();
+  if(!topic){ shToast('⚠️ Enter a subject first'); document.getElementById('exam-topic').focus(); return; }
+  const count=parseInt(document.getElementById('exam-count').value)||10;
+  const diff=document.getElementById('exam-diff').value;
+  const time=parseInt(document.getElementById('exam-time').value)||0;
+  document.getElementById('exam-start-btn').disabled=true;
+  document.getElementById('exam-spinner').style.display='';
+  document.getElementById('exam-btn-text').textContent='Generating exam…';
+  const diffLabel={easy:'100-level (basic)',medium:'200-300 level (intermediate)',hard:'400-level (advanced)'};
+  const prompt=`Generate exactly ${count} multiple-choice exam questions about "${topic}" at ${diffLabel[diff]} university level.
+Return ONLY valid JSON:
+{"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}}
+Exactly one option per question must be correct. Shuffle option positions. Academic and rigorous. Return ONLY the JSON.`;
+  const raw=await shAI(prompt, 2500);
+  document.getElementById('exam-start-btn').disabled=false;
+  document.getElementById('exam-spinner').style.display='none';
+  document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
+  let qs=[];
+  if(raw){ try{ const match=raw.match(/\{[\s\S]*\}/); if(match){ const obj=JSON.parse(match[0]); qs=obj.questions||[]; } }catch(e){} }
+  if(!qs.length){ shToast('⚠️ Could not generate exam questions. Try again.'); return; }
+  _exam={qs,current:0,answers:[],topic,timerInt:null,timeLeft:time,timerSecs:time};
+  document.getElementById('exam-setup').style.display='none';
+  document.getElementById('exam-active').style.display='block';
+  document.getElementById('exam-results').style.display='none';
+  document.getElementById('exam-subject-label').textContent='📚 '+topic;
+  shExamShowQ();
+}
+
+function shExamShowQ(){
+  const q=_exam.qs[_exam.current];
+  const total=_exam.qs.length;
+  const n=_exam.current+1;
+  const pct=(n/total*100)+'%';
+  document.getElementById('exam-prog-fill').style.width=pct;
+  document.getElementById('exam-q-num').textContent='Question '+n+' of '+total;
+  document.getElementById('exam-q-badge').textContent='Q '+n+'/'+total;
+  document.getElementById('exam-q-text').textContent=q.q;
+  document.getElementById('exam-explanation').style.display='none';
+  document.getElementById('exam-next-btn').style.display='none';
+  const opts=document.getElementById('exam-opts');
+  opts.innerHTML='';
+  q.options.forEach((opt,i)=>{
+    const btn=document.createElement('button');
+    btn.className='sh-exam-opt';
+    btn.dataset.correct=opt.correct?'1':'0';
+    btn.innerHTML=`<span class="sh-exam-opt-letter">${'ABCD'[i]}</span><span>${opt.text}</span>`;
+    btn.onclick=()=>shExamAnswer(btn, opt.correct, q.explanation);
+    opts.appendChild(btn);
+  });
+  clearInterval(_exam.timerInt);
+  const timerBar=document.getElementById('exam-timer-bar-wrap');
+  if(_exam.timerSecs>0){
+    timerBar.style.display='';
+    _exam.timeLeft=_exam.timerSecs;
+    const fill=document.getElementById('exam-q-timer-fill');
+    fill.style.width='100%'; fill.className='sh-exam-timer-fill';
+    _exam.timerInt=setInterval(()=>{
+      _exam.timeLeft--;
+      const pct2=(_exam.timeLeft/_exam.timerSecs*100);
+      fill.style.width=pct2+'%';
+      if(_exam.timeLeft<=10) fill.className='sh-exam-timer-fill low';
+      if(_exam.timeLeft<=0){ clearInterval(_exam.timerInt); shExamTimeUp(q.explanation); }
+    },1000);
+  } else { timerBar.style.display='none'; }
+}
+
+function shExamAnswer(btn, correct, explanation){
+  clearInterval(_exam.timerInt);
+  const opts=document.querySelectorAll('.sh-exam-opt');
+  opts.forEach(b=>{ b.disabled=true; if(b.dataset.correct==='1') b.classList.add('correct'); else if(b===btn&&!correct) b.classList.add('wrong'); });
+  _exam.answers.push({q:_exam.qs[_exam.current].q,correct,chosen:btn.querySelector('span:last-child').textContent});
+  if(explanation){ const ex=document.getElementById('exam-explanation'); ex.textContent='💡 '+explanation; ex.style.display=''; }
+  document.getElementById('exam-next-btn').style.display='';
+}
+
+function shExamTimeUp(explanation){
+  const opts=document.querySelectorAll('.sh-exam-opt');
+  opts.forEach(b=>{ b.disabled=true; if(b.dataset.correct==='1') b.classList.add('correct'); });
+  _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏱️ Timed out'});
+  if(explanation){ const ex=document.getElementById('exam-explanation'); ex.textContent='⏱️ Time up! '+explanation; ex.style.display=''; }
+  document.getElementById('exam-next-btn').style.display='';
+  shToast('⏱️ Time up for this question!');
+}
+
+function shExamSkip(){ clearInterval(_exam.timerInt); _exam.answers.push({q:_exam.qs[_exam.current].q,correct:false,chosen:'⏭️ Skipped'}); shExamNext(); }
+function shExamNext(){ _exam.current++; if(_exam.current>=_exam.qs.length){ shExamFinish(); return; } shExamShowQ(); }
+function shExamFinish(){
+  clearInterval(_exam.timerInt);
+  document.getElementById('exam-active').style.display='none';
+  document.getElementById('exam-results').style.display='block';
+  const total=_exam.answers.length;
+  const correct=_exam.answers.filter(a=>a.correct).length;
+  const pct=Math.round(correct/total*100);
+  const grade=pct>=70?'A':pct>=60?'B':pct>=50?'C':pct>=45?'D':pct>=40?'E':'F';
+  const remark=pct>=70?'🏆 Excellent!':pct>=60?'🥇 Good Pass':pct>=50?'🥈 Average':pct>=40?'🎯 Keep Studying':'📚 Needs More Work';
+  document.getElementById('exam-result-title').textContent=remark+' — '+_exam.topic;
+  document.getElementById('exam-result-stats').innerHTML=`
+    <div class="sh-result-stat"><div class="sh-result-stat-val" style="color:${pct>=50?'var(--green)':'var(--red)'}">${pct}%</div><div class="sh-result-stat-lbl">Score</div></div>
+    <div class="sh-result-stat"><div class="sh-result-stat-val" style="color:var(--gold)">${grade}</div><div class="sh-result-stat-lbl">Grade</div></div>
+    <div class="sh-result-stat"><div class="sh-result-stat-val">${correct}/${total}</div><div class="sh-result-stat-lbl">Correct</div></div>
+    <div class="sh-result-stat"><div class="sh-result-stat-val">${total-correct}</div><div class="sh-result-stat-lbl">Wrong</div></div>`;
+  document.getElementById('exam-result-qs').innerHTML=_exam.answers.map((a,i)=>`
+    <div class="sh-result-q-item ${a.correct?'sh-correct':'sh-wrong'}">
+      <div style="width:24px;text-align:center;font-weight:800;color:${a.correct?'var(--green)':'var(--red)'};flex-shrink:0;">${i+1}</div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:.8rem;font-weight:600;color:var(--text);margin-bottom:3px;line-height:1.4;">${a.q}</div>
+        <div style="font-size:.73rem;color:${a.correct?'#86efac':'#fca5a5'};font-weight:600;">${a.correct?'✓ Correct':'✗ '+a.chosen}</div>
+      </div>
+    </div>`).join('');
+}
+
+function shExamRetry(){ document.getElementById('exam-topic').value=_exam.topic; shStartExam(); }
+function shExamSetup(){ document.getElementById('exam-setup').style.display='block'; document.getElementById('exam-active').style.display='none'; document.getElementById('exam-results').style.display='none'; }
+
+/* ══════════════════════════════
+   6. AI TEACHER ENGINE
+══════════════════════════════ */
+
+/* Voice definitions */
+const AIT_VOICES = [
+  {id:'f1',label:'Ada',    gender:'female',icon:'👩‍🏫', prefer:['aria','jenny','libby','samantha','karen','google uk english female','zira']},
+  {id:'f2',label:'Sarah',  gender:'female',icon:'👩‍💼', prefer:['jenny','sonia','google us english','victoria','moira','emma']},
+  {id:'f3',label:'Amara',  gender:'female',icon:'👩‍🔬', prefer:['aria','fiona','veena','allison','ava']},
+  {id:'f4',label:'Ngozi',  gender:'female',icon:'👩‍🎓', prefer:['emma','google uk english female','libby','karen']},
+  {id:'f5',label:'Grace',  gender:'female',icon:'🧑‍🏫', prefer:['sonia','nova','google us english','samantha','susan']},
+  {id:'m1',label:'Emeka',  gender:'male',  icon:'👨‍🏫', prefer:['guy','google uk english male','daniel','alex','thomas']},
+  {id:'m2',label:'Chidi',  gender:'male',  icon:'👨‍💼', prefer:['eric','google us english','david','mark','james']},
+  {id:'m3',label:'Victor', gender:'male',  icon:'👨‍🔬', prefer:['brian','oliver','google uk english male','daniel']},
+  {id:'m4',label:'Seun',   gender:'male',  icon:'👨‍🎓', prefer:['christopher','rishi','jorge','frederico']},
+  {id:'m5',label:'Kola',   gender:'male',  icon:'🧑‍💼', prefer:['davis','ryan','lee','aaron','reed']},
+];
+
+/* Smart voice picker — prefers named neural voices, falls back to gender */
+function aitPickVoice(voiceDef, allVoices){
+  const enVoices = allVoices.filter(v=>v.lang&&v.lang.startsWith('en'));
+  /* Rank: online/natural > local */
+  const ranked = [
+    ...enVoices.filter(v=>v.name.toLowerCase().includes('online')||v.name.toLowerCase().includes('natural')||v.name.toLowerCase().includes('neural')||!v.localService),
+    ...enVoices.filter(v=>v.localService && !v.name.toLowerCase().includes('online'))
+  ];
+  if(voiceDef?.prefer){
+    for(const keyword of voiceDef.prefer){
+      const match = ranked.find(v=>v.name.toLowerCase().includes(keyword.toLowerCase()));
+      if(match) return match;
+    }
+  }
+  /* Gender fallback */
+  const gFilter = voiceDef?.gender==='female'
+    ? ['female','woman','girl','zira','samantha','victoria','karen','moira','fiona','aria','jenny','sonia']
+    : ['male','man','guy','david','mark','daniel','alex','rishi','kyle','eric','brian'];
+  const gMatch = ranked.find(v=>gFilter.some(g=>v.name.toLowerCase().includes(g)));
+  return gMatch || ranked[0] || allVoices[0] || null;
+}
+
+const MATH_SUBJECTS = ['mathematics','maths','math','further math','calculus','algebra','statistics','physics','chemistry','trigonometry','mechanics','vectors','integration','differentiation'];
+
+let _ait = {
+  studentName:'',
+  studentSurname:'',
+  teacherName:'AI Teacher',
+  voiceId:'f1',
+  speechRate:1.0,
+  subject:'',
+  topic:'',
+  durationMins:30,
+  docText:'',
+  sessionInt:null,
+  remainingSecs:0,
+  totalSecs:0,
+  paused:false,
+
+  speaking:false,
+  inQAMode:false,
+  awaitingAnswer:false,
+  currentQuestion:'',
+  conversationHistory:[],
+  synth:null,
+
+  currentUtterance:null,
+  teachingStepIdx:0,
+  questionSchedule:[],
+  warnedFiveMin:false,
+  lastSurnameCallSecs:0,
+  _pendingSurnameCall:false,
+  questionsAsked:0,
+  questionsAnswered:0,
+};
+
+/* ─ Setup screens ─ */
+function aitRenderVoiceList(){
+  const list = document.getElementById('ait-voice-list');
+  if(!list) return;
+  list.innerHTML = AIT_VOICES.map((v,i)=>`
+    <div id="ait-vrow-${v.id}" style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;border:1.5px solid ${v.id==='f1'?'rgba(99,102,241,.5)':'rgba(255,255,255,.08)'};background:${v.id==='f1'?'rgba(99,102,241,.1)':'rgba(255,255,255,.02)'};cursor:pointer;transition:all .18s;" onclick="aitSelectVoiceRow('${v.id}',this)">
+      <div style="width:26px;height:26px;border-radius:50%;background:rgba(99,102,241,.15);display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">${v.icon}</div>
+      <div style="font-size:.82rem;font-weight:700;color:var(--text);flex:1;">${i+1}. ${v.label} <span style="font-size:.7rem;color:var(--muted);font-weight:500;">(${v.gender})</span></div>
+      <button onclick="event.stopPropagation();aitPreviewVoice('${v.id}')" style="padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;flex-shrink:0;">▶ Preview</button>
+    </div>`).join('');
+}
+
+function aitSelectVoiceRow(id, rowEl){
+  document.querySelectorAll('#ait-voice-list > div').forEach(r=>{
+    r.style.borderColor='rgba(255,255,255,.08)';
+    r.style.background='rgba(255,255,255,.02)';
+  });
+  rowEl.style.borderColor='rgba(99,102,241,.5)';
+  rowEl.style.background='rgba(99,102,241,.1)';
+  _ait.voiceId = id;
+}
+
+/* Legacy alias used by old onclick handlers that may still exist */
+function aitSelectVoice(id, el){ aitSelectVoiceRow(id, el.closest('[id^="ait-vrow"]')||el); }
+
+function aitPreviewVoice(id){
+  if(!window.speechSynthesis) return;
+  window.speechSynthesis.cancel();
+  const voiceDef = AIT_VOICES.find(v=>v.id===id);
+  const allVoices = window.speechSynthesis.getVoices();
+  const picked = aitPickVoice(voiceDef, allVoices);
+  const utt = new SpeechSynthesisUtterance(
+    `Hello! I'm ${voiceDef?.label||'your AI teacher'}. Ready to help you learn today!`
+  );
+  utt.rate = _ait.speechRate;
+  if(picked) utt.voice = picked;
+  window.speechSynthesis.speak(utt);
+}
+
+let _aitDemoIdx = 0, _aitDemoRunning = false, _aitDemoVer = 0;
+function aitDemoAllVoices(){
+  if(_aitDemoRunning){ window.speechSynthesis&&window.speechSynthesis.cancel(); _aitDemoRunning=false; return; }
+  _aitDemoRunning = true; _aitDemoIdx = 0;
+  _aitPlayNextDemo();
+}
+function _aitPlayNextDemo(){
+  if(!_aitDemoRunning || _aitDemoIdx >= AIT_VOICES.length){ _aitDemoRunning=false; return; }
+  const v = AIT_VOICES[_aitDemoIdx];
+  const rowEl = document.getElementById('ait-vrow-'+v.id);
+  /* Highlight current row */
+  document.querySelectorAll('#ait-voice-list > div').forEach(r=>{
+    r.style.borderColor='rgba(255,255,255,.08)'; r.style.background='rgba(255,255,255,.02)';
+  });
+  if(rowEl){ rowEl.style.borderColor='rgba(245,158,11,.5)'; rowEl.style.background='rgba(245,158,11,.06)'; }
+
+  if(!window.speechSynthesis){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 200); return; }
+
+  /* Version counter: prevents cancel() from triggering previous onend */
+  const myVer = ++_aitDemoVer;
+  window.speechSynthesis.cancel();
+
+  /* Short delay after cancel so stale onend fires before we attach new one */
+  setTimeout(()=>{
+    if(!_aitDemoRunning || _aitDemoVer !== myVer) return;
+    const allVoices = window.speechSynthesis.getVoices();
+    const picked    = aitPickVoice(v, allVoices);
+    const voiceName = picked ? picked.name : v.label;
+    const utt = new SpeechSynthesisUtterance(
+      `Hello! I'm ${v.label}, your AI teacher. Let's learn something amazing today!`
+    );
+    utt.rate = _ait.speechRate;
+    if(picked) utt.voice = picked;
+    utt.onend  = ()=>{ if(_aitDemoRunning && _aitDemoVer===myVer){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
+    utt.onerror = ()=>{ if(_aitDemoRunning && _aitDemoVer===myVer){ _aitDemoIdx++; setTimeout(_aitPlayNextDemo, 250); } };
+    window.speechSynthesis.speak(utt);
+  }, 120);
+}
+
+function aitSetSpeed(rate, el){
+  document.querySelectorAll('.ait-speed-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  _ait.speechRate = rate;
+}
+
+function aitRenderKeySlots(){
+  const container = document.getElementById('ait-key-slots');
+  let html = '';
+  for(let i=0;i<10;i++){
+    const saved = localStorage.getItem('ait_key_'+i)||'';
+    const def = AIT_DEFAULT_KEYS[i]||'';
+    html += `<div class="ait-key-row">
+      <span class="ait-key-label">Key ${i+1}</span>
+      <input class="ait-key-input" id="ait-key-${i}" type="password" placeholder="Paste Mistral API key ${i+1}…" value="${saved||def}" onchange="localStorage.setItem('ait_key_${i}',this.value)">
+    </div>`;
+  }
+  container.innerHTML = html;
+}
+
+function aitGoToSession(){
+  const name = document.getElementById('ait-student-name').value.trim();
+  if(!name){ shToast('⚠️ Please enter your name first'); document.getElementById('ait-student-name').focus(); return; }
+  /* Extract first name and surname */
+  const parts = name.split(/\s+/).map(p=>p.charAt(0).toUpperCase()+p.slice(1).toLowerCase());
+  _ait.studentName = parts[0];
+  _ait.studentSurname = parts.length>1 ? parts[parts.length-1] : '';
+  const tname = document.getElementById('ait-teacher-name').value.trim();
+  _ait.teacherName = tname || AIT_VOICES.find(v=>v.id===_ait.voiceId)?.label || 'AI Teacher';
+  document.getElementById('ait-greet-name').textContent = _ait.studentName;
+  document.getElementById('ait-screen-name').classList.remove('active');
+  document.getElementById('ait-screen-setup').classList.add('active');
+  aitRenderKeySlots();
+}
+
+function aitBack(){
+  document.getElementById('ait-screen-setup').classList.remove('active');
+  document.getElementById('ait-screen-name').classList.add('active');
+}
+
+async function aitHandleDoc(input){
+  const file = input.files[0];
+  if(!file) return;
+  const nameEl = document.getElementById('ait-doc-name');
+  nameEl.style.display='';
+  nameEl.textContent = '📄 '+file.name+' (loading…)';
+
+  if(file.type==='text/plain'||file.name.endsWith('.md')){
+    _ait.docText = await file.text();
+    nameEl.textContent = '✅ '+file.name+' ('+Math.round(_ait.docText.length/1000)+'k chars)';
+  } else if(file.type==='application/pdf'){
+    try{
+      pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      const ab = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({data:ab}).promise;
+      let text='';
+      for(let i=1;i<=Math.min(pdf.numPages,30);i++){
+        const page = await pdf.getPage(i);
+        const tc = await page.getTextContent();
+        text += tc.items.map(s=>s.str).join(' ')+'\n';
+      }
+      _ait.docText = text.slice(0,12000);
+      nameEl.textContent = '✅ '+file.name+' ('+pdf.numPages+' pages)';
+    }catch(e){ nameEl.textContent='⚠️ Could not read PDF: '+e.message; }
+  } else if(file.type.startsWith('image/')){
+    nameEl.textContent = '🖼️ '+file.name+' (image — AI will describe from topic context)';
+    _ait.docText = '[Image uploaded: '+file.name+'. Teach based on topic only.]';
+  } else {
+    nameEl.textContent = '⚠️ Unsupported file type';
+  }
+  document.getElementById('ait-doc-preview').textContent = _ait.docText ? _ait.docText.slice(0,2000)+'…' : 'Preview not available';
+}
+
+async function aitStartSession(){
+  const subject = document.getElementById('ait-subject').value.trim();
+  const topic = document.getElementById('ait-topic').value.trim();
+  if(!subject||!topic){ shToast('⚠️ Please enter both subject and topic'); return; }
+  const dur = parseInt(document.getElementById('ait-duration').value)||30;
+
+  _ait.subject = subject;
+  _ait.topic = topic;
+  _ait.durationMins = dur;
+  _ait.remainingSecs = dur*60;
+  _ait.totalSecs = dur*60;
+  _ait.paused = false;
+  _ait.speaking = false;
+  _ait.inQAMode = false;
+  _ait.awaitingAnswer = false;
+  _ait.warnedFiveMin = false;
+  _ait.conversationHistory = [];
+  _ait.teachingStepIdx = 0;
+  _ait.questionSchedule = aitBuildQuestionSchedule(dur);
+  _ait.questionsAsked = 0;
+  _ait.questionsAnswered = 0;
+
+  document.getElementById('ait-ses-subject-label').textContent = subject;
+  document.getElementById('ait-ses-topic-label').textContent = topic;
+  document.getElementById('ait-display-teacher-name').textContent = _ait.teacherName;
+  document.getElementById('ait-ses-timer').textContent = aitFmtTime(_ait.remainingSecs);
+  document.getElementById('ait-prog-fill').style.width = '100%';
+  document.getElementById('ait-transcript').innerHTML = '';
+  document.getElementById('ait-qa-messages').innerHTML = '';
+  document.getElementById('ait-qa-wrap').style.display = 'none';
+  document.getElementById('ait-qa-input-row').style.display = 'none';
+  document.getElementById('ait-ses-right-top').style.display = '';
+  document.getElementById('ait-type-answer-wrap').classList.remove('show');
+  document.getElementById('ait-continue-row').style.display = 'none';
+  document.getElementById('ait-pause-btn').textContent = '⏸ Pause AI';
+  document.getElementById('ait-pause-btn').classList.remove('paused');
+
+  if(_ait.docText){
+    document.getElementById('ait-doc-preview').textContent = _ait.docText.slice(0,2000);
+  } else {
+    document.getElementById('ait-doc-preview').textContent = 'No document uploaded — AI teaching from topic knowledge.';
+  }
+
+  /* Show fullscreen session */
+  const screen = document.getElementById('ait-session-screen');
+  screen.classList.add('active');
+
+  /* Init speech synthesis */
+  _ait.synth = window.speechSynthesis;
+
+  /* Start countdown */
+  _ait.sessionInt = setInterval(aitTick, 1000);
+
+  /* Send welcome message + begin teaching */
+  await aitBeginTeaching();
+}
+
+function aitBuildQuestionSchedule(totalMins){
+  /* 2-3 check-in breaks max — spaced evenly, not in last 1 min */
+  const schedule = [];
+  const usable = totalMins - 1;
+  if(usable <= 2) return schedule;
+  const count = totalMins >= 45 ? 3 : 2;
+  const interval = Math.floor(usable / (count + 1));
+  for(let i=1; i<=count; i++) schedule.push(interval * i * 60);
+  return schedule;
+}
+
+function aitTick(){
+  if(_ait.paused) return;
+  _ait.remainingSecs--;
+  const pct = (_ait.remainingSecs/_ait.totalSecs)*100;
+  document.getElementById('ait-prog-fill').style.width = pct+'%';
+  document.getElementById('ait-ses-timer').textContent = aitFmtTime(_ait.remainingSecs);
+
+  /* 1 min warning — switch to Q&A only when 1 minute remains */
+  if(!_ait.warnedFiveMin && _ait.remainingSecs <= 60 && !_ait.inQAMode){
+    _ait.warnedFiveMin = true;
+    document.getElementById('ait-ses-timer').classList.add('warning');
+    aitSwitchToQA();
+    return;
+  }
+
+  /* Time up */
+  if(_ait.remainingSecs <= 0){
+    clearInterval(_ait.sessionInt);
+    aitEndSession();
+    return;
+  }
+
+  /* Scheduled check-in questions */
+  if(!_ait.awaitingAnswer && !_ait.inQAMode && !_ait.paused){
+    const elapsed = _ait.totalSecs - _ait.remainingSecs;
+    const nextQ = _ait.questionSchedule[0];
+    if(nextQ && elapsed >= nextQ){
+      _ait.questionSchedule.shift();
+      aitAskCheckIn();
+    }
+  }
+
+  /* Surname calling every 10 minutes of elapsed time */
+  if(_ait.studentSurname && !_ait.awaitingAnswer && !_ait.inQAMode){
+    const elapsed = _ait.totalSecs - _ait.remainingSecs;
+    if(elapsed - _ait.lastSurnameCallSecs >= 600){
+      _ait.lastSurnameCallSecs = elapsed;
+      /* Inject a surname mention into the next segment */
+      _ait._pendingSurnameCall = true;
+    }
+  }
+}
+
+function aitFmtTime(sec){
+  const m=Math.floor(sec/60).toString().padStart(2,'0');
+  const s=(sec%60).toString().padStart(2,'0');
+  return m+':'+s;
+}
+
+/* ─ AI Speaking ─ */
+function aitSpeak(text, onEnd){
+  if(!_ait.synth){ if(onEnd) onEnd(); return; }
+
+  _ait.synth.cancel();
+
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.rate = _ait.speechRate;
+
+  /* Smart voice picker — prefers neural/online voices */
+  const voiceDef = AIT_VOICES.find(v=>v.id===_ait.voiceId);
+  const allVoices = _ait.synth.getVoices();
+  const picked = aitPickVoice(voiceDef, allVoices);
+  if(picked) utt.voice = picked;
+
+  _ait.currentUtterance = utt;
+  _ait.speaking = true;
+
+  const glowEl   = document.getElementById('ait-avatar-glow');
+  const statusEl = document.getElementById('ait-avatar-status');
+  const contRow  = document.getElementById('ait-continue-row');
+
+  if(glowEl)   glowEl.classList.add('speaking');
+  if(statusEl) statusEl.textContent = 'Teaching…';
+  if(contRow)  contRow.style.display = 'none'; /* hide Continue while speaking */
+
+  const _onFinish = ()=>{
+    _ait.speaking = false;
+    _ait.currentUtterance = null;
+    if(glowEl)  glowEl.classList.remove('speaking');
+    if(onEnd) onEnd();
+    else if(statusEl) statusEl.textContent = 'Ready';
+  };
+  utt.onend  = _onFinish;
+  utt.onerror = _onFinish;
+
+  _ait.synth.speak(utt);
+}
+
+/* ─ Transcript ─ */
+function aitAddBubble(text, isMath, label){
+  const wrap = document.getElementById('ait-transcript');
+  const div = document.createElement('div');
+  div.className = 'ait-transcript-bubble'+(isMath?' math-topic':'');
+  div.innerHTML = `<div class="ait-tb-label">${label||_ait.teacherName}</div><div class="ait-tb-content"></div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+  return div.querySelector('.ait-tb-content');
+}
+
+function aitTypeText(el, text, onDone){
+  /* For math topics type instantly (show LaTeX/text), for others animate */
+  const isMath = aitIsMathSubject(_ait.subject);
+  if(isMath){
+    el.textContent = text;
+    if(window.MathJax) MathJax.typesetPromise([el]).then(()=>{ if(onDone) onDone(); });
+    else if(onDone) onDone();
+    return;
+  }
+  /* Typing animation */
+  let i=0;
+  const cursor = document.createElement('span');
+  cursor.className='ait-typing-cursor';
+  el.appendChild(cursor);
+  const interval = setInterval(()=>{
+    if(i<text.length){
+      cursor.before(text[i]); i++;
+      el.closest('.ait-transcript-wrap').scrollTop = el.closest('.ait-transcript-wrap').scrollHeight;
+    } else {
+      clearInterval(interval);
+      cursor.remove();
+      if(onDone) onDone();
+    }
+  }, 18);
+}
+
+function aitIsMathSubject(sub){
+  return MATH_SUBJECTS.some(m=>sub.toLowerCase().includes(m));
+}
+
+/* ─ Teaching ─ */
+async function aitBeginTeaching(){
+  const isMath = aitIsMathSubject(_ait.subject);
+  const docCtx = _ait.docText ? `\n\nStudy document context:\n"""${_ait.docText.slice(0,4000)}"""` : '';
+
+  const sysPrompt = `You are ${_ait.teacherName}, a brilliant, warm, and engaging ${_ait.subject} teacher at Darapet Learning System.
+The student's first name is ${_ait.studentName}${_ait.studentSurname?' and their surname is '+_ait.studentSurname:''}.
+You are conducting a ${_ait.durationMins}-minute interactive teaching session on: "${_ait.topic}".
+TEACHING RULES:
+- Teach like a real classroom teacher: engaging, clear, patient, and motivating.
+- IMPORTANT: Use the student's first name ONLY in the welcome greeting — do NOT use their name again in any subsequent response during the session.
+- Keep each response 3-5 sentences — short enough to be spoken clearly.
+- When you ask a comprehension question, write it as the LAST sentence and say nothing more. Wait for the student to reply.
+${isMath ? `MATH FORMAT: For math responses, first write the plain-English explanation (no symbols), then write [DISPLAY] on a new line, then re-write the same content using proper LaTeX ($$...$$ for displayed, $...$ for inline). The student sees the board while hearing your voice.` : ''}${docCtx}`;
+
+  _ait.conversationHistory = [{role:'system', content:sysPrompt}];
+  _ait.lastSurnameCallSecs = 0;
+
+  /* Warm welcome — directly call API, then speak, THEN start teaching */
+  const welcomePrompt = `Give a very warm welcome to ${_ait.studentName}. Introduce yourself as ${_ait.teacherName}. Say you will teach "${_ait.topic}" in ${_ait.subject} for ${_ait.durationMins} minutes, starting from the basics. Be enthusiastic and encouraging. 3 sentences max.`;
+  _ait.conversationHistory.push({role:'user', content:welcomePrompt});
+
+  const statusEl = document.getElementById('ait-avatar-status');
+  if(statusEl) statusEl.textContent = 'Preparing welcome…';
+
+  const welcomeReply = await aitMistral(_ait.conversationHistory, 300);
+  if(!welcomeReply){
+    /* If API fails, go straight to teaching */
+    setTimeout(aitNextTeachingSegment, 500);
+    return;
+  }
+  _ait.conversationHistory.push({role:'assistant', content:welcomeReply});
+
+  const el = aitAddBubble(welcomeReply, false);
+  aitTypeText(el, welcomeReply, null);
+
+  /* When welcome speech ENDS → start first teaching segment */
+  aitSpeak(welcomeReply, ()=> setTimeout(aitNextTeachingSegment, 600));
+}
+
+async function aitNextTeachingSegment(){
+  if(_ait.paused || _ait.awaitingAnswer || _ait.inQAMode || _ait.speaking) return;
+
+  /* Hide continue button */
+  const contRow = document.getElementById('ait-continue-row');
+  if(contRow) contRow.style.display = 'none';
+
+  _ait.teachingStepIdx++;
+  const isMath = aitIsMathSubject(_ait.subject);
+
+  /* Consume pending surname-call flag */
+  const surnameNote = (_ait._pendingSurnameCall && _ait.studentSurname)
+    ? ` Address the student by their surname "${_ait.studentSurname}" naturally — e.g. "Now ${_ait.studentSurname}, let us look at…"`
+    : '';
+  _ait._pendingSurnameCall = false;
+
+  const teachPrompts = [
+    `Start teaching "${_ait.topic}" in ${_ait.subject}. Open with a "Did you know…" fact, give the clear definition, list the main types with real-world examples. End with ONE comprehension question as your last sentence — do NOT answer it yourself.${surnameNote}${isMath?' Use plain English for the spoken part, then [DISPLAY] for LaTeX.':''}`,
+    `Continue teaching "${_ait.topic}". Go deeper — explain how it works in detail. ${isMath?'Walk through a worked example step by step. Use [DISPLAY] for formulas.':'Use a memorable analogy.'}${surnameNote}`,
+    `Continue teaching "${_ait.topic}". Cover key applications and sub-topics. ${isMath?'Introduce another problem type. Use [DISPLAY] for working.':'Connect to related concepts.'}${surnameNote}`,
+    `Continue teaching "${_ait.topic}". Address common misconceptions and advanced aspects. ${isMath?'Tackle a harder calculation. Use [DISPLAY].':'Discuss common exam mistakes.'}${surnameNote}`,
+    `Summarise "${_ait.topic}" so far — the 3 most important points. ${isMath?'List the key formulas using [DISPLAY].':'Connect everything.'}${surnameNote}`,
+    `Explore practical applications and problem-solving strategies for "${_ait.topic}".${surnameNote}`,
+    `Discuss exam tips and higher-order thinking for "${_ait.topic}".${surnameNote}`,
+    `Review and consolidate all knowledge on "${_ait.topic}".${surnameNote}`,
+  ];
+
+  const idx = Math.min(_ait.teachingStepIdx - 1, teachPrompts.length - 1);
+  _ait.conversationHistory.push({role:'user', content:teachPrompts[idx]});
+
+  const statusEl = document.getElementById('ait-avatar-status');
+  if(statusEl) statusEl.textContent = 'Preparing lesson…';
+
+  const reply = await aitMistral(_ait.conversationHistory, 700);
+  if(!reply){
+    if(statusEl) statusEl.textContent = 'Connection issue — click Continue to retry';
+    const row = document.getElementById('ait-continue-row');
+    if(row) row.style.display = '';
+    return;
+  }
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+
+  /* Parse [DISPLAY] split */
+  const {spokenText, displayText} = aitParseReply(reply, isMath);
+
+  /* Math board */
+  if(displayText) aitShowMathBoardContent(displayText);
+  else aitHideMathBoardContent();
+
+  /* Add transcript bubble */
+  const el = aitAddBubble(spokenText, isMath);
+  aitTypeText(el, spokenText, null);
+
+  /* Speak then show Continue button */
+  aitSpeak(spokenText, ()=>{
+    if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer){
+      const row = document.getElementById('ait-continue-row');
+      const statusEl = document.getElementById('ait-avatar-status');
+      if(row) row.style.display = '';
+      if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+    }
+  });
+}
+
+/* ─ Parse [DISPLAY] split from AI reply ─ */
+function aitParseReply(text, isMath){
+  const dIdx = text.indexOf('[DISPLAY]');
+  if(dIdx !== -1){
+    return {
+      spokenText:  text.slice(0, dIdx).trim(),
+      displayText: text.slice(dIdx + 9).trim()
+    };
+  }
+  /* Auto-detect LaTeX in math topics */
+  if(isMath && /\$\$[\s\S]+?\$\$|\$[^$]+?\$/.test(text)){
+    return {
+      spokenText:  text.replace(/\$\$[\s\S]+?\$\$/g, '(see board)').replace(/\$[^$]+?\$/g, '').trim(),
+      displayText: text
+    };
+  }
+  return { spokenText: text, displayText: '' };
+}
+
+/* ─ Math Board helpers ─ */
+function aitShowMathBoardContent(latex){
+  const board    = document.getElementById('ait-math-board');
+  const body     = document.getElementById('ait-math-board-body');
+  const topicEl  = document.getElementById('ait-math-board-topic');
+  if(!board || !body) return;
+  board.classList.add('visible');
+  if(topicEl) topicEl.textContent = _ait.topic;
+  body.textContent = latex;
+  if(window.MathJax) MathJax.typesetPromise([body]).catch(()=>{});
+}
+function aitHideMathBoardContent(){
+  const board = document.getElementById('ait-math-board');
+  if(board) board.classList.remove('visible');
+}
+function aitCopyMathBoard(btn){
+  const body = document.getElementById('ait-math-board-body');
+  const text = body ? (body.innerText || body.textContent || '') : '';
+  if(!text.trim()){ btn.textContent='Nothing to copy'; setTimeout(()=>btn.textContent='📋 Copy',1500); return; }
+  function fallback(){ const ta=document.createElement('textarea'); ta.value=text; ta.style.cssText='position:fixed;top:-9999px;opacity:0;'; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); btn.textContent='✅ Copied!'; }catch(e){ btn.textContent='❌ Error'; } document.body.removeChild(ta); setTimeout(()=>btn.textContent='📋 Copy',2000); }
+  if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(()=>{ btn.textContent='✅ Copied!'; setTimeout(()=>btn.textContent='📋 Copy',2000); }).catch(fallback); } else fallback();
+}
+
+/* ─ Continue Teaching button ─ */
+function aitContinueTeaching(){
+  const contRow = document.getElementById('ait-continue-row');
+  if(contRow) contRow.style.display = 'none';
+  if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer && !_ait.speaking){
+    setTimeout(aitNextTeachingSegment, 300);
+  }
+}
+
+/* ─ aitSendToAI — used for free-question responses ─ */
+async function aitSendToAI(userPrompt, onSpeechDone){
+  _ait.conversationHistory.push({role:'user', content:userPrompt});
+  const reply = await aitMistral(_ait.conversationHistory, 500);
+  if(!reply) return;
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+  const isMath = aitIsMathSubject(_ait.subject);
+  const {spokenText, displayText} = aitParseReply(reply, isMath);
+  if(displayText) aitShowMathBoardContent(displayText);
+  else aitHideMathBoardContent();
+  const el = aitAddBubble(spokenText || reply, isMath);
+  aitTypeText(el, spokenText || reply, null);
+  aitSpeak(spokenText || reply, onSpeechDone || (()=>{
+    const row = document.getElementById('ait-continue-row');
+    const statusEl = document.getElementById('ait-avatar-status');
+    if(row && !_ait.inQAMode && !_ait.awaitingAnswer) row.style.display = '';
+    if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+  }));
+}
+
+async function aitAskCheckIn(){
+  if(_ait.paused || _ait.inQAMode) return;
+  _ait.awaitingAnswer = true;
+  _ait.questionsAsked++;
+
+  const qPrompt = `Ask a quick check-in question about something you just taught on "${_ait.topic}". 
+Make it conversational — like a real teacher checking understanding mid-lesson. 
+Keep it to ONE question. Say something like "Quick check — " or "Let me test you quickly — ".
+Do NOT use the student's name. End with: [QUESTION: <the actual question text>] on a new line.`;
+
+  const reply = await aitMistral([..._ait.conversationHistory, {role:'user',content:qPrompt}], 300);
+  if(!reply){ _ait.awaitingAnswer=false; return; }
+
+  const qMatch = reply.match(/\[QUESTION:\s*(.+?)\]/s);
+  _ait.currentQuestion = qMatch ? qMatch[1].trim() : reply;
+
+  const displayReply = reply.replace(/\[QUESTION:.*?\]/s,'').trim();
+
+  /* Show question bubble */
+  const wrap = document.getElementById('ait-transcript');
+  const qDiv = document.createElement('div');
+  qDiv.className = 'ait-q-bubble';
+  qDiv.innerHTML = `<div class="ait-qb-label">🎯 Quick Check — ${_ait.teacherName}</div><div class="ait-qb-text">${_ait.currentQuestion}</div>`;
+  wrap.appendChild(qDiv);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  aitSpeak((displayReply||_ait.currentQuestion), ()=>{
+    /* Enable typing answer */
+    document.getElementById('ait-type-answer-wrap').classList.add('show');
+    document.getElementById('ait-type-answer').value = '';
+    document.getElementById('ait-type-answer').focus();
+    document.getElementById('ait-avatar-status').textContent = 'Waiting for your answer…';
+  });
+}
+
+async function aitSubmitAnswer(){
+  const answerEl = document.getElementById('ait-type-answer');
+  const answer = answerEl.value.trim();
+  if(!answer){ shToast('⚠️ Please type your answer'); return; }
+
+  _ait.questionsAnswered++;
+  document.getElementById('ait-type-answer-wrap').classList.remove('show');
+  answerEl.value = '';
+
+  /* Show user answer */
+  const wrap = document.getElementById('ait-transcript');
+  const userDiv = document.createElement('div');
+  userDiv.className = 'ait-user-answer';
+  userDiv.innerHTML = `<div class="ait-ua-label">You — ${_ait.studentName}</div>${answer}`;
+  wrap.appendChild(userDiv);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  /* AI feedback */
+  const feedbackPrompt = `The student answered your question about "${_ait.topic}".
+Question: "${_ait.currentQuestion}"
+Student's answer: "${answer}"
+
+Give feedback:
+- If correct/mostly correct: praise specifically, confirm what's right, then continue teaching.
+- If wrong: be kind, explain the correct answer clearly, re-explain the concept, then ask the question again differently.
+Keep it to 3-5 sentences. Be encouraging like a good teacher. Do NOT use the student's name.`;
+
+  const feedback = await aitMistral([..._ait.conversationHistory, {role:'user',content:feedbackPrompt}], 400);
+  if(!feedback){ _ait.awaitingAnswer=false; return; }
+
+  _ait.conversationHistory.push({role:'assistant', content:feedback});
+  const isMath = aitIsMathSubject(_ait.subject);
+  const fbEl = aitAddBubble(feedback, isMath, '💬 '+_ait.teacherName);
+  aitTypeText(fbEl, feedback, null);
+  aitSpeak(feedback, ()=>{
+    _ait.awaitingAnswer = false;
+    /* Show Continue so student can keep learning */
+    const row = document.getElementById('ait-continue-row');
+    const statusEl = document.getElementById('ait-avatar-status');
+    if(row) row.style.display = '';
+    if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+  });
+}
+
+async function aitAskQuestion(){
+  /* User interrupts to ask a question */
+  if(_ait.speaking){
+    _ait.synth?.cancel();
+    _ait.speaking = false;
+    document.getElementById('ait-avatar-glow').classList.remove('speaking');
+  }
+  document.getElementById('ait-type-answer-wrap').classList.add('show');
+  document.getElementById('ait-type-answer').placeholder = 'Type your question for the AI teacher…';
+  document.getElementById('ait-type-answer').focus();
+  document.getElementById('ait-avatar-status').textContent = 'Ask your question…';
+  shToast('💬 Go ahead — type your question!');
+  /* Repurpose submit for free question */
+  _ait.awaitingAnswer = true;
+  _ait.currentQuestion = '__USER_QUESTION__';
+}
+
+async function aitSwitchToQA(){
+  _ait.inQAMode = true;
+  /* Stop AI teaching */
+  _ait.synth?.cancel();
+  document.getElementById('ait-avatar-glow').classList.remove('speaking');
+
+  const msg = `We're down to the last minute, ${_ait.studentName}! Great session — do you have any quick questions about "${_ait.topic}" before we finish?`;
+  
+  /* Switch UI */
+  document.getElementById('ait-ses-right-top').style.display = 'none';
+  document.getElementById('ait-qa-wrap').style.display = '';
+  document.getElementById('ait-qa-input-row').style.display = '';
+  document.getElementById('ait-type-answer-wrap').classList.remove('show');
+
+  /* Add message in transcript */
+  const wrap = document.getElementById('ait-transcript');
+  const div = document.createElement('div');
+  div.className = 'ait-transcript-bubble';
+  div.style.borderColor = 'rgba(239,68,68,.3)';
+  div.innerHTML = `<div class="ait-tb-label" style="color:#fca5a5;">⏰ ${_ait.teacherName} — 1 min left</div><div>${msg}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  aitSpeak(msg, null);
+  shToast('⏰ 1 minute left — any last questions?');
+}
+
+async function aitSendQA(){
+  const input = document.getElementById('ait-qa-input');
+  const q = input.value.trim();
+  if(!q) return;
+  input.value = '';
+
+  const msgs = document.getElementById('ait-qa-messages');
+  msgs.innerHTML += `<div class="ait-qa-msg user">${q}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+
+  const reply = await aitMistral([
+    ..._ait.conversationHistory,
+    {role:'user', content:`Student question about "${_ait.topic}": ${q}. Answer concisely and helpfully in 2-4 sentences. Do NOT use the student's name.`}
+  ], 400);
+
+  if(!reply) return;
+  _ait.conversationHistory.push({role:'assistant', content:reply});
+  msgs.innerHTML += `<div class="ait-qa-msg ai"><strong>${_ait.teacherName}:</strong> ${reply}</div>`;
+  msgs.scrollTop = msgs.scrollHeight;
+  aitSpeak(reply, null);
+}
+
+/* ─ Controls ─ */
+function aitTogglePause(){
+  _ait.paused = !_ait.paused;
+  const btn = document.getElementById('ait-pause-btn');
+  if(_ait.paused){
+    btn.textContent = '▶ Resume AI';
+    btn.classList.add('paused');
+    _ait.synth?.pause();
+    document.getElementById('ait-avatar-status').textContent = 'Paused — click Resume to continue';
+    document.getElementById('ait-avatar-glow').classList.remove('speaking');
+  } else {
+    btn.textContent = '⏸ Pause AI';
+    btn.classList.remove('paused');
+    _ait.synth?.resume();
+    document.getElementById('ait-avatar-status').textContent = 'Teaching…';
+    setTimeout(()=>aitNextTeachingSegment(), 1000);
+  }
+}
+
+function aitEndSession(){
+  clearInterval(_ait.sessionInt);
+  _ait.synth?.cancel();
+
+  /* Calculate actual time studied */
+  const studiedSecs = _ait.totalSecs - Math.max(_ait.remainingSecs, 0);
+  const studiedMins = Math.max(1, Math.round(studiedSecs / 60));
+
+  /* Save session to localStorage */
+  aitSaveSession({
+    studentName: _ait.studentName,
+    teacherName: _ait.teacherName,
+    subject: _ait.subject,
+    topic: _ait.topic,
+    durationMins: _ait.durationMins,
+    studiedMins,
+    questionsAsked: _ait.questionsAsked,
+    questionsAnswered: _ait.questionsAnswered,
+    hadDoc: !!_ait.docText,
+    ts: Date.now()
+  });
+
+  document.getElementById('ait-session-screen').classList.remove('active');
+  aitShowSummary(studiedMins);
+}
+
+function aitShowSummary(studiedMins){
+  const pct = _ait.durationMins > 0 ? Math.round((studiedMins / _ait.durationMins) * 100) : 100;
+  const trophies = ['🏆','🌟','🎓','🚀','💪'];
+  const encouragements = [
+    'Every minute you study brings you closer to mastery. Keep going!',
+    'Consistency is the key to success. You showed up — that\'s what matters!',
+    'Great effort today! Each session builds on the last.',
+    'You\'re building real knowledge. Be proud of that!',
+    'Amazing dedication! Your hard work will pay off.'
+  ];
+  const trophy = trophies[Math.floor(Math.random() * trophies.length)];
+  const encourage = encouragements[Math.floor(Math.random() * encouragements.length)];
+
+  const titles = pct >= 90 ? ['Outstanding session! 🎉','You crushed it today!','Full session complete!'] :
+                 pct >= 60 ? ['Great work today!','Solid session!','Good progress!'] :
+                             ['Every bit counts!','Keep going!','Good start!'];
+  const title = titles[Math.floor(Math.random() * titles.length)];
+
+  document.getElementById('ait-summ-trophy').textContent = trophy;
+  document.getElementById('ait-summ-title').textContent = title;
+  document.getElementById('ait-summ-sub').textContent = _ait.subject + ' — ' + _ait.topic;
+  document.getElementById('ait-summ-time').textContent = studiedMins;
+  document.getElementById('ait-summ-steps').textContent = Math.max(_ait.teachingStepIdx, 1);
+  document.getElementById('ait-summ-qa').textContent =
+    _ait.questionsAsked > 0 ? (_ait.questionsAnswered + '/' + _ait.questionsAsked) : '—';
+  document.getElementById('ait-summ-detail').innerHTML =
+    '<strong>Teacher:</strong> ' + _ait.teacherName + '<br>' +
+    '<strong>Subject:</strong> ' + _ait.subject + '<br>' +
+    '<strong>Topic:</strong> ' + _ait.topic + '<br>' +
+    '<strong>Planned:</strong> ' + _ait.durationMins + ' min &nbsp;·&nbsp; ' +
+    '<strong>Studied:</strong> ' + studiedMins + ' min (' + pct + '%)' +
+    (_ait.docText ? '<br><strong>📎 Study material used</strong>' : '');
+  document.getElementById('ait-summ-encourage').textContent = encourage;
+  document.getElementById('ait-summary-screen').classList.add('active');
+}
+
+function aitCloseSummary(){
+  document.getElementById('ait-summary-screen').classList.remove('active');
+}
+
+function aitCloseSummaryToHistory(){
+  document.getElementById('ait-summary-screen').classList.remove('active');
+  /* Navigate to the AI Teacher tab which has the history section */
+  shTab('aitimer');
+  const btn = document.querySelector('.sh-tab.sh-tab-ai-timer');
+  if(btn) btn.classList.add('active');
+}
+
+/* ══════════════════════════════
+   PROGRESS / HISTORY ENGINE
+══════════════════════════════ */
+const AIT_HISTORY_KEY = 'ait_sessions_v1';
+
+function aitLoadHistory(){
+  try{ return JSON.parse(localStorage.getItem(AIT_HISTORY_KEY)||'[]'); }
+  catch(e){ return []; }
+}
+
+function aitSaveSession(session){
+  const hist = aitLoadHistory();
+  hist.unshift(session); /* newest first */
+  /* Keep max 200 entries to avoid storage issues (each entry ~200 bytes = ~40kb max) */
+  if(hist.length > 200) hist.splice(200);
+  localStorage.setItem(AIT_HISTORY_KEY, JSON.stringify(hist));
+}
+
+function aitClearHistory(){
+  if(!confirm('Clear all session history? This cannot be undone.')) return;
+  localStorage.removeItem(AIT_HISTORY_KEY);
+  aitRenderHistory();
+  shToast('🗑️ History cleared');
+}
+
+function aitShowProgress(){
+  document.querySelectorAll('.ait-setup-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ait-screen-progress').classList.add('active');
+  aitRenderHistory();
+}
+
+function aitBackFromProgress(){
+  document.querySelectorAll('.ait-setup-screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('ait-screen-name').classList.add('active');
+}
+
+function aitRenderHistory(){
+  const hist = aitLoadHistory();
+  const now = new Date();
+
+  /* ── Stats ── */
+  const totalSessions = hist.length;
+  const totalMins = hist.reduce((a,s)=>a+(s.studiedMins||s.durationMins||0), 0);
+  const subjects = [...new Set(hist.map(s=>s.subject).filter(Boolean))];
+  document.getElementById('ait-hist-stats').innerHTML = `
+    <div class="ait-hist-stat">
+      <div class="ait-hist-stat-val">${totalSessions}</div>
+      <div class="ait-hist-stat-lbl">Sessions</div>
+    </div>
+    <div class="ait-hist-stat">
+      <div class="ait-hist-stat-val">${totalMins}</div>
+      <div class="ait-hist-stat-lbl">Mins Studied</div>
+    </div>
+    <div class="ait-hist-stat">
+      <div class="ait-hist-stat-val">${subjects.length}</div>
+      <div class="ait-hist-stat-lbl">Subjects</div>
+    </div>`;
+
+  /* ── Streak ── */
+  const streak = aitCalcStreak(hist);
+  document.getElementById('ait-streak-count').textContent = streak + (streak===1?' day streak':' day streak');
+  document.getElementById('ait-streak-fire').textContent = streak>=7?'🔥':streak>=3?'⚡':'🌱';
+  document.getElementById('ait-streak-sub').textContent =
+    streak===0 ? 'Complete a session today to start your streak!' :
+    streak===1 ? 'Great start! Come back tomorrow to keep it going.' :
+    streak<7   ? `${streak} days in a row — keep it up!` :
+                 `🎉 ${streak} day streak! You're on fire!`;
+
+  /* ── 30-day calendar ── */
+  const cal = document.getElementById('ait-cal-wrap');
+  cal.innerHTML = '';
+  const daySet = new Set(hist.map(s=>new Date(s.ts).toDateString()));
+  for(let i=29; i>=0; i--){
+    const d = new Date(now); d.setDate(d.getDate()-i);
+    const div = document.createElement('div');
+    div.className = 'ait-cal-day' +
+      (daySet.has(d.toDateString()) ? ' has-session' : '') +
+      (i===0 ? ' today' : '');
+    div.title = d.toDateString() + (daySet.has(d.toDateString()) ? ' ✓' : '');
+    cal.appendChild(div);
+  }
+
+  /* ── Subject bars ── */
+  if(subjects.length){
+    document.getElementById('ait-subj-section').style.display='';
+    const subjMins = {};
+    hist.forEach(s=>{ const k=s.subject||'Unknown'; subjMins[k]=(subjMins[k]||0)+(s.studiedMins||s.durationMins||0); });
+    const maxMins = Math.max(...Object.values(subjMins));
+    document.getElementById('ait-subj-bars').innerHTML = Object.entries(subjMins)
+      .sort((a,b)=>b[1]-a[1]).slice(0,6)
+      .map(([subj,mins])=>`
+        <div class="ait-subj-row">
+          <div class="ait-subj-name">${subj.slice(0,18)}</div>
+          <div class="ait-subj-bar-bg"><div class="ait-subj-bar-fill" style="width:${Math.round(mins/maxMins*100)}%"></div></div>
+          <div class="ait-subj-mins">${mins} min</div>
+        </div>`).join('');
+  } else {
+    document.getElementById('ait-subj-section').style.display='none';
+  }
+
+  /* ── Session list ── */
+  const listEl = document.getElementById('ait-hist-list');
+  if(!hist.length){
+    listEl.innerHTML = `<div class="ait-hist-empty">
+      <div class="ait-hist-empty-icon">📚</div>
+      <div style="font-weight:700;color:var(--text);margin-bottom:6px;">No sessions yet</div>
+      <div style="font-size:.82rem;">Complete your first AI Teacher session to see it here!</div>
+    </div>`;
+    return;
+  }
+
+  const SUBJ_ICONS = {mathematics:'📐',maths:'📐',physics:'⚛️',chemistry:'🧪',biology:'🔬',english:'📖',history:'🏛️',economics:'📈',geography:'🌍',default:'📚'};
+  function subjIcon(s){ const k=Object.keys(SUBJ_ICONS).find(k=>s?.toLowerCase().includes(k)); return SUBJ_ICONS[k]||SUBJ_ICONS.default; }
+
+  listEl.innerHTML = hist.slice(0,50).map((s,i)=>{
+    const date = new Date(s.ts);
+    const dateStr = date.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+    const timeStr = date.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const mins = s.studiedMins||s.durationMins||'?';
+    return `<div class="ait-hist-item">
+      <div class="ait-hist-icon">${subjIcon(s.subject)}</div>
+      <div class="ait-hist-body">
+        <div class="ait-hist-subject">${s.subject||'General'}</div>
+        <div class="ait-hist-topic" title="${s.topic||''}">${s.topic||'Untitled Session'}</div>
+        <div class="ait-hist-meta">
+          <span class="ait-hist-tag ait-hist-tag-time">⏱ ${mins} min</span>
+          <span class="ait-hist-tag ait-hist-tag-date">${dateStr} ${timeStr}</span>
+          <span class="ait-hist-tag ait-hist-tag-teacher">🤖 ${s.teacherName||'AI Teacher'}</span>
+          ${s.hadDoc?'<span class="ait-hist-tag ait-hist-tag-doc">📎 Doc</span>':''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function aitCalcStreak(hist){
+  if(!hist.length) return 0;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const daySet = new Set(hist.map(s=>{ const d=new Date(s.ts); d.setHours(0,0,0,0); return d.getTime(); }));
+  let streak=0, cur=today.getTime();
+  while(daySet.has(cur)){ streak++; cur-=86400000; }
+  return streak;
+}
+
+function aitCleanupOnLeave(){
+  if(_ait.synth?.speaking) _ait.synth.cancel();
+}
+
+/* ── Init on load ── */
+/* ─ Math Board drag-to-resize ─ */
+function aitInitMathResize(){
+  const handle = document.getElementById('ait-math-resize');
+  const body   = document.getElementById('ait-math-board-body');
+  if(!handle || !body) return;
+  let startY = 0, startH = 0, dragging = false;
+
+  handle.addEventListener('mousedown', e=>{
+    e.preventDefault();
+    dragging = true;
+    startY = e.clientY;
+    startH = body.offsetHeight;
+    document.body.style.cursor = 'ns-resize';
+    document.body.style.userSelect = 'none';
+  });
+  /* Touch support */
+  handle.addEventListener('touchstart', e=>{
+    dragging = true;
+    startY = e.touches[0].clientY;
+    startH = body.offsetHeight;
+  }, {passive:true});
+
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    const newH = Math.min(420, Math.max(80, startH + (e.clientY - startY)));
+    body.style.height = newH + 'px';
+  });
+  window.addEventListener('touchmove', e=>{
+    if(!dragging) return;
+    const newH = Math.min(420, Math.max(80, startH + (e.touches[0].clientY - startY)));
+    body.style.height = newH + 'px';
+  }, {passive:true});
+
+  const stopDrag = ()=>{ dragging=false; document.body.style.cursor=''; document.body.style.userSelect=''; };
+  window.addEventListener('mouseup', stopDrag);
+  window.addEventListener('touchend', stopDrag);
+}
+
+window.addEventListener('load', ()=>{
+  aitRenderVoiceList();
+  shGpaAddRow(); shGpaAddRow(); shGpaAddRow();
+  shTimerUpdateUI();
+  aitInitMathResize();
+  /* Prime voice list */
+  speechSynthesis?.getVoices();
+  speechSynthesis?.addEventListener('voiceschanged', ()=>{ speechSynthesis.getVoices(); });
+});
+
+/* Stop mic/speech when leaving page */
+window.addEventListener('beforeunload', ()=>{ aitCleanupOnLeave(); });
+window.addEventListener('visibilitychange', ()=>{ if(document.hidden) aitCleanupOnLeave(); });
+</script>
+</body>
+</html>

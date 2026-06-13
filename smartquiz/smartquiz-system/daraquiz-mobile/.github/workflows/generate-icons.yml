@@ -1,0 +1,33 @@
+name: Generate App Icons
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'logo-source.png'
+
+jobs:
+  generate-icons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install sharp
+        run: npm install sharp
+
+      - name: Generate icons from logo
+        run: node generate-icons.js
+
+      - name: Commit generated icons
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: regenerate icons from logo-source.png"
+          file_pattern: "resources/**"

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DaraQuiz Admin</title>
+<style>
+body{margin:0;background:#1e1b4b;display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:sans-serif;}
+.splash{text-align:center;color:#fff;}
+.icon{font-size:4rem;margin-bottom:12px;}
+.title{font-size:1.4rem;font-weight:800;margin-bottom:6px;}
+.sub{font-size:.88rem;opacity:.7;}
+.spinner{display:inline-block;width:28px;height:28px;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-top:20px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="splash">
+  <div class="icon">🛡️</div>
+  <div class="title">DaraQuiz Admin</div>
+  <div class="sub">Loading admin panel…</div>
+  <div class="spinner"></div>
+</div>
+<script>setTimeout(function(){ window.location.replace('admin-dashboard.html'); }, 800);</script>
+</body>
+</html>

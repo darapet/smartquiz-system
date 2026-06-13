@@ -1,0 +1,12 @@
+{
+  "name": "android-perms",
+  "version": "1.0.0",
+  "description": "Local Capacitor plugin — injects Android permissions into the built APK via cap sync manifest merge",
+  "capacitor": {
+    "android": {
+      "src": "android"
+    }
+  },
+  "keywords": ["capacitor", "capacitor-plugin"],
+  "license": "MIT"
+}

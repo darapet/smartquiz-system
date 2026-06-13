@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DaraQuiz AI — Network Security Config
+  This file goes into: android/app/src/main/res/xml/network_security_config.xml
+  Allows connections to Firebase and AI API domains.
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Firebase domains -->
+        <domain includeSubdomains="true">firebaseapp.com</domain>
+        <domain includeSubdomains="true">firebase.google.com</domain>
+        <domain includeSubdomains="true">googleapis.com</domain>
+        <domain includeSubdomains="true">gstatic.com</domain>
+        <domain includeSubdomains="true">google.com</domain>
+        <domain includeSubdomains="true">firebaseio.com</domain>
+        <domain includeSubdomains="true">firestore.googleapis.com</domain>
+        <!-- AI APIs -->
+        <domain includeSubdomains="true">groq.com</domain>
+        <domain includeSubdomains="true">openai.com</domain>
+        <domain includeSubdomains="true">api.groq.com</domain>
+        <!-- FIX: TTS audio was completely silent — Android blocked all requests to
+             pollinations.ai because it was missing from this allowlist.
+             audio.pollinations.ai serves the TTS MP3 blobs; text.pollinations.ai
+             is the text inference endpoint. Both are required for voice to work. -->
+        <domain includeSubdomains="true">pollinations.ai</domain>
+        <domain includeSubdomains="true">audio.pollinations.ai</domain>
+        <domain includeSubdomains="true">text.pollinations.ai</domain>
+        <!-- Search / knowledge APIs -->
+        <domain includeSubdomains="true">duckduckgo.com</domain>
+        <domain includeSubdomains="true">jina.ai</domain>
+        <domain includeSubdomains="true">wikipedia.org</domain>
+        <domain includeSubdomains="true">books.googleapis.com</domain>
+        <!-- CDN assets -->
+        <domain includeSubdomains="true">cdn.jsdelivr.net</domain>
+        <domain includeSubdomains="true">cdnjs.cloudflare.com</domain>
+    </domain-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

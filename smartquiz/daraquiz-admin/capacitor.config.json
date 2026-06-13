@@ -1,0 +1,46 @@
+{
+  "appId": "com.darapet.adminquiz",
+  "appName": "DaraQuiz Admin",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost",
+    "cleartext": true,
+    "allowNavigation": [
+      "*.firebaseapp.com",
+      "*.firebase.google.com",
+      "*.googleapis.com",
+      "*.gstatic.com",
+      "*.google.com",
+      "*.groq.com"
+    ]
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2500,
+      "launchAutoHide": true,
+      "launchFadeOutDuration": 500,
+      "backgroundColor": "#1e1b4b",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false,
+      "splashFullScreen": true,
+      "splashImmersive": true
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#1e1b4b"
+    },
+    "Keyboard": {
+      "resize": "body",
+      "resizeOnFullScreen": true
+    }
+  },
+  "android": {
+    "buildOptions": {
+      "keystorePath": "release-key.keystore",
+      "keystoreAlias": "daraquiz",
+      "releaseType": "APK"
+    }
+  }
+}
