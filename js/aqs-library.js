@@ -14,8 +14,10 @@ import {
   serverTimestamp, increment, getCountFromServer, onSnapshot
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
-/* Firebase Storage bucket (replaces Cloudinary — no CORS issues) */
-var _FB_BUCKET = 'smartquiz-darapet.firebasestorage.app';
+/* Cloudinary direct-upload config (no server required) */
+var _CLD_CLOUD = 'du7misvms';
+var _CLD_THUMB_PRESET = 'smartquiz_thumbs';
+var _CLD_FILE_PRESET  = 'smartquiz_docs';
 
 function _waitFirebase() {
   return new Promise(function(res){
@@ -298,12 +300,20 @@ window.libSaveProfile=async function(uid,data){
   await setDoc(doc(_db,'library_profiles',uid),{...data,updatedAt:serverTimestamp()},{merge:true});
 };
 window.libUploadCoverPhoto=async function(uid,file){
-  const url=await _fbUpload(file,'library/covers/'+uid);
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/covers/'+uid);
+  const url=await _cldFetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
   await window.libSaveProfile(uid,{coverURL:url});
   return url;
 };
 window.libUploadProfilePhoto=async function(uid,file){
-  const url=await _fbUpload(file,'library/avatars/'+uid);
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',_CLD_THUMB_PRESET);
+  formData.append('public_id','library/avatars/'+uid);
+  const url=await _cldFetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
   await window.libSaveProfile(uid,{photoURL:url});
   return url;
 };
@@ -492,36 +502,32 @@ window.libGetFollowingCount=async function(followerUid){
   }
 };
 
-/* ── FILE UPLOADS — Firebase Storage (no CORS issues, uses existing auth) ── */
-async function _fbUpload(file, storagePath, contentType) {
-  await _init();
-  const user = _auth.currentUser;
-  if (!user) throw new Error('You must be signed in to upload files.');
-  const token = await user.getIdToken();
-  const encoded = encodeURIComponent(storagePath);
-  const uploadUrl = 'https://firebasestorage.googleapis.com/v0/b/' + _FB_BUCKET +
-                    '/o?uploadType=media&name=' + encoded;
-  const res = await fetch(uploadUrl, {
-    method: 'POST',
-    headers: {
-      'Authorization': 'Bearer ' + token,
-      'Content-Type': contentType || (file.type) || 'application/octet-stream'
-    },
-    body: file
-  });
-  if (!res.ok) {
-    let msg = 'Upload failed (' + res.status + ')';
-    try { const e = await res.json(); if (e.error && e.error.message) msg = e.error.message; } catch(_) {}
-    throw new Error(msg);
+/* ── FILE UPLOADS — Cloudinary (fetch-based, handles CORS cleanly) ── */
+async function _cldFetch(url, formData) {
+  let res;
+  try {
+    res = await fetch(url, { method: 'POST', body: formData });
+  } catch (netErr) {
+    throw new Error('Could not reach Cloudinary — check your internet connection. (' + netErr.message + ')');
   }
-  const json = await res.json();
-  return 'https://firebasestorage.googleapis.com/v0/b/' + _FB_BUCKET +
-         '/o/' + encoded + '?alt=media&token=' + json.downloadTokens;
+  let data;
+  try { data = await res.json(); } catch (_) { throw new Error('Invalid response from Cloudinary (status ' + res.status + ')'); }
+  if (!res.ok) {
+    throw new Error(data?.error?.message || ('Upload failed (' + res.status + ')'));
+  }
+  if (!data.secure_url) throw new Error('No URL returned from Cloudinary');
+  return data.secure_url;
 }
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
-  const path=isThumb?('library/thumbnails/'+bookId):('library/files/'+bookId);
-  return _fbUpload(file, path, file.type||'application/octet-stream');
+  const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
+  const resourceType=isThumb?'image':'auto';
+  const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
+  const formData=new FormData();
+  formData.append('file',file);
+  formData.append('upload_preset',preset);
+  if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
+  return _cldFetch(url, formData);
 };
 
 window.libUploadParsed=async function(pages,bookId){
@@ -530,7 +536,11 @@ window.libUploadParsed=async function(pages,bookId){
   const payload=JSON.stringify({totalPages:capped.length,pages:capped});
   if(payload.length>400000) throw new Error('Parsed content too large to upload');
   const blob=new Blob([payload],{type:'application/json'});
-  return _fbUpload(blob, 'library/parsed/'+bookId+'_parsed.json', 'application/json');
+  const formData=new FormData();
+  formData.append('file',blob,bookId+'_parsed.json');
+  formData.append('upload_preset',_CLD_FILE_PRESET);
+  formData.append('public_id','library/parsed/'+bookId);
+  return _cldFetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/raw/upload', formData);
 };
 
 /* ── AI ── */
