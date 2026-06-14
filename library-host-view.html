@@ -293,7 +293,6 @@
   const el = document.getElementById('lhv-comments-list');
   el.innerHTML = `<div style="color:#64748b;font-size:.85rem;text-align:center;padding:40px">Loading comments…</div>`;
   try {
-    const el = document.getElementById('lhv-comments-list');
         _commentGroups = await window.libGetHostComments(_user.uid);
     if (!_commentGroups.length) {
       el.innerHTML = `<div class="lib-empty"><div class="lib-empty-icon">💬</div><div class="lib-empty-title">No comments yet</div><div class="lib-empty-sub">When readers comment on your books, they'll appear here</div></div>`;
