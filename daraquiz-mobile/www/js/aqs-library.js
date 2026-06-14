@@ -304,10 +304,8 @@ window.libUploadCoverPhoto=async function(uid,file){
   formData.append('file',file);
   formData.append('upload_preset',_CLD_THUMB_PRESET);
   formData.append('public_id','library/covers/'+uid);
-  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
-  if(!res.ok) throw new Error('Cover upload failed');
-  const data=await res.json();
-  if(!data.secure_url) throw new Error('No URL returned');
+  const data=await _cldXHR('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
+  if(!data.secure_url) throw new Error('No URL returned from cover upload');
   await window.libSaveProfile(uid,{coverURL:data.secure_url});
   return data.secure_url;
 };
@@ -316,10 +314,8 @@ window.libUploadProfilePhoto=async function(uid,file){
   formData.append('file',file);
   formData.append('upload_preset',_CLD_THUMB_PRESET);
   formData.append('public_id','library/avatars/'+uid);
-  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
-  if(!res.ok) throw new Error('Photo upload failed');
-  const data=await res.json();
-  if(!data.secure_url) throw new Error('No URL returned');
+  const data=await _cldXHR('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
+  if(!data.secure_url) throw new Error('No URL returned from photo upload');
   await window.libSaveProfile(uid,{photoURL:data.secure_url});
   return data.secure_url;
 };
@@ -541,7 +537,7 @@ window.libUploadFile=async function(file,bookId,type){
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
-  if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
+  formData.append('public_id',isThumb?'library/thumbnails/'+bookId:'library/books/'+bookId);
   const data=await _cldXHR(url,formData);
   if(!data.secure_url) throw new Error('No URL returned from Cloudinary');
   return data.secure_url;
