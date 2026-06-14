@@ -441,7 +441,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
   }
   window.loadFollowers = loadFollowers;
 
-  async function uploadCover(input) {
+  window.uploadCover = async function(input) {
     const file = input.files[0];
     if (!file || !_currentUser) return;
     const btn = document.getElementById('lhp-cover-change-btn');
