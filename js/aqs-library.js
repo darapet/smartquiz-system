@@ -661,14 +661,15 @@ window._libThumbErr=function(img,label){
 
 /* ── BOOK CARD HTML ── */
 window.libBookCardHTML=function(b,uploaderProfile,bookCount){
-  const courseLabel=(b.course||b.subject||'').substring(0,20).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  function _h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  const courseLabel=_h((b.course||b.subject||'').substring(0,20));
   const thumb=b.thumbnailUrl
     ?`<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="window._libThumbErr(this,'${courseLabel}')">`
     :`<div class="lib-card-thumb-placeholder">
         <div class="lib-card-thumb-icon">📖</div>
-        <div class="lib-card-thumb-label">${(b.course||b.subject||'').substring(0,20)}</div>
+        <div class="lib-card-thumb-label">${courseLabel}</div>
       </div>`;
-  const upName=(uploaderProfile&&uploaderProfile.displayName)||b.uploaderName||'Unknown';
+  const upName=_h((uploaderProfile&&uploaderProfile.displayName)||b.uploaderName||'Unknown');
   const upPhoto=uploaderProfile?uploaderProfile.photoURL:b.uploaderPhotoURL;
   const upAv=upPhoto
     ?`<img src="${upPhoto}" alt="">`
@@ -676,18 +677,19 @@ window.libBookCardHTML=function(b,uploaderProfile,bookCount){
   const countBadge=bookCount>1
     ?`<span style="font-size:.6rem;font-weight:700;color:#818cf8;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.2);border-radius:10px;padding:1px 6px;flex-shrink:0;">${bookCount} books</span>`
     :'';
+  const level=_h(b.level||'');
   return `<div class="lib-card" onclick="libCardClick(event,'${b.id}','${b.uploaderUid||''}')">
     <div class="lib-card-thumb">${thumb}</div>
     <div class="lib-card-body">
-      <div class="lib-card-title">${b.title||'Untitled'}</div>
+      <div class="lib-card-title">${_h(b.title||'Untitled')}</div>
       <div class="lib-card-uploader" onclick="event.stopPropagation();libGoHostProfile('${b.uploaderUid||''}')">
         <div class="lib-card-uploader-av">${upAv}</div>
         <span class="lib-card-uploader-name">${upName}</span>
         ${countBadge}
       </div>
       <div class="lib-card-meta">
-        ${b.level?`<div><span class="lib-card-level">${b.level}</span></div>`:''}
-        <div style="font-size:.67rem;color:#64748b;">${(b.course||b.subject||'').substring(0,26)}</div>
+        ${level?`<div><span class="lib-card-level">${level}</span></div>`:''}
+        <div style="font-size:.67rem;color:#64748b;">${_h((b.course||b.subject||'').substring(0,26))}</div>
       </div>
       <div class="lib-card-stats">
         <span class="lib-card-stat">

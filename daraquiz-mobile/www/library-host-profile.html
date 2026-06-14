@@ -300,26 +300,30 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
   }
 
   function bookCardHTML(b) {
+    function _h(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
     /* Use profile name for ALL books on this page — fixes "anonymous" for old books */
-    const upName = (_profile && _profile.displayName) ? _profile.displayName : (b.uploaderName && b.uploaderName !== 'anonymous' ? b.uploaderName : 'Unknown Author');
+    const upName = _h((_profile && _profile.displayName) ? _profile.displayName : (b.uploaderName && b.uploaderName !== 'anonymous' ? b.uploaderName : 'Unknown Author'));
     const upPhoto = (_profile && _profile.photoURL) ? _profile.photoURL : (b.uploaderPhotoURL || '');
     const avHtml = upPhoto
       ? `<img src="${upPhoto}" alt="">`
       : `<span style="font-size:.55rem;font-weight:800;">${window.libInitials(upName)}</span>`;
+    const courseLabel = _h((b.course||'').substring(0,18));
     const thumb = b.thumbnailUrl
-      ? `<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="this.outerHTML='<div class=\\"lib-card-thumb-placeholder\\"><div class=\\"lib-card-thumb-icon\\">📖</div></div>'">`
-      : `<div class="lib-card-thumb-placeholder"><div class="lib-card-thumb-icon">📖</div><div class="lib-card-thumb-label">${(b.course||'').substring(0,18)}</div></div>`;
+      ? `<img src="${b.thumbnailUrl}" alt="" loading="lazy" onerror="window._libThumbErr(this,'${courseLabel}')">`
+      : `<div class="lib-card-thumb-placeholder"><div class="lib-card-thumb-icon">📖</div><div class="lib-card-thumb-label">${courseLabel}</div></div>`;
+    const level = _h(b.level||'');
+    const titleEsc = _h(b.title||'Untitled');
     return `<div class="lib-card" data-book-id="${b.id}" onclick="location.href='library-read.html?id=${b.id}'">
-      <div class="lib-card-thumb">${thumb}<button class="lib-card-cover-btn" onclick="event.stopPropagation();window.triggerBookCover('${b.id}')" title="Change cover">📷 Cover</button><button class="lib-card-delete-btn" onclick="event.stopPropagation();window.deleteBook('${b.id}','${(b.title||'Untitled').replace(/'/g,"\\'")}')" title="Delete book">🗑️ Delete</button></div>
+      <div class="lib-card-thumb">${thumb}<button class="lib-card-cover-btn" onclick="event.stopPropagation();window.triggerBookCover('${b.id}')" title="Change cover">📷 Cover</button><button class="lib-card-delete-btn" onclick="event.stopPropagation();window.deleteBook('${b.id}','${titleEsc}')" title="Delete book">🗑️ Delete</button></div>
       <div class="lib-card-body">
-        <div class="lib-card-title">${b.title||'Untitled'}</div>
+        <div class="lib-card-title">${titleEsc}</div>
         <div class="lib-card-uploader" onclick="event.stopPropagation()">
           <div class="lib-card-uploader-av">${avHtml}</div>
           <span class="lib-card-uploader-name">${upName}</span>
         </div>
         <div class="lib-card-meta">
-          ${b.level?`<div><span class="lib-card-level">${b.level}</span></div>`:''}
-          <div style="font-size:.67rem;color:#64748b;">${(b.course||'').substring(0,24)}</div>
+          ${level?`<div><span class="lib-card-level">${level}</span></div>`:''}
+          <div style="font-size:.67rem;color:#64748b;">${_h((b.course||'').substring(0,24))}</div>
         </div>
         <div class="lib-card-stats">
           <span class="lib-card-stat">👁 ${b.views||0}</span>
