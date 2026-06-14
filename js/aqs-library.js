@@ -304,18 +304,24 @@ window.libUploadCoverPhoto=async function(uid,file){
   formData.append('file',file);
   formData.append('upload_preset',_CLD_THUMB_PRESET);
   formData.append('public_id','library/covers/'+uid);
-  const url=await _cldFetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
-  await window.libSaveProfile(uid,{coverURL:url});
-  return url;
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Cover upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{coverURL:data.secure_url});
+  return data.secure_url;
 };
 window.libUploadProfilePhoto=async function(uid,file){
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',_CLD_THUMB_PRESET);
   formData.append('public_id','library/avatars/'+uid);
-  const url=await _cldFetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
-  await window.libSaveProfile(uid,{photoURL:url});
-  return url;
+  const res=await fetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',{method:'POST',body:formData});
+  if(!res.ok) throw new Error('Photo upload failed');
+  const data=await res.json();
+  if(!data.secure_url) throw new Error('No URL returned');
+  await window.libSaveProfile(uid,{photoURL:data.secure_url});
+  return data.secure_url;
 };
 
 /* ── BOOKS ── */
@@ -502,32 +508,40 @@ window.libGetFollowingCount=async function(followerUid){
   }
 };
 
-/* ── FILE UPLOADS — Cloudinary (fetch-based, handles CORS cleanly) ── */
-async function _cldFetch(url, formData) {
-  let res;
-  try {
-    res = await fetch(url, { method: 'POST', body: formData });
-  } catch (netErr) {
-    throw new Error('Could not reach Cloudinary — check your internet connection. (' + netErr.message + ')');
-  }
-  let data;
-  try { data = await res.json(); } catch (_) { throw new Error('Invalid response from Cloudinary (status ' + res.status + ')'); }
-  if (!res.ok) {
-    throw new Error(data?.error?.message || ('Upload failed (' + res.status + ')'));
-  }
-  if (!data.secure_url) throw new Error('No URL returned from Cloudinary');
-  return data.secure_url;
+/* ── FILE UPLOADS (XHR — avoids "Failed to fetch" ambiguity) ── */
+function _cldXHR(url,formData){
+  return new Promise(function(resolve,reject){
+    var xhr=new XMLHttpRequest();
+    xhr.open('POST',url,true);
+    xhr.timeout=120000;
+    xhr.onload=function(){
+      if(xhr.status>=200&&xhr.status<300){
+        try{resolve(JSON.parse(xhr.responseText));}
+        catch(e){reject(new Error('Invalid response from Cloudinary'));}
+      } else {
+        var msg='Upload failed ('+xhr.status+')';
+        try{var d=JSON.parse(xhr.responseText);if(d.error&&d.error.message)msg=d.error.message;}catch(e){}
+        reject(new Error(msg));
+      }
+    };
+    xhr.onerror=function(){ reject(new Error('Network error — check your connection (XHR error)')); };
+    xhr.ontimeout=function(){ reject(new Error('Upload timed out — file may be too large or connection too slow')); };
+    xhr.send(formData);
+  });
 }
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
+  /* Use /auto/upload for documents — Cloudinary detects type; avoids /raw/upload CORS block */
   const resourceType=isThumb?'image':'auto';
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
   const formData=new FormData();
   formData.append('file',file);
   formData.append('upload_preset',preset);
   if(isThumb) formData.append('public_id','library/thumbnails/'+bookId);
-  return _cldFetch(url, formData);
+  const data=await _cldXHR(url,formData);
+  if(!data.secure_url) throw new Error('No URL returned from Cloudinary');
+  return data.secure_url;
 };
 
 window.libUploadParsed=async function(pages,bookId){
@@ -540,7 +554,9 @@ window.libUploadParsed=async function(pages,bookId){
   formData.append('file',blob,bookId+'_parsed.json');
   formData.append('upload_preset',_CLD_FILE_PRESET);
   formData.append('public_id','library/parsed/'+bookId);
-  return _cldFetch('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/raw/upload', formData);
+  const data=await _cldXHR('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/raw/upload',formData);
+  if(!data.secure_url) throw new Error('No URL returned for parsed content');
+  return data.secure_url;
 };
 
 /* ── AI ── */
