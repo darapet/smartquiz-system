@@ -161,7 +161,7 @@ body:has(.lib-page-bg)>*:not(.lib-page-bg){position:relative;z-index:1;}
 .lib-card-stat svg{opacity:.6;}
 
 /* ── SKELETON ────────────────────────────────────── */
-.lib-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:18px;}
+.lib-skeleton-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:18px;}
 .lib-skeleton-card{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
 .lib-skeleton-thumb{width:100%;aspect-ratio:3/4;background:rgba(255,255,255,.06);animation:lib-sk .9s ease infinite alternate;}
 .lib-skeleton-body{padding:12px;}

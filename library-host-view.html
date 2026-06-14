@@ -198,6 +198,7 @@
 <script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
+  function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   let _user = null;
   let _profile = null;
   let _books = [];
@@ -331,7 +332,7 @@
         <div class="lhv-comment-author">${c.displayName||'Anonymous'}</div>
         <div class="lhv-comment-time">${window.libFormatTime(c.createdAt)}</div>
       </div>
-      <div class="lhv-comment-text">${c.text}</div>
+      <div class="lhv-comment-text">${esc(c.text)}</div>
       <div class="lhv-comment-action-row">
         <button class="lhv-reply-toggle" onclick="toggleReplyArea('${c.id}',this)">↩ Reply</button>
       </div>
@@ -362,7 +363,7 @@
           ${r.isHost?`<span class="lhv-host-badge">HOST</span>`:''}
           <span style="font-size:.65rem;color:#475569;margin-left:auto">${window.libFormatTime(r.createdAt)}</span>
         </div>
-        <div class="lhv-reply-text">${r.text}</div>
+        <div class="lhv-reply-text">${esc(r.text)}</div>
       </div>`).join('');
   }
 

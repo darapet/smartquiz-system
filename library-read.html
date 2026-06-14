@@ -823,7 +823,7 @@ html,body{height:100%;overflow:hidden;}
             <div class="rdr-ci-author">${c.displayName||'Anonymous'}</div>
             <div class="rdr-ci-time">${window.libFormatTime(c.createdAt)}</div>
           </div>
-          <div class="rdr-ci-text">${c.text}</div>
+          <div class="rdr-ci-text">${esc(c.text)}</div>
           <div class="rdr-ci-actions">
             ${_user?`<button class="rdr-ci-reply-btn" onclick="toggleReply('${c.id}',this)">↩ Reply</button>`:''}
           </div>
@@ -858,7 +858,7 @@ html,body{height:100%;overflow:hidden;}
           <span class="rdr-reply-author${r.isHost?' host':''}">${r.displayName||'Anonymous'}</span>
           ${r.isHost?`<span class="rdr-host-badge">HOST</span>`:''}
         </div>
-        <div class="rdr-reply-text">${r.text}</div>
+        <div class="rdr-reply-text">${esc(r.text)}</div>
       </div>`;
     }).join('');
   }

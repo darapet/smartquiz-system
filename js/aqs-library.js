@@ -430,12 +430,15 @@ window.libGetHostComments=async function(uploaderUid){
   await _init();
   const books=await window.libGetMyBooks(uploaderUid);
   if(!books.length) return [];
+  const snaps=await Promise.all(books.map(function(book){
+    return getDocs(query(collection(_db,'library_comments'),where('bookId','==',book.id),limit(50)));
+  }));
   const result=[];
-  for(const book of books){
-    const snap=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',book.id),limit(50)));
+  snaps.forEach(function(snap,i){
+    const book=books[i];
     const comments=snap.docs.map(function(d){return{id:d.id,...d.data()};}).sort(function(a,b){const ta=a.createdAt?.toMillis?a.createdAt.toMillis():0;const tb=b.createdAt?.toMillis?b.createdAt.toMillis():0;return tb-ta;});
     if(comments.length) result.push({book,comments});
-  }
+  });
   return result;
 };
 
