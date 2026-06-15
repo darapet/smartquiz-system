@@ -2180,7 +2180,10 @@ async function actionSaveSettings(data) {
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
     var allowed = [
-        'mistral_keys','mistral_model','bg_music_url',
+        'groq_keys','groq_model',
+        'mistral_keys','mistral_model',
+        'hf_keys','hf_model',
+        'bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
@@ -2188,18 +2191,71 @@ async function actionSaveSettings(data) {
         'google_client_id','google_client_secret',
         'github_client_id','github_client_secret',
         'microsoft_client_id','microsoft_client_secret',
-        'yahoo_client_id','yahoo_client_secret'
+        'yahoo_client_id','yahoo_client_secret',
+        'quoteGroqKeys',
+        'lib_groq_keys',
+        'quiz_groq_keys',
+        'challenge_groq_keys',
+        'studyhub_groq_keys',
+        'textdocs_groq_keys',
+        'puzzle_groq_keys',
+        'quizstudio_groq_keys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
-    /* Trim and validate Mistral keys (up to 10) before saving */
+    /* Trim and validate Groq keys (up to 20) before saving */
+    if (Array.isArray(payload.groq_keys)) {
+        payload.groq_keys = payload.groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 20);
+    }
+    /* Trim and validate Mistral keys (up to 20) before saving */
     if (Array.isArray(payload.mistral_keys)) {
         payload.mistral_keys = payload.mistral_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 20; })
+            .slice(0, 20);
+    }
+    /* Trim and validate HuggingFace keys (up to 5) before saving */
+    if (Array.isArray(payload.hf_keys)) {
+        payload.hf_keys = payload.hf_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 10; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Quote Groq keys (up to 5) before saving */
+    if (Array.isArray(payload.quoteGroqKeys)) {
+        payload.quoteGroqKeys = payload.quoteGroqKeys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Library Groq keys (up to 10) before saving */
+    if (Array.isArray(payload.lib_groq_keys)) {
+        payload.lib_groq_keys = payload.lib_groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
             .slice(0, 10);
     }
+    /* Trim and validate feature-specific Groq keys (up to 10 each) */
+    ['quiz_groq_keys','challenge_groq_keys','studyhub_groq_keys',
+     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys'].forEach(function(field) {
+        if (Array.isArray(payload[field])) {
+            payload[field] = payload[field]
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.length > 20; })
+                .slice(0, 10);
+        }
+    });
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately merge saved keys into in-memory pool (hardcoded keys stay as fallback) */
+    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
+    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
+        var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
+        var _gMerged = payload.groq_keys.slice();
+        _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
+        window._AQS_GROQ_MASTER_KEYS = _gMerged;
+    }
+    if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
         var _mMerged = payload.mistral_keys.slice();
@@ -2207,6 +2263,30 @@ async function actionSaveSettings(data) {
         window._AQS_MISTRAL_MASTER_KEYS = _mMerged;
     }
     if (payload.mistral_model) window._AQS_MISTRAL_MODEL = payload.mistral_model;
+    if (Array.isArray(payload.hf_keys) && payload.hf_keys.length) {
+        var _hcHF = Array.isArray(window._AQS_HF_MASTER_KEYS) ? window._AQS_HF_MASTER_KEYS : [];
+        var _hfMerged = payload.hf_keys.slice();
+        _hcHF.forEach(function(k){ if (_hfMerged.indexOf(k) === -1) _hfMerged.push(k); });
+        window._AQS_HF_MASTER_KEYS = _hfMerged;
+    }
+    if (payload.hf_model) window._AQS_HF_MODEL = payload.hf_model;
+    /* Immediately load library keys into the dedicated library pool */
+    if (Array.isArray(payload.lib_groq_keys) && payload.lib_groq_keys.length) {
+        if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(payload.lib_groq_keys);
+    }
+    /* Immediately load feature-specific keys into their pools */
+    var _fpMap = {
+        quiz_groq_keys: 'quiz', challenge_groq_keys: 'challenge',
+        studyhub_groq_keys: 'studyhub', textdocs_groq_keys: 'textdocs',
+        puzzle_groq_keys: 'puzzle', quizstudio_groq_keys: 'quizstudio'
+    };
+    Object.keys(_fpMap).forEach(function(field) {
+        if (Array.isArray(payload[field]) && payload[field].length) {
+            if (typeof window.setFeatureGroqKeys === 'function') {
+                window.setFeatureGroqKeys(_fpMap[field], payload[field]);
+            }
+        }
+    });
     return { success: true, message: 'Settings saved.' };
 }
 
@@ -2386,9 +2466,12 @@ function _updateAqsGlobals(user, profile) {
                      'take-quiz.html','challenge.html'];
     var authPages = ['login.html', 'register.html'];
 
-    /* Auth guard: redirect to register.html if not signed in with a real account */
+    /* Auth guard: redirect to register.html if not signed in with a real account.
+       Uses a race between authStateReady() and a 10-second fallback so it never
+       hangs silently on Android WebView where IndexedDB can stall. */
     if (openPages.indexOf(page) === -1 && page !== '') {
-        auth.authStateReady().then(function() {
+        var _authGuardTimeout = new Promise(function(resolve) { setTimeout(resolve, 10000); });
+        Promise.race([auth.authStateReady(), _authGuardTimeout]).then(function() {
             var user = auth.currentUser;
             /* null = no session, isAnonymous = guest only — both must register */
             if (!user || user.isAnonymous) {
