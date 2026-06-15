@@ -29,14 +29,30 @@ a{text-decoration:none;color:inherit;}
 .sh-back{color:var(--muted);font-size:.8rem;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:rgba(255,255,255,.03);transition:all .18s;}
 .sh-back:hover{border-color:rgba(255,255,255,.15);color:var(--text);}
 
-/* TABS */
-.sh-tabs-wrap{background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);overflow-x:auto;-webkit-overflow-scrolling:touch;}
-.sh-tabs{display:flex;padding:0 16px;gap:0;min-width:max-content;}
-.sh-tab{padding:14px 18px;font-size:.83rem;font-weight:700;color:var(--muted);border:none;background:none;cursor:pointer;font-family:inherit;border-bottom:3px solid transparent;transition:all .18s;white-space:nowrap;}
-.sh-tab.active{color:var(--text);border-bottom-color:var(--accent);}
-.sh-tab:hover:not(.active){color:#94a3b8;}
-.sh-tab-ai-timer{position:relative;}
-.sh-tab-ai-timer::after{content:'NEW';position:absolute;top:6px;right:4px;font-size:.48rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;padding:1px 4px;border-radius:4px;letter-spacing:.06em;}
+/* HAMBURGER NAV */
+.sh-hdr{gap:12px;}
+.sh-hamburger{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;transition:background .18s;display:flex;flex-direction:column;gap:5px;justify-content:center;align-items:center;width:40px;height:40px;flex-shrink:0;}
+.sh-hamburger:hover{background:rgba(255,255,255,.08);}
+.sh-hamburger span{display:block;width:20px;height:2px;background:#94a3b8;border-radius:2px;transition:all .28s cubic-bezier(.4,0,.2,1);transform-origin:center;}
+.sh-hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.sh-hamburger.open span:nth-child(2){opacity:0;transform:scaleX(0);}
+.sh-hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.sh-hdr-center{display:flex;align-items:baseline;gap:4px;flex:1;}
+.sh-hdr-active-tab{font-size:.72rem;font-weight:700;color:var(--muted);margin-left:8px;padding:2px 8px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:20px;white-space:nowrap;}
+.sh-hdr-actions{display:flex;gap:8px;flex-shrink:0;}
+/* Dropdown nav */
+#sh-nav-dropdown{position:sticky;top:57px;z-index:99;background:#0d0e1f;border-bottom:1px solid var(--border);max-height:0;overflow:hidden;transition:max-height .3s cubic-bezier(.4,0,.2,1);}
+#sh-nav-dropdown.open{max-height:420px;}
+.sh-nav-items{padding:10px 0 14px;}
+.sh-nav-item{display:flex;align-items:center;gap:13px;padding:13px 22px;font-size:.9rem;font-weight:700;color:var(--muted);cursor:pointer;transition:all .18s;border-left:3px solid transparent;}
+.sh-nav-item:hover{background:rgba(255,255,255,.04);color:var(--text);}
+.sh-nav-item.active{color:#a5b4fc;border-left-color:var(--accent);background:rgba(99,102,241,.07);}
+.sh-nav-item .nav-icon{font-size:1.1rem;width:22px;text-align:center;flex-shrink:0;}
+.sh-nav-item .nav-label{flex:1;}
+.sh-nav-item .nav-badge{font-size:.55rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;padding:2px 6px;border-radius:20px;letter-spacing:.06em;}
+.sh-nav-divider{height:1px;background:var(--border);margin:8px 22px;}
+/* Keep old .sh-tab hidden for backward compat */
+.sh-tabs-wrap{display:none;}
 
 /* PANELS */
 .sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
@@ -407,23 +423,43 @@ a{text-decoration:none;color:inherit;}
 
 <!-- HEADER -->
 <header class="sh-hdr">
-  <div style="display:flex;align-items:baseline;gap:4px;">
+  <button class="sh-hamburger" id="sh-hamburger" onclick="shMenuToggle()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="sh-hdr-center">
     <div class="sh-logo">📚 AI Study Hub</div>
     <span class="sh-logo-ver">v3.0.0</span>
+    <span class="sh-hdr-active-tab" id="sh-hdr-active-tab">AI Notes</span>
   </div>
-  <a href="index.html" class="sh-back">🏠 Back to Home</a>
-  <a href="library.html" class="sh-back" style="background:#eef2ff;color:#4f46e5;border-color:#c7d2fe;">📖 Library</a>
+  <div class="sh-hdr-actions">
+    <a href="index.html" class="sh-back" title="Home">🏠</a>
+    <a href="library.html" class="sh-back" style="background:#eef2ff;color:#4f46e5;border-color:#c7d2fe;" title="Library">📖</a>
+  </div>
 </header>
 
-<!-- TABS -->
-<div class="sh-tabs-wrap">
-  <div class="sh-tabs">
-    <button class="sh-tab active" onclick="shTab('notes')">📄 AI Notes</button>
-    <button class="sh-tab" onclick="shTab('flashcards')">🗂️ Flashcards</button>
-    <button class="sh-tab" onclick="shTab('gpa')">📊 GPA Calculator</button>
-    <button class="sh-tab" onclick="shTab('timer')">⏱️ Study Timer</button>
-    <button class="sh-tab" onclick="shTab('exam')">📝 Mock Exam</button>
-    <button class="sh-tab sh-tab-ai-timer" onclick="shTab('aitimer')">🤖 AI Teacher</button>
+<!-- HAMBURGER DROPDOWN NAV -->
+<div id="sh-nav-dropdown">
+  <div class="sh-nav-items">
+    <div class="sh-nav-item active" data-tab="notes" onclick="shTab('notes');shMenuClose()">
+      <span class="nav-icon">📄</span><span class="nav-label">AI Study Notes</span>
+    </div>
+    <div class="sh-nav-item" data-tab="flashcards" onclick="shTab('flashcards');shMenuClose()">
+      <span class="nav-icon">🗂️</span><span class="nav-label">Flashcards</span>
+    </div>
+    <div class="sh-nav-item" data-tab="gpa" onclick="shTab('gpa');shMenuClose()">
+      <span class="nav-icon">📊</span><span class="nav-label">GPA Calculator</span>
+    </div>
+    <div class="sh-nav-item" data-tab="timer" onclick="shTab('timer');shMenuClose()">
+      <span class="nav-icon">⏱️</span><span class="nav-label">Study Timer</span>
+    </div>
+    <div class="sh-nav-item" data-tab="exam" onclick="shTab('exam');shMenuClose()">
+      <span class="nav-icon">📝</span><span class="nav-label">Mock Exam</span>
+    </div>
+    <div class="sh-nav-divider"></div>
+    <div class="sh-nav-item" data-tab="aitimer" onclick="shTab('aitimer');shMenuClose()">
+      <span class="nav-icon">🤖</span><span class="nav-label">AI Teacher</span>
+      <span class="nav-badge">PRO</span>
+    </div>
   </div>
 </div>
 
@@ -1043,13 +1079,41 @@ a{text-decoration:none;color:inherit;}
    AI STUDY HUB v3.0.0 — Complete Engine
 ══════════════════════════════════════════════════ */
 
-/* ── TABS ── */
+/* ── NAV / TABS ── */
+var _SH_TAB_LABELS = {
+  notes:'AI Notes', flashcards:'Flashcards', gpa:'GPA Calculator',
+  timer:'Study Timer', exam:'Mock Exam', aitimer:'AI Teacher'
+};
 function shTab(name){
-  document.querySelectorAll('.sh-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('sh-panel-'+name).classList.add('active');
-  event.target.classList.add('active');
+  var panel = document.getElementById('sh-panel-'+name);
+  if(panel) panel.classList.add('active');
+  /* update nav items */
+  document.querySelectorAll('.sh-nav-item').forEach(function(el){
+    el.classList.toggle('active', el.getAttribute('data-tab')===name);
+  });
+  /* legacy sh-tab active */
+  document.querySelectorAll('.sh-tab').forEach(t=>t.classList.remove('active'));
+  var leg = document.querySelector('.sh-tab[onclick*="''+name+''"]');
+  if(leg) leg.classList.add('active');
+  /* update header badge */
+  var badge = document.getElementById('sh-hdr-active-tab');
+  if(badge) badge.textContent = _SH_TAB_LABELS[name] || name;
   if(name !== 'aitimer') aitCleanupOnLeave();
+}
+function shMenuToggle(){
+  var d=document.getElementById('sh-nav-dropdown');
+  var h=document.getElementById('sh-hamburger');
+  if(!d||!h) return;
+  var isOpen=d.classList.contains('open');
+  if(isOpen){ d.classList.remove('open'); h.classList.remove('open'); }
+  else { d.classList.add('open'); h.classList.add('open'); }
+}
+function shMenuClose(){
+  var d=document.getElementById('sh-nav-dropdown');
+  var h=document.getElementById('sh-hamburger');
+  if(d) d.classList.remove('open');
+  if(h) h.classList.remove('open');
 }
 
 /* ── TOAST ── */
@@ -3127,7 +3191,5 @@ async function aitMicTranscribe(blob, target){
   }
 })();
 </script>
-<script src="js/aqs-study.js"></script>
-<script src="js/aqs-ait-pro.js"></script>
 </body>
 </html>
