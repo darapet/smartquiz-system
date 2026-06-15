@@ -36,26 +36,19 @@
         'Today\'s date is ' + TODAY + '. ' +
 
         '\n\n## LANGUAGE & TONE RULES:' +
-        '\n- MIRROR THE USER\'S LANGUAGE AND TONE completely — this is your single most important communication rule.' +
-        '\n- Detect the user\'s language from their message and reply in that SAME language.' +
-        '\n\n### Nigerian Languages & Dialects — respond natively if detected:' +
-        '\n- Nigerian Pidgin English: "abeg", "wetin", "how e dey", "oya", "wahala", "na so" → reply in full Pidgin' +
-        '\n- Yoruba: "bawo ni", "se o wa", "eku ojumo", "mo fe", "se e gbo" → reply fully in Yoruba' +
-        '\n- Igbo: "kedu", "i nwere ike", "nnoo", "gwa m", "ka anyi" → reply fully in Igbo' +
-        '\n- Hausa: "yaya dai", "sannu", "ina kwana", "me kike", "don Allah" → reply fully in Hausa' +
-        '\n- Efik/Ibibio: "mfon", "odudu", "ami" → reply in Efik/Ibibio' +
-        '\n- Ijaw: "wo", "egbesu" → reply in Ijaw' +
-        '\n\n### Other African Languages — respond natively if detected:' +
-        '\n- Twi (Ghana): "ɛte sɛn", "medaase", "akwaaba" → reply in Twi' +
-        '\n- Swahili: "habari", "asante", "karibu", "mambo" → reply in Swahili' +
-        '\n- Amharic: respond in Amharic if detected' +
-        '\n- Zulu/Xhosa: respond in Zulu or Xhosa if detected' +
-        '\n- French (West Africa): reply in French if user writes in French' +
-        '\n\n### Tone matching:' +
-        '\n- Casual/informal in any language → match that casual energy' +
-        '\n- Formal in any language → be formal and structured' +
-        '\n- Mix of English + dialect (code-switching) → match that same code-switching style' +
-        '\n- NEVER force formal standard English on a casual user — it feels cold and robotic.' +
+        '\n- DEFAULT LANGUAGE: Always reply in clear, professional Standard English unless the user explicitly writes in another language.' +
+        '\n- ONLY switch to another language when the user\'s message is clearly and predominantly written in that language — not just because they used one or two casual words.' +
+        '\n- A Nigerian user writing casual English (e.g. "pls help me", "how far", "abeg") should receive a response in Standard English, not Pidgin.' +
+        '\n\n### Non-English languages — respond natively ONLY when the user writes the full message in that language:' +
+        '\n- Nigerian Pidgin English: reply in Pidgin ONLY if the majority of the message is in Pidgin (e.g. "wetin be the answer to dis question, abeg explain am well")' +
+        '\n- Yoruba: reply fully in Yoruba ONLY if user writes fully in Yoruba' +
+        '\n- Igbo: reply fully in Igbo ONLY if user writes fully in Igbo' +
+        '\n- Hausa: reply fully in Hausa ONLY if user writes fully in Hausa' +
+        '\n- French, Swahili, Twi, or other African languages: reply in that language ONLY if user writes fully in it' +
+        '\n\n### Tone matching (within Standard English):' +
+        '\n- Casual/informal English → match that casual energy but keep English' +
+        '\n- Formal English → be formal and structured' +
+        '\n- NEVER default to Pidgin or dialect — the user will clearly indicate if they want that.' +
         '\n- The ONLY exception: financial data, rates, and factual information must always be clearly formatted and accurate, regardless of tone.' +
 
         '\n\n## YOUR CAPABILITIES:' +
@@ -526,10 +519,11 @@
             if (typeof window.renderMathInElement !== 'undefined') {
                 window.renderMathInElement(containerEl, {
                     delimiters: [
-                        { left: '$$', right: '$$', display: true  },
-                        { left: '$',  right: '$',  display: false }
-                    ],
-                    throwOnError: false
+                        { left: '$$',  right: '$$',  display: true  },
+                        { left: '$',   right: '$',   display: false },
+                        { left: '\\[', right: '\\]', display: true  },
+                        { left: '\\(', right: '\\)', display: false }
+                    ]
                 });
             }
         } catch (e) {}
@@ -677,6 +671,32 @@
 
         if (role === 'assistant') {
             applyMathAndHighlight(wrap);
+            var msgContent = wrap.querySelector('.dts-msg-content');
+            if (msgContent) {
+                var copyBtn = document.createElement('button');
+                copyBtn.className = 'dts-msg-copy-btn';
+                copyBtn.textContent = '📋 Copy';
+                copyBtn.addEventListener('click', function() {
+                    var bubble = wrap.querySelector('.dts-msg-bubble');
+                    var text = bubble ? (bubble.innerText || bubble.textContent || '') : content;
+                    function doFallback() {
+                        var ta = document.createElement('textarea');
+                        ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                        document.body.appendChild(ta); ta.focus(); ta.select();
+                        try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
+                        catch(e2) { copyBtn.textContent = '❌ Error'; }
+                        document.body.removeChild(ta);
+                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                    }
+                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                        navigator.clipboard.writeText(text).then(function() {
+                            copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
+                            setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                        }).catch(doFallback);
+                    } else { doFallback(); }
+                });
+                msgContent.appendChild(copyBtn);
+            }
         }
 
         messages.appendChild(wrap);
@@ -718,6 +738,33 @@
                 setTimeout(tick,DELAY);
             } else {
                 applyMathAndHighlight(wrap);
+                /* Add copy button after streaming finishes */
+                var msgContent2 = wrap.querySelector('.dts-msg-content');
+                if (msgContent2 && !msgContent2.querySelector('.dts-msg-copy-btn')) {
+                    var copyBtn2 = document.createElement('button');
+                    copyBtn2.className = 'dts-msg-copy-btn';
+                    copyBtn2.textContent = '📋 Copy';
+                    copyBtn2.addEventListener('click', function() {
+                        var bubble2 = wrap.querySelector('.dts-msg-bubble');
+                        var text2 = bubble2 ? (bubble2.innerText || bubble2.textContent || '') : acc;
+                        function doFallback2() {
+                            var ta = document.createElement('textarea');
+                            ta.value = text2; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                            document.body.appendChild(ta); ta.focus(); ta.select();
+                            try { document.execCommand('copy'); copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied'); }
+                            catch(e2) { copyBtn2.textContent = '❌ Error'; }
+                            document.body.removeChild(ta);
+                            setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                        }
+                        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                            navigator.clipboard.writeText(text2).then(function() {
+                                copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied');
+                                setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
+                            }).catch(doFallback2);
+                        } else { doFallback2(); }
+                    });
+                    msgContent2.appendChild(copyBtn2);
+                }
                 scrollToBottom();
                 if (onDone) onDone();
             }
@@ -729,7 +776,7 @@
     /* ═══════════════════════════════════════════════════════════
        SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
-    async function sendMessage(text) {
+    async function sendMessage(text, _retryCount) {
         text = (text || '').trim();
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
@@ -858,7 +905,9 @@
                              '5. NEVER say you cannot browse the internet — you just did.';
         }
 
-        var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
+        /* Trim to last 20 messages to prevent token explosion on long sessions */
+        var histSlice = chatHistory.length > 20 ? chatHistory.slice(chatHistory.length - 20) : chatHistory.slice();
+        var messages = [{ role: 'system', content: dynamicSystem }].concat(histSlice);
 
         if (typeof window.groqFetch !== 'function') {
             showTyping(false);
@@ -868,52 +917,82 @@
             return;
         }
 
-        /* ── Step 3: Call Groq ── */
-        window.groqFetch({
-            model:       'llama-3.3-70b-versatile',
-            messages:    messages,
-            max_tokens:  3000,
-            temperature: 0.7
-        }).then(function (res) {
-            return res.json();
-        }).then(function (data) {
-            showTyping(false);
-            if (data.error) {
-                var errMsg = data.error.message || 'API error.';
-                if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
-                    errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
-                } else if (errMsg.indexOf('429') !== -1) {
-                    errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
-                }
-                appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
-            } else {
-                var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
-                    ? data.choices[0].message.content
-                    : 'Sorry, I could not generate a response. Please try again.';
-
-                /* Append web source badge if web was searched */
-                if (webSourceTag) {
-                    reply = reply + '\n\n---\n' + webSourceTag;
-                }
-
-                chatHistory.push({ role: 'assistant', content: reply });
-                streamReply(reply, function () {
-                    saveSession();
-                    renderHistoryList();
-                    if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
-                        showQuizImportBar(reply);
+        /* ── Step 3: Call Groq — wrapped so rate-limit auto-retry stays within this turn ── */
+        function _attemptCall(attemptN) {
+            window.groqFetch({
+                model:       'llama-3.3-70b-versatile',
+                messages:    messages,
+                max_tokens:  1500,
+                temperature: 0.7
+            }).then(function (res) {
+                return res.json();
+            }).then(function (data) {
+                showTyping(false);
+                if (data.error) {
+                    var errMsg = data.error.message || 'API error.';
+                    if (errMsg.indexOf('401') !== -1 || errMsg.indexOf('invalid_api_key') !== -1) {
+                        errMsg += ' \u2014 Your Groq API key may be invalid or missing.';
+                    } else if (errMsg.indexOf('429') !== -1) {
+                        errMsg += ' \u2014 Rate limit reached. Try again in a moment.';
                     }
-                });
-            }
-            isSending = false;
-            setSendState(false);
-        }).catch(function (err) {
-            showTyping(false);
-            appendMessage('assistant', '\u26A0\uFE0F Connection error. Please check your internet and try again.');
-            console.error('[dts] Groq error:', err);
-            isSending = false;
-            setSendState(false);
-        });
+                    appendMessage('assistant', '\u26A0\uFE0F ' + errMsg);
+                } else {
+                    var reply = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content)
+                        ? data.choices[0].message.content
+                        : 'Sorry, I could not generate a response. Please try again.';
+
+                    /* Append web source badge if web was searched */
+                    if (webSourceTag) {
+                        reply = reply + '\n\n---\n' + webSourceTag;
+                    }
+
+                    chatHistory.push({ role: 'assistant', content: reply });
+                    streamReply(reply, function () {
+                        saveSession();
+                        renderHistoryList();
+                        if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
+                            showQuizImportBar(reply);
+                        }
+                    });
+                }
+                isSending = false;
+                setSendState(false);
+            }).catch(function (err) {
+                var errMsg = (err && err.message) ? err.message : String(err || '');
+                /* ── App cold-start: Firebase may not have loaded keys yet — retry up to 2× ── */
+                if ((errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) && (_retryCount || 0) < 2) {
+                    showTyping(true, 'Connecting to AI\u2026 please wait');
+                    isSending = false;
+                    setSendState(false);
+                    setTimeout(function () { sendMessage(text, (_retryCount || 0) + 1); }, 2200);
+                    return;
+                }
+                /* ── Rate-limit: auto-retry once after 65 s — user never has to re-send ── */
+                if ((errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) && attemptN < 1) {
+                    showTyping(true, '\u23F3 Rate limited \u2014 auto-retrying in 65 seconds\u2026');
+                    setTimeout(function () { _attemptCall(1); }, 65000);
+                    return;
+                }
+                showTyping(false);
+                var displayMsg;
+                if (errMsg.indexOf('No AI keys') !== -1 || errMsg.indexOf('not configured') !== -1) {
+                    displayMsg = '\u26A0\uFE0F No AI keys are set up yet. Ask the admin to add Groq, Mistral, or HuggingFace keys in Settings \u2192 AI Keys.';
+                } else if (errMsg.indexOf('busy') !== -1 || errMsg.indexOf('rate-limit') !== -1 || errMsg.indexOf('cooling') !== -1) {
+                    displayMsg = '\u26A0\uFE0F All AI keys are busy right now. Please wait 1 minute and try again.';
+                } else if (errMsg.indexOf('Failed to fetch') !== -1 || errMsg.indexOf('NetworkError') !== -1 || errMsg.indexOf('net::') !== -1) {
+                    displayMsg = '\u26A0\uFE0F Connection error. Please check your internet and try again.';
+                } else if (errMsg) {
+                    displayMsg = '\u26A0\uFE0F ' + errMsg;
+                } else {
+                    displayMsg = '\u26A0\uFE0F Something went wrong. Please try again.';
+                }
+                appendMessage('assistant', displayMsg);
+                if(window._AQS_ADMIN_MODE){console.error('[dts] AI error:',err);}else{window._aqsAIErrorLog=window._aqsAIErrorLog||[];window._aqsAIErrorLog.unshift({t:new Date().toISOString(),level:'error',msg:'Studio AI: '+(err&&err.message||err)});}
+                isSending = false;
+                setSendState(false);
+            });
+        }
+        _attemptCall(0);
     }
 
     function setSendState(busy) {
@@ -1097,6 +1176,8 @@
     }
 
     function startVoiceListening() {
+        /* Guard: never start mic while AI is speaking — prevents echo */
+        if (voiceAiTalking) return;
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
             setVoiceState('error');
@@ -1196,7 +1277,14 @@
             setVoiceTranscript('');
             voiceAiTalking = true;
             speakStudioChunked(spoken, function () {
-                if (voiceActive) setVoiceState('idle');
+                voiceAiTalking = false;
+                if (voiceActive) {
+                    setVoiceState('idle');
+                    /* Auto-restart mic after AI finishes — continuous conversation loop, no echo */
+                    setTimeout(function () {
+                        if (voiceActive && !voiceAiTalking) startVoiceListening();
+                    }, 450);
+                }
             });
         }).catch(function () {
             showTyping(false);
@@ -1232,7 +1320,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TTS — CHUNKED PLAYBACK (browser speech synthesis)
+       TTS — CHUNKED PLAYBACK (Pollinations audio API)
     ═══════════════════════════════════════════════════════════ */
     function splitSpeechChunks(text, maxLen) {
         var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
@@ -1249,8 +1337,18 @@
         return chunks.filter(function (c) { return c.length > 0; });
     }
 
-    function fetchStudioAudioBlob() {
-        return Promise.reject(new Error('External TTS not available'));
+    function fetchStudioAudioBlob(text, voices, timeout) {
+        var voice = (voices && voices[0]) || 'onyx';
+        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
+                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
+        return new Promise(function (resolve, reject) {
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
+            fetch(url, { signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+                .then(resolve)
+                .catch(function (e) { clearTimeout(timer); reject(e); });
+        });
     }
 
     function speakWithBrowserFallback(text, onDone) {
@@ -1533,6 +1631,8 @@
                 } else if (state === 'speaking') {
                     stopAiSpeech();
                     setVoiceState('idle');
+                    /* Interrupt: mic turns back on so user can continue immediately */
+                    setTimeout(function () { if (voiceActive) startVoiceListening(); }, 300);
                 }
             });
         }
