@@ -76,6 +76,7 @@ window.AQS = {
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
+  <script src="js/aqs-nav-loader.js"></script>
 </head>
 <body>
 <header class="aqs-site-header">
@@ -87,6 +88,8 @@ window.AQS = {
         <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
         <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
         <a href="study.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
+    
+        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
     </nav>
 </header>
 <div class="aqs-hdr-drawer" id="udash-drawer">
@@ -95,6 +98,8 @@ window.AQS = {
     <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
     <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
     <a href="study.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
+
+    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
 </div>
 <script>(function(){var b=document.getElementById('udash-hamburger'),d=document.getElementById('udash-drawer');if(b&&d){b.addEventListener('click',function(){d.classList.toggle('open');b.classList.toggle('open');});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');}});}}());</script>
 
@@ -159,7 +164,11 @@ window.AQS = {
       <div class="udash-quick-name">Study AI</div>
       <div class="udash-quick-desc">Study any subject with AI help</div>
     </a>
-    <!-- Image Generator removed -->
+    <a href="image-gen.html" class="udash-quick-card">
+      <div class="udash-quick-icon">🖼️</div>
+      <div class="udash-quick-name">Image Creator</div>
+      <div class="udash-quick-desc">Generate AI images with FLUX</div>
+    </a>
   </div>
 
 
