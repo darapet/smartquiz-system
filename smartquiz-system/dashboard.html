@@ -51,6 +51,7 @@ window.AQS = {
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js"></script>
+  <script src="js/aqs-nav-loader.js"></script>
 </head>
 <body>
 <header class="aqs-site-header">
@@ -60,12 +61,16 @@ window.AQS = {
         <a href="studio.html" class="aqs-btn aqs-btn-sm">⬡ xzily Ai</a>
         <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
         <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
+    
+        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
     </nav>
     </header>
 <div class="aqs-hdr-drawer" id="dash-drawer">
     <a href="studio.html" class="aqs-btn aqs-btn-sm">⬡ xzily Ai</a>
     <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
     <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
+
+    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
 </div>
 <script>(function(){var b=document.getElementById('dash-hamburger'),d=document.getElementById('dash-drawer');if(b&&d){b.addEventListener('click',function(){d.classList.toggle('open');b.classList.toggle('open');});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');}});}}());</script>
 
