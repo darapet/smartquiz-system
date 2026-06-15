@@ -1046,19 +1046,20 @@ function summonStartSetup() {
         if (femaleVoice) VS.voice = femaleVoice;
     }
 
-    var welcomeMsg =
-        'Welcome to Darapet Learning System. ' +
-        'I am your personal AI tutor. I am here to teach you from the very beginning — ' +
-        'starting with definitions, types, and real examples, just like a real classroom teacher. ' +
-        'I will now play ' + n + ' different voice samples. ' +
-        'Please listen carefully and choose the voice you would like me to use throughout your sessions.';
+    /* Show Tesla full-screen intro overlay */
+    if (window.aitProOnShow) window.aitProOnShow();
 
-    summonSetAiText(welcomeMsg);
-    summonSpeak(welcomeMsg, function () {
-        VS.voiceIndex = savedIdx;
-        VS._demoIdx = 0;
-        VS._setupStep = 1;
-        setTimeout(function () { _summonDemoNextVoice(0); }, 400);
+    /* Step 0 — ask user to name the AI teacher */
+    VS._setupStep = 0;
+    VS._savedVoiceIdx = savedIdx;
+    var nameQ = 'Hello! I am your personal AI tutor for Darapet Learning System. ' +
+                'Before we begin, what would you like to name me? ' +
+                'You can call me anything — Professor, Aria, Max, or any name you choose. ' +
+                'Say it now!';
+    summonSetAiText(nameQ);
+    summonSpeak(nameQ, function () {
+        summonSetState('listening');
+        if (!_IS_MOBILE_APP) summonStartListening();
     });
 }
 
@@ -1084,6 +1085,8 @@ function _summonDemoNextVoice(idx) {
         }
         gridHtml += '</div></div>';
         summonSetAiText(gridHtml);
+        /* Mirror voice grid in Tesla overlay */
+        if (window.aitProOnVoiceGrid) window.aitProOnVoiceGrid(voices);
         summonSpeak(pickMsg, function () {
             summonSetState('listening');
             if (!_IS_MOBILE_APP) summonStartListening();
@@ -1160,6 +1163,23 @@ function _summonPlayDemoVoice(idx, text, onDone) {
 
 function summonHandleSetup(q) {
     var voices = VS._demoVoices;
+
+    /* Step 0 — user names the AI */
+    if (VS._setupStep === 0) {
+        var aiNameRaw = q.trim().replace(/[^a-zA-Z0-9\s\-'\.]/g, '').trim();
+        VS.aiName = aiNameRaw || 'Tutor';
+        VS._setupStep = 1;
+        var n0 = voices ? voices.length : 5;
+        var ackMsg = 'Great! I will be known as ' + VS.aiName + '. ' +
+                     'Now I will play ' + n0 + ' different voice samples. ' +
+                     'Listen carefully and choose the voice you prefer.';
+        summonSetAiText(ackMsg);
+        return summonSpeak(ackMsg, function () {
+            VS.voiceIndex = (VS._savedVoiceIdx !== undefined) ? VS._savedVoiceIdx : -1;
+            VS._demoIdx = 0;
+            setTimeout(function () { _summonDemoNextVoice(0); }, 400);
+        });
+    }
 
     /* Step 2 — user picks a voice by number */
     if (VS._setupStep === 2) {
@@ -1248,6 +1268,7 @@ function summonHandleSetup(q) {
 
         summonSaveSettings();
         VS._inSetup = false; VS._setupDone = true;
+        if (window.aitProOnSetupDone) window.aitProOnSetupDone();
 
         var topicLine = S.title
             ? ' I can see you are studying "' + S.title + '". Excellent choice — let us dive right in!'
@@ -2176,6 +2197,8 @@ function summonMicTranscribe() {
     })
     .then(function (data) {
         var transcript = (data.text || '').trim();
+        /* Filter filler words and immediate repetitions */
+        if (transcript && window.aitProFilterText) transcript = window.aitProFilterText(transcript);
         if (!transcript) {
             summonSetTranscript('⚠️ No speech detected. Try speaking again.');
             summonSetState('listening');
@@ -2204,6 +2227,7 @@ function summonSetState(state) {
         ? {idle:'XZILY AI', listening:'Type your question ↓', thinking:'Thinking…', speaking:'Speaking…'}
         : {idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
     if (txt) txt.textContent = labels[state] || 'XZILY AI';
+    if (window.aitProOnState) window.aitProOnState(state);
 }
 
 function summonToggle() { if (VS.active) summonHide(); else summonShow(); }
@@ -2235,6 +2259,7 @@ function summonSetTranscript(text) {
     /* Shows what the user just said as a small "You said:" strip */
     var el = document.getElementById('std-summon-transcript');
     if (el) el.textContent = text ? '🎙 You: ' + text : '';
+    if (window.aitProOnTranscript) window.aitProOnTranscript(text);
 }
 
 function summonSetAiText(text) {
@@ -2262,6 +2287,7 @@ function summonSetAiText(text) {
     }
     /* Auto-scroll to bottom so latest text is visible */
     el.scrollTop = el.scrollHeight;
+    if (window.aitProOnAiText) window.aitProOnAiText(text);
 }
 
 function summonHide() {
@@ -2681,6 +2707,17 @@ function stdVoiceMicTranscribe() {
 /* ── EXPOSE INTERNALS NEEDED BY INLINE onclick HANDLERS ─────── */
 /* FIX: functions inside an IIFE are not global — expose only what onclick HTML needs */
 window._stdRetry = loadChapterContent;
+
+/* Expose interrupt function for the Pro interrupt button */
+window._summonInterrupt = function () {
+    summonStopQueue();
+    _summonAbortStream();
+    summonSetState('listening');
+    if (!_IS_MOBILE_APP) setTimeout(summonStartListening, 300);
+};
+
+/* Expose openTest so the Pro exam mode chooser can wrap it */
+window._stdOpenTestOrig = function () { openTest(); };
 
 /* ── TESLA SETUP UI — GLOBAL HANDLERS ───────────────────────── */
 window._summonPickVoiceUI = function (n) {
