@@ -19,6 +19,8 @@
         html,body{overflow:hidden;height:100vh}
         #dts-app{display:flex;flex-direction:column;overflow:hidden}
         #dts-main{flex:1;overflow:hidden;position:relative;padding-bottom:var(--dts-footer-h,80px)}
+        /* FIX: welcome overlay must fill parent so suggestion buttons are always clickable */
+        .dts-welcome{inset:0!important;padding-bottom:28px!important}
         .dts-footer{left:var(--aqs-sidebar-w,260px)!important}
         @media(max-width:768px){.dts-footer{left:0!important}}
         .dts-history-item.active{background:rgba(99,102,241,0.3);color:white}
@@ -141,6 +143,7 @@
   });
 })();
 </script>
+  <script src="js/aqs-nav-loader.js"></script>
 </head>
 <body class="dts-body aqs-full-page-body">
 
@@ -157,7 +160,7 @@
         </div>
         <div class="aqs-sidebar-logo-text">
             <div class="aqs-sidebar-logo-name">xzily AI</div>
-            <div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY</div>
+            <div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY <span style="font-size:.55rem;font-weight:700;background:rgba(99,102,241,0.2);color:#a5b4fc;border-radius:4px;padding:1px 5px;margin-left:4px;letter-spacing:.03em;">v3.0.0</span></div>
         </div>
     </div>
 
@@ -179,6 +182,12 @@
         </a>
         <a href="study.html" class="aqs-sidebar-link ">
             <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></span>AI Study
+        </a>
+        <a href="studyhub.html" class="aqs-sidebar-link " style="color:#6366f1;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></span>Study Hub
+        </a>
+        <a href="library.html" class="aqs-sidebar-link " style="color:#a5b4fc;font-weight:700;">
+            <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></span>Library
         </a>
         <a href="tts.html" class="aqs-sidebar-link ">
             <span class="aqs-sidebar-link-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg></span>Text to Speech
@@ -284,7 +293,7 @@
 var DTS_CONFIG = {
     ajax_url:'',nonce:'',public_nonce:'',groq_key:'',
     is_logged_in:true,is_host:true,user_name:'User',plugin_url:'./',
-    studio_url:'studio.html',imagegen_url:'',
+    studio_url:'studio.html',imagegen_url:'image-gen.html',
     imageedit_url:'image-editor.html',docsgen_url:'docs-gen.html',
     tts_url:'studio.html',create_url:'create-quiz.html',challenge_url:'challenge.html'
 };
@@ -340,6 +349,8 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
     <div class="dts-drawer-empty" id="dts-history-empty">No conversations yet</div>
   </div>
 </div>
+
+
 </body>
 <script src="js/median-bridge.js"></script>
 </html>
