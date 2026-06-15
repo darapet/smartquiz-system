@@ -970,12 +970,12 @@
 
   /* ── AI calls — Groq key pool ───────────────────────────────── */
   function callAI(prompt, maxTokens) {
-    /* Safety caps — avoids HTTP 413 (Groq rejects oversized prompts).
-       Prompt capped at 5000 chars (~1250 tokens); output up to 4000 tokens.
-       Total request stays well within Groq/Mistral per-request limits. */
-    var safeMax = Math.min(maxTokens || 2000, 4000);
-    var wasTrimmed = prompt.length > 5000;
-    var safePrompt = wasTrimmed ? prompt.slice(0, 5000) + '\n\n[Content trimmed to fit AI limit — split long documents into smaller sections for better results]' : prompt;
+    /* Safety caps — Groq/Mistral supports up to 8192 output tokens.
+       Prompt capped at 10000 chars to avoid HTTP 413 on very large inputs.
+       For AI Write, the prompt is mostly instructions so 10000 is safe. */
+    var safeMax = Math.min(maxTokens || 2000, 8000);
+    var wasTrimmed = prompt.length > 10000;
+    var safePrompt = wasTrimmed ? prompt.slice(0, 10000) + '\n\n[Content trimmed to fit AI limit — split long documents into smaller sections for better results]' : prompt;
     if (wasTrimmed) wpShowTruncToast();
     var messages = [{ role: 'user', content: safePrompt }];
     wpSetAIStatus('working', 'AI is working…');
@@ -1171,8 +1171,9 @@
     wpIsProcessing = true;
     if (btn) { btn.disabled = true; btn.innerHTML = '<span class="wp-spin">⟳</span> Formatting…'; }
     hideHint('wp-ai-hint');
-    /* Scale max tokens: cap at 4000 to stay within Groq per-request limits */
-    var fmtMaxTokens = Math.min(4000, Math.max(2000, Math.round(pages * 600 + text.length / 10)));
+    /* Scale max tokens: 1 A4 page ≈ 500 words ≈ 700 tokens with HTML overhead.
+       Cap at 8000 (Groq/Mistral max) to allow large multi-page documents. */
+    var fmtMaxTokens = Math.min(8000, Math.max(2000, Math.round(pages * 700 + text.length / 8)));
 
     var prompt = 'You are an expert document formatter. Convert the text below into professional, well-structured HTML. Your ONLY job is to FORMAT — preserve every single word, sentence, and paragraph exactly as given.\n\n' +
       'STEP 1 — TYPE CHECK: Does the text fit a "' + dtype + '"? If clearly not, reply ONLY with: MISMATCH:[one sentence why, plus a better document type suggestion]\n\n' +
@@ -1254,9 +1255,10 @@
     var ds     = wpGetDocSettings();
     var btn    = document.getElementById('wp-write-btn');
     var pageLabel = unlimited ? 'Unlimited (as long as needed)' : (pages < 1 ? '½ page' : pages + (pages === 1 ? ' page' : ' pages'));
-    /* Tokens: A4 page ≈ 450 words ≈ 600 tokens (with HTML); cap at 6000 */
-    var strictWords = unlimited ? null : Math.round(pages * 450);
-    var aiMaxTokens = unlimited ? 6000 : Math.min(6000, Math.max(2000, Math.round(pages * 600) + 400));
+    /* Tokens: A4 page ≈ 500 words ≈ 700 tokens with HTML markup overhead.
+       Cap at 8000 (Groq/Mistral max). For large docs the AI must fill every page. */
+    var strictWords = unlimited ? null : Math.round(pages * 500);
+    var aiMaxTokens = unlimited ? 8000 : Math.min(8000, Math.max(2000, Math.round(pages * 700) + 500));
     var sectionCount = unlimited ? 6 : Math.max(2, Math.round(pages * 1.5));
 
     wpIsProcessing = true;
@@ -1264,30 +1266,65 @@
     hideHint('wp-write-hint');
 
     var aiPrompt = 'You are a professional document writer. Write a ' + dtype + ' with a ' + tone + ' tone.\n\n' +
-      '━━━ STRICT LENGTH RULE (MANDATORY) ━━━\n' +
+      '━━━ STRICT LENGTH RULE (NON-NEGOTIABLE) ━━━\n' +
       (unlimited
-        ? 'Length: Write a complete, thorough document. Cover the topic fully.\n'
-        : 'Required length: ' + pageLabel + ' of A4 content.\n' +
-          'Target word count: approximately ' + strictWords + ' words of body text.\n' +
-          'HARD LIMIT: Do NOT write more than ' + Math.round(strictWords * 1.1) + ' words total.\n' +
-          'An A4 page holds ~450 words. Stop when you reach the word limit.\n') +
-      '• Include ' + sectionCount + ' major sections\n' +
-      '• Write a Conclusion at the end\n\n' +
+        ? 'Length: Write a complete, thorough document. Cover the topic fully across all sections.\n'
+        : 'Required length: EXACTLY ' + pageLabel + ' of A4 content.\n' +
+          'Target word count: MINIMUM ' + strictWords + ' words — you MUST reach this.\n' +
+          'MAXIMUM allowed: ' + Math.round(strictWords * 1.15) + ' words.\n' +
+          'One A4 page = ~500 words. You must write enough to fill ' + pages + ' full pages.\n' +
+          'DO NOT stop early. DO NOT summarize or skip sections. Write ALL ' + pages + ' pages fully.\n' +
+          'If you are close to your token limit, KEEP WRITING — finish every section before stopping.\n') +
+      '• Include ' + sectionCount + ' major sections with full, detailed body paragraphs\n' +
+      '• Each section must have at least 2–3 paragraphs of substantial content\n' +
+      '• Write a Conclusion section at the very end\n\n' +
       '━━━ ABSOLUTE OUTPUT RULES ━━━\n' +
       '✦ Output ONLY raw HTML — no markdown, no backticks, no code fences, no preamble\n' +
       '✦ Use ONLY: h1 h2 h3 h4 p strong em u ul ol li blockquote table thead tbody tr th td hr\n' +
       '✦ NO html/head/body/style/script/div/span tags\n' +
-      '✦ Start immediately with <h1> — no text before or after the HTML\n\n' +
+      '✦ Start immediately with <h1> — no text before or after the HTML\n' +
+      '✦ Every paragraph must be wrapped in <p> tags — never bare text\n\n' +
       '━━━ STRUCTURE ━━━\n' +
-      '• <h1> title • <h2> major sections • <h3> sub-sections\n' +
-      '• <p> ALL body text • <strong> key terms\n' +
-      '• <ul>/<ol> lists • <blockquote> quotes • <table> data\n\n' +
+      '• <h1> document title\n' +
+      '• <h2> each major section heading\n' +
+      '• <h3> sub-sections inside major sections\n' +
+      '• <p> ALL body text — write detailed, thorough paragraphs\n' +
+      '• <strong> key terms • <ul>/<ol> lists • <blockquote> quotes • <table> data\n\n' +
       'REQUEST: ' + prompt + '\n' +
       wpDocSettingsPrompt(ds);
+
+    /* Helper: check if content seems complete (has a conclusion or ending tag) */
+    function _looksComplete(html) {
+      var lower = html.toLowerCase();
+      return lower.indexOf('conclusion') !== -1 || lower.indexOf('summary') !== -1 || lower.indexOf('</ol>') !== -1 || (lower.lastIndexOf('</p>') > html.length - 300);
+    }
 
     callAI(aiPrompt, aiMaxTokens)
       .then(function(result) {
         var clean = sanitizeHTML(result);
+        if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
+
+        /* ── Continuation: if doc looks incomplete and we have a page target, ask AI to continue ── */
+        var needsContinuation = !unlimited && !_looksComplete(clean) && pages >= 3;
+        if (!needsContinuation) return clean;
+
+        wpSetStatus('Continuing document (page ' + Math.ceil(stripHtml(clean).split(/\s+/).length / 500) + '/' + pages + ')…');
+        var contPrompt = 'You are continuing a document. Below is what has been written so far. ' +
+          'Continue writing from where it left off — do NOT repeat any content already written. ' +
+          'The target is ' + pageLabel + ' total (' + strictWords + ' words). The current draft has approximately ' +
+          Math.ceil(stripHtml(clean).split(/\s+/).length) + ' words — you need to add roughly ' +
+          Math.max(200, strictWords - Math.ceil(stripHtml(clean).split(/\s+/).length)) + ' more words. ' +
+          'End with a Conclusion section. Return ONLY raw HTML (same tags as before) — no preamble.\n\n' +
+          '━━━ DOCUMENT SO FAR (do not repeat) ━━━\n' + clean.slice(-3000);
+        return callAI(contPrompt, Math.min(8000, Math.max(1500, (strictWords - Math.ceil(stripHtml(clean).split(/\s+/).length)) * 1.5)))
+          .then(function(cont) {
+            var contClean = sanitizeHTML(cont);
+            return contClean ? clean + contClean : clean;
+          })
+          .catch(function() { return clean; }); /* if continuation fails, use what we have */
+      })
+      .then(function(finalHtml) {
+        var clean = typeof finalHtml === 'string' ? finalHtml : sanitizeHTML(finalHtml);
         if (!clean || clean.length < 50) throw new Error('AI returned insufficient content');
         wpLoadContent(clean);
         wpApplyDocSettings(ds);
