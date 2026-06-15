@@ -9,13 +9,13 @@
 *,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
 
 :root {
-  --wp-bg:       #f0f2f5;
+  --wp-bg:       #151929;
   --wp-bar:      #1e1b4b;
   --wp-bar2:     #2d2a6e;
-  --wp-accent:   #4f46e5;
+  --wp-accent:   #6366f1;
   --wp-accent2:  #06b6d4;
   --wp-accent3:  #10b981;
-  --wp-shadow:   0 4px 20px rgba(0,0,0,.12);
+  --wp-shadow:   0 8px 40px rgba(0,0,0,.38), 0 2px 8px rgba(0,0,0,.18);
   --wp-radius:   10px;
   --wp-page-w:   210mm;
   --wp-page-min: 650px;
@@ -332,26 +332,53 @@ body {
 
 /* ── Pages ── */
 .wp-pages-area {
-  flex: 1; padding: 24px 20px; display: flex;
-  flex-direction: column; align-items: center; gap: 20px;
+  flex: 1; padding: 32px 16px; display: flex;
+  flex-direction: column; align-items: center; gap: 28px;
   overflow-y: auto;
+  background: #d8dce4; /* Word-style grey canvas */
 }
 
 .wp-page {
   background: #fff;
-  width: var(--wp-page-w);
-  min-width: var(--wp-page-min);
-  min-height: 297mm;
-  box-shadow: var(--wp-shadow);
-  border-radius: 3px;
+  width: min(var(--wp-page-w), calc(100% - 16px));
+  height: 297mm;
+  box-sizing: border-box;
+  overflow: hidden;
+  /* Realistic paper shadow — three layers like Word */
+  box-shadow:
+    0 0 0 1px rgba(0,0,0,.08),
+    0 2px 6px rgba(0,0,0,.12),
+    0 8px 32px rgba(0,0,0,.18);
+  border-radius: 1px; /* paper has near-zero radius */
   position: relative;
   transition: transform .2s;
+  padding: 25.4mm 25.4mm 25.4mm 25.4mm; /* 1-inch margins, Word default */
+}
+/* Letter: 8.5 × 11 in = 215.9 × 279.4 mm */
+.wp-page.sz-letter {
+  width: min(215.9mm, calc(100% - 16px));
+  height: 279.4mm;
+}
+/* Legal: 8.5 × 14 in = 215.9 × 355.6 mm */
+.wp-page.sz-legal {
+  width: min(215.9mm, calc(100% - 16px));
+  height: 355.6mm;
 }
 
 .wp-page-inner {
-  outline: none; min-height: calc(297mm - 40mm);
+  outline: none; height: 100%; overflow: hidden;
   word-break: break-word; overflow-wrap: break-word;
   line-height: 1.6;
+  /* Document body text — 12pt = 16px, standard Word/WordPad default */
+  font-size: 16px;
+  font-family: 'Times New Roman', Times, Georgia, serif;
+  color: #000;
+}
+.wp-page-editor {
+  outline: none; height: 100%; overflow: hidden;
+  word-break: break-word; overflow-wrap: break-word;
+  line-height: 1.6; width: 100%; display: block;
+  cursor: text;
   /* Document body text — 12pt = 16px, standard Word/WordPad default */
   font-size: 16px;
   font-family: 'Times New Roman', Times, Georgia, serif;
@@ -365,6 +392,9 @@ body {
   transform: translateX(-50%); font-size: 10px;
   color: #94a3b8; font-weight: 600; pointer-events: none;
 }
+
+/* Page number labels hidden — users navigate via the nav bar */
+.wp-page-footer { display: none !important; }
 
 /* Page inner typography — proper Word/WordPad document sizes */
 .wp-page-inner h1 { font-size: 2em;    margin-bottom: .5em;  line-height: 1.2; }
@@ -390,26 +420,44 @@ body {
 .wp-page-inner a { color: var(--wp-accent); text-decoration: underline; }
 
 /* ── Tables ── */
-.wp-page-inner table {
+.wp-page-inner table,
+.wp-page-editor table {
   border-collapse: collapse; width: 100%;
   margin: 10px 0; font-size: 12px;
+  table-layout: fixed;
 }
 .wp-page-inner table th,
-.wp-page-inner table td {
+.wp-page-inner table td,
+.wp-page-editor table th,
+.wp-page-editor table td {
   border: 1px solid #d1d5db; padding: 6px 10px;
   text-align: left; vertical-align: top;
   position: relative; min-width: 60px;
+  word-break: break-word;
 }
-.wp-page-inner table th {
+.wp-page-inner table th,
+.wp-page-editor table th {
   background: #f1f5f9; font-weight: 700; color: #1e293b;
+  user-select: none;
 }
-.wp-page-inner table tr:nth-child(even) td {
+.wp-page-inner table tr:nth-child(even) td,
+.wp-page-editor table tr:nth-child(even) td {
   background: rgba(0,0,0,.02);
 }
+.wp-page-editor table tr:hover td {
+  background: rgba(79,70,229,.03);
+}
 .wp-page-inner table td.wp-cell-selected,
-.wp-page-inner table th.wp-cell-selected {
+.wp-page-inner table th.wp-cell-selected,
+.wp-page-editor table td.wp-cell-selected,
+.wp-page-editor table th.wp-cell-selected {
   background: rgba(79,70,229,.12) !important;
   outline: 2px solid var(--wp-accent);
+}
+.wp-page-editor table td:focus,
+.wp-page-editor table th:focus {
+  outline: 2px solid var(--wp-accent);
+  background: rgba(79,70,229,.06);
 }
 /* Column resize handle — supports both class names (CSS vs JS-generated) */
 .wp-col-resize,
@@ -423,23 +471,29 @@ body {
 .col-resize-handle.dragging { background: var(--wp-accent); opacity: .6; }
 
 /* ── Image in doc ── */
-.wp-page-inner img {
+.wp-page-inner img,
+.wp-page-editor img {
   max-width: 100%; height: auto; display: block;
   border-radius: 3px; cursor: pointer;
 }
-.wp-page-inner .wp-img-wrap {
+.wp-page-inner .wp-img-wrap,
+.wp-page-editor .wp-img-wrap {
   position: relative; display: inline-block; max-width: 100%;
   vertical-align: top;
 }
-.wp-page-inner .wp-img-wrap img { display: block; }
+.wp-page-inner .wp-img-wrap img,
+.wp-page-editor .wp-img-wrap img { display: block; }
 .wp-page-inner .wp-img-wrap.selected img,
-.wp-page-inner img.wp-img-selected { outline: 3px solid var(--wp-accent); border-radius: 3px; }
+.wp-page-inner img.wp-img-selected,
+.wp-page-editor .wp-img-wrap.selected img,
+.wp-page-editor img.wp-img-selected { outline: 3px solid var(--wp-accent); border-radius: 3px; }
 .wp-img-toolbar {
   position: absolute; top: -36px; left: 0;
   background: #1e293b; border-radius: 6px; padding: 4px 6px;
   display: none; gap: 3px; z-index: 50;
 }
-.wp-page-inner .wp-img-wrap.selected .wp-img-toolbar { display: flex; }
+.wp-page-inner .wp-img-wrap.selected .wp-img-toolbar,
+.wp-page-editor .wp-img-wrap.selected .wp-img-toolbar { display: flex; }
 .wp-img-tb-btn {
   background: none; border: none; color: #e2e8f0; cursor: pointer;
   font-size: 11px; padding: 3px 7px; border-radius: 4px;
@@ -683,13 +737,160 @@ body {
 
 /* ── Print area ── */
 .wp-print-root { display: none; }
+
+/* ══ PROFESSIONAL PRINT STYLES ═══════════════════════════════════
+   @page sets margins; each .wp-page becomes one physical page.   */
+@page {
+  size: A4 portrait;
+  margin: 15mm;
+}
+
 @media print {
-  .wp-appbar,.wp-ribbon,.wp-sidebar,.wp-page-nav,.wp-dl-bar,.wp-status-bar,
-  .wp-mob-toggle,.wp-mode-overlay,.wp-modal-backdrop { display: none !important; }
+  /* ── Page setup: no browser margins (padding on .wp-page handles margins) ── */
+  @page { size: A4 portrait; margin: 15mm; }
+
+  /* ── Colour preservation ── */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  /* ── Base ── */
+  html { font-size: 10pt !important; }
+  body { background: #fff !important; color: #000 !important; margin: 0 !important; padding: 0 !important; }
+
+  /* ── Button-triggered print: hide everything except print root ── */
+  body.wp-printing > *:not(#wp-print-root) { display: none !important; }
+  body.wp-printing #wp-print-root { display: block !important; margin: 0 !important; padding: 0 !important; }
+  /* Reset flex container so page-break-after works and no phantom blank first page */
+  body.wp-printing .wp-pages-area {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    gap: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    width: 100% !important;
+  }
+
+  /* ── One .wp-page = one printed page ── */
+  body.wp-printing .wp-page,
+  .wp-page {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+    background: #fff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    page-break-after: always !important;
+    break-after: page !important;
+  }
+  body.wp-printing .wp-page:last-child,
+  .wp-page:last-child {
+    page-break-after: avoid !important;
+    break-after: avoid !important;
+  }
+
+  /* ── Editor content ── */
+  body.wp-printing .wp-page-editor,
+  body.wp-printing .wp-page-inner,
+  .wp-page-editor, .wp-page-inner {
+    display: block !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: none !important;
+    font-family: 'Georgia', 'Times New Roman', Times, serif !important;
+    font-size: 11pt !important;
+    line-height: 1.65 !important;
+    color: #000 !important;
+    background: transparent !important;
+  }
+
+  /* ── Headings ── */
+  h1 { font-family: inherit !important; font-size: 18pt !important; line-height: 1.2 !important; margin: 0 0 8pt !important; page-break-after: avoid !important; color: #000 !important; }
+  h2 { font-family: inherit !important; font-size: 14pt !important; line-height: 1.25 !important; margin: 12pt 0 6pt !important; page-break-after: avoid !important; color: #000 !important; }
+  h3 { font-family: inherit !important; font-size: 12pt !important; line-height: 1.3 !important; margin: 10pt 0 5pt !important; page-break-after: avoid !important; color: #000 !important; }
+  h4, h5, h6 { font-family: inherit !important; font-size: 11pt !important; margin: 7pt 0 3pt !important; page-break-after: avoid !important; color: #000 !important; }
+  h1+p, h2+p, h3+p { page-break-before: avoid !important; }
+
+  /* ── Paragraphs ── */
+  p { margin: 0 0 7pt !important; orphans: 3 !important; widows: 3 !important; }
+  a { color: #000 !important; text-decoration: none !important; }
+
+  /* ── Lists ── */
+  ul, ol { padding-left: 18pt !important; margin: 0 0 7pt !important; }
+  li { margin-bottom: 3pt !important; }
+
+  /* ── Tables ── */
+  table { border-collapse: collapse !important; width: 100% !important; margin: 8pt 0 !important; }
+  td, th { border: 0.5pt solid #888 !important; padding: 4pt 6pt !important; font-size: 10pt !important; text-align: left !important; vertical-align: top !important; }
+  th { background: #f0f0f0 !important; font-weight: 700 !important; }
+  tr { page-break-inside: avoid !important; }
+
+  /* ── Code ── */
+  pre, code { font-family: 'Courier New', Courier, monospace !important; font-size: 9pt !important; }
+  pre { background: #f5f5f5 !important; border: 0.5pt solid #ccc !important; padding: 6pt !important; page-break-inside: avoid !important; }
+
+  /* ── Blockquote ── */
+  blockquote { border-left: 2pt solid #aaa !important; padding-left: 10pt !important; margin: 6pt 0 !important; color: #444 !important; font-style: italic !important; }
+
+  /* ── Images ── */
+  img { max-width: 100% !important; page-break-inside: avoid !important; display: block !important; }
+
+  /* ── Page header ── */
+  .wp-print-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: baseline !important;
+    border-bottom: 0.75pt solid #bbb !important;
+    padding-bottom: 5pt !important;
+    margin-bottom: 14pt !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    color: #666 !important;
+  }
+  .wp-print-hdr-title {
+    font-weight: 700 !important;
+    max-width: 65% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+    color: #333 !important;
+    letter-spacing: 0.1pt !important;
+    text-transform: uppercase !important;
+  }
+  .wp-print-hdr-date { color: #888 !important; font-style: italic !important; white-space: nowrap !important; }
+
+  /* ── Page footer ── */
+  .wp-print-footer {
+    display: block !important;
+    text-align: center !important;
+    border-top: 0.75pt solid #bbb !important;
+    padding-top: 5pt !important;
+    margin-top: 18pt !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    font-size: 8pt !important;
+    color: #666 !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.15pt !important;
+  }
+
+  /* ── Hide screen-only decorations ── */
+  .wp-page-label { display: none !important; }
+
+  /* ── App chrome ── */
+  .wp-appbar, .wp-ribbon, .wp-sidebar, .wp-page-nav, .wp-dl-bar,
+  .wp-status-bar, .wp-mob-toggle, .wp-mode-overlay, .wp-modal-backdrop,
+  .wp-bottom-nav, .wp-fab, #_aqsNav, #aqs-upd-overlay { display: none !important; }
   .wp-layout { margin-top: 0 !important; }
-  .wp-pages-area { display: block !important; padding: 0 !important; margin: 0 !important; gap: 0 !important; overflow: visible !important; background: transparent !important; width: 100% !important; }
-  .wp-page { box-shadow: none !important; border-radius: 0 !important; margin: 0 !important; }
-  body { background: #fff !important; }
+  .wp-pages-area { display: block !important; padding: 0 !important; gap: 0 !important; overflow: visible !important; background: #fff !important; }
 }
 
 /* ── Responsive ── */
@@ -706,3 +907,491 @@ body {
   .wp-ribbon-panel { overflow-x: auto; flex-wrap: nowrap; }
   .wp-appbar-btns .wp-appbar-btn:not(:first-child) { display: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════
+   ANDROID / MOBILE ENHANCEMENTS — DaraQuiz Mobile v1.158
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Bottom Navigation Bar (Android-style) ── */
+.wp-bottom-nav {
+  display: none;
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 1200;
+  height: 60px;
+  background: #1e1b4b;
+  border-top: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 -2px 12px rgba(0,0,0,.3);
+  flex-direction: row; align-items: stretch;
+}
+.wp-bnav-item {
+  flex: 1; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 3px; cursor: pointer;
+  color: rgba(255,255,255,.5); font-size: 10px; font-weight: 600;
+  border: none; background: none; -webkit-tap-highlight-color: transparent;
+  transition: color .15s; padding: 6px 0;
+  letter-spacing: .01em;
+}
+.wp-bnav-item svg { flex-shrink: 0; }
+.wp-bnav-item.active { color: #a5b4fc; }
+.wp-bnav-item:active { color: #fff; background: rgba(255,255,255,.07); border-radius: 10px; }
+
+/* ── Android FAB (floating action button for AI tools) ── */
+.wp-fab {
+  display: none;
+  position: fixed; bottom: 72px; right: 16px; z-index: 1100;
+  width: 52px; height: 52px;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  border: none; border-radius: 16px; color: #fff; cursor: pointer;
+  box-shadow: 0 6px 20px rgba(79,70,229,.5);
+  align-items: center; justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform .15s, box-shadow .15s;
+}
+.wp-fab:active { transform: scale(.93); box-shadow: 0 3px 10px rgba(79,70,229,.4); }
+
+/* ── Mobile Sidebar Sheet (bottom sheet style on Android) ── */
+@media (max-width: 768px) {
+  /* Show bottom nav & FAB */
+  .wp-bottom-nav { display: flex; }
+  .wp-fab { display: flex; }
+
+  /* Hide all appbar buttons on mobile except print — keep container visible */
+  .wp-appbar-btns { display: flex; }
+  .wp-appbar-btns .wp-appbar-btn { display: none; }
+  /* Print button always visible on mobile — only way to print */
+  #wp-print-appbar-btn { display: inline-flex !important; align-items: center; gap: 4px; }
+  .wp-ver-badge { display: none; }
+
+  /* Larger appbar on mobile (56dp Material standard) */
+  .wp-appbar { height: 56px; padding: 0 14px; }
+  .wp-ribbon { top: 56px; }
+
+  /* Nav drawer covers full screen on mobile */
+  .wp-nav-drawer { top: 56px; height: calc(100vh - 56px); width: 280px; left: -280px; }
+
+  /* Ribbon — horizontal scroll, no wrap, bigger touch targets */
+  .wp-ribbon-panel { padding: 8px 10px; gap: 6px; flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .wp-ribbon-panel::-webkit-scrollbar { display: none; }
+
+  .tb {
+    min-width: 38px; min-height: 38px; padding: 6px 10px;
+    font-size: 13px; flex-shrink: 0;
+  }
+  .tb-sel { height: 38px; font-size: 13px; flex-shrink: 0; }
+  .tb-num { height: 38px; font-size: 13px; flex-shrink: 0; }
+
+  .wp-ribbon-tabs { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .wp-ribbon-tabs::-webkit-scrollbar { display: none; }
+  .wp-rtab { padding: 10px 16px; font-size: 12.5px; white-space: nowrap; flex-shrink: 0; min-height: 44px; }
+
+  /* Sidebar becomes a bottom sheet */
+  .wp-sidebar {
+    position: fixed; bottom: 60px; left: 0; right: 0; z-index: 1050;
+    width: 100%; height: auto; max-height: 70vh;
+    border-right: none; border-top: 2px solid #6366f1;
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 40px rgba(0,0,0,.45);
+    transform: translateY(120%);
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform .28s cubic-bezier(.4,0,.2,1), visibility 0s linear .28s;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+    display: flex !important; flex-direction: column;
+  }
+  .wp-sidebar.mob-open {
+    transform: translateY(0);
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform .28s cubic-bezier(.4,0,.2,1), visibility 0s linear 0s;
+  }
+  .wp-sidebar.collapsed { transform: translateY(120%) !important; visibility: hidden !important; pointer-events: none !important; width: 100%; }
+
+  /* Bottom sheet drag handle */
+  .wp-sidebar-handle {
+    display: flex; justify-content: center; padding: 10px 0 6px;
+    cursor: pointer; touch-action: none; flex-shrink: 0;
+  }
+  .wp-sidebar-handle::before {
+    content: ''; width: 40px; height: 4px; border-radius: 2px; background: #d1d5db;
+  }
+
+  /* Sidebar backdrop */
+  .wp-sidebar-backdrop {
+    display: none; position: fixed; inset: 0; bottom: 60px;
+    background: rgba(0,0,0,.35); z-index: 1040;
+  }
+  .wp-sidebar-backdrop.open { display: block; }
+
+  /* Sidebar tabs — larger touch targets */
+  .wp-stab { padding: 12px 6px; font-size: 11px; min-height: 44px; }
+
+  /* Layout — account for bottom nav + bottom sheet closed */
+  .wp-layout { margin-top: var(--wp-header-h); min-height: calc(100vh - var(--wp-header-h) - 60px); }
+  .wp-editor-wrap { min-height: calc(100vh - var(--wp-header-h) - 60px); }
+
+  /* Pages area padding for bottom nav */
+  .wp-pages-area { padding: 16px 10px 80px; }
+
+  /* Pages go full-width on mobile — standard A4 paper appearance */
+  .wp-page {
+    width: calc(100vw - 16px) !important;
+    max-width: 560px !important;
+    min-width: 0 !important;
+    /* A4 ratio 297/210 ≈ 1.414 — maintain realistic page proportions */
+    min-height: calc((100vw - 16px) * 1.414) !important;
+    padding: 20mm 18mm !important;
+    border-radius: 2px !important;
+    background: #fff !important;
+    /* Realistic Word-style shadow */
+    box-shadow:
+      0 0 0 1px rgba(0,0,0,.10),
+      0 2px 8px rgba(0,0,0,.14),
+      0 6px 24px rgba(0,0,0,.16) !important;
+    border: none !important;
+    margin: 0 auto !important;
+    position: relative !important;
+  }
+  .wp-page-inner {
+    min-height: calc((100vw - 16px) * 1.414 - 40mm) !important;
+  }
+
+  /* Page nav bar — mobile friendly */
+  .wp-page-nav { padding: 8px 12px; flex-wrap: nowrap; overflow-x: auto; gap: 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .wp-page-nav::-webkit-scrollbar { display: none; }
+  .wp-pnav-btn { min-height: 38px; padding: 6px 14px; font-size: 13px; flex-shrink: 0; }
+
+  /* Download bar — scrollable */
+  .wp-dl-bar { overflow-x: auto; flex-wrap: nowrap; padding: 8px 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .wp-dl-bar::-webkit-scrollbar { display: none; }
+  .dl-btn { min-height: 36px; padding: 6px 12px; font-size: 12px; flex-shrink: 0; }
+
+  /* Mode overlay cards stack on mobile */
+  .wp-mode-cards { flex-direction: column; align-items: center; }
+  .wp-mode-card { min-width: 0; max-width: 340px; width: 100%; }
+
+  /* Modals take full width on mobile */
+  .wp-modal.sm, .wp-modal.lg { max-width: calc(100vw - 24px); max-height: 85vh; }
+  .wp-modal-footer { flex-wrap: wrap; }
+
+  /* Status bar scrollable */
+  .wp-status-bar { overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+  .wp-status-bar::-webkit-scrollbar { display: none; }
+
+  /* Larger input controls for finger-friendliness */
+  .wp-sel, .wp-num, .wp-textarea { font-size: 16px !important; } /* prevent iOS zoom */
+  .wp-btn { min-height: 44px; font-size: 14px; }
+
+  /* Hide sidebar toggle from appbar (managed by bottom nav) */
+  .wp-appbar-right button[title="Toggle sidebar"] { display: none; }
+}
+
+@media (max-width: 480px) {
+  .wp-mode-card { padding: 18px 16px; }
+  .wp-mode-card-icon { font-size: 26px; }
+  .wp-mode-title { font-size: 20px; }
+}
+
+/* ── Safe area support (notch/rounded corner devices) ── */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .wp-bottom-nav { padding-bottom: env(safe-area-inset-bottom); height: calc(60px + env(safe-area-inset-bottom)); }
+  .wp-fab { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .wp-sidebar { bottom: calc(60px + env(safe-area-inset-bottom)); }
+}
+
+
+/* ═══════════════════════════════════════════════════════════
+   DW-* SIDEBAR PANEL STYLES — Format AI / Write AI / Stats /
+   Web Search / My Docs / Templates  (DaraWrite skin)
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Brand header inside sidebar ── */
+.dw-sb-brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 10px; flex-shrink: 0;
+  border-bottom: 1px solid #e9ecf0;
+}
+.dw-sb-brand-icon {
+  width: 34px; height: 34px; flex-shrink: 0;
+  background: linear-gradient(135deg,#4f46e5,#7c3aed);
+  border-radius: 10px; display: flex; align-items: center; justify-content: center;
+}
+.dw-sb-brand-name {
+  font-size: 13px; font-weight: 800; color: #1e1b4b; line-height: 1.2;
+}
+.dw-sb-brand-sub {
+  font-size: 10.5px; color: #6b7280; margin-top: 1px;
+}
+.dw-ai-badge {
+  margin-left: auto; display: flex; align-items: center; gap: 4px;
+  background: #f0fdf4; border: 1px solid #bbf7d0;
+  border-radius: 20px; padding: 3px 9px;
+  font-size: 10.5px; font-weight: 700; color: #15803d; white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Panel body wrapper ── */
+.dw-panel-body {
+  padding: 12px 14px; display: flex; flex-direction: column; gap: 6px;
+}
+
+/* ── Section label (e.g. "✨ AI Format") ── */
+.dw-sec-label {
+  font-size: 10.5px; font-weight: 800; color: #4f46e5;
+  text-transform: uppercase; letter-spacing: .07em;
+  margin-bottom: 4px; margin-top: 2px;
+}
+
+/* ── Field label ── */
+.dw-lbl {
+  font-size: 11px; font-weight: 600; color: #6b7280; margin-bottom: 1px;
+}
+
+/* ── Textarea ── */
+.dw-textarea {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 9px 10px; font-size: 13px; resize: vertical;
+  min-height: 80px; width: 100%; background: #fafafa;
+  outline: none; transition: border-color .15s;
+  font-family: inherit; line-height: 1.5;
+}
+.dw-textarea:focus { border-color: #6366f1; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Text input (single-line) ── */
+.dw-input {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 8px 10px; font-size: 13px; width: 100%;
+  background: #fafafa; outline: none; transition: border-color .15s; font-family: inherit;
+}
+.dw-input:focus { border-color: #6366f1; background: #fff; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Select ── */
+.dw-sel {
+  border: 1px solid #d1d5db; border-radius: 8px;
+  padding: 7px 10px; font-size: 12.5px; width: 100%;
+  background: #fff; outline: none; color: #1e293b;
+  transition: border-color .15s; cursor: pointer; font-family: inherit;
+}
+.dw-sel:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.1); }
+
+/* ── Character count ── */
+.dw-char-count {
+  font-size: 10px; color: #9ca3af; text-align: right; margin-top: -2px;
+}
+
+/* ── Upload zone ── */
+.dw-upload-zone {
+  border: 2px dashed #c7d2fe; border-radius: 10px;
+  padding: 14px 12px; text-align: center; cursor: pointer;
+  transition: all .2s; background: #f8f9ff; margin-top: 4px;
+}
+.dw-upload-zone:hover, .dw-upload-zone.drag {
+  border-color: #6366f1; background: #eef2ff;
+}
+
+/* ── 2-column grid ── */
+.dw-grid2 {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+}
+
+/* ── Buttons ── */
+.dw-btn-primary {
+  width: 100%; padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: none; background: #6366f1; color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s, transform .1s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-primary:hover { background: #4f46e5; }
+.dw-btn-primary:active { transform: scale(.97); }
+.dw-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
+
+.dw-btn-secondary {
+  width: 100%; padding: 9px 14px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 600; cursor: pointer;
+  border: 1px solid #a5b4fc; background: #f8f9ff; color: #4f46e5;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: background .15s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-secondary:hover { background: #eef2ff; }
+
+.dw-btn-accent {
+  width: 100%; padding: 10px 14px; border-radius: 10px;
+  font-size: 13px; font-weight: 700; cursor: pointer;
+  border: none; background: #06b6d4; color: #fff;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: background .15s, transform .1s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-accent:hover { background: #0891b2; }
+.dw-btn-accent:active { transform: scale(.97); }
+
+.dw-btn-danger-sm {
+  padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600;
+  border: 1px solid #fca5a5; background: #fef2f2; color: #ef4444;
+  cursor: pointer; transition: background .15s; font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-btn-danger-sm:hover { background: #fee2e2; }
+
+/* ── Stats tile grid ── */
+.dw-stat-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-top: 6px;
+}
+.dw-stat-tile {
+  background: #f8f9ff; border: 1px solid #e0e7ff; border-radius: 10px;
+  padding: 10px 10px 8px; display: flex; flex-direction: column; gap: 4px;
+  transition: border-color .15s;
+}
+.dw-stat-tile:hover { border-color: #a5b4fc; }
+.dw-stat-tile-label {
+  font-size: 10px; font-weight: 700; color: #6b7280;
+  display: flex; align-items: center; gap: 4px;
+  text-transform: uppercase; letter-spacing: .05em;
+}
+.dw-stat-tile-val {
+  font-size: 22px; font-weight: 800; color: #1e1b4b; line-height: 1;
+}
+
+/* ── Quick action grid ── */
+.dw-quick-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 7px;
+  margin-top: 4px;
+}
+.dw-quick-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 5px;
+  padding: 10px 6px 9px; border-radius: 10px;
+  border: 1px solid #e0e7ff; background: #f8f9ff; cursor: pointer;
+  font-size: 11px; font-weight: 600; color: #374151;
+  transition: all .15s; font-family: inherit; text-align: center;
+  -webkit-tap-highlight-color: transparent;
+}
+.dw-quick-btn:hover { background: #eef2ff; border-color: #a5b4fc; color: #4f46e5; }
+.dw-quick-btn:active { transform: scale(.95); }
+
+/* ── Mobile touch-up: bigger inputs/buttons in panels on narrow screens ── */
+@media (max-width: 768px) {
+  .dw-textarea  { font-size: 16px !important; min-height: 72px; }
+  .dw-input     { font-size: 16px !important; }
+  .dw-sel       { font-size: 16px !important; height: 42px; }
+  .dw-btn-primary   { min-height: 46px; font-size: 14px; }
+  .dw-btn-secondary { min-height: 44px; font-size: 13px; }
+  .dw-btn-accent    { min-height: 46px; font-size: 14px; }
+  .dw-stat-tile-val { font-size: 20px; }
+  .dw-quick-grid { grid-template-columns: repeat(3,1fr); }
+  .dw-quick-btn { padding: 12px 5px 10px; min-height: 60px; }
+}
+
+
+/* ════════════════════════════════════════════════════════════════
+   DESKTOP LAYOUT FIX — two-column word-processor layout (≥821px)
+   ROOT CAUSE: .wp-layout was missing display:flex so the sidebar
+   and editor stacked vertically instead of sitting side-by-side.
+   This also caused the document pages area to collapse to zero
+   height, making generated content invisible.
+════════════════════════════════════════════════════════════════ */
+@media (min-width: 821px) {
+
+  /* Outer container: sidebar LEFT + editor RIGHT */
+  .wp-layout {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: stretch !important;
+  }
+
+  /* ── Sidebar: fixed-width left panel ── */
+  .wp-sidebar {
+    width: 300px;
+    min-width: 260px;
+    max-width: 320px;
+    flex-shrink: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Collapsed state: hide sidebar when user clicks ⊞ Panel */
+  .wp-sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+    border: none !important;
+  }
+
+  /* ── Editor wrap: fills remaining width ── */
+  .wp-editor-wrap {
+    flex: 1 1 0%;
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    height: 100% !important;
+  }
+
+  /* ── Pages canvas: must scroll inside editor-wrap ── */
+  .wp-pages-area {
+    flex: 1 1 0%;
+    min-height: 0;     /* critical: lets flex shrink below content height */
+    overflow-y: auto;
+  }
+
+  /* ── Page nav bar: never shrinks ── */
+  .wp-page-nav {
+    flex-shrink: 0;
+  }
+
+  /* ── Side panels (Format / Write / etc.) fill sidebar height ── */
+  .wp-spanel {
+    display: none;
+    flex: 1;
+    overflow-y: auto;
+    flex-direction: column;
+  }
+  .wp-spanel.active {
+    display: flex;
+  }
+
+  /* ── Sidebar tabs: never shrink ── */
+  .wp-sidebar-tabs {
+    flex-shrink: 0;
+  }
+
+  /* ── Sidebar handle/header: never shrinks ── */
+  .wp-sidebar-handle {
+    flex-shrink: 0;
+  }
+
+  /* ── Doc settings: never shrinks ── */
+  .wp-doc-settings {
+    flex-shrink: 0;
+  }
+
+  /* ── Ensure DaraWrite panel body fills available space ── */
+  .dw-panel-body {
+    flex: 1;
+    overflow-y: auto;
+  }
+
+}
+
+/* ════════════════════════════════════════════════════════════════
+   GENERATED CONTENT VISIBILITY FIX
+   After AI generation, the #wp-pages div is populated by JS.
+   Make sure the pages area is always visible and scrollable.
+════════════════════════════════════════════════════════════════ */
+#wp-pages:empty::after {
+  content: '';
+  display: block;
+  min-height: 100px;
+}
+
+/* Ensure the word-processor page (A4 paper) always shows even
+   if the parent chain doesn't yet have a calculated height       */
+.wp-page {
+  display: block !important;
+  visibility: visible !important;
+}
+
