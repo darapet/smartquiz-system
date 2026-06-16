@@ -2,7 +2,7 @@
   "version": "1.330",
   "versionCode": 308,
   "releaseDate": "2026-06-16",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Print & download fix: native browser print dialog now used for PDF — no more popup windows. Added web redirect banner on Text → Docs page.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.330/daraquiz-v1.330.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.330/daraquiz-v1.330.apk"
 }
