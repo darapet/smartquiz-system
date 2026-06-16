@@ -54,6 +54,18 @@ a{text-decoration:none;color:inherit;}
 /* Keep old .sh-tab hidden for backward compat */
 .sh-tabs-wrap{display:none;}
 
+/* ── TESLA INTRO OVERLAY ── */
+#ait-tesla-intro{position:fixed;inset:0;z-index:500;background:#06070f;display:none;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:opacity .4s;}
+#ait-tesla-canvas{position:absolute;inset:0;width:100%;height:100%;}
+.ait-tesla-center{position:relative;z-index:2;text-align:center;pointer-events:none;}
+.ait-tesla-title{font-size:2.2rem;font-weight:900;background:linear-gradient(135deg,#818cf8,#a78bfa,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:8px;letter-spacing:-.01em;}
+.ait-tesla-sub{font-size:.78rem;font-weight:800;color:#6366f1;letter-spacing:.18em;text-transform:uppercase;opacity:.8;}
+.ait-tesla-hint{position:absolute;bottom:36px;left:0;right:0;text-align:center;z-index:2;animation:ait-hint-pulse 1.6s ease-in-out infinite;}
+.ait-tesla-hint span{font-size:.75rem;color:#334155;font-weight:600;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);padding:6px 18px;border-radius:20px;}
+@keyframes ait-hint-pulse{0%,100%{opacity:.5}50%{opacity:1}}
+.ait-tesla-skip{position:absolute;top:18px;right:18px;z-index:3;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 14px;color:#475569;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
+.ait-tesla-skip:hover{color:#94a3b8;background:rgba(255,255,255,.1);}
+
 /* PANELS */
 .sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
 .sh-panel.active{display:block;}
@@ -1100,6 +1112,7 @@ function shTab(name){
   var badge = document.getElementById('sh-hdr-active-tab');
   if(badge) badge.textContent = _SH_TAB_LABELS[name] || name;
   if(name !== 'aitimer') aitCleanupOnLeave();
+  if(name === 'aitimer') aitTeslaIntro();
 }
 function shMenuToggle(){
   var d=document.getElementById('sh-nav-dropdown');
@@ -1114,6 +1127,151 @@ function shMenuClose(){
   var h=document.getElementById('sh-hamburger');
   if(d) d.classList.remove('open');
   if(h) h.classList.remove('open');
+}
+
+/* ══════════════════════════════════
+   TESLA INTRO OVERLAY — AI Teacher
+══════════════════════════════════ */
+var _tesla = { raf: null, autoTimer: null };
+
+function aitTeslaIntro(){
+  var overlay = document.getElementById('ait-tesla-intro');
+  if(!overlay) return;
+  /* Update teacher name if already set */
+  var titleEl = document.getElementById('ait-tesla-title');
+  if(titleEl){
+    var tname = (typeof _ait !== 'undefined' && _ait.teacherName) ? _ait.teacherName : 'AI Teacher';
+    titleEl.textContent = '🤖 ' + tname;
+  }
+  overlay.style.display = 'flex';
+  overlay.style.opacity = '0';
+  requestAnimationFrame(function(){ overlay.style.opacity = '1'; });
+  _teslaDraw();
+  _tesla.autoTimer = setTimeout(aitTeslaSkip, 3000);
+}
+
+function aitTeslaSkip(){
+  var overlay = document.getElementById('ait-tesla-intro');
+  if(!overlay || overlay.style.display === 'none') return;
+  if(_tesla.autoTimer){ clearTimeout(_tesla.autoTimer); _tesla.autoTimer = null; }
+  overlay.style.opacity = '0';
+  setTimeout(function(){ overlay.style.display = 'none'; _teslaStop(); }, 420);
+}
+
+function _teslaStop(){
+  if(_tesla.raf){ cancelAnimationFrame(_tesla.raf); _tesla.raf = null; }
+}
+
+function _teslaDraw(){
+  var canvas = document.getElementById('ait-tesla-canvas');
+  if(!canvas) return;
+  _teslaStop();
+  var W = canvas.width  = window.innerWidth;
+  var H = canvas.height = window.innerHeight;
+  var cx = W/2, cy = H/2;
+  var ctx = canvas.getContext('2d');
+  var t = 0;
+  /* Pre-generate lightning bolt seeds */
+  var bolts = [];
+  for(var i=0;i<10;i++){
+    bolts.push({
+      angle: Math.random()*Math.PI*2,
+      dist:  90 + Math.random()*Math.min(cx,cy)*0.55,
+      phase: Math.random(),
+      speed: 0.06 + Math.random()*0.06
+    });
+  }
+  /* Orbiting particles */
+  var orbs = [{r:62,speed:.7,phase:0},{r:80,speed:-.5,phase:1.1},{r:50,speed:1.1,phase:2.3}];
+
+  function frame(){
+    ctx.clearRect(0,0,W,H);
+    t += 1;
+
+    /* ── Background pulse rings ── */
+    [90,130,180].forEach(function(rad,i){
+      var alpha = (0.05 - i*0.012) * (1 + Math.sin(t*.04+i)*.3);
+      ctx.beginPath();
+      ctx.arc(cx,cy,rad*(1+Math.sin(t*.03+i)*.04),0,Math.PI*2);
+      ctx.strokeStyle = 'rgba(99,102,241,'+Math.max(0,alpha)+')';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+
+    /* ── Lightning arcs ── */
+    bolts.forEach(function(b){
+      b.phase += b.speed;
+      var life = (Math.sin(b.phase)*0.5+0.5);
+      if(life < 0.15) return;
+      var alpha = life * 0.75;
+      var tx = cx + Math.cos(b.angle)*b.dist;
+      var ty = cy + Math.sin(b.angle)*b.dist;
+
+      /* Draw jagged bolt */
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      var segs = 5 + (Math.random()*3|0);
+      for(var s=1; s<=segs; s++){
+        var frac = s/segs;
+        var jx = cx + (tx-cx)*frac + (Math.random()-.5)*28*(1-frac);
+        var jy = cy + (ty-cy)*frac + (Math.random()-.5)*28*(1-frac);
+        if(s===segs){jx=tx;jy=ty;}
+        ctx.lineTo(jx,jy);
+      }
+      ctx.shadowBlur = 12;
+      ctx.shadowColor = 'rgba(139,92,246,.8)';
+      ctx.strokeStyle = 'rgba(139,92,246,'+alpha+')';
+      ctx.lineWidth = 0.7 + Math.random()*1.1;
+      ctx.stroke();
+
+      /* Bright tip */
+      ctx.shadowBlur = 0;
+      ctx.beginPath();
+      ctx.arc(tx,ty,2.5,0,Math.PI*2);
+      ctx.fillStyle = 'rgba(196,181,253,'+alpha*.8+')';
+      ctx.fill();
+
+      /* Periodically shift angle slightly */
+      if(Math.random()<.04) b.angle += (Math.random()-.5)*.6;
+    });
+
+    /* ── Outer glow halo ── */
+    ctx.shadowBlur = 0;
+    var haloR = 46 + Math.sin(t*.06)*6;
+    var halo = ctx.createRadialGradient(cx,cy,haloR*.2,cx,cy,haloR*1.8);
+    halo.addColorStop(0,'rgba(99,102,241,0.18)');
+    halo.addColorStop(1,'rgba(99,102,241,0)');
+    ctx.beginPath();
+    ctx.arc(cx,cy,haloR*1.8,0,Math.PI*2);
+    ctx.fillStyle=halo;
+    ctx.fill();
+
+    /* ── Central orb ── */
+    var orbR = 44 + Math.sin(t*.07)*3;
+    var grad = ctx.createRadialGradient(cx,cy,0,cx,cy,orbR);
+    grad.addColorStop(0,'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.28,'rgba(196,181,253,0.85)');
+    grad.addColorStop(0.6,'rgba(99,102,241,0.5)');
+    grad.addColorStop(1,'rgba(99,102,241,0)');
+    ctx.beginPath();
+    ctx.arc(cx,cy,orbR,0,Math.PI*2);
+    ctx.fillStyle=grad;
+    ctx.fill();
+
+    /* ── Orbiting dots ── */
+    orbs.forEach(function(o){
+      var angle = t*o.speed*.025 + o.phase;
+      var px = cx + Math.cos(angle)*o.r;
+      var py = cy + Math.sin(angle*0.65)*o.r;
+      ctx.beginPath();
+      ctx.arc(px,py,3,0,Math.PI*2);
+      ctx.fillStyle='rgba(167,139,250,0.55)';
+      ctx.fill();
+    });
+
+    _tesla.raf = requestAnimationFrame(frame);
+  }
+  frame();
 }
 
 /* ── TOAST ── */
@@ -3191,5 +3349,15 @@ async function aitMicTranscribe(blob, target){
   }
 })();
 </script>
+<!-- TESLA INTRO OVERLAY -->
+<div id="ait-tesla-intro" onclick="aitTeslaSkip()">
+  <canvas id="ait-tesla-canvas"></canvas>
+  <button class="ait-tesla-skip" onclick="event.stopPropagation();aitTeslaSkip()">Skip ✕</button>
+  <div class="ait-tesla-center">
+    <div class="ait-tesla-title" id="ait-tesla-title">🤖 AI Teacher</div>
+    <div class="ait-tesla-sub">Voice-Powered Learning</div>
+  </div>
+  <div class="ait-tesla-hint"><span>Tap anywhere to continue →</span></div>
+</div>
 </body>
 </html>
