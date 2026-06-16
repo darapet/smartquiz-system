@@ -166,7 +166,6 @@
     'user-dashboard': 'My Dashboard',
     'create-quiz':    'Create Quiz',
     'challenge':      'Challenge',
-    'study':          'AI Study',
     'studyhub':       'Study Hub',
     'text-to-docs':   'Word Processor',
     'docs-gen':       'AI Docs Generator',
