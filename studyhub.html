@@ -1104,10 +1104,7 @@ function shTab(name){
   document.querySelectorAll('.sh-nav-item').forEach(function(el){
     el.classList.toggle('active', el.getAttribute('data-tab')===name);
   });
-  /* legacy sh-tab active */
-  document.querySelectorAll('.sh-tab').forEach(t=>t.classList.remove('active'));
-  var leg = document.querySelector('.sh-tab[onclick*="''+name+''"]');
-  if(leg) leg.classList.add('active');
+
   /* update header badge */
   var badge = document.getElementById('sh-hdr-active-tab');
   if(badge) badge.textContent = _SH_TAB_LABELS[name] || name;
