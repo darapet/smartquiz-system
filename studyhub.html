@@ -2448,10 +2448,7 @@ async function aitSendToAI(userPrompt, onSpeechDone){
   const el = aitAddBubble(spokenText || reply, isMath);
   aitTypeText(el, spokenText || reply, null);
   aitSpeak(spokenText || reply, onSpeechDone || (()=>{
-    const row = document.getElementById('ait-continue-row');
-    const statusEl = document.getElementById('ait-avatar-status');
-    if(row && !_ait.inQAMode && !_ait.awaitingAnswer) row.style.display = '';
-    if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+    if(!_ait.inQAMode && !_ait.awaitingAnswer) _aitAutoListen();
   }));
 }
 
@@ -2538,11 +2535,8 @@ Keep it to 3-5 sentences. Be encouraging like a good teacher. Do NOT use the stu
   aitTypeText(fbEl, feedback, null);
   aitSpeak(feedback, ()=>{
     _ait.awaitingAnswer = false;
-    /* Show Continue so student can keep learning */
-    const row = document.getElementById('ait-continue-row');
-    const statusEl = document.getElementById('ait-avatar-status');
-    if(row) row.style.display = '';
-    if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+    /* Auto-listen so student can keep talking naturally */
+    setTimeout(_aitAutoListen, 400);
   });
 }
 
