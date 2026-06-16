@@ -2605,21 +2605,31 @@
         setTimeout(function() { if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
       }, 400);
     } else {
-      /* Desktop / standard browser: open a clean print window */
-      var printWin = window.open('', '_blank', 'width=900,height=700');
-      if (!printWin) {
-        /* Popup blocked — fallback: clone into print-root div */
-        var printRoot = document.getElementById('wp-print-root');
-        if (printRoot) {
-          printRoot.innerHTML = content;
-          printRoot.style.display = 'block';
-          setTimeout(function() { window.print(); setTimeout(function(){ printRoot.style.display='none'; printRoot.innerHTML=''; }, 600); }, 200);
-        } else { window.print(); }
-        return;
+      /* Standard browser: use native browser print dialog (supports Save as PDF) */
+      var printRoot = document.getElementById('wp-print-root');
+      var printStyleEl = document.getElementById('_wp_print_style');
+      if (!printStyleEl) {
+        printStyleEl = document.createElement('style');
+        printStyleEl.id = '_wp_print_style';
+        document.head.appendChild(printStyleEl);
       }
-      printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'</body></html>');
-      printWin.document.close();
-      setTimeout(function() { printWin.print(); setTimeout(function(){ printWin.close(); }, 600); }, 500);
+      printStyleEl.textContent = printStyles;
+      if (printRoot) {
+        printRoot.innerHTML = content;
+        printRoot.style.display = 'block';
+        setTimeout(function() {
+          window.print();
+          setTimeout(function() {
+            printRoot.style.display = 'none';
+            printRoot.innerHTML = '';
+            if (printStyleEl && printStyleEl.parentNode) {
+              printStyleEl.parentNode.removeChild(printStyleEl);
+            }
+          }, 1000);
+        }, 200);
+      } else {
+        window.print();
+      }
     }
   };
 </script>
