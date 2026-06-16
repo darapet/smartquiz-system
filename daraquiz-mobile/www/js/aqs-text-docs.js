@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.5
+   XZily AI — Text → Docs  |  Full Word Processor Engine  v3.6
    Features: AI Format/Write/Translate/Summarize/Expand
              30+ Google Fonts · Image Upload & Resize
              Excel-Style Tables · Chart from Data
@@ -78,7 +78,7 @@
         wpSetStatus('📚 Study content imported from AI Study ✅');
       } catch(e) { /* silently ignore import errors */ }
     })();
-    wpSetStatus('Word Processor ready — v3.5');
+    wpSetStatus('Word Processor ready — v3.6');
     wpAdjustHeaderOffset();
     wpSetupDocSettingsListeners();
   });
