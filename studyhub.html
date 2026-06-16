@@ -2339,12 +2339,34 @@ async function aitNextTeachingSegment(){
   /* Speak then show Continue button */
   aitSpeak(spokenText, ()=>{
     if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer){
-      const row = document.getElementById('ait-continue-row');
-      const statusEl = document.getElementById('ait-avatar-status');
-      if(row) row.style.display = '';
-      if(statusEl) statusEl.textContent = 'Click ▶ Continue when ready';
+      _aitAutoListen();
     }
   });
+}
+
+/* ── Auto-listen after AI finishes speaking ── */
+function _aitAutoListen(){
+  const statusEl = document.getElementById('ait-avatar-status');
+  if(statusEl) statusEl.textContent = '🎤 Ask me anything or wait…';
+  /* Clear any pending auto-continue */
+  if(_ait._autoContTimer){ clearTimeout(_ait._autoContTimer); _ait._autoContTimer = null; }
+  /* Open mic automatically after 700ms */
+  setTimeout(function(){
+    if(_ait.paused || _ait.speaking || _aitMic.active) return;
+    _aitMic.target = 'main';
+    aitMicStart();
+    /* Auto-continue to next segment if user stays silent for 9 seconds */
+    _ait._autoContTimer = setTimeout(function(){
+      if(_aitMic.active) aitMicStop();
+      setTimeout(function(){
+        if(!_ait.paused && !_ait.speaking && !_ait.awaitingAnswer){
+          const statusEl = document.getElementById('ait-avatar-status');
+          if(statusEl) statusEl.textContent = 'Preparing next topic…';
+          aitNextTeachingSegment();
+        }
+      }, 600);
+    }, 9000);
+  }, 700);
 }
 
 /* ─ Parse [DISPLAY] split from AI reply ─ */
@@ -2358,9 +2380,16 @@ function aitParseReply(text, isMath){
   }
   /* Auto-detect LaTeX in math topics */
   if(isMath && /\$\$[\s\S]+?\$\$|\$[^$]+?\$/.test(text)){
+    /* Extract ONLY the LaTeX blocks for the board — keep spoken text clean */
+    var latexBlocks = text.match(/\$\$[\s\S]+?\$\$|\$[^$]+?\$/g) || [];
+    var spokenClean = text
+      .replace(/\$\$[\s\S]+?\$\$/g, '')
+      .replace(/\$[^$]+?\$/g, '')
+      .replace(/\[DISPLAY\][\s\S]*/,'')
+      .trim();
     return {
-      spokenText:  text.replace(/\$\$[\s\S]+?\$\$/g, '(see board)').replace(/\$[^$]+?\$/g, '').trim(),
-      displayText: text
+      spokenText:  spokenClean || text.split('\n')[0],
+      displayText: latexBlocks.join('\n')
     };
   }
   return { spokenText: text, displayText: '' };
@@ -2399,6 +2428,8 @@ function aitCopyMathBoard(btn){
 function aitContinueTeaching(){
   const contRow = document.getElementById('ait-continue-row');
   if(contRow) contRow.style.display = 'none';
+  if(_ait._autoContTimer){ clearTimeout(_ait._autoContTimer); _ait._autoContTimer = null; }
+  if(_aitMic.active) aitMicStop();
   if(!_ait.paused && !_ait.inQAMode && !_ait.awaitingAnswer && !_ait.speaking){
     setTimeout(aitNextTeachingSegment, 300);
   }
@@ -2947,10 +2978,23 @@ async function aitMicTranscribe(blob, target){
     });
     var j = await res.json();
     var txt = (j.text || '').trim();
-    if(!txt) return;
+    if(!txt){ return; }
+    /* Clear auto-continue timer — user spoke */
+    if(_ait._autoContTimer){ clearTimeout(_ait._autoContTimer); _ait._autoContTimer = null; }
     if(target === 'qa'){
       var inp = document.getElementById('ait-qa-input');
       if(inp){ inp.value = txt; aitSendQA(); }
+    } else if(target === 'main'){
+      /* Free conversational mode — route by intent */
+      var lower = txt.toLowerCase().replace(/[^a-z ]/g,'').trim();
+      var continueWords = /^(continue|next|go on|go ahead|okay|ok|yes|sure|alright|got it|i see|understood|i understand|keep going|proceed|move on)$/;
+      if(continueWords.test(lower) || lower.length < 8){
+        /* Short/continue phrase → move to next teaching segment */
+        setTimeout(aitNextTeachingSegment, 300);
+      } else {
+        /* Real question or response → send to AI as free conversation */
+        aitSendToAI(txt, function(){ setTimeout(_aitAutoListen, 400); });
+      }
     } else {
       var ta = document.getElementById('ait-type-answer');
       if(ta){ ta.value = txt; aitSubmitAnswer(); }
