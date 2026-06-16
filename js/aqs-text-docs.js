@@ -2482,15 +2482,43 @@
           }
         } catch(e2) {}
       }
-      /* Web / fallback: window.open */
-      var win = window.open('', '_blank', 'width=900,height=700');
-      if (win) {
-        win.document.write(pageHtml);
-        win.document.close();
-        win.focus();
-        if (fmt === 'pdf') { setTimeout(function() { win.print(); }, 600); }
+      /* Web / fallback: use native browser print dialog for PDF (no popup needed) */
+      if (fmt === 'pdf') {
+        var printRoot = document.getElementById('wp-print-root');
+        var printStyleEl = document.getElementById('_wp_dl_print_style');
+        if (!printStyleEl) {
+          printStyleEl = document.createElement('style');
+          printStyleEl.id = '_wp_dl_print_style';
+          document.head.appendChild(printStyleEl);
+        }
+        printStyleEl.textContent = docCss +
+          '@media print{#dl-overlay{display:none!important;}body{background:#fff;}' +
+          '.doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}}';
+        if (printRoot) {
+          printRoot.innerHTML = '<div class="doc-wrap">' + allPages + '</div>';
+          printRoot.style.display = 'block';
+          setTimeout(function() {
+            window.print();
+            setTimeout(function() {
+              printRoot.style.display = 'none';
+              printRoot.innerHTML = '';
+              if (printStyleEl && printStyleEl.parentNode) {
+                printStyleEl.parentNode.removeChild(printStyleEl);
+              }
+            }, 1000);
+          }, 200);
+        } else {
+          window.print();
+        }
       } else {
-        alert('Pop-up blocked. Please allow pop-ups and try again.');
+        var win = window.open('', '_blank', 'width=900,height=700');
+        if (win) {
+          win.document.write(pageHtml);
+          win.document.close();
+          win.focus();
+        } else {
+          alert('Pop-up blocked. Please allow pop-ups and try again.');
+        }
       }
     }
 
