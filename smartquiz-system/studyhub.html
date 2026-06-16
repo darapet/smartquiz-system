@@ -65,6 +65,9 @@ a{text-decoration:none;color:inherit;}
 @keyframes ait-hint-pulse{0%,100%{opacity:.5}50%{opacity:1}}
 .ait-tesla-skip{position:absolute;top:18px;right:18px;z-index:3;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 14px;color:#475569;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .18s;}
 .ait-tesla-skip:hover{color:#94a3b8;background:rgba(255,255,255,.1);}
+.ait-tesla-welcome{margin-top:22px;display:flex;flex-direction:column;align-items:center;gap:9px;pointer-events:none;}
+.ait-tesla-streak{font-size:1.15rem;font-weight:900;color:#f59e0b;letter-spacing:.01em;text-shadow:0 0 18px rgba(245,158,11,.35);}
+.ait-tesla-last{font-size:.72rem;color:#334155;font-weight:600;max-width:260px;text-align:center;line-height:1.5;}
 
 /* PANELS */
 .sh-panel{display:none;max-width:780px;margin:0 auto;padding:24px 18px;}
@@ -1134,17 +1137,74 @@ var _tesla = { raf: null, autoTimer: null };
 function aitTeslaIntro(){
   var overlay = document.getElementById('ait-tesla-intro');
   if(!overlay) return;
-  /* Update teacher name if already set */
+
+  /* ── Read history & compute streak ── */
+  var hist = [];
+  try{ hist = JSON.parse(localStorage.getItem('ait_sessions_v1')||'[]'); }catch(e){}
+
+  var streak = 0;
+  if(hist.length){
+    var today = new Date(); today.setHours(0,0,0,0);
+    var daySet = new Set(hist.map(function(s){
+      var d=new Date(s.ts); d.setHours(0,0,0,0); return d.getTime();
+    }));
+    var cur = today.getTime();
+    while(daySet.has(cur)){ streak++; cur -= 86400000; }
+  }
+
+  /* ── Get last session details ── */
+  var lastName='', lastSubject='', lastTopic='';
+  if(hist.length){
+    var last = hist[hist.length-1];
+    lastName    = last.studentName || '';
+    lastSubject = last.subject     || '';
+    lastTopic   = last.topic       || '';
+  }
+  /* In-memory overrides (if user already set up this session) */
+  if(typeof _ait !== 'undefined' && _ait.studentName) lastName = _ait.studentName;
+
+  /* ── Update teacher name in title ── */
   var titleEl = document.getElementById('ait-tesla-title');
   if(titleEl){
     var tname = (typeof _ait !== 'undefined' && _ait.teacherName) ? _ait.teacherName : 'AI Teacher';
     titleEl.textContent = '🤖 ' + tname;
   }
+
+  /* ── Personalise for returning students ── */
+  var subEl     = document.getElementById('ait-tesla-sub');
+  var welcomeEl = document.getElementById('ait-tesla-welcome');
+  var streakEl  = document.getElementById('ait-tesla-streak');
+  var lastEl    = document.getElementById('ait-tesla-last');
+
+  if(lastName){
+    /* Returning student */
+    if(subEl)     subEl.textContent  = 'Welcome back, ' + lastName + '!';
+    if(welcomeEl) welcomeEl.style.display = 'flex';
+    if(streakEl){
+      var fire = streak>=7?'🔥':streak>=3?'⚡':streak>=1?'✨':'🌱';
+      streakEl.textContent = streak>0
+        ? fire + ' ' + streak + (streak===1?' day':' day') + ' streak!'
+        : '🌱 Start your streak — study today!';
+    }
+    if(lastEl){
+      if(lastSubject){
+        lastEl.textContent = 'Last studied: ' + lastSubject + (lastTopic ? ' — ' + lastTopic : '');
+      } else {
+        lastEl.textContent = '';
+      }
+    }
+  } else {
+    /* First-timer */
+    if(subEl)     subEl.textContent  = 'Voice-Powered Learning';
+    if(welcomeEl) welcomeEl.style.display = 'none';
+  }
+
   overlay.style.display = 'flex';
   overlay.style.opacity = '0';
   requestAnimationFrame(function(){ overlay.style.opacity = '1'; });
   _teslaDraw();
-  _tesla.autoTimer = setTimeout(aitTeslaSkip, 3000);
+  /* Give returning students a tiny bit more reading time */
+  _tesla.autoTimer = setTimeout(aitTeslaSkip, lastName ? 4000 : 3000);
 }
 
 function aitTeslaSkip(){
@@ -3352,7 +3412,11 @@ async function aitMicTranscribe(blob, target){
   <button class="ait-tesla-skip" onclick="event.stopPropagation();aitTeslaSkip()">Skip ✕</button>
   <div class="ait-tesla-center">
     <div class="ait-tesla-title" id="ait-tesla-title">🤖 AI Teacher</div>
-    <div class="ait-tesla-sub">Voice-Powered Learning</div>
+    <div class="ait-tesla-sub" id="ait-tesla-sub">Voice-Powered Learning</div>
+    <div class="ait-tesla-welcome" id="ait-tesla-welcome" style="display:none;">
+      <div class="ait-tesla-streak" id="ait-tesla-streak"></div>
+      <div class="ait-tesla-last" id="ait-tesla-last"></div>
+    </div>
   </div>
   <div class="ait-tesla-hint"><span>Tap anywhere to continue →</span></div>
 </div>
