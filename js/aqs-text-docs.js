@@ -1330,8 +1330,10 @@
         wpApplyDocSettings(ds);
         var wTitle = (clean.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i) || [])[1] || prompt.slice(0,50) || 'AI Document';
         wpSaveHistory(wTitle.replace(/<[^>]+>/g,''), wpGetFullContent());
-        wpSwitchTab('format');
-        wpSetStatus('Document written ✅');
+        /* Close mobile sidebar so the generated pages are visible (sidebar is an overlay on mobile) */
+        if (typeof wpCloseSidebar === 'function') wpCloseSidebar();
+        wpSwitchTab('write');
+        wpSetStatus('Document written ✅ — scroll down to see all pages');
       })
       .catch(function(err) {
         var errMsg = (err.message || '');
@@ -2142,7 +2144,17 @@
   }
 
   function wpGetFullContent() {
-    wpSavePageState();
+    /* Save ALL editor states (not just current page) so the full document is captured */
+    document.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+      var m = ed.id.match(/wp-editor-(\d+)/);
+      if (!m) return;
+      var idx = parseInt(m[1], 10);
+      var html = ed.innerHTML;
+      /* Only update wpPages if the editor has actual content — don't wipe good data with empty DOM */
+      if (html && html.replace(/<br\s*\/?>/gi, '').replace(/<[^>]+>/g, '').trim().length > 0) {
+        wpPages[idx] = html;
+      }
+    });
     return wpPages.join('');
   }
 
@@ -2232,12 +2244,17 @@
     notice.textContent = '📄 Document: "' + title + '" · Format: ' + (fmtLabels[fmt] || fmt.toUpperCase()) + ' · ' + wpPages.length + ' page(s)';
     previewEl.appendChild(notice);
 
-    /* Save ALL editor states before building preview */
+    /* Save ALL editor states before building preview (only from non-empty editors) */
     var _previewContainer = document.getElementById('wp-pages');
     if (_previewContainer) {
       _previewContainer.querySelectorAll('.wp-page-editor').forEach(function(ed) {
         var _m = ed.id.match(/wp-editor-(\d+)/);
-        if (_m) wpPages[parseInt(_m[1], 10)] = ed.innerHTML;
+        if (!_m) return;
+        var _html = ed.innerHTML;
+        /* Only overwrite if the editor has actual content — don't wipe good wpPages data with empty DOM */
+        if (_html && _html.replace(/<br\s*\/?>/gi,'').replace(/<[^>]+>/g,'').trim().length > 0) {
+          wpPages[parseInt(_m[1], 10)] = _html;
+        }
       });
     }
     /* Collect all non-empty pages */
@@ -2326,12 +2343,17 @@
       '@media print{@page{margin:' + mg + 'mm;}}'
     ].join('');
 
-    /* Save ALL editor states before building download */
+    /* Save ALL editor states before building download (only from non-empty editors) */
     var _dlContainer = document.getElementById('wp-pages');
     if (_dlContainer) {
       _dlContainer.querySelectorAll('.wp-page-editor').forEach(function(ed) {
         var _m = ed.id.match(/wp-editor-(\d+)/);
-        if (_m) wpPages[parseInt(_m[1], 10)] = ed.innerHTML;
+        if (!_m) return;
+        var _dhtml = ed.innerHTML;
+        /* Only overwrite if the editor has actual content — don't wipe good wpPages data with empty DOM */
+        if (_dhtml && _dhtml.replace(/<br\s*\/?>/gi,'').replace(/<[^>]+>/g,'').trim().length > 0) {
+          wpPages[parseInt(_m[1], 10)] = _dhtml;
+        }
       });
     }
     /* Collect all non-empty pages */
