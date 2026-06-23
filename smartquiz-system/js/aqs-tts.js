@@ -245,9 +245,9 @@
         var spd     = parseFloat(voiceSpeed) || 1.0;
         /* Clamp to Pollinations accepted range 0.25–4.0 */
         spd = Math.min(Math.max(spd, 0.25), 4.0);
-        var url = 'https://audio.pollinations.ai/' + encoded +
-                  '?voice=' + encodeURIComponent(voice) +
-                  '&model=openai-audio' +
+        var url = 'https://text.pollinations.ai/' + encoded +
+                  '?model=openai-audio' +
+                  '&voice=' + encodeURIComponent(voice) +
                   '&speed=' + spd.toFixed(2);
         var ctrl = new AbortController();
         var tid  = setTimeout(function() { ctrl.abort(); }, 20000);
