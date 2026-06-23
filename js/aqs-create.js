@@ -123,21 +123,79 @@
           return false;
       }
 
+    /* ── Fix bare LaTeX commands INSIDE math delimiters (e.g. $sqrt(196)$ → $\sqrt{196}$)
+       Called on the raw math string before it is handed to KaTeX so KaTeX never sees
+       unescaped command names that it would silently fail to render.               ── */
+    function fixBareLatexInDelimiters(math) {
+        if (!math) return math;
+        var m = math;
+        /* sqrt(x) or sqrt{x} → \sqrt{x}  (missing backslash + possibly wrong brackets) */
+        m = m.replace(/\bsqrt\s*\(([^)]+)\)/g,  function(_, a) { return '\\sqrt{' + a.trim() + '}'; });
+        m = m.replace(/\bsqrt\s*\{([^}]+)\}/g,  function(_, a) { return '\\sqrt{' + a.trim() + '}'; });
+        m = m.replace(/\bsqrt\s+([A-Za-z0-9]+)/g, function(_, a) { return '\\sqrt{' + a + '}'; });
+        /* frac{a}{b} → \frac{a}{b} */
+        m = m.replace(/\bfrac\s*\{([^}]+)\}\s*\{([^}]+)\}/g, function(_, n, d) { return '\\frac{' + n + '}{' + d + '}'; });
+        /* Common commands missing backslash */
+        m = m.replace(/\b(pm|times|div|cdot|leq|geq|neq|approx|infty|nabla|partial|forall|exists)\b/g, function(_, c) { return '\\' + c; });
+        /* Greek letters missing backslash */
+        m = m.replace(/\b(pi|theta|alpha|beta|gamma|delta|Delta|Sigma|Lambda|lambda|mu|sigma|phi|varphi|psi|omega|Omega|epsilon|eta|xi|rho|kappa|nu|tau|chi|upsilon|Gamma|Pi|Phi|Psi)\b/g, function(_, c) { return '\\' + c; });
+        /* Function names missing backslash */
+        m = m.replace(/\b(sin|cos|tan|cot|sec|csc|arcsin|arccos|arctan|sinh|cosh|tanh|log|ln|exp|lim|int|sum|prod)\b/g, function(_, c) { return '\\' + c; });
+        return m;
+    }
+
+    /* ── Fix AI math problems — self-contained so we don't depend on fixAIMathFormatting
+       from aqs-main.js (trapped inside its IIFE, never globally accessible).       ── */
+    function fixAIMathLocal(text) {
+        if (!text) return text;
+        var mathRe = /(\$\$[\s\S]+?\$\$|\$[^$\n]{1,500}?\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\))/;
+        var chunks = String(text).split(mathRe);
+        return chunks.map(function(chunk, idx) {
+            if (idx % 2 === 1) {
+                /* Already-delimited: fix content INSIDE the delimiters only */
+                var isDisplay = chunk.startsWith('$$');
+                var inner = isDisplay ? chunk.slice(2, -2) : chunk.slice(1, -1);
+                var fixed = fixBareLatexInDelimiters(inner);
+                return isDisplay ? '$$' + fixed + '$$' : '$' + fixed + '$';
+            }
+            /* Plain text segment — wrap bare commands / Unicode math */
+            var c = chunk;
+            c = c.replace(/\bsquare\s+root\s+of\s+\(([^)]+)\)/gi, function(_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
+            c = c.replace(/\bsquare\s+root\s+of\s+([A-Za-z0-9][A-Za-z0-9+\-*/^. ]*?)(?=[,.:;!?)\s]|$)/gi, function(_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
+            c = c.replace(/\\{1,2}sqrt\s*\{([^}]+)\}/g, function(_, i) { return '$\\sqrt{' + i + '}$'; });
+            c = c.replace(/\\{1,2}sqrt\s*\(([^)]+)\)/g, function(_, i) { return '$\\sqrt{' + i + '}$'; });
+            c = c.replace(/\bsqrt\s*\{([^}]+)\}/g,      function(_, i) { return '$\\sqrt{' + i + '}$'; });
+            c = c.replace(/\bsqrt\s*\(([^)]+)\)/g,      function(_, i) { return '$\\sqrt{' + i + '}$'; });
+            c = c.replace(/\\{1,2}frac\s*\{([^}]+)\}\s*\{([^}]+)\}/g, function(_, n, d) { return '$\\frac{' + n + '}{' + d + '}$'; });
+            c = c.replace(/√\s*\(([^)]+)\)/g,   function(_, i) { return '$\\sqrt{' + i + '}$'; });
+            c = c.replace(/√\s*([A-Za-z\d]+)/g, function(_, i) { return '$\\sqrt{' + i + '}$'; });
+            c = c.replace(/([A-Za-z\d])²/g, function(_, b) { return '$' + b + '^{2}$'; });
+            c = c.replace(/([A-Za-z\d])³/g, function(_, b) { return '$' + b + '^{3}$'; });
+            c = c.replace(/≤/g,'$\\leq$').replace(/≥/g,'$\\geq$').replace(/≠/g,'$\\neq$').replace(/≈/g,'$\\approx$');
+            c = c.replace(/±/g,'$\\pm$').replace(/×/g,'$\\times$').replace(/÷/g,'$\\div$').replace(/∞/g,'$\\infty$');
+            c = c.replace(/π/g,'$\\pi$').replace(/θ/g,'$\\theta$').replace(/α/g,'$\\alpha$').replace(/β/g,'$\\beta$');
+            c = c.replace(/γ/g,'$\\gamma$').replace(/δ/g,'$\\delta$').replace(/λ/g,'$\\lambda$').replace(/μ/g,'$\\mu$');
+            c = c.replace(/σ/g,'$\\sigma$').replace(/Σ/g,'$\\Sigma$').replace(/Δ/g,'$\\Delta$').replace(/Ω/g,'$\\Omega$');
+            c = c.replace(/φ/g,'$\\phi$');
+            return c;
+        }).join('');
+    }
+
     /* renderMath — same algorithm as admin, uses KaTeX */
     function renderMath(text) {
         if (!text) return '';
         if (typeof katex === 'undefined') return escHtml(text);
-        /* Apply fixAIMathFormatting from aqs-main.js if available (handles double-backslash
-           and bare LaTeX from AI output before KaTeX rendering) */
-        if (typeof fixAIMathFormatting === 'function') text = fixAIMathFormatting(text);
+        /* Fix AI math problems both outside AND inside $...$ delimiters */
+        text = fixAIMathLocal(text);
         var t = String(text);
         t = t.replace(/\\\[([\s\S]+?)\\\]/g, function(_, m) { return '$$' + m + '$$'; });
         t = t.replace(/\\\(([\s\S]+?)\\\)/g, function(_, m) { return '$'  + m + '$';  });
         t = t.replace(/\\begin\{equation\*?\}([\s\S]+?)\\end\{equation\*?\}/g, function(_, m) { return '$$' + m + '$$'; });
         var displayMath = [];
         t = t.replace(/\$\$([\s\S]+?)\$\$/g, function(_, math) {
+            var fixed = fixBareLatexInDelimiters(math.trim());
             var rendered;
-            try { rendered = '<span class="aqs-katex-display">' + katex.renderToString(math.trim(), { displayMode: true, throwOnError: false, strict: 'ignore' }) + '</span>'; }
+            try { rendered = '<span class="aqs-katex-display">' + katex.renderToString(fixed, { displayMode: true, throwOnError: false, strict: 'ignore' }) + '</span>'; }
             catch(e) { rendered = escHtml('$$' + math + '$$'); }
             displayMath.push(rendered);
             return '\x00DM' + (displayMath.length - 1) + '\x00';
@@ -145,8 +203,9 @@
         var inlineMath = [];
         t = t.replace(/\$([^$\n]{1,500}?)\$/g, function(_, math) {
             if (/^\d[\d,\.]*$/.test(math.trim())) return '$' + math + '$';
+            var fixed = fixBareLatexInDelimiters(math.trim());
             var rendered;
-            try { rendered = katex.renderToString(math.trim(), { displayMode: false, throwOnError: false, strict: 'ignore' }); }
+            try { rendered = katex.renderToString(fixed, { displayMode: false, throwOnError: false, strict: 'ignore' }); }
             catch(e) { rendered = escHtml('$' + math + '$'); }
             inlineMath.push(rendered);
             return '\x00IM' + (inlineMath.length - 1) + '\x00';
