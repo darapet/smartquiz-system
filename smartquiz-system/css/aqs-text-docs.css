@@ -1298,6 +1298,8 @@ body {
     display: flex !important;
     flex-direction: row !important;
     align-items: stretch !important;
+    height: calc(100vh - var(--wp-header-h, 120px)) !important;
+    overflow: hidden !important;
   }
 
   /* ── Sidebar: fixed-width left panel ── */
