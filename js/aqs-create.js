@@ -44,7 +44,7 @@
             html += '<div style="background:#f8f8ff;border:1px solid #e8e8f5;border-radius:12px;padding:16px;">' +
                 '<div style="font-weight:700;color:#1e1b4b;font-size:.95rem;margin-bottom:12px;">' +
                     '<span style="background:#6366f1;color:#fff;border-radius:6px;padding:2px 9px;font-size:.78rem;margin-right:8px;">Q' + (i + 1) + '</span>' +
-                    escHtml(q.question || '') +
+                    renderMath(q.question || '') +
                 '</div>' +
                 '<div style="display:flex;flex-direction:column;gap:7px;">';
             (q.options || []).forEach(function(opt, oi) {
@@ -54,14 +54,14 @@
                     '<span style="flex-shrink:0;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;' +
                         (isCorrect ? 'background:#22c55e;color:#fff;' : 'background:#e5e7eb;color:#555;') + '">' +
                         letters[oi] + '</span>' +
-                    '<span style="font-size:.88rem;color:' + (isCorrect ? '#166534' : '#374151') + ';">' + escHtml(opt) + '</span>' +
+                    '<span style="font-size:.88rem;color:' + (isCorrect ? '#166534' : '#374151') + ';">' + renderMath(opt) + '</span>' +
                     (isCorrect ? '<span style="margin-left:auto;font-size:.75rem;color:#16a34a;font-weight:600;">✓ Correct</span>' : '') +
                 '</div>';
             });
             html += '</div>';
             if (q.explanation) {
                 html += '<div style="margin-top:10px;padding:8px 12px;background:#eff6ff;border-left:3px solid #6366f1;border-radius:0 6px 6px 0;font-size:.82rem;color:#1e40af;">' +
-                    '<strong>Explanation:</strong> ' + escHtml(q.explanation) + '</div>';
+                    '<strong>Explanation:</strong> ' + renderMath(q.explanation) + '</div>';
             }
             html += '</div>';
         });
@@ -127,6 +127,9 @@
     function renderMath(text) {
         if (!text) return '';
         if (typeof katex === 'undefined') return escHtml(text);
+        /* Apply fixAIMathFormatting from aqs-main.js if available (handles double-backslash
+           and bare LaTeX from AI output before KaTeX rendering) */
+        if (typeof fixAIMathFormatting === 'function') text = fixAIMathFormatting(text);
         var t = String(text);
         t = t.replace(/\\\[([\s\S]+?)\\\]/g, function(_, m) { return '$$' + m + '$$'; });
         t = t.replace(/\\\(([\s\S]+?)\\\)/g, function(_, m) { return '$'  + m + '$';  });
