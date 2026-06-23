@@ -222,23 +222,20 @@
 
     /* ── Pollinations TTS fetch — single voice attempt ──────────── */
     async function fetchChunkOnce(text, voice) {
-        var encoded   = encodeURIComponent(text);
-        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url       = 'https://audio.pollinations.ai/' + encoded +
-                        '?voice='   + voice +
-                        '&model=openai-audio' +
-                        '&nologo=true' +
-                        '&v=' + cacheBust;
+        var encoded = encodeURIComponent(text);
+        /* Clean, minimal URL — voice is the critical parameter */
+        var url = 'https://audio.pollinations.ai/' + encoded +
+                  '?voice=' + encodeURIComponent(voice) +
+                  '&model=openai-audio';
         var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, 15000);
+        var tid  = setTimeout(function() { ctrl.abort(); }, 20000);
         try {
-            var r = await fetch(url, { signal: ctrl.signal, cache: 'no-store' });
+            var r = await fetch(url, { signal: ctrl.signal });
             clearTimeout(tid);
             if (!r.ok) throw new Error('HTTP ' + r.status);
             var buf = await r.arrayBuffer();
-            /* Reject empty/tiny responses — Pollinations returns < 100 bytes
-               when it silently ignores an unsupported voice parameter        */
-            if (!buf || buf.byteLength < 100) throw new Error('Empty audio');
+            /* Reject suspiciously tiny responses */
+            if (!buf || buf.byteLength < 50) throw new Error('Empty audio');
             return buf;
         } catch(e) {
             clearTimeout(tid);
@@ -246,16 +243,20 @@
         }
     }
 
-    /* ── fetchChunk: try requested voice, then gender-safe fallback ── */
+    /* ── fetchChunk: try requested voice, then strict gender-safe fallback ──
+       Male voices (onyx/echo/fable) NEVER fall back to female voices.
+       Female voices (nova/shimmer/alloy) NEVER fall back to male voices.
+       OpenAI/Pollinations TTS voices by gender:
+         Male:   onyx (deep), echo (medium), fable (warm)
+         Female: nova (warm), shimmer (bright), alloy (neutral)           ── */
     async function fetchChunk(text, baseVoice, locale, gender) {
-        /* Try the exact voice first */
+        /* Try the exact requested voice first */
         try { return await fetchChunkOnce(text, baseVoice); } catch(_) {}
 
-        /* Fallback voices: male → onyx/echo, female → nova/shimmer
-           These are the most reliably supported voices on Pollinations  */
-        var fallbacks = (gender === 'female')
-            ? ['nova', 'shimmer', 'alloy', 'echo']
-            : ['onyx', 'echo', 'fable', 'nova'];
+        /* Gender-strict fallbacks — never cross gender boundaries */
+        var maleFallbacks   = ['onyx', 'echo', 'fable'];
+        var femaleFallbacks = ['nova', 'shimmer', 'alloy'];
+        var fallbacks = (gender === 'female') ? femaleFallbacks : maleFallbacks;
         fallbacks = fallbacks.filter(function(v) { return v !== baseVoice; });
 
         for (var fi = 0; fi < fallbacks.length; fi++) {
