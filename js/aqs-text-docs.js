@@ -117,12 +117,7 @@
       if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
     }
     var layout = document.querySelector('.wp-layout');
-    if (layout) {
-      layout.style.marginTop = h + 'px';
-      layout.style.height = 'calc(100vh - ' + h + 'px)';
-    }
-    var editorWrap = document.querySelector('.wp-editor-wrap');
-    if (editorWrap) editorWrap.style.height = 'calc(100vh - ' + h + 'px)';
+    if (layout) layout.style.marginTop = h + 'px';
   }
   window.addEventListener('resize', function() { setTimeout(wpAdjustHeaderOffset, 100); });
 
@@ -2644,33 +2639,38 @@
       setTimeout(function(){ pf2.contentWindow.focus(); pf2.contentWindow.print(); setTimeout(function(){ pf2.remove(); }, 3000); }, 500);
       return;
     }
-    // Try jsPDF with html2canvas — use a clone so ALL pages are captured, not just visible ones
+    // Try jsPDF with html2canvas — temporarily remove overflow so ALL pages are visible to the canvas
     var container = document.getElementById('wp-pages');
     if (!container) return;
 
-    /* Save all editor states before cloning */
+    /* Save all editor states before capturing */
     container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
       var m = ed.id.match(/wp-editor-(\d+)/);
       if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
     });
 
-    /* Build a temporary clone that has no overflow/height constraints so html2canvas
-       can see all pages at once instead of only the visible viewport slice */
-    var clone = container.cloneNode(true);
-    clone.removeAttribute('id');
-    clone.style.cssText = [
-      'position:absolute', 'left:-9999px', 'top:0',
-      'width:' + Math.max(container.offsetWidth, 794) + 'px',
-      'height:auto', 'max-height:none', 'overflow:visible',
-      'background:#f8f9ff', 'z-index:-1', 'pointer-events:none'
-    ].join(';') + ';';
-    /* Disable contenteditable inside clone so browsers don't inject extra markup */
-    clone.querySelectorAll('[contenteditable]').forEach(function(el) { el.removeAttribute('contenteditable'); });
-    document.body.appendChild(clone);
+    /* Temporarily expand the container so html2canvas sees every page, not just the visible slice */
+    var _savedOverflow  = container.style.overflow;
+    var _savedOverflowY = container.style.overflowY;
+    var _savedHeight    = container.style.height;
+    var _savedMaxHeight = container.style.maxHeight;
+    container.style.overflow  = 'visible';
+    container.style.overflowY = 'visible';
+    container.style.height    = 'auto';
+    container.style.maxHeight = 'none';
+
+    function _restoreContainer() {
+      container.style.overflow  = _savedOverflow;
+      container.style.overflowY = _savedOverflowY;
+      container.style.height    = _savedHeight;
+      container.style.maxHeight = _savedMaxHeight;
+    }
 
     wpSetStatus('Generating PDF… (capturing all pages)');
-    html2canvas(clone, { scale: 1.5, useCORS: true, allowTaint: true, scrollX: 0, scrollY: 0 }).then(function(canvas) {
-      if (clone.parentNode) clone.parentNode.removeChild(clone);
+    /* Small delay so the browser reflows the expanded container before capture */
+    setTimeout(function() {
+    html2canvas(container, { scale: 1.5, useCORS: true, allowTaint: true, scrollX: 0, scrollY: -window.pageYOffset }).then(function(canvas) {
+      _restoreContainer();
       var imgData = canvas.toDataURL('image/jpeg', 0.85);
       var jsPDF = (window.jspdf || window.jsPDF || {}).jsPDF;
       if (!jsPDF) { alert('PDF library error. Try the Print button to save as PDF.'); return; }
@@ -2687,9 +2687,10 @@
       pdf.save(wpSafeName(title) + '.pdf');
       wpSetStatus('PDF downloaded ✅');
     }).catch(function(e) {
-      if (clone.parentNode) clone.parentNode.removeChild(clone);
+      _restoreContainer();
       alert('PDF generation failed: ' + e.message + '\n\nTip: Use the Print button and select "Save as PDF".');
     });
+    }, 80); /* end setTimeout — let browser reflow before capture */
   }
 
   function wpOpenInChrome(dataUri, filename) {
