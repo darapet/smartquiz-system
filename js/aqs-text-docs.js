@@ -117,7 +117,12 @@
       if (sidebar) { sidebar.style.top = h + 'px'; sidebar.style.height = 'calc(100vh - ' + h + 'px)'; }
     }
     var layout = document.querySelector('.wp-layout');
-    if (layout) layout.style.marginTop = h + 'px';
+    if (layout) {
+      layout.style.marginTop = h + 'px';
+      layout.style.height = 'calc(100vh - ' + h + 'px)';
+    }
+    var editorWrap = document.querySelector('.wp-editor-wrap');
+    if (editorWrap) editorWrap.style.height = 'calc(100vh - ' + h + 'px)';
   }
   window.addEventListener('resize', function() { setTimeout(wpAdjustHeaderOffset, 100); });
 
@@ -131,7 +136,7 @@
   window.wpChooseMode = function (mode) {
     sessionStorage.setItem('wp_mode_chosen', '1');
     var overlay = document.getElementById('wp-mode-overlay');
-    if (overlay) overlay.classList.add('hidden');
+    if (overlay) { overlay.classList.add('hidden'); overlay.style.display = 'none'; }
     if (mode === 'format') { wpSwitchTab('format'); focusSource(); }
     else if (mode === 'write') { wpSwitchTab('write'); var p = document.getElementById('wp-prompt'); if(p) p.focus(); }
     else if (mode === 'blank') { /* already ready */ }
@@ -2639,11 +2644,33 @@
       setTimeout(function(){ pf2.contentWindow.focus(); pf2.contentWindow.print(); setTimeout(function(){ pf2.remove(); }, 3000); }, 500);
       return;
     }
-    // Try jsPDF with html2canvas
+    // Try jsPDF with html2canvas — use a clone so ALL pages are captured, not just visible ones
     var container = document.getElementById('wp-pages');
     if (!container) return;
-    wpSetStatus('Generating PDF…');
-    html2canvas(container, { scale: 1.5, useCORS: true, allowTaint: true }).then(function(canvas) {
+
+    /* Save all editor states before cloning */
+    container.querySelectorAll('.wp-page-editor').forEach(function(ed) {
+      var m = ed.id.match(/wp-editor-(\d+)/);
+      if (m) wpPages[parseInt(m[1], 10)] = ed.innerHTML;
+    });
+
+    /* Build a temporary clone that has no overflow/height constraints so html2canvas
+       can see all pages at once instead of only the visible viewport slice */
+    var clone = container.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.style.cssText = [
+      'position:absolute', 'left:-9999px', 'top:0',
+      'width:' + Math.max(container.offsetWidth, 794) + 'px',
+      'height:auto', 'max-height:none', 'overflow:visible',
+      'background:#f8f9ff', 'z-index:-1', 'pointer-events:none'
+    ].join(';') + ';';
+    /* Disable contenteditable inside clone so browsers don't inject extra markup */
+    clone.querySelectorAll('[contenteditable]').forEach(function(el) { el.removeAttribute('contenteditable'); });
+    document.body.appendChild(clone);
+
+    wpSetStatus('Generating PDF… (capturing all pages)');
+    html2canvas(clone, { scale: 1.5, useCORS: true, allowTaint: true, scrollX: 0, scrollY: 0 }).then(function(canvas) {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
       var imgData = canvas.toDataURL('image/jpeg', 0.85);
       var jsPDF = (window.jspdf || window.jsPDF || {}).jsPDF;
       if (!jsPDF) { alert('PDF library error. Try the Print button to save as PDF.'); return; }
@@ -2660,6 +2687,7 @@
       pdf.save(wpSafeName(title) + '.pdf');
       wpSetStatus('PDF downloaded ✅');
     }).catch(function(e) {
+      if (clone.parentNode) clone.parentNode.removeChild(clone);
       alert('PDF generation failed: ' + e.message + '\n\nTip: Use the Print button and select "Save as PDF".');
     });
   }
