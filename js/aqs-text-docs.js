@@ -1898,10 +1898,14 @@
     for (var iter = 0; iter < MAX_ITER; iter++) {
       var changed = false;
 
+      /* Safety cap: if pages explode (clientHeight=0 race condition) stop early */
+      if (wpPages.length > 60) break;
+
       /* ── Forward pass: push overflow to next page ── */
       for (var pi = 0; pi < wpPages.length; pi++) {
         var ed = document.getElementById('wp-editor-' + pi);
         if (!ed) continue;
+        if (ed.clientHeight <= 0) continue; /* editor not yet laid out — skip to avoid runaway */
         if (ed.scrollHeight > ed.clientHeight + WP_OVERFLOW_BUF) {
           if (_wpPushOverflow(pi, ed)) { changed = true; break; }
         }
@@ -1913,6 +1917,7 @@
         var ed2 = document.getElementById('wp-editor-' + pi2);
         var ned = document.getElementById('wp-editor-' + (pi2 + 1));
         if (!ed2 || !ned) continue;
+        if (ed2.clientHeight <= 0) continue; /* not laid out yet */
         if (_wpPullUnderflow(pi2, ed2, ned)) { changed = true; break; }
       }
       if (changed) { anythingChanged = true; continue; }
@@ -2603,7 +2608,7 @@
     var title   = wpGetDocTitle(content);
     var fname   = wpSafeName(title);
 
-    if (format === 'pdf') { wpDownloadPDF(content, title); return; }
+    if (format === 'pdf') { wpShowPrintPreview('pdf'); return; }
     if (format === 'html') {
       var fullHtml = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>' + escHtml(title) + '</title><style>body{font-family:Georgia,serif;max-width:800px;margin:40px auto;padding:20px;line-height:1.6;color:#1a1a1a;}h1{font-size:24pt;}h2{font-size:18pt;}h3{font-size:14pt;}table{border-collapse:collapse;width:100%;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;}</style></head><body>' + content + '</body></html>';
       wpSaveText(fullHtml, fname + '.html', 'text/html');
