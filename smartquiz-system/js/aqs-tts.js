@@ -22,121 +22,125 @@
        82 PROFESSIONAL VOICES — EVERY VOICE HAS A UNIQUE (base, voiceSpeed)
        base   → Pollinations/OpenAI TTS voice model
        voiceSpeed → sent as &speed= param to Pollinations (0.80 – 1.25)
-       Male bases:   onyx · echo · fable · ash · verse · ballad
-       Female bases: nova · shimmer · alloy · coral · sage
-       With speed variants each voice renders uniquely.
+       Male bases:   onyx · echo · fable  (confirmed on text.pollinations.ai)
+       Female bases: nova · shimmer · alloy (confirmed on text.pollinations.ai)
+       voiceSpeed applied as audio.playbackRate — differentiates each voice.
     ══════════════════════════════════════════════════════════════ */
+    /* voiceSpeed is applied as audio.playbackRate after download — creates
+       real acoustic differentiation even though the 6 base voices are fixed.
+       Only onyx/echo/fable (male) and nova/shimmer/alloy (female) are used —
+       these are the only voices confirmed to work on text.pollinations.ai.    */
     var VOICES = [
         /* ── ENGLISH MALE (10) ─────────────────────────────────── */
-        { id:'Brian',      name:'Brian',      lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    voiceSpeed:0.85, desc:'Deep & authoritative' },
-        { id:'Matthew',    name:'Matthew',    lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'onyx',    voiceSpeed:0.92, desc:'Bold & professional'  },
-        { id:'Joey',       name:'Joey',       lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    voiceSpeed:0.88, desc:'Friendly & clear'     },
-        { id:'Justin',     name:'Justin',     lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    voiceSpeed:1.05, desc:'Casual & conversational'},
-        { id:'Russell',    name:'Russell',    lang:'en', locale:'en-AU', region:'AU',            gender:'male',   base:'fable',   voiceSpeed:0.90, desc:'Australian accent'    },
-        { id:'Daniel',     name:'Daniel',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'fable',   voiceSpeed:1.08, desc:'British & refined'    },
-        { id:'Kevin',      name:'Kevin',      lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'ash',     voiceSpeed:0.95, desc:'Crisp & energetic'    },
-        { id:'Geraint',    name:'Geraint',    lang:'en', locale:'en-GB', region:'Wales',         gender:'male',   base:'ash',     voiceSpeed:1.10, desc:'Welsh character'      },
-        { id:'Arthur',     name:'Arthur',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'verse',   voiceSpeed:0.87, desc:'Classic British'      },
-        { id:'Ryan',       name:'Ryan',       lang:'en', locale:'en-CA', region:'Canada',        gender:'male',   base:'ballad',  voiceSpeed:1.00, desc:'Canadian & neutral'   },
+        { id:'Brian',      name:'Brian',      lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    voiceSpeed:0.82, desc:'Deep & authoritative' },
+        { id:'Matthew',    name:'Matthew',    lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'onyx',    voiceSpeed:0.91, desc:'Bold & professional'  },
+        { id:'Joey',       name:'Joey',       lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    voiceSpeed:0.85, desc:'Friendly & clear'     },
+        { id:'Justin',     name:'Justin',     lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    voiceSpeed:1.00, desc:'Casual & conversational'},
+        { id:'Russell',    name:'Russell',    lang:'en', locale:'en-AU', region:'AU',            gender:'male',   base:'fable',   voiceSpeed:0.88, desc:'Australian accent'    },
+        { id:'Daniel',     name:'Daniel',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'fable',   voiceSpeed:1.03, desc:'British & refined'    },
+        { id:'Kevin',      name:'Kevin',      lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'onyx',    voiceSpeed:1.06, desc:'Crisp & energetic'    },
+        { id:'Geraint',    name:'Geraint',    lang:'en', locale:'en-GB', region:'Wales',         gender:'male',   base:'echo',    voiceSpeed:1.12, desc:'Welsh character'      },
+        { id:'Arthur',     name:'Arthur',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'fable',   voiceSpeed:1.18, desc:'Classic British'      },
+        { id:'Ryan',       name:'Ryan',       lang:'en', locale:'en-CA', region:'Canada',        gender:'male',   base:'onyx',    voiceSpeed:1.15, desc:'Canadian & neutral'   },
         /* ── ENGLISH FEMALE (10) ────────────────────────────────── */
-        { id:'Amy',        name:'Amy',        lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'nova',    voiceSpeed:0.88, desc:'Bright & professional'},
-        { id:'Emma',       name:'Emma',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'nova',    voiceSpeed:1.05, desc:'Confident & clear'    },
-        { id:'Joanna',     name:'Joanna',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', voiceSpeed:0.90, desc:'Warm & articulate'    },
-        { id:'Salli',      name:'Salli',      lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', voiceSpeed:1.08, desc:'Engaging & natural'   },
-        { id:'Kimberly',   name:'Kimberly',   lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   voiceSpeed:0.92, desc:'Neutral & versatile'  },
-        { id:'Kendra',     name:'Kendra',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   voiceSpeed:1.12, desc:'Conversational tone'  },
-        { id:'Nicole',     name:'Nicole',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'coral',   voiceSpeed:0.85, desc:'Australian & friendly'},
-        { id:'Olivia',     name:'Olivia',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'coral',   voiceSpeed:1.10, desc:'Australian & bright'  },
-        { id:'Aria',       name:'Aria',       lang:'en', locale:'en-US', region:'US',            gender:'female', base:'sage',    voiceSpeed:0.93, desc:'Expressive & dynamic' },
-        { id:'Jane',       name:'Jane',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'sage',    voiceSpeed:1.15, desc:'Elegant & composed'   },
+        { id:'Amy',        name:'Amy',        lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'nova',    voiceSpeed:0.85, desc:'Bright & professional'},
+        { id:'Emma',       name:'Emma',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'nova',    voiceSpeed:1.00, desc:'Confident & clear'    },
+        { id:'Joanna',     name:'Joanna',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', voiceSpeed:0.88, desc:'Warm & articulate'    },
+        { id:'Salli',      name:'Salli',      lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', voiceSpeed:1.05, desc:'Engaging & natural'   },
+        { id:'Kimberly',   name:'Kimberly',   lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   voiceSpeed:0.91, desc:'Neutral & versatile'  },
+        { id:'Kendra',     name:'Kendra',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   voiceSpeed:1.09, desc:'Conversational tone'  },
+        { id:'Nicole',     name:'Nicole',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'nova',    voiceSpeed:1.12, desc:'Australian & friendly'},
+        { id:'Olivia',     name:'Olivia',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'shimmer', voiceSpeed:0.94, desc:'Australian & bright'  },
+        { id:'Aria',       name:'Aria',       lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   voiceSpeed:1.15, desc:'Expressive & dynamic' },
+        { id:'Jane',       name:'Jane',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'nova',    voiceSpeed:1.18, desc:'Elegant & composed'   },
         /* ── SPANISH MALE (4) ───────────────────────────────────── */
-        { id:'Enrique',    name:'Enrique',    lang:'es', locale:'es-ES', region:'Spain',         gender:'male',   base:'onyx',    voiceSpeed:1.00, desc:'Spanish Castilian'    },
-        { id:'Miguel',     name:'Miguel',     lang:'es', locale:'es-US', region:'US-Latino',     gender:'male',   base:'fable',   voiceSpeed:0.85, desc:'Latino US accent'     },
-        { id:'Pablo',      name:'Pablo',      lang:'es', locale:'es-MX', region:'Mexico',        gender:'male',   base:'echo',    voiceSpeed:1.15, desc:'Mexican accent'       },
-        { id:'Carlos',     name:'Carlos',     lang:'es', locale:'es-AR', region:'Argentina',     gender:'male',   base:'verse',   voiceSpeed:0.93, desc:'Argentine accent'     },
+        { id:'Enrique',    name:'Enrique',    lang:'es', locale:'es-ES', region:'Spain',         gender:'male',   base:'onyx',    voiceSpeed:0.97, desc:'Spanish Castilian'    },
+        { id:'Miguel',     name:'Miguel',     lang:'es', locale:'es-US', region:'US-Latino',     gender:'male',   base:'fable',   voiceSpeed:0.82, desc:'Latino US accent'     },
+        { id:'Pablo',      name:'Pablo',      lang:'es', locale:'es-MX', region:'Mexico',        gender:'male',   base:'echo',    voiceSpeed:1.09, desc:'Mexican accent'       },
+        { id:'Carlos',     name:'Carlos',     lang:'es', locale:'es-AR', region:'Argentina',     gender:'male',   base:'fable',   voiceSpeed:1.15, desc:'Argentine accent'     },
         /* ── SPANISH FEMALE (4) ─────────────────────────────────── */
-        { id:'Conchita',   name:'Conchita',   lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'nova',    voiceSpeed:1.15, desc:'Spanish Castilian'    },
-        { id:'Lucia',      name:'Lucía',      lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'shimmer', voiceSpeed:0.95, desc:'Bright & precise'     },
-        { id:'Penelope',   name:'Penélope',   lang:'es', locale:'es-US', region:'US-Latino',     gender:'female', base:'alloy',   voiceSpeed:1.00, desc:'Neutral Latino'       },
-        { id:'Valentina',  name:'Valentina',  lang:'es', locale:'es-MX', region:'Mexico',        gender:'female', base:'coral',   voiceSpeed:0.92, desc:'Warm Mexican tone'    },
+        { id:'Conchita',   name:'Conchita',   lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'nova',    voiceSpeed:0.94, desc:'Spanish Castilian'    },
+        { id:'Lucia',      name:'Lucía',      lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'shimmer', voiceSpeed:1.12, desc:'Bright & precise'     },
+        { id:'Penelope',   name:'Penélope',   lang:'es', locale:'es-US', region:'US-Latino',     gender:'female', base:'alloy',   voiceSpeed:0.97, desc:'Neutral Latino'       },
+        { id:'Valentina',  name:'Valentina',  lang:'es', locale:'es-MX', region:'Mexico',        gender:'female', base:'nova',    voiceSpeed:1.06, desc:'Warm Mexican tone'    },
         /* ── FRENCH MALE (3) ────────────────────────────────────── */
-        { id:'Mathieu',    name:'Mathieu',    lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'onyx',    voiceSpeed:1.08, desc:'Deep Parisian'        },
-        { id:'Pierre',     name:'Pierre',     lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'fable',   voiceSpeed:1.00, desc:'Sophisticated'        },
-        { id:'Jacques',    name:'Jacques',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'male',   base:'ash',     voiceSpeed:0.88, desc:'Québécois accent'     },
+        { id:'Mathieu',    name:'Mathieu',    lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'onyx',    voiceSpeed:1.03, desc:'Deep Parisian'        },
+        { id:'Pierre',     name:'Pierre',     lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'fable',   voiceSpeed:0.94, desc:'Sophisticated'        },
+        { id:'Jacques',    name:'Jacques',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'male',   base:'echo',    voiceSpeed:0.88, desc:'Québécois accent'     },
         /* ── FRENCH FEMALE (3) ──────────────────────────────────── */
-        { id:'Celine',     name:'Céline',     lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'nova',    voiceSpeed:0.95, desc:'Elegant Parisian'     },
-        { id:'Isabelle',   name:'Isabelle',   lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'alloy',   voiceSpeed:0.88, desc:'Clear & fluid'        },
-        { id:'Chantal',    name:'Chantal',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'female', base:'sage',    voiceSpeed:1.00, desc:'Québécois warmth'     },
+        { id:'Celine',     name:'Céline',     lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'shimmer', voiceSpeed:0.82, desc:'Elegant Parisian'     },
+        { id:'Isabelle',   name:'Isabelle',   lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'alloy',   voiceSpeed:1.00, desc:'Clear & fluid'        },
+        { id:'Chantal',    name:'Chantal',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'female', base:'nova',    voiceSpeed:1.21, desc:'Québécois warmth'     },
         /* ── GERMAN MALE (3) ────────────────────────────────────── */
-        { id:'Hans',       name:'Hans',       lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'onyx',    voiceSpeed:1.15, desc:'Bold & precise'       },
-        { id:'Klaus',      name:'Klaus',      lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'ballad',  voiceSpeed:0.88, desc:'Authoritative'        },
-        { id:'Wolfgang',   name:'Wolfgang',   lang:'de', locale:'de-AT', region:'Austria',       gender:'male',   base:'echo',    voiceSpeed:0.82, desc:'Austrian dialect'     },
+        { id:'Hans',       name:'Hans',       lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'onyx',    voiceSpeed:1.09, desc:'Bold & precise'       },
+        { id:'Klaus',      name:'Klaus',      lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'echo',    voiceSpeed:0.82, desc:'Authoritative'        },
+        { id:'Wolfgang',   name:'Wolfgang',   lang:'de', locale:'de-AT', region:'Austria',       gender:'male',   base:'fable',   voiceSpeed:1.21, desc:'Austrian dialect'     },
         /* ── GERMAN FEMALE (3) ──────────────────────────────────── */
-        { id:'Marlene',    name:'Marlene',    lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'shimmer', voiceSpeed:1.00, desc:'Warm & professional'  },
-        { id:'Vicki',      name:'Vicki',      lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'coral',   voiceSpeed:1.15, desc:'Bright & energetic'   },
-        { id:'Petra',      name:'Petra',      lang:'de', locale:'de-AT', region:'Austria',       gender:'female', base:'alloy',   voiceSpeed:1.18, desc:'Austrian clarity'     },
+        { id:'Marlene',    name:'Marlene',    lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'shimmer', voiceSpeed:0.97, desc:'Warm & professional'  },
+        { id:'Vicki',      name:'Vicki',      lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'alloy',   voiceSpeed:1.12, desc:'Bright & energetic'   },
+        { id:'Petra',      name:'Petra',      lang:'de', locale:'de-AT', region:'Austria',       gender:'female', base:'nova',    voiceSpeed:0.82, desc:'Austrian clarity'     },
         /* ── PORTUGUESE MALE (3) ────────────────────────────────── */
-        { id:'Cristiano',  name:'Cristiano',  lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'male',   base:'fable',   voiceSpeed:1.12, desc:'European Portuguese'  },
-        { id:'Ricardo',    name:'Ricardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'verse',   voiceSpeed:1.05, desc:'Brazilian warmth'     },
-        { id:'Eduardo',    name:'Eduardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'ash',     voiceSpeed:1.00, desc:'Deep & confident'     },
+        { id:'Cristiano',  name:'Cristiano',  lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'male',   base:'fable',   voiceSpeed:1.06, desc:'European Portuguese'  },
+        { id:'Ricardo',    name:'Ricardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'echo',    voiceSpeed:1.18, desc:'Brazilian warmth'     },
+        { id:'Eduardo',    name:'Eduardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'onyx',    voiceSpeed:0.85, desc:'Deep & confident'     },
         /* ── PORTUGUESE FEMALE (3) ──────────────────────────────── */
-        { id:'Ines',       name:'Inês',       lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'nova',    voiceSpeed:1.00, desc:'European Portuguese'  },
-        { id:'Vitoria',    name:'Vitória',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'female', base:'sage',    voiceSpeed:0.88, desc:'Brazilian vivacity'   },
-        { id:'Ana',        name:'Ana',        lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'shimmer', voiceSpeed:1.18, desc:'Clear & precise'      },
+        { id:'Ines',       name:'Inês',       lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'nova',    voiceSpeed:1.09, desc:'European Portuguese'  },
+        { id:'Vitoria',    name:'Vitória',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'female', base:'shimmer', voiceSpeed:0.85, desc:'Brazilian vivacity'   },
+        { id:'Ana',        name:'Ana',        lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'alloy',   voiceSpeed:1.18, desc:'Clear & precise'      },
         /* ── ITALIAN MALE (2) ───────────────────────────────────── */
-        { id:'Giorgio',    name:'Giorgio',    lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'onyx',    voiceSpeed:0.80, desc:'Rich & expressive'    },
-        { id:'Marco',      name:'Marco',      lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'echo',    voiceSpeed:0.95, desc:'Warm & natural'       },
+        { id:'Giorgio',    name:'Giorgio',    lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'onyx',    voiceSpeed:1.12, desc:'Rich & expressive'    },
+        { id:'Marco',      name:'Marco',      lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'echo',    voiceSpeed:0.94, desc:'Warm & natural'       },
         /* ── ITALIAN FEMALE (2) ─────────────────────────────────── */
-        { id:'Carla',      name:'Carla',      lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'coral',   voiceSpeed:1.00, desc:'Clear & flowing'      },
-        { id:'Bianca',     name:'Bianca',     lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'nova',    voiceSpeed:1.20, desc:'Bright & musical'     },
+        { id:'Carla',      name:'Carla',      lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'nova',    voiceSpeed:0.88, desc:'Clear & flowing'      },
+        { id:'Bianca',     name:'Bianca',     lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'shimmer', voiceSpeed:1.18, desc:'Bright & musical'     },
         /* ── JAPANESE MALE (2) ──────────────────────────────────── */
-        { id:'Takumi',     name:'Takumi',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'fable',   voiceSpeed:0.95, desc:'Clear & formal'       },
-        { id:'Kenji',      name:'Kenji',      lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'ash',     voiceSpeed:1.12, desc:'Deep & steady'        },
+        { id:'Takumi',     name:'Takumi',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'fable',   voiceSpeed:0.91, desc:'Clear & formal'       },
+        { id:'Kenji',      name:'Kenji',      lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'onyx',    voiceSpeed:1.18, desc:'Deep & steady'        },
         /* ── JAPANESE FEMALE (2) ────────────────────────────────── */
-        { id:'Mizuki',     name:'Mizuki',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'sage',    voiceSpeed:1.05, desc:'Warm & natural'       },
-        { id:'Yuki',       name:'Yuki',       lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'coral',   voiceSpeed:0.88, desc:'Bright & friendly'    },
+        { id:'Mizuki',     name:'Mizuki',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'alloy',   voiceSpeed:0.85, desc:'Warm & natural'       },
+        { id:'Yuki',       name:'Yuki',       lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'nova',    voiceSpeed:1.15, desc:'Bright & friendly'    },
         /* ── ARABIC MALE (2) ────────────────────────────────────── */
         { id:'Khalid',     name:'Khalid',     lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'male',   base:'onyx',    voiceSpeed:0.88, desc:'Deep & formal'        },
-        { id:'Omar',       name:'Omar',       lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'male',   base:'verse',   voiceSpeed:1.10, desc:'Egyptian dialect'     },
+        { id:'Omar',       name:'Omar',       lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'male',   base:'fable',   voiceSpeed:1.12, desc:'Egyptian dialect'     },
         /* ── ARABIC FEMALE (2) ──────────────────────────────────── */
-        { id:'Zeina',      name:'Zeina',      lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'female', base:'nova',    voiceSpeed:1.10, desc:'Clear & flowing'      },
-        { id:'Fatima',     name:'Fatima',     lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'female', base:'shimmer', voiceSpeed:0.85, desc:'Warm & expressive'    },
+        { id:'Zeina',      name:'Zeina',      lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'female', base:'shimmer', voiceSpeed:1.09, desc:'Clear & flowing'      },
+        { id:'Fatima',     name:'Fatima',     lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'female', base:'nova',    voiceSpeed:0.91, desc:'Warm & expressive'    },
         /* ── CHINESE MALE (2) ───────────────────────────────────── */
-        { id:'Wei',        name:'Wei',        lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'ballad',  voiceSpeed:1.05, desc:'Mandarin standard'    },
-        { id:'Zhang',      name:'Zhang',      lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'echo',    voiceSpeed:1.20, desc:'Authoritative tone'   },
+        { id:'Wei',        name:'Wei',        lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'echo',    voiceSpeed:1.03, desc:'Mandarin standard'    },
+        { id:'Zhang',      name:'Zhang',      lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'onyx',    voiceSpeed:1.21, desc:'Authoritative tone'   },
         /* ── CHINESE FEMALE (2) ─────────────────────────────────── */
-        { id:'Zhiyu',      name:'Zhiyu',      lang:'zh', locale:'zh-CN', region:'China',         gender:'female', base:'alloy',   voiceSpeed:0.95, desc:'Clear Mandarin'       },
-        { id:'Mei',        name:'Mei',        lang:'zh', locale:'zh-TW', region:'Taiwan',        gender:'female', base:'sage',    voiceSpeed:1.20, desc:'Taiwanese Mandarin'   },
+        { id:'Zhiyu',      name:'Zhiyu',      lang:'zh', locale:'zh-CN', region:'China',         gender:'female', base:'alloy',   voiceSpeed:0.94, desc:'Clear Mandarin'       },
+        { id:'Mei',        name:'Mei',        lang:'zh', locale:'zh-TW', region:'Taiwan',        gender:'female', base:'shimmer', voiceSpeed:1.21, desc:'Taiwanese Mandarin'   },
         /* ── RUSSIAN MALE (2) ───────────────────────────────────── */
-        { id:'Maxim',      name:'Maxim',      lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'onyx',    voiceSpeed:0.95, desc:'Deep & formal'        },
-        { id:'Dmitri',     name:'Dmitri',     lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'fable',   voiceSpeed:0.80, desc:'Expressive tone'      },
+        { id:'Maxim',      name:'Maxim',      lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'echo',    voiceSpeed:0.91, desc:'Deep & formal'        },
+        { id:'Dmitri',     name:'Dmitri',     lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'fable',   voiceSpeed:0.85, desc:'Expressive tone'      },
         /* ── RUSSIAN FEMALE (2) ─────────────────────────────────── */
-        { id:'Tatyana',    name:'Tatyana',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'alloy',   voiceSpeed:1.08, desc:'Clear & precise'      },
-        { id:'Natasha',    name:'Natasha',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'coral',   voiceSpeed:0.95, desc:'Warm & natural'       },
+        { id:'Tatyana',    name:'Tatyana',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'alloy',   voiceSpeed:1.06, desc:'Clear & precise'      },
+        { id:'Natasha',    name:'Natasha',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'nova',    voiceSpeed:1.00, desc:'Warm & natural'       },
         /* ── HINDI MALE (2) ─────────────────────────────────────── */
-        { id:'Arjun',      name:'Arjun',      lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'verse',   voiceSpeed:0.98, desc:'Clear & professional' },
-        { id:'Raj',        name:'Raj',        lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'ballad',  voiceSpeed:1.15, desc:'Warm Indian tone'     },
+        { id:'Arjun',      name:'Arjun',      lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'echo',    voiceSpeed:0.97, desc:'Clear & professional' },
+        { id:'Raj',        name:'Raj',        lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'fable',   voiceSpeed:1.09, desc:'Warm Indian tone'     },
         /* ── HINDI FEMALE (2) ───────────────────────────────────── */
-        { id:'Aditi',      name:'Aditi',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'nova',    voiceSpeed:0.82, desc:'Clear & natural'      },
-        { id:'Priya',      name:'Priya',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'shimmer', voiceSpeed:1.12, desc:'Bright & warm'        },
+        { id:'Aditi',      name:'Aditi',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'shimmer', voiceSpeed:0.91, desc:'Clear & natural'      },
+        { id:'Priya',      name:'Priya',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'alloy',   voiceSpeed:1.21, desc:'Bright & warm'        },
         /* ── DUTCH MALE (2) ─────────────────────────────────────── */
-        { id:'Ruben',      name:'Ruben',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'ash',     voiceSpeed:0.82, desc:'Clear & direct'       },
-        { id:'Willem',     name:'Willem',     lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'echo',    voiceSpeed:1.10, desc:'Warm Dutch tone'      },
+        { id:'Ruben',      name:'Ruben',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'onyx',    voiceSpeed:0.94, desc:'Clear & direct'       },
+        { id:'Willem',     name:'Willem',     lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'echo',    voiceSpeed:1.15, desc:'Warm Dutch tone'      },
         /* ── DUTCH FEMALE (2) ───────────────────────────────────── */
-        { id:'Lotte',      name:'Lotte',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'female', base:'alloy',   voiceSpeed:0.82, desc:'Precise & clear'      },
-        { id:'Lisa',       name:'Lisa',       lang:'nl', locale:'nl-BE', region:'Belgium',       gender:'female', base:'sage',    voiceSpeed:1.10, desc:'Belgian Dutch'        },
+        { id:'Lotte',      name:'Lotte',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'female', base:'nova',    voiceSpeed:0.97, desc:'Precise & clear'      },
+        { id:'Lisa',       name:'Lisa',       lang:'nl', locale:'nl-BE', region:'Belgium',       gender:'female', base:'shimmer', voiceSpeed:1.00, desc:'Belgian Dutch'        },
         /* ── KOREAN (2) ─────────────────────────────────────────── */
-        { id:'Junho',      name:'Junho',      lang:'ko', locale:'ko-KR', region:'Korea',         gender:'male',   base:'verse',   voiceSpeed:0.85, desc:'Clear & formal'       },
-        { id:'Seoyeon',    name:'Seoyeon',    lang:'ko', locale:'ko-KR', region:'Korea',         gender:'female', base:'coral',   voiceSpeed:1.20, desc:'Bright & natural'     },
+        { id:'Junho',      name:'Junho',      lang:'ko', locale:'ko-KR', region:'Korea',         gender:'male',   base:'fable',   voiceSpeed:0.97, desc:'Clear & formal'       },
+        { id:'Seoyeon',    name:'Seoyeon',    lang:'ko', locale:'ko-KR', region:'Korea',         gender:'female', base:'alloy',   voiceSpeed:0.88, desc:'Bright & natural'     },
         /* ── SWEDISH (2) ────────────────────────────────────────── */
-        { id:'Erik',       name:'Erik',       lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'male',   base:'ballad',  voiceSpeed:0.95, desc:'Nordic clarity'       },
-        { id:'Astrid',     name:'Astrid',     lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'female', base:'nova',    voiceSpeed:1.08, desc:'Scandinavian warmth'  },
+        { id:'Erik',       name:'Erik',       lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'male',   base:'echo',    voiceSpeed:1.06, desc:'Nordic clarity'       },
+        { id:'Astrid',     name:'Astrid',     lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'female', base:'nova',    voiceSpeed:1.03, desc:'Scandinavian warmth'  },
         /* ── TURKISH (2) ────────────────────────────────────────── */
-        { id:'Mehmet',     name:'Mehmet',     lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'male',   base:'fable',   voiceSpeed:1.18, desc:'Warm & expressive'    },
-        { id:'Filiz',      name:'Filiz',      lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'female', base:'shimmer', voiceSpeed:0.92, desc:'Clear & melodic'      },
+        { id:'Mehmet',     name:'Mehmet',     lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'male',   base:'fable',   voiceSpeed:1.00, desc:'Warm & expressive'    },
+        { id:'Filiz',      name:'Filiz',      lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'female', base:'shimmer', voiceSpeed:0.94, desc:'Clear & melodic'      },
         /* ── POLISH (2) ─────────────────────────────────────────── */
-        { id:'Jacek',      name:'Jacek',      lang:'pl', locale:'pl-PL', region:'Poland',        gender:'male',   base:'ash',     voiceSpeed:1.18, desc:'Bold & steady'        },
-        { id:'Maja',       name:'Maja',       lang:'pl', locale:'pl-PL', region:'Poland',        gender:'female', base:'alloy',   voiceSpeed:1.22, desc:'Clear & natural'      },
+        { id:'Jacek',      name:'Jacek',      lang:'pl', locale:'pl-PL', region:'Poland',        gender:'male',   base:'onyx',    voiceSpeed:1.00, desc:'Bold & steady'        },
+        { id:'Maja',       name:'Maja',       lang:'pl', locale:'pl-PL', region:'Poland',        gender:'female', base:'alloy',   voiceSpeed:1.15, desc:'Clear & natural'      },
     ];
 
     /* ── Voice render ─────────────────────────────────────────── */
@@ -237,20 +241,18 @@
     }
 
     /* ── Pollinations TTS fetch — single voice attempt ──────────
-       Each voice carries its own voiceSpeed so the Pollinations API
-       renders it at a unique pitch/speed — making every voice distinct.
+       text.pollinations.ai supports: model=openai-audio, voice={name}
+       Supported voices: alloy · echo · fable · onyx · nova · shimmer
+       NOTE: speed param is NOT supported — differentiation is done via
+       audio.playbackRate on the player element after download.
     ── */
-    async function fetchChunkOnce(text, voice, voiceSpeed) {
+    async function fetchChunkOnce(text, voice) {
         var encoded = encodeURIComponent(text);
-        var spd     = parseFloat(voiceSpeed) || 1.0;
-        /* Clamp to Pollinations accepted range 0.25–4.0 */
-        spd = Math.min(Math.max(spd, 0.25), 4.0);
         var url = 'https://text.pollinations.ai/' + encoded +
                   '?model=openai-audio' +
-                  '&voice=' + encodeURIComponent(voice) +
-                  '&speed=' + spd.toFixed(2);
+                  '&voice=' + encodeURIComponent(voice);
         var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, 20000);
+        var tid  = setTimeout(function() { ctrl.abort(); }, 25000);
         try {
             var r = await fetch(url, { signal: ctrl.signal });
             clearTimeout(tid);
@@ -264,29 +266,27 @@
         }
     }
 
-    /* ── fetchChunk: try requested voice+speed, then gender-safe fallback ──
-       Male voices  (onyx/echo/fable/ash/verse/ballad) NEVER fall back to female.
-       Female voices (nova/shimmer/alloy/coral/sage)   NEVER fall back to male.
+    /* ── fetchChunk: try requested voice, then gender-safe fallback ──
+       Only uses the 6 proven Pollinations voices.
+       Male:   onyx · echo · fable
+       Female: nova · shimmer · alloy
+       Never crosses gender boundaries.
+       Adds a short delay before each fallback to avoid 429 rate limits.
     ── */
-    async function fetchChunk(text, baseVoice, locale, gender, voiceSpeed) {
-        var spd = parseFloat(voiceSpeed) || 1.0;
-
+    async function fetchChunk(text, baseVoice, locale, gender) {
         /* Try the exact requested voice first */
-        try { return await fetchChunkOnce(text, baseVoice, spd); } catch(_) {}
+        try { return await fetchChunkOnce(text, baseVoice); } catch(_) {}
 
-        /* Gender-strict fallbacks — never cross gender boundaries */
-        var maleFallbacks   = ['onyx', 'echo', 'fable', 'ash', 'verse', 'ballad'];
-        var femaleFallbacks = ['nova', 'shimmer', 'alloy', 'coral', 'sage'];
+        /* Gender-strict fallbacks — 2 attempts max, with delay to avoid 429 */
+        var maleFallbacks   = ['echo', 'fable', 'onyx'];
+        var femaleFallbacks = ['shimmer', 'alloy', 'nova'];
         var fallbacks = (gender === 'female') ? femaleFallbacks : maleFallbacks;
-        fallbacks = fallbacks.filter(function(v) { return v !== baseVoice; });
+        fallbacks = fallbacks.filter(function(v) { return v !== baseVoice; }).slice(0, 2);
 
-        /* Try fallback voices at same speed first, then at 1.0 */
         for (var fi = 0; fi < fallbacks.length; fi++) {
-            try { return await fetchChunkOnce(text, fallbacks[fi], spd); } catch(_) {}
-        }
-        /* Last resort: fallback at neutral speed */
-        for (var fi2 = 0; fi2 < fallbacks.length; fi2++) {
-            try { return await fetchChunkOnce(text, fallbacks[fi2], 1.0); } catch(_) {}
+            /* Wait before retrying so we don't trigger Pollinations rate limit */
+            await new Promise(function(r) { setTimeout(r, 800); });
+            try { return await fetchChunkOnce(text, fallbacks[fi]); } catch(_) {}
         }
         throw new Error('All voices failed for chunk');
     }
@@ -390,7 +390,7 @@
         for (var i = 0; i < chunks.length; i++) {
             setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
             try {
-                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale, voiceObj.gender, voiceObj.voiceSpeed);
+                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale, voiceObj.gender);
                 buffers.push(buf);
             } catch(e) {
                 usedBrowser = true;
@@ -429,7 +429,9 @@
             audio.style.display = 'block';
             audio.src = url;
             audio.load();
-            audio.playbackRate = speed;
+            /* voiceSpeed makes each voice sound distinct at playback time */
+            var baseRate = parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
+            audio.playbackRate = Math.min(Math.max(baseRate * speed, 0.1), 4.0);
             audio.play().catch(function() {});
         }
 
