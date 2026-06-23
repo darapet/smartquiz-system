@@ -29,6 +29,19 @@
 
             var c = chunk;
 
+            /* ── 0. Word-form math expressions the AI forgot to convert ─────────
+               Convert natural-language math to LaTeX before anything else.      */
+
+            /* "square root of (expr)" / "square root of X" */
+            c = c.replace(/\bsquare\s+root\s+of\s+\(([^)]+)\)/gi, function (_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
+            c = c.replace(/\bsquare\s+root\s+of\s+([A-Za-z0-9][A-Za-z0-9+\-*/^. ]*?)(?=[,.:;!?)\s]|$)/gi, function (_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
+            /* "the square root of" */
+            c = c.replace(/\bthe\s+square\s+root\s+of\s+([A-Za-z0-9][A-Za-z0-9+\-*/^. ]*?)(?=[,.:;!?)\s]|$)/gi, function (_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
+
+            /* "X squared" / "X cubed" */
+            c = c.replace(/\b([A-Za-z0-9]+)\s+squared\b/gi, function (_, b) { return '$' + b + '^{2}$'; });
+            c = c.replace(/\b([A-Za-z0-9]+)\s+cubed\b/gi,   function (_, b) { return '$' + b + '^{3}$'; });
+
             /* ── 1. Bare LaTeX commands that lack $ delimiters ─────────────────
                Handles both single-backslash (\cmd) and double (\\cmd) that
                survive a JSON serialisation round-trip.                          */
@@ -1888,7 +1901,7 @@
         }
 
         /* Shared system prompt — used by all direct browser calls */
-        var _DIRECT_SYS = 'You are an expert quiz maker. Output ONLY a raw valid JSON array. No markdown, no code fences, no explanation. Just the JSON array.\n\nMath formatting rule (self-activating — apply ONLY when content contains math):\n- Wrap ALL mathematical expressions in LaTeX dollar-sign delimiters. Never write raw math.\n  Inline: $x^2+3x$, $\\sqrt{x+4}$, $\\frac{3}{4}$, $a^{n}$, $\\sqrt[3]{8}$\n  Display: $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$\n  WRONG: sqrt(x+4)  CORRECT: $\\sqrt{x+4}$\n  WRONG: x^2+1      CORRECT: $x^2+1$\n  WRONG: a/b = 3    CORRECT: $\\frac{a}{b} = 3$';
+        var _DIRECT_SYS = 'You are an expert quiz maker. Output ONLY a raw valid JSON array. No markdown, no code fences, no explanation. Just the JSON array.\n\nEach object must have: "question" (string), "options" (array of 4 real answer strings — NOT letters like A/B/C/D), "correct_answer_index" (0-3), "explanation" (string).\n\nMath formatting rule (self-activating — apply ONLY when content contains math):\n- Wrap ALL mathematical expressions in LaTeX dollar-sign delimiters. Never write raw math.\n  Inline: $x^2+3x$, $\\sqrt{x+4}$, $\\frac{3}{4}$, $a^{n}$, $\\sqrt[3]{8}$\n  Display: $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$\n  WRONG: sqrt(x+4)       CORRECT: $\\sqrt{x+4}$\n  WRONG: x^2+1           CORRECT: $x^2+1$\n  WRONG: a/b = 3         CORRECT: $\\frac{a}{b} = 3$\n  WRONG: square root of 9  CORRECT: $\\sqrt{9}$\n  WRONG: x squared         CORRECT: $x^{2}$\n  WRONG: x cubed           CORRECT: $x^{3}$\n  NEVER write "square root", "squared", "cubed", "over", or "divided by" for math — use LaTeX only.';
 
         /* ── _streamDirectCall: SSE streaming — shows questions one-by-one as tokens arrive ── */
         function _streamDirectCall(prompt, model, onPartialQuestion) {
@@ -2044,7 +2057,7 @@
         const AQS_BATCH = 10;  /* questions per batch — larger = fewer API round-trips */
 
         function buildBatchPrompt(textContent, batchSize, subject, difficulty, prev) {
-            const schema = '[{"question":"...","options":["A","B","C","D"],"correct_answer_index":0,"explanation":"..."}]';
+            const schema = '[{"question":"What is 2 + 2?","options":["3","4","5","6"],"correct_answer_index":1,"explanation":"2 + 2 equals 4."}]';
             let avoid = prev.length
                 ? '\n\nAlready generated — DO NOT repeat or overlap:\n' + prev.map(function (q, i) { return (i + 1) + '. ' + q.question; }).join('\n')
                 : '';
@@ -2056,9 +2069,13 @@
                 '\n- If any question or option contains a mathematical expression (numbers in formulas, symbols, roots, fractions, powers, equations, etc.) you MUST wrap it in LaTeX dollar-sign delimiters — NEVER write raw math.' +
                 '\n  Inline: $x^2 + 3x$, $\\sqrt{x+4}$, $\\frac{3}{4}$, $a^{n}$, $\\sqrt[3]{8}$' +
                 '\n  Display: $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$' +
-                '\n  WRONG: sqrt(x+4)  →  CORRECT: $\\sqrt{x+4}$' +
-                '\n  WRONG: x^2+1      →  CORRECT: $x^2+1$' +
-                '\n  WRONG: a/b = 3    →  CORRECT: $\\frac{a}{b} = 3$';
+                '\n  WRONG: sqrt(x+4)       →  CORRECT: $\\sqrt{x+4}$' +
+                '\n  WRONG: x^2+1           →  CORRECT: $x^2+1$' +
+                '\n  WRONG: a/b = 3         →  CORRECT: $\\frac{a}{b} = 3$' +
+                '\n  WRONG: square root of 9  →  CORRECT: $\\sqrt{9}$' +
+                '\n  WRONG: x squared         →  CORRECT: $x^{2}$' +
+                '\n  WRONG: x cubed           →  CORRECT: $x^{3}$' +
+                '\n  NEVER use words like "square root", "squared", "cubed", "over", "divided by" for math — always use LaTeX notation instead.';
 
             const rules = 'Rules:\n- 4 options each, one correct, brief explanation.' + mathRule + '\n- Output a RAW JSON ARRAY only — no markdown fences, no extra text:\n' + schema;
 
