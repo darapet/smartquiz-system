@@ -136,6 +136,23 @@
 .tts-btn-ghost:hover { border-color: var(--dts-accent); color: var(--dts-accent-lt); }
 .tts-btn-green { background: var(--dts-green); color: #fff; border-color: var(--dts-green); }
 .tts-btn-green:hover { background: #059669; }
+.tts-btn-download {
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: #fff;
+    border-color: #10b981;
+    font-weight: 700;
+    font-size: .88rem;
+    padding: 10px 20px;
+    box-shadow: 0 2px 10px rgba(16,185,129,.25);
+    transition: all .18s;
+}
+.tts-btn-download:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    border-color: #059669;
+    box-shadow: 0 4px 16px rgba(16,185,129,.35);
+    transform: translateY(-1px);
+}
+.tts-btn-download:active { transform: translateY(0); }
 .tts-btn-sm { padding: 5px 11px; font-size: .78rem; }
 
 /* ── Status / Error ─────────────────────────────────────── */
