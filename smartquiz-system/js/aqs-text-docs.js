@@ -1904,7 +1904,7 @@
         var ed = document.getElementById('wp-editor-' + pi);
         if (!ed) continue;
         if (ed.clientHeight <= 0) continue; /* editor not yet laid out — skip to avoid runaway */
-        if (ed.scrollHeight > ed.clientHeight + WP_OVERFLOW_BUF) {
+        if (ed.scrollHeight > Math.max(ed.clientHeight, 800) + WP_OVERFLOW_BUF) {
           if (_wpPushOverflow(pi, ed)) { changed = true; break; }
         }
       }
@@ -1961,7 +1961,7 @@
   /* Push the overflowing tail of page `pi` to page `pi+1`.
      Returns true if anything was moved. */
   function _wpPushOverflow(pi, ed) {
-    var maxH = ed.clientHeight;
+    var maxH = Math.max(ed.clientHeight, 800); /* min 800px prevents runaway when editor not yet rendered */
     if (ed.scrollHeight <= maxH + WP_OVERFLOW_BUF) return false;
 
     var lastEl = ed.lastElementChild;
