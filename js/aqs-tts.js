@@ -11,7 +11,7 @@
        is found in settings (useful for local dev / first-time setup).
        Get a free key at: https://elevenlabs.io  (10,000 chars/month free)
     ══════════════════════════════════════════════════════════════ */
-    var ELEVENLABS_API_KEY = 'sk_e131aff66357411f0a986e0a20d64b95af90e87f6c976fa9';   /* fallback — override via Admin Settings → ElevenLabs */
+    var ELEVENLABS_API_KEY = '';   /* fallback — set via Admin Settings → ElevenLabs */
     var _elKeys = [];              /* loaded from Firebase admin settings */
 
     /* ElevenLabs multilingual voice IDs — these are free-tier voices that
