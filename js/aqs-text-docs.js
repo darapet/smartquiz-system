@@ -1883,8 +1883,9 @@
      — runs synchronously to stable state on every edit
      ════════════════════════════════════════════════════════════════ */
   var WP_OVERFLOW_BUF = 4; /* px tolerance */
+    var wpRendering = false; /* true while wpRenderPages rebuilds DOM — suppresses spurious input-event reflows */
 
-  function wpScheduleFullReflow() {
+    function wpScheduleFullReflow() {
     clearTimeout(wpReflowTimer);
     wpReflowTimer = setTimeout(wpRunFullReflow, 150);
   }
