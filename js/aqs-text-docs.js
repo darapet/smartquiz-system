@@ -2497,8 +2497,11 @@
             '.wp-print-pg{page-break-after:always;break-after:page;}' +
             '.wp-print-pg:last-child{page-break-after:avoid;break-after:avoid;}}';
           if (printRoot) {
-            /* Use full content as one continuous document — proper pagination, no dashed page borders */
-            var _pdfFull = (typeof wpGetFullContent === 'function') ? wpGetFullContent() : allPages;
+            /* Wrap each app-page in .wp-print-pg so CSS page-break-after:always puts each on its own physical page */
+            var _pdfPages = (wpPages || []).filter(function(pg){ return pg && pg.replace(/<[^>]+>/g,'').trim().length > 0; });
+            var _pdfFull = _pdfPages.length > 0
+              ? _pdfPages.map(function(pg){ return '<div class="wp-print-pg">' + pg + '</div>'; }).join('')
+              : allPages;
             printRoot.innerHTML = '<div class="doc-wrap" style="font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;">' + _pdfFull + '</div>';
             printRoot.style.display = 'block';
             setTimeout(function() {
