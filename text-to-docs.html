@@ -2576,7 +2576,7 @@
       var bf=gv('wp-bfont','Georgia, serif'),bd=gv('wp-body',12),mg=gv('wp-margin',20),lh=gv('wp-lh','1.6'),h1=gv('wp-h1',24),h2=gv('wp-h2',18),h3=gv('wp-h3',14);
       var styleEl=document.getElementById('_wp_pr_style');
       if(!styleEl){styleEl=document.createElement('style');styleEl.id='_wp_pr_style';document.head.appendChild(styleEl);}
-      styleEl.textContent='body{font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;}h1{font-size:'+h1+'pt;margin:.5em 0;}h2{font-size:'+h2+'pt;margin:.45em 0;}h3{font-size:'+h3+'pt;margin:.4em 0;}p{margin:.5em 0;}table{border-collapse:collapse;width:100%;margin:8px 0;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;font-weight:700;}img{max-width:100%!important;height:auto;}blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}@media print{@page{margin:'+mg+'mm;}body{background:#fff!important;}}';
+      styleEl.textContent='body{font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;}h1{font-size:'+h1+'pt;margin:.5em 0;}h2{font-size:'+h2+'pt;margin:.45em 0;}h3{font-size:'+h3+'pt;margin:.4em 0;}p{margin:.5em 0;}table{border-collapse:collapse;width:100%;margin:8px 0;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;font-weight:700;}img{max-width:100%!important;height:auto;}blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}@page{size:A4 portrait;margin:'+mg+'mm;}@media print{body{background:#fff!important;}}';
       /* allContent already wraps each page with page-break-after:always — use it directly */
       printRoot.innerHTML=allContent;
       printRoot.style.display='block';
