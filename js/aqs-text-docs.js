@@ -2471,83 +2471,80 @@
 
     /* ── Open page: Capacitor Browser on native, window.open on web ── */
     function openPage(pageHtml) {
-      if (isNative) {
-        /* Chrome on Android blocks data: URL navigation (since Chrome 65).
-           Instead, encode the document as a #printjob= hash on the real hosted
-           page — the hash never leaves the browser, so it is safe for content.
-           The web page detects the hash, loads the document, and auto-triggers
-           print/download without requiring the user to log in again. */
-        try {
-          var jobData = {
-            pages:    wpPages.slice(),
-            fmt:      fmt,
-            title:    title,
-            settings: {
-              bfont:  getV('wp-bfont',  'Georgia, serif'),
-              body:   getV('wp-body',   12),
-              margin: getV('wp-margin', 20),
-              lh:     getV('wp-lh',     '1.6'),
-              h1:     getV('wp-h1',     24),
-              h2:     getV('wp-h2',     18),
-              h3:     getV('wp-h3',     14)
-            }
-          };
-          var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(jobData))));
-          var webUrl  = 'https://darapet.github.io/smartquiz-system/text-to-docs.html#printjob=' + encoded;
-          var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
-          if (Browser && Browser.open) {
-            Browser.open({ url: webUrl });
-            wpSetStatus('📄 Opening in browser — tap the button to ' + (fmt === 'pdf' ? 'print / save as PDF' : 'download'));
-            return;
+        /* ── PDF: wp-print-root + window.print() ────────────────────────────
+           Same approach as Google Docs / Canva / Notion.
+           Works on desktop, mobile browser, AND Capacitor WebView
+           (Android WebView fires Android Print Service via window.print()).
+           No external Chrome, no iframes, no popups needed for PDF. ── */
+        if (fmt === 'pdf') {
+          var printRoot = document.getElementById('wp-print-root');
+          var printStyleEl = document.getElementById('_wp_dl_print_style');
+          if (!printStyleEl) {
+            printStyleEl = document.createElement('style');
+            printStyleEl.id = '_wp_dl_print_style';
+            document.head.appendChild(printStyleEl);
           }
-        } catch(e) {}
-        /* Plugin unavailable — share the page HTML as a file */
-        try {
-          var f = new File([pageHtml], fname + '.html', { type: 'text/html' });
-          if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
-            navigator.share({ files: [f] }); return;
-          }
-        } catch(e2) {}
-      }
-      /* Web / fallback: use native browser print dialog for PDF (no popup needed) */
-      if (fmt === 'pdf') {
-        var printRoot = document.getElementById('wp-print-root');
-        var printStyleEl = document.getElementById('_wp_dl_print_style');
-        if (!printStyleEl) {
-          printStyleEl = document.createElement('style');
-          printStyleEl.id = '_wp_dl_print_style';
-          document.head.appendChild(printStyleEl);
-        }
-        printStyleEl.textContent = docCss +
-          '@media print{#dl-overlay{display:none!important;}body{background:#fff;}' +
-          '.doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}}';
-        if (printRoot) {
-          printRoot.innerHTML = '<div class="doc-wrap">' + allPages + '</div>';
-          printRoot.style.display = 'block';
-          setTimeout(function() {
-            window.print();
+          printStyleEl.textContent = docCss +
+            '@media print{body{background:#fff!important;}' +
+            '.doc-wrap{margin:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;}' +
+            '.wp-print-pg{page-break-after:always;break-after:page;}' +
+            '.wp-print-pg:last-child{page-break-after:avoid;break-after:avoid;}}';
+          if (printRoot) {
+            printRoot.innerHTML = '<div class="doc-wrap">' + allPages + '</div>';
+            printRoot.style.display = 'block';
             setTimeout(function() {
-              printRoot.style.display = 'none';
-              printRoot.innerHTML = '';
-              if (printStyleEl && printStyleEl.parentNode) {
-                printStyleEl.parentNode.removeChild(printStyleEl);
+              window.print();
+              setTimeout(function() {
+                printRoot.style.display = 'none';
+                printRoot.innerHTML = '';
+                if (printStyleEl && printStyleEl.parentNode) {
+                  printStyleEl.parentNode.removeChild(printStyleEl);
+                }
+              }, 1500);
+            }, 250);
+          } else {
+            window.print();
+          }
+          return;
+        }
+
+        /* ── Non-PDF formats: file download ─────────────────────────────── */
+        if (isNative) {
+          try {
+            var jobData = {
+              pages:    wpPages.slice(),
+              fmt:      fmt,
+              title:    title,
+              settings: {
+                bfont:  getV('wp-bfont',  'Georgia, serif'),
+                body:   getV('wp-body',   12),
+                margin: getV('wp-margin', 20),
+                lh:     getV('wp-lh',     '1.6'),
+                h1:     getV('wp-h1',     24),
+                h2:     getV('wp-h2',     18),
+                h3:     getV('wp-h3',     14)
               }
-            }, 1000);
-          }, 200);
-        } else {
-          window.print();
+            };
+            var encoded = btoa(unescape(encodeURIComponent(JSON.stringify(jobData))));
+            var webUrl  = 'https://darapet.github.io/smartquiz-system/text-to-docs.html#printjob=' + encoded;
+            var Browser = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser;
+            if (Browser && Browser.open) {
+              Browser.open({ url: webUrl });
+              wpSetStatus('📄 Opening in browser — tap the button to download');
+              return;
+            }
+          } catch(e) {}
+          try {
+            var f = new File([pageHtml], fname + '.html', { type: 'text/html' });
+            if (navigator.share && navigator.canShare && navigator.canShare({ files: [f] })) {
+              navigator.share({ files: [f] }); return;
+            }
+          } catch(e2) {}
         }
-      } else {
         var win = window.open('', '_blank', 'width=900,height=700');
-        if (win) {
-          win.document.write(pageHtml);
-          win.document.close();
-          win.focus();
-        } else {
-          alert('Pop-up blocked. Please allow pop-ups and try again.');
-        }
+        if (win) { win.document.write(pageHtml); win.document.close(); win.focus(); }
+        else { alert('Pop-up blocked. Please allow pop-ups and try again.'); }
       }
-    }
 
     /* ── Format-specific handling ── */
     if (fmt === 'pdf') {
