@@ -296,6 +296,7 @@
             clearTimeout(tid);
             if (r.status === 401) throw new Error('INVALID_KEY');
             if (r.status === 429) throw new Error('RATE_LIMITED');
+            if (r.status === 402) throw new Error('FREE_PLAN');
             if (!r.ok) throw new Error('HTTP_' + r.status);
             var buf = await r.arrayBuffer();
             if (!buf || buf.byteLength < 50) throw new Error('EMPTY');
@@ -315,12 +316,13 @@
                 return await _tryOneKey(text, elVoiceKey, keys[ki]);
             } catch(e) {
                 lastErr = e.message || String(e);
-                /* Don't retry on empty audio — that's a content issue, not a key issue */
-                if (lastErr === 'EMPTY') break;
+                /* FREE_PLAN and EMPTY are not key-rotation issues — stop immediately */
+                if (lastErr === 'FREE_PLAN' || lastErr === 'EMPTY') break;
                 /* Continue to next key for auth/rate-limit errors */
             }
         }
         /* Surface a human-readable error */
+        if (lastErr === 'FREE_PLAN') throw new Error('ElevenLabs free plan cannot use AI voices via API — upgrade at elevenlabs.io/pricing (Starter ~$5/mo)');
         if (lastErr === 'INVALID_KEY') throw new Error('ElevenLabs key invalid — update in Admin Settings → ElevenLabs');
         if (lastErr === 'RATE_LIMITED') throw new Error('All ElevenLabs keys are rate-limited — add more keys in Admin Settings');
         throw new Error('ElevenLabs audio failed: ' + lastErr);
