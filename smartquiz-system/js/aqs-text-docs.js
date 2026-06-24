@@ -2051,7 +2051,7 @@
     /* Measure with a clone to avoid mutating the DOM */
     var clone = firstBlock.cloneNode(true);
     ed.appendChild(clone);
-    var fits = ed.scrollHeight <= ed.clientHeight + WP_OVERFLOW_BUF;
+    var fits = ed.scrollHeight <= Math.max(ed.clientHeight, 800) + WP_OVERFLOW_BUF;
     ed.removeChild(clone);
     if (!fits) return false;
 
@@ -2468,7 +2468,9 @@
             '.wp-print-pg{page-break-after:always;break-after:page;}' +
             '.wp-print-pg:last-child{page-break-after:avoid;break-after:avoid;}}';
           if (printRoot) {
-            printRoot.innerHTML = '<div class="doc-wrap">' + allPages + '</div>';
+            /* Use full content as one continuous document — proper pagination, no dashed page borders */
+            var _pdfFull = (typeof wpGetFullContent === 'function') ? wpGetFullContent() : allPages;
+            printRoot.innerHTML = '<div class="doc-wrap" style="font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;">' + _pdfFull + '</div>';
             printRoot.style.display = 'block';
             setTimeout(function() {
               window.print();
