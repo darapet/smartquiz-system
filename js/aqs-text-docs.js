@@ -2493,9 +2493,9 @@
           }
           printStyleEl.textContent = '@page{size:A4 portrait;margin:'+mg+'mm;}' + docCss +
             '@media print{body{background:#fff!important;}' +
-            '.doc-wrap{margin:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;}' +
-            '.wp-print-pg{page-break-after:always;break-after:page;padding:'+mg+'mm;box-sizing:border-box;}' +
-            '.wp-print-pg:last-child{page-break-after:avoid;break-after:avoid;}}';
+            '.doc-wrap{display:block!important;margin:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;}' +
+            '.wp-print-pg{display:block!important;min-height:100vh!important;page-break-after:always!important;break-after:page!important;box-sizing:border-box!important;}' +
+            '.wp-print-pg:last-child{page-break-after:avoid!important;break-after:avoid!important;min-height:0!important;}}';
           if (printRoot) {
             /* Wrap each app-page in .wp-print-pg — CSS page-break-after:always forces one printed page per app-page */
             var _pdfPgs = (wpPages||[]).filter(function(pg){return pg&&pg.replace(/<[^>]+>/g,'').trim().length>0;});
