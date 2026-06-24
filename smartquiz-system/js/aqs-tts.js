@@ -5,11 +5,14 @@
     'use strict';
 
     /* ══════════════════════════════════════════════════════════════
-       CONFIGURATION — paste your ElevenLabs API key here.
+       ELEVENLABS KEYS
+       Keys are loaded automatically from Admin Settings → ElevenLabs section.
+       You can also hardcode a fallback key below — it is used only if no key
+       is found in settings (useful for local dev / first-time setup).
        Get a free key at: https://elevenlabs.io  (10,000 chars/month free)
-       Leave blank to use browser built-in voices as fallback.
     ══════════════════════════════════════════════════════════════ */
-    var ELEVENLABS_API_KEY = '';   /* <-- paste key here, e.g. 'sk_abc123...' */
+    var ELEVENLABS_API_KEY = '';   /* optional hardcoded fallback key */
+    var _elKeys = [];              /* loaded from Firebase admin settings */
 
     /* ElevenLabs multilingual voice IDs — these are free-tier voices that
        support all major languages via the multilingual-v2 model.
@@ -258,11 +261,19 @@
 
     /* ── ElevenLabs TTS fetch ─────────────────────────────────────
        Uses multilingual-v2 model — supports all major languages.
-       Sends one chunk at a time, returns MP3 ArrayBuffer.
-       Falls back to browser TTS if no API key is configured.
+       Tries each key in _elKeys in order; skips 401/429 keys automatically.
+       Falls back to browser TTS if no working key is found.
     ── */
-    async function fetchChunkElevenLabs(text, elVoiceKey) {
-        if (!ELEVENLABS_API_KEY) throw new Error('No API key');
+    function _getActiveKeys() {
+        /* Priority: admin-loaded keys → hardcoded fallback → empty */
+        var keys = _elKeys.length ? _elKeys.slice() : [];
+        if (ELEVENLABS_API_KEY && keys.indexOf(ELEVENLABS_API_KEY) === -1) {
+            keys.unshift(ELEVENLABS_API_KEY);
+        }
+        return keys;
+    }
+
+    async function _tryOneKey(text, elVoiceKey, apiKey) {
         var voiceId = EL_VOICES[elVoiceKey] || EL_VOICES.ADAM;
         var url = 'https://api.elevenlabs.io/v1/text-to-speech/' + voiceId;
         var ctrl = new AbortController();
@@ -272,32 +283,47 @@
                 method: 'POST',
                 signal: ctrl.signal,
                 headers: {
-                    'xi-api-key':    ELEVENLABS_API_KEY,
-                    'Content-Type':  'application/json',
-                    'Accept':        'audio/mpeg'
+                    'xi-api-key':   apiKey,
+                    'Content-Type': 'application/json',
+                    'Accept':       'audio/mpeg'
                 },
                 body: JSON.stringify({
                     text: text,
                     model_id: 'eleven_multilingual_v2',
-                    voice_settings: {
-                        stability:        0.5,
-                        similarity_boost: 0.75,
-                        style:            0.0,
-                        use_speaker_boost: true
-                    }
+                    voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0, use_speaker_boost: true }
                 })
             });
             clearTimeout(tid);
-            if (r.status === 401) throw new Error('Invalid ElevenLabs API key — check your key at elevenlabs.io');
-            if (r.status === 429) throw new Error('ElevenLabs rate limit — try again in a moment');
-            if (!r.ok) throw new Error('ElevenLabs error: HTTP ' + r.status);
+            if (r.status === 401) throw new Error('INVALID_KEY');
+            if (r.status === 429) throw new Error('RATE_LIMITED');
+            if (!r.ok) throw new Error('HTTP_' + r.status);
             var buf = await r.arrayBuffer();
-            if (!buf || buf.byteLength < 50) throw new Error('Empty audio response');
+            if (!buf || buf.byteLength < 50) throw new Error('EMPTY');
             return buf;
         } catch(e) {
             clearTimeout(tid);
             throw e;
         }
+    }
+
+    async function fetchChunkElevenLabs(text, elVoiceKey) {
+        var keys = _getActiveKeys();
+        if (!keys.length) throw new Error('No ElevenLabs API key — add one in Admin Settings → ElevenLabs');
+        var lastErr = '';
+        for (var ki = 0; ki < keys.length; ki++) {
+            try {
+                return await _tryOneKey(text, elVoiceKey, keys[ki]);
+            } catch(e) {
+                lastErr = e.message || String(e);
+                /* Don't retry on empty audio — that's a content issue, not a key issue */
+                if (lastErr === 'EMPTY') break;
+                /* Continue to next key for auth/rate-limit errors */
+            }
+        }
+        /* Surface a human-readable error */
+        if (lastErr === 'INVALID_KEY') throw new Error('ElevenLabs key invalid — update in Admin Settings → ElevenLabs');
+        if (lastErr === 'RATE_LIMITED') throw new Error('All ElevenLabs keys are rate-limited — add more keys in Admin Settings');
+        throw new Error('ElevenLabs audio failed: ' + lastErr);
     }
 
     function concatBuffers(buffers) {
@@ -668,6 +694,44 @@
         });
     }
 
+    /* ── Load ElevenLabs keys from Firebase admin settings ───────
+       Called once Firebase is ready. Populates _elKeys so that
+       generate() can use the key without any manual config.
+    ── */
+    function _loadELKeys() {
+        /* Option 1: keys already loaded by admin-settings page into window */
+        if (Array.isArray(window._AQS_EL_KEYS) && window._AQS_EL_KEYS.length) {
+            _elKeys = window._AQS_EL_KEYS;
+            _updateKeyNotice();
+            return;
+        }
+        /* Option 2: load directly from Firebase via aqsAjax */
+        if (typeof window.aqsAjax !== 'function') return;
+        window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+            var s = (res && res.success && res.data && res.data.settings) || {};
+            var keys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
+            _elKeys = keys.filter(function(k) { return k && k.length > 20; });
+            window._AQS_EL_KEYS = _elKeys;
+            _updateKeyNotice();
+        });
+    }
+
+    function _updateKeyNotice() {
+        var notice = document.getElementById('tts-api-notice');
+        if (!notice) return;
+        var hasKey = _elKeys.length > 0 || ELEVENLABS_API_KEY.length > 20;
+        if (!hasKey) {
+            notice.style.display = 'block';
+            notice.innerHTML =
+                '⚠️ <strong>No ElevenLabs key configured.</strong> ' +
+                'AI voices are disabled — using browser built-in voice. ' +
+                'Go to <a href="admin-settings.html" style="color:#fbbf24;font-weight:700;">Admin Settings</a> ' +
+                '→ ElevenLabs section to add your free key.';
+        } else {
+            notice.style.display = 'none';
+        }
+    }
+
     /* ── Init ─────────────────────────────────────────────────── */
     function init() {
         var gen  = document.getElementById('tts-generate-btn');
@@ -693,17 +757,13 @@
         updateCharCount();
         updateVoiceBadge(null);
 
-        /* Show a notice in the UI if no API key is configured */
-        if (!ELEVENLABS_API_KEY) {
-            var notice = document.getElementById('tts-api-notice');
-            if (notice) {
-                notice.style.display = 'block';
-                notice.innerHTML =
-                    '⚠️ <strong>ElevenLabs API key not set.</strong> ' +
-                    'AI voices and downloads are disabled. ' +
-                    'Get a free key at <a href="https://elevenlabs.io" target="_blank" rel="noopener">elevenlabs.io</a> ' +
-                    'then paste it into <code>aqs-tts.js</code> at the top of the file.';
-            }
+        /* Load ElevenLabs keys from Firebase admin settings */
+        if (window._aqsFirebaseReady) {
+            _loadELKeys();
+        } else {
+            document.addEventListener('aqs:firebase:ready', _loadELKeys, { once: true });
+            /* Show notice immediately while waiting; will hide once keys load */
+            _updateKeyNotice();
         }
     }
 
