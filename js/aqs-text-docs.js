@@ -2491,18 +2491,18 @@
             printStyleEl.id = '_wp_dl_print_style';
             document.head.appendChild(printStyleEl);
           }
-          printStyleEl.textContent = docCss +
+          printStyleEl.textContent = '@page{size:A4 portrait;margin:'+mg+'mm;}' + docCss +
             '@media print{body{background:#fff!important;}' +
             '.doc-wrap{margin:0!important;padding:0!important;box-shadow:none!important;border-radius:0!important;}' +
-            '.wp-print-pg{page-break-after:always;break-after:page;}' +
+            '.wp-print-pg{page-break-after:always;break-after:page;padding:'+mg+'mm;box-sizing:border-box;}' +
             '.wp-print-pg:last-child{page-break-after:avoid;break-after:avoid;}}';
           if (printRoot) {
-            /* Wrap each app-page in .wp-print-pg so CSS page-break-after:always puts each on its own physical page */
-            var _pdfPages = (wpPages || []).filter(function(pg){ return pg && pg.replace(/<[^>]+>/g,'').trim().length > 0; });
-            var _pdfFull = _pdfPages.length > 0
-              ? _pdfPages.map(function(pg){ return '<div class="wp-print-pg">' + pg + '</div>'; }).join('')
+            /* Wrap each app-page in .wp-print-pg — CSS page-break-after:always forces one printed page per app-page */
+            var _pdfPgs = (wpPages||[]).filter(function(pg){return pg&&pg.replace(/<[^>]+>/g,'').trim().length>0;});
+            var _pdfFull = _pdfPgs.length
+              ? _pdfPgs.map(function(pg){return '<div class="wp-print-pg">'+pg+'</div>';}).join('')
               : allPages;
-            printRoot.innerHTML = '<div class="doc-wrap" style="font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;">' + _pdfFull + '</div>';
+            printRoot.innerHTML = '<div class="doc-wrap">' + _pdfFull + '</div>';
             printRoot.style.display = 'block';
             setTimeout(function() {
               window.print();
