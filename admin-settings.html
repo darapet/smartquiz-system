@@ -1947,28 +1947,32 @@ async function _aqsTestELKeys() {
         var badge = '<span style="font-size:.7rem;background:#f3e8ff;color:#6b21a8;border-radius:4px;padding:2px 7px;font-weight:700;">ELEVENLABS</span>';
         var tStart = Date.now();
         try {
-            /* Use the user-info endpoint — zero characters consumed, just auth check */
-            var res = await fetch('https://api.elevenlabs.io/v1/user', {
-                headers: { 'xi-api-key': key },
-                signal: AbortSignal.timeout(12000)
+            /* Test with a real TTS call (1 char) — most reliable auth check.
+               401 = invalid key. 402 = valid key but free plan (library voices need paid plan).
+               200 = valid key with full access. */
+            var res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+                method: 'POST',
+                headers: { 'xi-api-key': key, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+                body: JSON.stringify({ text: 'Hi', model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+                signal: AbortSignal.timeout(15000)
             });
             var ms = Date.now() - tStart;
             if (res.ok) {
-                var data = await res.json();
-                var used = (data.subscription && data.subscription.character_count) || 0;
-                var limit = (data.subscription && data.subscription.character_limit) || 10000;
-                var pct = Math.round(used / limit * 100);
-                var remaining = limit - used;
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">Key ' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Valid · ' + ms + 'ms · ' + remaining.toLocaleString() + ' chars left (' + pct + '% used)</span></div>' };
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">Key ' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Valid · ' + ms + 'ms · full access</span></div>' };
             } else if (res.status === 401) {
                 return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid key (401) — check at elevenlabs.io</span></div>' };
+            } else if (res.status === 402) {
+                /* Key is valid but account is on free plan — library voices need a paid plan */
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1a01;border:1px solid #78700f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d2901;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Valid key · Free plan · Upgrade at elevenlabs.io to use AI voices via API</span></div>' };
             } else if (res.status === 429) {
                 return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
             } else {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">Key ' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+                var errBody = {}; try { errBody = await res.json(); } catch(_) {}
+                var errMsg = (errBody.detail && errBody.detail.message) || ('HTTP ' + res.status);
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">Key ' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ ' + errMsg + '</span></div>' };
             }
         } catch(e) {
-            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span></div>' };
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (15s)' : 'Network error') + '</span></div>' };
         }
     }
     var rows = await Promise.all(allKeys.map(pingEL));
