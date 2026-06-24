@@ -2594,7 +2594,92 @@
       document.body.appendChild(iframe);
       var iDoc = iframe.contentDocument || iframe.contentWindow.document;
       iDoc.open();
-      iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'</body></html>');
+      iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'
+  <script>
+  /* ── #printjob= hash handler ─────────────────────────────────────────────
+     Launched when Capacitor Browser opens text-to-docs.html#printjob=<b64>
+     Decodes the job, replaces the page body with the document, shows a
+     "Print / Save as PDF" confirmation overlay, then calls window.print().
+  ──────────────────────────────────────────────────────────────────────── */
+  (function() {
+    var hash = window.location.hash || '';
+    if (hash.indexOf('#printjob=') !== 0) return; /* normal page load — skip */
+    try {
+      var encoded  = hash.slice('#printjob='.length);
+      var jobData  = JSON.parse(decodeURIComponent(escape(atob(encoded))));
+      var fmt      = jobData.fmt   || 'pdf';
+      var pages    = jobData.pages || [''];
+      var s        = jobData.settings || {};
+      var title    = jobData.title || 'Document';
+
+      var bf = s.bfont  || 'Georgia, serif';
+      var bd = s.body   || 12;
+      var mg = s.margin || 20;
+      var lh = s.lh     || '1.6';
+      var h1 = s.h1     || 24;
+      var h2 = s.h2     || 18;
+      var h3 = s.h3     || 14;
+
+      var css = [
+        '*{box-sizing:border-box;}',
+        'body{margin:0;padding:0;background:#f1f5f9;font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;}',
+        'h1{font-size:'+h1+'pt;margin:.5em 0;}h2{font-size:'+h2+'pt;margin:.45em 0;}h3{font-size:'+h3+'pt;margin:.4em 0;}',
+        'p{margin:.5em 0;}',
+        'table{border-collapse:collapse;width:100%;margin:10px 0;}',
+        'td,th{border:1px solid #ccc;padding:6px 10px;}th{background:#f1f5f9;font-weight:700;}',
+        'img{max-width:100%;height:auto;}',
+        'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}',
+        '.doc-wrap{max-width:840px;margin:24px auto 40px;background:#fff;padding:32px 24px;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08);}',
+        '.page-sep{margin-bottom:24px;padding-bottom:24px;border-bottom:2px dashed #e5e7eb;}',
+        '#_pj_overlay{display:flex;position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px;}',
+        '.dl-card{background:#fff;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);}',
+        '.dl-icon{font-size:40px;margin-bottom:10px;}',
+        '.dl-title{margin:0 0 4px;font-size:19px;font-weight:700;color:#1e293b;}',
+        '.dl-fname{margin:0 0 6px;font-size:13px;color:#6366f1;font-weight:600;word-break:break-all;}',
+        '.dl-hint{margin:0 0 22px;font-size:13px;color:#94a3b8;line-height:1.4;}',
+        '.dl-yes{width:100%;background:#4f46e5;color:#fff;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;letter-spacing:.3px;}',
+        '.dl-yes:active{background:#4338ca;}',
+        '.dl-no{width:100%;background:#f1f5f9;color:#64748b;border:none;border-radius:14px;padding:13px;font-size:14px;cursor:pointer;}',
+        '@media print{#_pj_overlay{display:none!important;}.doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}body{background:#fff;}@page{margin:'+mg+'mm;}}'
+      ].join('');
+
+      var nonEmpty = pages.filter(function(pg) {
+        return pg && pg.replace(/<[^>]+>/g,'').trim().length > 0;
+      });
+      if (!nonEmpty.length) nonEmpty = [pages[0] || ''];
+
+      var allPages = nonEmpty.map(function(pg, i) {
+        return '<div class="' + (i < nonEmpty.length - 1 ? 'page-sep' : '') + '">' + (pg || '') + '</div>';
+      }).join('');
+
+      function _buildBody() {
+        document.body.innerHTML = [
+          '<style>' + css + '</style>',
+          '<div id="_pj_overlay">',
+          '  <div class="dl-card">',
+          '    <div class="dl-icon">' + (fmt === 'pdf' ? '🖨️' : '📥') + '</div>',
+          '    <p class="dl-title">' + (fmt === 'pdf' ? 'Print / Save as PDF' : 'Download ' + fmt.toUpperCase()) + '</p>',
+          '    <p class="dl-fname">' + title.replace(/</g,'&lt;').replace(/>/g,'&gt;') + (fmt === 'pdf' ? '.pdf' : '.' + fmt) + '</p>',
+          '    <p class="dl-hint">' + (fmt === 'pdf' ? 'Your document is ready. Tap below to open the print dialog — choose <b>Save as PDF</b>.' : 'Tap below to download your document.') + '</p>',
+          '    <button class="dl-yes" onclick="document.getElementById('_pj_overlay').style.display='none';window.print();">✅ ' + (fmt === 'pdf' ? 'Print / Save as PDF' : 'Download') + '</button>',
+          '    <button class="dl-no" onclick="try{window.close();}catch(e){document.getElementById('_pj_overlay').style.display='none';}">✕ Cancel</button>',
+          '  </div>',
+          '</div>',
+          '<div class="doc-wrap">' + allPages + '</div>'
+        ].join('
+');
+      }
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _buildBody);
+      } else {
+        _buildBody();
+      }
+    } catch(e) { /* malformed hash — fall through to normal page load */ }
+  })();
+  </script>
+  
+</body></html>');
       iDoc.close();
       setTimeout(function() {
         try { iframe.contentWindow.print(); } catch(e) { window.print(); }
