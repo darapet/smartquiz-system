@@ -176,6 +176,11 @@ window.addEventListener('DOMContentLoaded', function() {
             if (typeof window.setHFKeys === 'function') window.setHFKeys(hfkeys.filter(function(k){ return k && k.length > 10; }));
             window._AQS_HF_MODEL = s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3';
             setVal('aqs-hf-model', s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3');
+            /* Load ElevenLabs TTS keys */
+            var elkeys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
+            for (var ei = 1; ei <= 5; ei++) { setVal('aqs-el-key-' + ei, elkeys[ei-1] || ''); }
+            /* Expose active key globally so tts.js can pick it up */
+            window._AQS_EL_KEYS = elkeys.filter(function(k){ return k && k.length > 20; });
         });
     });
 });
@@ -1309,6 +1314,50 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- ElevenLabs TTS Keys -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🔊</span>
+        <div>
+            <h2 class="aqs-settings-card-title">ElevenLabs — AI Text-to-Speech (up to 5 keys)</h2>
+            <p class="aqs-settings-card-desc">Powers the <strong>TTS page</strong> with real AI voices in 16 languages. The first valid key in the list is used automatically — if it fails, the next one is tried. Free keys at <a href="https://elevenlabs.io" target="_blank" rel="noopener">elevenlabs.io</a> (10,000 chars/month free per account).</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#6b21a8;">
+            🔊 <strong>How it works:</strong> Key 1 is tried first. If it's rate-limited (429) or invalid, Key 2 is tried, and so on. Add multiple keys to handle more users simultaneously.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 1 (Primary) <span id="aqs-el-dot-1"></span></label>
+                <input type="password" id="aqs-el-key-1" placeholder="sk_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 2 <span id="aqs-el-dot-2"></span></label>
+                <input type="password" id="aqs-el-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 3 <span id="aqs-el-dot-3"></span></label>
+                <input type="password" id="aqs-el-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 4 <span id="aqs-el-dot-4"></span></label>
+                <input type="password" id="aqs-el-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 5 <span id="aqs-el-dot-5"></span></label>
+                <input type="password" id="aqs-el-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-el-btn" style="background:#7c3aed;border-color:#6d28d9;color:#fff;">🔊 Save ElevenLabs Keys</button>
+            <button class="aqs-btn" id="aqs-test-el-btn" style="background:#8b5cf6;color:#fff;border-color:#7c3aed;">🔌 Test All EL Keys</button>
+            <span id="aqs-el-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-el-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
 <!-- Plugin Pages -->
 <div class="aqs-settings-card" style="margin-top:24px;">
     <div class="aqs-settings-card-header">
@@ -1857,7 +1906,84 @@ async function _aqsTestHFKeys() {
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All HF Tokens'; }
 }
 btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
-  
+
+/* ── ElevenLabs TTS Keys — Save ──────────────────────────────────────────── */
+btn('aqs-save-el-btn') && btn('aqs-save-el-btn').addEventListener('click', function(){
+    var _k = [];
+    for (var _i = 1; _i <= 5; _i++) {
+        var _el = document.getElementById('aqs-el-key-' + _i);
+        if (_el && _el.value.trim().length > 20) _k.push(_el.value.trim());
+    }
+    if (!_k.length) {
+        var _s = document.getElementById('aqs-el-status');
+        if (_s) { _s.textContent = 'Add at least one key (starts with sk_).'; _s.style.color = '#ef4444'; }
+        return;
+    }
+    window._AQS_EL_KEYS = _k;
+    saveSettings('/api/settings', { elevenlabs_keys: _k }, 'aqs-el-status', this, '🔊 Save ElevenLabs Keys');
+    if (typeof window._aqsRefreshPoolStatus === 'function') setTimeout(window._aqsRefreshPoolStatus, 700);
+});
+
+/* ── ElevenLabs TTS Keys — Test ──────────────────────────────────────────── */
+async function _aqsTestELKeys() {
+    var allKeys = [];
+    for (var ei = 1; ei <= 5; ei++) {
+        var eel = document.getElementById('aqs-el-key-' + ei);
+        if (eel && eel.value.trim().length > 20) allKeys.push({ slot: ei, key: eel.value.trim() });
+    }
+    var results = document.getElementById('aqs-el-test-results');
+    var testBtn = document.getElementById('aqs-test-el-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No ElevenLabs keys found. Add at least one key above, then click Test.</span>';
+        return;
+    }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' ElevenLabs key(s)…</div>';
+    async function pingEL(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 5) + '…' + key.slice(-4);
+        var badge = '<span style="font-size:.7rem;background:#f3e8ff;color:#6b21a8;border-radius:4px;padding:2px 7px;font-weight:700;">ELEVENLABS</span>';
+        var tStart = Date.now();
+        try {
+            /* Use the user-info endpoint — zero characters consumed, just auth check */
+            var res = await fetch('https://api.elevenlabs.io/v1/user', {
+                headers: { 'xi-api-key': key },
+                signal: AbortSignal.timeout(12000)
+            });
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                var data = await res.json();
+                var used = (data.subscription && data.subscription.character_count) || 0;
+                var limit = (data.subscription && data.subscription.character_limit) || 10000;
+                var pct = Math.round(used / limit * 100);
+                var remaining = limit - used;
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">Key ' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Valid · ' + ms + 'ms · ' + remaining.toLocaleString() + ' chars left (' + pct + '% used)</span></div>' };
+            } else if (res.status === 401) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid key (401) — check at elevenlabs.io</span></div>' };
+            } else if (res.status === 429) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
+            } else {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">Key ' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+            }
+        } catch(e) {
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span></div>' };
+        }
+    }
+    var rows = await Promise.all(allKeys.map(pingEL));
+    rows.forEach(function(r, ri) {
+        var dot = document.getElementById('aqs-el-dot-' + (ri + 1));
+        if (dot) { dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem'; }
+    });
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' ElevenLabs key(s) valid!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' ElevenLabs keys valid.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All EL Keys'; }
+}
+btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
 
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -1988,6 +2114,7 @@ btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
           { id:'groq',       label:'Main Groq',    emoji:'⚡', provider:'groq',    inputPrefix:'aqs-groq-key-',            slots:20, dotPrefix:'aqs-gk-dot-' },
           { id:'mistral',    label:'Mistral',       emoji:'🌟', provider:'mistral', inputPrefix:'aqs-mistral-key-',         slots:20, dotPrefix:'aqs-mk-dot-' },
           { id:'hf',         label:'HuggingFace',   emoji:'🤗', provider:'hf',      inputPrefix:'aqs-hf-key-',              slots:5,  dotPrefix:'aqs-hf-dot-' },
+          { id:'elevenlabs', label:'ElevenLabs TTS', emoji:'🔊', provider:'el',      inputPrefix:'aqs-el-key-',              slots:5,  dotPrefix:'aqs-el-dot-' },
           { id:'library',    label:'Library',       emoji:'📚', provider:'groq',    inputPrefix:'aqs-lib-key-',             slots:10 },
           { id:'quiz',       label:'Quiz Creation', emoji:'🧠', provider:'groq',    inputPrefix:'aqs-quiz-groq-key-',       slots:10, dotPrefix:'aqs-qgk-dot-' },
           { id:'challenge',  label:'Challenge',     emoji:'⚔️', provider:'groq',    inputPrefix:'aqs-challenge-groq-key-',  slots:10, dotPrefix:'aqs-cgk-dot-' },
