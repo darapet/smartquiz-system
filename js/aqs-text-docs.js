@@ -1743,8 +1743,9 @@
 
   /* ── Multi-page engine ──────────────────────────────────────── */
   function wpRenderPages(skipSave) {
+    wpRendering = true;
     var container = document.getElementById('wp-pages');
-    if (!container) return;
+    if (!container) { wpRendering = false; return; }
 
     // Save current page content first (skip when loading fresh content to avoid overwriting)
     if (!skipSave) {
@@ -1793,6 +1794,7 @@
           pageDiv.classList.add('active');
         });
         ed.addEventListener('input', function() {
+          if (wpRendering) return; /* DOM being rebuilt — skip mid-render reflow */
           wpPages[idx] = ed.innerHTML;
           wpUpdateToolbarState();
           wpUpdateStats();
@@ -1843,6 +1845,7 @@
         wpApplyDocSettings(wpGetDocSettings());
       }
     }, 80);
+    wpRendering = false; /* layout done — re-enable input-event reflows */
   }
 
   function wpSavePageState() {
@@ -2145,8 +2148,11 @@
       var ed = document.getElementById('wp-editor-0'); if(ed) { wpAddColResizeHandles(ed); wpSetupImageHandlers(ed); }
     }, 100);
     wpUpdateStats();
-    /* Schedule overflow reflow so content that doesn't fit flows to next pages */
-    wpScheduleReflow();
+    /* Delay reflow: let browser paint + fully lay out pages before measuring clientHeight.
+       Without this, clientHeight can be 0 on mobile → immediate reflow → 500-page explosion. */
+    requestAnimationFrame(function() {
+      setTimeout(wpScheduleReflow, 500);
+    });
   }
 
   function wpGetFullContent() {
