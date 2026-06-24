@@ -2568,7 +2568,9 @@
       if (!pages.length){ window.print(); return; }
       var allContent = pages.map(function(pg,i){
         var last=i===pages.length-1;
-        return '<div style="'+(last?'page-break-after:avoid;break-after:avoid;':'page-break-after:always;break-after:page;')+'">'+(pg||'')+'</div>';
+        var baseStyle='display:block;box-sizing:border-box;min-height:'+(last?'0':'100vh')+';';
+        var breakStyle=last?'page-break-after:avoid;break-after:avoid;':'page-break-after:always;break-after:page;';
+        return '<div style="'+baseStyle+breakStyle+'">'+(pg||'')+'</div>';
       }).join('');
       var gv=window.getV||function(k,d){return localStorage.getItem(k)||d;};
       var bf=gv('wp-bfont','Georgia, serif'),bd=gv('wp-body',12),mg=gv('wp-margin',20),lh=gv('wp-lh','1.6'),h1=gv('wp-h1',24),h2=gv('wp-h2',18),h3=gv('wp-h3',14);
