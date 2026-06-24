@@ -2552,157 +2552,70 @@
     });
   });
 
-  /* ════════════════════════════════════════════════
-     PRINT FIX — mobile-safe print with full styles
-  ════════════════════════════════════════════════ */
-  window.wpPrint = function() {
-    var container = document.getElementById('wp-pages');
-    if (!container) { window.print(); return; }
+  /* ── wpPrint: same approach as Google Docs / Canva ─────────────────────
+       Inject pages into #wp-print-root (hidden normally, shown at print),
+       call window.print() on the main window.
+       Works on desktop, mobile browser, and Capacitor WebView. ── */
+    window.wpPrint = function() {
+      var printRoot = document.getElementById('wp-print-root');
+      if (!printRoot) { window.print(); return; }
 
-    /* Collect current editor styles for print */
-    var ed = container.querySelector('[contenteditable]');
-    var edFont = (ed && ed.style.fontFamily) ? ed.style.fontFamily : 'Georgia, serif';
-    var edSize = (ed && ed.style.fontSize)   ? ed.style.fontSize   : '12pt';
-    var edLine = (ed && ed.style.lineHeight) ? ed.style.lineHeight : '1.6';
-    var page   = container.querySelector('.wp-page');
-    var pagePad = (page && page.style.padding) ? page.style.padding : '48px';
+      /* Sync live editors into wpPages */
+      var container = document.getElementById('wp-pages');
+      if (container && window.wpPages) {
+        container.querySelectorAll('[contenteditable]').forEach(function(ed) {
+          var m = ed.id && ed.id.match(/wp-editor-(\d+)/);
+          if (m) {
+            var html = ed.innerHTML || '';
+            if (html.replace(/<br\s*\/?>/gi,'').replace(/<[^>]+>/g,'').trim().length > 0)
+              window.wpPages[parseInt(m[1], 10)] = html;
+          }
+        });
+      }
 
-    /* Collect any inline styles on headings/paragraphs for faithful print */
-    var content = container.innerHTML;
-
-    var printStyles = [
-      'body{margin:0;padding:0;background:#fff;}',
-      '.wp-pages-area{padding:0!important;background:#fff!important;}',
-      '.wp-page{box-shadow:none!important;border-radius:0!important;margin:0 auto!important;padding:'+pagePad+'!important;background:#fff!important;max-width:800px!important;}',
-      '[contenteditable]{font-family:'+edFont+';font-size:'+edSize+';line-height:'+edLine+';}',
-      'h1{font-size:26pt;}h2{font-size:20pt;}h3{font-size:16pt;}h4{font-size:14pt;}h5,h6{font-size:12pt;}',
-      'table{border-collapse:collapse;width:100%;}td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;}',
-      'img{max-width:100%!important;}',
-      '@media print{@page{margin:0;}.wp-page{box-shadow:none!important;break-inside:auto;}}'
-    ].join('\n');
-
-    /* Detect Capacitor / Android WebView — window.open may be blocked */
-    var isCapacitor = !!(window.Capacitor || (window.cordova && window.cordova.platformId));
-
-    if (isCapacitor) {
-      /* Capacitor: inject a full print window into current page using an iframe */
-      var existing = document.getElementById('_wp_print_iframe');
-      if (existing) existing.parentNode.removeChild(existing);
-      var iframe = document.createElement('iframe');
-      iframe.id = '_wp_print_iframe';
-      iframe.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;border:none;visibility:hidden;';
-      document.body.appendChild(iframe);
-      var iDoc = iframe.contentDocument || iframe.contentWindow.document;
-      iDoc.open();
-      iDoc.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'
-  <script>
-  /* ── #printjob= hash handler ─────────────────────────────────────────────
-     Launched when Capacitor Browser opens text-to-docs.html#printjob=<b64>
-     Decodes the job, replaces the page body with the document, shows a
-     "Print / Save as PDF" confirmation overlay, then calls window.print().
-  ──────────────────────────────────────────────────────────────────────── */
-  (function() {
-    var hash = window.location.hash || '';
-    if (hash.indexOf('#printjob=') !== 0) return; /* normal page load — skip */
-    try {
-      var encoded  = hash.slice('#printjob='.length);
-      var jobData  = JSON.parse(decodeURIComponent(escape(atob(encoded))));
-      var fmt      = jobData.fmt   || 'pdf';
-      var pages    = jobData.pages || [''];
-      var s        = jobData.settings || {};
-      var title    = jobData.title || 'Document';
-
-      var bf = s.bfont  || 'Georgia, serif';
-      var bd = s.body   || 12;
-      var mg = s.margin || 20;
-      var lh = s.lh     || '1.6';
-      var h1 = s.h1     || 24;
-      var h2 = s.h2     || 18;
-      var h3 = s.h3     || 14;
-
-      var css = [
-        '*{box-sizing:border-box;}',
-        'body{margin:0;padding:0;background:#f1f5f9;font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;}',
-        'h1{font-size:'+h1+'pt;margin:.5em 0;}h2{font-size:'+h2+'pt;margin:.45em 0;}h3{font-size:'+h3+'pt;margin:.4em 0;}',
-        'p{margin:.5em 0;}',
-        'table{border-collapse:collapse;width:100%;margin:10px 0;}',
-        'td,th{border:1px solid #ccc;padding:6px 10px;}th{background:#f1f5f9;font-weight:700;}',
-        'img{max-width:100%;height:auto;}',
-        'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}',
-        '.doc-wrap{max-width:840px;margin:24px auto 40px;background:#fff;padding:32px 24px;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.08);}',
-        '.page-sep{margin-bottom:24px;padding-bottom:24px;border-bottom:2px dashed #e5e7eb;}',
-        '#_pj_overlay{display:flex;position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px;}',
-        '.dl-card{background:#fff;border-radius:20px;padding:28px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);}',
-        '.dl-icon{font-size:40px;margin-bottom:10px;}',
-        '.dl-title{margin:0 0 4px;font-size:19px;font-weight:700;color:#1e293b;}',
-        '.dl-fname{margin:0 0 6px;font-size:13px;color:#6366f1;font-weight:600;word-break:break-all;}',
-        '.dl-hint{margin:0 0 22px;font-size:13px;color:#94a3b8;line-height:1.4;}',
-        '.dl-yes{width:100%;background:#4f46e5;color:#fff;border:none;border-radius:14px;padding:16px;font-size:16px;font-weight:700;cursor:pointer;margin-bottom:10px;letter-spacing:.3px;}',
-        '.dl-yes:active{background:#4338ca;}',
-        '.dl-no{width:100%;background:#f1f5f9;color:#64748b;border:none;border-radius:14px;padding:13px;font-size:14px;cursor:pointer;}',
-        '@media print{#_pj_overlay{display:none!important;}.doc-wrap{margin:0;padding:0;box-shadow:none;border-radius:0;}body{background:#fff;}@page{margin:'+mg+'mm;}}'
-      ].join('');
-
-      var nonEmpty = pages.filter(function(pg) {
+      /* Collect non-empty pages */
+      var pages = (window.wpPages || []).filter(function(pg) {
         return pg && pg.replace(/<[^>]+>/g,'').trim().length > 0;
       });
-      if (!nonEmpty.length) nonEmpty = [pages[0] || ''];
+      if (!pages.length && container) pages = [container.innerHTML];
+      if (!pages.length) { window.print(); return; }
 
-      var allPages = nonEmpty.map(function(pg, i) {
-        return '<div class="' + (i < nonEmpty.length - 1 ? 'page-sep' : '') + '">' + (pg || '') + '</div>';
+      /* Build content — page-break between each page */
+      var allContent = pages.map(function(pg, i) {
+        var last = i === pages.length - 1;
+        return '<div style="' + (last ? 'page-break-after:avoid;break-after:avoid;' : 'page-break-after:always;break-after:page;') + '">' + (pg || '') + '</div>';
       }).join('');
 
-      function _buildBody() {
-        document.body.innerHTML = [
-          '<style>' + css + '</style>',
-          '<div id="_pj_overlay">',
-          '  <div class="dl-card">',
-          '    <div class="dl-icon">' + (fmt === 'pdf' ? '🖨️' : '📥') + '</div>',
-          '    <p class="dl-title">' + (fmt === 'pdf' ? 'Print / Save as PDF' : 'Download ' + fmt.toUpperCase()) + '</p>',
-          '    <p class="dl-fname">' + title.replace(/</g,'&lt;').replace(/>/g,'&gt;') + (fmt === 'pdf' ? '.pdf' : '.' + fmt) + '</p>',
-          '    <p class="dl-hint">' + (fmt === 'pdf' ? 'Your document is ready. Tap below to open the print dialog — choose <b>Save as PDF</b>.' : 'Tap below to download your document.') + '</p>',
-          '    <button class="dl-yes" onclick="document.getElementById('_pj_overlay').style.display='none';window.print();">✅ ' + (fmt === 'pdf' ? 'Print / Save as PDF' : 'Download') + '</button>',
-          '    <button class="dl-no" onclick="try{window.close();}catch(e){document.getElementById('_pj_overlay').style.display='none';}">✕ Cancel</button>',
-          '  </div>',
-          '</div>',
-          '<div class="doc-wrap">' + allPages + '</div>'
-        ].join('
-');
-      }
+      /* Typography settings */
+      var gv = window.getV || function(k, d) { return localStorage.getItem(k) || d; };
+      var bf = gv('wp-bfont','Georgia, serif'), bd = gv('wp-body',12),
+          mg = gv('wp-margin',20), lh = gv('wp-lh','1.6'),
+          h1 = gv('wp-h1',24), h2 = gv('wp-h2',18), h3 = gv('wp-h3',14);
 
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', _buildBody);
-      } else {
-        _buildBody();
-      }
-    } catch(e) { /* malformed hash — fall through to normal page load */ }
-  })();
-  </script>
-  
-</body></html>');
-      iDoc.close();
+      var styleEl = document.getElementById('_wp_pr_style');
+      if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = '_wp_pr_style'; document.head.appendChild(styleEl); }
+      styleEl.textContent = [
+        'body{font-family:'+bf+';font-size:'+bd+'pt;line-height:'+lh+';color:#1a1a1a;}',
+        'h1{font-size:'+h1+'pt;margin:.5em 0;}h2{font-size:'+h2+'pt;margin:.45em 0;}h3{font-size:'+h3+'pt;margin:.4em 0;}',
+        'p{margin:.5em 0;}table{border-collapse:collapse;width:100%;margin:8px 0;}',
+        'td,th{border:1px solid #d1d5db;padding:6px 10px;}th{background:#f1f5f9;font-weight:700;}',
+        'img{max-width:100%!important;height:auto;}',
+        'blockquote{border-left:3px solid #6366f1;padding-left:12px;color:#4b5563;font-style:italic;margin:10px 0;}',
+        '@media print{@page{margin:'+mg+'mm;}body{background:#fff!important;}}'
+      ].join('');
+
+      printRoot.innerHTML = allContent;
+      printRoot.style.display = 'block';
+
       setTimeout(function() {
-        try { iframe.contentWindow.print(); } catch(e) { window.print(); }
-        setTimeout(function() { if(iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 2000);
-      }, 400);
-    } else {
-      /* Desktop / standard browser: open a clean print window */
-      var printWin = window.open('', '_blank', 'width=900,height=700');
-      if (!printWin) {
-        /* Popup blocked — fallback: clone into print-root div */
-        var printRoot = document.getElementById('wp-print-root');
-        if (printRoot) {
-          printRoot.innerHTML = content;
-          printRoot.style.display = 'block';
-          setTimeout(function() { window.print(); setTimeout(function(){ printRoot.style.display='none'; printRoot.innerHTML=''; }, 600); }, 200);
-        } else { window.print(); }
-        return;
-      }
-      printWin.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Document</title><style>'+printStyles+'</style></head><body>'+content+'</body></html>');
-      printWin.document.close();
-      setTimeout(function() { printWin.print(); setTimeout(function(){ printWin.close(); }, 600); }, 500);
-    }
-  };
+        window.print();
+        setTimeout(function() {
+          printRoot.style.display = 'none';
+          printRoot.innerHTML = '';
+          if (styleEl && styleEl.parentNode) styleEl.parentNode.removeChild(styleEl);
+        }, 1500);
+      }, 300);
+    };
 </script>
 
 <script>
