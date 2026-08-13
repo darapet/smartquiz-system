@@ -1617,6 +1617,7 @@ async function summonStreamResponse(messages) {
             return;
         }
     }
+    try {
     var reader = res.body.getReader(), decoder = new TextDecoder();
     var full = '', sentenceBuf = '', seenDisplay = false, displayStart = -1;
     summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];
