@@ -362,7 +362,7 @@ var AQS_CONTEXT='host';
 var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'Powered by Darapet Technology',logo_url:'',color_primary:'#6366f1',color_bg:'',color_text:'',duration:'3',sound:'0',music_url:'audio/quiz-background.mp3'};
 </script>
 <script src="js/aqs-splash.js"></script>
-<script src="js/aqs-main.js"></script>
+<!-- REMOVED aqs-main.js: it conflicts with aqs-create.js (duplicate renderMath/collectQuestions handlers corrupt saved quizzes and break math rendering) -->
 <script src="js/aqs-file-parser.js"></script>
 <script src="js/aqs-groq-key.js"></script>
 <script src="js/aqs-create.js"></script>
