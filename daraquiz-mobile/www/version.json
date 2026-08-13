@@ -1,8 +1,8 @@
 {
-  "version": "1.334",
-  "versionCode": 312,
+  "version": "1.335",
+  "versionCode": 313,
   "releaseDate": "2026-08-13",
-  "notes": "Fixed quiz option rendering and math preview conflicts on create page.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.334/daraquiz-v1.334.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.334/daraquiz-v1.334.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.335/daraquiz-v1.335.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.335/daraquiz-v1.335.apk"
 }
