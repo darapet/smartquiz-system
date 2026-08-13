@@ -1580,7 +1580,8 @@
             const secAttr   = secIdx !== undefined ? ' data-sec="' + secIdx + '"' : '';
             const hasMath   = typeof renderMath === 'function' && typeof katex !== 'undefined';
             const qPreview  = hasMath ? renderMath(q.question) : escHtml(q.question);
-            const optPreviews = q.options.map(function (opt) {
+            const optionsArr = Array.isArray(q.options) ? q.options : [];
+            const optPreviews = optionsArr.map(function (opt) {
                 return hasMath ? renderMath(opt) : escHtml(opt);
             });
             const expPreview = hasMath && q.explanation ? renderMath(q.explanation) : escHtml(q.explanation || '');
@@ -1599,7 +1600,7 @@
                     ) +
                 '</div>' +
                 '<div class="aqs-options-edit">' +
-                    q.options.map(function (opt, oi) {
+                    optionsArr.map(function (opt, oi) {
                         const optPrev = optPreviews[oi];
                         return '<div class="aqs-option-edit">' +
                             '<input type="radio" name="correct_' + globalIdx + '" class="aqs-correct-radio" data-qi="' + globalIdx + '" data-oi="' + oi + '" ' + (q.correct_answer_index === oi ? 'checked' : '') + ' title="Mark correct" />' +
@@ -2846,9 +2847,10 @@
             const alreadyAnswered = userAnswers[idx] !== undefined;
             $('#aqs-answer-feedback').hide().removeClass('aqs-feedback-correct aqs-feedback-wrong');
 
-            /* Render options */
+            /* Render options — normalize to an array so malformed saved data doesn't crash the player */
+            const questionOptions = Array.isArray(q.options) ? q.options : [];
             let opts = '';
-            q.options.forEach(function (opt, oi) {
+            questionOptions.forEach(function (opt, oi) {
                 const letter = String.fromCharCode(65 + oi);
                 let cls      = '';
                 const answered = userAnswers[idx] !== undefined;
