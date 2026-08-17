@@ -314,6 +314,7 @@ function show(id){
   ['ait-s0','ait-s1','ait-s2','ait-s3','ait-room'].forEach(function(s){
     var el = $(s); if(el) el.classList.toggle('hidden', s !== id);
   });
+  var dock = $('ait-dock'); if(dock) dock.classList.toggle('hidden', id !== 'ait-room');
 }
 function savePrefs(){
   try{ localStorage.setItem(LS, JSON.stringify({ teacherName:T.teacherName, studentName:T.studentName, voiceURI:T.voiceURI, rate:T.rate })); }catch(e){}
