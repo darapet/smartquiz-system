@@ -69,13 +69,15 @@
     </div>
   </section>
 
+</div>
+
   <!-- Classroom -->
   <section class="ait-room hidden" id="ait-room">
 
     <div class="ait-panel">
       <div class="ait-panel-hd">
         <span>Visual board</span>
-        <button class="ait-mini" id="ait-clear-board" title="Clear the board">Clear</button>
+        <button class="ait-mini wide" id="ait-clear-board" title="Clear the board">Clear</button>
       </div>
       <div class="ait-board" id="ait-board">
         <div class="empty">The board is clear.</div>
@@ -89,18 +91,17 @@
       <div class="ait-transcript" id="ait-transcript"></div>
     </div>
 
-    <div class="ait-dock">
-      <button class="ait-mic" id="ait-mic" title="Talk to your teacher" aria-label="Microphone">🎙</button>
-      <div class="ait-dock-in">
-        <input id="ait-text" placeholder="Type your question, or tap the mic and speak…" autocomplete="off">
-      </div>
-      <button class="ait-btn primary" id="ait-send">Send</button>
-    </div>
-
   </section>
 
+  <div class="ait-dock hidden" id="ait-dock">
+    <div class="ait-dock-in">
+      <button class="ait-mic" id="ait-mic" title="Talk to your teacher" aria-label="Microphone">🎙</button>
+      <input id="ait-text" placeholder="Type your question, or tap the mic and speak…" autocomplete="off">
+      <button class="ait-btn primary" id="ait-send">Send</button>
+    </div>
+  </div>
+
   <div class="ait-hint hidden" id="ait-toast"></div>
-</div>
 
 <script type="module" src="js/aqs-firebase.js"></script>
 <script src="js/aqs-groq-key.js"></script>
