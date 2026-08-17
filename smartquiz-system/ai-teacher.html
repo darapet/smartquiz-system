@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AI Teacher — DaraQuiz</title>
+<meta name="description" content="Your personal AI teacher: talk or type, hear clear spoken explanations, watch step-by-step working rendered on a live visual board.">
+<link rel="stylesheet" href="css/aqs-ai-teacher.css">
+<script>window.MathJax={tex:{inlineMath:[['$','$'],['\\(','\\)']],displayMath:[['$$','$$'],['\\[','\\]']]},svg:{fontCache:'global'}};</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js" async></script>
+</head>
+<body>
+
+<div class="ait-shell">
+
+  <div class="ait-hdr">
+    <a class="ait-logo" href="studyhub.html">← Study Hub</a>
+    <div class="sp"></div>
+    <button class="ait-mini" id="ait-pause" title="Pause / resume speech">⏸</button>
+    <button class="ait-mini" id="ait-stop" title="Stop speaking">⏹</button>
+    <button class="ait-mini" id="ait-reset" title="Restart setup">⟲</button>
+  </div>
+
+  <!-- Orb (always visible) -->
+  <div class="ait-orb-wrap">
+    <div class="ait-orb" id="ait-orb"></div>
+    <div class="ait-orb-state" id="ait-orb-state">Ready</div>
+  </div>
+
+  <!-- Step 0 — welcome -->
+  <section class="ait-card" id="ait-s0">
+    <h1 class="ait-title">Your AI Teacher</h1>
+    <p class="ait-sub">A voice-first classroom. Speak or type, and I will explain everything out loud while writing the full working on the board.</p>
+    <div class="ait-row">
+      <button class="ait-btn primary" id="ait-start">Begin setup</button>
+    </div>
+    <p class="ait-hint">Tip: allow microphone access so you can simply talk to me.</p>
+  </section>
+
+  <!-- Step 1 — teacher name -->
+  <section class="ait-card hidden" id="ait-s1">
+    <h2 class="ait-title">What should I be called?</h2>
+    <p class="ait-sub">Give your teacher a name.</p>
+    <label class="ait-label" for="ait-teacher-name">Teacher name</label>
+    <input class="ait-input" id="ait-teacher-name" placeholder="Professor Ada" autocomplete="off">
+    <div class="ait-row"><button class="ait-btn primary" id="ait-next1">Continue</button></div>
+  </section>
+
+  <!-- Step 2 — student name -->
+  <section class="ait-card hidden" id="ait-s2">
+    <h2 class="ait-title">And what should I call you?</h2>
+    <p class="ait-sub">I will address you by name during the lesson.</p>
+    <label class="ait-label" for="ait-student-name">Your name</label>
+    <input class="ait-input" id="ait-student-name" placeholder="Your name" autocomplete="off">
+    <div class="ait-row"><button class="ait-btn primary" id="ait-next2">Continue</button></div>
+  </section>
+
+  <!-- Step 3 — voice + speed -->
+  <section class="ait-card hidden" id="ait-s3">
+    <h2 class="ait-title">Choose my voice</h2>
+    <p class="ait-sub">Tap any voice to hear a preview, then set my speaking speed.</p>
+    <div class="ait-voices" id="ait-voice-list"></div>
+
+    <label class="ait-label" for="ait-rate">Speaking speed — <span class="ait-rate-val" id="ait-rate-val">1.00×</span></label>
+    <input class="ait-range" id="ait-rate" type="range" min="0.6" max="1.6" step="0.05" value="1">
+    <div class="ait-row">
+      <button class="ait-btn ghost" id="ait-rate-test">Test speed</button>
+      <button class="ait-btn primary" id="ait-finish">Enter classroom</button>
+    </div>
+  </section>
+
+  <!-- Classroom -->
+  <section class="ait-room hidden" id="ait-room">
+
+    <div class="ait-panel">
+      <div class="ait-panel-hd">
+        <span>Visual board</span>
+        <button class="ait-mini" id="ait-clear-board" title="Clear the board">Clear</button>
+      </div>
+      <div class="ait-board" id="ait-board">
+        <div class="empty">The board is clear.</div>
+      </div>
+    </div>
+
+    <div class="ait-panel">
+      <div class="ait-panel-hd">
+        <span>Live transcript — <b id="ait-room-teacher">Teacher</b> &amp; <b id="ait-room-student">Student</b></span>
+      </div>
+      <div class="ait-transcript" id="ait-transcript"></div>
+    </div>
+
+    <div class="ait-dock">
+      <button class="ait-mic" id="ait-mic" title="Talk to your teacher" aria-label="Microphone">🎙</button>
+      <div class="ait-dock-in">
+        <input id="ait-text" placeholder="Type your question, or tap the mic and speak…" autocomplete="off">
+      </div>
+      <button class="ait-btn primary" id="ait-send">Send</button>
+    </div>
+
+  </section>
+
+  <div class="ait-hint hidden" id="ait-toast"></div>
+</div>
+
+<script type="module" src="js/aqs-firebase.js"></script>
+<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-ai-teacher.js"></script>
+</body>
+</html>
