@@ -1,8 +1,8 @@
 {
-  "version": "1.336",
-  "versionCode": 314,
+  "version": "1.337",
+  "versionCode": 315,
   "releaseDate": "2026-08-17",
-  "notes": "New AI Teacher: voice-first classroom with custom teacher/student names, 15 voices, speed control, barge-in, live transcript and a visual math board.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.336/daraquiz-v1.336.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.336/daraquiz-v1.336.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.337/daraquiz-v1.337.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.337/daraquiz-v1.337.apk"
 }
