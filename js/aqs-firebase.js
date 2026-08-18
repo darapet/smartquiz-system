@@ -6,7 +6,7 @@
    Realtime: Firebase Realtime Database (challenge polling)
    ============================================================ */
 
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { initializeApp } from '../vendor/firebase/firebase-app.js';
 import {
     getAuth,
     createUserWithEmailAndPassword,
@@ -18,7 +18,7 @@ import {
     GoogleAuthProvider,
     signInWithCredential,
     signInAnonymously,
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+} from '../vendor/firebase/firebase-auth.js';
 import {
     initializeFirestore,
     getFirestore,
@@ -36,7 +36,7 @@ import {
     limit,
     serverTimestamp,
     Timestamp
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+} from '../vendor/firebase/firebase-firestore.js';
 import {
     getDatabase,
     ref,
@@ -47,7 +47,7 @@ import {
     onValue,
     off,
     serverTimestamp as rtServerTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
+} from '../vendor/firebase/firebase-database.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY",
@@ -68,10 +68,24 @@ const auth = getAuth(app);
 var _isCapacitorNative = typeof window !== 'undefined'
     && typeof window.Capacitor !== 'undefined'
     && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-const db = _isCapacitorNative
-    ? initializeFirestore(app, { experimentalForceLongPolling: true })
-    : getFirestore(app);
+/* Some mobile networks and corporate/ISP proxies break the Firestore
+   WebChannel transport. Long-polling is slower, but it works over ordinary
+   HTTPS and avoids the VPN-only failure mode. */
+let db;
+try {
+    db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+    });
+} catch (firestoreInitError) {
+    /* A second initialization can happen in embedded WebViews. Keep the
+       fallback so the rest of the app can still use the existing instance. */
+    console.warn('[AQS Firebase] Long-polling initialization fallback:', firestoreInitError);
+    db = getFirestore(app);
+}
 const rtdb = getDatabase(app);
+window._aqsFirebaseReady = true;
+window._aqsFirebaseTransport = 'long-polling';
 
 /* ── Base URL helper: works on GitHub Pages subfolders ──
    e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
@@ -2476,12 +2490,32 @@ function _updateAqsGlobals(user, profile) {
             /* null = no session, isAnonymous = guest only — both must register */
             if (!user || user.isAnonymous) {
                 if (window._aqsIsRegistering || window._aqsIsLoggingIn) return;
+                /* A newly-created account may need another event loop tick
+                   (or a few seconds in a Cloudflare/WebView environment) to
+                   restore from IndexedDB. Do not bounce the user back to the
+                   registration page during that hand-off. */
+                var registrationCompleteAt = 0;
+                try {
+                    registrationCompleteAt = parseInt(sessionStorage.getItem('aqs_registration_complete') || '0', 10) || 0;
+                } catch (_) {}
+                if (registrationCompleteAt && Date.now() - registrationCompleteAt < 30000) {
+                    window.setTimeout(function () {
+                        if (auth.currentUser) {
+                            try { sessionStorage.removeItem('aqs_registration_complete'); } catch (_) {}
+                        }
+                    }, 5000);
+                    return;
+                }
+                try { sessionStorage.removeItem('aqs_registration_complete'); } catch (_) {}
                 window.location.replace('register.html?reason=auth&redirect=' + encodeURIComponent(window.location.pathname.split('/').pop() + window.location.search));
             }
         }).catch(function() {});
     }
 
     if (authPages.indexOf(page) !== -1) {
+        /* Clear a stale loop marker whenever the user intentionally opens an
+           auth page. This lets a real retry work after a failed attempt. */
+        try { sessionStorage.removeItem('aqs_registration_complete'); } catch (_) {}
         /* Use onAuthStateChanged directly (persistent) so the redirect fires
            BOTH on page-load (already signed in) AND right after form sign-in.
            onAqsAuthChange is one-shot — it misses the sign-in event if the user

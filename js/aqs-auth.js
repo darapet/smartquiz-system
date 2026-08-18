@@ -154,10 +154,15 @@
                 showAlert('aqs-register-alert', 'Please accept the Terms of Service to continue.', true);
                 return;
             }
+            /* Mark the flow before the first Firestore request. The auth
+               guard must not redirect while username validation or Firebase
+               account creation is still in progress. */
+            window._aqsIsRegistering = true;
             setBtn('aqs-register-submit', 'Creating account…', true);
             if (typeof window.aqsAjax !== 'function') {
                 showAlert('aqs-register-alert', 'Firebase is still loading. Please wait a moment and try again.', true);
                 setBtn('aqs-register-submit', 'Create Account', false);
+                window._aqsIsRegistering = false;
                 return;
             }
             window.aqsAjax(
@@ -167,16 +172,23 @@
                         var msg = (res.data && res.data.message) || '✓ Account created! Redirecting…';
                         showAlert('aqs-register-alert', msg, false);
                         var dest = (res.data && res.data.redirect) || 'user-dashboard.html';
-                        setTimeout(function () { window.location.href = dest; }, 1200);
+                        /* Let the protected page wait for this newly-created
+                           Firebase session instead of redirecting back here. */
+                        try {
+                            sessionStorage.setItem('aqs_registration_complete', String(Date.now()));
+                        } catch (_) {}
+                        setTimeout(function () { window.location.replace(dest); }, 1200);
                     } else {
                         var errMsg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Registration failed.')) : 'Registration failed.';
                         showAlert('aqs-register-alert', errMsg, true);
                         setBtn('aqs-register-submit', 'Create Account', false);
+                        window._aqsIsRegistering = false;
                     }
                 },
                 function (err) {
                     showAlert('aqs-register-alert', (err && err.message) || 'Registration failed. Please try again.', true);
                     setBtn('aqs-register-submit', 'Create Account', false);
+                    window._aqsIsRegistering = false;
                 }
             );
         });
