@@ -5,8 +5,8 @@ quiz data, realtime challenges, and storage are provided by Firebase.
 
 ## What was fixed in this release
 
-- Firebase's browser SDK files are served from `vendor/firebase/` instead of
-  being downloaded from `www.gstatic.com` at page startup.
+- The main site's browser Firebase SDK modules are loaded from the official
+  `www.gstatic.com` CDN, matching the mobile and admin builds.
 - Firestore uses HTTPS long-polling on the web. This is slower than the default
   transport but works on networks that break WebSockets or HTTP/2 streams.
 - A connection message is shown instead of leaving the first screen stuck when

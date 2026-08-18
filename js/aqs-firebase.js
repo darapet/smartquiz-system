@@ -6,7 +6,7 @@
    Realtime: Firebase Realtime Database (challenge polling)
    ============================================================ */
 
-import { initializeApp } from '../vendor/firebase/firebase-app.js';
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
     getAuth,
     createUserWithEmailAndPassword,
@@ -18,7 +18,7 @@ import {
     GoogleAuthProvider,
     signInWithCredential,
     signInAnonymously,
-} from '../vendor/firebase/firebase-auth.js';
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
     initializeFirestore,
     getFirestore,
@@ -36,7 +36,7 @@ import {
     limit,
     serverTimestamp,
     Timestamp
-} from '../vendor/firebase/firebase-firestore.js';
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
     getDatabase,
     ref,
@@ -47,7 +47,7 @@ import {
     onValue,
     off,
     serverTimestamp as rtServerTimestamp
-} from '../vendor/firebase/firebase-database.js';
+} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js';
 
 const firebaseConfig = {
     apiKey: "AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY",
