@@ -269,11 +269,49 @@ function sysPrompt(){
   '3. Use MATH: lines for every equation and show full working, one step per STEP line.\n'+
   '4. Keep the spoken part under 130 words. Never mention the board syntax aloud.';
 }
+var AIT_MODEL = (window.AQS_CONFIG && window.AQS_CONFIG.groqModel) || 'llama-3.3-70b-versatile';
+
+function aitSignal(ms){
+  try{ if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms); }catch(e){}
+  return undefined;
+}
+/* Keys load from Firebase after aqs:firebase:ready — wait briefly on first use */
+function keysReady(){
+  return new Promise(function(resolve){
+    function count(){
+      try{ return (window.getFeatureGroqKeyCount ? window.getFeatureGroqKeyCount('studyhub') : 0)
+                 + (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0); }catch(e){ return 0; }
+    }
+    if(count() > 0) return resolve(true);
+    var tries = 0;
+    var iv = setInterval(function(){
+      tries++;
+      if(count() > 0 || tries > 20){ clearInterval(iv); resolve(count() > 0); }
+    }, 150);
+  });
+}
 function aiFetch(messages){
-  var body = { messages: messages, temperature: 0.6, max_tokens: 900 };
-  if(typeof window.studyhubGroqFetch === 'function') return window.studyhubGroqFetch(body);
-  if(typeof window.groqFetch === 'function') return window.groqFetch(body);
-  return Promise.reject(new Error('AI service unavailable'));
+  var body = { model: AIT_MODEL, messages: messages, temperature: 0.6, max_tokens: 900 };
+  var opts = { signal: aitSignal(60000) };
+  return keysReady().then(function(hasKeys){
+    if(typeof window.studyhubGroqFetch === 'function') return window.studyhubGroqFetch(body, opts);
+    if(typeof window.groqFetch === 'function') return window.groqFetch(body, opts);
+    throw new Error(hasKeys ? 'AI service unavailable.' : 'No Study Hub AI keys configured — add them in Admin Settings.');
+  });
+}
+/* The key pools return a raw Response — read it properly */
+function readResponse(res){
+  if(res && typeof res === 'object' && typeof res.json === 'function' && 'ok' in res){
+    if(!res.ok){
+      return res.json().catch(function(){ return null; }).then(function(j){
+        var m = (j && j.error && (j.error.message || j.error)) || '';
+        if(res.status === 429) throw new Error('The lesson service is rate limited right now — please try again in a minute.');
+        throw new Error('AI error ' + res.status + (m ? ': ' + m : ''));
+      });
+    }
+    return res.json();
+  }
+  return Promise.resolve(res);
 }
 function extractText(res){
   try{
@@ -295,8 +333,9 @@ function handleUser(text){
 function ask(){
   T.thinking = true; setStatusIdle();
   var msgs = [{ role:'system', content: sysPrompt() }].concat(T.history.slice(-14));
-  aiFetch(msgs).then(function(res){
-    var txt = extractText(res) || 'Sorry, I lost my train of thought. Could you say that again?';
+  aiFetch(msgs).then(readResponse).then(function(data){
+    var txt = extractText(data);
+    if(!txt) throw new Error('The lesson service returned an empty response.');
     T.history.push({ role:'assistant', content: txt });
     T.thinking = false;
     addMsg('ai', txt);
@@ -304,7 +343,9 @@ function ask(){
     speak(stripBoard(txt));
   }).catch(function(err){
     T.thinking = false; setStatusIdle();
-    addMsg('ai', 'I could not reach the lesson service just now. Please try again in a moment.');
+    var msg = (err && err.message) ? err.message : 'Unknown error';
+    if(/aborted|timeout/i.test(msg)) msg = 'That took too long to answer. Please try again.';
+    addMsg('ai', 'Sorry — I could not answer that. (' + msg + ')');
     console.error('[AITeacher]', err);
   });
 }
