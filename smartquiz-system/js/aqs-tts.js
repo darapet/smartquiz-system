@@ -1,5 +1,7 @@
-/* aqs-tts.js — XZILY AI Text-to-Speech v4
-   82 professional voices · ElevenLabs audio · Download
+/* aqs-tts.js — XZILY AI Text-to-Speech v5
+   82 professional voices · Google Gemini TTS (primary) · ElevenLabs (fallback)
+   Real neural voices — browser speechSynthesis is only the last resort.
+   Keys are managed in Admin Settings → Gemini TTS / ElevenLabs.
    ─────────────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
@@ -38,6 +40,8 @@
 
     var selectedVoice    = '';
     var currentAudioBlob = null;
+    var currentEngine    = 'browser';   /* 'gemini' | 'elevenlabs' | 'browser' */
+    var currentMime      = 'audio/wav';
     var currentAudioUrl  = null;
     var browserModeText  = null;
     var browserModeVoice = null;
@@ -328,6 +332,30 @@
         throw new Error('ElevenLabs audio failed: ' + lastErr);
     }
 
+    /* Merge several WAV chunks into one valid WAV (strip child headers) */
+    function concatWavBuffers(buffers) {
+        var pcmParts = buffers.map(function(b) { return new Uint8Array(b, 44); });
+        var total    = pcmParts.reduce(function(a, p) { return a + p.length; }, 0);
+        var merged   = new Uint8Array(total);
+        var off = 0;
+        pcmParts.forEach(function(p) { merged.set(p, off); off += p.length; });
+        /* read sample rate from the first chunk's header */
+        var rate = new DataView(buffers[0]).getUint32(24, true) || 24000;
+        return window.geminiTTS.pcmToWav(merged, rate);
+    }
+
+    /* Natural-language delivery hint sent to Gemini for each character */
+    function _geminiStyleFor(v) {
+        if (!v) return '';
+        var tone = (v.desc || '').toLowerCase();
+        var pace = 'at a natural pace';
+        if (v.voiceSpeed && v.voiceSpeed < 0.94) pace = 'slowly and deliberately';
+        else if (v.voiceSpeed && v.voiceSpeed > 1.04) pace = 'briskly and energetically';
+        return 'Read this aloud in a ' + (tone || 'clear, natural') +
+               ' ' + (v.gender === 'male' ? 'male' : 'female') + ' voice with a ' +
+               (v.region || 'neutral') + ' accent, ' + pace;
+    }
+
     function concatBuffers(buffers) {
         var total  = buffers.reduce(function(a, b) { return a + b.byteLength; }, 0);
         var result = new Uint8Array(total);
@@ -404,9 +432,12 @@
         var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
         if (!voiceObj) { showError('Invalid voice selected.'); return; }
 
-        /* Warn early if no API key */
-        if (!ELEVENLABS_API_KEY) {
-            showError('ElevenLabs API key not set. Using browser voice as fallback. Add your key inside aqs-tts.js to enable AI voices.');
+        /* Warn early only when NO real-voice provider is configured */
+        var _gem = window.geminiTTS;
+        var _hasGemini = !!(_gem && _gem.hasKeys());
+        var _hasEL     = _getActiveKeys().length > 0;
+        if (!_hasGemini && !_hasEL) {
+            showError('No AI voice key configured. Using the browser voice. Add a free Gemini TTS key in Admin Settings → Gemini TTS.');
         } else {
             hideError();
         }
@@ -424,27 +455,46 @@
             ttsText = await translateText(text, voiceObj.locale, voiceObj.lang);
         }
 
-        /* Step 2: TTS via ElevenLabs */
+        /* Step 2: TTS — Gemini first, then ElevenLabs, then browser */
         var chunks   = splitText(ttsText);
         var buffers  = [];
         var usedBrowser = false;
         var errorMsg = '';
+        currentEngine = 'browser';
+        currentMime   = 'audio/wav';
 
-        if (ELEVENLABS_API_KEY) {
-            for (var i = 0; i < chunks.length; i++) {
-                setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
+        if (_hasGemini) {
+            var gVoice = _gem.voiceFor(voiceObj);
+            var gStyle = _geminiStyleFor(voiceObj);
+            for (var gi = 0; gi < chunks.length; gi++) {
+                setStatus('Generating AI audio… (' + (gi + 1) + '/' + chunks.length + ')', true);
                 try {
-                    var buf = await fetchChunkElevenLabs(chunks[i], voiceObj.elVoice);
-                    buffers.push(buf);
+                    buffers.push(await _gem.synth(chunks[gi], gVoice, gStyle));
                 } catch(e) {
-                    errorMsg = e.message || 'Audio generation failed';
-                    usedBrowser = true;
+                    errorMsg = e.message || 'Gemini audio generation failed';
+                    buffers = [];
                     break;
                 }
             }
-        } else {
-            usedBrowser = true;
+            if (buffers.length) { currentEngine = 'gemini'; currentMime = 'audio/wav'; }
         }
+
+        /* Fallback 1: ElevenLabs (only if Gemini produced nothing) */
+        if (!buffers.length && _hasEL) {
+            for (var i = 0; i < chunks.length; i++) {
+                setStatus('Generating audio via ElevenLabs… (' + (i + 1) + '/' + chunks.length + ')', true);
+                try {
+                    buffers.push(await fetchChunkElevenLabs(chunks[i], voiceObj.elVoice));
+                } catch(e) {
+                    errorMsg = e.message || 'Audio generation failed';
+                    buffers = [];
+                    break;
+                }
+            }
+            if (buffers.length) { currentEngine = 'elevenlabs'; currentMime = 'audio/mpeg'; }
+        }
+
+        if (!buffers.length) usedBrowser = true;
 
         setGenerating(false);
         setStatus('', false);
@@ -460,8 +510,10 @@
         }
 
         /* Merge chunks into single blob */
-        var finalBuf  = buffers.length === 1 ? buffers[0] : concatBuffers(buffers);
-        var blob      = new Blob([finalBuf], { type: 'audio/mpeg' });
+        var finalBuf  = buffers.length === 1
+            ? buffers[0]
+            : (currentEngine === 'gemini' ? concatWavBuffers(buffers) : concatBuffers(buffers));
+        var blob      = new Blob([finalBuf], { type: currentMime });
         var url       = URL.createObjectURL(blob);
         currentAudioBlob = blob;
         currentAudioUrl  = url;
@@ -494,7 +546,7 @@
             var kb = blob ? Math.round(blob.size / 1024) : 0;
             dl.innerHTML =
                 '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
-                ' Download MP3' + (kb > 0 ? ' (' + kb + ' KB)' : '');
+                ' Download ' + (currentMime === 'audio/mpeg' ? 'MP3' : 'WAV') + (kb > 0 ? ' (' + kb + ' KB)' : '');
         }
 
         var row = document.getElementById('tts-player-voice-row');
@@ -508,7 +560,9 @@
         }
 
         var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase() + ' · ElevenLabs';
+        var engineLabel = currentEngine === 'gemini' ? 'Gemini AI Voice'
+                        : currentEngine === 'elevenlabs' ? 'ElevenLabs' : 'AI Voice';
+        if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase() + ' · ' + engineLabel;
 
         var player = document.getElementById('tts-player');
         if (player) player.classList.add('visible');
@@ -530,7 +584,7 @@
         if (row) row.innerHTML = '<span class="tts-pv-name">Browser Voice</span><span class="tts-pv-region">Built-in</span>';
 
         var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = 'Add an ElevenLabs key in aqs-tts.js to enable AI voices & downloads';
+        if (info) info.textContent = 'Add a free Gemini TTS key in Admin Settings → Gemini TTS to enable real AI voices & downloads';
 
         var player = document.getElementById('tts-player');
         if (player) player.classList.add('visible');
@@ -551,7 +605,8 @@
         var vName    = voiceObj ? voiceObj.name.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'tts';
         var lang     = voiceObj ? voiceObj.lang : 'en';
         var ts       = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        var fileName = 'xzily-tts-' + vName + '-' + lang + '-' + ts + '.mp3';
+        var ext      = (currentMime === 'audio/mpeg') ? '.mp3' : '.wav';
+        var fileName = 'xzily-tts-' + vName + '-' + lang + '-' + ts + ext;
         var a        = document.createElement('a');
         a.href       = URL.createObjectURL(currentAudioBlob);
         a.download   = fileName;
@@ -700,6 +755,13 @@
        Called once Firebase is ready. Populates _elKeys so that
        generate() can use the key without any manual config.
     ── */
+    function _loadKeys() {
+        var tasks = [];
+        if (window.geminiTTS) tasks.push(window.geminiTTS.loadKeys());
+        tasks.push(new Promise(function(r) { _loadELKeys(); r(); }));
+        Promise.all(tasks).then(_updateKeyNotice).catch(function(){ _updateKeyNotice(); });
+    }
+
     function _loadELKeys() {
         /* Option 1: keys already loaded by admin-settings page into window */
         if (Array.isArray(window._AQS_EL_KEYS) && window._AQS_EL_KEYS.length) {
@@ -721,14 +783,16 @@
     function _updateKeyNotice() {
         var notice = document.getElementById('tts-api-notice');
         if (!notice) return;
-        var hasKey = _elKeys.length > 0 || ELEVENLABS_API_KEY.length > 20;
+        var hasGemini = !!(window.geminiTTS && window.geminiTTS.hasKeys());
+        var hasKey = hasGemini || _elKeys.length > 0 || ELEVENLABS_API_KEY.length > 20;
         if (!hasKey) {
             notice.style.display = 'block';
             notice.innerHTML =
-                '⚠️ <strong>No ElevenLabs key configured.</strong> ' +
-                'AI voices are disabled — using browser built-in voice. ' +
+                '⚠️ <strong>No AI voice key configured.</strong> ' +
+                'Real voices are disabled — using the browser built-in voice. ' +
                 'Go to <a href="admin-settings.html" style="color:#fbbf24;font-weight:700;">Admin Settings</a> ' +
-                '→ ElevenLabs section to add your free key.';
+                '→ Gemini TTS and paste a free key from ' +
+                '<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:#fbbf24;font-weight:700;">aistudio.google.com</a>.';
         } else {
             notice.style.display = 'none';
         }
@@ -759,11 +823,11 @@
         updateCharCount();
         updateVoiceBadge(null);
 
-        /* Load ElevenLabs keys from Firebase admin settings */
+        /* Load Gemini + ElevenLabs keys from Firebase admin settings */
         if (window._aqsFirebaseReady) {
-            _loadELKeys();
+            _loadKeys();
         } else {
-            document.addEventListener('aqs:firebase:ready', _loadELKeys, { once: true });
+            document.addEventListener('aqs:firebase:ready', _loadKeys, { once: true });
             /* Show notice immediately while waiting; will hide once keys load */
             _updateKeyNotice();
         }
