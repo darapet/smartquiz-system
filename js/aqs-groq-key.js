@@ -342,8 +342,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
 /* ═══════════════════════════════════════════════════════════════════
    FEATURE-SPECIFIC GROQ KEY POOLS
    Each app feature has its own isolated 10-slot Groq key pool.
-   Pools auto-load from Firebase admin settings. Feature pools marked noFallback=true
-   will NOT fall back to the main pool — they throw a clear error instead.
+   Pools auto-load from Firebase admin settings. Quiz generation additionally
+   falls back to the shared Mistral pool when Groq is unavailable.
    Exposed as: window.quizGroqFetch, window.challengeGroqFetch, etc.
 ═══════════════════════════════════════════════════════════════════ */
 (function () {
@@ -388,10 +388,19 @@ window._aqsKeysReady = new Promise(function(resolve) {
                             });
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
+                            if (id === 'quiz' && !res.ok && typeof window._mistralFetchDirect === 'function') {
+                                var mistralRes = await window._mistralFetchDirect(bodyObj);
+                                if (mistralRes) return mistralRes;
+                            }
                             _setIdx(at + 1);
                             return res;
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
+                }
+                /* Groq slots are empty or rate-limited: use Mistral for quizzes. */
+                if (id === 'quiz' && typeof window._mistralFetchDirect === 'function') {
+                    var fallbackRes = await window._mistralFetchDirect(bodyObj);
+                    if (fallbackRes) return fallbackRes;
                 }
                 /* Own keys exhausted or empty */
                 if (!opts.noFallback && typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
