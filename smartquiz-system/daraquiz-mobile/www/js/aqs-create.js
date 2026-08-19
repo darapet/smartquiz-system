@@ -313,9 +313,26 @@
         return null;
     }
 
+    /* ── Accurate AI failure diagnostics (replaces the misleading
+          "check your internet connection" message) ──────────────── */
+    function aiFailureMessage() {
+        var st = window.__aqsLastAIStatus || 0;
+        if (typeof navigator !== 'undefined' && navigator.onLine === false)
+            return 'You appear to be offline. Reconnect to the internet and try again.';
+        if (st === 401 || st === 403)
+            return 'AI key rejected. Add a valid Groq API key in Admin → Settings.';
+        if (st === 402)
+            return 'The free AI service now requires payment. Add a free Groq API key in Admin → Settings (console.groq.com/keys) to restore quiz generation.';
+        if (st === 429)
+            return 'AI rate limit reached. Wait a minute and try again, or add your own Groq API key in Admin → Settings.';
+        if (st >= 500)
+            return 'The AI service is temporarily down (error ' + st + '). Please try again shortly.';
+        return 'Quiz generation failed: no AI provider is available. Add a free Groq API key in Admin → Settings (console.groq.com/keys) — this is usually not an internet problem.';
+    }
+
     /* ── AI: Pollinations race ───────────────────────────────── */
     async function callAIDirect(prompt) {
-        var MODELS = ['openai-fast', 'openai', 'mistral', 'deepseek'];
+        var MODELS = ['openai-fast', 'openai'];
         setStatus('Generating questions...');
         var controllers = MODELS.map(function() { return new AbortController(); });
 
@@ -333,7 +350,7 @@
                     ]
                 })
             })
-            .then(function(resp) { clearTimeout(tid); if (!resp.ok) throw new Error('HTTP ' + resp.status); return resp.json(); })
+            .then(function(resp) { clearTimeout(tid); if (!resp.ok) { window.__aqsLastAIStatus = resp.status; throw new Error('HTTP ' + resp.status); } return resp.json(); })
             .then(function(data) {
                 var text = ((((data.choices || [])[0] || {}).message) || {}).content || '';
                 text = text.trim();
@@ -349,7 +366,7 @@
             modelPromises.forEach(function(p) {
                 p.then(function(val) {
                     if (val !== null) { resolve(val); }
-                    else { remaining--; if (remaining === 0) reject(new Error('All AI models failed. Please check your internet and try again.')); }
+                    else { remaining--; if (remaining === 0) reject(new Error(aiFailureMessage())); }
                 });
             });
         });
@@ -455,7 +472,7 @@
             try { rawText = await callAI(prompt); } catch(_aiErr) { rawText = null; }
         }
 
-        if (!rawText) throw new Error('All AI sources failed. Please check your internet connection and try again.');
+        if (!rawText) throw new Error(aiFailureMessage());
 
         /* Bulletproof JSON extraction */
         var cleaned = rawText.replace(/```json[\r\n]*/gi, '').replace(/```[\r\n]*/g, '').trim();
