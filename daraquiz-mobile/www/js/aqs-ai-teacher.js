@@ -106,6 +106,10 @@ function chunkText(t){
 }
 function speak(text, isPreview){
   if(!window.speechSynthesis || !text) return;
+  /* Mobile browsers keep SpeechRecognition alive while speechSynthesis
+     speaks. Stop listening before the teacher talks or the microphone
+     captures the teacher's own voice and creates an echo/restart loop. */
+  stopListening();
   stopSpeak();
   T.pendingChunks = chunkText(speechClean(text));
   T.speaking = true;
@@ -113,7 +117,7 @@ function speak(text, isPreview){
   nextChunk(isPreview);
 }
 function nextChunk(){
-  if(!T.pendingChunks.length){ T.speaking = false; setStatusIdle(); maybeAutoListen(); return; }
+  if(!T.pendingChunks.length){ T.speaking = false; setStatusIdle(); return; }
   var u = new SpeechSynthesisUtterance(T.pendingChunks.shift());
   var v = currentVoice(); if(v) u.voice = v;
   u.rate = T.rate; u.pitch = 1; u.volume = 1;
