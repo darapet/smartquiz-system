@@ -1,7 +1,8 @@
 /* aqs-tts.js — XZILY AI Text-to-Speech v5
-   82 professional voices · Google Gemini TTS (primary) · ElevenLabs (fallback)
+   82 professional voices · Google Gemini TTS (only real-voice engine)
+   ElevenLabs is DISABLED (free plan blocks API voices) — see EL_ENABLED below.
    Real neural voices — browser speechSynthesis is only the last resort.
-   Keys are managed in Admin Settings → Gemini TTS / ElevenLabs.
+   Keys are managed in Admin Settings → Gemini TTS.
    ─────────────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
@@ -13,7 +14,14 @@
        is found in settings (useful for local dev / first-time setup).
        Get a free key at: https://elevenlabs.io  (10,000 chars/month free)
     ══════════════════════════════════════════════════════════════ */
-    var ELEVENLABS_API_KEY = '';   /* fallback — set via Admin Settings → ElevenLabs */
+    var ELEVENLABS_API_KEY = '';   /* legacy — unused while EL_ENABLED is false */
+
+    /* ── ElevenLabs master switch ─────────────────────────────────
+       false = ElevenLabs is completely disabled: no requests, no keys
+       loaded, no "ElevenLabs" text anywhere in the UI or notices.
+       Flip to true only if a paid ElevenLabs plan is ever added back.
+    ── */
+    var EL_ENABLED = false;
     var _elKeys = [];              /* loaded from Firebase admin settings */
 
     /* ElevenLabs multilingual voice IDs — these are free-tier voices that
@@ -435,7 +443,7 @@
         /* Warn early only when NO real-voice provider is configured */
         var _gem = window.geminiTTS;
         var _hasGemini = !!(_gem && _gem.hasKeys());
-        var _hasEL     = _getActiveKeys().length > 0;
+        var _hasEL     = EL_ENABLED && _getActiveKeys().length > 0;
         if (!_hasGemini && !_hasEL) {
             showError('No AI voice key configured. Using the browser voice. Add a free Gemini TTS key in Admin Settings → Gemini TTS.');
         } else {
@@ -455,7 +463,7 @@
             ttsText = await translateText(text, voiceObj.locale, voiceObj.lang);
         }
 
-        /* Step 2: TTS — Gemini first, then ElevenLabs, then browser */
+        /* Step 2: TTS — Gemini, then browser (ElevenLabs disabled) */
         var chunks   = splitText(ttsText);
         var buffers  = [];
         var usedBrowser = false;
@@ -479,10 +487,10 @@
             if (buffers.length) { currentEngine = 'gemini'; currentMime = 'audio/wav'; }
         }
 
-        /* Fallback 1: ElevenLabs (only if Gemini produced nothing) */
-        if (!buffers.length && _hasEL) {
+        /* Fallback 1: ElevenLabs — disabled (EL_ENABLED = false) */
+        if (EL_ENABLED && !buffers.length && _hasEL) {
             for (var i = 0; i < chunks.length; i++) {
-                setStatus('Generating audio via ElevenLabs… (' + (i + 1) + '/' + chunks.length + ')', true);
+                setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
                 try {
                     buffers.push(await fetchChunkElevenLabs(chunks[i], voiceObj.elVoice));
                 } catch(e) {
@@ -560,8 +568,7 @@
         }
 
         var info = document.getElementById('tts-player-info');
-        var engineLabel = currentEngine === 'gemini' ? 'Gemini AI Voice'
-                        : currentEngine === 'elevenlabs' ? 'ElevenLabs' : 'AI Voice';
+        var engineLabel = currentEngine === 'gemini' ? 'Gemini AI Voice' : 'AI Voice';
         if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase() + ' · ' + engineLabel;
 
         var player = document.getElementById('tts-player');
@@ -751,7 +758,7 @@
         });
     }
 
-    /* ── Load ElevenLabs keys from Firebase admin settings ───────
+    /* ── Load voice-engine keys from Firebase admin settings ─────
        Called once Firebase is ready. Populates _elKeys so that
        generate() can use the key without any manual config.
     ── */
@@ -763,6 +770,7 @@
     }
 
     function _loadELKeys() {
+        if (!EL_ENABLED) { _elKeys = []; _updateKeyNotice(); return; }
         /* Option 1: keys already loaded by admin-settings page into window */
         if (Array.isArray(window._AQS_EL_KEYS) && window._AQS_EL_KEYS.length) {
             _elKeys = window._AQS_EL_KEYS;
@@ -784,7 +792,7 @@
         var notice = document.getElementById('tts-api-notice');
         if (!notice) return;
         var hasGemini = !!(window.geminiTTS && window.geminiTTS.hasKeys());
-        var hasKey = hasGemini || _elKeys.length > 0 || ELEVENLABS_API_KEY.length > 20;
+        var hasKey = hasGemini || (EL_ENABLED && (_elKeys.length > 0 || ELEVENLABS_API_KEY.length > 20));
         if (!hasKey) {
             notice.style.display = 'block';
             notice.innerHTML =

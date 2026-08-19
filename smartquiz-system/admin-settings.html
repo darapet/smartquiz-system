@@ -121,8 +121,8 @@ window.addEventListener('DOMContentLoaded', function() {
             hcGKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
             for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
             if (typeof window.setGroqKeys === 'function') window.setGroqKeys(gkeys.filter(function(k){ return k && k.length > 20; }));
-            window._AQS_GROQ_MODEL = s.groq_model || 'llama-3.3-70b-versatile';
-            setVal('aqs-groq-model', s.groq_model || 'llama-3.3-70b-versatile');
+            window._AQS_GROQ_MODEL = (s.groq_model === 'openai/gpt-oss-120b' ? s.groq_model : 'openai/gpt-oss-20b');
+            setVal('aqs-groq-model', (s.groq_model === 'openai/gpt-oss-120b' ? s.groq_model : 'openai/gpt-oss-20b'));
             /* Load up to 20 Mistral keys (Firebase first, then hardcoded fallbacks) */
             var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
             var hcMKeys = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
@@ -181,6 +181,11 @@ window.addEventListener('DOMContentLoaded', function() {
             for (var ei = 1; ei <= 5; ei++) { setVal('aqs-el-key-' + ei, elkeys[ei-1] || ''); }
             /* Expose active key globally so tts.js can pick it up */
             window._AQS_EL_KEYS = elkeys.filter(function(k){ return k && k.length > 20; });
+            /* Load Gemini TTS keys */
+            var gtkeys = Array.isArray(s.gemini_tts_keys) ? s.gemini_tts_keys : [];
+            for (var gti = 1; gti <= 5; gti++) { setVal('aqs-gtts-key-' + gti, gtkeys[gti-1] || ''); }
+            window._AQS_GEMINI_TTS_KEYS = gtkeys.filter(function(k){ return k && k.length > 20; });
+            if (window.geminiTTS) window.geminiTTS.setKeys(window._AQS_GEMINI_TTS_KEYS);
         });
     });
 });
@@ -189,7 +194,8 @@ window.addEventListener('DOMContentLoaded', function() {
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="js/aqs-groq-key.js"></script>
-<script type="module" src="js/aqs-firebase.js"></script>
+<script src="js/aqs-gemini-tts.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 </head>
 <body>
 
@@ -356,11 +362,9 @@ window.addEventListener('DOMContentLoaded', function() {
             <div class="aqs-field-group">
                 <label for="aqs-groq-model">Groq Model</label>
                 <select id="aqs-groq-model">
-                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended ⚡)</option>
-                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Ultra fast)</option>
-                    <option value="llama3-70b-8192">llama3-70b-8192 (Powerful)</option>
-                    <option value="llama3-8b-8192">llama3-8b-8192 (Fast)</option>
-                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
+                    <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Recommended ⚡)</option>
+                    <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Higher quality)</option>
+                                                            <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
                     <option value="gemma2-9b-it">gemma2-9b-it (Efficient)</option>
                 </select>
             </div>
@@ -1314,12 +1318,56 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- Gemini TTS Keys -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🎙️</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Gemini TTS — Real AI Voices (up to 5 keys)</h2>
+            <p class="aqs-settings-card-desc">The <strong>primary</strong> voice engine for the TTS page, Study Hub and quiz read-aloud. 30 natural neural voices, all 82 site characters mapped automatically. Free keys (no credit card) at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#1e40af;">
+            🎙️ <strong>How it works:</strong> Key 1 is used first. If it hits its free daily quota (429) or is invalid, Key 2 is tried, and so on. Add more keys to serve more students at once. If every Gemini key fails, the system falls back to the browser voice. (ElevenLabs is disabled.)
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 1 (Primary) <span id="aqs-gtts-dot-1"></span></label>
+                <input type="password" id="aqs-gtts-key-1" placeholder="AIza…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 2 <span id="aqs-gtts-dot-2"></span></label>
+                <input type="password" id="aqs-gtts-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 3 <span id="aqs-gtts-dot-3"></span></label>
+                <input type="password" id="aqs-gtts-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 4 <span id="aqs-gtts-dot-4"></span></label>
+                <input type="password" id="aqs-gtts-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 5 <span id="aqs-gtts-dot-5"></span></label>
+                <input type="password" id="aqs-gtts-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-gtts-btn" style="background:#2563eb;border-color:#1d4ed8;color:#fff;">🎙️ Save Gemini TTS Keys</button>
+            <button class="aqs-btn" id="aqs-test-gtts-btn" style="background:#3b82f6;color:#fff;border-color:#2563eb;">🔌 Test All Gemini TTS Keys</button>
+            <span id="aqs-gtts-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-gtts-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
 <!-- ElevenLabs TTS Keys -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">🔊</span>
         <div>
-            <h2 class="aqs-settings-card-title">ElevenLabs — AI Text-to-Speech (up to 5 keys)</h2>
+            <h2 class="aqs-settings-card-title">ElevenLabs — AI Text-to-Speech <span style="font-size:11px;font-weight:800;color:#fca5a5;background:#450a0a;border:1px solid #7f1d1d;border-radius:6px;padding:2px 8px;vertical-align:middle;margin-left:6px;">DISABLED</span></h2>
             <p class="aqs-settings-card-desc">Powers the <strong>TTS page</strong> with real AI voices in 16 languages. The first valid key in the list is used automatically — if it fails, the next one is tried. Free keys at <a href="https://elevenlabs.io" target="_blank" rel="noopener">elevenlabs.io</a> (10,000 chars/month free per account).</p>
         </div>
     </div>
@@ -1553,7 +1601,7 @@ async function _aqsTestGroqKeys() {
             var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
+                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
                 signal: AbortSignal.timeout(12000)
             });
             var ms = Date.now() - tStart;
@@ -1989,6 +2037,109 @@ async function _aqsTestELKeys() {
 }
 btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
 
+/* ── Gemini TTS Keys — Save ──────────────────────────────────────────────── */
+btn('aqs-save-gtts-btn') && btn('aqs-save-gtts-btn').addEventListener('click', function(){
+    var _k = [];
+    for (var _i = 1; _i <= 5; _i++) {
+        var _el = document.getElementById('aqs-gtts-key-' + _i);
+        if (_el && _el.value.trim().length > 20) _k.push(_el.value.trim());
+    }
+    if (!_k.length) {
+        var _s = document.getElementById('aqs-gtts-status');
+        if (_s) { _s.textContent = 'Add at least one key (starts with AIza).'; _s.style.color = '#ef4444'; }
+        return;
+    }
+    window._AQS_GEMINI_TTS_KEYS = _k;
+    if (window.geminiTTS) window.geminiTTS.setKeys(_k);
+    saveSettings('/api/settings', { gemini_tts_keys: _k }, 'aqs-gtts-status', this, '🎙️ Save Gemini TTS Keys');
+    if (typeof window._aqsRefreshPoolStatus === 'function') setTimeout(window._aqsRefreshPoolStatus, 700);
+});
+
+/* ── Gemini TTS Keys — Test ──────────────────────────────────────────────── */
+async function _aqsTestGeminiTTSKeys() {
+    var allKeys = [];
+    for (var gi = 1; gi <= 5; gi++) {
+        var gel = document.getElementById('aqs-gtts-key-' + gi);
+        if (gel && gel.value.trim().length > 20) allKeys.push({ slot: gi, key: gel.value.trim() });
+    }
+    var results = document.getElementById('aqs-gtts-test-results');
+    var testBtn = document.getElementById('aqs-test-gtts-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Gemini TTS keys found. Add at least one key above, then click Test.</span>';
+        return;
+    }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Gemini TTS key(s)…</div>';
+
+    var MODEL = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
+
+    function row(bg, bd, nameCol, codeBg, codeCol, slot, masked, msgCol, msg) {
+        var badge = '<span style="font-size:.7rem;background:#dbeafe;color:#1e40af;border-radius:4px;padding:2px 7px;font-weight:700;">GEMINI TTS</span>';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:' + bg + ';border:1px solid ' + bd + ';border-radius:8px;">' +
+            badge + '<span style="color:' + nameCol + ';font-weight:700;">Key ' + slot + '</span>' +
+            '<code style="color:' + codeCol + ';font-size:.78rem;background:' + codeBg + ';padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+            '<span style="color:' + msgCol + ';margin-left:auto;font-size:.78rem;">' + msg + '</span></div>';
+    }
+
+    async function pingGTTS(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 6) + '…' + key.slice(-4);
+        var tStart = Date.now();
+        try {
+            var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + encodeURIComponent(key), {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: 'Hi' }] }],
+                    generationConfig: {
+                        responseModalities: ['AUDIO'],
+                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
+                    }
+                }),
+                signal: AbortSignal.timeout(30000)
+            });
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                var d = await res.json();
+                var pt = d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts && d.candidates[0].content.parts[0];
+                var inl = pt && (pt.inlineData || pt.inline_data);
+                if (inl && inl.data) {
+                    return { ok: true, html: row('#052e16','#166534','#86efac','#0d3321','#4ade80',slot,masked,'#6ee7b7','✅ Valid · ' + ms + 'ms · audio OK') };
+                }
+                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ Key works but returned no audio') };
+            }
+            var body = await res.text();
+            if (res.status === 400 && /API key not valid|API_KEY_INVALID/i.test(body)) {
+                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ Invalid key — check at aistudio.google.com/apikey') };
+            }
+            if (res.status === 403) {
+                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ Forbidden (403) — enable the Generative Language API for this key') };
+            }
+            if (res.status === 429) {
+                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ Valid key · free quota reached — try again later') };
+            }
+            if (res.status === 404) {
+                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ TTS model not available for this key/region') };
+            }
+            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ HTTP ' + res.status) };
+        } catch(e) {
+            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (e.name === 'TimeoutError' ? 'Timed out' : (e.message || 'Network error'))) };
+        }
+    }
+
+    var rows = [];
+    for (var k = 0; k < allKeys.length; k++) { rows.push(await pingGTTS(allKeys[k])); }
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Gemini TTS key(s) working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Gemini TTS keys working.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Gemini TTS Keys'; }
+}
+btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _aqsTestGeminiTTSKeys);
+
 
     /* ═══════════════════════════════════════════════════════════════════
        Quote Generation Keys — Save / Load / Test
@@ -2118,6 +2269,7 @@ btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
           { id:'groq',       label:'Main Groq',    emoji:'⚡', provider:'groq',    inputPrefix:'aqs-groq-key-',            slots:20, dotPrefix:'aqs-gk-dot-' },
           { id:'mistral',    label:'Mistral',       emoji:'🌟', provider:'mistral', inputPrefix:'aqs-mistral-key-',         slots:20, dotPrefix:'aqs-mk-dot-' },
           { id:'hf',         label:'HuggingFace',   emoji:'🤗', provider:'hf',      inputPrefix:'aqs-hf-key-',              slots:5,  dotPrefix:'aqs-hf-dot-' },
+          { id:'geminitts',  label:'Gemini TTS',    emoji:'🎙️', provider:'gtts',   inputPrefix:'aqs-gtts-key-',            slots:5,  dotPrefix:'aqs-gtts-dot-' },
           { id:'elevenlabs', label:'ElevenLabs TTS', emoji:'🔊', provider:'el',      inputPrefix:'aqs-el-key-',              slots:5,  dotPrefix:'aqs-el-dot-' },
           { id:'library',    label:'Library',       emoji:'📚', provider:'groq',    inputPrefix:'aqs-lib-key-',             slots:10 },
           { id:'quiz',       label:'Quiz Creation', emoji:'🧠', provider:'groq',    inputPrefix:'aqs-quiz-groq-key-',       slots:10, dotPrefix:'aqs-qgk-dot-' },
@@ -2133,7 +2285,7 @@ btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
           var tStart = Date.now(), ms, res, errBody, errMsg;
           try {
               if (provider === 'groq') {
-                  var model = window._AQS_GROQ_MODEL || 'llama-3.1-8b-instant';
+                  var model = window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b';
                   res = await fetch(GROQ_URL, {
                       method:'POST',
                       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
@@ -2188,6 +2340,26 @@ btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
                   errMsg = (typeof errBody.error==='string' ? errBody.error : JSON.stringify(errBody.error||errBody)).slice(0,110);
                   if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
                   if (res.status===401||res.status===403) return {ok:false, status:res.status, ms:ms, msg:'❌ Invalid token ('+res.status+') — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+
+              } else if (provider === 'gtts') {
+                  var gModel = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
+                  res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+gModel+':generateContent?key='+encodeURIComponent(key), {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({
+                          contents:[{role:'user',parts:[{text:'Hi'}]}],
+                          generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}
+                      }),
+                      signal:AbortSignal.timeout(30000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · audio OK'};
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = ((errBody.error&&errBody.error.message)||('HTTP '+res.status)).slice(0,110);
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Free quota reached — '+errMsg};
+                  if (res.status===403) return {ok:false, status:403, ms:ms, msg:'❌ Forbidden (403) — '+errMsg};
+                  if (res.status===400 && /API key not valid|API_KEY_INVALID/i.test(errMsg)) return {ok:false, status:400, ms:ms, msg:'❌ Invalid key — '+errMsg};
                   return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
               }
           } catch(e) {
