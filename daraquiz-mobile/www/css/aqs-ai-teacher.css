@@ -1,3 +1,13 @@
+/* DARAPET welcome and voice setup */
+.ait-welcome-mark{width:54px;height:54px;margin:0 auto 12px;border-radius:18px;display:grid;place-items:center;color:#dffcff;font-size:1.7rem;background:radial-gradient(circle,#22d3ee 0%,#6366f1 45%,#111827 75%);box-shadow:0 0 18px #22d3ee,0 0 48px rgba(99,102,241,.75);animation:ait-pulse 2.4s ease-in-out infinite}
+.ait-welcome-line{text-align:center;color:#a5f3fc;font-weight:800;letter-spacing:.02em;text-shadow:0 0 14px rgba(34,211,238,.65)}
+.ait-card#ait-s0{border-color:rgba(34,211,238,.38);box-shadow:0 0 24px rgba(34,211,238,.12),0 18px 55px rgba(15,23,42,.35)}
+.ait-voice-choice{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 4px}
+.ait-voice-choice .ait-input{flex:1 1 180px}
+.ait-voice{position:relative}
+.ait-voice:before{content:attr(data-number);display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:rgba(34,211,238,.14);color:#67e8f9;font-weight:800;position:absolute;left:10px;top:10px}
+.ait-voice b,.ait-voice span,.ait-voice .play{margin-left:32px}
+@keyframes ait-pulse{0%,100%{transform:scale(1);filter:brightness(1)}50%{transform:scale(1.07);filter:brightness(1.3)}}
 /* DaraQuiz — AI Teacher Pro (voice classroom) */
 *{margin:0;padding:0;box-sizing:border-box}
 :root{

@@ -29,8 +29,10 @@
 
   <!-- Step 0 — welcome -->
   <section class="ait-card" id="ait-s0">
+    <div class="ait-welcome-mark">✦</div>
     <h1 class="ait-title">Your AI Teacher</h1>
-    <p class="ait-sub">A voice-first classroom. Speak or type, and I will explain everything out loud while writing the full working on the board.</p>
+    <p class="ait-welcome-line">Welcome to the DARAPET Learning System.</p>
+    <p class="ait-sub">Before we begin, let’s personalise your teacher. I’ll listen, remember your choices, and guide you into a classroom made for you.</p>
     <div class="ait-row">
       <button class="ait-btn primary" id="ait-start">Begin setup</button>
     </div>
@@ -43,7 +45,7 @@
     <p class="ait-sub">Give your teacher a name.</p>
     <label class="ait-label" for="ait-teacher-name">Teacher name</label>
     <input class="ait-input" id="ait-teacher-name" placeholder="Professor Ada" autocomplete="off">
-    <div class="ait-row"><button class="ait-btn primary" id="ait-next1">Continue</button></div>
+    <div class="ait-row"><button class="ait-btn ghost" id="ait-setup-mic1">🎙 Speak teacher name</button><button class="ait-btn primary" id="ait-next1">Continue</button></div>
   </section>
 
   <!-- Step 2 — student name -->
@@ -52,14 +54,19 @@
     <p class="ait-sub">I will address you by name during the lesson.</p>
     <label class="ait-label" for="ait-student-name">Your name</label>
     <input class="ait-input" id="ait-student-name" placeholder="Your name" autocomplete="off">
-    <div class="ait-row"><button class="ait-btn primary" id="ait-next2">Continue</button></div>
+    <div class="ait-row"><button class="ait-btn ghost" id="ait-setup-mic2">🎙 Speak your name</button><button class="ait-btn primary" id="ait-next2">Continue</button></div>
   </section>
 
   <!-- Step 3 — voice + speed -->
   <section class="ait-card hidden" id="ait-s3">
     <h2 class="ait-title">Choose my voice</h2>
-    <p class="ait-sub">Tap any voice to hear a preview, then set my speaking speed.</p>
+    <p class="ait-sub">Here are my ten voices. Tap a numbered voice to hear it, or say its number or name below.</p>
     <div class="ait-voices" id="ait-voice-list"></div>
+    <div class="ait-voice-choice">
+      <input class="ait-input" id="ait-voice-choice" placeholder="Voice number or name" autocomplete="off">
+      <button class="ait-btn ghost" id="ait-voice-mic">🎙 Choose by voice</button>
+      <button class="ait-btn primary" id="ait-voice-select">Use this voice</button>
+    </div>
 
     <label class="ait-label" for="ait-rate">Speaking speed — <span class="ait-rate-val" id="ait-rate-val">1.00×</span></label>
     <input class="ait-range" id="ait-rate" type="range" min="0.6" max="1.6" step="0.05" value="1">

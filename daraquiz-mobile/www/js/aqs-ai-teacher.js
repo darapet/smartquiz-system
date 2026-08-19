@@ -12,7 +12,7 @@ var LS = 'aqs_ai_teacher_prefs_v2';
 var T = {
   step:0, teacherName:'', studentName:'', voiceURI:'', rate:1,
   voices:[], history:[], speaking:false, paused:false, listening:false,
-  micWanted:false, thinking:false, started:false, recog:null,
+  micWanted:false, thinking:false, started:false, recog:null, setupMode:null,
   pendingChunks:[], interimEl:null, silenceTimer:null
 };
 window.AITeacher = T;
@@ -51,12 +51,12 @@ function loadVoices(){
     (g==='Female'?females:g==='Male'?males:others).push(v);
   });
   var picked = [], i = 0;
-  while(picked.length < 15 && (i < females.length || i < males.length)){
+  while(picked.length < 10 && (i < females.length || i < males.length)){
     if(i < females.length) picked.push(females[i]);
-    if(picked.length < 15 && i < males.length) picked.push(males[i]);
+    if(picked.length < 10 && i < males.length) picked.push(males[i]);
     i++;
   }
-  for(var k=0; picked.length<15 && k<others.length; k++) picked.push(others[k]);
+  for(var k=0; picked.length<10 && k<others.length; k++) picked.push(others[k]);
   T.voices = picked;
   renderVoices();
 }
@@ -64,7 +64,7 @@ function renderVoices(){
   var box = $('ait-voice-list'); if(!box) return;
   if(!T.voices.length){ box.innerHTML = '<div class="ait-sub">No system voices detected — the AI will still write everything on screen.</div>'; return; }
   box.innerHTML = T.voices.map(function(v,i){
-    return '<div class="ait-voice'+(v.voiceURI===T.voiceURI?' sel':'')+'" data-i="'+i+'">'+
+    return '<div class="ait-voice'+(v.voiceURI===T.voiceURI?' sel':'')+'" data-i="'+i+'" data-number="'+(i+1)+'">'+
       '<b>'+escapeHtml(shortName(v.name))+'</b><span>'+guessGender(v.name)+' · '+v.lang+'</span>'+
       '<div class="play">▶ Preview</div></div>';
   }).join('');
@@ -73,7 +73,7 @@ function renderVoices(){
       var v = T.voices[+el.dataset.i];
       T.voiceURI = v.voiceURI;
       renderVoices();
-      speak('Hello, I am ' + (T.teacherName || shortName(v.name)) + '. I will be your teacher today.', true);
+      speak('Voice ' + (i+1) + '. My name is ' + shortName(v.name) + '. This is how I sound when I teach you.', true);
     };
   });
 }
@@ -171,6 +171,14 @@ function initRecog(){
     if(final.trim()){
       clearTimeout(T.silenceTimer);
       var said = final.trim();
+      if(T.setupMode){
+        var setup = T.setupMode;
+        T.setupMode = null;
+        stopListening();
+        clearInterim();
+        setup.done(said);
+        return;
+      }
       /* wait for the user to actually finish before replying */
       T.silenceTimer = setTimeout(function(){ clearInterim(); handleUser(said); }, 900);
     }
@@ -190,9 +198,15 @@ function startListening(){
 }
 function stopListening(){
   T.micWanted = false;
+  T.setupMode = null;
   try{ if(T.recog) T.recog.stop(); }catch(e){}
 }
 function maybeAutoListen(){ if(T.micWanted && !T.listening && T.started){ try{ T.recog && T.recog.start(); }catch(e){} } }
+function listenForSetup(done){
+  if(!SR()){ toast('Speech input is not supported here. You can type your answer instead.'); return; }
+  T.setupMode = { done: done };
+  startListening();
+}
 function showInterim(t){
   if(!T.interimEl){
     T.interimEl = document.createElement('div');
@@ -379,7 +393,7 @@ function toast(msg){
 
 function beginOnboarding(){
   show('ait-s1');
-  speak('Welcome to your personal A I classroom. Before we begin, what would you like to call me?');
+  speak('Welcome to the DARAPET Learning System. Before we proceed, let us customise your teacher. What would you like to name me?');
 }
 function enterClassroom(){
   T.started = true;
@@ -407,13 +421,13 @@ function init(){
   $('ait-next1').onclick = function(){
     T.teacherName = ($('ait-teacher-name').value || 'Professor Ada').trim();
     show('ait-s2');
-    speak('Lovely. And what should I call you?');
+    speak('Noted. May I know your name?');
   };
   $('ait-next2').onclick = function(){
     T.studentName = ($('ait-student-name').value || 'Student').trim();
     show('ait-s3');
     renderVoices();
-    speak('Now choose the voice you would like me to use, and set how fast I should speak.');
+    speak('Thank you, ' + T.studentName + '. I have ten voices for you. I will introduce each one. Choose by voice number or name.');
   };
   $('ait-rate').oninput = function(){
     T.rate = parseFloat(this.value);
@@ -423,6 +437,26 @@ function init(){
     speak('This is how fast I will be speaking during our lesson, ' + (T.studentName||'') + '.');
   };
   $('ait-finish').onclick = function(){ enterClassroom(); };
+  $('ait-setup-mic1').onclick = function(){
+    listenForSetup(function(said){ $('ait-teacher-name').value = said; $('ait-next1').click(); });
+  };
+  $('ait-setup-mic2').onclick = function(){
+    listenForSetup(function(said){ $('ait-student-name').value = said; $('ait-next2').click(); });
+  };
+  $('ait-voice-select').onclick = function(){
+    var choice = ($('ait-voice-choice').value || '').trim().toLowerCase();
+    if(!choice){ toast('Say or enter a voice number or name first.'); return; }
+    var number = parseInt(choice.replace(/[^0-9]/g,''), 10);
+    var idx = !isNaN(number) && number >= 1 && number <= T.voices.length ? number - 1 : -1;
+    if(idx < 0) idx = T.voices.findIndex(function(v){ return shortName(v.name).toLowerCase().indexOf(choice) > -1; });
+    if(idx < 0){ toast('I could not find that voice. Choose one of the ten listed voices.'); return; }
+    T.voiceURI = T.voices[idx].voiceURI;
+    renderVoices();
+    speak('Noted. You chose voice ' + (idx + 1) + ', ' + shortName(T.voices[idx].name) + '. I will use this voice for your lessons.', true);
+  };
+  $('ait-voice-mic').onclick = function(){
+    listenForSetup(function(said){ $('ait-voice-choice').value = said; $('ait-voice-select').click(); });
+  };
 
   $('ait-mic').onclick = function(){ if(T.micWanted) stopListening(); else startListening(); };
   $('ait-send').onclick = sendTyped;
