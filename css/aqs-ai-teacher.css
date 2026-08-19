@@ -137,9 +137,8 @@ body.ait-welcome-mode .ait-hdr{display:none}
 body.ait-welcome-mode .ait-shell{max-width:none;padding:0}
 body.ait-welcome-mode .ait-orb-wrap{position:fixed;inset:0;z-index:20;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer}
 body.ait-welcome-mode .ait-orb{width:238px;height:238px;box-shadow:0 0 55px rgba(99,102,241,.7),0 0 150px rgba(34,211,238,.28),inset 0 0 55px rgba(255,255,255,.22)}
-body.ait-welcome-mode .ait-orb-state{position:fixed;top:calc(50% + 145px);font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(226,232,240,.6)}
+body.ait-welcome-mode .ait-orb-state{display:none}
 body.ait-welcome-mode #ait-s0{height:0;margin:0;padding:0;border:0;background:none;box-shadow:none;overflow:visible}
 body.ait-welcome-mode #ait-s0>*{display:none}
-body.ait-welcome-mode #ait-s0 .ait-title{display:block;position:fixed;top:calc(50% + 175px);left:0;right:0;text-align:center;font-size:.72rem;font-weight:600;color:rgba(226,232,240,.5);letter-spacing:.16em;text-transform:uppercase}
 .ait-orb-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ait-orb-state{margin-top:18px}
