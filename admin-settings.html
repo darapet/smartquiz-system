@@ -121,8 +121,8 @@ window.addEventListener('DOMContentLoaded', function() {
             hcGKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
             for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
             if (typeof window.setGroqKeys === 'function') window.setGroqKeys(gkeys.filter(function(k){ return k && k.length > 20; }));
-            window._AQS_GROQ_MODEL = s.groq_model || 'llama-3.3-70b-versatile';
-            setVal('aqs-groq-model', s.groq_model || 'llama-3.3-70b-versatile');
+            window._AQS_GROQ_MODEL = (s.groq_model === 'openai/gpt-oss-120b' ? s.groq_model : 'openai/gpt-oss-20b');
+            setVal('aqs-groq-model', (s.groq_model === 'openai/gpt-oss-120b' ? s.groq_model : 'openai/gpt-oss-20b'));
             /* Load up to 20 Mistral keys (Firebase first, then hardcoded fallbacks) */
             var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
             var hcMKeys = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
@@ -356,11 +356,9 @@ window.addEventListener('DOMContentLoaded', function() {
             <div class="aqs-field-group">
                 <label for="aqs-groq-model">Groq Model</label>
                 <select id="aqs-groq-model">
-                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended ⚡)</option>
-                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Ultra fast)</option>
-                    <option value="llama3-70b-8192">llama3-70b-8192 (Powerful)</option>
-                    <option value="llama3-8b-8192">llama3-8b-8192 (Fast)</option>
-                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
+                    <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Recommended ⚡)</option>
+                    <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Higher quality)</option>
+                                                            <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
                     <option value="gemma2-9b-it">gemma2-9b-it (Efficient)</option>
                 </select>
             </div>
@@ -1553,7 +1551,7 @@ async function _aqsTestGroqKeys() {
             var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'llama-3.3-70b-versatile', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
+                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
                 signal: AbortSignal.timeout(12000)
             });
             var ms = Date.now() - tStart;
@@ -2133,7 +2131,7 @@ btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
           var tStart = Date.now(), ms, res, errBody, errMsg;
           try {
               if (provider === 'groq') {
-                  var model = window._AQS_GROQ_MODEL || 'llama-3.1-8b-instant';
+                  var model = window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b';
                   res = await fetch(GROQ_URL, {
                       method:'POST',
                       headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},

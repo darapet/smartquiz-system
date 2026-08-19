@@ -178,7 +178,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
     async function _groqFetch(bodyObj, extraOpts) {
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_GROQ_MODEL || 'llama-3.3-70b-versatile');
+            window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -287,7 +287,9 @@ window._aqsKeysReady = new Promise(function(resolve) {
             if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
                 window.setGroqKeys(s.groq_keys);
             }
-            if (s.groq_model) window._AQS_GROQ_MODEL = s.groq_model;
+            var _savedGroqModel = s.groq_model;
+            var _retiredGroqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
+            window._AQS_GROQ_MODEL = _savedGroqModel && _retiredGroqModels.indexOf(_savedGroqModel) === -1 ? _savedGroqModel : 'openai/gpt-oss-20b';
 
             /* Mistral */
             if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
