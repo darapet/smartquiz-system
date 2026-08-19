@@ -16,7 +16,7 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithCredential,
+    signInWithPopup,
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -544,69 +544,47 @@ async function actionRegister(data) {
      Uses Google Identity Services (GIS) token client + signInWithCredential.
      This bypasses Firebase Hosting entirely — no /__/firebase/init.json needed.
      Works on GitHub Pages, any static host, any domain. */
-  function actionSocialLogin(data) {
-      var provider = data.provider || 'google';
-      if (provider !== 'google') return Promise.reject(new Error('Unsupported social provider: ' + provider));
+async function actionSocialLogin(data) {
+    var providerName = data.provider || 'google';
+    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
 
-      return new Promise(function(resolve, reject) {
-          if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-              reject(new Error('Google Sign-In is loading — please wait a moment and try again.'));
-              return;
-          }
-          var tokenClient = google.accounts.oauth2.initTokenClient({
-              client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
-              scope: 'email profile openid',
-              callback: async function(tokenResponse) {
-                  if (tokenResponse.error) {
-                      reject(new Error(tokenResponse.error_description || tokenResponse.error));
-                      return;
-                  }
-                  try {
-                      var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
-                      var result     = await signInWithCredential(auth, credential);
-                      var user       = result.user;
+    /* Use Firebase's provider flow so the Firebase authorized-domain list is
+       the only browser-origin configuration required on Cloudflare. */
+    var result = await signInWithPopup(auth, new GoogleAuthProvider());
+    var user = result.user;
+    var profileRef = doc(db, 'users', user.uid);
+    var profileDoc = await getDoc(profileRef);
+    var profile;
 
-                      var profileRef = doc(db, 'users', user.uid);
-                      var profileDoc = await getDoc(profileRef);
-                      var profile;
+    if (profileDoc.exists()) {
+        profile = profileDoc.data();
+        await updateDoc(profileRef, { last_login: serverTimestamp() });
+    } else {
+        var displayName = user.displayName || '';
+        var emailLocal = (user.email || '').split('@')[0];
+        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
+        var finalUsername = baseUsername;
+        var collision = await getDoc(doc(db, 'usernames', finalUsername));
+        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+        profile = {
+            uid: user.uid,
+            name: displayName,
+            username: finalUsername,
+            email: user.email,
+            role: 'student',
+            avatar: user.photoURL || '',
+            provider: 'google',
+            status: 'active',
+            created_at: serverTimestamp(),
+            last_login: serverTimestamp()
+        };
+        await setDoc(profileRef, profile);
+        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+    }
 
-                      if (profileDoc.exists()) {
-                          profile = profileDoc.data();
-                          await updateDoc(profileRef, { last_login: serverTimestamp() });
-                      } else {
-                          var displayName  = user.displayName || '';
-                          var emailLocal   = (user.email || '').split('@')[0];
-                          var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-                          var finalUsername = baseUsername;
-                          var collision    = await getDoc(doc(db, 'usernames', finalUsername));
-                          if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
-                          profile = {
-                              uid:        user.uid,
-                              name:       displayName,
-                              username:   finalUsername,
-                              email:      user.email,
-                              role:       'student',
-                              avatar:     user.photoURL || '',
-                              provider:   'google',
-                              status:     'active',
-                              created_at: serverTimestamp(),
-                              last_login: serverTimestamp()
-                          };
-                          await setDoc(profileRef, profile);
-                          await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
-                      }
-
-                      _updateAqsGlobals(user, profile);
-                      resolve({ redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email });
-                  } catch(e) {
-                      reject(e);
-                  }
-              }
-          });
-          tokenClient.requestAccessToken({ prompt: '' });
-      });
-  }
-
+    _updateAqsGlobals(user, profile);
+    return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
+}
 async function actionLogout() {
     await signOut(auth);
     window._aqsFirebaseUser = null;
