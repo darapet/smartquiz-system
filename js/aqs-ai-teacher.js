@@ -373,6 +373,7 @@ function show(id){
   ['ait-s0','ait-s1','ait-s2','ait-s3','ait-room'].forEach(function(s){
     var el = $(s); if(el) el.classList.toggle('hidden', s !== id);
   });
+  document.body.classList.toggle('ait-welcome-mode', id === 'ait-s0');
   var dock = $('ait-dock'); if(dock) dock.classList.toggle('hidden', id !== 'ait-room');
 }
 function savePrefs(){
@@ -417,6 +418,14 @@ function init(){
   }
 
   $('ait-start').onclick = function(){ beginOnboarding(); };
+  var welcomeOrb = $('ait-orb-wrap');
+  if(welcomeOrb){
+    welcomeOrb.setAttribute('role','button');
+    welcomeOrb.setAttribute('tabindex','0');
+    welcomeOrb.setAttribute('aria-label','Start AI Teacher welcome');
+    welcomeOrb.onclick = function(){ if($('ait-s0') && !$('ait-s0').classList.contains('hidden')) beginOnboarding(); };
+    welcomeOrb.onkeydown = function(e){ if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); welcomeOrb.click(); } };
+  }
 
   $('ait-next1').onclick = function(){
     T.teacherName = ($('ait-teacher-name').value || 'Professor Ada').trim();
