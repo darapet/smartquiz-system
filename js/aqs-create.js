@@ -535,6 +535,10 @@
 
         /* 1. Groq direct (skipped automatically if no key configured) */
         rawText = await callGroqDirect(prompt);
+        /* Do not hide an invalid Groq credential behind the unreliable
+           Pollinations fallback. Show the actionable key error instead. */
+        if (!rawText && (window.__aqsLastAIStatus === 401 || window.__aqsLastAIStatus === 403))
+            throw new Error(aiFailureMessage());
 
         /* 2. Pollinations direct — free, no key, works immediately from browser */
         if (!rawText) {
