@@ -2199,9 +2199,17 @@ async function actionSaveSettings(data) {
         'studyhub_groq_keys',
         'textdocs_groq_keys',
         'puzzle_groq_keys',
-        'quizstudio_groq_keys'
+        'quizstudio_groq_keys',
+        'gemini_tts_keys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    /* Trim and validate Gemini TTS keys (up to 5) before saving */
+    if (Array.isArray(payload.gemini_tts_keys)) {
+        payload.gemini_tts_keys = payload.gemini_tts_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 5);
+    }
     /* Trim and validate Groq keys (up to 20) before saving */
     if (Array.isArray(payload.groq_keys)) {
         payload.groq_keys = payload.groq_keys
