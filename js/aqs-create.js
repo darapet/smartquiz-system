@@ -350,13 +350,16 @@
     async function callGroqDirect(prompt) {
         if (typeof window.quizGroqFetch !== 'function') return null;
         var isMath = isMathPrompt(prompt);
-        var groqModel  = isMath ? 'llama-3.3-70b-versatile' : 'llama-3.1-8b-instant';
+        /* Use the model selected in Admin Settings. The old Llama IDs are
+           retired on Groq and return 404; GPT-OSS is the current default. */
+        var groqModel  = window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b';
         var groqTokens = isMath ? 6144 : 4096;
         var groqTimeout= isMath ? 45000 : 20000;
         setStatus(isMath ? 'Generating math questions via Groq (may take ~30s)…' : 'Generating questions via Groq...');
         /* Try up to 2 model attempts — if 70b times out, fall back to 8b.
            groqFetch handles 429 key rotation automatically within each attempt. */
-        var modelsToTry = isMath ? [groqModel, 'llama-3.1-8b-instant'] : [groqModel];
+        var modelsToTry = [groqModel];
+        if (groqModel !== 'openai/gpt-oss-20b') modelsToTry.push('openai/gpt-oss-20b');
         for (var mi = 0; mi < modelsToTry.length; mi++) {
             var m = modelsToTry[mi], tk = (m === 'llama-3.3-70b-versatile') ? groqTokens : 4096;
             var to = (m === 'llama-3.3-70b-versatile') ? groqTimeout : 20000;
@@ -373,7 +376,10 @@
                     response_format: { type: 'json_object' }
                 }, { signal: ctrl.signal });
                 clearTimeout(tid);
-                if (!res.ok) continue;
+                if (!res.ok) {
+                    window.__aqsLastAIStatus = res.status;
+                    continue;
+                }
                 var data = await res.json();
                 var text = (((data.choices || [])[0] || {}).message || {}).content || '';
                 if (text.trim().length > 20) return text.trim();
