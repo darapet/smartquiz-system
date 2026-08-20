@@ -13,7 +13,7 @@ var T = {
   step:0, teacherName:'', studentName:'', voiceURI:'', rate:1,
   voices:[], history:[], speaking:false, paused:false, listening:false,
   micWanted:false, thinking:false, started:false, recog:null, setupMode:null,
-  pendingChunks:[], interimEl:null, silenceTimer:null
+  pendingChunks:[], interimEl:null, silenceTimer:null, afterSpeech:null
 };
 window.AITeacher = T;
 
@@ -90,6 +90,7 @@ function currentVoice(){
 function stopSpeak(){
   T.pendingChunks = [];
   T.speaking = false; T.paused = false;
+  T.afterSpeech = null;
   try{ speechSynthesis.cancel(); }catch(e){}
   var b = $('ait-pause'); if(b){ b.textContent='⏸'; b.classList.remove('active'); }
   setStatusIdle();
@@ -104,26 +105,34 @@ function chunkText(t){
   if(buf.trim()) out.push(buf.trim());
   return out;
 }
-function speak(text, isPreview){
-  if(!window.speechSynthesis || !text) return;
+function speak(text, isPreview, done){
+  if(!text) return;
+  if(!window.speechSynthesis){ if(typeof done === 'function') done(); return; }
   /* Mobile browsers keep SpeechRecognition alive while speechSynthesis
      speaks. Stop listening before the teacher talks or the microphone
      captures the teacher's own voice and creates an echo/restart loop. */
   stopListening();
   stopSpeak();
   T.pendingChunks = chunkText(speechClean(text));
+  T.afterSpeech = typeof done === 'function' ? done : null;
   T.speaking = true;
   setStatusIdle();
   nextChunk(isPreview);
 }
 function nextChunk(){
-  if(!T.pendingChunks.length){ T.speaking = false; setStatusIdle(); return; }
+  if(!T.pendingChunks.length){
+    T.speaking = false;
+    var done = T.afterSpeech; T.afterSpeech = null;
+    setStatusIdle();
+    if(done) setTimeout(done, 120);
+    return;
+  }
   var u = new SpeechSynthesisUtterance(T.pendingChunks.shift());
   var v = currentVoice(); if(v) u.voice = v;
   u.rate = T.rate; u.pitch = 1; u.volume = 1;
   u.onend = function(){ if(T.speaking && !T.paused) nextChunk(); };
   u.onerror = function(){ if(T.speaking && !T.paused) nextChunk(); };
-  try{ speechSynthesis.speak(u); }catch(e){}
+  try{ speechSynthesis.resume(); speechSynthesis.speak(u); }catch(e){}
 }
 /* strip markup/latex noise so the voice reads naturally */
 function speechClean(t){
@@ -206,6 +215,18 @@ function listenForSetup(done){
   if(!SR()){ toast('Speech input is not supported here. You can type your answer instead.'); return; }
   T.setupMode = { done: done };
   startListening();
+}
+function voiceTour(i){
+  if(i >= T.voices.length){
+    speak('Which of my voices would you prefer? You can say the voice number or its name.', false, function(){
+      listenForSetup(function(said){ $('ait-voice-choice').value = said; $('ait-voice-select').click(); });
+    });
+    return;
+  }
+  var v = T.voices[i];
+  speak('Voice ' + (i + 1) + '. My name is ' + shortName(v.name) + '. This is my teaching voice.', true, function(){
+    voiceTour(i + 1);
+  });
 }
 function showInterim(t){
   if(!T.interimEl){
@@ -393,8 +414,12 @@ function toast(msg){
 }
 
 function beginOnboarding(){
-  show('ait-s1');
-  speak('Welcome to the DARAPET Learning System. Before we proceed, let us customise your teacher. What would you like to name me?');
+  speak('Welcome to the DARAPET Learning System. Before we proceed, let us customise your teacher.', false, function(){
+    show('ait-s1');
+    speak('What would you like to name me?', false, function(){
+      listenForSetup(function(said){ $('ait-teacher-name').value = said; $('ait-next1').click(); });
+    });
+  });
 }
 function enterClassroom(){
   T.started = true;
@@ -430,13 +455,17 @@ function init(){
   $('ait-next1').onclick = function(){
     T.teacherName = ($('ait-teacher-name').value || 'Professor Ada').trim();
     show('ait-s2');
-    speak('Noted. May I know your name?');
+    speak('Noted. May I know your name?', false, function(){
+      listenForSetup(function(said){ $('ait-student-name').value = said; $('ait-next2').click(); });
+    });
   };
   $('ait-next2').onclick = function(){
     T.studentName = ($('ait-student-name').value || 'Student').trim();
     show('ait-s3');
     renderVoices();
-    speak('Thank you, ' + T.studentName + '. I have ten voices for you. I will introduce each one. Choose by voice number or name.');
+    speak('Thank you, ' + T.studentName + '. I have ten voices for you. I will introduce each one.', false, function(){
+      voiceTour(0);
+    });
   };
   $('ait-rate').oninput = function(){
     T.rate = parseFloat(this.value);
