@@ -429,6 +429,14 @@ a{text-decoration:none;color:inherit;}
 @keyframes ait-vb-blink{0%,100%{opacity:.35}50%{opacity:1}}
 .ait-vb-mode{font-size:.58rem;color:#475569;font-weight:600;letter-spacing:.03em;}
 #ait-visual-canvas{display:block;width:100%;height:158px;cursor:default;}
+.ait-vb-math-overlay{position:absolute;inset:0;display:none;align-items:flex-start;justify-content:center;flex-direction:column;gap:2px;padding:10px 14px;overflow:hidden;pointer-events:none;color:#e2e8f0;}
+.ait-vb-math-line{min-height:22px;max-width:100%;font:700 12px/1.35 Inter,sans-serif;white-space:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
+.ait-vb-math-line::-webkit-scrollbar{display:none;}
+.ait-vb-math-line:first-child{font-size:13px;color:#c4b5fd;border-bottom:1px solid rgba(99,102,241,.25);padding-bottom:3px;margin-bottom:1px;width:100%;}
+.ait-vb-math-line.ait-vb-math-result{color:#34d399;background:rgba(52,211,153,.09);border-left:3px solid #34d399;padding-left:8px;width:100%;}
+.ait-vb-math-line .katex,.ait-vb-math-line mjx-container{font-size:1.08em;}
+.ait-vb-math-line .katex-display{margin:0;text-align:left;}
+@media(max-width:600px){.ait-vb-math-overlay{padding:7px 10px;}.ait-vb-math-line{font-size:11px;min-height:20px;}.ait-vb-math-line:first-child{font-size:12px;}}
 @media(max-width:600px){#ait-visual-canvas{height:118px;}.ait-visual-board{margin-bottom:10px;}}
 </style>
   <script src="js/aqs-nav-loader.js"></script>
@@ -985,7 +993,10 @@ a{text-decoration:none;color:inherit;}
           <div class="ait-vb-title"><div class="ait-vb-dot" id="ait-vb-dot"></div>Concept Visualizer</div>
           <div class="ait-vb-mode" id="ait-vb-mode">—</div>
         </div>
-        <canvas id="ait-visual-canvas"></canvas>
+        <div style="position:relative;">
+          <canvas id="ait-visual-canvas"></canvas>
+          <div id="ait-vb-math-overlay" class="ait-vb-math-overlay" aria-live="polite"></div>
+        </div>
       </div>
 
       <!-- Transcript bubbles — no math board here any more -->
@@ -3020,19 +3031,59 @@ async function aitMicTranscribe(blob, target){
   /* ── particle pools ── */
   var genParts = [], letterParts = [], codeDrops = [];
   var mathLines = [], mathDisplayed = 0, mathRevealTick = 0;
+  var mathOverlay, mathTypesetTimer;
+
+  function escapeMathHtml(value){
+    return String(value || '').replace(/[&<>"']/g, function(ch){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch];
+    });
+  }
+
+  function mathLineHtml(value){
+    var text=String(value || '').trim();
+    if(!text) return '';
+    if(/(\$\$[\s\S]+\$\$|\\\([\s\S]+\\\)|\\\[[\s\S]+\\\])/.test(text)){
+      return escapeMathHtml(text);
+    }
+    var labelMatch=text.match(/^([^:]{1,32}:)\s*(.+)$/);
+    if(labelMatch && /(?:\\[a-zA-Z]+|[=<>^_]|[+\-*/])/.test(labelMatch[2])){
+      return escapeMathHtml(labelMatch[1])+' \\('+escapeMathHtml(labelMatch[2])+'\\)';
+    }
+    if(/(?:\\[a-zA-Z]+|[=<>^_]|[+\-*/])/.test(text)){
+      return '\\('+escapeMathHtml(text)+'\\)';
+    }
+    return escapeMathHtml(text);
+  }
+
+  function syncMathOverlay(){
+    if(!mathOverlay) return;
+    if(!mathLines.length){
+      mathOverlay.style.display='none';
+      mathOverlay.innerHTML='';
+      return;
+    }
+    mathOverlay.style.display='flex';
+    var start=Math.max(0,mathDisplayed-Math.max(1,Math.floor((H-18)/22)));
+    var visible=mathLines.slice(start, mathDisplayed);
+    mathOverlay.innerHTML=visible.map(function(line){
+      var isResult=line.color==='#34d399';
+      return '<div class="ait-vb-math-line'+(isResult?' ait-vb-math-result':'')+'">'+
+        mathLineHtml(line.text)+'</div>';
+    }).join('');
+    clearTimeout(mathTypesetTimer);
+    mathTypesetTimer=setTimeout(function(){
+      if(window.MathJax && MathJax.typesetPromise){
+        if(MathJax.typesetClear) MathJax.typesetClear([mathOverlay]);
+        MathJax.typesetPromise([mathOverlay]).catch(function(){});
+      }
+    }, 0);
+  }
 
   function parseMathContent(text){
     var raw = text || '';
     var di = raw.indexOf('[DISPLAY]');
     if(di > -1) raw = raw.slice(di + 9);
-    raw = raw.replace(/\$\$/g,'').replace(/\\\[/g,'').replace(/\\\]/g,'')
-             .replace(/\\int\b/g,'∫').replace(/\\frac\{([^}]*)\}\{([^}]*)\}/g,'($1)/($2)')
-             .replace(/\\cdot/g,'·').replace(/\\times/g,'×').replace(/\\div/g,'÷')
-             .replace(/\\sqrt\{([^}]*)\}/g,'√($1)').replace(/\\infty/g,'∞')
-             .replace(/\\therefore/g,'∴').replace(/\\to/g,'→').replace(/\\rightarrow/g,'→')
-             .replace(/\\pi/g,'π').replace(/\\theta/g,'θ').replace(/\\alpha/g,'α')
-             .replace(/\\beta/g,'β').replace(/\\gamma/g,'γ').replace(/\\delta/g,'δ')
-             .replace(/\\[a-zA-Z]+/g,'').replace(/[{}]/g,'');
+    raw = raw.replace(/\$\$/g,'').replace(/\\\[/g,'').replace(/\\\]/g,'');
     var lines = raw.split(/\n/).map(function(l){return l.trim();}).filter(function(l){return l.length>0;});
     if(!lines.length) return;
     mathLines = lines.map(function(l,i){
@@ -3043,6 +3094,7 @@ async function aitMicTranscribe(blob, target){
       return {text:l, color:color};
     });
     mathDisplayed = 0; mathRevealTick = 0;
+    syncMathOverlay();
   }
 
   var LETTERS = ['A','B','∫','α','β','γ','Σ','→','←','∞','∂','π','θ','λ'];
@@ -3109,6 +3161,7 @@ async function aitMicTranscribe(blob, target){
   function initBoard(){
     canvas = document.getElementById('ait-visual-canvas');
     if(!canvas) return;
+    mathOverlay = document.getElementById('ait-vb-math-overlay');
     ctx = canvas.getContext('2d');
     resize();
     window.addEventListener('resize', function(){ if(document.getElementById('ait-session-screen').classList.contains('active')) resize(); });
@@ -3180,7 +3233,21 @@ async function aitMicTranscribe(blob, target){
     /* reveal one line per interval – faster when speaking */
     mathRevealTick+=spd;
     var revealInterval=isSpeaking?35:60;
-    if(mathRevealTick>revealInterval && mathDisplayed<mathLines.length){mathDisplayed++;mathRevealTick=0;}
+    if(mathRevealTick>revealInterval && mathDisplayed<mathLines.length){
+      mathDisplayed++;mathRevealTick=0;syncMathOverlay();
+    }
+    /* MathJax renders the actual formula in the HTML overlay above. */
+    if(mathDisplayed > 0){
+      if(mathDisplayed<mathLines.length){
+        var overlayDotY=H-12;
+        for(var od=0;od<3;od++){
+          var oop=.3+.7*Math.abs(Math.sin(tick*.07+od*.9));
+          ctx.beginPath();ctx.arc(W/2-12+od*12,overlayDotY,2.5,0,Math.PI*2);
+          ctx.fillStyle='rgba(99,102,241,'+oop+')';ctx.fill();
+        }
+      }
+      return;
+    }
     /* fixed layout constants */
     var PAD=14, TOP=10, FONT_HDR=13, FONT_BODY=12, LH=22;
     var visibleLines=Math.floor((H-TOP-8)/LH);
