@@ -193,6 +193,65 @@
         return pcmToWav(bytes, sampleRateFrom(mime));
     }
 
+    /* ── Model candidates + discovery ─────────────────────────────── */
+    var MODEL_CANDIDATES = [
+        MODEL,
+        'gemini-2.5-flash-preview-tts',
+        'gemini-2.5-pro-preview-tts',
+        'gemini-2.5-flash-tts',
+        'gemini-2.5-pro-tts'
+    ].filter(function (v, i, a) { return a.indexOf(v) === i; });
+
+    var _discovered = null;
+
+    async function discoverModels(apiKey) {
+        if (_discovered) return _discovered;
+        try {
+            var r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' +
+                                encodeURIComponent(apiKey) + '&pageSize=200');
+            if (!r.ok) return [];
+            var d = await r.json();
+            var list = (d && d.models) || [];
+            _discovered = list.map(function (m) {
+                return String(m.name || '').replace(/^models\//, '');
+            }).filter(function (n) { return /tts/i.test(n); });
+            return _discovered;
+        } catch (e) { return []; }
+    }
+
+    /* Try every candidate model for one key; returns audio buffer. */
+    async function callKey(text, voiceName, style, key, forcedModel) {
+        var models = forcedModel ? [forcedModel] : MODEL_CANDIDATES.slice();
+        var lastErr = '';
+        for (var m = 0; m < models.length; m++) {
+            try {
+                var buf = await callOnce(text, voiceName, style, key, models[m]);
+                MODEL = models[m]; /* remember the one that works */
+                return buf;
+            } catch (e) {
+                lastErr = e.message || String(e);
+                if (lastErr === 'INVALID_KEY' || lastErr === 'RATE_LIMITED') throw e;
+                /* EMPTY / MODEL_UNAVAILABLE / BAD_REQUEST → try next model */
+            }
+        }
+        if (!forcedModel) {
+            var found = await discoverModels(key);
+            for (var i = 0; i < found.length; i++) {
+                if (models.indexOf(found[i]) !== -1) continue;
+                try {
+                    var b2 = await callOnce(text, voiceName, style, key, found[i]);
+                    MODEL = found[i];
+                    if (MODEL_CANDIDATES.indexOf(found[i]) === -1) MODEL_CANDIDATES.unshift(found[i]);
+                    return b2;
+                } catch (e2) {
+                    lastErr = e2.message || String(e2);
+                    if (lastErr === 'INVALID_KEY' || lastErr === 'RATE_LIMITED') throw e2;
+                }
+            }
+        }
+        throw new Error(lastErr || 'EMPTY');
+    }
+
     /* ── Public: synthesize with automatic key rotation ───────────── */
     async function synth(text, voiceName, style, opts) {
         opts = opts || {};
@@ -201,13 +260,11 @@
         var lastErr = '';
         for (var i = 0; i < keys.length; i++) {
             try {
-                return await callOnce(text, voiceName, style, keys[i], opts.model);
+                return await callKey(text, voiceName, style, keys[i], opts.model);
             } catch (e) {
                 lastErr = e.message || String(e);
                 if (lastErr === 'RATE_LIMITED') { _cooldown[keys[i]] = Date.now() + COOLDOWN_MS; continue; }
-                if (lastErr === 'INVALID_KEY') continue;
-                if (lastErr === 'MODEL_UNAVAILABLE' || lastErr.indexOf('HTTP_5') === 0) continue;
-                break; /* EMPTY / BAD_REQUEST — retrying other keys won't help */
+                continue; /* try the next key */
             }
         }
         if (lastErr === 'RATE_LIMITED') throw new Error('All Gemini TTS keys are rate-limited — wait a minute or add more keys in Admin Settings.');
@@ -216,17 +273,35 @@
         throw new Error('Gemini TTS failed: ' + lastErr);
     }
 
+    /* ── Public: test a single key the exact same way playback works ─ */
+    async function testKey(key) {
+        try {
+            var buf = await callKey('Hello', 'Kore', '', String(key || '').trim(), null);
+            return { ok: true, bytes: buf.byteLength, model: MODEL };
+        } catch (e) {
+            var msg = e.message || String(e);
+            if (msg === 'INVALID_KEY')   return { ok: false, reason: 'invalid', message: 'Invalid key' };
+            if (msg === 'RATE_LIMITED')  return { ok: false, reason: 'quota',   message: 'Quota / rate-limited' };
+            if (msg === 'EMPTY')         return { ok: false, reason: 'nomodel', message: 'No TTS model available for this key (try a new key from aistudio.google.com)' };
+            return { ok: false, reason: 'error', message: msg };
+        }
+    }
+
     window.geminiTTS = {
-        MODEL: MODEL,
+        get MODEL() { return MODEL; },
         MODEL_HQ: MODEL_HQ,
+        MODEL_CANDIDATES: MODEL_CANDIDATES,
         VOICES: VOICES,
         hasKeys: hasKeys,
         setKeys: setKeys,
         loadKeys: loadKeys,
         voiceFor: voiceFor,
         synth: synth,
+        testKey: testKey,
+        discoverModels: discoverModels,
         pcmToWav: pcmToWav
     };
+
 
     /* Auto-load keys once Firebase is ready */
     if (window._aqsFirebaseReady) {

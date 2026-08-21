@@ -2088,46 +2088,29 @@ async function _aqsTestGeminiTTSKeys() {
         var masked = key.slice(0, 6) + '…' + key.slice(-4);
         var tStart = Date.now();
         try {
-            var res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + MODEL + ':generateContent?key=' + encodeURIComponent(key), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ role: 'user', parts: [{ text: 'Hi' }] }],
-                    generationConfig: {
-                        responseModalities: ['AUDIO'],
-                        speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Kore' } } }
-                    }
-                }),
-                signal: AbortSignal.timeout(30000)
-            });
+            if (!window.geminiTTS || !window.geminiTTS.testKey) {
+                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ TTS engine not loaded — refresh the page') };
+            }
+            var res = await window.geminiTTS.testKey(key);
             var ms = Date.now() - tStart;
             if (res.ok) {
-                var d = await res.json();
-                var pt = d && d.candidates && d.candidates[0] && d.candidates[0].content && d.candidates[0].content.parts && d.candidates[0].content.parts[0];
-                var inl = pt && (pt.inlineData || pt.inline_data);
-                if (inl && inl.data) {
-                    return { ok: true, html: row('#052e16','#166534','#86efac','#0d3321','#4ade80',slot,masked,'#6ee7b7','✅ Valid · ' + ms + 'ms · audio OK') };
-                }
-                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ Key works but returned no audio') };
+                return { ok: true, html: row('#052e16','#166534','#86efac','#0d3321','#4ade80',slot,masked,'#6ee7b7','✅ Valid · ' + ms + 'ms · audio OK (' + (res.model || MODEL) + ')') };
             }
-            var body = await res.text();
-            if (res.status === 400 && /API key not valid|API_KEY_INVALID/i.test(body)) {
+            if (res.reason === 'invalid') {
                 return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ Invalid key — check at aistudio.google.com/apikey') };
             }
-            if (res.status === 403) {
-                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ Forbidden (403) — enable the Generative Language API for this key') };
-            }
-            if (res.status === 429) {
+            if (res.reason === 'quota') {
                 return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ Valid key · free quota reached — try again later') };
             }
-            if (res.status === 404) {
-                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ TTS model not available for this key/region') };
+            if (res.reason === 'nomodel') {
+                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ ' + res.message) };
             }
-            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ HTTP ' + res.status) };
+            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (res.message || 'Failed')) };
         } catch(e) {
             return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (e.name === 'TimeoutError' ? 'Timed out' : (e.message || 'Network error'))) };
         }
     }
+
 
     var rows = [];
     for (var k = 0; k < allKeys.length; k++) { rows.push(await pingGTTS(allKeys[k])); }
