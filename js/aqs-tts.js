@@ -353,15 +353,26 @@
     }
 
     /* Natural-language delivery hint sent to Gemini for each character */
-    function _geminiStyleFor(v) {
+    function _geminiStyleFor(v, isContinuation) {
         if (!v) return '';
-        var tone = (v.desc || '').toLowerCase();
-        var pace = 'at a natural pace';
-        if (v.voiceSpeed && v.voiceSpeed < 0.94) pace = 'slowly and deliberately';
+        var tone = (v.desc || 'clear and natural').toLowerCase();
+        var pace = 'at a relaxed, natural pace';
+        if (v.voiceSpeed && v.voiceSpeed < 0.94) pace = 'a little slowly and deliberately';
         else if (v.voiceSpeed && v.voiceSpeed > 1.04) pace = 'briskly and energetically';
-        return 'Read this aloud in a ' + (tone || 'clear, natural') +
-               ' ' + (v.gender === 'male' ? 'male' : 'female') + ' voice with a ' +
-               (v.region || 'neutral') + ' accent, ' + pace;
+        var who = (v.gender === 'male' ? 'man' : 'woman');
+        var accent = (v.region || 'neutral');
+        var base =
+            'You are ' + (v.name || v.id) + ', a real ' + who + ' with a ' + accent +
+            ' accent, speaking ' + tone + ' ' + pace + '. ' +
+            'Read the following text aloud exactly as written, like a human narrator: ' +
+            'natural breathing, soft pauses at commas and full stops, gentle intonation ' +
+            'that rises and falls with meaning, and no robotic flatness. ' +
+            'Do not add, skip, translate or comment on anything — only speak the text.';
+        if (isContinuation) {
+            base += ' This is a continuation of the same passage — keep the exact same ' +
+                    'voice, accent, energy and pacing as before, with no reset in tone.';
+        }
+        return base;
     }
 
     function concatBuffers(buffers) {
@@ -473,9 +484,9 @@
 
         if (_hasGemini) {
             var gVoice = _gem.voiceFor(voiceObj);
-            var gStyle = _geminiStyleFor(voiceObj);
             for (var gi = 0; gi < chunks.length; gi++) {
                 setStatus('Generating AI audio… (' + (gi + 1) + '/' + chunks.length + ')', true);
+                var gStyle = _geminiStyleFor(voiceObj, gi > 0);
                 try {
                     buffers.push(await _gem.synth(chunks[gi], gVoice, gStyle));
                 } catch(e) {
@@ -538,8 +549,13 @@
             audio.style.display = 'block';
             audio.src = url;
             audio.load();
-            /* voiceSpeed creates acoustic differentiation between characters */
-            var baseRate = parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
+            /* Real AI audio already carries the character's own pacing —
+               pitch-shifting it would make it sound synthetic, so only the
+               user's own speed slider applies. Browser/legacy audio keeps
+               the per-character rate for differentiation. */
+            var baseRate = currentEngine === 'gemini'
+                ? 1.0
+                : parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
             audio.playbackRate = Math.min(Math.max(baseRate * speed, 0.1), 4.0);
             audio.play().catch(function() {});
         }
@@ -728,7 +744,9 @@
             var audio = document.getElementById('tts-audio');
             if (audio && audio.src && currentAudioBlob) {
                 var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
-                var baseRate = parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
+                var baseRate = currentEngine === 'gemini'
+                    ? 1.0
+                    : parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
                 audio.playbackRate = Math.min(Math.max(baseRate * parseFloat(slider.value), 0.1), 4.0);
             }
         }

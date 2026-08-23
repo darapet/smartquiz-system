@@ -96,14 +96,101 @@
         });
     }
 
-    /* ── Deterministic voice picker ────────────────────────────────
-       Maps each of the site's 82 named characters onto a stable
-       Gemini voice, so "Brian" always sounds like Brian.           */
+    /* ── Curated character → Gemini voice table ───────────────────
+       Every one of the site's 82 characters is locked to one neural
+       voice, so a character always sounds the same, and no two
+       characters of the same language + gender collide.            */
+    var CHARACTER_VOICES = {
+        'Brian': 'Puck',
+        'Matthew': 'Charon',
+        'Joey': 'Fenrir',
+        'Justin': 'Orus',
+        'Russell': 'Enceladus',
+        'Daniel': 'Iapetus',
+        'Kevin': 'Umbriel',
+        'Geraint': 'Algieba',
+        'Arthur': 'Algenib',
+        'Ryan': 'Rasalgethi',
+        'Amy': 'Zephyr',
+        'Emma': 'Kore',
+        'Joanna': 'Leda',
+        'Salli': 'Aoede',
+        'Kimberly': 'Callirrhoe',
+        'Kendra': 'Autonoe',
+        'Nicole': 'Despina',
+        'Olivia': 'Erinome',
+        'Aria': 'Laomedeia',
+        'Jane': 'Achernar',
+        'Enrique': 'Alnilam',
+        'Miguel': 'Schedar',
+        'Pablo': 'Gacrux',
+        'Carlos': 'Achird',
+        'Conchita': 'Pulcherrima',
+        'Lucia': 'Vindemiatrix',
+        'Penelope': 'Sadachbia',
+        'Valentina': 'Sulafat',
+        'Mathieu': 'Zubenelgenubi',
+        'Pierre': 'Sadaltager',
+        'Jacques': 'Puck',
+        'Celine': 'Zephyr',
+        'Isabelle': 'Kore',
+        'Chantal': 'Leda',
+        'Hans': 'Charon',
+        'Klaus': 'Fenrir',
+        'Wolfgang': 'Orus',
+        'Marlene': 'Aoede',
+        'Vicki': 'Callirrhoe',
+        'Petra': 'Autonoe',
+        'Cristiano': 'Enceladus',
+        'Ricardo': 'Iapetus',
+        'Eduardo': 'Umbriel',
+        'Ines': 'Despina',
+        'Vitoria': 'Erinome',
+        'Ana': 'Laomedeia',
+        'Giorgio': 'Algieba',
+        'Marco': 'Algenib',
+        'Carla': 'Achernar',
+        'Bianca': 'Pulcherrima',
+        'Takumi': 'Rasalgethi',
+        'Kenji': 'Alnilam',
+        'Mizuki': 'Vindemiatrix',
+        'Yuki': 'Sadachbia',
+        'Khalid': 'Schedar',
+        'Omar': 'Gacrux',
+        'Zeina': 'Sulafat',
+        'Fatima': 'Zephyr',
+        'Wei': 'Achird',
+        'Zhang': 'Zubenelgenubi',
+        'Zhiyu': 'Kore',
+        'Mei': 'Leda',
+        'Maxim': 'Sadaltager',
+        'Dmitri': 'Puck',
+        'Tatyana': 'Aoede',
+        'Natasha': 'Callirrhoe',
+        'Arjun': 'Charon',
+        'Raj': 'Fenrir',
+        'Aditi': 'Autonoe',
+        'Priya': 'Despina',
+        'Ruben': 'Orus',
+        'Willem': 'Enceladus',
+        'Lotte': 'Erinome',
+        'Lisa': 'Laomedeia',
+        'Junho': 'Iapetus',
+        'Seoyeon': 'Achernar',
+        'Erik': 'Umbriel',
+        'Astrid': 'Pulcherrima',
+        'Mehmet': 'Algieba',
+        'Filiz': 'Vindemiatrix',
+        'Jacek': 'Algenib',
+        'Maja': 'Sadachbia'
+    };
+
     function voiceFor(voiceObj) {
         if (!voiceObj) return 'Kore';
         if (voiceObj.geminiVoice) return voiceObj.geminiVoice;
+        var id = String(voiceObj.id || voiceObj.name || '');
+        if (CHARACTER_VOICES[id]) return CHARACTER_VOICES[id];
         var pool = voiceObj.gender === 'male' ? VOICES.male : VOICES.female;
-        var id = String(voiceObj.id || voiceObj.name || 'x');
         var h = 0;
         for (var i = 0; i < id.length; i++) { h = ((h << 5) - h + id.charCodeAt(i)) | 0; }
         return pool[Math.abs(h) % pool.length];
@@ -296,6 +383,7 @@
         setKeys: setKeys,
         loadKeys: loadKeys,
         voiceFor: voiceFor,
+        CHARACTER_VOICES: CHARACTER_VOICES,
         synth: synth,
         testKey: testKey,
         discoverModels: discoverModels,
