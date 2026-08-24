@@ -3,6 +3,25 @@
   var sections=[], generated=[], uid=0;
   var $=function(s,root){return (root||document).querySelector(s);};
   var $$=function(s,root){return Array.from((root||document).querySelectorAll(s));};
+  function postAqs(data){
+    return new Promise(function(resolve,reject){
+      function send(){
+        if(typeof window.aqsAjax==='function') return window.aqsAjax(data,resolve,reject);
+        reject(new Error('Quiz service is still loading. Please try again.'));
+      }
+      if(typeof window.aqsAjax==='function'||window._aqsFirebaseReady) send();
+      else {
+        var done=false;
+        function ready(){
+          if(done)return;
+          done=true;
+          send();
+        }
+        document.addEventListener('aqs:firebase:ready',ready,{once:true});
+        setTimeout(ready,10000);
+      }
+    });
+  }
   function toast(msg){var el=$('#self-toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},4200);}
   function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];});}
   function addSection(){var id=++uid;sections.push({id:id,source:'topic',topic:'',doc:'',type:'mixed',count:10,generated:false});renderSections();}
@@ -16,6 +35,6 @@
   function parseQuestions(raw){var text=String(raw||'').replace(/```(?:json)?/gi,'').replace(/```/g,'').trim(),parsed;try{parsed=JSON.parse(text);}catch(e){var start=text.indexOf('['),end=text.lastIndexOf(']');if(start<0||end<=start)throw e;var arrayText=text.slice(start,end+1).replace(/,\\s*([}\\]])/g,'$1');parsed=JSON.parse(arrayText);}var list=Array.isArray(parsed)?parsed:parsed.questions;return Array.isArray(list)?list:[];}
   async function generateSection(s,card){if(s.source==='topic'&&!s.topic.trim()){toast('Add a topic before generating this section.');return;}if(s.source==='doc'&&!s.doc){toast('Choose a readable document before generating this section.');return;}var btn=$('[data-generate]',card),status=$('.section-status',card);btn.disabled=true;btn.textContent='Generating…';status.style.display='block';status.className='section-status';status.textContent='AI is building section '+(sections.indexOf(s)+1)+'…';try{var res=await window.groqFetch({messages:[{role:'system',content:'You are a precise quiz generator. Output only valid JSON.'},{role:'user',content:promptFor(s)}],temperature:.15,response_format:{type:'json_object'}});var body=await res.json();var raw=body.choices&&body.choices[0]&&body.choices[0].message&&body.choices[0].message.content||'';var qs=parseQuestions(raw);if(!qs.length)throw new Error('AI returned an invalid question set.');qs=qs.slice(0,s.count).map(function(q){q.type=q.type||'mcq';q.options=Array.isArray(q.options)?q.options:[];q.correct_answer_index=parseInt(q.correct_answer_index)||0;q.answer=q.answer||q.options[q.correct_answer_index]||'';return q;});s.questions=qs;s.generated=qs.length;generated=sections.reduce(function(a,x){return a.concat(x.questions||[]);},[]);status.className='section-status success';status.textContent='Generated '+qs.length+' of '+s.count+' requested questions. You can use these now or regenerate for another set.';renderSections();}catch(e){status.className='section-status error';status.textContent=e.message||'Generation failed. Try again.';btn.disabled=false;btn.textContent='Generate section';}}
   $('#add-section').onclick=addSection;
-  $('#self-quiz-form').onsubmit=async function(e){e.preventDefault();if(sections.some(function(s){return !s.generated;})){toast('Generate every section in order before starting.');return;}var btn=$('#start-quiz');btn.disabled=true;btn.textContent='Saving quiz…';try{if(!window._aqsFirebaseReady)await new Promise(function(resolve){document.addEventListener('aqs:firebase:ready',resolve,{once:true});setTimeout(resolve,8000);});var res=await $.post(AQS.ajax_url,{action:'aqs_save_quiz',title:$('#self-title').value.trim()||'My Self Quiz',subject:'Personal study quiz',num_questions:generated.length,time_limit:$('#self-time').value,mode:$('#self-mode').value,questions_json:JSON.stringify(generated),quiz_note:'Created in Self Quiz Studio',show_results:'yes'});if(!res.success)throw new Error(res.data||'Could not save quiz.');var pub=await $.post(AQS.ajax_url,{action:'aqs_publish_quiz',quiz_id:res.data.quiz_id});if(!pub.success)throw new Error(pub.data||'Could not prepare quiz.');toast('Your quiz is ready — opening it now.');setTimeout(function(){location.href=pub.data.quiz_url;},500);}catch(err){toast(err.message||'Could not start quiz.');btn.disabled=false;btn.innerHTML='Generate my quiz <span>→</span>';}}; 
+  $('#self-quiz-form').onsubmit=async function(e){e.preventDefault();if(sections.some(function(s){return !s.generated;})){toast('Generate every section in order before starting.');return;}var btn=$('#start-quiz');btn.disabled=true;btn.textContent='Saving quiz…';try{var res=await postAqs({action:'aqs_save_quiz',title:$('#self-title').value.trim()||'My Self Quiz',subject:'Personal study quiz',num_questions:generated.length,time_limit:$('#self-time').value,mode:$('#self-mode').value,questions_json:JSON.stringify(generated),quiz_note:'Created in Self Quiz Studio',show_results:'yes'});if(!res.success)throw new Error(res.data||'Could not save quiz.');var pub=await postAqs({action:'aqs_publish_quiz',quiz_id:res.data.quiz_id});if(!pub.success)throw new Error(pub.data||'Could not prepare quiz.');toast('Your quiz is ready — opening it now.');setTimeout(function(){location.href=pub.data.quiz_url;},500);}catch(err){toast(err.message||'Could not start quiz.');btn.disabled=false;btn.innerHTML='Generate my quiz <span>→</span>';}}; 
   window.AQS=window.AQS||{ajax_url:''};addSection();
 })();
