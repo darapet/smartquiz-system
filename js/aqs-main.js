@@ -2847,6 +2847,20 @@
             const alreadyAnswered = userAnswers[idx] !== undefined;
             $('#aqs-answer-feedback').hide().removeClass('aqs-feedback-correct aqs-feedback-wrong');
 
+            /* Written-answer questions use a text field instead of options. */
+            if (q.type === 'short' || q.type === 'written' || q.type === 'german') {
+                var existingText = alreadyAnswered ? (userAnswers[idx] || '') : '';
+                $('#aqs-options-list').html('<input class="aqs-written-answer" data-qi="' + idx + '" value="' +
+                    String(existingText).replace(/"/g, '&quot;') +
+                    '" placeholder="Type your answer here…" autocomplete="off">');
+                $('#aqs-options-list .aqs-written-answer').on('input', function () {
+                    userAnswers[idx] = $(this).val();
+                });
+                updateDots();
+                updateNav(idx);
+                return;
+            }
+
             /* Render options — normalize to an array so malformed saved data doesn't crash the player */
             const questionOptions = Array.isArray(q.options) ? q.options : [];
             let opts = '';
@@ -2934,6 +2948,12 @@
                 autoAdvTimer = setTimeout(function () {
                     if (!quizSubmitted) advanceAfterAnswer(qi);
                 }, 350);
+            }
+        });
+        $(document).on('keydown', '.aqs-written-answer', function (e) {
+            if (e.key === 'Enter' && currentQuestion < questions.length - 1) {
+                e.preventDefault();
+                showQuestion(currentQuestion + 1);
             }
         });
 

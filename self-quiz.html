@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Self Quiz Studio — XZILY AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="css/aqs-style.css">
+  <link rel="stylesheet" href="css/aqs-self-quiz.css">
+  <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+  <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
+  <script src="js/aqs-nav-loader.js"></script>
+  <script>
+    var AQS = { ajax_url:'', nonce:'', public_nonce:'', auth_nonce:'', home_url:'index.html',
+      create_page_url:'create-quiz.html', take_url:'take-quiz.html', is_logged_in:'yes',
+      is_host:'yes', is_admin:'yes', current_user_name:'User' };
+  </script>
+</head>
+<body class="aqs-full-page-body self-quiz-page">
+  <header class="aqs-site-header">
+    <div class="aqs-site-header-inner">
+      <a href="index.html" class="aqs-site-logo" aria-label="XZILY AI home">
+        <svg width="32" height="32" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity=".9"/><polygon points="18,8 28,13 28,23 18,28 8,23 8,13" fill="white" opacity=".15"/><circle cx="18" cy="18" r="5" fill="white"/></svg>
+        <div class="aqs-site-logo-text"><span class="aqs-site-logo-name">AI Quiz</span><span class="aqs-site-logo-sub">System</span></div>
+      </a>
+      <nav class="aqs-site-nav" aria-label="Main navigation">
+        <a href="index.html" class="aqs-site-nav-link">🏠 Home</a>
+        <a href="create-quiz.html" class="aqs-site-nav-link">✏️ Host Quiz</a>
+        <a href="self-quiz.html" class="aqs-site-nav-link aqs-site-nav-highlight">🧠 Self Quiz</a>
+        <a href="study.html" class="aqs-site-nav-link" style="color:#059669">📚 AI Study</a>
+        <a href="user-dashboard.html" class="aqs-site-nav-link" style="color:#0ea5e9">👤 Dashboard</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="self-quiz-shell">
+    <section class="self-quiz-hero">
+      <span class="self-quiz-kicker">PERSONAL LEARNING LAB</span>
+      <h1>Build a quiz for <em>yourself.</em></h1>
+      <p>Turn a topic or your own study document into a focused practice or exam session—one section at a time.</p>
+    </section>
+
+    <form id="self-quiz-form" novalidate>
+      <div class="self-quiz-card">
+        <div class="card-heading"><span class="step-number">01</span><div><h2>Give it a direction</h2><p>Start with the big picture for this personal quiz.</p></div></div>
+        <div class="self-grid">
+          <label class="aqs-field">Quiz title<input id="self-title" required placeholder="e.g. Biology revision sprint"></label>
+          <label class="aqs-field">Time limit (minutes)<input id="self-time" type="number" min="0" max="240" value="30"></label>
+        </div>
+        <label class="aqs-field">Mode
+          <select id="self-mode"><option value="practice">Practice — instant feedback and explanations</option><option value="exam">Exam — see answers after submitting</option></select>
+        </label>
+      </div>
+
+      <div id="section-list"></div>
+      <button type="button" id="add-section" class="add-section">＋ Add another section</button>
+
+      <div class="self-quiz-card final-settings">
+        <div class="card-heading"><span class="step-number">03</span><div><h2>Ready when you are</h2><p>Sections generate in order to protect your AI usage limits.</p></div></div>
+        <div id="overall-status" class="overall-status">Complete section 1 to unlock the next one.</div>
+        <button class="aqs-btn aqs-btn-primary aqs-btn-lg" id="start-quiz" type="submit">Generate my quiz <span>→</span></button>
+      </div>
+    </form>
+    <div id="self-toast" class="self-toast" role="status"></div>
+  </main>
+
+  <script src="js/aqs-groq-key.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="js/aqs-self-quiz.js"></script>
+</body>
+</html>

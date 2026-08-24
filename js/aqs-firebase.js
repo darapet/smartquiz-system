@@ -1203,10 +1203,15 @@ async function actionSubmitAttempt(data) {
     var total   = questions.length;
     var results = questions.map(function(q, i) {
         var raw        = answersMap[i] !== undefined ? answersMap[i] : answersMap[String(i)];
-        var userAnswer = (raw !== undefined && raw !== null && raw !== '') ? parseInt(raw) : null;
-        if (userAnswer !== null && isNaN(userAnswer)) userAnswer = null;
+        var isWritten = q.type === 'short' || q.type === 'written' || q.type === 'german';
+        var userAnswer = isWritten
+            ? ((raw !== undefined && raw !== null && raw !== '') ? String(raw).trim() : null)
+            : ((raw !== undefined && raw !== null && raw !== '') ? parseInt(raw) : null);
+        if (!isWritten && userAnswer !== null && isNaN(userAnswer)) userAnswer = null;
         var correct    = parseInt(q.correct_answer_index);
-        var isCorrect  = (userAnswer !== null && userAnswer === correct);
+        var isCorrect  = isWritten
+            ? (userAnswer !== null && String(userAnswer).toLowerCase() === String(q.answer || '').trim().toLowerCase())
+            : (userAnswer !== null && userAnswer === correct);
         if (isCorrect) score++;
         return {
             question:    q.question,
