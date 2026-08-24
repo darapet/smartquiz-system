@@ -8,6 +8,25 @@
     /* ── Local backend config ── */
     var AQS_LOCAL = '';
 
+    /* Use Firebase's async dispatcher instead of $.post. The Firebase
+       module loads asynchronously and $.post is not guaranteed by every
+       jQuery-compatible runtime used by the web and mobile builds. */
+    function postAqs(data, callback) {
+        function dispatch() {
+            if (typeof window.aqsAjax === 'function') return window.aqsAjax(data, callback);
+            callback({ success: false, data: 'Quiz service is still loading. Please try again.' });
+        }
+        if (typeof window.aqsAjax === 'function' || window._aqsFirebaseReady) return dispatch();
+        var settled = false;
+        function ready() {
+            if (settled) return;
+            settled = true;
+            dispatch();
+        }
+        document.addEventListener('aqs:firebase:ready', ready, { once: true });
+        setTimeout(ready, 10000);
+    }
+
     /* ── Call local Node.js backend for quiz generation ── */
     async function callLocalQuizBackend(subject, topic, mode, questionCount) {
         var res = await fetch(AQS_LOCAL + '/api/generate-quiz', {
@@ -730,7 +749,7 @@
         var qs = collectQuestions();
         if (!$('#aqs-title').val().trim() || !$('#aqs-subject').val().trim()) { alert('Title and subject are required.'); return; }
         if (!qs.length) { alert('Add at least one question.'); return; }
-        $.post(AQS.ajax_url, {
+        postAqs({
             action: 'aqs_save_quiz', nonce: AQS.nonce, quiz_id: currentQuizId || 0,
             title: $('#aqs-title').val().trim(), subject: $('#aqs-subject').val().trim(),
             num_questions: $('#aqs-num-questions').val(), time_limit: $('#aqs-time-limit').val(),
@@ -752,7 +771,7 @@
         var $btn = $(this);
         $btn.prop('disabled', true).text('Publishing...');
 
-        $.post(AQS.ajax_url, {
+        postAqs({
             action: 'aqs_save_quiz', nonce: AQS.nonce, quiz_id: currentQuizId || 0,
             title: $('#aqs-title').val().trim(), subject: $('#aqs-subject').val().trim(),
             num_questions: $('#aqs-num-questions').val(), time_limit: $('#aqs-time-limit').val(),
@@ -773,7 +792,7 @@
                 pubPayload.expiry_hours = parseInt($('#aqs-expiry-hours').val(), 10) || 0;
             }
 
-            $.post(AQS.ajax_url, pubPayload, function(pubRes) {
+            postAqs(pubPayload, function(pubRes) {
                 $btn.prop('disabled', false).text('Publish & Get Links');
                 if (pubRes.success) {
                     var quizUrl = pubRes.data.quiz_url || '';
@@ -1107,7 +1126,7 @@
         /* Wait for Firebase auth to be ready before fetching */
         function doLoad(user) {
             if (!user) { alert('You must be logged in to edit a quiz.'); return; }
-            $.post(AQS.ajax_url, { action: 'aqs_get_quiz_for_edit', nonce: AQS.nonce, quiz_id: editId }, function(res) {
+            postAqs({ action: 'aqs_get_quiz_for_edit', nonce: AQS.nonce, quiz_id: editId }, function(res) {
                 if (!res.success) { alert('Could not load quiz for editing: ' + (res.data || 'Unknown error')); return; }
                 var d = res.data;
 
