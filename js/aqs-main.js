@@ -1194,10 +1194,15 @@
         results.forEach(function (r, i) {
             const cls  = r.is_correct ? 'aqs-correct' : 'aqs-incorrect';
             const icon = r.is_correct ? '✅' : '❌';
+            const written = r.type === 'short' || r.type === 'written' || r.type === 'german';
+            const participantAnswer = r.user_answer !== null
+                ? renderMath(written ? r.user_answer : r.options[r.user_answer])
+                : 'Not answered';
+            const correctAnswer = renderMath(written ? r.answer : r.options[r.correct]);
             html += `<div class="aqs-review-item ${cls}">
                 <p><strong>${icon} Q${i + 1}:</strong> ${renderMath(r.question)}</p>
-                <p>Participant's answer: <strong>${r.user_answer !== null ? renderMath(r.options[r.user_answer]) : 'Not answered'}</strong></p>
-                ${!r.is_correct ? `<p>Correct answer: <strong>${renderMath(r.options[r.correct])}</strong></p>` : ''}
+                <p>Participant's answer: <strong>${participantAnswer}</strong></p>
+                ${!r.is_correct ? `<p>Correct answer: <strong>${correctAnswer}</strong></p>` : ''}
                 ${r.explanation ? `<p class="aqs-explanation">💡 ${renderMath(r.explanation)}</p>` : ''}
             </div>`;
         });

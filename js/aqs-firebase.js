@@ -1216,8 +1216,10 @@ async function actionSubmitAttempt(data) {
         return {
             question:    q.question,
             options:     q.options || [],
+            type:        q.type || 'mcq',
             user_answer: userAnswer,
             correct:     correct,
+            answer:      q.answer || '',
             is_correct:  isCorrect,
             explanation: q.explanation || ''
         };
