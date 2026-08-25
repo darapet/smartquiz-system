@@ -24,6 +24,25 @@
   }
   function toast(msg){var el=$('#self-toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},4200);}
   function esc(s){return String(s||'').replace(/[&<>"']/g,function(c){return({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'})[c];});}
+  async function requestQuizAI(body){
+    if(typeof window.quizGroqFetch==='function'){
+      try{var dedicated=await window.quizGroqFetch(body);if(dedicated)return dedicated;}catch(e){}
+    }
+    if(typeof window.groqFetch==='function')return window.groqFetch(body);
+    throw new Error('AI service is not available. Please try again.');
+  }
+  /* Route this page through the dedicated quiz slots first, then the
+     shared provider rotation (Groq, Mistral, and HuggingFace). */
+  (function(){
+    var shared=window.groqFetch;
+    if(!shared)return;
+    window.groqFetch=function(body){
+      if(typeof window.quizGroqFetch==='function'){
+        return window.quizGroqFetch(body).catch(function(){return shared(body);});
+      }
+      return shared(body);
+    };
+  }());
   function addSection(){var id=++uid;sections.push({id:id,source:'topic',topic:'',doc:'',type:'mixed',count:10,generated:false});renderSections();}
   function renderSections(){
     $('#section-list').innerHTML=sections.map(function(s,i){return '<article class="section-card '+(i>0&&!sections[i-1].generated?'is-locked':'')+'" data-id="'+s.id+'"><div class="section-top"><div><div class="section-number">SECTION '+String(i+1).padStart(2,'0')+'</div><div class="section-title">Build this section</div></div>'+(sections.length>1?'<button type="button" class="remove-section" data-remove="'+s.id+'" aria-label="Remove section">×</button>':'')+'</div><div class="source-switch"><button type="button" class="'+(s.source==='topic'?'active':'')+'" data-source="topic">✦ Topic</button><button type="button" class="'+(s.source==='doc'?'active':'')+'" data-source="doc">▧ Document</button></div><div class="source-pane '+(s.source==='topic'?'active':'')+'" data-pane="topic"><label class="aqs-field">What should this section cover?<textarea data-field="topic" placeholder="e.g. Cell division, Nigerian constitutional law, or the causes of World War I">'+esc(s.topic)+'</textarea></label></div><div class="source-pane '+(s.source==='doc'?'active':'')+'" data-pane="doc"><label class="upload-label">📄 <span>Choose a TXT, MD, PDF or DOCX file<input type="file" data-field="doc" accept=".txt,.md,.pdf,.docx,text/plain,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"></span></label><div class="file-name">'+esc(s.docName||'No document selected')+'</div></div><div class="section-controls"><label class="aqs-field" style="margin:0">Question style<select data-field="type"><option value="mixed" '+(s.type==='mixed'?'selected':'')+'>Combination</option><option value="mcq" '+(s.type==='mcq'?'selected':'')+'>Objective (MCQ)</option><option value="tf" '+(s.type==='tf'?'selected':'')+'>True or false</option><option value="short" '+(s.type==='short'?'selected':'')+'>German / written answer</option></select></label><label class="aqs-field" style="margin:0">Amount<input class="question-count" data-field="count" type="number" min="1" max="100" value="'+s.count+'"></label><span class="type-hint">Up to 100 questions per section</span><button type="button" class="aqs-btn aqs-btn-primary generate-section" data-generate="'+s.id+'" '+(i>0&&!sections[i-1].generated?'disabled':'')+'>'+ (s.generated?'✓ Generated — regenerate':'Generate section')+'</button></div><div class="section-status '+(s.generated?'success':'')+'" style="'+(s.generated?'display:block':'')+'">'+(s.generated?'Generated '+s.generated+' of '+s.count+' requested questions. These are ready to use.':'')+'</div></article>';}).join('');

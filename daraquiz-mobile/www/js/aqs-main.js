@@ -2773,7 +2773,6 @@
 
             $('#aqs-section-complete').show();
             $('#aqs-question-card, .aqs-quiz-nav, .aqs-submit-wrap').hide();
-            playChime('section');
 
             $('#aqs-sec-done-btn').off('click').on('click', function () {
                 $('#aqs-section-complete').hide();
@@ -2922,7 +2921,6 @@
                 const correct = parseInt(questions[qi].correct_answer_index);
                 answeredCorrect[qi] = (oi === correct);
                 showQuestion(qi);           // refresh with feedback
-                playChime(answeredCorrect[qi] ? 'correct' : 'wrong');
                 /* Auto-advance after 2.5 s */
                 autoAdvTimer = setTimeout(function () {
                     if (!quizSubmitted) advanceAfterAnswer(qi);
@@ -3218,12 +3216,13 @@
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 const master = audioCtx.createGain();
                 master.gain.setValueAtTime(0, audioCtx.currentTime);
-                master.gain.linearRampToValueAtTime(0.018, audioCtx.currentTime + 3);
+                master.gain.linearRampToValueAtTime(0.32, audioCtx.currentTime + 3);
                 master.connect(audioCtx.destination);
                 ambientNodes = [master];
 
                 /* Harmonic pads — 174 Hz (F3) + 396 Hz (G4) + 528 Hz (C5) */
-                [[174, 0], [174.4, 0.008], [396, 0.006], [396.6, 0.005], [528, 0.005]].forEach(function (pair) {
+                [[261.63, 0.045], [329.63, 0.032], [392.00, 0.028],
+                 [523.25, 0.018], [261.90, 0.022], [329.95, 0.016]].forEach(function (pair) {
                     const freq = pair[0], vol = pair[1];
                     const osc  = audioCtx.createOscillator();
                     const g    = audioCtx.createGain();
@@ -3245,7 +3244,7 @@
                 noise.buffer  = buf; noise.loop = true;
                 const nfilt   = audioCtx.createBiquadFilter();
                 nfilt.type    = 'bandpass'; nfilt.frequency.value = 200; nfilt.Q.value = 0.8;
-                const ng      = audioCtx.createGain(); ng.gain.value = 0.004;
+                const ng      = audioCtx.createGain(); ng.gain.value = 0.006;
                 noise.connect(nfilt); nfilt.connect(ng); ng.connect(master);
                 noise.start();
                 ambientNodes.push(noise, nfilt, ng);
@@ -3339,7 +3338,7 @@
         $(document).on('click', '#aqs-sound-toggle', function () {
             soundMuted = !soundMuted;
             $(this).text(soundMuted ? '🔇' : '🔊');
-            if (ambientNodes[0]) ambientNodes[0].gain.value = soundMuted ? 0 : 0.018;
+            if (ambientNodes[0]) ambientNodes[0].gain.value = soundMuted ? 0 : 0.32;
             if (bgAudio) bgAudio.muted = soundMuted;
         });
 
