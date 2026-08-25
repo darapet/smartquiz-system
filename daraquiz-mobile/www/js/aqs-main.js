@@ -3288,8 +3288,8 @@
         /* Pre-unlock audio context on first user gesture so it works in AJAX callbacks */
         function _unlockAudioContext() {
             try {
-                var url     = (AQS.quiz_bg_music_url     || '').trim();
-                var enabled = (AQS.quiz_bg_music_enabled || '1');
+                var url     = (AQS.quiz_bg_music_url     || 'audio/quiz-background.mp3').trim();
+                var enabled = (AQS.quiz_bg_music_enabled == null ? '1' : AQS.quiz_bg_music_enabled);
                 if (url && enabled !== '0' && !bgAudio) {
                     bgAudio        = new Audio(url);
                     bgAudio.loop   = true;
@@ -3301,8 +3301,8 @@
         }
 
         function startBgMusic() {
-            var url     = (AQS.quiz_bg_music_url     || '').trim();
-            var enabled = (AQS.quiz_bg_music_enabled || '1');
+            var url     = (AQS.quiz_bg_music_url     || 'audio/quiz-background.mp3').trim();
+            var enabled = (AQS.quiz_bg_music_enabled == null ? '1' : AQS.quiz_bg_music_enabled);
             if (!url || enabled === '0') return;
             try {
                 if (bgAudio) {
