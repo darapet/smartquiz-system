@@ -44,6 +44,125 @@ function bulkIds(scope) {
         .filter(Boolean);
 }
 
+/* ── Bulk-delete backup gate ──
+   Every destructive bulk action gets one complete JSON backup first.
+   This is deliberately client-side: the same authenticated Firestore reads
+   used to render the table are used to build the download. */
+var _bulkDeleteRequest = null;
+
+function serializeBackupValue(value) {
+    if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (Array.isArray(value)) return value.map(serializeBackupValue);
+    if (value && typeof value === 'object') {
+        var output = {};
+        Object.keys(value).forEach(function (key) { output[key] = serializeBackupValue(value[key]); });
+        return output;
+    }
+    return value;
+}
+
+function closeBulkDeleteModal() {
+    var modal = document.getElementById('aqs-bulk-delete-backup-modal');
+    if (modal) modal.remove();
+    _bulkDeleteRequest = null;
+}
+
+function showBulkDeleteModal(request) {
+    closeBulkDeleteModal();
+    _bulkDeleteRequest = request;
+    var modal = document.createElement('div');
+    modal.id = 'aqs-bulk-delete-backup-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;';
+    modal.innerHTML =
+        '<div role="dialog" aria-modal="true" aria-labelledby="aqs-bulk-delete-title" style="background:#fff;width:min(560px,100%);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);overflow:hidden;">' +
+            '<div style="padding:20px 22px;border-bottom:1px solid #e5e7eb;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">' +
+                '<div><h2 id="aqs-bulk-delete-title" style="margin:0;color:#991b1b;font-size:1.12rem;">Backup required before deletion</h2><p style="margin:6px 0 0;color:#64748b;font-size:.84rem;">' + request.ids.length + ' selected ' + esc(request.label) + '</p></div>' +
+                '<button type="button" data-bulk-close aria-label="Close" style="border:0;background:none;color:#64748b;font-size:1.5rem;cursor:pointer;line-height:1;">&times;</button>' +
+            '</div>' +
+            '<div style="padding:22px;">' +
+                '<div id="aqs-bulk-delete-status" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:13px 14px;color:#9a3412;font-size:.86rem;line-height:1.5;">Download a complete backup of everything selected before continuing. Deletion will remain locked until the download starts successfully.</div>' +
+                '<div id="aqs-bulk-delete-error" style="display:none;margin-top:12px;color:#b91c1c;font-size:.84rem;"></div>' +
+            '</div>' +
+            '<div style="padding:14px 22px;background:#f8fafc;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;">' +
+                '<button type="button" class="adm-btn" data-bulk-close>Cancel</button>' +
+                '<button type="button" class="adm-btn adm-btn-primary" id="aqs-bulk-download-btn">⬇ Download backup</button>' +
+                '<button type="button" class="adm-btn adm-btn-danger" id="aqs-bulk-confirm-delete-btn" disabled style="opacity:.45;cursor:not-allowed;">Delete selected</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll('[data-bulk-close]').forEach(function (button) {
+        button.addEventListener('click', closeBulkDeleteModal);
+    });
+    modal.addEventListener('click', function (event) {
+        if (event.target === modal) closeBulkDeleteModal();
+    });
+    modal.querySelector('#aqs-bulk-download-btn').addEventListener('click', async function () {
+        var downloadButton = this;
+        var status = modal.querySelector('#aqs-bulk-delete-status');
+        var error = modal.querySelector('#aqs-bulk-delete-error');
+        downloadButton.disabled = true;
+        downloadButton.textContent = 'Preparing backup…';
+        error.style.display = 'none';
+        try {
+            var records = [];
+            await Promise.all(request.ids.map(async function (id) {
+                var snap = await getDoc(doc(db, request.collectionName, id));
+                if (!snap.exists()) return;
+                var record = { id: snap.id, data: serializeBackupValue(snap.data()) };
+                if (request.collectionName === 'quizzes') {
+                    var attempts = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', id)));
+                    record.related_attempts = attempts.docs.map(function (attempt) {
+                        return { id: attempt.id, data: serializeBackupValue(attempt.data()) };
+                    });
+                }
+                records.push(record);
+            }));
+            records.sort(function (a, b) { return request.ids.indexOf(a.id) - request.ids.indexOf(b.id); });
+            var backup = {
+                exported_at: new Date().toISOString(),
+                source: 'xzily AI Admin Panel',
+                collection: request.collectionName,
+                record_count: records.length,
+                records: records
+            };
+            downloadText(JSON.stringify(backup, null, 2), 'admin-backup-' + request.collectionName + '-' + new Date().toISOString().slice(0, 10) + '.json', 'application/json');
+            request.downloaded = true;
+            status.style.background = '#ecfdf5';
+            status.style.borderColor = '#a7f3d0';
+            status.style.color = '#065f46';
+            status.textContent = '✓ Backup downloaded. You can now permanently delete the selected records.';
+            var deleteButton = modal.querySelector('#aqs-bulk-confirm-delete-btn');
+            deleteButton.disabled = false;
+            deleteButton.style.opacity = '1';
+            deleteButton.style.cursor = 'pointer';
+            downloadButton.textContent = '✓ Backup downloaded';
+        } catch (e) {
+            downloadButton.disabled = false;
+            downloadButton.textContent = '⬇ Download backup';
+            error.textContent = 'Backup failed: ' + (e.message || e) + '. Nothing was deleted.';
+            error.style.display = 'block';
+        }
+    });
+    modal.querySelector('#aqs-bulk-confirm-delete-btn').addEventListener('click', async function () {
+        if (!request.downloaded || !confirm('Permanently delete ' + request.ids.length + ' selected ' + request.label + '? This cannot be undone.')) return;
+        var deleteButton = this;
+        deleteButton.disabled = true;
+        deleteButton.textContent = 'Deleting…';
+        try {
+            await request.deleteRecords();
+            closeBulkDeleteModal();
+            request.reload();
+            loadDashboardStats();
+        } catch (e) {
+            deleteButton.disabled = false;
+            deleteButton.textContent = 'Delete selected';
+            var error = modal.querySelector('#aqs-bulk-delete-error');
+            error.textContent = 'Delete failed: ' + (e.message || e) + '. Your backup is still available.';
+            error.style.display = 'block';
+        }
+    });
+}
+
 window.adminToggleBulk = function(scope, checked) {
     document.querySelectorAll('[data-bulk-scope="' + scope + '"] input[data-bulk-id]')
         .forEach(function (el) { el.checked = checked; });
@@ -61,11 +180,33 @@ window.updateBulkCount = function(scope) {
 window.adminBulkAction = async function(scope, action) {
     var ids = bulkIds(scope);
     if (!ids.length) { alert('Select at least one item first.'); return; }
+    if (action === 'delete') {
+        showBulkDeleteModal({
+            ids: ids,
+            collectionName: 'quizzes',
+            label: 'quiz(es)',
+            reload: function () { loadQuizzes(); },
+            deleteRecords: function () {
+                return Promise.all(ids.map(function (id) { return window.adminDeleteQuiz(id, 'selected quiz', true); }));
+            }
+        });
+        return;
+    }
+    if (action === 'permanent') {
+        showBulkDeleteModal({
+            ids: ids,
+            collectionName: 'deleted_quizzes',
+            label: 'archived quiz(es)',
+            reload: function () { loadDeletedQuizzes(); },
+            deleteRecords: function () {
+                return Promise.all(ids.map(function (id) { return deleteDoc(doc(db, 'deleted_quizzes', id)); }));
+            }
+        });
+        return;
+    }
     var message = action === 'restore'
         ? 'Restore ' + ids.length + ' selected quiz(es) as drafts?'
-        : action === 'delete'
-            ? 'Archive and delete ' + ids.length + ' selected quiz(es)?'
-            : 'Permanently remove ' + ids.length + ' selected archived quiz(es)? This cannot be undone.';
+        : 'Permanently remove ' + ids.length + ' selected archived quiz(es)? This cannot be undone.';
     if (!confirm(message)) return;
     try {
         var runner = action === 'restore' ? window.adminRestoreQuiz :
@@ -79,12 +220,15 @@ window.adminBulkAction = async function(scope, action) {
 window.adminBulkCollection = async function(scope, collectionName, reloadFn, label) {
     var ids = bulkIds(scope);
     if (!ids.length) { alert('Select at least one item first.'); return; }
-    if (!confirm('Permanently delete ' + ids.length + ' selected ' + label + '? This cannot be undone.')) return;
-    try {
-        await Promise.all(ids.map(function (id) { return deleteDoc(doc(db, collectionName, id)); }));
-        reloadFn();
-        loadDashboardStats();
-    } catch (e) { alert('Bulk delete error: ' + (e.message || e)); }
+    showBulkDeleteModal({
+        ids: ids,
+        collectionName: collectionName,
+        label: label,
+        reload: reloadFn,
+        deleteRecords: function () {
+            return Promise.all(ids.map(function (id) { return deleteDoc(doc(db, collectionName, id)); }));
+        }
+    });
 };
 
 /* ── Safe event-bind helper ── */
