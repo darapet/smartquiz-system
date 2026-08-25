@@ -337,7 +337,8 @@
     .aqs-results-actions .aqs-btn{width:100%!important;justify-content:center!important;}
   }
   /* ── Quiz-taking polish ─────────────────────────────────────────────── */
-  #aqs-quiz-screen { max-width: 860px; margin: 0 auto; padding: 8px 0 42px; }
+  .aqs-wrap.aqs-quiz-wrap { max-width: none !important; width: 100%; padding-left: clamp(14px,4vw,56px); padding-right: clamp(14px,4vw,56px); }
+  #aqs-quiz-screen { width: 100%; max-width: none; margin: 0 auto; padding: 8px 0 42px; }
   .aqs-quiz-topbar {
     border: 1px solid rgba(148,163,184,.18) !important;
     border-radius: 18px !important; margin: 0 0 16px !important;
@@ -351,6 +352,7 @@
   #aqs-dots { padding: 4px 0 12px; }
   #aqs-dots button, #aqs-dots span { transition: transform .18s, background .18s, border-color .18s; }
   #aqs-question-card {
+    width: 100%; box-sizing: border-box;
     border: 1px solid rgba(148,163,184,.2) !important; border-radius: 24px !important;
     padding: clamp(24px,5vw,46px) !important; background: rgba(15,23,42,.78) !important;
     box-shadow: 0 24px 70px rgba(2,6,23,.3), inset 0 1px 0 rgba(255,255,255,.08) !important;
