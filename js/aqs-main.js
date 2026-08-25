@@ -28,6 +28,18 @@
             if (idx % 2 === 1) return chunk; /* already-delimited math — leave as-is */
 
             var c = chunk;
+            /* Convert common Unicode math glyphs into KaTeX so they do not
+               depend on a device font having the glyph (some Android builds
+               display missing glyphs as square boxes). */
+            c = c.replace(/[±×÷≤≥≠≈∞πθαλβΔΣ]/g, function (symbol) {
+                var commands = {
+                    '±':'\\pm', '×':'\\times', '÷':'\\div',
+                    '≤':'\\leq', '≥':'\\geq', '≠':'\\neq', '≈':'\\approx',
+                    '∞':'\\infty', 'π':'\\pi', 'θ':'\\theta', 'α':'\\alpha',
+                    'λ':'\\lambda', 'β':'\\beta', 'Δ':'\\Delta', 'Σ':'\\Sigma'
+                };
+                return '$' + commands[symbol] + '$';
+            });
 
             /* ── 0. Word-form math expressions the AI forgot to convert ─────────
                Convert natural-language math to LaTeX before anything else.      */
@@ -2818,6 +2830,11 @@
         function showQuestion(idx) {
             currentQuestion = idx;
             const q   = questions[idx];
+            var normalizedType = String(q.type || '').toLowerCase().replace(/[_-]/g, '');
+            if (normalizedType === 'german' || normalizedType === 'written' ||
+                normalizedType === 'writtenanswer' || normalizedType === 'shortanswer') {
+                q.type = 'short';
+            }
             const num = idx + 1;
 
             /* Section label + position */
