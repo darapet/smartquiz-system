@@ -159,7 +159,7 @@
   }
 
   /* ── Compact the public navigation ──────────────────────────────────
-     Keep the three primary destinations visible and group every other
+     Keep the five primary destinations visible and group every other
      destination under one accessible Explore menu. */
   function compactNavigation() {
     document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
@@ -173,12 +173,17 @@
       var primary = [];
       var secondary = [];
       var hasStudyHub = false;
+      var hasChallenge = false;
+      var hasLibrary = false;
 
       links.forEach(function (link) {
         var href = (link.getAttribute('href') || '').replace(/^.*\//, '').replace(/\?.*$/, '');
-        if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html') {
+        if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+            href === 'challenge.html' || href === 'library.html') {
           primary.push(link);
           if (href === 'studyhub.html') hasStudyHub = true;
+          if (href === 'challenge.html') hasChallenge = true;
+          if (href === 'library.html') hasLibrary = true;
           if (href === 'studio.html') {
             Array.from(link.childNodes).reverse().some(function (node) {
               if (node.nodeType === 3 && node.nodeValue.trim()) {
@@ -202,6 +207,19 @@
         studyHub.textContent = '📚 Study Hub';
         primary.push(studyHub);
       }
+      [
+        { present: hasChallenge, href: 'challenge.html', label: '⚔️ Challenge', color: '#e11d48' },
+        { present: hasLibrary, href: 'library.html', label: '📖 Library', color: '#4f46e5' }
+      ].forEach(function (item) {
+        if (item.present) return;
+        var link = document.createElement('a');
+        link.href = item.href;
+        link.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        link.style.cssText = 'color:' + item.color + ';font-weight:700;';
+        link.textContent = item.label;
+        primary.push(link);
+      });
 
       primary.forEach(function (link) { nav.insertBefore(link, auth || null); });
       if (!secondary.length) return;
