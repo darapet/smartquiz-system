@@ -2920,3 +2920,11 @@ img, video, canvas { max-width: 100%; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* Header-to-content rhythm: pages that nest .aqs-wrap inside .aqs-page-main
+   previously paid the top spacing twice, creating a visible white gap. */
+.aqs-page-main > .aqs-wrap { padding-top: 0 !important; }
+.aqs-page-main > .aqs-wrap:first-child { margin-top: 0; }
+@media (max-width: 768px) {
+    .aqs-page-main > .aqs-wrap { padding-top: 0 !important; }
+}
