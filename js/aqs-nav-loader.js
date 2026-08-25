@@ -158,6 +158,84 @@
     }
   }
 
+  /* ── Compact the public navigation ──────────────────────────────────
+     Keep the three primary destinations visible and group every other
+     destination under one accessible Explore menu. */
+  function compactNavigation() {
+    document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
+      if (nav.dataset.aqsCompactNav === 'true') return;
+      nav.dataset.aqsCompactNav = 'true';
+
+      var auth = nav.querySelector('.aqs-site-nav-mobile-auth');
+      var links = Array.from(nav.children).filter(function (child) {
+        return child.tagName === 'A' && (!auth || !auth.contains(child));
+      });
+      var primary = [];
+      var secondary = [];
+      var hasStudyHub = false;
+
+      links.forEach(function (link) {
+        var href = (link.getAttribute('href') || '').replace(/^.*\//, '').replace(/\?.*$/, '');
+        if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html') {
+          primary.push(link);
+          if (href === 'studyhub.html') hasStudyHub = true;
+          if (href === 'studio.html') {
+            Array.from(link.childNodes).reverse().some(function (node) {
+              if (node.nodeType === 3 && node.nodeValue.trim()) {
+                node.nodeValue = ' Studio AI';
+                return true;
+              }
+              return false;
+            });
+          }
+        } else {
+          secondary.push(link);
+        }
+      });
+
+      if (!hasStudyHub) {
+        var studyHub = document.createElement('a');
+        studyHub.href = 'studyhub.html';
+        studyHub.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        studyHub.style.cssText = 'color:#6366f1;font-weight:700;';
+        studyHub.textContent = '📚 Study Hub';
+        primary.push(studyHub);
+      }
+
+      primary.forEach(function (link) { nav.insertBefore(link, auth || null); });
+      if (!secondary.length) return;
+
+      var more = document.createElement('div');
+      more.className = 'aqs-site-nav-more';
+      more.innerHTML = '<button type="button" class="aqs-site-nav-more-toggle" aria-expanded="false" aria-haspopup="true">Explore <span aria-hidden="true">⌄</span></button><div class="aqs-site-nav-more-menu" role="menu"></div>';
+      var menu = more.querySelector('.aqs-site-nav-more-menu');
+      secondary.forEach(function (link) {
+        link.setAttribute('role', 'menuitem');
+        menu.appendChild(link);
+      });
+      nav.insertBefore(more, auth || null);
+
+      var toggle = more.querySelector('.aqs-site-nav-more-toggle');
+      toggle.addEventListener('click', function () {
+        var open = more.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', function (event) {
+        if (!more.contains(event.target)) {
+          more.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', compactNavigation, { once: true });
+  } else {
+    compactNavigation();
+  }
+
   /* ── Intercept nav link clicks ──────────────────────────────────────── */
   var PAGE_LABELS = {
     'index':          'Home',
