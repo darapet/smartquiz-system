@@ -56,4 +56,11 @@
   $('#add-section').onclick=addSection;
   $('#self-quiz-form').onsubmit=async function(e){e.preventDefault();if(sections.some(function(s){return !s.generated;})){toast('Generate every section in order before starting.');return;}var btn=$('#start-quiz');btn.disabled=true;btn.textContent='Saving quiz…';try{var res=await postAqs({action:'aqs_save_quiz',title:$('#self-title').value.trim()||'My Self Quiz',subject:'Personal study quiz',num_questions:generated.length,time_limit:$('#self-time').value,mode:$('#self-mode').value,questions_json:JSON.stringify(generated),quiz_note:'Created in Self Quiz Studio',show_results:'yes'});if(!res.success)throw new Error(res.data||'Could not save quiz.');var pub=await postAqs({action:'aqs_publish_quiz',quiz_id:res.data.quiz_id});if(!pub.success)throw new Error(pub.data||'Could not prepare quiz.');toast('Your quiz is ready — opening it now.');setTimeout(function(){location.href=pub.data.quiz_url;},500);}catch(err){toast(err.message||'Could not start quiz.');btn.disabled=false;btn.innerHTML='Generate my quiz <span>→</span>';}}; 
   window.AQS=window.AQS||{ajax_url:''};addSection();
+  /* Keep the UI language consistent with the actual short-answer type. */
+  setTimeout(function(){
+    document.querySelectorAll('option').forEach(function(option){
+      if(option.textContent.indexOf('German / written answer')!==-1)
+        option.textContent='Written answer';
+    });
+  },0);
 })();
