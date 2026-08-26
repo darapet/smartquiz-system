@@ -504,6 +504,8 @@ html,body{height:100%;overflow:hidden;}
 
       if(_book.parsedUrl){
         await loadParsed(_book.parsedUrl);
+      } else if(_book.externalTextUrl){
+        await loadExternalText(_book.externalTextUrl);
       } else if(_book.fileUrl){
         await loadPdfFallback(_book.fileUrl);
       } else {
@@ -537,6 +539,24 @@ html,body{height:100%;overflow:hidden;}
       if(_book.fileUrl) await loadPdfFallback(_book.fileUrl);
       else showErr('Could not load content.');
     }
+  }
+
+  /* ── Public-domain text supplied by an approved external source ── */
+  async function loadExternalText(url){
+    try{
+      const res=await fetch(url);
+      if(!res.ok) throw new Error('fetch failed');
+      const text=await res.text();
+      if(!text.trim()) throw new Error('empty text');
+      const chunks=[];
+      const size=6500;
+      for(let i=0;i<text.length;i+=size) chunks.push({text:text.slice(i,i+size)});
+      _pages=chunks;_total=chunks.length;showPage(1);
+      const source=document.createElement('div');
+      source.style.cssText='padding:10px 24px;color:#64748b;font-size:.7rem;text-align:center;';
+      source.innerHTML='Public-domain edition from <a href="'+url+'" target="_blank" rel="noopener" style="color:#a5b4fc">Project Gutenberg ↗</a>';
+      document.getElementById('rdr-content').before(source);
+    }catch(e){showErr('Could not load the public-domain text.<br><a href="'+url+'" target="_blank" rel="noopener" style="color:#a5b4fc">Open original ↗</a>');}
   }
 
   /* ── PDF.js fallback ── */

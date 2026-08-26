@@ -223,6 +223,20 @@
       </div>
     </div>
 
+    <!-- EXTERNAL PUBLIC-DOMAIN IMPORT -->
+    <div class="lib-card-form">
+      <div class="lib-card-form-title">🌐 Import a Public-Domain Book</div>
+      <p style="font-size:.8rem;color:#94a3b8;line-height:1.55;margin:0 0 14px">
+        Discover books through Open Library. We only enable in-site reading when a public-domain text is available through Project Gutenberg.
+      </p>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input class="lib-input" id="external-book-search" placeholder="Search title or author…" onkeydown="if(event.key==='Enter') searchExternalBooks()">
+        <button class="lib-btn lib-btn-primary" onclick="searchExternalBooks()">Search</button>
+      </div>
+      <div id="external-book-results" style="margin-top:14px"></div>
+      <div style="font-size:.7rem;color:#64748b;margin-top:12px">Metadata: Open Library · Full text: Project Gutenberg public domain editions</div>
+    </div>
+
     <!-- MY BOOKS -->
     <div class="lib-card-form">
       <div class="lib-card-form-title">📚 My Uploaded Books <span id="my-books-count" style="font-size:.8rem;font-weight:500;color:#64748b"></span></div>
@@ -296,6 +310,7 @@
 <script type="module">
   let _user=null, _profile=null, _batch=[], _selFile=null, _selThumb=null;
   let _detectedPages=0, _parsedPages=[];
+  let _externalResults=[];
 
   /* ── PROFILE CASCADE ── */
   window.profileTypeChange = function(type) {
@@ -318,6 +333,77 @@
     window.libPopulateSchools(school, type); school.disabled=false;
     window.libPopulateCourses(course, type); course.disabled=false;
     window.libPopulateLevels(level,  type);  level.disabled=false;
+  };
+
+  /* ── Public-domain external imports ── */
+  window.searchExternalBooks = async function(){
+    const input=document.getElementById('external-book-search');
+    const results=document.getElementById('external-book-results');
+    const term=input.value.trim();
+    if(!term){window.libToast('Enter a title or author first.');return;}
+    results.innerHTML='<div style="color:#94a3b8;font-size:.8rem;padding:12px 0">Searching Open Library and checking public-domain editions…</div>';
+    try{
+      const ol=await fetch('https://openlibrary.org/search.json?q='+encodeURIComponent(term)+'&limit=8').then(function(r){if(!r.ok)throw new Error('Open Library search failed');return r.json();});
+      const docs=(ol.docs||[]).slice(0,8);
+      _externalResults=await Promise.all(docs.map(async function(book){
+        const title=book.title||'Untitled';
+        const author=(book.author_name||[])[0]||'Unknown author';
+        let gutenberg=null;
+        try{
+          const gd=await fetch('https://gutendex.com/books/?search='+encodeURIComponent(title+' '+author)).then(function(r){return r.ok?r.json():{results:[]};});
+          gutenberg=(gd.results||[]).find(function(g){
+            return g.formats && Object.keys(g.formats).some(function(k){return /^text\/plain/i.test(k);});
+          })||null;
+        }catch(_){}
+        const cover=book.cover_i?'https://covers.openlibrary.org/b/id/'+book.cover_i+'-M.jpg':'';
+        return {title,author,year:book.first_publish_year||'',cover,gutenberg};
+      }));
+      renderExternalResults();
+    }catch(e){results.innerHTML='<div style="color:#fca5a5;font-size:.8rem;padding:12px 0">Search failed: '+esc(e.message)+'</div>';}
+  };
+
+  function renderExternalResults(){
+    const results=document.getElementById('external-book-results');
+    if(!_externalResults.length){results.innerHTML='<div style="color:#94a3b8;font-size:.8rem;padding:12px 0">No books found.</div>';return;}
+    results.innerHTML=_externalResults.map(function(book,i){
+      const g=book.gutenberg;
+      const thumb=book.cover?'<img src="'+book.cover+'" alt="" style="width:42px;height:58px;object-fit:cover;border-radius:5px">':'<div style="width:42px;height:58px;border-radius:5px;background:#312e81;display:flex;align-items:center;justify-content:center">📖</div>';
+      return '<div style="display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid rgba(148,163,184,.12)">'+thumb+
+        '<div style="flex:1;min-width:0"><div style="font-size:.82rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(book.title)+'</div>'+
+        '<div style="font-size:.72rem;color:#94a3b8;margin-top:3px">'+esc(book.author)+(book.year?' · '+book.year:'')+'</div>'+
+        '<div style="font-size:.68rem;color:'+(g?'#6ee7b7':'#fbbf24')+';margin-top:4px">'+(g?'✓ Public-domain text available':'Metadata only — no in-site text found')+'</div></div>'+
+        (g?'<button class="lib-btn lib-btn-primary lib-btn-sm" onclick="importExternalBook('+i+',event)">Import</button>':'<a class="lib-btn lib-btn-ghost lib-btn-sm" href="https://openlibrary.org" target="_blank" rel="noopener">View</a>')+
+        '</div>';
+    }).join('');
+  }
+
+  window.importExternalBook=async function(index,evt){
+    const book=_externalResults[index], g=book&&book.gutenberg;
+    if(!book||!g){window.libToast('This title has no verified public-domain text edition.');return;}
+    const button=evt&&evt.target;
+    if(button){button.disabled=true;button.textContent='Importing…';}
+    try{
+      const formats=g.formats||{};
+      const textUrl=Object.keys(formats).filter(function(k){return /^text\/plain/i.test(k);}).map(function(k){return formats[k];})[0];
+      if(!textUrl)throw new Error('No readable public-domain text was found.');
+      const name=((_profile&&_profile.firstName)||'')+' '+((_profile&&_profile.lastName)||'');
+      await window.libAddBook({
+        title:book.title,author:book.author,thumbnailUrl:book.cover,
+        externalTextUrl:textUrl,externalSourceUrl:'https://www.gutenberg.org/ebooks/'+g.id,
+        sourceName:'Project Gutenberg',sourceType:'public-domain',
+        institutionType:(_profile&&_profile.institutionType)||'',
+        institution:(_profile&&_profile.institution)||'',
+        course:(_profile&&(_profile.course||_profile.department))||'',
+        level:(_profile&&_profile.level)||'',
+        uploaderUid:_user.uid,uploaderName:name.trim()||'Library Contributor'
+      });
+      window.libToast('✅ Book imported to your library.');
+      if(button){button.textContent='✓ Imported';}
+      loadMyBooks();loadStats();
+    }catch(e){
+      if(button){button.disabled=false;button.textContent='Import';}
+      window.libToast('Import failed: '+e.message);
+    }
   };
 
   /* ── File selectors ── */
