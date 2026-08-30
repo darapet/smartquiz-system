@@ -16,7 +16,7 @@ const DEFAULT_CREATOR_IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
 function setCors(response) {
   response.set('Access-Control-Allow-Origin', '*');
   response.set('Access-Control-Allow-Headers', 'Content-Type');
-  response.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 }
 
 function requestIp(request) {
@@ -69,6 +69,29 @@ async function reserveCreatorImageCredit(ipAddress) {
   });
 
   return result;
+}
+
+async function creatorImageQuota(ipAddress) {
+  const reference = db.collection('creator_image_quota').doc(quotaDocumentId(ipAddress));
+  const now = Date.now();
+  const cutoff = now - CREATOR_IMAGE_WINDOW_MS;
+  const snapshot = await reference.get();
+  const existing = snapshot.exists && Array.isArray(snapshot.data().events)
+    ? snapshot.data().events
+    : [];
+  const events = existing
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value >= cutoff);
+  const resetsAt = events.length
+    ? new Date(Math.min(...events) + CREATOR_IMAGE_WINDOW_MS).toISOString()
+    : new Date(now + CREATOR_IMAGE_WINDOW_MS).toISOString();
+  return {
+    used: events.length,
+    limit: CREATOR_IMAGE_LIMIT,
+    remaining: Math.max(0, CREATOR_IMAGE_LIMIT - events.length),
+    resetsAt,
+    plan: 'Free',
+  };
 }
 
 function cleanImageKeys(value) {
@@ -321,12 +344,15 @@ exports.creatorImageGenerate = onRequest(
   async (request, response) => {
     setCors(response);
     if (request.method === 'OPTIONS') return response.status(204).send('');
+    const route = String(request.path || request.url || '').split('?')[0];
     if (request.method === 'GET') {
       try {
+        if (route.endsWith('/healthz')) return response.json({ status: 'ok' });
+        if (route.endsWith('/quota')) return response.json(await creatorImageQuota(requestIp(request)));
         return response.json(await listCreatorGenerations(request, request.query.clientId));
       } catch (error) {
-        console.error('Creator generation history error:', error);
-        return response.status(500).json({ error: 'Generation history could not be loaded.' });
+        console.error('Creator Studio read error:', error);
+        return response.status(500).json({ error: 'Creator Studio data could not be loaded.' });
       }
     }
     if (request.method !== 'POST') return response.status(405).json({ error: 'Use POST for image generation.' });
