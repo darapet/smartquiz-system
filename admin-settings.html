@@ -1369,6 +1369,9 @@ window.addEventListener('DOMContentLoaded', function() {
             <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#0f766e;color:#fff;border-color:#115e59;">🧪 Test Image Tokens</button>
             <span id="aqs-creator-image-status" class="aqs-status-msg"></span>
         </div>
+        <div id="aqs-creator-image-health-summary" style="margin-top:12px;padding:10px 14px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;color:#115e59;font-size:.78rem;">
+            Health has not been checked yet. Pollinations fallback is ready when no managed token succeeds.
+        </div>
         <div id="aqs-creator-image-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
@@ -1980,10 +1983,31 @@ async function _aqsTestCreatorImageKeys() {
     }
     var results = document.getElementById('aqs-creator-image-test-results');
     var testBtn = document.getElementById('aqs-test-creator-image-btn');
+    var healthSummary = document.getElementById('aqs-creator-image-health-summary');
+    window._aqsRememberCreatorImageHealth = function(healthy, total, status) {
+        try {
+            localStorage.setItem('aqs_creator_image_health_last', JSON.stringify({
+                at: new Date().toISOString(),
+                healthy: healthy,
+                total: total,
+                status: status || 'checked'
+            }));
+        } catch (e) {}
+    };
+    try {
+        var lastCreatorHealth = JSON.parse(localStorage.getItem('aqs_creator_image_health_last') || 'null');
+        if (healthSummary && lastCreatorHealth && lastCreatorHealth.at) {
+            var lastLabel = lastCreatorHealth.total
+                ? lastCreatorHealth.healthy + '/' + lastCreatorHealth.total + ' managed token(s) healthy'
+                : 'No managed tokens configured';
+            healthSummary.innerHTML = 'Last checked ' + new Date(lastCreatorHealth.at).toLocaleString() + ' · ' + lastLabel + ' · Pollinations fallback ready.';
+        }
+    } catch (e) {}
     if (!results) return;
     results.style.display = 'block';
     if (!configuredSlots.length) {
         results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, save the pool, then click Test.</span>';
+        if (healthSummary) healthSummary.innerHTML = 'No managed tokens configured · Pollinations fallback is ready.';
         return;
     }
     var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell';
@@ -2001,16 +2025,23 @@ async function _aqsTestCreatorImageKeys() {
         var health = Array.isArray(data.health) ? data.health : [];
         if (!health.length) {
             results.innerHTML = '<span style="color:#fbbf24;">⚠️ The secure service is reachable, but no saved tokens were found. Save the pool first.</span>';
+            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · No managed tokens configured · Pollinations fallback ready.';
+            if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'empty');
         } else {
+            var healthyCount = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
             var rows = health.map(function(entry) {
                 var color = entry.status === 'healthy' ? '#4ade80' : (entry.status === 'rate_limited' ? '#fbbf24' : '#f87171');
                 var status = entry.status === 'healthy' ? '✅ Healthy' : (entry.status === 'rate_limited' ? '⚠️ Rate limited' : (entry.status === 'invalid' ? '❌ Invalid token' : '❌ Unavailable'));
                 return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#cbd5e1;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
             });
             results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Secure server test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
+            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Pollinations fallback ready.';
+            if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(healthyCount, health.length, 'checked');
         }
     } catch (e) {
         results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Secure image service unavailable.') + '</span>';
+        if (healthSummary) healthSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Pollinations fallback remains ready.';
+        if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
     }
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Image Tokens'; }
 }
@@ -2373,6 +2404,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
           { id:'groq',       label:'Main Groq',    emoji:'⚡', provider:'groq',    inputPrefix:'aqs-groq-key-',            slots:20, dotPrefix:'aqs-gk-dot-' },
           { id:'mistral',    label:'Mistral',       emoji:'🌟', provider:'mistral', inputPrefix:'aqs-mistral-key-',         slots:20, dotPrefix:'aqs-mk-dot-' },
           { id:'hf',         label:'HuggingFace',   emoji:'🤗', provider:'hf',      inputPrefix:'aqs-hf-key-',              slots:5,  dotPrefix:'aqs-hf-dot-' },
+           { id:'creator_image', label:'Creator Studio Image', emoji:'🎨', provider:'creator_image', inputPrefix:'aqs-creator-image-key-', slots:5, dotPrefix:'aqs-creator-image-dot-' },
           { id:'geminitts',  label:'Gemini TTS',    emoji:'🎙️', provider:'gtts',   inputPrefix:'aqs-gtts-key-',            slots:5,  dotPrefix:'aqs-gtts-dot-' },
           { id:'elevenlabs', label:'ElevenLabs TTS', emoji:'🔊', provider:'el',      inputPrefix:'aqs-el-key-',              slots:5,  dotPrefix:'aqs-el-dot-' },
           { id:'library',    label:'Library',       emoji:'📚', provider:'groq',    inputPrefix:'aqs-lib-key-',             slots:10 },
@@ -2493,14 +2525,15 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
           if (!grid) return;
           grid.innerHTML = POOLS.map(function(p) {
               var n = _getPoolKeys(p).length, m = p.slots, bar = m > 0 ? Math.round(n/m*100) : 0;
-              var col = n === 0 ? '#ef4444' : n < m ? '#f59e0b' : '#10b981';
+               var noKeyFallback = p.provider === 'creator_image' && n === 0;
+               var col = noKeyFallback ? '#059669' : (n === 0 ? '#ef4444' : n < m ? '#f59e0b' : '#10b981');
               return '<div id="aqs-dash-'+p.id+'" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:7px;">'
                   +'<div style="display:flex;align-items:center;gap:7px;"><span>'+p.emoji+'</span><span style="font-weight:700;color:#1e293b;font-size:.82rem;">'+p.label+'</span></div>'
                   +'<div style="letter-spacing:1.5px;">'+_dots(n,m)+'</div>'
                   +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
-                  +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+n+'/'+m+'</span></div>'
+                   +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+(noKeyFallback ? 'ready' : n+'/'+m)+'</span></div>'
                   +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-                  +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">—</span>'
+                   +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">'+(noKeyFallback ? 'Pollinations fallback ready' : '—')+'</span>'
                   +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
                   +'</div>'
                   +'<div id="aqs-pool-detail-'+p.id+'" style="display:none;flex-direction:column;gap:4px;margin-top:2px;"></div>'
@@ -2515,6 +2548,48 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
           if (!p) return;
 
           var keys = _getPoolKeys(p);
+           if (p.provider === 'creator_image') {
+               if (r) { r.textContent = '🔄 Testing the secure image pool…'; r.style.color = '#f59e0b'; }
+               if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;">Tokens are checked server-side; values never leave this page.</span>'; }
+               try {
+                   var creatorEndpoint = window._AQS_CREATOR_IMAGE_FUNCTION_URL || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
+                   var creatorResponse = await fetch(creatorEndpoint, {
+                       method: 'POST',
+                       headers: {'Content-Type':'application/json'},
+                       body: JSON.stringify({testOnly:true, model:(document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell'})
+                   });
+                   var creatorData = await creatorResponse.json().catch(function(){ return {}; });
+                   if (!creatorResponse.ok) throw new Error(creatorData.error || 'Secure image service unavailable.');
+                   var health = Array.isArray(creatorData.health) ? creatorData.health : [];
+                   var active = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
+                   var total = health.length;
+                   if (!total) {
+                       if (r) { r.innerHTML = '<span style="color:#059669;">✅ Pollinations fallback ready</span>'; r.style.color = '#059669'; }
+                       if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#6b7280;">No managed image tokens saved. The public fallback remains available.</span>'; }
+                   } else {
+                       var creatorRows = health.map(function(entry) {
+                           var healthy = entry.status === 'healthy', limited = entry.status === 'rate_limited';
+                           var color = healthy ? '#86efac' : (limited ? '#fde68a' : '#fca5a5');
+                           var label = healthy ? 'Healthy' : (limited ? 'Rate limited' : (entry.status === 'invalid' ? 'Invalid token' : 'Unavailable'));
+                           var dotEl = document.getElementById('aqs-creator-image-dot-' + entry.slot);
+                           if (dotEl) { dotEl.textContent = healthy ? '✅' : (limited ? '⚠️' : '❌'); dotEl.style.fontSize = '.9rem'; }
+                           return '<div style="padding:5px 8px;background:' + (healthy ? '#052e16' : limited ? '#1c1001' : '#1c0101') + ';border:1px solid ' + (healthy ? '#166534' : limited ? '#78350f' : '#7f1d1d') + ';border-radius:6px;display:flex;align-items:center;gap:6px;"><span style="color:' + color + ';font-weight:700;font-size:.72rem;">Token ' + entry.slot + '</span><span style="color:' + color + ';margin-left:auto;font-size:.7rem;">' + label + ' · ' + (entry.latencyMs || 0) + 'ms</span></div>';
+                       });
+                       if (r) { r.innerHTML = '<span style="color:' + (active === total ? '#059669' : active ? '#d97706' : '#dc2626') + ';">' + active + '/' + total + ' healthy · Pollinations fallback ready</span>'; r.style.color = active === total ? '#059669' : active ? '#d97706' : '#dc2626'; }
+                       if (det) { det.style.display = 'flex'; det.innerHTML = creatorRows.join(''); }
+                   }
+                   var summary = document.getElementById('aqs-creator-image-health-summary');
+                   if (summary) summary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + (total ? active + '/' + total + ' managed token(s) healthy' : 'No managed tokens configured') + ' · Pollinations fallback ready.';
+                   if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(active, total, total ? 'checked' : 'empty');
+               } catch (creatorError) {
+                   if (r) { r.innerHTML = '<span style="color:#d97706;">⚠️ Secure health check unavailable · Pollinations fallback ready</span>'; r.style.color = '#d97706'; }
+                   if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#fca5a5;">' + (creatorError.message || 'Health check failed.') + '</span>'; }
+                   var failedSummary = document.getElementById('aqs-creator-image-health-summary');
+                   if (failedSummary) failedSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Pollinations fallback remains ready.';
+                   if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
+               }
+               return;
+           }
           if (!keys.length) {
               if (r) r.innerHTML = '<span style="color:#ef4444;">⚠️ No keys saved in slots</span>';
               if (det) det.style.display = 'none';
