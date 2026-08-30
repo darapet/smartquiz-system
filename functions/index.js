@@ -153,6 +153,81 @@ function pollinationsUrl(prompt, dimensions) {
   return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=${dimensions.width}&height=${dimensions.height}&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 1000000000)}`;
 }
 
+function ownerKey(request, clientId) {
+  return crypto.createHash('sha256')
+    .update(`${requestIp(request)}:${String(clientId || '').slice(0, 128)}`)
+    .digest('hex')
+    .slice(0, 40);
+}
+
+async function persistImageBytes(dataUrl, generationId) {
+  const match = /^data:([^;,]+);base64,(.+)$/.exec(dataUrl || '');
+  if (!match) return dataUrl;
+
+  const contentType = match[1];
+  const extension = contentType.split('/')[1] === 'jpeg' ? 'jpg' : contentType.split('/')[1] || 'png';
+  const file = admin.storage().bucket().file(`creator-studio/${generationId}.${extension}`);
+  await file.save(Buffer.from(match[2], 'base64'), {
+    resumable: false,
+    metadata: {
+      contentType,
+      cacheControl: 'public,max-age=31536000,immutable',
+    },
+  });
+  const [signedUrl] = await file.getSignedUrl({
+    action: 'read',
+    expires: '2035-01-01T00:00:00.000Z',
+  });
+  return signedUrl;
+}
+
+async function persistCreatorGeneration(request, clientId, result) {
+  const generationId = result.id;
+  let persistedUrl = result.url;
+  if (String(result.url || '').startsWith('data:')) {
+    persistedUrl = await persistImageBytes(result.url, generationId);
+  }
+
+  await db.collection('creator_generations').doc(generationId).set({
+    ownerKey: ownerKey(request, clientId),
+    prompt: result.prompt,
+    mediaType: result.mediaType,
+    url: persistedUrl,
+    provider: result.provider,
+    fallbackUsed: Boolean(result.fallbackUsed),
+    qualityNotes: result.qualityNotes || [],
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  return persistedUrl;
+}
+
+async function listCreatorGenerations(request, clientId) {
+  const snapshot = await db.collection('creator_generations')
+    .where('ownerKey', '==', ownerKey(request, clientId))
+    .limit(20)
+    .get();
+  return snapshot.docs
+    .map((document) => {
+      const data = document.data();
+      const createdAt = data.createdAt && typeof data.createdAt.toDate === 'function'
+        ? data.createdAt.toDate().toISOString()
+        : new Date().toISOString();
+      return {
+        id: document.id,
+        mediaType: data.mediaType || 'image',
+        url: data.url,
+        provider: data.provider || 'unknown',
+        prompt: data.prompt || '',
+        createdAt,
+        qualityNotes: Array.isArray(data.qualityNotes) ? data.qualityNotes : [],
+        fallbackUsed: Boolean(data.fallbackUsed),
+      };
+    })
+    .filter((item) => item.url)
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, 12);
+}
+
 async function generateWithCreatorImagePool(prompt, dimensions, keys, model) {
   if (!keys.length) return null;
 
@@ -246,6 +321,14 @@ exports.creatorImageGenerate = onRequest(
   async (request, response) => {
     setCors(response);
     if (request.method === 'OPTIONS') return response.status(204).send('');
+    if (request.method === 'GET') {
+      try {
+        return response.json(await listCreatorGenerations(request, request.query.clientId));
+      } catch (error) {
+        console.error('Creator generation history error:', error);
+        return response.status(500).json({ error: 'Generation history could not be loaded.' });
+      }
+    }
     if (request.method !== 'POST') return response.status(405).json({ error: 'Use POST for image generation.' });
 
     const payload = request.body && typeof request.body === 'object' ? request.body : {};
@@ -297,9 +380,9 @@ exports.creatorImageGenerate = onRequest(
         provider: 'pollinations',
         fallbackUsed: true,
       };
-
-      return response.json({
-        id: `creator-image-${Date.now()}-${crypto.randomUUID()}`,
+      const generationId = `creator-image-${Date.now()}-${crypto.randomUUID()}`;
+      const responseResult = {
+        id: generationId,
         ...result,
         prompt,
         createdAt: new Date().toISOString(),
@@ -310,7 +393,17 @@ exports.creatorImageGenerate = onRequest(
           'Automatic quality and anatomy safeguards applied.',
         ],
         quota,
-      });
+      };
+      try {
+        responseResult.url = await persistCreatorGeneration(request, payload.clientId, responseResult);
+      } catch (persistenceError) {
+        console.error('Creator generation persistence error:', persistenceError);
+        if (String(responseResult.url || '').startsWith('data:')) {
+          return response.status(502).json({ error: 'The image was generated but could not be saved. Please try again.' });
+        }
+      }
+
+      return response.json(responseResult);
     } catch (error) {
       console.error('Creator image generation error:', error);
       return response.status(502).json({ error: 'The image providers are temporarily unavailable.' });

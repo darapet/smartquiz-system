@@ -83,6 +83,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
     var HF_IDX_KEY      = 'aqs_hf_key_idx';
     var CREATOR_IMAGE_IDX_KEY = 'aqs_creator_image_key_idx';
+    var CREATOR_IMAGE_CLIENT_ID_KEY = 'aqs_creator_image_client_id';
     var CREATOR_IMAGE_FUNCTION_URL = window._AQS_CREATOR_IMAGE_FUNCTION_URL ||
         'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
     var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
@@ -210,13 +211,41 @@ window._aqsKeysReady = new Promise(function(resolve) {
         return String(prompt || '').trim() + '. ' + quality +
             '. Negative prompt: bad hands, extra fingers, deformed limbs, fused body parts, extra arms, low quality, pixelated, distorted faces.';
     }
+    function _creatorImageClientId() {
+        try {
+            var existing = localStorage.getItem(CREATOR_IMAGE_CLIENT_ID_KEY);
+            if (existing) return existing;
+            var created = (window.crypto && window.crypto.randomUUID)
+                ? window.crypto.randomUUID()
+                : 'client-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            localStorage.setItem(CREATOR_IMAGE_CLIENT_ID_KEY, created);
+            return created;
+        } catch(e) {
+            return 'session-' + Date.now();
+        }
+    }
+    function _creatorImageLocalHistory() {
+        try {
+            var raw = JSON.parse(localStorage.getItem('aqs_creator_image_history') || '[]');
+            return Array.isArray(raw) ? raw.filter(function(item){ return item && item.url; }).slice(0, 12) : [];
+        } catch(e) {
+            return [];
+        }
+    }
+    function _saveCreatorImageLocalHistory(result) {
+        if (!result || !result.url) return;
+        try {
+            var history = [result].concat(_creatorImageLocalHistory().filter(function(item){ return item.id !== result.id; })).slice(0, 12);
+            localStorage.setItem('aqs_creator_image_history', JSON.stringify(history));
+        } catch(e) {}
+    }
     function _creatorImageFallback(input, dimensions, reason) {
         var fallbackSize = dimensions.width + 'x' + dimensions.height;
         var fallbackPrompt = _creatorImagePrompt(input.prompt, input.category);
         var fallbackUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(fallbackPrompt) +
             '?model=flux&width=' + dimensions.width + '&height=' + dimensions.height +
             '&nologo=true&enhance=true&seed=' + Math.floor(Math.random() * 1000000000);
-        return {
+        var result = {
             id: 'creator-image-fallback-' + Date.now(),
             mediaType: 'image',
             url: fallbackUrl,
@@ -226,6 +255,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
             qualityNotes: ['Public fallback engine used because the secure image service was unavailable.', 'Requested frame: ' + fallbackSize + '.'].concat(reason ? [reason] : []),
             fallbackUsed: true
         };
+        _saveCreatorImageLocalHistory(result);
+        return result;
     }
 
     async function _creatorImageGenerate(input) {
@@ -239,7 +270,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
                     prompt: String(input.prompt || '').trim(),
                     category: input.category,
                     aspectRatio: input.aspectRatio,
-                    inputImageDataUrl: input.inputImageDataUrl || null
+                    inputImageDataUrl: input.inputImageDataUrl || null,
+                    clientId: _creatorImageClientId()
                 }),
                 signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
             });
@@ -260,6 +292,22 @@ window._aqsKeysReady = new Promise(function(resolve) {
         }
     }
     window.aqsCreatorImageGenerate = _creatorImageGenerate;
+    window.aqsCreatorImageList = async function() {
+        var localHistory = _creatorImageLocalHistory();
+        try {
+            var response = await fetch(CREATOR_IMAGE_FUNCTION_URL + '?clientId=' + encodeURIComponent(_creatorImageClientId()), {
+                method: 'GET'
+            });
+            if (!response.ok) return localHistory;
+            var remoteHistory = await response.json().catch(function(){ return []; });
+            if (!Array.isArray(remoteHistory)) return localHistory;
+            return remoteHistory.concat(localHistory.filter(function(localItem) {
+                return !remoteHistory.some(function(remoteItem){ return remoteItem.id === localItem.id; });
+            })).slice(0, 12);
+        } catch(e) {
+            return localHistory;
+        }
+    };
 
     /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
