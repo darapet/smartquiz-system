@@ -18,9 +18,21 @@ uvicorn main:app --host 0.0.0.0 --port 8080 --app-dir api
 ```
 
 For the integrated SmartQuiz page, enter up to five image-generation tokens in
-**Admin Settings → AI Creator Studio — Image Generation Keys**. The shared
-Firebase settings loader supplies that dedicated pool to the image mode, which
-rotates tokens and cools down rate-limited tokens automatically.
+**Admin Settings → AI Creator Studio — Image Generation Keys**. Image requests
+are sent to the `creatorImageGenerate` Firebase Function, which reads the
+dedicated pool server-side, rotates tokens, cools down rate-limited tokens, and
+returns Pollinations when no managed token succeeds. The public page never
+receives the Hugging Face tokens.
+
+Deploy the secure image function from the repository root before expecting
+managed Hugging Face tokens to be used:
+
+```bash
+firebase deploy --only functions:creatorImageGenerate
+```
+
+Until that function is deployed, the page uses its no-key Pollinations fallback
+so image mode remains testable.
 
 For the separate FastAPI deployment, configure `HF_API_KEYS` as a
 comma-separated server-side secret for Hugging Face image generation and photo

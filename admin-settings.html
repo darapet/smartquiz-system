@@ -198,9 +198,10 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script src="js/aqs-groq-key.js"></script>
+<script>window._AQS_ADMIN_SETTINGS_MODE = true;</script>
+<script src="js/aqs-groq-key.js?v=secure-image-1"></script>
 <script src="js/aqs-gemini-tts.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
+<script type="module" src="js/aqs-firebase.js?v=secure-image-1"></script>
 </head>
 <body>
 
@@ -1972,41 +1973,45 @@ btn('aqs-save-creator-image-btn').addEventListener('click', function(){
 });
 
 async function _aqsTestCreatorImageKeys() {
-    var allKeys = [];
+    var configuredSlots = [];
     for (var cti = 1; cti <= 5; cti++) {
         var ctel = document.getElementById('aqs-creator-image-key-' + cti);
-        if (ctel && ctel.value.trim().length > 10) allKeys.push({ slot: 'Token ' + cti, key: ctel.value.trim() });
+        if (ctel && ctel.value.trim().length > 10) configuredSlots.push('Token ' + cti);
     }
     var results = document.getElementById('aqs-creator-image-test-results');
     var testBtn = document.getElementById('aqs-test-creator-image-btn');
     if (!results) return;
     results.style.display = 'block';
-    if (!allKeys.length) {
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, then click Test.</span>';
+    if (!configuredSlots.length) {
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, save the pool, then click Test.</span>';
         return;
     }
     var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell';
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' image token(s)…</div>';
-    async function pingCreatorImage(entry) {
-        var masked = entry.key.slice(0, 5) + '…' + entry.key.slice(-4);
-        var modelPath = model.split('/').map(encodeURIComponent).join('/');
-        try {
-            var res = await fetch('https://api-inference.huggingface.co/models/' + modelPath, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + entry.key },
-                body: JSON.stringify({ inputs: 'A simple blue circle on a clean white background', parameters: { width: 256, height: 256, num_inference_steps: 4 } }),
-                signal: AbortSignal.timeout(30000)
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing the saved image pool through the secure server…</div>';
+    try {
+        var endpoint = window._AQS_CREATOR_IMAGE_FUNCTION_URL || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
+        var res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ testOnly: true, model: model })
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        if (!res.ok) throw new Error(data.error || 'Secure image service unavailable.');
+        var health = Array.isArray(data.health) ? data.health : [];
+        if (!health.length) {
+            results.innerHTML = '<span style="color:#fbbf24;">⚠️ The secure service is reachable, but no saved tokens were found. Save the pool first.</span>';
+        } else {
+            var rows = health.map(function(entry) {
+                var color = entry.status === 'healthy' ? '#4ade80' : (entry.status === 'rate_limited' ? '#fbbf24' : '#f87171');
+                var status = entry.status === 'healthy' ? '✅ Healthy' : (entry.status === 'rate_limited' ? '⚠️ Rate limited' : (entry.status === 'invalid' ? '❌ Invalid token' : '❌ Unavailable'));
+                return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#cbd5e1;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
             });
-            var color = res.ok ? '#4ade80' : (res.status === 429 ? '#fbbf24' : '#f87171');
-            var status = res.ok ? '✅ Image endpoint accepted the token' : (res.status === 429 ? '⚠️ Rate limited' : '❌ HTTP ' + res.status);
-            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">' + entry.slot + '</span><code style="color:#cbd5e1;font-size:.78rem;">' + masked + '</code><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
-        } catch (e) {
-            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:#f87171;font-weight:700;">' + entry.slot + '</span><code style="color:#cbd5e1;font-size:.78rem;">' + masked + '</code><span style="color:#f87171;margin-left:auto;font-size:.78rem;">❌ Network or timeout</span></div>';
+            results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Secure server test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
         }
+    } catch (e) {
+        results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Secure image service unavailable.') + '</span>';
     }
-    var rows = await Promise.all(allKeys.map(pingCreatorImage));
-    results.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Image Tokens'; }
 }
 btn('aqs-test-creator-image-btn').addEventListener('click', _aqsTestCreatorImageKeys);

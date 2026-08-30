@@ -2169,7 +2169,17 @@ async function actionChUpdateSettings(data) {
 async function actionGetSettings() {
     try {
         var snap = await getDoc(doc(db, 'settings', 'main'));
-        if (snap.exists()) return { settings: snap.data() };
+        if (snap.exists()) {
+            var settings = snap.data();
+            /* Public pages may use non-secret AI settings, but the Creator
+               Studio image-token pool is read only by the server function.
+               Admin Settings opts in explicitly before loading this module. */
+            if (!window._AQS_ADMIN_SETTINGS_MODE) {
+                settings = Object.assign({}, settings);
+                delete settings.creator_image_keys;
+            }
+            return { settings: settings };
+        }
     } catch(_) {}
     return { settings: {} };
 }

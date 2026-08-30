@@ -58,9 +58,9 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
     .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
     .filter(function(k){ return typeof k === 'string' && k.length > 10; })
 );
-/* Dedicated Hugging Face pool for Creator Studio image generation.
-   Values are loaded from Admin Settings at runtime; no token is committed. */
-window._AQS_CREATOR_IMAGE_KEYS = window._AQS_CREATOR_IMAGE_KEYS || [];
+/* Creator Studio image generation is server-side. Keep only non-secret
+   metadata in the browser; Hugging Face tokens stay in Firebase Admin SDK. */
+window._AQS_CREATOR_IMAGE_KEY_COUNT = window._AQS_CREATOR_IMAGE_KEY_COUNT || 0;
 window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'black-forest-labs/FLUX.1-schnell';
 
 /* ── Keys-ready promise ──────────────────────────────────────────────
@@ -83,6 +83,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
     var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
     var HF_IDX_KEY      = 'aqs_hf_key_idx';
     var CREATOR_IMAGE_IDX_KEY = 'aqs_creator_image_key_idx';
+    var CREATOR_IMAGE_FUNCTION_URL = window._AQS_CREATOR_IMAGE_FUNCTION_URL ||
+        'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
     var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
     var _creatorImageRateLimitedUntil = {};
 
@@ -150,8 +152,6 @@ window._aqsKeysReady = new Promise(function(resolve) {
     function _getGroqKeys()    { return _getKeys(window._AQS_GROQ_MASTER_KEYS, 20); }
     function _getMistralKeys() { return _getKeys(window._AQS_MISTRAL_MASTER_KEYS, 20); }
     function _getHFKeys()      { return _getKeys(window._AQS_HF_MASTER_KEYS, 10); }
-    function _getCreatorImageKeys() { return _getKeys(window._AQS_CREATOR_IMAGE_KEYS, 10); }
-
     /* ── Generic provider fetch ──────────────────────────────────────── */
     async function _providerFetch(url, keys, idxKey, bodyObj, extraOpts, modelOverride) {
         if (!keys.length) return null;
@@ -197,17 +197,6 @@ window._aqsKeysReady = new Promise(function(resolve) {
             window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
     }
 
-    function _creatorImageKeyHash(k) { return k ? k.slice(-8) : '?'; }
-    function _creatorImageIsRateLimited(k) {
-        return (_creatorImageRateLimitedUntil[_creatorImageKeyHash(k)] || 0) > Date.now();
-    }
-    function _creatorImageMarkRateLimited(k) {
-        _creatorImageRateLimitedUntil[_creatorImageKeyHash(k)] = Date.now() + RL_COOLDOWN_MS;
-    }
-    function _creatorImageModelUrl(model) {
-        return 'https://api-inference.huggingface.co/models/' +
-            String(model || 'black-forest-labs/FLUX.1-schnell').split('/').map(encodeURIComponent).join('/');
-    }
     function _creatorImageDimensions(aspectRatio) {
         if (aspectRatio === 'square') return { width: 1024, height: 1024 };
         if (aspectRatio === 'portrait') return { width: 576, height: 1024 };
@@ -221,77 +210,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
         return String(prompt || '').trim() + '. ' + quality +
             '. Negative prompt: bad hands, extra fingers, deformed limbs, fused body parts, extra arms, low quality, pixelated, distorted faces.';
     }
-    async function _creatorImageGenerate(input) {
-        if (!_getCreatorImageKeys().length && window._aqsKeysReady) {
-            await window._aqsKeysReady;
-        }
-        var keys = _getCreatorImageKeys();
-        var dimensions = _creatorImageDimensions(input.aspectRatio);
-        var prompt = _creatorImagePrompt(input.prompt, input.category);
-        var model = window._AQS_CREATOR_IMAGE_MODEL || 'black-forest-labs/FLUX.1-schnell';
-
-        for (var attempt = 0; attempt < keys.length; attempt++) {
-            var start = _getIdx(CREATOR_IMAGE_IDX_KEY, keys);
-            var index = (start + attempt) % keys.length;
-            var key = _sanitizeKey(keys[index]);
-            if (_creatorImageIsRateLimited(key)) continue;
-            try {
-                var response = await fetch(_creatorImageModelUrl(model), {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                    body: JSON.stringify({
-                        inputs: prompt,
-                        parameters: {
-                            width: dimensions.width,
-                            height: dimensions.height,
-                            num_inference_steps: 4
-                        }
-                    }),
-                    signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(90000) : undefined
-                });
-                if (response.status === 429 || response.status === 503 || response.status === 504) {
-                    _creatorImageMarkRateLimited(key);
-                    _setIdx(CREATOR_IMAGE_IDX_KEY, index + 1, keys);
-                    continue;
-                }
-                if (response.status === 401 || response.status === 403) {
-                    _setIdx(CREATOR_IMAGE_IDX_KEY, index + 1, keys);
-                    continue;
-                }
-                if (!response.ok) {
-                    _setIdx(CREATOR_IMAGE_IDX_KEY, index + 1, keys);
-                    continue;
-                }
-                var blob = await response.blob();
-                if (!blob.type || blob.type.indexOf('image/') !== 0) {
-                    _setIdx(CREATOR_IMAGE_IDX_KEY, index + 1, keys);
-                    continue;
-                }
-                _setIdx(CREATOR_IMAGE_IDX_KEY, index + 1, keys);
-                return {
-                    id: 'creator-image-' + Date.now() + '-' + attempt,
-                    mediaType: 'image',
-                    url: URL.createObjectURL(blob),
-                    provider: 'huggingface image pool',
-                    prompt: String(input.prompt || '').trim(),
-                    createdAt: new Date().toISOString(),
-                    qualityNotes: [
-                        'Dedicated Creator Studio image-token pool used.',
-                        'Automatic quality and anatomy safeguards applied.'
-                    ].concat(input.inputImageDataUrl ? ['Reference attached; direct image generation used the prompt as guidance.'] : []),
-                    fallbackUsed: false
-                };
-            } catch (error) {
-                _setIdx(CREATOR_IMAGE_IDX_KEY, index + 1, keys);
-                _aqsLog('warn', 'Creator Studio image token ' + (index + 1) + ' failed: ' + (error.message || error));
-            }
-        }
-
-        /* Keep the integrated static page usable when all managed tokens are
-           unavailable. The full FastAPI deployment still handles its own
-           server-side fallback path. */
+    function _creatorImageFallback(input, dimensions, reason) {
         var fallbackSize = dimensions.width + 'x' + dimensions.height;
-        var fallbackUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) +
+        var fallbackPrompt = _creatorImagePrompt(input.prompt, input.category);
+        var fallbackUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(fallbackPrompt) +
             '?model=flux&width=' + dimensions.width + '&height=' + dimensions.height +
             '&nologo=true&enhance=true&seed=' + Math.floor(Math.random() * 1000000000);
         return {
@@ -301,9 +223,41 @@ window._aqsKeysReady = new Promise(function(resolve) {
             provider: 'pollinations',
             prompt: String(input.prompt || '').trim(),
             createdAt: new Date().toISOString(),
-            qualityNotes: ['Public fallback engine used because no managed image token succeeded.', 'Requested frame: ' + fallbackSize + '.'],
+            qualityNotes: ['Public fallback engine used because the secure image service was unavailable.', 'Requested frame: ' + fallbackSize + '.'].concat(reason ? [reason] : []),
             fallbackUsed: true
         };
+    }
+
+    async function _creatorImageGenerate(input) {
+        var dimensions = _creatorImageDimensions(input.aspectRatio);
+        var prompt = _creatorImagePrompt(input.prompt, input.category);
+        try {
+            var response = await fetch(CREATOR_IMAGE_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: String(input.prompt || '').trim(),
+                    category: input.category,
+                    aspectRatio: input.aspectRatio,
+                    inputImageDataUrl: input.inputImageDataUrl || null
+                }),
+                signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+            });
+            var body = await response.json().catch(function(){ return {}; });
+            if (response.status === 429) {
+                var quotaError = new Error(body.error || 'You have used all five image generations for this rolling 24-hour window.');
+                quotaError.code = 'QUOTA_EXHAUSTED';
+                throw quotaError;
+            }
+            if (!response.ok || !body.url) {
+                throw new Error(body.error || 'The secure image service is unavailable.');
+            }
+            return body;
+        } catch (error) {
+            if (error && error.code === 'QUOTA_EXHAUSTED') throw error;
+            _aqsLog('warn', 'Secure Creator Studio image service failed; using Pollinations fallback: ' + (error.message || error));
+            return _creatorImageFallback(input, dimensions, 'Secure provider route unavailable; no token was sent to the browser.');
+        }
     }
     window.aqsCreatorImageGenerate = _creatorImageGenerate;
 
@@ -374,8 +328,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
         try { localStorage.setItem(HF_IDX_KEY, '0'); localStorage.setItem('aqs_hf_saved_at', Date.now()); } catch(e){}
     };
     window.setCreatorImageKeys = function(arr) {
-        window._AQS_CREATOR_IMAGE_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 10; });
-        try { localStorage.setItem(CREATOR_IMAGE_IDX_KEY, '0'); localStorage.setItem('aqs_creator_image_saved_at', Date.now()); } catch(e){}
+        window._AQS_CREATOR_IMAGE_KEY_COUNT = Array.isArray(arr)
+            ? arr.filter(function(k){ return typeof k === 'string' && k.trim().length > 10; }).length
+            : 0;
+        try { localStorage.removeItem(CREATOR_IMAGE_IDX_KEY); localStorage.removeItem('aqs_creator_image_saved_at'); } catch(e){}
     };
 
     /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
@@ -423,10 +379,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 window.setHFKeys(s.hf_keys);
             }
             if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
-            /* Dedicated Creator Studio image-generation pool */
-            if (Array.isArray(s.creator_image_keys)) {
-                window.setCreatorImageKeys(s.creator_image_keys);
-            }
+            /* Never load Creator Studio image tokens into a public page.
+               The secure function reads them with the Admin SDK. */
             if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
 
             var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
