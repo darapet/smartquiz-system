@@ -176,6 +176,11 @@ window.addEventListener('DOMContentLoaded', function() {
             if (typeof window.setHFKeys === 'function') window.setHFKeys(hfkeys.filter(function(k){ return k && k.length > 10; }));
             window._AQS_HF_MODEL = s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3';
             setVal('aqs-hf-model', s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3');
+            /* Load the dedicated AI Creator Studio image-generation pool */
+            var creatorImageKeys = Array.isArray(s.creator_image_keys) ? s.creator_image_keys : [];
+            for (var cii = 1; cii <= 5; cii++) { setVal('aqs-creator-image-key-' + cii, creatorImageKeys[cii-1] || ''); }
+            window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model || 'black-forest-labs/FLUX.1-schnell';
+            setVal('aqs-creator-image-model', window._AQS_CREATOR_IMAGE_MODEL);
             /* Load ElevenLabs TTS keys */
             var elkeys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
             for (var ei = 1; ei <= 5; ei++) { setVal('aqs-el-key-' + ei, elkeys[ei-1] || ''); }
@@ -1318,6 +1323,55 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+<!-- AI Creator Studio Image Generation Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#ecfeff,#cffafe);">
+        <span class="aqs-settings-card-icon">🎨</span>
+        <div>
+            <h2 class="aqs-settings-card-title">AI Creator Studio — Image Generation Keys (up to 5)</h2>
+            <p class="aqs-settings-card-desc">Dedicated Hugging Face token pool for the <strong>Creator Studio</strong> image mode. These tokens are separate from the text-AI fallback pool and rotate automatically when a token is rate-limited.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#155e75;">
+            🎨 <strong>How it works:</strong> Creator Studio tries these image tokens in round-robin order, cools down rate-limited tokens for 62 seconds, and uses the public fallback engine only when no image token succeeds. Add a token with image-generation access at <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 1 (Primary) <span id="aqs-creator-image-dot-1"></span></label>
+                <input type="password" id="aqs-creator-image-key-1" placeholder="hf_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 2 <span id="aqs-creator-image-dot-2"></span></label>
+                <input type="password" id="aqs-creator-image-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 3 <span id="aqs-creator-image-dot-3"></span></label>
+                <input type="password" id="aqs-creator-image-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 4 <span id="aqs-creator-image-dot-4"></span></label>
+                <input type="password" id="aqs-creator-image-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 5 <span id="aqs-creator-image-dot-5"></span></label>
+                <input type="password" id="aqs-creator-image-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-creator-image-model">Image Model</label>
+                <input type="text" id="aqs-creator-image-model" value="black-forest-labs/FLUX.1-schnell" placeholder="black-forest-labs/FLUX.1-schnell" autocomplete="off" />
+                <p class="aqs-field-hint">Recommended: black-forest-labs/FLUX.1-schnell.</p>
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-creator-image-btn" style="background:#0891b2;border-color:#0e7490;color:#fff;">🎨 Save Creator Studio Image Keys</button>
+            <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#0f766e;color:#fff;border-color:#115e59;">🧪 Test Image Tokens</button>
+            <span id="aqs-creator-image-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-creator-image-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
 <!-- Gemini TTS Keys -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
@@ -1894,6 +1948,68 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
     }, 'aqs-hf-status', this, '🤗 Save HuggingFace Settings');
     for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-hf-dot-' + ci); if (d) d.textContent = ''; }
 });
+
+btn('aqs-save-creator-image-btn').addEventListener('click', function(){
+    var creatorImageKeys = [];
+    for (var cii = 1; cii <= 5; cii++) {
+        var ciel = document.getElementById('aqs-creator-image-key-' + cii);
+        if (ciel && ciel.value.trim().length > 10) creatorImageKeys.push(ciel.value.trim());
+    }
+    var creatorImageModelEl = document.getElementById('aqs-creator-image-model');
+    var creatorImageModel = creatorImageModelEl && creatorImageModelEl.value.trim()
+        ? creatorImageModelEl.value.trim()
+        : 'black-forest-labs/FLUX.1-schnell';
+    if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(creatorImageKeys);
+    window._AQS_CREATOR_IMAGE_MODEL = creatorImageModel;
+    saveSettings('/api/settings', {
+        creator_image_keys: creatorImageKeys,
+        creator_image_model: creatorImageModel
+    }, 'aqs-creator-image-status', this, '🎨 Save Creator Studio Image Keys');
+    for (var cdi = 1; cdi <= 5; cdi++) {
+        var cd = document.getElementById('aqs-creator-image-dot-' + cdi);
+        if (cd) cd.textContent = '';
+    }
+});
+
+async function _aqsTestCreatorImageKeys() {
+    var allKeys = [];
+    for (var cti = 1; cti <= 5; cti++) {
+        var ctel = document.getElementById('aqs-creator-image-key-' + cti);
+        if (ctel && ctel.value.trim().length > 10) allKeys.push({ slot: 'Token ' + cti, key: ctel.value.trim() });
+    }
+    var results = document.getElementById('aqs-creator-image-test-results');
+    var testBtn = document.getElementById('aqs-test-creator-image-btn');
+    if (!results) return;
+    results.style.display = 'block';
+    if (!allKeys.length) {
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, then click Test.</span>';
+        return;
+    }
+    var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell';
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' image token(s)…</div>';
+    async function pingCreatorImage(entry) {
+        var masked = entry.key.slice(0, 5) + '…' + entry.key.slice(-4);
+        var modelPath = model.split('/').map(encodeURIComponent).join('/');
+        try {
+            var res = await fetch('https://api-inference.huggingface.co/models/' + modelPath, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + entry.key },
+                body: JSON.stringify({ inputs: 'A simple blue circle on a clean white background', parameters: { width: 256, height: 256, num_inference_steps: 4 } }),
+                signal: AbortSignal.timeout(30000)
+            });
+            var color = res.ok ? '#4ade80' : (res.status === 429 ? '#fbbf24' : '#f87171');
+            var status = res.ok ? '✅ Image endpoint accepted the token' : (res.status === 429 ? '⚠️ Rate limited' : '❌ HTTP ' + res.status);
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">' + entry.slot + '</span><code style="color:#cbd5e1;font-size:.78rem;">' + masked + '</code><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
+        } catch (e) {
+            return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:#f87171;font-weight:700;">' + entry.slot + '</span><code style="color:#cbd5e1;font-size:.78rem;">' + masked + '</code><span style="color:#f87171;margin-left:auto;font-size:.78rem;">❌ Network or timeout</span></div>';
+        }
+    }
+    var rows = await Promise.all(allKeys.map(pingCreatorImage));
+    results.innerHTML = '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Image Tokens'; }
+}
+btn('aqs-test-creator-image-btn').addEventListener('click', _aqsTestCreatorImageKeys);
 
 async function _aqsTestHFKeys() {
     var allKeys = [];

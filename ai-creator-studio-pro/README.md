@@ -17,9 +17,15 @@ python -m pip install -r api/requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8080 --app-dir api
 ```
 
-Configure `HF_API_KEYS` as a comma-separated server-side secret for Hugging
-Face image generation and photo editing. Do not place provider keys in the
-static page or commit them to the repository.
+For the integrated SmartQuiz page, enter up to five image-generation tokens in
+**Admin Settings → AI Creator Studio — Image Generation Keys**. The shared
+Firebase settings loader supplies that dedicated pool to the image mode, which
+rotates tokens and cools down rate-limited tokens automatically.
+
+For the separate FastAPI deployment, configure `HF_API_KEYS` as a
+comma-separated server-side secret for Hugging Face image generation and photo
+editing. Do not place provider keys in the static page or commit them to the
+repository.
 
 The service provides:
 

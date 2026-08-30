@@ -2182,6 +2182,7 @@ async function actionSaveSettings(data) {
         'groq_keys','groq_model',
         'mistral_keys','mistral_model',
         'hf_keys','hf_model',
+        'creator_image_keys','creator_image_model',
         'bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
@@ -2226,6 +2227,13 @@ async function actionSaveSettings(data) {
     /* Trim and validate HuggingFace keys (up to 5) before saving */
     if (Array.isArray(payload.hf_keys)) {
         payload.hf_keys = payload.hf_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 10; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Creator Studio image-generation tokens (up to 5) */
+    if (Array.isArray(payload.creator_image_keys)) {
+        payload.creator_image_keys = payload.creator_image_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 10; })
             .slice(0, 5);
@@ -2277,6 +2285,10 @@ async function actionSaveSettings(data) {
         window._AQS_HF_MASTER_KEYS = _hfMerged;
     }
     if (payload.hf_model) window._AQS_HF_MODEL = payload.hf_model;
+    if (payload.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = payload.creator_image_model;
+    if (Array.isArray(payload.creator_image_keys) && payload.creator_image_keys.length) {
+        if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(payload.creator_image_keys);
+    }
     /* Immediately load library keys into the dedicated library pool */
     if (Array.isArray(payload.lib_groq_keys) && payload.lib_groq_keys.length) {
         if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(payload.lib_groq_keys);
