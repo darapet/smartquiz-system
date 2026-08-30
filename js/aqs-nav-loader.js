@@ -175,10 +175,18 @@
       var hasStudyHub = false;
       var hasChallenge = false;
       var hasLibrary = false;
+      var hasCreatorStudio = false;
 
       links.forEach(function (link) {
-        var href = (link.getAttribute('href') || '').replace(/^.*\//, '').replace(/\?.*$/, '');
-        if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+        var rawHref = (link.getAttribute('href') || '').replace(/\?.*$/, '');
+        var href = rawHref.replace(/^.*\//, '');
+        var creatorStudioLink = rawHref === 'ai-creator-studio-pro' ||
+          rawHref === 'ai-creator-studio-pro/' ||
+          rawHref === 'ai-creator-studio-pro/index.html';
+        if (creatorStudioLink) {
+          primary.push(link);
+          hasCreatorStudio = true;
+        } else if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
             href === 'challenge.html' || href === 'library.html') {
           primary.push(link);
           if (href === 'studyhub.html') hasStudyHub = true;
@@ -220,6 +228,15 @@
         link.textContent = item.label;
         primary.push(link);
       });
+      if (!hasCreatorStudio) {
+        var creatorStudio = document.createElement('a');
+        creatorStudio.href = 'ai-creator-studio-pro/';
+        creatorStudio.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        creatorStudio.style.cssText = 'color:#0f766e;font-weight:700;';
+        creatorStudio.textContent = 'Creator Studio';
+        primary.push(creatorStudio);
+      }
 
       primary.forEach(function (link) { nav.insertBefore(link, auth || null); });
       if (!secondary.length) return;
@@ -275,6 +292,7 @@
     'library':        'Library',
     'library-upload': 'Library Upload',
     'library-read':   'Library',
+    'ai-creator-studio-pro': 'Creator Studio',
   };
 
   document.addEventListener('click', function (e) {
@@ -289,7 +307,9 @@
 
     var slug = href.replace(/\?.*$/, '').replace(/#.*$/, '')
                    .replace(/\.html$/, '').replace(/^.*\//, '');
-    var label = PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
+    var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1;
+    var label = isCreatorStudio ? PAGE_LABELS['ai-creator-studio-pro'] :
+      PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
     show(label + '…');
   }, true);
 
