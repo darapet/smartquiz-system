@@ -204,12 +204,15 @@ window._aqsKeysReady = new Promise(function(resolve) {
         return { width: 1024, height: 576 };
     }
     function _creatorImagePrompt(prompt, category) {
-        var quality = 'high quality, clean composition, sharp details, professional lighting, anatomy-safe';
-        if (category === 'logo' || category === 'banner') {
-            quality += ', flat vector design, clean lines, centered layout, white background';
-        }
-        return String(prompt || '').trim() + '. ' + quality +
-            '. Negative prompt: bad hands, extra fingers, deformed limbs, fused body parts, extra arms, low quality, pixelated, distorted faces.';
+        var brief = String(prompt || '').replace(/\s+/g, ' ').trim();
+        var direction = {
+            logo: 'Design a clean, scalable logo mark with one clear focal symbol and intentional negative space. Use a plain background. Do not invent a brand name or lettering unless the brief explicitly requests it.',
+            banner: 'Design a deliberate banner composition with a strong focal subject, readable visual hierarchy, and intentional open space where the brief implies it. Do not add unrelated objects or text.',
+            avatar: 'Create one centered avatar subject with a clear silhouette, readable face or emblem, and a simple uncluttered background. Do not add extra people or competing subjects.',
+            general: 'Create one coherent scene or composition. Keep the main subject, object count, setting, colors, and action exactly aligned with the brief.'
+        }[category] || 'Create one coherent scene or composition.';
+        return 'Faithful image interpretation. Primary brief: "' + brief + '". ' + direction +
+            ' Preserve the specific nouns, relationships, colors, mood, and constraints in the brief. High detail, crisp edges, natural anatomy, intentional composition.';
     }
     function _creatorImageClientId() {
         try {
@@ -244,7 +247,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
         var fallbackPrompt = _creatorImagePrompt(input.prompt, input.category);
         var fallbackUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(fallbackPrompt) +
             '?model=flux&width=' + dimensions.width + '&height=' + dimensions.height +
-            '&nologo=true&enhance=true&seed=' + Math.floor(Math.random() * 1000000000);
+            '&nologo=true&enhance=false&negative_prompt=' + encodeURIComponent('extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text') +
+            '&seed=' + Math.floor(Math.random() * 1000000000);
         var result = {
             id: 'creator-image-fallback-' + Date.now(),
             mediaType: 'image',

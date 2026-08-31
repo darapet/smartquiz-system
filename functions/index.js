@@ -166,14 +166,19 @@ function dimensionsFor(aspectRatio) {
 }
 
 function enhancedCreatorImagePrompt(prompt, category) {
-  const categoryNote = category === 'logo' || category === 'banner'
-    ? ', flat vector design, clean lines, centered layout, white background'
-    : '';
-  return `${String(prompt || '').trim()}. high quality, clean composition, sharp details, professional lighting, anatomy-safe${categoryNote}. Negative prompt: bad hands, extra fingers, deformed limbs, fused body parts, extra arms, low quality, pixelated, distorted faces.`;
+  const brief = String(prompt || '').replace(/\s+/g, ' ').trim();
+  const direction = {
+    logo: 'Design a clean, scalable logo mark with one clear focal symbol and intentional negative space. Use a plain background. Do not invent a brand name or lettering unless the brief explicitly requests it.',
+    banner: 'Design a deliberate banner composition with a strong focal subject, readable visual hierarchy, and intentional open space where the brief implies it. Do not add unrelated objects or text.',
+    avatar: 'Create one centered avatar subject with a clear silhouette, readable face or emblem, and a simple uncluttered background. Do not add extra people or competing subjects.',
+    general: 'Create one coherent scene or composition. Keep the main subject, object count, setting, colors, and action exactly aligned with the brief.',
+  }[category] || 'Create one coherent scene or composition.';
+  return `Faithful image interpretation. Primary brief: "${brief}". ${direction} Preserve the specific nouns, relationships, colors, mood, and constraints in the brief. High detail, crisp edges, natural anatomy, intentional composition.`;
 }
 
 function pollinationsUrl(prompt, dimensions) {
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=${dimensions.width}&height=${dimensions.height}&nologo=true&enhance=true&seed=${Math.floor(Math.random() * 1000000000)}`;
+  const negativePrompt = 'extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text';
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=${dimensions.width}&height=${dimensions.height}&nologo=true&enhance=false&negative_prompt=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000000)}`;
 }
 
 function ownerKey(request, clientId) {
@@ -268,7 +273,12 @@ async function generateWithCreatorImagePool(prompt, dimensions, keys, model) {
         },
         body: JSON.stringify({
           inputs: prompt,
-          parameters: { width: dimensions.width, height: dimensions.height, num_inference_steps: 4 },
+          parameters: {
+            width: dimensions.width,
+            height: dimensions.height,
+            num_inference_steps: 4,
+            negative_prompt: 'extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text',
+          },
         }),
       });
 
