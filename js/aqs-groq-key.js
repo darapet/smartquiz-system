@@ -135,6 +135,20 @@ window._aqsKeysReady = new Promise(function(resolve) {
         _aqsLog('warn', 'key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
     }
 
+    /* ── Dead-key quarantine: revoked/expired/disabled keys (401/403/invalid) ──
+       Skipped for 30 min so a bad key never gets retried every request. ────── */
+    var DEAD_KEY_TTL_MS = 30 * 60 * 1000;
+    var _deadKeyUntil = {};
+    function _isDeadKey(k) { return (_deadKeyUntil[_keyHash(k)] || 0) > Date.now(); }
+    function _markDeadKey(k, why) {
+        _deadKeyUntil[_keyHash(k)] = Date.now() + DEAD_KEY_TTL_MS;
+        _aqsLog('error', 'key ...' + _keyHash(k) + ' marked dead (' + why + '); skipped for 30 min');
+    }
+    function _isInvalidKeyBody(txt) {
+        if (!txt) return false;
+        return /invalid[_ ]api[_ ]key|invalid_api_key|incorrect api key|api key not valid|authentication/i.test(txt);
+    }
+
     /* ── Key pool helpers ────────────────────────────────────────────── */
     function _getKeys(arr, minLen) {
         return Array.isArray(arr) ? arr.filter(function(k){ return k && k.length >= (minLen||20); }) : [];
@@ -163,6 +177,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
         for (var attempt = 0; attempt < keys.length; attempt++) {
             var idx = (startIdx + attempt) % keys.length;
             var key = _sanitizeKey ? _sanitizeKey(keys[idx]) : (keys[idx] || '').trim();
+            if (_isDeadKey(key)) {
+                _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' dead key — skip');
+                _setIdx(idxKey, idx + 1, keys); continue;
+            }
             if (_isRateLimited(key)) {
                 _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' cooling — skip');
                 _setIdx(idxKey, idx + 1, keys); continue;
@@ -175,6 +193,20 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 }));
                 if (res.status === 413) { _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — 413 payload too large, skipping key'); _setIdx(idxKey, idx + 1, keys); continue; }
                 if (res.status === 429) { _markRateLimited(key); _setIdx(idxKey, idx + 1, keys); continue; }
+                if (res.status === 401 || res.status === 403) {
+                    _markDeadKey(key, res.status); _setIdx(idxKey, idx + 1, keys); continue;
+                }
+                if (res.status === 400) {
+                    var _txt400 = await res.clone().text().catch(function(){ return ''; });
+                    if (_isInvalidKeyBody(_txt400)) { _markDeadKey(key, 'invalid_api_key'); _setIdx(idxKey, idx + 1, keys); continue; }
+                    /* genuine request error — return to caller untouched */
+                    _setIdx(idxKey, idx + 1, keys);
+                    return res;
+                }
+                if (res.status >= 500) {
+                    _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — upstream ' + res.status + ', trying next key');
+                    _setIdx(idxKey, idx + 1, keys); continue;
+                }
                 _setIdx(idxKey, idx + 1, keys);
                 return res;
             } catch(e) {
