@@ -97,11 +97,20 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
 
         var model       = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
         var mBody       = Object.assign({}, bodyObj, { model: model });
+        /* Dead-key quarantine: revoked/expired keys skipped for 30 min */
+        if (!window._aqsDeadKeys) window._aqsDeadKeys = {};
+        var _deadKeys = window._aqsDeadKeys;
+        var DEAD_KEY_TTL_MS = 30 * 60 * 1000;
+        function _isDead(k){ return (_deadKeys[k.slice(-8)]||0) > Date.now(); }
+        function _markDead(k,w){ _deadKeys[k.slice(-8)] = Date.now() + DEAD_KEY_TTL_MS; console.warn('[keyPool] dead key ...'+k.slice(-8)+' ('+w+')'); }
+        function _badBody(t){ return !!t && /invalid[_ ]api[_ ]key|invalid_api_key|incorrect api key|api key not valid|authentication/i.test(t); }
+
         var startIdx    = _getIdx();
 
         for (var attempt = 0; attempt < keys.length; attempt++) {
             var idx = (startIdx + attempt) % keys.length;
             var key = keys[idx];
+            if (_isDead(key)) { _setIdx(idx + 1); continue; }
             if (_isRateLimited(key)) {
                 console.warn('[mistralFetch] slot', idx + 1, 'cooling down — skip');
                 _setIdx(idx + 1); continue;
@@ -113,6 +122,13 @@ window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat
                     body:    JSON.stringify(mBody)
                 }));
                 if (res.status === 429) { _markRateLimited(key); _setIdx(idx + 1); continue; }
+                if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(idx + 1); continue; }
+                if (res.status === 400) {
+                    var _t = await res.clone().text().catch(function(){ return ''; });
+                    if (_badBody(_t)) { _markDead(key, 'invalid_api_key'); _setIdx(idx + 1); continue; }
+                    _setIdx(idx + 1); return res;
+                }
+                if (res.status >= 500) { _setIdx(idx + 1); continue; }
                 _setIdx(idx + 1);
                 return res;
             } catch(e) {
