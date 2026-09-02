@@ -58,6 +58,10 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
     .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
     .filter(function(k){ return typeof k === 'string' && k.length > 10; })
 );
+/* Creator Studio image generation is server-side. Keep only non-secret
+   metadata in the browser; Hugging Face tokens stay in Firebase Admin SDK. */
+window._AQS_CREATOR_IMAGE_KEY_COUNT = window._AQS_CREATOR_IMAGE_KEY_COUNT || 0;
+window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'black-forest-labs/FLUX.1-schnell';
 
 /* ── Keys-ready promise ──────────────────────────────────────────────
    Resolves once the Firebase auto-loader has finished (or after a
@@ -78,7 +82,12 @@ window._aqsKeysReady = new Promise(function(resolve) {
     var GROQ_IDX_KEY    = 'aqs_groq_key_idx';
     var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
     var HF_IDX_KEY      = 'aqs_hf_key_idx';
+    var CREATOR_IMAGE_IDX_KEY = 'aqs_creator_image_key_idx';
+    var CREATOR_IMAGE_CLIENT_ID_KEY = 'aqs_creator_image_client_id';
+    var CREATOR_IMAGE_FUNCTION_URL = window._AQS_CREATOR_IMAGE_FUNCTION_URL ||
+        'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
     var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
+    var _creatorImageRateLimitedUntil = {};
 
     /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
     var _rateLimitedUntil = {};
@@ -126,6 +135,20 @@ window._aqsKeysReady = new Promise(function(resolve) {
         _aqsLog('warn', 'key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
     }
 
+    /* ── Dead-key quarantine: revoked/expired/disabled keys (401/403/invalid) ──
+       Skipped for 30 min so a bad key never gets retried every request. ────── */
+    var DEAD_KEY_TTL_MS = 30 * 60 * 1000;
+    var _deadKeyUntil = {};
+    function _isDeadKey(k) { return (_deadKeyUntil[_keyHash(k)] || 0) > Date.now(); }
+    function _markDeadKey(k, why) {
+        _deadKeyUntil[_keyHash(k)] = Date.now() + DEAD_KEY_TTL_MS;
+        _aqsLog('error', 'key ...' + _keyHash(k) + ' marked dead (' + why + '); skipped for 30 min');
+    }
+    function _isInvalidKeyBody(txt) {
+        if (!txt) return false;
+        return /invalid[_ ]api[_ ]key|invalid_api_key|incorrect api key|api key not valid|authentication/i.test(txt);
+    }
+
     /* ── Key pool helpers ────────────────────────────────────────────── */
     function _getKeys(arr, minLen) {
         return Array.isArray(arr) ? arr.filter(function(k){ return k && k.length >= (minLen||20); }) : [];
@@ -144,7 +167,6 @@ window._aqsKeysReady = new Promise(function(resolve) {
     function _getGroqKeys()    { return _getKeys(window._AQS_GROQ_MASTER_KEYS, 20); }
     function _getMistralKeys() { return _getKeys(window._AQS_MISTRAL_MASTER_KEYS, 20); }
     function _getHFKeys()      { return _getKeys(window._AQS_HF_MASTER_KEYS, 10); }
-
     /* ── Generic provider fetch ──────────────────────────────────────── */
     async function _providerFetch(url, keys, idxKey, bodyObj, extraOpts, modelOverride) {
         if (!keys.length) return null;
@@ -155,6 +177,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
         for (var attempt = 0; attempt < keys.length; attempt++) {
             var idx = (startIdx + attempt) % keys.length;
             var key = _sanitizeKey ? _sanitizeKey(keys[idx]) : (keys[idx] || '').trim();
+            if (_isDeadKey(key)) {
+                _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' dead key — skip');
+                _setIdx(idxKey, idx + 1, keys); continue;
+            }
             if (_isRateLimited(key)) {
                 _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' cooling — skip');
                 _setIdx(idxKey, idx + 1, keys); continue;
@@ -167,6 +193,20 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 }));
                 if (res.status === 413) { _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — 413 payload too large, skipping key'); _setIdx(idxKey, idx + 1, keys); continue; }
                 if (res.status === 429) { _markRateLimited(key); _setIdx(idxKey, idx + 1, keys); continue; }
+                if (res.status === 401 || res.status === 403) {
+                    _markDeadKey(key, res.status); _setIdx(idxKey, idx + 1, keys); continue;
+                }
+                if (res.status === 400) {
+                    var _txt400 = await res.clone().text().catch(function(){ return ''; });
+                    if (_isInvalidKeyBody(_txt400)) { _markDeadKey(key, 'invalid_api_key'); _setIdx(idxKey, idx + 1, keys); continue; }
+                    /* genuine request error — return to caller untouched */
+                    _setIdx(idxKey, idx + 1, keys);
+                    return res;
+                }
+                if (res.status >= 500) {
+                    _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — upstream ' + res.status + ', trying next key');
+                    _setIdx(idxKey, idx + 1, keys); continue;
+                }
                 _setIdx(idxKey, idx + 1, keys);
                 return res;
             } catch(e) {
@@ -178,7 +218,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
     async function _groqFetch(bodyObj, extraOpts) {
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_GROQ_MODEL || 'llama-3.3-70b-versatile');
+            window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -189,6 +229,121 @@ window._aqsKeysReady = new Promise(function(resolve) {
         return _providerFetch(HF_URL, _getHFKeys(), HF_IDX_KEY, bodyObj, extraOpts,
             window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
     }
+
+    function _creatorImageDimensions(aspectRatio) {
+        if (aspectRatio === 'square') return { width: 1024, height: 1024 };
+        if (aspectRatio === 'portrait') return { width: 576, height: 1024 };
+        return { width: 1024, height: 576 };
+    }
+    function _creatorImagePrompt(prompt, category) {
+        var brief = String(prompt || '').replace(/\s+/g, ' ').trim();
+        var direction = {
+            logo: 'Design a clean, scalable logo mark with one clear focal symbol and intentional negative space. Use a plain background. Do not invent a brand name or lettering unless the brief explicitly requests it.',
+            banner: 'Design a deliberate banner composition with a strong focal subject, readable visual hierarchy, and intentional open space where the brief implies it. Do not add unrelated objects or text.',
+            avatar: 'Create one centered avatar subject with a clear silhouette, readable face or emblem, and a simple uncluttered background. Do not add extra people or competing subjects.',
+            general: 'Create one coherent scene or composition. Keep the main subject, object count, setting, colors, and action exactly aligned with the brief.'
+        }[category] || 'Create one coherent scene or composition.';
+        return 'Faithful image interpretation. Primary brief: "' + brief + '". ' + direction +
+            ' Preserve the specific nouns, relationships, colors, mood, and constraints in the brief. High detail, crisp edges, natural anatomy, intentional composition.';
+    }
+    function _creatorImageClientId() {
+        try {
+            var existing = localStorage.getItem(CREATOR_IMAGE_CLIENT_ID_KEY);
+            if (existing) return existing;
+            var created = (window.crypto && window.crypto.randomUUID)
+                ? window.crypto.randomUUID()
+                : 'client-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            localStorage.setItem(CREATOR_IMAGE_CLIENT_ID_KEY, created);
+            return created;
+        } catch(e) {
+            return 'session-' + Date.now();
+        }
+    }
+    function _creatorImageLocalHistory() {
+        try {
+            var raw = JSON.parse(localStorage.getItem('aqs_creator_image_history') || '[]');
+            return Array.isArray(raw) ? raw.filter(function(item){ return item && item.url; }).slice(0, 12) : [];
+        } catch(e) {
+            return [];
+        }
+    }
+    function _saveCreatorImageLocalHistory(result) {
+        if (!result || !result.url) return;
+        try {
+            var history = [result].concat(_creatorImageLocalHistory().filter(function(item){ return item.id !== result.id; })).slice(0, 12);
+            localStorage.setItem('aqs_creator_image_history', JSON.stringify(history));
+        } catch(e) {}
+    }
+    function _creatorImageFallback(input, dimensions, reason) {
+        var fallbackSize = dimensions.width + 'x' + dimensions.height;
+        var fallbackPrompt = _creatorImagePrompt(input.prompt, input.category);
+        var fallbackUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(fallbackPrompt) +
+            '?model=flux&width=' + dimensions.width + '&height=' + dimensions.height +
+            '&nologo=true&enhance=false&negative_prompt=' + encodeURIComponent('extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text') +
+            '&seed=' + Math.floor(Math.random() * 1000000000);
+        var result = {
+            id: 'creator-image-fallback-' + Date.now(),
+            mediaType: 'image',
+            url: fallbackUrl,
+            provider: 'pollinations',
+            prompt: String(input.prompt || '').trim(),
+            createdAt: new Date().toISOString(),
+            qualityNotes: ['Public fallback engine used because the secure image service was unavailable.', 'Requested frame: ' + fallbackSize + '.'].concat(reason ? [reason] : []),
+            fallbackUsed: true
+        };
+        _saveCreatorImageLocalHistory(result);
+        return result;
+    }
+
+    async function _creatorImageGenerate(input) {
+        var dimensions = _creatorImageDimensions(input.aspectRatio);
+        var prompt = _creatorImagePrompt(input.prompt, input.category);
+        try {
+            var response = await fetch(CREATOR_IMAGE_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: String(input.prompt || '').trim(),
+                    category: input.category,
+                    aspectRatio: input.aspectRatio,
+                    inputImageDataUrl: input.inputImageDataUrl || null,
+                    clientId: _creatorImageClientId()
+                }),
+                signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+            });
+            var body = await response.json().catch(function(){ return {}; });
+            if (response.status === 429) {
+                var quotaError = new Error(body.error || 'You have used all five image generations for this rolling 24-hour window.');
+                quotaError.code = 'QUOTA_EXHAUSTED';
+                throw quotaError;
+            }
+            if (!response.ok || !body.url) {
+                throw new Error(body.error || 'The secure image service is unavailable.');
+            }
+            return body;
+        } catch (error) {
+            if (error && error.code === 'QUOTA_EXHAUSTED') throw error;
+            _aqsLog('warn', 'Secure Creator Studio image service failed; using Pollinations fallback: ' + (error.message || error));
+            return _creatorImageFallback(input, dimensions, 'Secure provider route unavailable; no token was sent to the browser.');
+        }
+    }
+    window.aqsCreatorImageGenerate = _creatorImageGenerate;
+    window.aqsCreatorImageList = async function() {
+        var localHistory = _creatorImageLocalHistory();
+        try {
+            var response = await fetch(CREATOR_IMAGE_FUNCTION_URL + '?clientId=' + encodeURIComponent(_creatorImageClientId()), {
+                method: 'GET'
+            });
+            if (!response.ok) return localHistory;
+            var remoteHistory = await response.json().catch(function(){ return []; });
+            if (!Array.isArray(remoteHistory)) return localHistory;
+            return remoteHistory.concat(localHistory.filter(function(localItem) {
+                return !remoteHistory.some(function(remoteItem){ return remoteItem.id === localItem.id; });
+            })).slice(0, 12);
+        } catch(e) {
+            return localHistory;
+        }
+    };
 
     /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
      *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
@@ -256,6 +411,12 @@ window._aqsKeysReady = new Promise(function(resolve) {
         window._AQS_HF_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 10; });
         try { localStorage.setItem(HF_IDX_KEY, '0'); localStorage.setItem('aqs_hf_saved_at', Date.now()); } catch(e){}
     };
+    window.setCreatorImageKeys = function(arr) {
+        window._AQS_CREATOR_IMAGE_KEY_COUNT = Array.isArray(arr)
+            ? arr.filter(function(k){ return typeof k === 'string' && k.trim().length > 10; }).length
+            : 0;
+        try { localStorage.removeItem(CREATOR_IMAGE_IDX_KEY); localStorage.removeItem('aqs_creator_image_saved_at'); } catch(e){}
+    };
 
     /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
     window.getGroqKey  = function(){ return _getGroqKeys()[0] || ''; };
@@ -287,7 +448,9 @@ window._aqsKeysReady = new Promise(function(resolve) {
             if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
                 window.setGroqKeys(s.groq_keys);
             }
-            if (s.groq_model) window._AQS_GROQ_MODEL = s.groq_model;
+            var _savedGroqModel = s.groq_model;
+            var _retiredGroqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
+            window._AQS_GROQ_MODEL = _savedGroqModel && _retiredGroqModels.indexOf(_savedGroqModel) === -1 ? _savedGroqModel : 'openai/gpt-oss-20b';
 
             /* Mistral */
             if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
@@ -300,6 +463,9 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 window.setHFKeys(s.hf_keys);
             }
             if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+            /* Never load Creator Studio image tokens into a public page.
+               The secure function reads them with the Admin SDK. */
+            if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
 
             var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
                       + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
@@ -340,8 +506,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
 /* ═══════════════════════════════════════════════════════════════════
    FEATURE-SPECIFIC GROQ KEY POOLS
    Each app feature has its own isolated 10-slot Groq key pool.
-   Pools auto-load from Firebase admin settings. Feature pools marked noFallback=true
-   will NOT fall back to the main pool — they throw a clear error instead.
+   Pools auto-load from Firebase admin settings. Quiz generation additionally
+   falls back to the shared Mistral pool when Groq is unavailable.
    Exposed as: window.quizGroqFetch, window.challengeGroqFetch, etc.
 ═══════════════════════════════════════════════════════════════════ */
 (function () {
@@ -386,10 +552,19 @@ window._aqsKeysReady = new Promise(function(resolve) {
                             });
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
+                            if (id === 'quiz' && !res.ok && typeof window._mistralFetchDirect === 'function') {
+                                var mistralRes = await window._mistralFetchDirect(bodyObj);
+                                if (mistralRes) return mistralRes;
+                            }
                             _setIdx(at + 1);
                             return res;
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
+                }
+                /* Groq slots are empty or rate-limited: use Mistral for quizzes. */
+                if (id === 'quiz' && typeof window._mistralFetchDirect === 'function') {
+                    var fallbackRes = await window._mistralFetchDirect(bodyObj);
+                    if (fallbackRes) return fallbackRes;
                 }
                 /* Own keys exhausted or empty */
                 if (!opts.noFallback && typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
