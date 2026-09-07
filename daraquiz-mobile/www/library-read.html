@@ -1,6 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script defer src="capacitor-bridge.js"></script>
+<script src="js/aqs-capacitor-speech.js"></script>
+<script defer src="js/aqs-update-check.js"></script>
+<script defer src="js/aqs-whats-new.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#080910">
@@ -262,10 +267,13 @@ html,body{height:100%;overflow:hidden;}
 }
 .rdr-comment-input:focus{border-color:rgba(99,102,241,.4);}
 .rdr-comment-submit{
-  width:100%;padding:10px;border-radius:9px;border:none;
+  width:100%;padding:11px;border-radius:9px;border:none;
   background:linear-gradient(135deg,#6366f1,#8b5cf6);
   color:#fff;font-size:.85rem;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:16px;
+  transition:opacity .18s,transform .18s;display:flex;align-items:center;justify-content:center;gap:6px;
 }
+.rdr-comment-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.rdr-comment-submit:disabled{opacity:.45;cursor:not-allowed;transform:none;}
 
 /* Comment items with replies */
 .rdr-ci{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px 14px;margin-bottom:8px;}
@@ -289,7 +297,9 @@ html,body{height:100%;overflow:hidden;}
 .rdr-reply-form{margin-top:8px;display:none;}
 .rdr-reply-inp{width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:7px;padding:7px 10px;color:#e2e8f0;font-size:.78rem;font-family:inherit;outline:none;resize:none;min-height:46px;transition:border-color .18s;}
 .rdr-reply-inp:focus{border-color:rgba(99,102,241,.4);}
-.rdr-reply-submit{margin-top:4px;padding:5px 12px;border-radius:7px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;}
+.rdr-reply-submit{margin-top:4px;padding:6px 14px;border-radius:7px;border:none;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer;font-family:inherit;transition:opacity .18s,transform .15s;display:inline-flex;align-items:center;gap:4px;}
+.rdr-reply-submit:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}
+.rdr-reply-submit:disabled{opacity:.45;cursor:not-allowed;}
 
 @media(max-width:580px){
   .rdr-hdr-acts .hide-mob{display:none;}
@@ -324,7 +334,7 @@ html,body{height:100%;overflow:hidden;}
   <span class="rdr-book-title" id="rdr-title">Loading…</span>
   <div class="rdr-hdr-acts">
     <a href="dashboard.html" class="rdr-hbtn hide-mob">🏠 Home</a>
-    <button class="rdr-hbtn ac hide-mob" onclick="openPanel('ai')">✨ Explain</button>
+    <button class="rdr-hbtn ac" onclick="openPanel('ai')">✨ Explain</button>
     <button class="rdr-hbtn ac" onclick="openPanel('mcq')">🎯 Quiz</button>
     <button class="rdr-hbtn" id="rdr-share-btn" onclick="shareBook()">🔗 Share</button>
     <button class="rdr-hbtn" id="rdr-back-btn" onclick="goBack()">← Back</button>
@@ -435,7 +445,7 @@ html,body{height:100%;overflow:hidden;}
   window.nextPage  = function(){};
 })();
 </script>
-<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 <script type="module" src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/aqs-library.js"></script>
 <script type="module">
@@ -499,6 +509,8 @@ html,body{height:100%;overflow:hidden;}
 
       if(_book.parsedUrl){
         await loadParsed(_book.parsedUrl);
+      } else if(_book.externalTextUrl){
+        await loadExternalText(_book.externalTextUrl);
       } else if(_book.fileUrl){
         await loadPdfFallback(_book.fileUrl);
       } else {
@@ -532,6 +544,24 @@ html,body{height:100%;overflow:hidden;}
       if(_book.fileUrl) await loadPdfFallback(_book.fileUrl);
       else showErr('Could not load content.');
     }
+  }
+
+  /* ── Public-domain text supplied by an approved external source ── */
+  async function loadExternalText(url){
+    try{
+      const res=await fetch(url);
+      if(!res.ok) throw new Error('fetch failed');
+      const text=await res.text();
+      if(!text.trim()) throw new Error('empty text');
+      const chunks=[];
+      const size=6500;
+      for(let i=0;i<text.length;i+=size) chunks.push({text:text.slice(i,i+size)});
+      _pages=chunks;_total=chunks.length;showPage(1);
+      const source=document.createElement('div');
+      source.style.cssText='padding:10px 24px;color:#64748b;font-size:.7rem;text-align:center;';
+      source.innerHTML='Public-domain edition from <a href="'+url+'" target="_blank" rel="noopener" style="color:#a5b4fc">Project Gutenberg ↗</a>';
+      document.getElementById('rdr-content').before(source);
+    }catch(e){showErr('Could not load the public-domain text.<br><a href="'+url+'" target="_blank" rel="noopener" style="color:#a5b4fc">Open original ↗</a>');}
   }
 
   /* ── PDF.js fallback ── */
@@ -708,26 +738,22 @@ html,body{height:100%;overflow:hidden;}
       body.innerHTML=`
         <div style="font-size:.8rem;color:#64748b;margin-bottom:14px;line-height:1.7">Generate 10 multiple-choice questions based on this document.</div>
         <button class="rdr-panel-btn" id="p-mcq-btn" onclick="doMCQ()">🎯 Generate Questions</button>
-        <div id="p-score-live" style="display:none;margin-bottom:12px;padding:10px 16px;background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2);border-radius:10px;align-items:center;justify-content:space-between;">
-          <span style="font-size:.8rem;color:#94a3b8;font-weight:600;">Score so far:</span>
-          <span id="p-score-live-num" style="font-size:1.1rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">0 / 0</span>
-        </div>
         <div class="rdr-mcq-wrap" id="p-mcq-wrap">
           <div id="p-mcq-qs"></div>
           <div class="rdr-score" id="p-score">
             <div class="rdr-score-num" id="p-score-num">0/10</div>
-            <div class="rdr-score-lbl" id="p-score-lbl">Practice complete!</div>
+            <div class="rdr-score-lbl">Practice complete!</div>
             <button class="rdr-panel-btn" style="margin-top:14px" onclick="resetMCQ()">↺ Try Again</button>
           </div>
         </div>`;
     } else if(panel==='comments'){
-      title.textContent='💬 Feedback';
+      title.textContent='💬 Comments';
       body.innerHTML=(_user?`
         <div style="margin-bottom:14px">
           <textarea class="rdr-comment-input" id="p-cmnt-inp" placeholder="Share your thoughts or ask a question…" rows="3"></textarea>
-          <button class="rdr-comment-submit" onclick="submitComment()">Post Feedback</button>
+          <button class="rdr-comment-submit" onclick="submitComment()">Comment</button>
         </div>`:`<div style="font-size:.8rem;color:#64748b;margin-bottom:14px;padding:10px;background:rgba(255,255,255,.03);border-radius:8px;border:1px solid rgba(255,255,255,.06);">
-          <a href="login.html" style="color:#a5b4fc;font-weight:700">Sign in</a> to leave feedback
+          <a href="login.html" style="color:#a5b4fc;font-weight:700">Sign in</a> to comment
         </div>`)+
         `<div id="p-cmnt-list"><div style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">Loading…</div></div>`;
       loadComments();
@@ -782,25 +808,12 @@ html,body{height:100%;overflow:hidden;}
     btn.disabled=false;btn.innerHTML='🎯 Generate Questions';
   };
   function renderMCQ(){
-    const liveBar=document.getElementById('p-score-live');
-    if(liveBar){liveBar.style.display='none';}
-    const qs=document.getElementById('p-mcq-qs');
-    qs.innerHTML=_mcqData.map(function(q,qi){
+    document.getElementById('p-mcq-qs').innerHTML=_mcqData.map(function(q,qi){
       return`<div class="rdr-mcq-q" id="mcq-q-${qi}">
         <div class="rdr-mcq-qt">${qi+1}. ${q.q}</div>
-        <div class="rdr-mcq-opts">${q.opts.map(function(opt,oi){return`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${esc(opt)}</button>`;}).join('')}</div>
+        <div class="rdr-mcq-opts">${q.opts.map(function(opt,oi){return`<button class="rdr-mcq-opt" onclick="answerMCQ(${qi},${oi})" id="mcq-opt-${qi}-${oi}">${opt}</button>`;}).join('')}</div>
       </div>`;
     }).join('');
-    if(typeof renderMathInElement!=='undefined'){
-      renderMathInElement(qs,{delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false},{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});
-    }
-  }
-  function updateLiveScore(){
-    const liveBar=document.getElementById('p-score-live');
-    const liveNum=document.getElementById('p-score-live-num');
-    if(!liveBar||!liveNum) return;
-    liveBar.style.display='flex';
-    liveNum.textContent=_mcqScore+' / '+_mcqAnswered;
   }
   window.answerMCQ=function(qi,oi){
     const q=_mcqData[qi];
@@ -814,17 +827,8 @@ html,body{height:100%;overflow:hidden;}
     });
     if(oi===q.ans) _mcqScore++;
     _mcqAnswered++;
-    updateLiveScore();
     if(_mcqAnswered>=_mcqData.length){
-      const pct=Math.round((_mcqScore/_mcqData.length)*100);
-      const grade=pct>=80?'🏆 Excellent!':pct>=60?'👍 Good job!':pct>=40?'📚 Keep studying':'💪 Keep practising!';
-      setTimeout(function(){
-        document.getElementById('p-score-num').textContent=_mcqScore+' / '+_mcqData.length;
-        document.getElementById('p-score-lbl').textContent=grade+' ('+pct+'%)';
-        document.getElementById('p-score').style.display='block';
-        const liveBar=document.getElementById('p-score-live');
-        if(liveBar) liveBar.style.display='none';
-      },600);
+      setTimeout(function(){document.getElementById('p-score-num').textContent=_mcqScore+' / '+_mcqData.length;document.getElementById('p-score').style.display='block';},600);
     }
   };
   window.resetMCQ=function(){_mcqScore=0;_mcqAnswered=0;document.getElementById('p-score').style.display='none';renderMCQ();};
@@ -834,7 +838,7 @@ html,body{height:100%;overflow:hidden;}
     const el=document.getElementById('p-cmnt-list');
     try{
       const list=await window.libGetComments(bookId);
-      if(!list.length){el.innerHTML='<div data-empty style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No feedback yet. Be the first!</div>';return;}
+      if(!list.length){el.innerHTML='<div data-empty style="color:#64748b;font-size:.82rem;text-align:center;padding:24px">No comments yet. Be the first!</div>';return;}
       el.innerHTML=list.map(function(c,ci){
         const avHtml=c.photoURL?`<img src="${c.photoURL}" alt="">`:
           `<span style="font-size:.6rem;font-weight:800;">${window.libInitials(c.displayName||'?')}</span>`;
@@ -844,7 +848,7 @@ html,body{height:100%;overflow:hidden;}
             <div class="rdr-ci-author">${c.displayName||'Anonymous'}</div>
             <div class="rdr-ci-time">${window.libFormatTime(c.createdAt)}</div>
           </div>
-          <div class="rdr-ci-text">${c.text}</div>
+          <div class="rdr-ci-text">${esc(c.text)}</div>
           <div class="rdr-ci-actions">
             ${_user?`<button class="rdr-ci-reply-btn" onclick="toggleReply('${c.id}',this)">↩ Reply</button>`:''}
           </div>
@@ -879,7 +883,7 @@ html,body{height:100%;overflow:hidden;}
           <span class="rdr-reply-author${r.isHost?' host':''}">${r.displayName||'Anonymous'}</span>
           ${r.isHost?`<span class="rdr-host-badge">HOST</span>`:''}
         </div>
-        <div class="rdr-reply-text">${r.text}</div>
+        <div class="rdr-reply-text">${esc(r.text)}</div>
       </div>`;
     }).join('');
   }
@@ -909,7 +913,7 @@ html,body{height:100%;overflow:hidden;}
     btn.disabled=true;btn.textContent='Posting…';
 
     const list=document.getElementById('p-cmnt-list');
-    /* Remove "no feedback yet" placeholder if present */
+    /* Remove "no comments yet" placeholder if present */
     const emptyMsg=list.querySelector('[data-empty]');
     if(emptyMsg) emptyMsg.remove();
 
@@ -931,14 +935,14 @@ html,body{height:100%;overflow:hidden;}
 
     try{
       await window.libAddComment(bookId,_user.uid,name,_user.photoURL||'',text);
-      window.libToast('✓ Feedback posted!');
+      window.libToast('✓ Comment posted!');
     }catch(e){
       /* Roll back on failure */
       document.getElementById(tempId)?.remove();
       inp.value=text;
       window.libToast('Error: '+e.message);
     }
-    btn.disabled=false;btn.textContent='Post Feedback';
+    btn.disabled=false;btn.textContent='Comment';
   };
 
   /* Signal that module functions (openPanel etc.) are ready */

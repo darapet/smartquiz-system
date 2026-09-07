@@ -3,39 +3,6 @@
 (function () {
     'use strict';
 
-  /* ── CAPACITOR SPEECH GUARD ──────────────────────────────────────────────────
-     window.webkitSpeechRecognition / window.speechSynthesis exist in Android
-     WebView but crash or silently fail inside Capacitor when used. This block
-     runs first inside the IIFE and makes every existing  if (!SpeechRec) guard
-     in this file fire correctly — voice is disabled gracefully, not crashed.   */
-  (function () {
-      var _isNative = !!(window.Capacitor &&
-          typeof window.Capacitor.isNativePlatform === 'function' &&
-          window.Capacitor.isNativePlatform());
-      if (!_isNative) return;
-      /* Nullify broken Speech Recognition */
-      try { Object.defineProperty(window, 'SpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.SpeechRecognition = null; }
-      try { Object.defineProperty(window, 'webkitSpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.webkitSpeechRecognition = null; }
-      /* Wrap speechSynthesis.speak() — prevents UI freezing when voice list empty */
-      if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') {
-          var _orig = window.speechSynthesis.speak.bind(window.speechSynthesis);
-          window.speechSynthesis.speak = function (utt) {
-              try {
-                  var vs = window.speechSynthesis.getVoices();
-                  if (vs.length === 0) {
-                      var done = false;
-                      var go = function () { if (done) return; done = true; try { _orig(utt); } catch (e2) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} } };
-                      window.speechSynthesis.addEventListener('voiceschanged', go);
-                      setTimeout(go, 2000);
-                  } else { _orig(utt); }
-              } catch (e) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} }
-          };
-      }
-  })();
-  
-
     var cfg        = window.DTS_CONFIG || {};
     var messages   = [];          // current conversation messages
     var isStreaming = false;
@@ -82,7 +49,8 @@
         '4. If asked what AI you are or what powers you: say ONLY "I am xzily, an AI created by xzily omomo excellence (Darapet Technology). I keep my technical architecture private — what matters is what I can do for you!"\n' +
         '5. When asked how you compare to other AIs: say that xzily is one of the best new AI assistants — fast, smart, built with excellence by Darapet Technology.\n' +
         '6. NEVER say "As an AI language model", "I was trained by", or any phrase revealing a third-party AI.\n' +
-        '7. Give zero hints about underlying technology — no speculation, no "I might be based on..."';
+        '7. Give zero hints about underlying technology — no speculation, no "I might be based on...\n\n## DARAPET TECHNOLOGY — CONTACT INFORMATION:\n- Company: Darapet Technology\n- Email: daramolapeter98@gmail.com\n- WhatsApp: +234 7055428581\n- LinkedIn: www.linkedin.com/in/daramola-peter-7122152b5\n- When asked about contacting Darapet Technology, the developer, or support, always provide all the above contact details.';
+
 
     /* =========================================================
        INIT
@@ -102,18 +70,21 @@
          ─────────────────────────────────────────────────────────
            1. PRIMARY: Groq direct (fast, best quality) — used only
               when a Groq API key is configured in settings.
-           2. FALLBACK: server proxy (aqs_studio_ai action).
+           2. FALLBACK A: server proxy (aqs_studio_ai action).
+           3. FALLBACK B: Pollinations AI direct from browser —
+              completely free, NO API key needed. Always available.
+         Steps 2 & 3 race simultaneously so there is no wait delay.
       =========================================================== */
     var voiceKeepAlive    = null; /* interval that keeps Chrome from pausing mid-utterance */
-    var currentStudioAudio = null; /* active Audio element for studio TTS */
+    var currentStudioAudio = null; /* Pollinations audio element for studio TTS */
 
     /* ── Groq browser call — auto-retries with next key on 429 ── */
     async function callGroq(apiMessages) {
-        if (typeof window.groqFetch !== 'function') return null;
+        if (typeof window.quizstudioGroqFetch !== 'function') return null;
         try {
             var ctrl = new AbortController();
             var tid  = setTimeout(function () { ctrl.abort(); }, 20000);
-            var res  = await window.groqFetch({
+            var res  = await window.quizstudioGroqFetch({
                 model:       'llama-3.1-8b-instant',
                 messages:    apiMessages,
                 max_tokens:  2048,
@@ -161,13 +132,49 @@
         }
     }
 
-    /* ── AI call — sequential: Groq → proxy ── */
+    /* ── Pollinations direct (no key required — last resort fallback) ── */
+    async function callPollinations(apiMessages) {
+        var models = ['openai', 'mistral', 'llama'];
+        for (var mi = 0; mi < models.length; mi++) {
+            try {
+                var ctrl = new AbortController();
+                var tid  = setTimeout(function () { ctrl.abort(); }, 30000);
+                var res  = await fetch('https://text.pollinations.ai/openai', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal:  ctrl.signal,
+                    body: JSON.stringify({
+                        messages:    apiMessages,
+                        model:       models[mi],
+                        max_tokens:  1024,
+                        temperature: 0.7,
+                        private:     true
+                    })
+                });
+                clearTimeout(tid);
+                if (!res.ok) { console.warn('[daraquiz] Pollinations HTTP', res.status, 'model', models[mi]); continue; }
+                var data = await res.json();
+                var text = (data.choices && data.choices[0] && data.choices[0].message)
+                           ? data.choices[0].message.content.trim() : '';
+                if (text) return text;
+            } catch (e) {
+                console.warn('[daraquiz] Pollinations model', models[mi], 'failed:', e.message || e);
+            }
+        }
+        return null;
+    }
+
+    /* ── AI call — sequential: Groq → Pollinations → proxy ── */
     async function raceAI(apiMessages) {
         /* 1. Groq direct — fastest & best quality (key saved via 🔑 button) */
         var groqResult = await callGroq(apiMessages);
         if (groqResult) return groqResult;
 
-        /* 2. Server proxy — fallback */
+        /* 2. Pollinations direct — free, no key, works from browser immediately */
+        var pollResult = await callPollinations(apiMessages);
+        if (pollResult) return pollResult;
+
+        /* 3. Server proxy — last resort only */
         var proxyResult = await callViaProxy(apiMessages);
         if (proxyResult) return proxyResult;
 
@@ -363,7 +370,13 @@
     function startNewChat() {
         messages      = [];
         currentChatId = null;
-        document.getElementById('dts-messages').innerHTML = '';
+        var _msgs   = document.getElementById('dts-messages');
+        var _typing = document.getElementById('dts-typing');
+        /* Rescue typing indicator before wiping innerHTML — otherwise it gets destroyed */
+        if (_typing && _msgs && _typing.parentNode === _msgs && _msgs.parentNode) {
+            _msgs.parentNode.insertBefore(_typing, _msgs.nextSibling);
+        }
+        if (_msgs) _msgs.innerHTML = '';
         var welcome = document.getElementById('dts-welcome');
         if (welcome) welcome.style.display = 'flex';
         /* Deselect history items */
@@ -487,12 +500,13 @@
                   cursorEl.remove();
                   bubbleEl.innerHTML = renderContent(text);
 
-                  /* Syntax-highlight code blocks */
+                  /* Syntax-highlight code blocks + per-block copy buttons */
                   if (typeof hljs !== 'undefined') {
                       bubbleEl.querySelectorAll('pre code').forEach(function (block) {
                           hljs.highlightElement(block);
                       });
                   }
+                  addCodeCopyButtons(bubbleEl);
 
                   /* Copy button — works on HTTPS and plain HTTP */
                   var actionsEl = document.createElement('div');
@@ -561,12 +575,13 @@
 
         if (role === 'ai') {
             bubbleEl.innerHTML = renderContent(content);
-            /* Syntax highlight code blocks */
+            /* Syntax highlight code blocks + per-block copy buttons */
             if (typeof hljs !== 'undefined') {
                 bubbleEl.querySelectorAll('pre code').forEach(function (block) {
                     hljs.highlightElement(block);
                 });
             }
+            addCodeCopyButtons(bubbleEl);
         } else {
             bubbleEl.textContent = content;
         }
@@ -1046,7 +1061,7 @@
          2. Start Listening button or auto-start
          3. User speaks; live interim transcript shown in overlay
          4. After natural pause (or 15 s max), recognition ends
-         5. Text sent to AI directly (Groq → proxy)
+         5. Text sent to AI directly (Groq → proxy → Pollinations)
          6. AI response read aloud via SpeechSynthesis
          7. Loop back to step 2 automatically
     ========================================================= */
@@ -1224,8 +1239,26 @@
             voiceRecog     = null;
             if (!voiceActive) return;
             if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
-                setVoiceState('error');
-                setVoiceTranscript('Microphone access denied.\nPlease allow microphone in browser settings.');
+                /* On Android/Capacitor: permission may not be ready yet.
+                   Request it via getUserMedia to trigger the native dialog,
+                   then retry recognition automatically. */
+                setVoiceState('idle');
+                setVoiceTranscript('Requesting microphone access…');
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({ audio: true })
+                        .then(function(stream) {
+                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            setVoiceTranscript('Microphone granted — tap mic to speak.');
+                            voiceRestartTimer = setTimeout(startVoiceListening, 800);
+                        })
+                        .catch(function() {
+                            setVoiceState('error');
+                            setVoiceTranscript('Microphone denied.\nGo to Settings → Apps → DaraSmart → Permissions → enable Microphone.');
+                        });
+                } else {
+                    setVoiceState('error');
+                    setVoiceTranscript('Microphone not available on this device.');
+                }
             } else if (e.error === 'no-speech') {
                 /* Mobile mic recovers slower — give it extra time */
                 var micDelay = (navigator.maxTouchPoints > 0) ? 800 : 500;
@@ -1388,7 +1421,7 @@
             .substring(0, 1500);
     }
 
-    /* Browser TTS — voice synthesis for AI responses */
+    /* Browser TTS fallback — used only if Pollinations fails */
     function speakWithBrowserFallback(spoken, onDone) {
         if (!window.speechSynthesis) { voiceAiTalking = false; if (onDone) onDone(); return; }
         window.speechSynthesis.cancel();
@@ -1438,9 +1471,31 @@
         return chunks.filter(function(c) { return c.length > 0; });
     }
 
-    /* ── TTS: always use browser speech synthesis ── */
-    function fetchStudioAudioBlob() {
-        return Promise.reject(new Error('External TTS not available'));
+    /* ── Fetch one TTS chunk from Pollinations, trying voices in order ─ */
+    function fetchStudioAudioBlob(chunk, voices, timeoutMs) {
+        var voice = voices[0];
+        var rest  = voices.slice(1);
+        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
+        var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
+                  '?model=openai-audio&voice=' + voice + '&nologo=true&v=' + cacheBust;
+        var ctrl = new AbortController();
+        var tid  = setTimeout(function() { ctrl.abort(); }, timeoutMs || 12000);
+        return fetch(url, { signal: ctrl.signal, cache: 'no-store' })
+            .then(function(r) {
+                clearTimeout(tid);
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.blob();
+            })
+            .then(function(blob) {
+                /* Reject suspiciously tiny responses — API returned error body */
+                if (!blob || blob.size < 100) throw new Error('Empty blob');
+                return blob;
+            })
+            .catch(function(e) {
+                clearTimeout(tid);
+                if (rest.length) return fetchStudioAudioBlob(chunk, rest, timeoutMs);
+                throw e;
+            });
     }
 
     function speakVoiceResponse(text, onDone) {
@@ -1484,7 +1539,8 @@
 
             var chunk = chunks[idx++];
 
-            /* Try audio blob with fallback voices */
+            /* Try onyx first (most reliable male voice on Pollinations),
+               then echo, then shimmer — ensures audio always plays      */
             fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 12000)
                 .then(function(blob) {
                     if (!voiceAiTalking) { finish(); return; }
@@ -1536,7 +1592,7 @@
                 })
                 .catch(function() {
                     if (!voiceAiTalking) { finish(); return; }
-                    /* Audio unavailable — browser TTS for rest */
+                    /* All Pollinations voices failed — browser TTS for rest */
                     fallbackRemaining();
                 });
         }
@@ -1588,14 +1644,49 @@
     /* =========================================================
        UTILITIES
     ========================================================= */
+    function addCodeCopyButtons(containerEl) {
+        containerEl.querySelectorAll('pre').forEach(function (pre) {
+            if (pre.parentNode && pre.parentNode.classList.contains('dts-code-wrap')) return;
+            var wrap = document.createElement('div');
+            wrap.className = 'dts-code-wrap';
+            pre.parentNode.insertBefore(wrap, pre);
+            wrap.appendChild(pre);
+            var btn = document.createElement('button');
+            btn.className = 'dts-code-copy-btn';
+            btn.textContent = 'Copy';
+            btn.addEventListener('click', function (e) {
+                e.stopPropagation();
+                var codeEl = pre.querySelector('code');
+                var text   = codeEl ? (codeEl.innerText || codeEl.textContent) : (pre.innerText || pre.textContent);
+                function doFallback() {
+                    var ta = document.createElement('textarea');
+                    ta.value = text;
+                    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                    document.body.appendChild(ta);
+                    ta.focus(); ta.select();
+                    try { document.execCommand('copy'); btn.textContent = 'Copied!'; btn.classList.add('copied'); }
+                    catch (e2) { btn.textContent = 'Error'; }
+                    document.body.removeChild(ta);
+                    setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+                }
+                if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+                    navigator.clipboard.writeText(text).then(function () {
+                        btn.textContent = 'Copied!'; btn.classList.add('copied');
+                        setTimeout(function () { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+                    }).catch(doFallback);
+                } else { doFallback(); }
+            });
+            wrap.appendChild(btn);
+        });
+    }
+
     function showTyping(show) {
         var el   = document.getElementById('dts-typing');
         var msgs = document.getElementById('dts-messages');
         if (!el) return;
         if (show) {
-            /* Move indicator INSIDE the scrollable messages container
-               so it appears directly below the last sent message */
-            if (msgs && el.parentNode !== msgs) msgs.appendChild(el);
+            /* Always re-append to end so it stays below the LATEST message */
+            if (msgs) msgs.appendChild(el);
             el.style.display = 'flex';
             scrollToBottom();
         } else {

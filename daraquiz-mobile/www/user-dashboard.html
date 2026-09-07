@@ -1,10 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script defer src="capacitor-bridge.js"></script>
+<script src="js/aqs-capacitor-speech.js"></script>
+<script defer src="js/aqs-update-check.js"></script>
+<script defer src="js/aqs-whats-new.js"></script>
+
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>My Profile — xzily AI</title>
-<script src="js/aqs-nav-loader.js"></script>
 <link rel="stylesheet" href="css/aqs-style.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -49,16 +53,6 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 /* Loading skeleton */
 .udash-skeleton{background:linear-gradient(90deg,#f1f5f9 0%,#e2e8f0 50%,#f1f5f9 100%);background-size:200% 100%;animation:udash-shimmer 1.5s infinite;border-radius:8px;height:16px;margin:8px 0;}
 @keyframes udash-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-/* Avatar upload */
-.aqs-avatar-wrap{position:relative;cursor:pointer;border-radius:50%;display:inline-flex;flex-shrink:0;width:56px;height:56px;}
-.aqs-avatar-wrap:hover .aqs-avatar-cam{background:#3730a3;}
-.aqs-avatar-cam{position:absolute;bottom:-2px;right:-2px;width:20px;height:20px;background:#4f46e5;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.62rem;border:2px solid #fff;line-height:1;transition:background .15s;}
-.aqs-avatar-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;font-size:.75rem;color:#fff;font-weight:700;}
-.aqs-avatar-wrap:hover .aqs-avatar-overlay{display:flex;}
-.aqs-avatar-spinner-wrap{position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;}
-.aqs-avatar-spinner-wrap.active{display:flex;}
-.aqs-avatar-spinner{width:20px;height:20px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:_ava-spin .7s linear infinite;}
-@keyframes _ava-spin{to{transform:rotate(360deg)}}
 /* Responsive */
 @media(max-width:768px){
   .aqs-hdr-nav{display:none;}
@@ -86,7 +80,8 @@ window.AQS = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
+  <script src="js/aqs-nav-loader.js"></script>
 </head>
 <body>
 <header class="aqs-site-header">
@@ -118,15 +113,7 @@ window.AQS = {
   <!-- Profile Header -->
   <div class="aqs-user-topbar">
     <div class="aqs-user-topbar-left">
-      <div class="aqs-avatar-wrap" id="aqs-avatar-wrap" title="Tap to change photo" aria-label="Change profile photo">
-        <div class="aqs-avatar" id="aqs-user-avatar-initial">?</div>
-        <div class="aqs-avatar-overlay">📷</div>
-        <div class="aqs-avatar-cam">📷</div>
-        <div class="aqs-avatar-spinner-wrap" id="aqs-avatar-spinner-wrap"><div class="aqs-avatar-spinner"></div></div>
-        <!-- File input sits directly on top of the avatar so the tap is a trusted gesture on Android WebView -->
-        <input type="file" id="aqs-avatar-file-input" accept="image/*"
-               style="position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border-radius:50%;z-index:10;">
-      </div>
+      <div class="aqs-avatar" id="aqs-user-avatar-initial">?</div>
       <div>
         <div class="aqs-user-name" id="aqs-user-display-name">Loading…</div>
         <div class="aqs-user-role-badge" id="aqs-user-role-badge">Member</div>
@@ -182,7 +169,11 @@ window.AQS = {
       <div class="udash-quick-name">Study AI</div>
       <div class="udash-quick-desc">Study any subject with AI help</div>
     </a>
-    <!-- Image Generator removed -->
+    <a href="image-gen.html" class="udash-quick-card">
+      <div class="udash-quick-icon">🖼️</div>
+      <div class="udash-quick-name">Image Creator</div>
+      <div class="udash-quick-desc">Generate AI images with FLUX</div>
+    </a>
   </div>
 
 
@@ -203,7 +194,7 @@ window.AQS = {
   </div>
 
 
-  <!-- View All Quiz Activity — opens web version with token for seamless access -->
+  <!-- View All Quiz Activity link -->
   <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
     <div style="display:flex;align-items:center;gap:12px;">
       <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
@@ -220,44 +211,17 @@ window.AQS = {
 
 <script>
 (function(){
-    /* Wait for Firebase auth to fully resolve before loading any data.
-       Uses onAqsAuthChange which handles both the "already resolved" and
-       "still pending" cases without any polling or race conditions. */
-    function waitReady(fn){
-        function _go(){
-            if(typeof window.onAqsAuthChange === 'function'){
-                window.onAqsAuthChange(function(u){ if(u) fn(); });
-            } else {
-                document.addEventListener('aqs:firebase:ready', function(){
-                    window.onAqsAuthChange(function(u){ if(u) fn(); });
-                }, {once:true});
-            }
-        }
-        if(typeof jQuery !== 'undefined'){ _go(); }
-        else { document.addEventListener('DOMContentLoaded', _go); }
-    }
-
     /* Unwrap the {success, data} envelope that the Firebase jQuery patch adds */
     function unwrap(res){ return (res && res.data !== undefined) ? res.data : res; }
 
-    function setAvatarEl(avatarData, initial){
-        var el = document.getElementById('aqs-user-avatar-initial');
-        if(!el) return;
-        if(avatarData){
-            el.innerHTML = '<img src="'+avatarData+'" style="width:100%;height:100%;border-radius:50%;object-fit:cover;" alt="Photo">';
+    function waitReady(fn){
+        if(typeof window.onAqsAuthChange === 'function'){
+            window.onAqsAuthChange(fn);
         } else {
-            el.textContent = (initial||'U').charAt(0).toUpperCase();
+            document.addEventListener('aqs:firebase:ready', function(){
+                window.onAqsAuthChange(fn);
+            }, { once: true });
         }
-    }
-
-    function showToast(msg, ok){
-        var t = document.createElement('div');
-        t.textContent = msg;
-        t.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);'
-            +(ok===false?'background:#dc2626':'background:#1e293b')
-            +';color:#fff;padding:10px 22px;border-radius:30px;font-size:.87rem;font-weight:600;z-index:9999;white-space:nowrap;';
-        document.body.appendChild(t);
-        setTimeout(function(){ t.remove(); }, 3000);
     }
 
     function loadProfile(){
@@ -266,15 +230,15 @@ window.AQS = {
             if(!d) return;
             var name = d.name || '';
             if(name){
-                document.getElementById('aqs-user-display-name').textContent = 'Hello, '+name+'!';
-                document.getElementById('aqs-account-name').textContent      = name;
+                document.getElementById('aqs-user-avatar-initial').textContent = name.charAt(0).toUpperCase();
+                document.getElementById('aqs-user-display-name').textContent   = 'Hello, '+name+'!';
+                document.getElementById('aqs-account-name').textContent        = name;
                 AQS.current_user_name = name;
             }
-            setAvatarEl(d.avatar, name);
             if(d.email)    document.getElementById('aqs-account-email').textContent    = d.email;
             if(d.role){
-                document.getElementById('aqs-account-role').textContent    = d.role;
-                document.getElementById('aqs-user-role-badge').textContent = d.role;
+                document.getElementById('aqs-account-role').textContent      = d.role;
+                document.getElementById('aqs-user-role-badge').textContent   = d.role;
             }
             if(d.username) document.getElementById('aqs-account-username').textContent = '@'+d.username;
         }).catch(function(e){ console.warn('[udash] profile error', e); });
@@ -325,68 +289,21 @@ window.AQS = {
     document.getElementById('aqs-user-logout-btn').addEventListener('click', doLogout);
     document.getElementById('aqs-user-logout-btn2').addEventListener('click', doLogout);
 
-    /* ── Profile picture upload ── */
-    (function(){
-        var wrap  = document.getElementById('aqs-avatar-wrap');
-        var input = document.getElementById('aqs-avatar-file-input');
-        var spinner = document.getElementById('aqs-avatar-spinner-wrap');
-
-        function resizeAndUpload(file){
-            if(!file || !file.type.startsWith('image/')){ showToast('Please choose an image file.', false); return; }
-            var reader = new FileReader();
-            reader.onload = function(ev){
-                var img = new Image();
-                img.onload = function(){
-                    var SIZE = 200;
-                    var canvas = document.createElement('canvas');
-                    canvas.width = canvas.height = SIZE;
-                    var ctx = canvas.getContext('2d');
-                    /* Centre-crop to square */
-                    var s = Math.min(img.width, img.height);
-                    var sx = (img.width  - s) / 2;
-                    var sy = (img.height - s) / 2;
-                    ctx.drawImage(img, sx, sy, s, s, 0, 0, SIZE, SIZE);
-                    var dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-
-                    if(spinner) spinner.classList.add('active');
-                    jQuery.post(AQS.ajax_url, {action:'aqs_update_avatar', avatar: dataUrl})
-                        .then(function(res){
-                            var d = unwrap(res);
-                            setAvatarEl(dataUrl, AQS.current_user_name || '');
-                            showToast('Profile photo updated!');
-                        })
-                        .catch(function(e){
-                            showToast('Upload failed: ' + (e && e.message ? e.message : 'Try again.'), false);
-                        })
-                        .always(function(){
-                            if(spinner) spinner.classList.remove('active');
-                        });
-                };
-                img.src = ev.target.result;
-            };
-            reader.readAsDataURL(file);
+    waitReady(function(user){
+        if(!user){
+            document.getElementById('aqs-user-display-name').textContent = 'Please log in';
+            document.getElementById('aqs-user-avatar-initial').textContent = '?';
+            document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your activity.</p>';
+            return;
         }
-
-        if(input){
-            input.addEventListener('change', function(){
-                if(this.files && this.files[0]) resizeAndUpload(this.files[0]);
-                this.value = '';
-            });
-        }
-    })();
-
-    waitReady(function(){
         loadProfile();
         loadStats();
-
     });
 })();
 </script>
 <script src="js/aqs-main.js"></script>
 <script src="js/aqs-auth.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
-<script src="js/aqs-update-check.js"></script>
-<script src="js/aqs-whats-new.js"></script>
 <script src="js/aqs-session.js"></script>
 </body>
 </html>

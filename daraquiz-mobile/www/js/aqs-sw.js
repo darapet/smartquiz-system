@@ -1,5 +1,5 @@
 /* XZILY AI Studio — Service Worker */
-var CACHE = 'xzily-v5'; /* BUMPED: forces browser to discard all old cached JS/CSS files */
+var CACHE = 'xzily-v6' /* bumped: forces cache clear so updated JS files load */;
 var SHELL = [
     '/',
 ];

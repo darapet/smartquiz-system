@@ -28,6 +28,9 @@
             if (idx % 2 === 1) return chunk; /* already-delimited math — leave as-is */
 
             var c = chunk;
+            /* Convert common Unicode math glyphs into KaTeX so they do not
+               depend on a device font having the glyph (some Android builds
+               display missing glyphs as square boxes). */
             c = c.replace(/[±×÷≤≥≠≈∞πθαλβΔΣ]/g, function (symbol) {
                 var commands = {
                     '±':'\\pm', '×':'\\times', '÷':'\\div',
@@ -44,11 +47,12 @@
             /* "square root of (expr)" / "square root of X" */
             c = c.replace(/\bsquare\s+root\s+of\s+\(([^)]+)\)/gi, function (_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
             c = c.replace(/\bsquare\s+root\s+of\s+([A-Za-z0-9][A-Za-z0-9+\-*/^. ]*?)(?=[,.:;!?)\s]|$)/gi, function (_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
-            /* "the square root of" */
+            /* "the square root" without "of" — wrap whatever follows */
             c = c.replace(/\bthe\s+square\s+root\s+of\s+([A-Za-z0-9][A-Za-z0-9+\-*/^. ]*?)(?=[,.:;!?)\s]|$)/gi, function (_, i) { return '$\\sqrt{' + i.trim() + '}$'; });
 
-            /* "X squared" / "X cubed" */
+            /* "X squared" / "X^2 squared" */
             c = c.replace(/\b([A-Za-z0-9]+)\s+squared\b/gi, function (_, b) { return '$' + b + '^{2}$'; });
+            /* "X cubed" */
             c = c.replace(/\b([A-Za-z0-9]+)\s+cubed\b/gi,   function (_, b) { return '$' + b + '^{3}$'; });
 
             /* ── 1. Bare LaTeX commands that lack $ delimiters ─────────────────
@@ -225,9 +229,6 @@
                         _quizzesLoaded = true;
                         loadQuizzes();
                     } else {
-                        /* Auth returned null — on Android WebView, auth.currentUser can be null
-                           even when the user IS signed in (IndexedDB slow to initialise).
-                           Check localStorage for a stored UID; actionGetQuizzes handles it. */
                         var storedUid = '';
                         try { storedUid = localStorage.getItem('aqs_host_uid') || ''; } catch(_) {}
                         if (storedUid) {
@@ -245,7 +246,6 @@
                         window.onAqsAuthChange(_doLoad);
                     }, { once: true });
                 }
-                /* Safety net: if auth never resolves within 12 s, force-load using localStorage UID */
                 setTimeout(function() {
                     if (_quizzesLoaded) return;
                     var storedUid = '';
@@ -253,7 +253,7 @@
                     if (storedUid) {
                         _quizzesLoaded = true;
                         loadQuizzes();
-                    } else if ($('#aqs-quiz-list').find('.aqs-loading').length || ($('#aqs-quiz-list').html() || '').indexOf('Loading') !== -1) {
+                    } else if (($('#aqs-quiz-list').html() || '').indexOf('Loading') !== -1) {
                         $('#aqs-quiz-list').html('<p class="aqs-empty" style="text-align:center;padding:32px;color:#ef4444;">⚠️ Please <a href="login.html">log in</a> to view your quizzes.</p>');
                     }
                 }, 12000);
@@ -1206,10 +1206,15 @@
         results.forEach(function (r, i) {
             const cls  = r.is_correct ? 'aqs-correct' : 'aqs-incorrect';
             const icon = r.is_correct ? '✅' : '❌';
+            const written = r.type === 'short' || r.type === 'written' || r.type === 'german';
+            const participantAnswer = r.user_answer !== null
+                ? renderMath(written ? r.user_answer : r.options[r.user_answer])
+                : 'Not answered';
+            const correctAnswer = renderMath(written ? r.answer : r.options[r.correct]);
             html += `<div class="aqs-review-item ${cls}">
                 <p><strong>${icon} Q${i + 1}:</strong> ${renderMath(r.question)}</p>
-                <p>Participant's answer: <strong>${r.user_answer !== null ? renderMath(r.options[r.user_answer]) : 'Not answered'}</strong></p>
-                ${!r.is_correct ? `<p>Correct answer: <strong>${renderMath(r.options[r.correct])}</strong></p>` : ''}
+                <p>Participant's answer: <strong>${participantAnswer}</strong></p>
+                ${!r.is_correct ? `<p>Correct answer: <strong>${correctAnswer}</strong></p>` : ''}
                 ${r.explanation ? `<p class="aqs-explanation">💡 ${renderMath(r.explanation)}</p>` : ''}
             </div>`;
         });
@@ -1592,7 +1597,8 @@
             const secAttr   = secIdx !== undefined ? ' data-sec="' + secIdx + '"' : '';
             const hasMath   = typeof renderMath === 'function' && typeof katex !== 'undefined';
             const qPreview  = hasMath ? renderMath(q.question) : escHtml(q.question);
-            const optPreviews = q.options.map(function (opt) {
+            const optionsArr = Array.isArray(q.options) ? q.options : [];
+            const optPreviews = optionsArr.map(function (opt) {
                 return hasMath ? renderMath(opt) : escHtml(opt);
             });
             const expPreview = hasMath && q.explanation ? renderMath(q.explanation) : escHtml(q.explanation || '');
@@ -1611,7 +1617,7 @@
                     ) +
                 '</div>' +
                 '<div class="aqs-options-edit">' +
-                    q.options.map(function (opt, oi) {
+                    optionsArr.map(function (opt, oi) {
                         const optPrev = optPreviews[oi];
                         return '<div class="aqs-option-edit">' +
                             '<input type="radio" name="correct_' + globalIdx + '" class="aqs-correct-radio" data-qi="' + globalIdx + '" data-oi="' + oi + '" ' + (q.correct_answer_index === oi ? 'checked' : '') + ' title="Mark correct" />' +
@@ -2464,6 +2470,7 @@
         let timerInterval   = null;
         let secondsLeft     = 0;
         let quizSubmitted   = false;
+        let repickable      = {};  /* keys: question idx; true = answer can be changed on this question */
         let participantName = '';
         let customFormValues= {};
         let soundMuted      = false;
@@ -2861,9 +2868,24 @@
             const alreadyAnswered = userAnswers[idx] !== undefined;
             $('#aqs-answer-feedback').hide().removeClass('aqs-feedback-correct aqs-feedback-wrong');
 
-            /* Render options */
+            /* Written-answer questions use a text field instead of options. */
+            if (q.type === 'short' || q.type === 'written' || q.type === 'german') {
+                var existingText = alreadyAnswered ? (userAnswers[idx] || '') : '';
+                $('#aqs-options-list').html('<input class="aqs-written-answer" data-qi="' + idx + '" value="' +
+                    String(existingText).replace(/"/g, '&quot;') +
+                    '" placeholder="Type your answer here…" autocomplete="off">');
+                $('#aqs-options-list .aqs-written-answer').on('input', function () {
+                    userAnswers[idx] = $(this).val();
+                });
+                updateDots();
+                updateNav(idx);
+                return;
+            }
+
+            /* Render options — normalize to an array so malformed saved data doesn't crash the player */
+            const questionOptions = Array.isArray(q.options) ? q.options : [];
             let opts = '';
-            q.options.forEach(function (opt, oi) {
+            questionOptions.forEach(function (opt, oi) {
                 const letter = String.fromCharCode(65 + oi);
                 let cls      = '';
                 const answered = userAnswers[idx] !== undefined;
@@ -2875,7 +2897,7 @@
                         if (oi === userAnswers[idx]) cls = ' aqs-option-selected';
                     }
                 }
-                const locked = answered ? ' aqs-option-locked' : '';
+                const locked = answered && !repickable[idx] ? ' aqs-option-locked' : '';
                 opts += '<div class="aqs-option' + cls + locked + '" data-qi="' + idx + '" data-oi="' + oi + '">'
                     + '<span class="aqs-option-letter">' + letter + '</span>'
                     + '<span class="aqs-option-text">' + renderMath(opt) + '</span>'
@@ -2924,7 +2946,8 @@
             if (quizSubmitted) return;
             const qi = parseInt($(this).data('qi'));
             const oi = parseInt($(this).data('oi'));
-            if (userAnswers[qi] !== undefined) return;   // already answered
+            if (userAnswers[qi] !== undefined && !repickable[qi]) return;  // already answered
+              delete repickable[qi];  // consume repick token
 
             userAnswers[qi] = oi;
             clearTimeout(autoAdvTimer);
@@ -2945,6 +2968,12 @@
                 autoAdvTimer = setTimeout(function () {
                     if (!quizSubmitted) advanceAfterAnswer(qi);
                 }, 350);
+            }
+        });
+        $(document).on('keydown', '.aqs-written-answer', function (e) {
+            if (e.key === 'Enter' && currentQuestion < questions.length - 1) {
+                e.preventDefault();
+                showQuestion(currentQuestion + 1);
             }
         });
 
@@ -2969,9 +2998,16 @@
         /* Manual navigation (prev always works; next in single mode) */
         $(document).on('click', '.aqs-dot', function () { showQuestion(parseInt($(this).data('index'))); });
         $('#aqs-prev-btn').on('click', function () {
-            clearTimeout(autoAdvTimer);
-            if (currentQuestion > 0) showQuestion(currentQuestion - 1);
-        });
+              clearTimeout(autoAdvTimer);
+              if (currentQuestion > 0) {
+                  const isPractice  = quizData.mode === 'practice';
+                  const timeExpired = quizData.time_limit > 0 && secondsLeft <= 0;
+                  if (!isPractice && !timeExpired) {
+                      repickable[currentQuestion - 1] = true;
+                  }
+                  showQuestion(currentQuestion - 1);
+              }
+          });
         $('#aqs-next-btn').on('click', function () {
             clearTimeout(autoAdvTimer);
             if (currentQuestion < questions.length - 1) showQuestion(currentQuestion + 1);
@@ -3234,7 +3270,8 @@
                 master.connect(audioCtx.destination);
                 ambientNodes = [master];
 
-                /* Harmonic pads — 174 Hz (F3) + 396 Hz (G4) + 528 Hz (C5) */
+                /* Warm, slow-moving study chord: the old values were zero,
+                   which left only an inaudible noise layer. */
                 [[261.63, 0.045], [329.63, 0.032], [392.00, 0.028],
                  [523.25, 0.018], [261.90, 0.022], [329.95, 0.016]].forEach(function (pair) {
                     const freq = pair[0], vol = pair[1];

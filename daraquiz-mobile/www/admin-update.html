@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script defer src="capacitor-bridge.js"></script>
+<script src="js/aqs-capacitor-speech.js"></script>
+<script defer src="js/aqs-update-check.js"></script>
+<script defer src="js/aqs-whats-new.js"></script>
+
+<script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>App Update Manager — Admin</title>
@@ -94,7 +100,7 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 window.AQS={ajax_url:'firebase',nonce:'',home_url:'index.html',is_admin:true,plugin_url:'./'};
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 </head>
 <body>
 
@@ -387,6 +393,5 @@ document.addEventListener('DOMContentLoaded', function() {
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-auth.js"></script>
 <script src="js/aqs-session.js"></script>
-<script src="capacitor-bridge.js"></script>
 </body>
 </html>

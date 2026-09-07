@@ -16,7 +16,7 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithCredential,
+    signInWithPopup,
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -68,10 +68,24 @@ const auth = getAuth(app);
 var _isCapacitorNative = typeof window !== 'undefined'
     && typeof window.Capacitor !== 'undefined'
     && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-const db = _isCapacitorNative
-    ? initializeFirestore(app, { experimentalForceLongPolling: true })
-    : getFirestore(app);
+/* Some mobile networks and corporate/ISP proxies break the Firestore
+   WebChannel transport. Long-polling is slower, but it works over ordinary
+   HTTPS and avoids the VPN-only failure mode. */
+let db;
+try {
+    db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+    });
+} catch (firestoreInitError) {
+    /* A second initialization can happen in embedded WebViews. Keep the
+       fallback so the rest of the app can still use the existing instance. */
+    console.warn('[AQS Firebase] Long-polling initialization fallback:', firestoreInitError);
+    db = getFirestore(app);
+}
 const rtdb = getDatabase(app);
+window._aqsFirebaseReady = true;
+window._aqsFirebaseTransport = 'long-polling';
 
 /* ── Base URL helper: works on GitHub Pages subfolders ──
    e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
@@ -530,69 +544,47 @@ async function actionRegister(data) {
      Uses Google Identity Services (GIS) token client + signInWithCredential.
      This bypasses Firebase Hosting entirely — no /__/firebase/init.json needed.
      Works on GitHub Pages, any static host, any domain. */
-  function actionSocialLogin(data) {
-      var provider = data.provider || 'google';
-      if (provider !== 'google') return Promise.reject(new Error('Unsupported social provider: ' + provider));
+async function actionSocialLogin(data) {
+    var providerName = data.provider || 'google';
+    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
 
-      return new Promise(function(resolve, reject) {
-          if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-              reject(new Error('Google Sign-In is loading — please wait a moment and try again.'));
-              return;
-          }
-          var tokenClient = google.accounts.oauth2.initTokenClient({
-              client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
-              scope: 'email profile openid',
-              callback: async function(tokenResponse) {
-                  if (tokenResponse.error) {
-                      reject(new Error(tokenResponse.error_description || tokenResponse.error));
-                      return;
-                  }
-                  try {
-                      var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
-                      var result     = await signInWithCredential(auth, credential);
-                      var user       = result.user;
+    /* Use Firebase's provider flow so the Firebase authorized-domain list is
+       the only browser-origin configuration required on Cloudflare. */
+    var result = await signInWithPopup(auth, new GoogleAuthProvider());
+    var user = result.user;
+    var profileRef = doc(db, 'users', user.uid);
+    var profileDoc = await getDoc(profileRef);
+    var profile;
 
-                      var profileRef = doc(db, 'users', user.uid);
-                      var profileDoc = await getDoc(profileRef);
-                      var profile;
+    if (profileDoc.exists()) {
+        profile = profileDoc.data();
+        await updateDoc(profileRef, { last_login: serverTimestamp() });
+    } else {
+        var displayName = user.displayName || '';
+        var emailLocal = (user.email || '').split('@')[0];
+        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
+        var finalUsername = baseUsername;
+        var collision = await getDoc(doc(db, 'usernames', finalUsername));
+        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+        profile = {
+            uid: user.uid,
+            name: displayName,
+            username: finalUsername,
+            email: user.email,
+            role: 'student',
+            avatar: user.photoURL || '',
+            provider: 'google',
+            status: 'active',
+            created_at: serverTimestamp(),
+            last_login: serverTimestamp()
+        };
+        await setDoc(profileRef, profile);
+        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+    }
 
-                      if (profileDoc.exists()) {
-                          profile = profileDoc.data();
-                          await updateDoc(profileRef, { last_login: serverTimestamp() });
-                      } else {
-                          var displayName  = user.displayName || '';
-                          var emailLocal   = (user.email || '').split('@')[0];
-                          var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-                          var finalUsername = baseUsername;
-                          var collision    = await getDoc(doc(db, 'usernames', finalUsername));
-                          if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
-                          profile = {
-                              uid:        user.uid,
-                              name:       displayName,
-                              username:   finalUsername,
-                              email:      user.email,
-                              role:       'student',
-                              avatar:     user.photoURL || '',
-                              provider:   'google',
-                              status:     'active',
-                              created_at: serverTimestamp(),
-                              last_login: serverTimestamp()
-                          };
-                          await setDoc(profileRef, profile);
-                          await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
-                      }
-
-                      _updateAqsGlobals(user, profile);
-                      resolve({ redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email });
-                  } catch(e) {
-                      reject(e);
-                  }
-              }
-          });
-          tokenClient.requestAccessToken({ prompt: '' });
-      });
-  }
-
+    _updateAqsGlobals(user, profile);
+    return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
+}
 async function actionLogout() {
     await signOut(auth);
     window._aqsFirebaseUser = null;
@@ -1211,16 +1203,23 @@ async function actionSubmitAttempt(data) {
     var total   = questions.length;
     var results = questions.map(function(q, i) {
         var raw        = answersMap[i] !== undefined ? answersMap[i] : answersMap[String(i)];
-        var userAnswer = (raw !== undefined && raw !== null && raw !== '') ? parseInt(raw) : null;
-        if (userAnswer !== null && isNaN(userAnswer)) userAnswer = null;
+        var isWritten = q.type === 'short' || q.type === 'written' || q.type === 'german';
+        var userAnswer = isWritten
+            ? ((raw !== undefined && raw !== null && raw !== '') ? String(raw).trim() : null)
+            : ((raw !== undefined && raw !== null && raw !== '') ? parseInt(raw) : null);
+        if (!isWritten && userAnswer !== null && isNaN(userAnswer)) userAnswer = null;
         var correct    = parseInt(q.correct_answer_index);
-        var isCorrect  = (userAnswer !== null && userAnswer === correct);
+        var isCorrect  = isWritten
+            ? (userAnswer !== null && String(userAnswer).toLowerCase() === String(q.answer || '').trim().toLowerCase())
+            : (userAnswer !== null && userAnswer === correct);
         if (isCorrect) score++;
         return {
             question:    q.question,
             options:     q.options || [],
+            type:        q.type || 'mcq',
             user_answer: userAnswer,
             correct:     correct,
+            answer:      q.answer || '',
             is_correct:  isCorrect,
             explanation: q.explanation || ''
         };
@@ -2170,7 +2169,17 @@ async function actionChUpdateSettings(data) {
 async function actionGetSettings() {
     try {
         var snap = await getDoc(doc(db, 'settings', 'main'));
-        if (snap.exists()) return { settings: snap.data() };
+        if (snap.exists()) {
+            var settings = snap.data();
+            /* Public pages may use non-secret AI settings, but the Creator
+               Studio image-token pool is read only by the server function.
+               Admin Settings opts in explicitly before loading this module. */
+            if (!window._AQS_ADMIN_SETTINGS_MODE) {
+                settings = Object.assign({}, settings);
+                delete settings.creator_image_keys;
+            }
+            return { settings: settings };
+        }
     } catch(_) {}
     return { settings: {} };
 }
@@ -2180,8 +2189,11 @@ async function actionSaveSettings(data) {
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
     var allowed = [
-        'groq_keys',
-        'mistral_keys','mistral_model','bg_music_url',
+        'groq_keys','groq_model',
+        'mistral_keys','mistral_model',
+        'hf_keys','hf_model',
+        'creator_image_keys','creator_image_model',
+        'bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
@@ -2190,9 +2202,24 @@ async function actionSaveSettings(data) {
         'github_client_id','github_client_secret',
         'microsoft_client_id','microsoft_client_secret',
         'yahoo_client_id','yahoo_client_secret',
-        'quoteGroqKeys'
+        'quoteGroqKeys',
+        'lib_groq_keys',
+        'quiz_groq_keys',
+        'challenge_groq_keys',
+        'studyhub_groq_keys',
+        'textdocs_groq_keys',
+        'puzzle_groq_keys',
+        'quizstudio_groq_keys',
+        'gemini_tts_keys'
     ];
     allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    /* Trim and validate Gemini TTS keys (up to 5) before saving */
+    if (Array.isArray(payload.gemini_tts_keys)) {
+        payload.gemini_tts_keys = payload.gemini_tts_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 5);
+    }
     /* Trim and validate Groq keys (up to 20) before saving */
     if (Array.isArray(payload.groq_keys)) {
         payload.groq_keys = payload.groq_keys
@@ -2200,29 +2227,60 @@ async function actionSaveSettings(data) {
             .filter(function(k){ return k.length > 20; })
             .slice(0, 20);
     }
-    /* Trim and validate quote Groq keys (up to 5) before saving */
-    if (Array.isArray(payload.quoteGroqKeys)) {
-        payload.quoteGroqKeys = payload.quoteGroqKeys
-            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
-            .filter(function(k){ return k.length > 10; })
-            .slice(0, 5);
-    }
-    /* Trim and validate Mistral keys (up to 10) before saving */
+    /* Trim and validate Mistral keys (up to 20) before saving */
     if (Array.isArray(payload.mistral_keys)) {
         payload.mistral_keys = payload.mistral_keys
             .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
             .filter(function(k){ return k.length > 20; })
+            .slice(0, 20);
+    }
+    /* Trim and validate HuggingFace keys (up to 5) before saving */
+    if (Array.isArray(payload.hf_keys)) {
+        payload.hf_keys = payload.hf_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 10; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Creator Studio image-generation tokens (up to 5) */
+    if (Array.isArray(payload.creator_image_keys)) {
+        payload.creator_image_keys = payload.creator_image_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 10; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Quote Groq keys (up to 5) before saving */
+    if (Array.isArray(payload.quoteGroqKeys)) {
+        payload.quoteGroqKeys = payload.quoteGroqKeys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
+            .slice(0, 5);
+    }
+    /* Trim and validate Library Groq keys (up to 10) before saving */
+    if (Array.isArray(payload.lib_groq_keys)) {
+        payload.lib_groq_keys = payload.lib_groq_keys
+            .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+            .filter(function(k){ return k.length > 20; })
             .slice(0, 10);
     }
+    /* Trim and validate feature-specific Groq keys (up to 10 each) */
+    ['quiz_groq_keys','challenge_groq_keys','studyhub_groq_keys',
+     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys'].forEach(function(field) {
+        if (Array.isArray(payload[field])) {
+            payload[field] = payload[field]
+                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
+                .filter(function(k){ return k.length > 20; })
+                .slice(0, 10);
+        }
+    });
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately push saved keys into in-memory pools so they work right away */
+    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
         var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
         var _gMerged = payload.groq_keys.slice();
         _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
         window._AQS_GROQ_MASTER_KEYS = _gMerged;
-        if (typeof window.setGroqKeys === 'function') window.setGroqKeys(window._AQS_GROQ_MASTER_KEYS);
     }
+    if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
         var _mMerged = payload.mistral_keys.slice();
@@ -2230,6 +2288,34 @@ async function actionSaveSettings(data) {
         window._AQS_MISTRAL_MASTER_KEYS = _mMerged;
     }
     if (payload.mistral_model) window._AQS_MISTRAL_MODEL = payload.mistral_model;
+    if (Array.isArray(payload.hf_keys) && payload.hf_keys.length) {
+        var _hcHF = Array.isArray(window._AQS_HF_MASTER_KEYS) ? window._AQS_HF_MASTER_KEYS : [];
+        var _hfMerged = payload.hf_keys.slice();
+        _hcHF.forEach(function(k){ if (_hfMerged.indexOf(k) === -1) _hfMerged.push(k); });
+        window._AQS_HF_MASTER_KEYS = _hfMerged;
+    }
+    if (payload.hf_model) window._AQS_HF_MODEL = payload.hf_model;
+    if (payload.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = payload.creator_image_model;
+    if (Array.isArray(payload.creator_image_keys) && payload.creator_image_keys.length) {
+        if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(payload.creator_image_keys);
+    }
+    /* Immediately load library keys into the dedicated library pool */
+    if (Array.isArray(payload.lib_groq_keys) && payload.lib_groq_keys.length) {
+        if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(payload.lib_groq_keys);
+    }
+    /* Immediately load feature-specific keys into their pools */
+    var _fpMap = {
+        quiz_groq_keys: 'quiz', challenge_groq_keys: 'challenge',
+        studyhub_groq_keys: 'studyhub', textdocs_groq_keys: 'textdocs',
+        puzzle_groq_keys: 'puzzle', quizstudio_groq_keys: 'quizstudio'
+    };
+    Object.keys(_fpMap).forEach(function(field) {
+        if (Array.isArray(payload[field]) && payload[field].length) {
+            if (typeof window.setFeatureGroqKeys === 'function') {
+                window.setFeatureGroqKeys(_fpMap[field], payload[field]);
+            }
+        }
+    });
     return { success: true, message: 'Settings saved.' };
 }
 
@@ -2405,23 +2491,49 @@ function _updateAqsGlobals(user, profile) {
         'aqs-quiz-studio.html','tts.html','audio.html','ai-animate.html'
     ];
     /* Pages that are open to everyone (guests OK) */
-    var openPages = ['index.html','studio.html','login.html','register.html','unauthorized.html',
+    var openPages = ['index.html','studio.html','login.html','register.html','login','register','unauthorized.html',
                      'take-quiz.html','challenge.html'];
-    var authPages = ['login.html', 'register.html'];
+    /* Cloudflare Workers may expose these pages as clean routes (/login and
+       /register) while legacy links still use .html. Both forms are auth
+       pages and must never be sent through the protected-page guard. */
+    var authPages = ['login.html', 'register.html', 'login', 'register'];
 
-    /* Auth guard: redirect to register.html if not signed in with a real account */
+    /* Auth guard: redirect to register.html if not signed in with a real account.
+       Uses a race between authStateReady() and a 10-second fallback so it never
+       hangs silently on Android WebView where IndexedDB can stall. */
     if (openPages.indexOf(page) === -1 && page !== '') {
-        auth.authStateReady().then(function() {
+        var _authGuardTimeout = new Promise(function(resolve) { setTimeout(resolve, 10000); });
+        Promise.race([auth.authStateReady(), _authGuardTimeout]).then(function() {
             var user = auth.currentUser;
             /* null = no session, isAnonymous = guest only — both must register */
             if (!user || user.isAnonymous) {
                 if (window._aqsIsRegistering || window._aqsIsLoggingIn) return;
+                /* A newly-created account may need another event loop tick
+                   (or a few seconds in a Cloudflare/WebView environment) to
+                   restore from IndexedDB. Do not bounce the user back to the
+                   registration page during that hand-off. */
+                var registrationCompleteAt = 0;
+                try {
+                    registrationCompleteAt = parseInt(sessionStorage.getItem('aqs_registration_complete') || '0', 10) || 0;
+                } catch (_) {}
+                if (registrationCompleteAt && Date.now() - registrationCompleteAt < 30000) {
+                    window.setTimeout(function () {
+                        if (auth.currentUser) {
+                            try { sessionStorage.removeItem('aqs_registration_complete'); } catch (_) {}
+                        }
+                    }, 5000);
+                    return;
+                }
+                try { sessionStorage.removeItem('aqs_registration_complete'); } catch (_) {}
                 window.location.replace('register.html?reason=auth&redirect=' + encodeURIComponent(window.location.pathname.split('/').pop() + window.location.search));
             }
         }).catch(function() {});
     }
 
     if (authPages.indexOf(page) !== -1) {
+        /* Clear a stale loop marker whenever the user intentionally opens an
+           auth page. This lets a real retry work after a failed attempt. */
+        try { sessionStorage.removeItem('aqs_registration_complete'); } catch (_) {}
         /* Use onAuthStateChanged directly (persistent) so the redirect fires
            BOTH on page-load (already signed in) AND right after form sign-in.
            onAqsAuthChange is one-shot — it misses the sign-in event if the user
@@ -2479,45 +2591,31 @@ function _updateAqsGlobals(user, profile) {
 })();
 
 /* ============================================================
-   AUTO-INIT: load Groq + Mistral keys from Firestore on startup
+   AUTO-INIT: load Groq master keys from Firestore into global
    so aqs-groq-key.js can use them without any hardcoded secrets.
-   settings/main is publicly readable per the Firestore rules.
+   Settings/main is publicly readable per the Firestore rules.
    ============================================================ */
-(function _loadAIKeys() {
+(function _loadMistralKeys() {
+    /* Load Mistral keys (now primary AI) from Firestore and merge with
+       any hardcoded keys in aqs-groq-key.js. Firebase keys come first
+       so admin-saved keys take priority over hardcoded fallbacks.     */
     getDoc(doc(db, 'settings', 'main')).then(function(snap) {
         if (!snap.exists()) return;
         var s = snap.data();
-
-        /* ── Load up to 20 Groq keys ── */
-        if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-            var gkFb = s.groq_keys
-                .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
-                .filter(function(k){ return k.length > 20; })
-                .slice(0, 20);
-            if (gkFb.length) {
-                var hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-                var mergedG = gkFb.slice();
-                hcG.forEach(function(k){ if (mergedG.indexOf(k) === -1) mergedG.push(k); });
-                window._AQS_GROQ_MASTER_KEYS = mergedG;
-                /* Also call setGroqKeys so the key-manager picks them up */
-                if (typeof window.setGroqKeys === 'function') window.setGroqKeys(window._AQS_GROQ_MASTER_KEYS);
-            }
-        }
-
-        /* ── Load up to 10 Mistral keys ── */
+        /* Load up to 10 Mistral keys */
         if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
-            var mkFb = s.mistral_keys
+            var fbKeys = s.mistral_keys
                 .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
                 .filter(function(k){ return k.length > 20; })
                 .slice(0, 10);
-            if (mkFb.length) {
-                var hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
-                var mergedM = mkFb.slice();
-                hcM.forEach(function(k){ if (mergedM.indexOf(k) === -1) mergedM.push(k); });
-                window._AQS_MISTRAL_MASTER_KEYS = mergedM;
+            if (fbKeys.length) {
+                /* Merge: Firebase keys first, then any hardcoded fallbacks not already listed */
+                var hc = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
+                var merged = fbKeys.slice();
+                hc.forEach(function(k){ if (merged.indexOf(k) === -1) merged.push(k); });
+                window._AQS_MISTRAL_MASTER_KEYS = merged;
             }
         }
-
         if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
     }).catch(function() { /* silently ignore — keys stay as hardcoded fallbacks */ });
 })();

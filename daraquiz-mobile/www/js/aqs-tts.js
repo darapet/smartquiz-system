@@ -1,48 +1,55 @@
-/* aqs-tts.js — XZILY AI Text-to-Speech v2
-   82 professional voices · Groq translation · Pollinations audio · Download
+/* aqs-tts.js — XZILY AI Text-to-Speech v5
+   82 professional voices · Google Gemini TTS (only real-voice engine)
+   ElevenLabs is DISABLED (free plan blocks API voices) — see EL_ENABLED below.
+   Real neural voices — browser speechSynthesis is only the last resort.
+   Keys are managed in Admin Settings → Gemini TTS.
    ─────────────────────────────────────────────────────────────────────────── */
 (function () {
     'use strict';
 
-  /* ── CAPACITOR SPEECH GUARD ──────────────────────────────────────────────────
-     window.webkitSpeechRecognition / window.speechSynthesis exist in Android
-     WebView but crash or silently fail inside Capacitor when used. This block
-     runs first inside the IIFE and makes every existing  if (!SpeechRec) guard
-     in this file fire correctly — voice is disabled gracefully, not crashed.   */
-  (function () {
-      var _isNative = !!(window.Capacitor &&
-          typeof window.Capacitor.isNativePlatform === 'function' &&
-          window.Capacitor.isNativePlatform());
-      if (!_isNative) return;
-      /* Nullify broken Speech Recognition */
-      try { Object.defineProperty(window, 'SpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.SpeechRecognition = null; }
-      try { Object.defineProperty(window, 'webkitSpeechRecognition',
-          { value: null, writable: true, configurable: true }); } catch (e) { window.webkitSpeechRecognition = null; }
-      /* Wrap speechSynthesis.speak() — prevents UI freezing when voice list empty */
-      if (window.speechSynthesis && typeof window.speechSynthesis.speak === 'function') {
-          var _orig = window.speechSynthesis.speak.bind(window.speechSynthesis);
-          window.speechSynthesis.speak = function (utt) {
-              try {
-                  var vs = window.speechSynthesis.getVoices();
-                  if (vs.length === 0) {
-                      var done = false;
-                      var go = function () { if (done) return; done = true; try { _orig(utt); } catch (e2) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} } };
-                      window.speechSynthesis.addEventListener('voiceschanged', go);
-                      setTimeout(go, 2000);
-                  } else { _orig(utt); }
-              } catch (e) { try { if (utt && utt.onend) utt.onend({}); } catch (_) {} }
-          };
-      }
-  })();
-  
+    /* ══════════════════════════════════════════════════════════════
+       ELEVENLABS KEYS
+       Keys are loaded automatically from Admin Settings → ElevenLabs section.
+       You can also hardcode a fallback key below — it is used only if no key
+       is found in settings (useful for local dev / first-time setup).
+       Get a free key at: https://elevenlabs.io  (10,000 chars/month free)
+    ══════════════════════════════════════════════════════════════ */
+    var ELEVENLABS_API_KEY = '';   /* legacy — unused while EL_ENABLED is false */
+
+    /* ── ElevenLabs master switch ─────────────────────────────────
+       false = ElevenLabs is completely disabled: no requests, no keys
+       loaded, no "ElevenLabs" text anywhere in the UI or notices.
+       Flip to true only if a paid ElevenLabs plan is ever added back.
+    ── */
+    var EL_ENABLED = false;
+    var _elKeys = [];              /* loaded from Firebase admin settings */
+
+    /* ElevenLabs multilingual voice IDs — these are free-tier voices that
+       support all major languages via the multilingual-v2 model.
+       10 distinct voices cover all 82 named characters below.             */
+    var EL_VOICES = {
+        /* Male */
+        ADAM:    'pNInz6obpgDQGcFmaJgB',   /* deep, authoritative          */
+        ARNOLD:  'VR6AewLTigWG4xSOukaG',   /* bold, confident              */
+        CALLUM:  'N2lVS1w4EtoT3dr4eOWO',   /* warm, conversational         */
+        CHARLIE: 'IKne3meq5aSn9XLyUdCD',   /* casual, friendly             */
+        DANIEL:  'onwK4e9ZLuTAKqWW03F9',   /* british, refined             */
+        /* Female */
+        RACHEL:  '21m00Tcm4TlvDq8ikWAM',   /* clear, professional          */
+        DOMI:    'AZnzlk1XvdvUeBnXmlld',   /* bright, energetic            */
+        BELLA:   'EXAVITQu4vr4xnSDxMaL',   /* warm, natural                */
+        ELLI:    'MF3mGyEYCl7XYWbV9V6O',   /* expressive, dynamic          */
+        GRACE:   'oWAxZDx7w5VEj9dCyTzz',   /* elegant, composed            */
+    };
 
     var HISTORY_KEY = 'xzily_tts_history';
     var MAX_CHARS   = 5000;
-    var CHUNK_SIZE  = 180;
+    var CHUNK_SIZE  = 400;   /* ElevenLabs handles longer chunks fine */
 
     var selectedVoice    = '';
     var currentAudioBlob = null;
+    var currentEngine    = 'browser';   /* 'gemini' | 'elevenlabs' | 'browser' */
+    var currentMime      = 'audio/wav';
     var currentAudioUrl  = null;
     var browserModeText  = null;
     var browserModeVoice = null;
@@ -51,115 +58,127 @@
 
     /* ══════════════════════════════════════════════════════════════
        82 PROFESSIONAL VOICES
-       base: maps to Pollinations neural engine (alloy/echo/fable/onyx/nova/shimmer)
-       locale: sent to TTS for correct pronunciation
+       elVoice → key from EL_VOICES above (maps to real ElevenLabs voice ID)
+       voiceSpeed → applied as audio.playbackRate for acoustic differentiation
     ══════════════════════════════════════════════════════════════ */
     var VOICES = [
-        /* ── ENGLISH (20) ─────────────────────────────────────── */
-        { id:'Brian',      name:'Brian',      lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'fable',   desc:'Warm & authoritative' },
-        { id:'Matthew',    name:'Matthew',    lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'onyx',    desc:'Deep & professional'  },
-        { id:'Joey',       name:'Joey',       lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    desc:'Friendly & clear'     },
-        { id:'Justin',     name:'Justin',     lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'fable',   desc:'Casual & conversational'},
-        { id:'Russell',    name:'Russell',    lang:'en', locale:'en-AU', region:'AU',            gender:'male',   base:'echo',    desc:'Australian accent'    },
-        { id:'Daniel',     name:'Daniel',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    desc:'British & refined'    },
-        { id:'Kevin',      name:'Kevin',      lang:'en', locale:'en-US', region:'US',            gender:'male',   base:'echo',    desc:'Crisp & energetic'    },
-        { id:'Geraint',    name:'Geraint',    lang:'en', locale:'en-GB', region:'Wales',         gender:'male',   base:'fable',   desc:'Welsh character'      },
-        { id:'Arthur',     name:'Arthur',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   base:'onyx',    desc:'Classic British'      },
-        { id:'Ryan',       name:'Ryan',       lang:'en', locale:'en-CA', region:'Canada',        gender:'male',   base:'echo',    desc:'Canadian & neutral'   },
-        { id:'Amy',        name:'Amy',        lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'shimmer', desc:'Bright & professional'},
-        { id:'Emma',       name:'Emma',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'alloy',   desc:'Confident & clear'    },
-        { id:'Joanna',     name:'Joanna',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'shimmer', desc:'Warm & articulate'    },
-        { id:'Salli',      name:'Salli',      lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Engaging & natural'   },
-        { id:'Kimberly',   name:'Kimberly',   lang:'en', locale:'en-US', region:'US',            gender:'female', base:'alloy',   desc:'Neutral & versatile'  },
-        { id:'Kendra',     name:'Kendra',     lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Conversational tone'  },
-        { id:'Nicole',     name:'Nicole',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'alloy',   desc:'Australian & friendly'},
-        { id:'Olivia',     name:'Olivia',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', base:'shimmer', desc:'Australian & bright'  },
-        { id:'Aria',       name:'Aria',       lang:'en', locale:'en-US', region:'US',            gender:'female', base:'nova',    desc:'Expressive & dynamic' },
-        { id:'Jane',       name:'Jane',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', base:'shimmer', desc:'Elegant & composed'   },
-        /* ── SPANISH (8) ────────────────────────────────────── */
-        { id:'Enrique',    name:'Enrique',    lang:'es', locale:'es-ES', region:'Spain',         gender:'male',   base:'echo',    desc:'Spanish Castilian'    },
-        { id:'Miguel',     name:'Miguel',     lang:'es', locale:'es-US', region:'US-Latino',     gender:'male',   base:'fable',   desc:'Latino US accent'     },
-        { id:'Pablo',      name:'Pablo',      lang:'es', locale:'es-MX', region:'Mexico',        gender:'male',   base:'onyx',    desc:'Mexican accent'       },
-        { id:'Carlos',     name:'Carlos',     lang:'es', locale:'es-AR', region:'Argentina',     gender:'male',   base:'echo',    desc:'Argentine accent'     },
-        { id:'Conchita',   name:'Conchita',   lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'nova',    desc:'Spanish Castilian'    },
-        { id:'Lucia',      name:'Lucía',      lang:'es', locale:'es-ES', region:'Spain',         gender:'female', base:'shimmer', desc:'Bright & precise'     },
-        { id:'Penelope',   name:'Penélope',   lang:'es', locale:'es-US', region:'US-Latino',     gender:'female', base:'alloy',   desc:'Neutral Latino'       },
-        { id:'Valentina',  name:'Valentina',  lang:'es', locale:'es-MX', region:'Mexico',        gender:'female', base:'nova',    desc:'Warm Mexican tone'    },
-        /* ── FRENCH (6) ─────────────────────────────────────── */
-        { id:'Mathieu',    name:'Mathieu',    lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'onyx',    desc:'Deep Parisian'        },
-        { id:'Pierre',     name:'Pierre',     lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   base:'fable',   desc:'Sophisticated'        },
-        { id:'Jacques',    name:'Jacques',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'male',   base:'echo',    desc:'Québécois accent'     },
-        { id:'Celine',     name:'Céline',     lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'shimmer', desc:'Elegant Parisian'     },
-        { id:'Isabelle',   name:'Isabelle',   lang:'fr', locale:'fr-FR', region:'France',        gender:'female', base:'alloy',   desc:'Clear & fluid'        },
-        { id:'Chantal',    name:'Chantal',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'female', base:'nova',    desc:'Québécois warmth'     },
-        /* ── GERMAN (6) ─────────────────────────────────────── */
-        { id:'Hans',       name:'Hans',       lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'onyx',    desc:'Bold & precise'       },
-        { id:'Klaus',      name:'Klaus',      lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   base:'fable',   desc:'Authoritative'        },
-        { id:'Wolfgang',   name:'Wolfgang',   lang:'de', locale:'de-AT', region:'Austria',       gender:'male',   base:'echo',    desc:'Austrian dialect'     },
-        { id:'Marlene',    name:'Marlene',    lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'nova',    desc:'Warm & professional'  },
-        { id:'Vicki',      name:'Vicki',      lang:'de', locale:'de-DE', region:'Germany',       gender:'female', base:'shimmer', desc:'Bright & energetic'   },
-        { id:'Petra',      name:'Petra',      lang:'de', locale:'de-AT', region:'Austria',       gender:'female', base:'alloy',   desc:'Austrian clarity'     },
-        /* ── PORTUGUESE (6) ─────────────────────────────────── */
-        { id:'Cristiano',  name:'Cristiano',  lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'male',   base:'fable',   desc:'European Portuguese'  },
-        { id:'Ricardo',    name:'Ricardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'echo',    desc:'Brazilian warmth'     },
-        { id:'Eduardo',    name:'Eduardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   base:'onyx',    desc:'Deep & confident'     },
-        { id:'Ines',       name:'Inês',       lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'nova',    desc:'European Portuguese'  },
-        { id:'Vitoria',    name:'Vitória',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'female', base:'shimmer', desc:'Brazilian vivacity'   },
-        { id:'Ana',        name:'Ana',        lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', base:'alloy',   desc:'Clear & precise'      },
-        /* ── ITALIAN (4) ────────────────────────────────────── */
-        { id:'Giorgio',    name:'Giorgio',    lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'onyx',    desc:'Rich & expressive'    },
-        { id:'Marco',      name:'Marco',      lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   base:'fable',   desc:'Warm & natural'       },
-        { id:'Carla',      name:'Carla',      lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'alloy',   desc:'Clear & flowing'      },
-        { id:'Bianca',     name:'Bianca',     lang:'it', locale:'it-IT', region:'Italy',         gender:'female', base:'shimmer', desc:'Bright & musical'     },
-        /* ── JAPANESE (4) ───────────────────────────────────── */
-        { id:'Takumi',     name:'Takumi',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'echo',    desc:'Clear & formal'       },
-        { id:'Kenji',      name:'Kenji',      lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   base:'onyx',    desc:'Deep & steady'        },
-        { id:'Mizuki',     name:'Mizuki',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'nova',    desc:'Warm & natural'       },
-        { id:'Yuki',       name:'Yuki',       lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', base:'shimmer', desc:'Bright & friendly'    },
-        /* ── ARABIC (4) ─────────────────────────────────────── */
-        { id:'Khalid',     name:'Khalid',     lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'male',   base:'onyx',    desc:'Deep & formal'        },
-        { id:'Omar',       name:'Omar',       lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'male',   base:'fable',   desc:'Egyptian dialect'     },
-        { id:'Zeina',      name:'Zeina',      lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'female', base:'nova',    desc:'Clear & flowing'      },
-        { id:'Fatima',     name:'Fatima',     lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'female', base:'shimmer', desc:'Warm & expressive'    },
-        /* ── CHINESE (4) ────────────────────────────────────── */
-        { id:'Wei',        name:'Wei',        lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'echo',    desc:'Mandarin standard'    },
-        { id:'Zhang',      name:'Zhang',      lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   base:'onyx',    desc:'Authoritative tone'   },
-        { id:'Zhiyu',      name:'Zhiyu',      lang:'zh', locale:'zh-CN', region:'China',         gender:'female', base:'nova',    desc:'Clear Mandarin'       },
-        { id:'Mei',        name:'Mei',        lang:'zh', locale:'zh-TW', region:'Taiwan',        gender:'female', base:'alloy',   desc:'Taiwanese Mandarin'   },
-        /* ── RUSSIAN (4) ────────────────────────────────────── */
-        { id:'Maxim',      name:'Maxim',      lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'onyx',    desc:'Deep & formal'        },
-        { id:'Dmitri',     name:'Dmitri',     lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   base:'fable',   desc:'Expressive tone'      },
-        { id:'Tatyana',    name:'Tatyana',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'alloy',   desc:'Clear & precise'      },
-        { id:'Natasha',    name:'Natasha',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', base:'nova',    desc:'Warm & natural'       },
-        /* ── HINDI (4) ──────────────────────────────────────── */
-        { id:'Arjun',      name:'Arjun',      lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'echo',    desc:'Clear & professional' },
-        { id:'Raj',        name:'Raj',        lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   base:'fable',   desc:'Warm Indian tone'     },
-        { id:'Aditi',      name:'Aditi',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'nova',    desc:'Clear & natural'      },
-        { id:'Priya',      name:'Priya',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', base:'shimmer', desc:'Bright & warm'        },
-        /* ── DUTCH (4) ──────────────────────────────────────── */
-        { id:'Ruben',      name:'Ruben',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'echo',    desc:'Clear & direct'       },
-        { id:'Willem',     name:'Willem',     lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   base:'fable',   desc:'Warm Dutch tone'      },
-        { id:'Lotte',      name:'Lotte',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'female', base:'alloy',   desc:'Precise & clear'      },
-        { id:'Lisa',       name:'Lisa',       lang:'nl', locale:'nl-BE', region:'Belgium',       gender:'female', base:'nova',    desc:'Belgian Dutch'        },
-        /* ── KOREAN (2) ─────────────────────────────────────── */
-        { id:'Junho',      name:'Junho',      lang:'ko', locale:'ko-KR', region:'Korea',         gender:'male',   base:'echo',    desc:'Clear & formal'       },
-        { id:'Seoyeon',    name:'Seoyeon',    lang:'ko', locale:'ko-KR', region:'Korea',         gender:'female', base:'shimmer', desc:'Bright & natural'     },
-        /* ── SWEDISH (2) ────────────────────────────────────── */
-        { id:'Erik',       name:'Erik',       lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'male',   base:'echo',    desc:'Nordic clarity'       },
-        { id:'Astrid',     name:'Astrid',     lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'female', base:'shimmer', desc:'Scandinavian warmth'  },
-        /* ── TURKISH (2) ────────────────────────────────────── */
-        { id:'Mehmet',     name:'Mehmet',     lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'male',   base:'fable',   desc:'Warm & expressive'    },
-        { id:'Filiz',      name:'Filiz',      lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'female', base:'nova',    desc:'Clear & melodic'      },
-        /* ── POLISH (2) ─────────────────────────────────────── */
-        { id:'Jacek',      name:'Jacek',      lang:'pl', locale:'pl-PL', region:'Poland',        gender:'male',   base:'onyx',    desc:'Bold & steady'        },
-        { id:'Maja',       name:'Maja',       lang:'pl', locale:'pl-PL', region:'Poland',        gender:'female', base:'shimmer', desc:'Clear & natural'      },
+        /* ── ENGLISH MALE (10) ─────────────────────────────────── */
+        { id:'Brian',      name:'Brian',      lang:'en', locale:'en-GB', region:'UK',            gender:'male',   elVoice:'ADAM',    voiceSpeed:0.92, desc:'Deep & authoritative' },
+        { id:'Matthew',    name:'Matthew',    lang:'en', locale:'en-US', region:'US',            gender:'male',   elVoice:'ARNOLD',  voiceSpeed:0.96, desc:'Bold & professional'  },
+        { id:'Joey',       name:'Joey',       lang:'en', locale:'en-US', region:'US',            gender:'male',   elVoice:'CALLUM',  voiceSpeed:0.88, desc:'Friendly & clear'     },
+        { id:'Justin',     name:'Justin',     lang:'en', locale:'en-US', region:'US',            gender:'male',   elVoice:'CHARLIE', voiceSpeed:1.00, desc:'Casual & conversational'},
+        { id:'Russell',    name:'Russell',    lang:'en', locale:'en-AU', region:'AU',            gender:'male',   elVoice:'CALLUM',  voiceSpeed:0.94, desc:'Australian accent'    },
+        { id:'Daniel',     name:'Daniel',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   elVoice:'DANIEL',  voiceSpeed:1.00, desc:'British & refined'    },
+        { id:'Kevin',      name:'Kevin',      lang:'en', locale:'en-US', region:'US',            gender:'male',   elVoice:'ARNOLD',  voiceSpeed:1.05, desc:'Crisp & energetic'    },
+        { id:'Geraint',    name:'Geraint',    lang:'en', locale:'en-GB', region:'Wales',         gender:'male',   elVoice:'ADAM',    voiceSpeed:1.08, desc:'Welsh character'      },
+        { id:'Arthur',     name:'Arthur',     lang:'en', locale:'en-GB', region:'UK',            gender:'male',   elVoice:'DANIEL',  voiceSpeed:0.92, desc:'Classic British'      },
+        { id:'Ryan',       name:'Ryan',       lang:'en', locale:'en-CA', region:'Canada',        gender:'male',   elVoice:'CHARLIE', voiceSpeed:1.05, desc:'Canadian & neutral'   },
+        /* ── ENGLISH FEMALE (10) ────────────────────────────────── */
+        { id:'Amy',        name:'Amy',        lang:'en', locale:'en-GB', region:'UK',            gender:'female', elVoice:'RACHEL',  voiceSpeed:0.92, desc:'Bright & professional'},
+        { id:'Emma',       name:'Emma',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', elVoice:'GRACE',   voiceSpeed:0.96, desc:'Confident & clear'    },
+        { id:'Joanna',     name:'Joanna',     lang:'en', locale:'en-US', region:'US',            gender:'female', elVoice:'BELLA',   voiceSpeed:0.92, desc:'Warm & articulate'    },
+        { id:'Salli',      name:'Salli',      lang:'en', locale:'en-US', region:'US',            gender:'female', elVoice:'ELLI',    voiceSpeed:1.00, desc:'Engaging & natural'   },
+        { id:'Kimberly',   name:'Kimberly',   lang:'en', locale:'en-US', region:'US',            gender:'female', elVoice:'DOMI',    voiceSpeed:0.94, desc:'Neutral & versatile'  },
+        { id:'Kendra',     name:'Kendra',     lang:'en', locale:'en-US', region:'US',            gender:'female', elVoice:'RACHEL',  voiceSpeed:1.05, desc:'Conversational tone'  },
+        { id:'Nicole',     name:'Nicole',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', elVoice:'BELLA',   voiceSpeed:1.08, desc:'Australian & friendly'},
+        { id:'Olivia',     name:'Olivia',     lang:'en', locale:'en-AU', region:'AU',            gender:'female', elVoice:'DOMI',    voiceSpeed:0.88, desc:'Australian & bright'  },
+        { id:'Aria',       name:'Aria',       lang:'en', locale:'en-US', region:'US',            gender:'female', elVoice:'ELLI',    voiceSpeed:1.08, desc:'Expressive & dynamic' },
+        { id:'Jane',       name:'Jane',       lang:'en', locale:'en-GB', region:'UK',            gender:'female', elVoice:'GRACE',   voiceSpeed:0.88, desc:'Elegant & composed'   },
+        /* ── SPANISH MALE (4) ───────────────────────────────────── */
+        { id:'Enrique',    name:'Enrique',    lang:'es', locale:'es-ES', region:'Spain',         gender:'male',   elVoice:'ADAM',    voiceSpeed:0.96, desc:'Spanish Castilian'    },
+        { id:'Miguel',     name:'Miguel',     lang:'es', locale:'es-US', region:'US-Latino',     gender:'male',   elVoice:'CALLUM',  voiceSpeed:1.00, desc:'Latino US accent'     },
+        { id:'Pablo',      name:'Pablo',      lang:'es', locale:'es-MX', region:'Mexico',        gender:'male',   elVoice:'CHARLIE', voiceSpeed:1.08, desc:'Mexican accent'       },
+        { id:'Carlos',     name:'Carlos',     lang:'es', locale:'es-AR', region:'Argentina',     gender:'male',   elVoice:'ARNOLD',  voiceSpeed:0.92, desc:'Argentine accent'     },
+        /* ── SPANISH FEMALE (4) ─────────────────────────────────── */
+        { id:'Conchita',   name:'Conchita',   lang:'es', locale:'es-ES', region:'Spain',         gender:'female', elVoice:'RACHEL',  voiceSpeed:0.96, desc:'Spanish Castilian'    },
+        { id:'Lucia',      name:'Lucía',      lang:'es', locale:'es-ES', region:'Spain',         gender:'female', elVoice:'GRACE',   voiceSpeed:1.05, desc:'Bright & precise'     },
+        { id:'Penelope',   name:'Penélope',   lang:'es', locale:'es-US', region:'US-Latino',     gender:'female', elVoice:'BELLA',   voiceSpeed:1.00, desc:'Neutral Latino'       },
+        { id:'Valentina',  name:'Valentina',  lang:'es', locale:'es-MX', region:'Mexico',        gender:'female', elVoice:'ELLI',    voiceSpeed:0.92, desc:'Warm Mexican tone'    },
+        /* ── FRENCH MALE (3) ────────────────────────────────────── */
+        { id:'Mathieu',    name:'Mathieu',    lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   elVoice:'DANIEL',  voiceSpeed:0.96, desc:'Deep Parisian'        },
+        { id:'Pierre',     name:'Pierre',     lang:'fr', locale:'fr-FR', region:'France',        gender:'male',   elVoice:'ADAM',    voiceSpeed:1.05, desc:'Sophisticated'        },
+        { id:'Jacques',    name:'Jacques',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'male',   elVoice:'CALLUM',  voiceSpeed:0.92, desc:'Québécois accent'     },
+        /* ── FRENCH FEMALE (3) ──────────────────────────────────── */
+        { id:'Celine',     name:'Céline',     lang:'fr', locale:'fr-FR', region:'France',        gender:'female', elVoice:'GRACE',   voiceSpeed:0.92, desc:'Elegant Parisian'     },
+        { id:'Isabelle',   name:'Isabelle',   lang:'fr', locale:'fr-FR', region:'France',        gender:'female', elVoice:'BELLA',   voiceSpeed:1.05, desc:'Clear & fluid'        },
+        { id:'Chantal',    name:'Chantal',    lang:'fr', locale:'fr-CA', region:'Canada',        gender:'female', elVoice:'DOMI',    voiceSpeed:1.00, desc:'Québécois warmth'     },
+        /* ── GERMAN MALE (3) ────────────────────────────────────── */
+        { id:'Hans',       name:'Hans',       lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   elVoice:'ADAM',    voiceSpeed:0.88, desc:'Bold & precise'       },
+        { id:'Klaus',      name:'Klaus',      lang:'de', locale:'de-DE', region:'Germany',       gender:'male',   elVoice:'ARNOLD',  voiceSpeed:1.08, desc:'Authoritative'        },
+        { id:'Wolfgang',   name:'Wolfgang',   lang:'de', locale:'de-AT', region:'Austria',       gender:'male',   elVoice:'DANIEL',  voiceSpeed:1.05, desc:'Austrian dialect'     },
+        /* ── GERMAN FEMALE (3) ──────────────────────────────────── */
+        { id:'Marlene',    name:'Marlene',    lang:'de', locale:'de-DE', region:'Germany',       gender:'female', elVoice:'RACHEL',  voiceSpeed:1.00, desc:'Warm & professional'  },
+        { id:'Vicki',      name:'Vicki',      lang:'de', locale:'de-DE', region:'Germany',       gender:'female', elVoice:'ELLI',    voiceSpeed:0.94, desc:'Bright & energetic'   },
+        { id:'Petra',      name:'Petra',      lang:'de', locale:'de-AT', region:'Austria',       gender:'female', elVoice:'BELLA',   voiceSpeed:1.08, desc:'Austrian clarity'     },
+        /* ── PORTUGUESE MALE (3) ────────────────────────────────── */
+        { id:'Cristiano',  name:'Cristiano',  lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'male',   elVoice:'CALLUM',  voiceSpeed:0.96, desc:'European Portuguese'  },
+        { id:'Ricardo',    name:'Ricardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   elVoice:'CHARLIE', voiceSpeed:0.92, desc:'Brazilian warmth'     },
+        { id:'Eduardo',    name:'Eduardo',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'male',   elVoice:'ARNOLD',  voiceSpeed:1.00, desc:'Deep & confident'     },
+        /* ── PORTUGUESE FEMALE (3) ──────────────────────────────── */
+        { id:'Ines',       name:'Inês',       lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', elVoice:'DOMI',    voiceSpeed:0.96, desc:'European Portuguese'  },
+        { id:'Vitoria',    name:'Vitória',    lang:'pt', locale:'pt-BR', region:'Brazil',        gender:'female', elVoice:'ELLI',    voiceSpeed:1.05, desc:'Brazilian vivacity'   },
+        { id:'Ana',        name:'Ana',        lang:'pt', locale:'pt-PT', region:'Portugal',      gender:'female', elVoice:'GRACE',   voiceSpeed:1.00, desc:'Clear & precise'      },
+        /* ── ITALIAN MALE (2) ───────────────────────────────────── */
+        { id:'Giorgio',    name:'Giorgio',    lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   elVoice:'DANIEL',  voiceSpeed:0.88, desc:'Rich & expressive'    },
+        { id:'Marco',      name:'Marco',      lang:'it', locale:'it-IT', region:'Italy',         gender:'male',   elVoice:'CALLUM',  voiceSpeed:1.05, desc:'Warm & natural'       },
+        /* ── ITALIAN FEMALE (2) ─────────────────────────────────── */
+        { id:'Carla',      name:'Carla',      lang:'it', locale:'it-IT', region:'Italy',         gender:'female', elVoice:'RACHEL',  voiceSpeed:1.08, desc:'Clear & flowing'      },
+        { id:'Bianca',     name:'Bianca',     lang:'it', locale:'it-IT', region:'Italy',         gender:'female', elVoice:'BELLA',   voiceSpeed:0.94, desc:'Bright & musical'     },
+        /* ── JAPANESE MALE (2) ──────────────────────────────────── */
+        { id:'Takumi',     name:'Takumi',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   elVoice:'ADAM',    voiceSpeed:1.00, desc:'Clear & formal'       },
+        { id:'Kenji',      name:'Kenji',      lang:'ja', locale:'ja-JP', region:'Japan',         gender:'male',   elVoice:'ARNOLD',  voiceSpeed:0.88, desc:'Deep & steady'        },
+        /* ── JAPANESE FEMALE (2) ────────────────────────────────── */
+        { id:'Mizuki',     name:'Mizuki',     lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', elVoice:'DOMI',    voiceSpeed:1.00, desc:'Warm & natural'       },
+        { id:'Yuki',       name:'Yuki',       lang:'ja', locale:'ja-JP', region:'Japan',         gender:'female', elVoice:'ELLI',    voiceSpeed:1.05, desc:'Bright & friendly'    },
+        /* ── ARABIC MALE (2) ────────────────────────────────────── */
+        { id:'Khalid',     name:'Khalid',     lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'male',   elVoice:'ADAM',    voiceSpeed:0.92, desc:'Deep & formal'        },
+        { id:'Omar',       name:'Omar',       lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'male',   elVoice:'CHARLIE', voiceSpeed:1.00, desc:'Egyptian dialect'     },
+        /* ── ARABIC FEMALE (2) ──────────────────────────────────── */
+        { id:'Zeina',      name:'Zeina',      lang:'ar', locale:'ar-SA', region:'Saudi Arabia',  gender:'female', elVoice:'GRACE',   voiceSpeed:0.96, desc:'Clear & flowing'      },
+        { id:'Fatima',     name:'Fatima',     lang:'ar', locale:'ar-EG', region:'Egypt',         gender:'female', elVoice:'BELLA',   voiceSpeed:1.00, desc:'Warm & expressive'    },
+        /* ── CHINESE MALE (2) ───────────────────────────────────── */
+        { id:'Wei',        name:'Wei',        lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   elVoice:'CALLUM',  voiceSpeed:1.05, desc:'Mandarin standard'    },
+        { id:'Zhang',      name:'Zhang',      lang:'zh', locale:'zh-CN', region:'China',         gender:'male',   elVoice:'DANIEL',  voiceSpeed:0.94, desc:'Authoritative tone'   },
+        /* ── CHINESE FEMALE (2) ─────────────────────────────────── */
+        { id:'Zhiyu',      name:'Zhiyu',      lang:'zh', locale:'zh-CN', region:'China',         gender:'female', elVoice:'RACHEL',  voiceSpeed:1.05, desc:'Clear Mandarin'       },
+        { id:'Mei',        name:'Mei',        lang:'zh', locale:'zh-TW', region:'Taiwan',        gender:'female', elVoice:'ELLI',    voiceSpeed:0.94, desc:'Taiwanese Mandarin'   },
+        /* ── RUSSIAN MALE (2) ───────────────────────────────────── */
+        { id:'Maxim',      name:'Maxim',      lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   elVoice:'ADAM',    voiceSpeed:1.05, desc:'Deep & formal'        },
+        { id:'Dmitri',     name:'Dmitri',     lang:'ru', locale:'ru-RU', region:'Russia',        gender:'male',   elVoice:'ARNOLD',  voiceSpeed:0.96, desc:'Expressive tone'      },
+        /* ── RUSSIAN FEMALE (2) ─────────────────────────────────── */
+        { id:'Tatyana',    name:'Tatyana',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', elVoice:'DOMI',    voiceSpeed:1.08, desc:'Clear & precise'      },
+        { id:'Natasha',    name:'Natasha',    lang:'ru', locale:'ru-RU', region:'Russia',        gender:'female', elVoice:'BELLA',   voiceSpeed:0.92, desc:'Warm & natural'       },
+        /* ── HINDI MALE (2) ─────────────────────────────────────── */
+        { id:'Arjun',      name:'Arjun',      lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   elVoice:'CHARLIE', voiceSpeed:0.96, desc:'Clear & professional' },
+        { id:'Raj',        name:'Raj',        lang:'hi', locale:'hi-IN', region:'India',         gender:'male',   elVoice:'CALLUM',  voiceSpeed:1.08, desc:'Warm Indian tone'     },
+        /* ── HINDI FEMALE (2) ───────────────────────────────────── */
+        { id:'Aditi',      name:'Aditi',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', elVoice:'RACHEL',  voiceSpeed:0.92, desc:'Clear & natural'      },
+        { id:'Priya',      name:'Priya',      lang:'hi', locale:'hi-IN', region:'India',         gender:'female', elVoice:'ELLI',    voiceSpeed:1.08, desc:'Bright & warm'        },
+        /* ── DUTCH MALE (2) ─────────────────────────────────────── */
+        { id:'Ruben',      name:'Ruben',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   elVoice:'DANIEL',  voiceSpeed:1.00, desc:'Clear & direct'       },
+        { id:'Willem',     name:'Willem',     lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'male',   elVoice:'ADAM',    voiceSpeed:0.94, desc:'Warm Dutch tone'      },
+        /* ── DUTCH FEMALE (2) ───────────────────────────────────── */
+        { id:'Lotte',      name:'Lotte',      lang:'nl', locale:'nl-NL', region:'Netherlands',   gender:'female', elVoice:'GRACE',   voiceSpeed:1.00, desc:'Precise & clear'      },
+        { id:'Lisa',       name:'Lisa',       lang:'nl', locale:'nl-BE', region:'Belgium',       gender:'female', elVoice:'DOMI',    voiceSpeed:0.94, desc:'Belgian Dutch'        },
+        /* ── KOREAN (2) ─────────────────────────────────────────── */
+        { id:'Junho',      name:'Junho',      lang:'ko', locale:'ko-KR', region:'Korea',         gender:'male',   elVoice:'CHARLIE', voiceSpeed:0.92, desc:'Clear & formal'       },
+        { id:'Seoyeon',    name:'Seoyeon',    lang:'ko', locale:'ko-KR', region:'Korea',         gender:'female', elVoice:'BELLA',   voiceSpeed:1.05, desc:'Bright & natural'     },
+        /* ── SWEDISH (2) ────────────────────────────────────────── */
+        { id:'Erik',       name:'Erik',       lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'male',   elVoice:'CALLUM',  voiceSpeed:1.00, desc:'Nordic clarity'       },
+        { id:'Astrid',     name:'Astrid',     lang:'sv', locale:'sv-SE', region:'Sweden',        gender:'female', elVoice:'RACHEL',  voiceSpeed:0.96, desc:'Scandinavian warmth'  },
+        /* ── TURKISH (2) ────────────────────────────────────────── */
+        { id:'Mehmet',     name:'Mehmet',     lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'male',   elVoice:'ARNOLD',  voiceSpeed:1.05, desc:'Warm & expressive'    },
+        { id:'Filiz',      name:'Filiz',      lang:'tr', locale:'tr-TR', region:'Turkey',        gender:'female', elVoice:'ELLI',    voiceSpeed:1.00, desc:'Clear & melodic'      },
+        /* ── POLISH (2) ─────────────────────────────────────────── */
+        { id:'Jacek',      name:'Jacek',      lang:'pl', locale:'pl-PL', region:'Poland',        gender:'male',   elVoice:'DANIEL',  voiceSpeed:0.96, desc:'Bold & steady'        },
+        { id:'Maja',       name:'Maja',       lang:'pl', locale:'pl-PL', region:'Poland',        gender:'female', elVoice:'GRACE',   voiceSpeed:1.08, desc:'Clear & natural'      },
     ];
 
     /* ── Voice render ─────────────────────────────────────────── */
     function renderVoices() {
-        var filterLang   = (document.getElementById('tts-lang-filter')  || {}).value || '';
+        var filterLang = (document.getElementById('tts-lang-filter') || {}).value || '';
         var list = VOICES.filter(function(v) {
-            var langOk   = !filterLang  || v.lang   === filterLang;
+            var langOk   = !filterLang   || v.lang   === filterLang;
             var genderOk = !genderFilter || v.gender === genderFilter;
             return langOk && genderOk;
         });
@@ -211,10 +230,10 @@
     }
 
     function updateTranslateNote(v) {
-        var note    = document.getElementById('tts-translate-note');
+        var note     = document.getElementById('tts-translate-note');
         var noteText = document.getElementById('tts-translate-note-text');
-        var toggle  = document.getElementById('tts-translate-toggle');
-        var label   = document.getElementById('tts-translate-label');
+        var toggle   = document.getElementById('tts-translate-toggle');
+        var label    = document.getElementById('tts-translate-label');
         if (!note || !v) return;
         var isNonEn = v.lang && v.lang !== 'en';
         if (toggle) toggle.checked = isNonEn;
@@ -234,7 +253,6 @@
     /* ── Translation via Groq ─────────────────────────────────── */
     async function translateText(text, targetLocale, targetLang) {
         if (!text || !targetLocale) return text;
-        /* Skip if text is already in target language (very rough check: if <10 chars or no groqFetch) */
         if (typeof window.groqFetch !== 'function') return text;
         try {
             var res = await window.groqFetch({
@@ -253,27 +271,47 @@
         } catch(e) { return text; }
     }
 
-    /* ── Pollinations TTS fetch — single voice attempt ──────────── */
-    async function fetchChunkOnce(text, voice) {
-        var encoded   = encodeURIComponent(text);
-        var cacheBust = voice + '_' + Date.now() + '_' + Math.floor(Math.random() * 99999);
-        var url       = 'https://audio.pollinations.ai/' + encoded +
-                        '?voice='   + voice +
-                        '&model=openai-audio' +
-                        '&nologo=true' +
-                        '&v=' + cacheBust;
+    /* ── ElevenLabs TTS fetch ─────────────────────────────────────
+       Uses multilingual-v2 model — supports all major languages.
+       Tries each key in _elKeys in order; skips 401/429 keys automatically.
+       Falls back to browser TTS if no working key is found.
+    ── */
+    function _getActiveKeys() {
+        /* Priority: admin-loaded keys → hardcoded fallback → empty */
+        var keys = _elKeys.length ? _elKeys.slice() : [];
+        if (ELEVENLABS_API_KEY && keys.indexOf(ELEVENLABS_API_KEY) === -1) {
+            keys.unshift(ELEVENLABS_API_KEY);
+        }
+        return keys;
+    }
+
+    async function _tryOneKey(text, elVoiceKey, apiKey) {
+        var voiceId = EL_VOICES[elVoiceKey] || EL_VOICES.ADAM;
+        var url = 'https://api.elevenlabs.io/v1/text-to-speech/' + voiceId;
         var ctrl = new AbortController();
-        var tid  = setTimeout(function() { ctrl.abort(); }, 15000);
+        var tid  = setTimeout(function() { ctrl.abort(); }, 30000);
         try {
-            /* Add seed to avoid Pollinations caching the same text response */
-              var fetchUrl = url + (url.includes('?') ? '&nc=' : '?nc=') + Date.now();
-              var r = await fetch(fetchUrl, { signal: ctrl.signal, cache: 'no-store' });
+            var r = await fetch(url, {
+                method: 'POST',
+                signal: ctrl.signal,
+                headers: {
+                    'xi-api-key':   apiKey,
+                    'Content-Type': 'application/json',
+                    'Accept':       'audio/mpeg'
+                },
+                body: JSON.stringify({
+                    text: text,
+                    model_id: 'eleven_multilingual_v2',
+                    voice_settings: { stability: 0.5, similarity_boost: 0.75, style: 0.0, use_speaker_boost: true }
+                })
+            });
             clearTimeout(tid);
-            if (!r.ok) throw new Error('HTTP ' + r.status);
+            if (r.status === 401) throw new Error('INVALID_KEY');
+            if (r.status === 429) throw new Error('RATE_LIMITED');
+            if (r.status === 402) throw new Error('FREE_PLAN');
+            if (!r.ok) throw new Error('HTTP_' + r.status);
             var buf = await r.arrayBuffer();
-            /* Reject empty/tiny responses — Pollinations returns < 100 bytes
-               when it silently ignores an unsupported voice parameter        */
-            if (!buf || buf.byteLength < 100) throw new Error('Empty audio');
+            if (!buf || buf.byteLength < 50) throw new Error('EMPTY');
             return buf;
         } catch(e) {
             clearTimeout(tid);
@@ -281,22 +319,60 @@
         }
     }
 
-    /* ── fetchChunk: try requested voice, then gender-safe fallback ── */
-    async function fetchChunk(text, baseVoice, locale, gender) {
-        /* Try the exact voice first */
-        try { return await fetchChunkOnce(text, baseVoice); } catch(_) {}
-
-        /* Fallback voices: male → onyx/echo, female → nova/shimmer
-           These are the most reliably supported voices on Pollinations  */
-        var fallbacks = (gender === 'female')
-            ? ['nova', 'shimmer', 'alloy', 'echo']
-            : ['onyx', 'echo', 'fable', 'nova'];
-        fallbacks = fallbacks.filter(function(v) { return v !== baseVoice; });
-
-        for (var fi = 0; fi < fallbacks.length; fi++) {
-            try { return await fetchChunkOnce(text, fallbacks[fi]); } catch(_) {}
+    async function fetchChunkElevenLabs(text, elVoiceKey) {
+        var keys = _getActiveKeys();
+        if (!keys.length) throw new Error('No ElevenLabs API key — add one in Admin Settings → ElevenLabs');
+        var lastErr = '';
+        for (var ki = 0; ki < keys.length; ki++) {
+            try {
+                return await _tryOneKey(text, elVoiceKey, keys[ki]);
+            } catch(e) {
+                lastErr = e.message || String(e);
+                /* FREE_PLAN and EMPTY are not key-rotation issues — stop immediately */
+                if (lastErr === 'FREE_PLAN' || lastErr === 'EMPTY') break;
+                /* Continue to next key for auth/rate-limit errors */
+            }
         }
-        throw new Error('All voices failed for chunk');
+        /* Surface a human-readable error */
+        if (lastErr === 'FREE_PLAN') throw new Error('ElevenLabs free plan cannot use AI voices via API — upgrade at elevenlabs.io/pricing (Starter ~$5/mo)');
+        if (lastErr === 'INVALID_KEY') throw new Error('ElevenLabs key invalid — update in Admin Settings → ElevenLabs');
+        if (lastErr === 'RATE_LIMITED') throw new Error('All ElevenLabs keys are rate-limited — add more keys in Admin Settings');
+        throw new Error('ElevenLabs audio failed: ' + lastErr);
+    }
+
+    /* Merge several WAV chunks into one valid WAV (strip child headers) */
+    function concatWavBuffers(buffers) {
+        var pcmParts = buffers.map(function(b) { return new Uint8Array(b, 44); });
+        var total    = pcmParts.reduce(function(a, p) { return a + p.length; }, 0);
+        var merged   = new Uint8Array(total);
+        var off = 0;
+        pcmParts.forEach(function(p) { merged.set(p, off); off += p.length; });
+        /* read sample rate from the first chunk's header */
+        var rate = new DataView(buffers[0]).getUint32(24, true) || 24000;
+        return window.geminiTTS.pcmToWav(merged, rate);
+    }
+
+    /* Natural-language delivery hint sent to Gemini for each character */
+    function _geminiStyleFor(v, isContinuation) {
+        if (!v) return '';
+        var tone = (v.desc || 'clear and natural').toLowerCase();
+        var pace = 'at a relaxed, natural pace';
+        if (v.voiceSpeed && v.voiceSpeed < 0.94) pace = 'a little slowly and deliberately';
+        else if (v.voiceSpeed && v.voiceSpeed > 1.04) pace = 'briskly and energetically';
+        var who = (v.gender === 'male' ? 'man' : 'woman');
+        var accent = (v.region || 'neutral');
+        var base =
+            'You are ' + (v.name || v.id) + ', a real ' + who + ' with a ' + accent +
+            ' accent, speaking ' + tone + ' ' + pace + '. ' +
+            'Read the following text aloud exactly as written, like a human narrator: ' +
+            'natural breathing, soft pauses at commas and full stops, gentle intonation ' +
+            'that rises and falls with meaning, and no robotic flatness. ' +
+            'Do not add, skip, translate or comment on anything — only speak the text.';
+        if (isContinuation) {
+            base += ' This is a continuation of the same passage — keep the exact same ' +
+                    'voice, accent, energy and pacing as before, with no reset in tone.';
+        }
+        return base;
     }
 
     function concatBuffers(buffers) {
@@ -330,9 +406,8 @@
             var u    = new SpeechSynthesisUtterance(text);
             u.rate   = Math.min(Math.max(parseFloat(speed) || 1, 0.1), 10);
             u.lang   = (voiceObj && voiceObj.locale) || 'en-US';
-            var _rc = null;
-            u.onend  = function() { if (_rc) clearInterval(_rc); resolve(); };
-            u.onerror = function(e) { if (_rc) clearInterval(_rc); reject(new Error(e.error || 'speech-error')); };
+            u.onend  = resolve;
+            u.onerror = function(e) { reject(new Error(e.error || 'speech-error')); };
 
             function pickVoiceAndSpeak() {
                 var voices = window.speechSynthesis.getVoices();
@@ -340,8 +415,6 @@
                     var locale = voiceObj.locale || 'en-US';
                     var lang   = locale.split('-')[0];
                     var isFem  = voiceObj.gender === 'female';
-                    /* Priority: exact locale + gender match → exact locale →
-                       language match + gender → language match → any English */
                     var pick =
                         voices.find(function(v) { return v.lang === locale && (isFem ? /female|woman|girl|zira|hazel|susan|karen|samantha|victoria|moira|tessa|fiona|helena|anna/i.test(v.name) : /male|man|david|james|george|mark|daniel|rishi|fred|alex/i.test(v.name)); }) ||
                         voices.find(function(v) { return v.lang === locale; }) ||
@@ -350,14 +423,9 @@
                         voices.find(function(v) { return v.lang.startsWith('en'); });
                     if (pick) u.voice = pick;
                 }
-                /* FIX: Chrome pauses speechSynthesis silently — poll and resume */
-                _rc = setInterval(function () {
-                    if (window.speechSynthesis.paused) { try { window.speechSynthesis.resume(); } catch(e2) {} }
-                }, 250);
                 window.speechSynthesis.speak(u);
             }
 
-            /* Chrome loads voices async on first call */
             var existing = window.speechSynthesis.getVoices();
             if (existing.length) {
                 setTimeout(pickVoiceAndSpeak, 50);
@@ -366,7 +434,6 @@
                     window.speechSynthesis.onvoiceschanged = null;
                     setTimeout(pickVoiceAndSpeak, 50);
                 };
-                /* Fallback if event never fires */
                 setTimeout(pickVoiceAndSpeak, 1200);
             }
         });
@@ -384,8 +451,18 @@
         var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
         if (!voiceObj) { showError('Invalid voice selected.'); return; }
 
+        /* Warn early only when NO real-voice provider is configured */
+        var _gem = window.geminiTTS;
+        var _hasGemini = !!(_gem && _gem.hasKeys());
+        var _hasEL     = EL_ENABLED && _getActiveKeys().length > 0;
+        if (!_hasGemini && !_hasEL) {
+            showError('No AI voice key configured. Using the browser voice. Add a free Gemini TTS key in Admin Settings → Gemini TTS.');
+        } else {
+            hideError();
+        }
+
         setGenerating(true);
-        hideError();
+        hideDownload();
         var player = document.getElementById('tts-player');
         if (player) player.classList.remove('visible');
 
@@ -395,33 +472,54 @@
         if (translateOn && voiceObj.lang !== 'en') {
             setStatus('Translating to ' + voiceObj.locale.toUpperCase() + '…', true);
             ttsText = await translateText(text, voiceObj.locale, voiceObj.lang);
-        } else if (translateOn && voiceObj.lang === 'en') {
-            /* English voice but translate toggled — use as-is */
-            ttsText = text;
         }
 
-        /* Step 2: TTS */
-        setStatus('Generating audio with ' + voiceObj.name + '…', true);
-        var chunks  = splitText(ttsText);
-        var buffers = [];
+        /* Step 2: TTS — Gemini, then browser (ElevenLabs disabled) */
+        var chunks   = splitText(ttsText);
+        var buffers  = [];
         var usedBrowser = false;
+        var errorMsg = '';
+        currentEngine = 'browser';
+        currentMime   = 'audio/wav';
 
-        for (var i = 0; i < chunks.length; i++) {
-            setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
-            try {
-                var buf = await fetchChunk(chunks[i], voiceObj.base, voiceObj.locale, voiceObj.gender);
-                buffers.push(buf);
-            } catch(e) {
-                /* All Pollinations voices failed — fall back to browser TTS */
-                usedBrowser = true;
-                break;
+        if (_hasGemini) {
+            var gVoice = _gem.voiceFor(voiceObj);
+            for (var gi = 0; gi < chunks.length; gi++) {
+                setStatus('Generating AI audio… (' + (gi + 1) + '/' + chunks.length + ')', true);
+                var gStyle = _geminiStyleFor(voiceObj, gi > 0);
+                try {
+                    buffers.push(await _gem.synth(chunks[gi], gVoice, gStyle));
+                } catch(e) {
+                    errorMsg = e.message || 'Gemini audio generation failed';
+                    buffers = [];
+                    break;
+                }
             }
+            if (buffers.length) { currentEngine = 'gemini'; currentMime = 'audio/wav'; }
         }
+
+        /* Fallback 1: ElevenLabs — disabled (EL_ENABLED = false) */
+        if (EL_ENABLED && !buffers.length && _hasEL) {
+            for (var i = 0; i < chunks.length; i++) {
+                setStatus('Generating audio… (' + (i + 1) + '/' + chunks.length + ')', true);
+                try {
+                    buffers.push(await fetchChunkElevenLabs(chunks[i], voiceObj.elVoice));
+                } catch(e) {
+                    errorMsg = e.message || 'Audio generation failed';
+                    buffers = [];
+                    break;
+                }
+            }
+            if (buffers.length) { currentEngine = 'elevenlabs'; currentMime = 'audio/mpeg'; }
+        }
+
+        if (!buffers.length) usedBrowser = true;
 
         setGenerating(false);
         setStatus('', false);
 
         if (usedBrowser || !buffers.length) {
+            if (errorMsg) showError(errorMsg);
             browserModeText  = ttsText;
             browserModeSpeed = speed;
             browserModeVoice = voiceObj;
@@ -431,8 +529,10 @@
         }
 
         /* Merge chunks into single blob */
-        var finalBuf  = buffers.length === 1 ? buffers[0] : concatBuffers(buffers);
-        var blob      = new Blob([finalBuf], { type: 'audio/mpeg' });
+        var finalBuf  = buffers.length === 1
+            ? buffers[0]
+            : (currentEngine === 'gemini' ? concatWavBuffers(buffers) : concatBuffers(buffers));
+        var blob      = new Blob([finalBuf], { type: currentMime });
         var url       = URL.createObjectURL(blob);
         currentAudioBlob = blob;
         currentAudioUrl  = url;
@@ -447,51 +547,31 @@
         var audio = document.getElementById('tts-audio');
         if (audio) {
             audio.style.display = 'block';
-              audio.setAttribute('playsinline', '');
-              audio.setAttribute('webkit-playsinline', '');
-              audio.src = url;
-              audio.load();
-            audio.playbackRate = speed;
-            /* FIX: unlock audio then play; if still blocked show a visible tap-overlay.
-               volume must be 0.001, NOT 0 — Android WebViews skip the autoplay unlock
-               when volume=0, so TTS stays permanently silent on first load. */
-              (window._aqsAudioUnlocked ? Promise.resolve() :
-                  new Promise(function(res) {
-                      try {
-                          var s = new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=');
-                          s.volume = 0.001;
-                          s.play().then(function(){ s.pause(); s.src=''; res(); }).catch(res);
-                      } catch(e){ res(); }
-                  })
-              ).then(function() {
-                  return audio.play();
-              }).catch(function () {
-                  /* Android still blocked — show a tap-to-play overlay */
-                  if (document.getElementById('_aqsTapPlay')) return;
-                  var ov = document.createElement('div');
-                  ov.id = '_aqsTapPlay';
-                  ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:99999;' +
-                      'background:rgba(0,0,0,.6);display:flex;align-items:center;' +
-                      'justify-content:center;cursor:pointer;touch-action:manipulation';
-                  ov.innerHTML = '<div style="background:#fff;border-radius:18px;padding:28px 36px;' +
-                      'text-align:center;max-width:300px;box-shadow:0 4px 24px rgba(0,0,0,.3)">' +
-                      '<div style="font-size:2.4rem;margin-bottom:8px">&#128266;</div>' +
-                      '<div style="font-size:1.1rem;font-weight:700;margin-bottom:6px">Tap to play audio</div>' +
-                      '<div style="font-size:.85rem;color:#666">Android requires a tap to enable sound</div></div>';
-                  document.body.appendChild(ov);
-                  ov.addEventListener('click', function () {
-                      ov.remove();
-                      if (typeof window.AQSUnlockAudio === 'function') window.AQSUnlockAudio();
-                      audio.play().catch(function() { /* handled by tap-overlay above */ });
-                  }, { once: true });
-              });
+            audio.src = url;
+            audio.load();
+            /* Real AI audio already carries the character's own pacing —
+               pitch-shifting it would make it sound synthetic, so only the
+               user's own speed slider applies. Browser/legacy audio keeps
+               the per-character rate for differentiation. */
+            var baseRate = currentEngine === 'gemini'
+                ? 1.0
+                : parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
+            audio.playbackRate = Math.min(Math.max(baseRate * speed, 0.1), 4.0);
+            audio.play().catch(function() {});
         }
 
         var bp = document.getElementById('tts-browser-player');
         if (bp) bp.style.display = 'none';
 
+        /* Download button with file size */
         var dl = document.getElementById('tts-download-btn');
-        if (dl) dl.style.display = '';
+        if (dl) {
+            dl.style.display = '';
+            var kb = blob ? Math.round(blob.size / 1024) : 0;
+            dl.innerHTML =
+                '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>' +
+                ' Download ' + (currentMime === 'audio/mpeg' ? 'MP3' : 'WAV') + (kb > 0 ? ' (' + kb + ' KB)' : '');
+        }
 
         var row = document.getElementById('tts-player-voice-row');
         if (row) {
@@ -504,7 +584,8 @@
         }
 
         var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase();
+        var engineLabel = currentEngine === 'gemini' ? 'Gemini AI Voice' : 'AI Voice';
+        if (info) info.textContent = voiceObj.desc + ' · ' + voiceObj.locale.toUpperCase() + ' · ' + engineLabel;
 
         var player = document.getElementById('tts-player');
         if (player) player.classList.add('visible');
@@ -520,30 +601,41 @@
         var bp = document.getElementById('tts-browser-player');
         if (bp) bp.style.display = 'flex';
 
-        var dl = document.getElementById('tts-download-btn');
-        if (dl) dl.style.display = 'none';
+        hideDownload();
 
         var row = document.getElementById('tts-player-voice-row');
         if (row) row.innerHTML = '<span class="tts-pv-name">Browser Voice</span><span class="tts-pv-region">Built-in</span>';
 
         var info = document.getElementById('tts-player-info');
-        if (info) info.textContent = 'Download unavailable in browser fallback mode';
+        if (info) info.textContent = 'Add a free Gemini TTS key in Admin Settings → Gemini TTS to enable real AI voices & downloads';
 
         var player = document.getElementById('tts-player');
         if (player) player.classList.add('visible');
     }
 
-    /* ── Download ────────────────────────────────────────────── */
+    function hideDownload() {
+        var dl = document.getElementById('tts-download-btn');
+        if (dl) dl.style.display = 'none';
+    }
+
+    /* ── Download ─────────────────────────────────────────────── */
     function download() {
-        if (!currentAudioBlob) return;
+        if (!currentAudioBlob) {
+            showError('No audio to download. Generate speech first.');
+            return;
+        }
         var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
-        var name     = (voiceObj ? voiceObj.name.toLowerCase() : 'tts') + '-xzily-' + Date.now() + '.mp3';
+        var vName    = voiceObj ? voiceObj.name.toLowerCase().replace(/[^a-z0-9]/g, '-') : 'tts';
+        var lang     = voiceObj ? voiceObj.lang : 'en';
+        var ts       = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        var ext      = (currentMime === 'audio/mpeg') ? '.mp3' : '.wav';
+        var fileName = 'xzily-tts-' + vName + '-' + lang + '-' + ts + ext;
         var a        = document.createElement('a');
         a.href       = URL.createObjectURL(currentAudioBlob);
-        a.download   = name;
+        a.download   = fileName;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
+        setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(a.href); }, 1000);
     }
 
     /* ── History ─────────────────────────────────────────────── */
@@ -581,12 +673,10 @@
                 e.stopPropagation();
                 var ta = document.getElementById('tts-text');
                 if (ta) { ta.value = entry.text; updateCharCount(); }
-                /* Try to re-select the same voice */
                 if (entry.voiceId) {
                     selectedVoice = entry.voiceId;
                     var vo = VOICES.find(function(v) { return v.id === entry.voiceId; });
                     if (vo) {
-                        /* Switch language filter to match */
                         var lf = document.getElementById('tts-lang-filter');
                         if (lf) lf.value = vo.lang;
                         renderVoices();
@@ -599,147 +689,180 @@
         });
     }
 
-    /* ── UI helpers ──────────────────────────────────────────── */
+    /* ── Char count ───────────────────────────────────────────── */
     function updateCharCount() {
-        var text = (document.getElementById('tts-text') || {}).value || '';
-        var len  = text.length;
-        var el   = document.getElementById('tts-char-count');
-        if (!el) return;
-        el.textContent = len.toLocaleString() + ' / 5,000 characters';
-        el.className   = 'tts-char-count' + (len >= MAX_CHARS ? ' over' : len > 4500 ? ' warn' : '');
+        var ta  = document.getElementById('tts-text');
+        var cc  = document.getElementById('tts-char-count');
+        if (!ta || !cc) return;
+        var n = ta.value.length;
+        cc.textContent = n + ' / ' + MAX_CHARS;
+        cc.style.color = n > MAX_CHARS * 0.9 ? '#e74c3c' : '';
+        if (ta.value.length > MAX_CHARS) ta.value = ta.value.slice(0, MAX_CHARS);
+    }
+
+    /* ── Status / Error helpers ───────────────────────────────── */
+    function setStatus(msg, spin) {
+        var s = document.getElementById('tts-status');
+        if (!s) return;
+        s.textContent = msg;
+        s.style.display = msg ? 'flex' : 'none';
+        var icon = s.querySelector('.tts-spinner');
+        if (icon) icon.style.display = spin ? 'inline-block' : 'none';
     }
 
     function setGenerating(on) {
         var btn = document.getElementById('tts-generate-btn');
-        if (btn) {
-            btn.disabled    = on;
-            btn.textContent = on ? 'Generating…' : '';
-            if (!on) {
-                btn.innerHTML =
-                    '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>' +
-                    ' Generate Speech';
-            }
-        }
-    }
-
-    function setStatus(text, show) {
-        var el = document.getElementById('tts-status');
-        var tx = document.getElementById('tts-status-text');
-        if (el) el.className = 'tts-status' + (show ? ' visible' : '');
-        if (tx && text) tx.textContent = text;
+        if (!btn) return;
+        btn.disabled = on;
+        btn.textContent = on ? 'Generating…' : 'Generate Speech';
     }
 
     function showError(msg) {
-        var el = document.getElementById('tts-error');
-        if (el) { el.textContent = '⚠ ' + msg; el.className = 'tts-error visible'; }
+        var e = document.getElementById('tts-error');
+        if (!e) return;
+        e.textContent = msg;
+        e.style.display = 'block';
     }
 
     function hideError() {
-        var el = document.getElementById('tts-error');
-        if (el) el.className = 'tts-error';
+        var e = document.getElementById('tts-error');
+        if (e) e.style.display = 'none';
     }
 
     function esc(s) {
         return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
-    /* ── Init ────────────────────────────────────────────────── */
-    document.addEventListener('DOMContentLoaded', function() {
+    /* ── Speed slider ─────────────────────────────────────────── */
+    function initSpeedSlider() {
+        var slider = document.getElementById('tts-speed');
+        var label  = document.getElementById('tts-speed-label');
+        if (!slider) return;
+        function update() {
+            if (label) label.textContent = parseFloat(slider.value).toFixed(1) + '×';
+            /* Update live if audio is playing */
+            var audio = document.getElementById('tts-audio');
+            if (audio && audio.src && currentAudioBlob) {
+                var voiceObj = VOICES.find(function(v) { return v.id === selectedVoice; });
+                var baseRate = currentEngine === 'gemini'
+                    ? 1.0
+                    : parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
+                audio.playbackRate = Math.min(Math.max(baseRate * parseFloat(slider.value), 0.1), 4.0);
+            }
+        }
+        slider.addEventListener('input', update);
+        update();
+    }
 
-        renderVoices();
-        updateVoiceBadge(null);
-        renderHistory();
+    /* ── Browser player controls ──────────────────────────────── */
+    function initBrowserPlayer() {
+        var playBtn  = document.getElementById('tts-bp-play');
+        var pauseBtn = document.getElementById('tts-bp-pause');
+        var stopBtn  = document.getElementById('tts-bp-stop');
+        if (playBtn)  playBtn.addEventListener('click',  function() { if (browserModeText) speakWithBrowser(browserModeText, browserModeSpeed, browserModeVoice).catch(function(){}); });
+        if (pauseBtn) pauseBtn.addEventListener('click', function() { if (window.speechSynthesis) window.speechSynthesis.pause(); });
+        if (stopBtn)  stopBtn.addEventListener('click',  function() { if (window.speechSynthesis) window.speechSynthesis.cancel(); });
+    }
 
-        /* Language filter */
-        var lf = document.getElementById('tts-lang-filter');
-        if (lf) lf.addEventListener('change', function() { renderVoices(); });
-
-        /* Gender filter buttons */
-        var gfBtns = document.querySelectorAll('.tts-gender-btn');
-        gfBtns.forEach(function(btn) {
+    /* ── Gender filter ────────────────────────────────────────── */
+    function initGenderFilter() {
+        document.querySelectorAll('[data-gender-filter]').forEach(function(btn) {
             btn.addEventListener('click', function() {
-                genderFilter = btn.dataset.gender;
-                gfBtns.forEach(function(b) { b.classList.remove('active'); });
+                genderFilter = btn.dataset.genderFilter || '';
+                document.querySelectorAll('[data-gender-filter]').forEach(function(b) { b.classList.remove('active'); });
                 btn.classList.add('active');
                 renderVoices();
             });
         });
+    }
 
-        /* Speed slider */
-        var speedEl  = document.getElementById('tts-speed');
-        var speedVal = document.getElementById('tts-speed-val');
-        if (speedEl && speedVal) {
-            speedEl.addEventListener('input', function() {
-                var v = parseFloat(this.value).toFixed(1);
-                speedVal.textContent = v + '×';
-                var audio = document.getElementById('tts-audio');
-                if (audio && audio.src) audio.playbackRate = parseFloat(v);
-            });
+    /* ── Load voice-engine keys from Firebase admin settings ─────
+       Called once Firebase is ready. Populates _elKeys so that
+       generate() can use the key without any manual config.
+    ── */
+    function _loadKeys() {
+        var tasks = [];
+        if (window.geminiTTS) tasks.push(window.geminiTTS.loadKeys());
+        tasks.push(new Promise(function(r) { _loadELKeys(); r(); }));
+        Promise.all(tasks).then(_updateKeyNotice).catch(function(){ _updateKeyNotice(); });
+    }
+
+    function _loadELKeys() {
+        if (!EL_ENABLED) { _elKeys = []; _updateKeyNotice(); return; }
+        /* Option 1: keys already loaded by admin-settings page into window */
+        if (Array.isArray(window._AQS_EL_KEYS) && window._AQS_EL_KEYS.length) {
+            _elKeys = window._AQS_EL_KEYS;
+            _updateKeyNotice();
+            return;
         }
-
-        /* Char counter */
-        var ta = document.getElementById('tts-text');
-        if (ta) {
-            ta.addEventListener('input', updateCharCount);
-            ta.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && e.ctrlKey) { e.preventDefault(); generate(); }
-            });
-        }
-
-        /* Generate */
-        var genBtn = document.getElementById('tts-generate-btn');
-        if (genBtn) genBtn.addEventListener('click', generate);
-
-        /* Download */
-        var dlBtn = document.getElementById('tts-download-btn');
-        if (dlBtn) dlBtn.addEventListener('click', download);
-
-        /* Regenerate */
-        var regenBtn = document.getElementById('tts-regen-btn');
-        if (regenBtn) regenBtn.addEventListener('click', generate);
-
-        /* Clear */
-        var clearBtn = document.getElementById('tts-clear-btn');
-        if (clearBtn) {
-            clearBtn.addEventListener('click', function() {
-                var ta = document.getElementById('tts-text');
-                if (ta) ta.value = '';
-                updateCharCount();
-                var player = document.getElementById('tts-player');
-                if (player) player.classList.remove('visible');
-                hideError();
-                currentAudioUrl  = null;
-                currentAudioBlob = null;
-                browserModeText  = null;
-                browserModeVoice = null;
-                if (window.speechSynthesis) window.speechSynthesis.cancel();
-                var audio = document.getElementById('tts-audio');
-                if (audio) { audio.pause(); audio.src = ''; audio.style.display = 'block'; }
-                var bp = document.getElementById('tts-browser-player');
-                if (bp) bp.style.display = 'none';
-            });
-        }
-
-        /* Browser speech play/stop */
-        var bPlay = document.getElementById('tts-browser-play-btn');
-        if (bPlay) bPlay.addEventListener('click', function() {
-            if (browserModeText) speakWithBrowser(browserModeText, browserModeSpeed, browserModeVoice).catch(function() {});
+        /* Option 2: load directly from Firebase via aqsAjax */
+        if (typeof window.aqsAjax !== 'function') return;
+        window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+            var s = (res && res.success && res.data && res.data.settings) || {};
+            var keys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
+            _elKeys = keys.filter(function(k) { return k && k.length > 20; });
+            window._AQS_EL_KEYS = _elKeys;
+            _updateKeyNotice();
         });
-        var bStop = document.getElementById('tts-browser-stop-btn');
-        if (bStop) bStop.addEventListener('click', function() {
-            if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+
+    function _updateKeyNotice() {
+        var notice = document.getElementById('tts-api-notice');
+        if (!notice) return;
+        var hasGemini = !!(window.geminiTTS && window.geminiTTS.hasKeys());
+        var hasKey = hasGemini || (EL_ENABLED && (_elKeys.length > 0 || ELEVENLABS_API_KEY.length > 20));
+        if (!hasKey) {
+            notice.style.display = 'block';
+            notice.innerHTML =
+                '⚠️ <strong>No AI voice key configured.</strong> ' +
+                'Real voices are disabled — using the browser built-in voice. ' +
+                'Go to <a href="admin-settings.html" style="color:#fbbf24;font-weight:700;">Admin Settings</a> ' +
+                '→ Gemini TTS and paste a free key from ' +
+                '<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener" style="color:#fbbf24;font-weight:700;">aistudio.google.com</a>.';
+        } else {
+            notice.style.display = 'none';
+        }
+    }
+
+    /* ── Init ─────────────────────────────────────────────────── */
+    function init() {
+        var gen  = document.getElementById('tts-generate-btn');
+        var dl   = document.getElementById('tts-download-btn');
+        var ta   = document.getElementById('tts-text');
+        var lf   = document.getElementById('tts-lang-filter');
+        var clr  = document.getElementById('tts-clear-history-btn');
+
+        if (gen) gen.addEventListener('click', generate);
+        if (dl)  dl.addEventListener('click', download);
+        if (ta)  ta.addEventListener('input', updateCharCount);
+        if (lf)  lf.addEventListener('change', renderVoices);
+        if (clr) clr.addEventListener('click', function() {
+            try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
+            renderHistory();
         });
 
-        /* Clear history */
-        var clrHist = document.getElementById('tts-clear-history-btn');
-        if (clrHist) {
-            clrHist.addEventListener('click', function() {
-                if (confirm('Clear all audio history?')) {
-                    try { localStorage.removeItem(HISTORY_KEY); } catch(e) {}
-                    renderHistory();
-                }
-            });
+        initSpeedSlider();
+        initBrowserPlayer();
+        initGenderFilter();
+        renderVoices();
+        renderHistory();
+        updateCharCount();
+        updateVoiceBadge(null);
+
+        /* Load Gemini + ElevenLabs keys from Firebase admin settings */
+        if (window._aqsFirebaseReady) {
+            _loadKeys();
+        } else {
+            document.addEventListener('aqs:firebase:ready', _loadKeys, { once: true });
+            /* Show notice immediately while waiting; will hide once keys load */
+            _updateKeyNotice();
         }
-    });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 
 })();

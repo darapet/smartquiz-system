@@ -158,6 +158,119 @@
     }
   }
 
+  /* ── Compact the public navigation ──────────────────────────────────
+     Keep the five primary destinations visible and group every other
+     destination under one accessible Explore menu. */
+  function compactNavigation() {
+    document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
+      if (nav.dataset.aqsCompactNav === 'true') return;
+      nav.dataset.aqsCompactNav = 'true';
+
+      var auth = nav.querySelector('.aqs-site-nav-mobile-auth');
+      var links = Array.from(nav.children).filter(function (child) {
+        return child.tagName === 'A' && (!auth || !auth.contains(child));
+      });
+      var primary = [];
+      var secondary = [];
+      var hasStudyHub = false;
+      var hasChallenge = false;
+      var hasLibrary = false;
+      var hasCreatorStudio = false;
+
+      links.forEach(function (link) {
+        var rawHref = (link.getAttribute('href') || '').replace(/\?.*$/, '');
+        var href = rawHref.replace(/^.*\//, '');
+        var creatorStudioLink = rawHref === 'ai-creator-studio-pro' ||
+          rawHref === 'ai-creator-studio-pro/' ||
+          rawHref === 'ai-creator-studio-pro/index.html';
+        if (creatorStudioLink) {
+          primary.push(link);
+          hasCreatorStudio = true;
+        } else if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+            href === 'challenge.html' || href === 'library.html') {
+          primary.push(link);
+          if (href === 'studyhub.html') hasStudyHub = true;
+          if (href === 'challenge.html') hasChallenge = true;
+          if (href === 'library.html') hasLibrary = true;
+          if (href === 'studio.html') {
+            Array.from(link.childNodes).reverse().some(function (node) {
+              if (node.nodeType === 3 && node.nodeValue.trim()) {
+                node.nodeValue = ' Studio AI';
+                return true;
+              }
+              return false;
+            });
+          }
+        } else {
+          secondary.push(link);
+        }
+      });
+
+      if (!hasStudyHub) {
+        var studyHub = document.createElement('a');
+        studyHub.href = 'studyhub.html';
+        studyHub.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        studyHub.style.cssText = 'color:#6366f1;font-weight:700;';
+        studyHub.textContent = '📚 Study Hub';
+        primary.push(studyHub);
+      }
+      [
+        { present: hasChallenge, href: 'challenge.html', label: '⚔️ Challenge', color: '#e11d48' },
+        { present: hasLibrary, href: 'library.html', label: '📖 Library', color: '#4f46e5' }
+      ].forEach(function (item) {
+        if (item.present) return;
+        var link = document.createElement('a');
+        link.href = item.href;
+        link.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        link.style.cssText = 'color:' + item.color + ';font-weight:700;';
+        link.textContent = item.label;
+        primary.push(link);
+      });
+      if (!hasCreatorStudio) {
+        var creatorStudio = document.createElement('a');
+        creatorStudio.href = 'ai-creator-studio-pro/';
+        creatorStudio.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        creatorStudio.style.cssText = 'color:#0f766e;font-weight:700;';
+        creatorStudio.textContent = 'Creator Studio';
+        primary.push(creatorStudio);
+      }
+
+      primary.forEach(function (link) { nav.insertBefore(link, auth || null); });
+      if (!secondary.length) return;
+
+      var more = document.createElement('div');
+      more.className = 'aqs-site-nav-more';
+      more.innerHTML = '<button type="button" class="aqs-site-nav-more-toggle" aria-expanded="false" aria-haspopup="true">Explore <span aria-hidden="true">⌄</span></button><div class="aqs-site-nav-more-menu" role="menu"></div>';
+      var menu = more.querySelector('.aqs-site-nav-more-menu');
+      secondary.forEach(function (link) {
+        link.setAttribute('role', 'menuitem');
+        menu.appendChild(link);
+      });
+      nav.insertBefore(more, auth || null);
+
+      var toggle = more.querySelector('.aqs-site-nav-more-toggle');
+      toggle.addEventListener('click', function () {
+        var open = more.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', function (event) {
+        if (!more.contains(event.target)) {
+          more.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', compactNavigation, { once: true });
+  } else {
+    compactNavigation();
+  }
+
   /* ── Intercept nav link clicks ──────────────────────────────────────── */
   var PAGE_LABELS = {
     'index':          'Home',
@@ -166,7 +279,6 @@
     'user-dashboard': 'My Dashboard',
     'create-quiz':    'Create Quiz',
     'challenge':      'Challenge',
-    'study':          'AI Study',
     'studyhub':       'Study Hub',
     'text-to-docs':   'Word Processor',
     'docs-gen':       'AI Docs Generator',
@@ -180,6 +292,7 @@
     'library':        'Library',
     'library-upload': 'Library Upload',
     'library-read':   'Library',
+    'ai-creator-studio-pro': 'Creator Studio',
   };
 
   document.addEventListener('click', function (e) {
@@ -194,7 +307,9 @@
 
     var slug = href.replace(/\?.*$/, '').replace(/#.*$/, '')
                    .replace(/\.html$/, '').replace(/^.*\//, '');
-    var label = PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
+    var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1;
+    var label = isCreatorStudio ? PAGE_LABELS['ai-creator-studio-pro'] :
+      PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
     show(label + '…');
   }, true);
 

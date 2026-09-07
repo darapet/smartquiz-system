@@ -344,7 +344,7 @@ function updateGenBar(pct){
 }
 
 async function generateQuestions(){
-    if(typeof window.groqFetch !== 'function') throw new Error('AI not ready');
+    if(typeof window.puzzleGroqFetch !== 'function') throw new Error('AI not ready');
 
     var prompts = {
         quiz: 'Generate ' + G.numQ + ' multiple-choice quiz questions about "' + G.subject + '". ' +
@@ -366,7 +366,7 @@ async function generateQuestions(){
 
     var prompt = prompts[G.mode] || prompts.quiz;
 
-    var res  = await window.groqFetch({ messages:[
+    var res  = await window.puzzleGroqFetch({ messages:[
         {role:'system',content:'You are a quiz question generator. Output ONLY valid JSON arrays, no markdown, no explanation.'},
         {role:'user',  content: prompt}
     ], max_tokens: 3000, temperature: 0.7 });

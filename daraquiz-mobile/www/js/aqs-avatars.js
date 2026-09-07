@@ -34,15 +34,7 @@
       }
     }
     utt.pitch=vc.pitch||1; utt.rate=vc.rate||1; utt.volume=0.92;
-    /* FIX: Chrome silently pauses speechSynthesis — poll and resume every 250ms */
-    var _rc=setInterval(function(){
-      if(synth.paused){try{synth.resume();}catch(e){}}
-    },250);
-    var _done=function(){
-      clearInterval(_rc);
-      if(onEnd) onEnd();
-    };
-    utt.onend=_done; utt.onerror=_done;
+    if(onEnd){ utt.onend=function(){onEnd();}; utt.onerror=function(){onEnd();}; }
     synth.speak(utt);
   }
 

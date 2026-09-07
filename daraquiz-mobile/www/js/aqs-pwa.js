@@ -7,20 +7,11 @@
     var isInStandalone = ('standalone' in navigator && navigator.standalone) ||
                          window.matchMedia('(display-mode: standalone)').matches;
 
-    /* ── Register service worker for PWA install + offline support ── */
+    /* ── Service worker removed — unregister any old SW so visitors get fresh pages ── */
     if ('serviceWorker' in navigator) {
-        /* FIX: inject manifest.json link dynamically so every page becomes installable
-           without editing each HTML file individually */
-        if (!document.querySelector('link[rel="manifest"]')) {
-            var _ml = document.createElement('link');
-            _ml.rel  = 'manifest';
-            _ml.href = 'manifest.json';
-            document.head.appendChild(_ml);
-        }
-        /* FIX: register the service worker (was incorrectly unregistering it before,
-           which prevented the app from being installable as a PWA on Android) */
-        navigator.serviceWorker.register('js/aqs-sw.js', { scope: '/' })
-            .catch(function () { /* SW optional — silently ignore */ });
+        navigator.serviceWorker.getRegistrations().then(function (regs) {
+            regs.forEach(function (reg) { reg.unregister(); });
+        });
     }
 
     /* ── Build the install modal once ── */

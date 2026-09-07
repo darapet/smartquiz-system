@@ -257,8 +257,7 @@ html, body {
 }
 .dts-code-copy-btn:hover { background: rgba(255,255,255,0.16); color: #e2e8f0; border-color: rgba(255,255,255,0.35); }
 .dts-code-copy-btn.copied { color: #4ade80; border-color: #4ade80; background: rgba(74,222,128,0.12); }
-
-/* ── Per-message copy button (AI responses) ─────────── */
+/* ── Per-message copy button ─────────────────────── */
 .dts-msg-copy-btn {
   display: inline-flex; align-items: center; gap: 5px;
   margin-top: 10px; padding: 5px 13px;

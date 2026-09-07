@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script defer src="capacitor-bridge.js"></script>
+<script src="js/aqs-capacitor-speech.js"></script>
+<script defer src="js/aqs-update-check.js"></script>
+<script defer src="js/aqs-whats-new.js"></script>
+
+<script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Admin Dashboard — xzily AI</title>
@@ -118,7 +124,7 @@ window._AQS_SETTINGS_NONCE = '';
 
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script type="module" src="js/aqs-firebase.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 </head>
 <body>
 
@@ -132,10 +138,40 @@ window._AQS_SETTINGS_NONCE = '';
         <a href="admin-hosts.html"><span class="aqs-nav-icon">👥</span> Hosts</a>
         <a href="admin-settings.html"><span class="aqs-nav-icon">⚙️</span> Settings</a>
         <a href="admin-about.html"><span class="aqs-nav-icon">👨‍💻</span> About</a>
+        <a href="admin-update.html"><span class="aqs-nav-icon">🚀</span> App Updates</a>
+        <a href="admin.html"><span class="aqs-nav-icon">🛡️</span> Admin Panel</a>
     </nav>
     <div class="aqs-admin-sidebar-footer">
-        <a href="index.html" style="color:#a5b4fc;text-decoration:none;">← View Site</a>
+    <div id="aqs-admin-sb-user" style="display:flex;align-items:center;gap:9px;padding:8px 0 10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px;">
+        <div id="aqs-sb-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:700;color:#fff;flex-shrink:0;">A</div>
+        <div style="flex:1;overflow:hidden;">
+            <div id="aqs-sb-name" style="font-size:.78rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Admin</div>
+            <div id="aqs-sb-email" style="font-size:.68rem;color:#a5b4fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+        </div>
     </div>
+    <a href="index.html" style="color:#a5b4fc;text-decoration:none;font-size:.75rem;">← View Site</a>
+    &nbsp;&nbsp;
+    <a href="admin.html" style="color:#6ee7b7;text-decoration:none;font-size:.75rem;">⚙️ Panel</a>
+</div>
+<script>
+(function(){
+    function _w(fn){if(window._aqsFirebaseReady){fn();return;}document.addEventListener('aqs:firebase:ready',fn,{once:true});}
+    _w(function(){
+        if(typeof window.aqsAjax!=='function')return;
+        window.aqsAjax({action:'aqs_get_current_user'},function(res){
+            var u=(res&&res.success&&res.data)?res.data:{};
+            var name=u.displayName||u.name||u.email||'Admin';
+            var email=u.email||'';
+            var av=document.getElementById('aqs-sb-avatar');
+            var nm=document.getElementById('aqs-sb-name');
+            var em=document.getElementById('aqs-sb-email');
+            if(av)av.textContent=name.charAt(0).toUpperCase();
+            if(nm)nm.textContent=name;
+            if(em)em.textContent=email;
+        });
+    });
+})();
+</script>
 </aside>
 
 <div class="aqs-admin-content">
@@ -347,7 +383,24 @@ window._AQS_SETTINGS_NONCE = '';
     </div>
 
     <!-- Print-Before-Delete Modal -->
-    <div id="aqs-admin-print-delete-modal" class="aqs-modal" style="display:none;">
+    
+    <!-- TAB: Ratings & Feedback -->
+    <div id="tab-ratings" class="aqs-admin-tab-content">
+        <div class="aqs-stats" id="aqs-ratings-stats">
+            <div class="aqs-stat-card"><span id="rat-total">—</span><label>Total Ratings</label></div>
+            <div class="aqs-stat-card"><span id="rat-avg">—</span><label>Avg Stars</label></div>
+            <div class="aqs-stat-card"><span id="rat-five">—</span><label>5-Star Ratings</label></div>
+        </div>
+        <div id="rat-dist" style="display:flex;gap:8px;margin-bottom:16px;align-items:flex-end;height:60px;"></div>
+        <div class="aqs-table-wrap">
+            <table class="aqs-table">
+                <thead><tr><th>#</th><th>User</th><th>Stars</th><th>Comment</th><th>Date</th></tr></thead>
+                <tbody id="aqs-ratings-rows"><tr><td colspan="5" class="aqs-loading">Click "⭐ Ratings" tab to load…</td></tr></tbody>
+            </table>
+        </div>
+    </div>
+
+<div id="aqs-admin-print-delete-modal" class="aqs-modal" style="display:none;">
         <div class="aqs-modal-content" style="max-width:560px;">
             <div class="aqs-modal-header" style="border-bottom:3px solid #dc2626;">
                 <div><h3 style="color:#dc2626;">🖨️ Print Required Before Deleting</h3><p class="aqs-modal-sub" id="aqs-admin-pbd-sub"></p></div>
@@ -402,9 +455,7 @@ function _loadRatings() {
     var tbody = document.getElementById('aqs-ratings-rows');
     tbody.innerHTML = '<tr><td colspan="5" class="aqs-loading">Loading ratings…</td></tr>';
     function doLoad() {
-        if (!window.aqsAjax) {
-            setTimeout(doLoad, 500); return;
-        }
+        if (!window.aqsAjax) { setTimeout(doLoad, 500); return; }
         window.aqsAjax({ action: 'aqs_get_ratings', limit: 200 }, function(res) {
             var ratings = (res && res.success && res.data && res.data.ratings) ? res.data.ratings : [];
             if (ratings.length === 0) {
@@ -417,11 +468,10 @@ function _loadRatings() {
             var total = ratings.length;
             var sum   = ratings.reduce(function(a,r){ return a + (r.stars||0); }, 0);
             var avg   = (sum/total).toFixed(1);
-            var five  = ratings.filter(function(r){ return r.stars === 5; }).length;
+            var five  = ratings.filter(function(r){ return r.stars===5; }).length;
             document.getElementById('rat-total').textContent = total;
             document.getElementById('rat-avg').textContent   = avg + ' ⭐';
             document.getElementById('rat-five').textContent  = five;
-            // mini bar chart
             var dist = [0,0,0,0,0];
             ratings.forEach(function(r){ if(r.stars>=1&&r.stars<=5) dist[r.stars-1]++; });
             var maxD = Math.max.apply(null,dist)||1;
@@ -434,20 +484,14 @@ function _loadRatings() {
                 '</div>';
             }).join('');
             var starsMap = ['☆☆☆☆☆','★☆☆☆☆','★★☆☆☆','★★★☆☆','★★★★☆','★★★★★'];
-            tbody.innerHTML = ratings.map(function(r, idx){
+            tbody.innerHTML = ratings.map(function(r,idx){
                 var ts = r.createdAt && r.createdAt.seconds ? new Date(r.createdAt.seconds*1000).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'}) : '—';
                 var comment = r.comment ? ('<span style="color:#374151;">' + r.comment.replace(/</g,'&lt;') + '</span>') : '<span style="color:#9ca3af;font-style:italic;">No comment</span>';
                 var colorMap = {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#84cc16',5:'#22c55e'};
-                return '<tr>' +
-                    '<td>' + (idx+1) + '</td>' +
-                    '<td style="font-weight:600;">' + ((r.userName||'Anonymous').replace(/</g,'&lt;')) + '</td>' +
-                    '<td><span style="color:' + (colorMap[r.stars]||'#6366f1') + ';font-size:1.1rem;">' + (starsMap[r.stars]||'—') + '</span></td>' +
-                    '<td>' + comment + '</td>' +
-                    '<td style="white-space:nowrap;color:#64748b;">' + ts + '</td>' +
-                '</tr>';
+                return '<tr><td>' + (idx+1) + '</td><td style="font-weight:600;">' + ((r.userName||'Anonymous').replace(/</g,'&lt;')) + '</td><td><span style="color:' + (colorMap[r.stars]||'#6366f1') + ';font-size:1.1rem;">' + (starsMap[r.stars]||'—') + '</span></td><td>' + comment + '</td><td style="white-space:nowrap;color:#64748b;">' + ts + '</td></tr>';
             }).join('');
         }, function() {
-            tbody.innerHTML = '<tr><td colspan="5" class="aqs-loading">Failed to load ratings. Make sure you are logged in as admin.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="aqs-loading">Failed to load. Must be logged in as admin.</td></tr>';
         });
     }
     doLoad();
@@ -527,7 +571,6 @@ fetch('#firebase-admin-endpoint-removed/api/admin/quizzes', {credentials:'includ
         document.getElementById('aqs-quiz-rows').innerHTML = '<tr><td colspan="9" class="aqs-loading">Failed to load. Check API server.</td></tr>';
     });
 </script>
-  <script src="capacitor-bridge.js"></script>
 <script src="js/aqs-feedback-admin.js"></script>
 <script src="js/aqs-quotes.js"></script>
 </body>

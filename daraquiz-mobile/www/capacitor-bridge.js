@@ -680,7 +680,7 @@
     },
     'study.html': {
       title: '📚 Some Features Need the Web App',
-      body: 'On the <b>mobile app</b>, features like <b>Voice Chat with the AI Tutor, Text-to-Speech</b> reading, and <b>Image Generation</b> work best on the web version.<br><br>For the full AI Study experience visit our web app — it's free and needs no download.',
+      body: 'On the <b>mobile app</b>, features like <b>Voice Chat with the AI Tutor, Text-to-Speech</b> reading, and <b>Image Generation</b> work best on the web version.<br><br>For the full AI Study experience visit our web app — it\'s free and needs no download.',
       page: 'Study'
     }
   };

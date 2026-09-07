@@ -1,50 +1,23 @@
-/* aqs-session.js — Persistent user nav bar + 30-day inactivity auto-logout
+/* aqs-session.js — Persistent user nav bar + 20-min inactivity auto-logout
    Works on ALL pages. Listens for aqs:authchange from aqs-firebase.js.
    Safe to include on any page — does nothing if user is not logged in. */
 (function () {
     'use strict';
 
-    /* Keep users logged in for 30 days on all platforms (native and web).
-       NOTE: setTimeout max is ~24.8 days (2^31-1 ms). Using a rolling hourly check
-       instead of one giant setTimeout to avoid the overflow-fires-instantly bug. */
-    var _isNativeApp = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
-    var TIMEOUT_DAYS  = 30;
-    var ACTIVITY_KEY  = 'aqs_last_activity';
-    var CHECK_MS      = 60 * 60 * 1000;   /* check every hour — safe for setTimeout */
+    var TIMEOUT_MS = 20 * 60 * 1000; /* 20 minutes */
     var _timer = null;
 
-    /* Record activity timestamp in localStorage so it survives page navigations */
-    function _touch() {
-        try { localStorage.setItem(ACTIVITY_KEY, String(Date.now())); } catch(_) {}
-    }
-
-    /* Hourly check: has 30 days of inactivity elapsed? */
-    function _scheduleCheck() {
-        clearTimeout(_timer);
-        _timer = setTimeout(function () {
-            try {
-                var last  = parseInt(localStorage.getItem(ACTIVITY_KEY) || '0', 10);
-                var limit = TIMEOUT_DAYS * 24 * 60 * 60 * 1000;
-                if (last && (Date.now() - last) >= limit) {
-                    doLogout(true);
-                } else {
-                    _scheduleCheck();   /* not yet — check again in an hour */
-                }
-            } catch(_) { _scheduleCheck(); }
-        }, CHECK_MS);
-    }
-
-    /* resetTimer: record activity + restart the hourly check cycle */
+    /* ── inactivity timer ── */
     function resetTimer() {
-        _touch();
-        _scheduleCheck();
+        clearTimeout(_timer);
+        _timer = setTimeout(function () { doLogout(true); }, TIMEOUT_MS);
     }
 
     function startTracking() {
         ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (ev) {
             document.addEventListener(ev, resetTimer, { passive: true });
         });
-        resetTimer();   /* record now as the start of the session */
+        resetTimer();
     }
 
     function stopTracking() {
@@ -220,22 +193,51 @@
         if (bar) bar.parentNode.removeChild(bar);
     }
 
-    var _warnTimer = null;   /* unused — kept only so clearTimeout(_warnTimer) below is safe */
-
-    /* ── Pause inactivity timer when app goes to background (native only) ── */
-    if (_isNativeApp && typeof window.Capacitor !== 'undefined' &&
-        window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
-      window.Capacitor.Plugins.App.addListener('appStateChange', function(state) {
-        if (state.isActive) {
-          /* App came to foreground — restart timer fresh */
-          resetTimer();
-        } else {
-          /* App went to background — pause the timer so background time doesn't count */
-          clearTimeout(_timer);
-          clearTimeout(_warnTimer);
-        }
-      });
+    /* ── show a gentle timeout warning 2 min before auto-logout ── */
+    function showTimeoutWarning() {
+        var existing = document.getElementById('aqs-timeout-warning');
+        if (existing) return;
+        var warn = document.createElement('div');
+        warn.id = 'aqs-timeout-warning';
+        warn.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;'
+            + 'background:#1e293b;color:#fff;padding:14px 18px;border-radius:10px;'
+            + 'box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:inherit;font-size:.88rem;'
+            + 'display:flex;align-items:center;gap:12px;max-width:320px;';
+        warn.innerHTML = '&#x23F0; <span>You will be logged out in <strong>2 minutes</strong> due to inactivity.</span>'
+            + '<button id="aqs-timeout-dismiss" style="background:#4f46e5;color:#fff;border:none;'
+            + 'padding:5px 12px;border-radius:6px;cursor:pointer;font-family:inherit;font-size:.82rem;'
+            + 'white-space:nowrap;flex-shrink:0;">Stay logged in</button>';
+        document.body.appendChild(warn);
+        warn.querySelector('#aqs-timeout-dismiss').addEventListener('click', function () {
+            resetTimer();
+            warn.parentNode.removeChild(warn);
+        });
+        /* Auto-remove warning when user acts */
+        var killWarn = function () {
+            var el = document.getElementById('aqs-timeout-warning');
+            if (el) el.parentNode.removeChild(el);
+            document.removeEventListener('mousemove', killWarn);
+            document.removeEventListener('keydown', killWarn);
+            document.removeEventListener('click', killWarn);
+        };
+        document.addEventListener('mousemove', killWarn, { passive: true });
+        document.addEventListener('keydown', killWarn, { passive: true });
+        document.addEventListener('click', killWarn, { passive: true });
     }
+
+    /* Improved timer: show warning at 18 min, log out at 20 min */
+    var _warnTimer = null;
+    function resetTimerWithWarning() {
+        clearTimeout(_timer);
+        clearTimeout(_warnTimer);
+        var el = document.getElementById('aqs-timeout-warning');
+        if (el) el.parentNode.removeChild(el);
+        _warnTimer = setTimeout(showTimeoutWarning, TIMEOUT_MS - 2 * 60 * 1000);
+        _timer = setTimeout(function () { doLogout(true); }, TIMEOUT_MS);
+    }
+
+    /* Override resetTimer with warning version */
+    resetTimer = resetTimerWithWarning;
 
     /* ── wire existing logout buttons already in the DOM ── */
     function wireExistingLogoutBtns() {
@@ -264,6 +266,22 @@
         }
     });
 
-    /* login.html handles the timeout message in its own inline script */
+    /* ── show timeout reason on login page ── */
+    document.addEventListener('DOMContentLoaded', function () {
+        if (window.location.search.indexOf('reason=timeout') !== -1) {
+            var alert = document.getElementById('aqs-login-alert');
+            if (alert) {
+                alert.textContent = 'You were automatically logged out after 20 minutes of inactivity.';
+                alert.style.display = 'block';
+                alert.style.padding = '10px 14px';
+                alert.style.borderRadius = '8px';
+                alert.style.marginBottom = '12px';
+                alert.style.fontSize = '.9rem';
+                alert.style.background = 'rgba(245,158,11,0.12)';
+                alert.style.color = '#d97706';
+                alert.style.border = '1px solid rgba(245,158,11,0.3)';
+            }
+        }
+    });
 
 })();

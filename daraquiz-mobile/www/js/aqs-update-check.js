@@ -1,7 +1,7 @@
 /**
  * aqs-update-check.js
  * ─────────────────────────────────────────────────────────────────────────────
- * IN-APP UPDATE CHECKER — downloads APK inside the app, no browser needed.
+ * IN-APP UPDATE CHECKER — works on web (opens download link) and native Android.
  *
  * HOW IT WORKS:
  *   1. App opens → waits 4 seconds (lets splash screen finish)
@@ -15,7 +15,7 @@
  */
 
 /* ══ CI patches this automatically — do NOT edit by hand ══════════════════ */
-var AQS_APP_VERSION_CODE = 328;
+var AQS_APP_VERSION_CODE = 235;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -32,8 +32,7 @@ var AQS_APP_VERSION_CODE = 328;
   /* ── Inject styles ────────────────────────────────────────────────────── */
   var style = document.createElement('style');
   style.textContent = [
-    /* z-index above quotes overlay (999999) and any other overlay */
-    '#aqs-upd-overlay{display:none;position:fixed;inset:0;z-index:9999999;',
+    '#aqs-upd-overlay{display:none;position:fixed;inset:0;z-index:99999;',
       'background:rgba(0,0,0,0.72);backdrop-filter:blur(6px);',
       '-webkit-backdrop-filter:blur(6px);',
       'align-items:center;justify-content:center;padding:20px;}',
@@ -173,44 +172,31 @@ var AQS_APP_VERSION_CODE = 328;
       }
       setProgress(pct);
       if (pct >= 100) {
-        /* Download complete — keep popup open, show install instructions */
-        btn.disabled = false;
-        btn.textContent = '📲 Install Now';
-        btnLater.textContent = 'Dismiss';
-        btnLater.style.display = '';
-        document.getElementById('aqs-upd-notes').textContent =
-          '✅ Download complete! The installer will open automatically. If nothing happens, tap "Install Now".';
-        /* Suppress quote popup while update is pending */
-        window._aqsUpdatePending = true;
+        btn.textContent = '✅ Installing…';
+        setTimeout(hidePopup, 4000);
       }
-    };
-
-    /* Called by MainActivity if "Install unknown apps" permission is not granted.
-       The native side opens the Settings screen automatically — we just update the UI. */
-    window.aqsNativeInstallBlocked = function () {
-      btn.disabled = false;
-      btn.textContent = '📲 Install Now';
-      btnLater.textContent = 'Dismiss';
-      btnLater.style.display = '';
-      document.getElementById('aqs-upd-notes').textContent =
-        '⚙️ One-time setup needed: In the Settings screen that just opened, enable "Allow from this source", then come back here and tap "Install Now".';
-      window._aqsUpdatePending = true;
     };
 
     /* Call native bridge — MainActivity registers this on the WebView */
     window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
   }
 
-  /* ── Download dispatcher — native bridge only, no browser fallback ──────── */
-  function downloadInApp(url) {
-    var btn      = document.getElementById('aqs-upd-btn-now');
-    var btnLater = document.getElementById('aqs-upd-btn-later');
-
-    /* Try native bridge immediately */
-    if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
-      downloadNative(url);
-      return;
-    }
+  /* ── Download dispatcher — web fallback: open download link in browser ─── */
+    function downloadInApp(url) {
+      var btn = document.getElementById('aqs-upd-btn-now');
+      /* Native Android bridge takes priority */
+      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
+        downloadNative(url);
+        return;
+      }
+      /* Web fallback — open download link in new tab */
+      btn.textContent = '✅ Opening download…';
+      btn.disabled = true;
+      window.open(url, '_blank');
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.textContent = '⬇️ Download Update';
+      }, 2000);
 
     /* Bridge not ready yet — wait up to 3 seconds then retry */
     var waited = 0;
@@ -250,15 +236,6 @@ var AQS_APP_VERSION_CODE = 328;
   document.getElementById('aqs-upd-close').addEventListener('click', snoozeUpdate);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
-    /* After download, "Install Now" button tries to re-open the file via bridge */
-    if (window._aqsUpdatePending) {
-      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.openDownload === 'function') {
-        window.AqsDownloadBridge.openDownload('daraquiz-update.apk');
-      } else {
-        alert('Check your notifications or Downloads folder to find the APK and tap it to install.');
-      }
-      return;
-    }
     if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
       alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
       return;

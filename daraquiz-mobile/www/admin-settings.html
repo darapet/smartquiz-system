@@ -1,6 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script defer src="capacitor-bridge.js"></script>
+<script src="js/aqs-capacitor-speech.js"></script>
+<script defer src="js/aqs-update-check.js"></script>
+<script defer src="js/aqs-whats-new.js"></script>
+
+<script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Settings — Admin — xzily AI</title>
@@ -114,17 +120,25 @@ window.addEventListener('DOMContentLoaded', function() {
             var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
             var setVal = function(id, val){ var el=document.getElementById(id); if(el && val!==undefined && val!==null) el.value=val; };
             var setChk = function(id, val){ var el=document.getElementById(id); if(el) el.checked=!!val; };
-            /* Load up to 10 Groq keys (Firebase first, then hardcoded fallbacks) */
+            /* Load up to 20 Groq keys (Firebase first, then hardcoded fallbacks) */
             var gkeys = Array.isArray(s.groq_keys) ? s.groq_keys : [];
             var hcGKeys = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
             hcGKeys.forEach(function(k){ if (gkeys.indexOf(k) === -1) gkeys.push(k); });
             for (var gi = 1; gi <= 20; gi++) { setVal('aqs-groq-key-' + gi, gkeys[gi-1] || ''); }
-            setVal('aqs-groq-model', s.groq_model || 'llama-3.3-70b-versatile');
-            /* Load up to 10 Mistral keys (Firebase first, then hardcoded fallbacks) */
+            if (typeof window.setGroqKeys === 'function') window.setGroqKeys(gkeys.filter(function(k){ return k && k.length > 20; }));
+            window._AQS_GROQ_MODEL = (s.groq_model === 'openai/gpt-oss-120b' ? s.groq_model : 'openai/gpt-oss-20b');
+            setVal('aqs-groq-model', (s.groq_model === 'openai/gpt-oss-120b' ? s.groq_model : 'openai/gpt-oss-20b'));
+            /* Load up to 20 Mistral keys (Firebase first, then hardcoded fallbacks) */
             var mkeys = Array.isArray(s.mistral_keys) ? s.mistral_keys : [];
             var hcMKeys = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
             hcMKeys.forEach(function(k){ if (mkeys.indexOf(k) === -1) mkeys.push(k); });
             for (var mi = 1; mi <= 20; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
+            if (typeof window.setMistralKeys === 'function') window.setMistralKeys(mkeys.filter(function(k){ return k && k.length > 20; }));
+            /* Load Library AI keys */
+            var lkeys = Array.isArray(s.lib_groq_keys) ? s.lib_groq_keys : [];
+            for (var li = 1; li <= 10; li++) { setVal('aqs-lib-key-' + li, lkeys[li-1] || ''); }
+            if (typeof window.setLibGroqKeys === 'function') window.setLibGroqKeys(lkeys.filter(function(k){ return k && k.length > 20; }));
+            window._AQS_MISTRAL_MODEL = s.mistral_model || 'mistral-small-latest';
             setVal('aqs-mistral-model', s.mistral_model || 'mistral-small-latest');
             setVal('aqs-music-url', s.bg_music_url);
             setChk('aqs-splash-enabled', s.splash_enabled);
@@ -159,6 +173,29 @@ window.addEventListener('DOMContentLoaded', function() {
             setVal('aqs-oauth-microsoft-secret', s.microsoft_client_secret);
             setVal('aqs-oauth-yahoo-id', s.yahoo_client_id);
             setVal('aqs-oauth-yahoo-secret', s.yahoo_client_secret);
+            /* Load HuggingFace Hub tokens */
+            var hfkeys = Array.isArray(s.hf_keys) ? s.hf_keys : [];
+            var hcHFKeys = Array.isArray(window._AQS_HF_MASTER_KEYS) ? window._AQS_HF_MASTER_KEYS : [];
+            hcHFKeys.forEach(function(k){ if (hfkeys.indexOf(k) === -1) hfkeys.push(k); });
+            for (var hi = 1; hi <= 5; hi++) { setVal('aqs-hf-key-' + hi, hfkeys[hi-1] || ''); }
+            if (typeof window.setHFKeys === 'function') window.setHFKeys(hfkeys.filter(function(k){ return k && k.length > 10; }));
+            window._AQS_HF_MODEL = s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3';
+            setVal('aqs-hf-model', s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3');
+            /* Load the dedicated AI Creator Studio image-generation pool */
+            var creatorImageKeys = Array.isArray(s.creator_image_keys) ? s.creator_image_keys : [];
+            for (var cii = 1; cii <= 5; cii++) { setVal('aqs-creator-image-key-' + cii, creatorImageKeys[cii-1] || ''); }
+            window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model || 'black-forest-labs/FLUX.1-schnell';
+            setVal('aqs-creator-image-model', window._AQS_CREATOR_IMAGE_MODEL);
+            /* Load ElevenLabs TTS keys */
+            var elkeys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
+            for (var ei = 1; ei <= 5; ei++) { setVal('aqs-el-key-' + ei, elkeys[ei-1] || ''); }
+            /* Expose active key globally so tts.js can pick it up */
+            window._AQS_EL_KEYS = elkeys.filter(function(k){ return k && k.length > 20; });
+            /* Load Gemini TTS keys */
+            var gtkeys = Array.isArray(s.gemini_tts_keys) ? s.gemini_tts_keys : [];
+            for (var gti = 1; gti <= 5; gti++) { setVal('aqs-gtts-key-' + gti, gtkeys[gti-1] || ''); }
+            window._AQS_GEMINI_TTS_KEYS = gtkeys.filter(function(k){ return k && k.length > 20; });
+            if (window.geminiTTS) window.geminiTTS.setKeys(window._AQS_GEMINI_TTS_KEYS);
         });
     });
 });
@@ -166,8 +203,10 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script src="js/aqs-groq-key.js"></script>
-<script type="module" src="js/aqs-firebase.js"></script>
+<script>window._AQS_ADMIN_SETTINGS_MODE = true;</script>
+<script src="js/aqs-groq-key.js?v=creator-quality-2"></script>
+<script src="js/aqs-gemini-tts.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=creator-quality-2"></script>
 </head>
 <body>
 
@@ -221,13 +260,29 @@ window.addEventListener('DOMContentLoaded', function() {
     <h1>⚙️ Plugin Settings</h1>
 </div>
 
-<!-- Groq AI Keys — SHOWN FIRST (primary provider) -->
+
+<!-- AI Key Pool Status Dashboard -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header" style="flex-wrap:wrap;gap:10px;">
+    <span class="aqs-settings-card-icon">📊</span>
+    <div style="flex:1;">
+      <h2 class="aqs-settings-card-title">AI Key Pool Status</h2>
+      <p class="aqs-settings-card-desc">Live overview of every AI key pool — slots filled &amp; working status. Click <strong>🧪 Test</strong> to verify, or <strong>Test All</strong> to check all pools at once.</p>
+    </div>
+    <button id="aqs-test-all-btn" class="aqs-btn aqs-btn-primary" style="white-space:nowrap;align-self:center;flex-shrink:0;">🧪 Test All Pools</button>
+  </div>
+  <div id="aqs-pool-status-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:16px 24px 22px;">
+    <div style="color:#94a3b8;font-size:.82rem;grid-column:1/-1;padding:8px 0;">Loading pool status…</div>
+  </div>
+</div>
+
+<!-- Groq AI Keys — FIRST PRIORITY -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">⚡</span>
         <div>
             <h2 class="aqs-settings-card-title">Groq AI — First Priority (up to 20 keys)</h2>
-            <p class="aqs-settings-card-desc">Quiz &amp; challenge generation tries <strong>Groq first</strong> — it is blazing fast with a generous free tier. Falls back to Mistral if all Groq keys are busy. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>. Empty slots are ignored.</p>
+            <p class="aqs-settings-card-desc">Quiz &amp; challenge generation tries <strong>Groq first</strong> — blazing fast with a generous free tier. Falls back to Mistral if all Groq keys are busy. Get free keys at <a href="https://console.groq.com" target="_blank">console.groq.com</a>. Empty slots are ignored.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
@@ -318,11 +373,9 @@ window.addEventListener('DOMContentLoaded', function() {
             <div class="aqs-field-group">
                 <label for="aqs-groq-model">Groq Model</label>
                 <select id="aqs-groq-model">
-                    <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (Recommended ⚡)</option>
-                    <option value="llama-3.1-8b-instant">llama-3.1-8b-instant (Ultra fast)</option>
-                    <option value="llama3-70b-8192">llama3-70b-8192 (Powerful)</option>
-                    <option value="llama3-8b-8192">llama3-8b-8192 (Fast)</option>
-                    <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
+                    <option value="openai/gpt-oss-20b">openai/gpt-oss-20b (Recommended ⚡)</option>
+                    <option value="openai/gpt-oss-120b">openai/gpt-oss-120b (Higher quality)</option>
+                                                            <option value="mixtral-8x7b-32768">mixtral-8x7b-32768 (Long context)</option>
                     <option value="gemma2-9b-it">gemma2-9b-it (Efficient)</option>
                 </select>
             </div>
@@ -336,7 +389,426 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Mistral AI Keys — fallback provider -->
+
+<!-- Library AI Keys — Dedicated Pool (10 slots) -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+        <span class="aqs-settings-card-icon">📚</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Library AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">These keys are used <strong>only for Library features</strong> (AI Explain, AI MCQ Practice) — completely separate from the main quiz AI pool. Falls back to main pool if all 10 are busy. Empty slots are ignored.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#3730a3;">
+            📚 <strong>How it works:</strong> Students using AI Explain and AI MCQ Practice on library PDFs use these 10 keys in round-robin rotation. If all are rate-limited, the system automatically falls back to the main Groq pool.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 1 (Primary)</label>
+                <input type="password" id="aqs-lib-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 2</label>
+                <input type="password" id="aqs-lib-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 3</label>
+                <input type="password" id="aqs-lib-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 4</label>
+                <input type="password" id="aqs-lib-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 5</label>
+                <input type="password" id="aqs-lib-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 6</label>
+                <input type="password" id="aqs-lib-key-6" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 7</label>
+                <input type="password" id="aqs-lib-key-7" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 8</label>
+                <input type="password" id="aqs-lib-key-8" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 9</label>
+                <input type="password" id="aqs-lib-key-9" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Library Key 10</label>
+                <input type="password" id="aqs-lib-key-10" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-lib-keys-btn">💾 Save Library AI Keys</button>
+            <span id="aqs-lib-keys-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+
+<!-- Quiz Creation AI Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fef3c7,#fde68a);">
+        <span class="aqs-settings-card-icon">🧠</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Quiz Creation AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">Used <strong>only for quiz generation</strong>. Falls back to main Groq pool if all 10 are busy.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 1 (Primary) <span id="aqs-qgk-dot-1"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 2 <span id="aqs-qgk-dot-2"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-2" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 3 <span id="aqs-qgk-dot-3"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-3" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 4 <span id="aqs-qgk-dot-4"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-4" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 5 <span id="aqs-qgk-dot-5"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-5" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 6 <span id="aqs-qgk-dot-6"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-6" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 7 <span id="aqs-qgk-dot-7"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-7" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 8 <span id="aqs-qgk-dot-8"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-8" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 9 <span id="aqs-qgk-dot-9"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-9" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 10 <span id="aqs-qgk-dot-10"></span></label>
+                <input type="password" id="aqs-quiz-groq-key-10" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-quiz-groq-btn">💾 Save Quiz Creation AI Keys Keys</button>
+            <span id="aqs-quiz-groq-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Challenge AI Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fee2e2,#fecaca);">
+        <span class="aqs-settings-card-icon">⚔️</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Challenge AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">Used <strong>only for Challenge mode</strong> generation. Falls back to main Groq pool.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 1 (Primary) <span id="aqs-cgk-dot-1"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 2 <span id="aqs-cgk-dot-2"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-2" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 3 <span id="aqs-cgk-dot-3"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-3" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 4 <span id="aqs-cgk-dot-4"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-4" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 5 <span id="aqs-cgk-dot-5"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-5" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 6 <span id="aqs-cgk-dot-6"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-6" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 7 <span id="aqs-cgk-dot-7"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-7" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 8 <span id="aqs-cgk-dot-8"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-8" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 9 <span id="aqs-cgk-dot-9"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-9" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Challenge Key 10 <span id="aqs-cgk-dot-10"></span></label>
+                <input type="password" id="aqs-challenge-groq-key-10" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-challenge-groq-btn">💾 Save Challenge AI Keys Keys</button>
+            <span id="aqs-challenge-groq-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Study Hub AI Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0);">
+        <span class="aqs-settings-card-icon">📖</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Study Hub AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">Used <strong>only for Study Hub</strong> AI features. Falls back to main Groq pool.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 1 (Primary) <span id="aqs-sgk-dot-1"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 2 <span id="aqs-sgk-dot-2"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-2" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 3 <span id="aqs-sgk-dot-3"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-3" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 4 <span id="aqs-sgk-dot-4"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-4" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 5 <span id="aqs-sgk-dot-5"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-5" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 6 <span id="aqs-sgk-dot-6"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-6" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 7 <span id="aqs-sgk-dot-7"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-7" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 8 <span id="aqs-sgk-dot-8"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-8" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 9 <span id="aqs-sgk-dot-9"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-9" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Study Key 10 <span id="aqs-sgk-dot-10"></span></label>
+                <input type="password" id="aqs-studyhub-groq-key-10" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-studyhub-groq-btn">💾 Save Study Hub AI Keys Keys</button>
+            <span id="aqs-studyhub-groq-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Text→Docs AI Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#e0f2fe,#bae6fd);">
+        <span class="aqs-settings-card-icon">📄</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Text→Docs AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">Used <strong>only for Text→Docs</strong> conversion. Falls back to main Groq pool.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 1 (Primary) <span id="aqs-tgk-dot-1"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 2 <span id="aqs-tgk-dot-2"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-2" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 3 <span id="aqs-tgk-dot-3"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-3" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 4 <span id="aqs-tgk-dot-4"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-4" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 5 <span id="aqs-tgk-dot-5"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-5" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 6 <span id="aqs-tgk-dot-6"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-6" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 7 <span id="aqs-tgk-dot-7"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-7" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 8 <span id="aqs-tgk-dot-8"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-8" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 9 <span id="aqs-tgk-dot-9"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-9" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Text→Docs Key 10 <span id="aqs-tgk-dot-10"></span></label>
+                <input type="password" id="aqs-textdocs-groq-key-10" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-textdocs-groq-btn">💾 Save Text→Docs AI Keys Keys</button>
+            <span id="aqs-textdocs-groq-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Puzzle AI Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#ede9fe,#ddd6fe);">
+        <span class="aqs-settings-card-icon">🧩</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Puzzle AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">Used <strong>only for Puzzle generation</strong>. Falls back to main Groq pool.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 1 (Primary) <span id="aqs-pgk-dot-1"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 2 <span id="aqs-pgk-dot-2"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-2" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 3 <span id="aqs-pgk-dot-3"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-3" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 4 <span id="aqs-pgk-dot-4"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-4" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 5 <span id="aqs-pgk-dot-5"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-5" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 6 <span id="aqs-pgk-dot-6"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-6" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 7 <span id="aqs-pgk-dot-7"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-7" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 8 <span id="aqs-pgk-dot-8"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-8" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 9 <span id="aqs-pgk-dot-9"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-9" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Puzzle Key 10 <span id="aqs-pgk-dot-10"></span></label>
+                <input type="password" id="aqs-puzzle-groq-key-10" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-puzzle-groq-btn">💾 Save Puzzle AI Keys Keys</button>
+            <span id="aqs-puzzle-groq-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Quiz Studio AI Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fdf4ff,#f5d0fe);">
+        <span class="aqs-settings-card-icon">🎬</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Quiz Studio AI Keys — Dedicated Pool (10 slots)</h2>
+            <p class="aqs-settings-card-desc">Used <strong>only for Quiz Studio</strong>. Falls back to main Groq pool.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 1 (Primary) <span id="aqs-qsgk-dot-1"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-1" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 2 <span id="aqs-qsgk-dot-2"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-2" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 3 <span id="aqs-qsgk-dot-3"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-3" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 4 <span id="aqs-qsgk-dot-4"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-4" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 5 <span id="aqs-qsgk-dot-5"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-5" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 6 <span id="aqs-qsgk-dot-6"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-6" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 7 <span id="aqs-qsgk-dot-7"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-7" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 8 <span id="aqs-qsgk-dot-8"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-8" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 9 <span id="aqs-qsgk-dot-9"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-9" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quiz Key 10 <span id="aqs-qsgk-dot-10"></span></label>
+                <input type="password" id="aqs-quizstudio-groq-key-10" placeholder="Paste Groq API key (gsk_…)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-quizstudio-groq-btn">💾 Save Quiz Studio AI Keys Keys</button>
+            <span id="aqs-quizstudio-groq-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- Mistral AI Keys — Fallback Provider -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">🤖</span>
@@ -440,8 +912,8 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
 
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-ai-btn">💾 Save AI Settings</button>
-            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#0ea5e9;color:#fff;border-color:#0284c7;">🔌 Test All Keys</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-ai-btn">💾 Save Mistral Settings</button>
+            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#0ea5e9;color:#fff;border-color:#0284c7;">🔌 Test All Mistral Keys</button>
             <span id="aqs-ai-status" class="aqs-status-msg"></span>
         </div>
         <!-- Test results panel (hidden by default) -->
@@ -755,6 +1227,248 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+
+  
+<!-- Quote Generation Keys — Daily Motivational Quotes -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fef3c7,#fde68a);">
+        <span class="aqs-settings-card-icon">✨</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Quote Generation Keys (Groq)</h2>
+            <p class="aqs-settings-card-desc">Dedicated Groq keys used <strong>only for daily motivational quotes</strong> — completely separate from your main AI pool. Stored in Firebase, never in code. Add up to 5 keys.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:.83rem;color:#78350f;">
+            ✨ <strong>How it works:</strong> Every day at midnight, 50 fresh quotes are generated and cached in Firebase. Each user sees 1 personalized quote per day. Old quotes auto-delete after 11 PM to save storage.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 1 (Primary) <span id="aqs-qk-dot-1"></span></label>
+                <input type="password" id="aqs-quote-key-1" placeholder="gsk_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 2 <span id="aqs-qk-dot-2"></span></label>
+                <input type="password" id="aqs-quote-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 3 <span id="aqs-qk-dot-3"></span></label>
+                <input type="password" id="aqs-quote-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 4 <span id="aqs-qk-dot-4"></span></label>
+                <input type="password" id="aqs-quote-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Quote Key 5 <span id="aqs-qk-dot-5"></span></label>
+                <input type="password" id="aqs-quote-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-card-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-quote-keys-btn">💾 Save Quote Keys</button>
+            <button class="aqs-btn" id="aqs-test-quote-btn" style="background:#f59e0b;color:#fff;border-color:#d97706;">🧪 Test Quote Popup</button>
+            <button class="aqs-btn" id="aqs-gen-now-btn" style="background:#059669;color:#fff;border-color:#047857;">🔄 Generate Now</button>
+            <span id="aqs-quote-key-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
+
+<!-- HuggingFace Hub — AI Fallback Tokens -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:#f0fdf4;">
+        <span class="aqs-settings-card-icon">🤗</span>
+        <div>
+            <h2 class="aqs-settings-card-title">HuggingFace Hub — AI Tokens (up to 5)</h2>
+            <p class="aqs-settings-card-desc"><strong>Third-tier AI fallback</strong> — kicks in when all Groq &amp; Mistral keys are busy. Used by xzily Studio and <strong>Study Hub</strong> for text &amp; study AI features. Free tokens at <a href="https://huggingface.co/settings/tokens" target="_blank">huggingface.co/settings/tokens</a>.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#14532d;">
+            🤗 <strong>AI Priority order:</strong> ⚡ Groq (1–20) → 🤖 Mistral (1–20) → 🤗 HuggingFace (1–5). Rate-limited keys cool down 62 s automatically. Studio &amp; Study Hub share the same pool.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 1 (Primary) <span id="aqs-hf-dot-1"></span></label>
+                <input type="password" id="aqs-hf-key-1" placeholder="hf_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 2 <span id="aqs-hf-dot-2"></span></label>
+                <input type="password" id="aqs-hf-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 3 <span id="aqs-hf-dot-3"></span></label>
+                <input type="password" id="aqs-hf-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 4 <span id="aqs-hf-dot-4"></span></label>
+                <input type="password" id="aqs-hf-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">HF Token 5 <span id="aqs-hf-dot-5"></span></label>
+                <input type="password" id="aqs-hf-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-hf-model">HuggingFace Model</label>
+                <select id="aqs-hf-model">
+                    <option value="mistralai/Mistral-7B-Instruct-v0.3">Mistral-7B-Instruct-v0.3 (Recommended ⚡)</option>
+                    <option value="mistralai/Mixtral-8x7B-Instruct-v0.1">Mixtral-8x7B-Instruct (Powerful)</option>
+                    <option value="meta-llama/Meta-Llama-3-8B-Instruct">Llama-3-8B-Instruct (Fast)</option>
+                    <option value="meta-llama/Meta-Llama-3-70B-Instruct">Llama-3-70B-Instruct (Large)</option>
+                    <option value="HuggingFaceH4/zephyr-7b-beta">Zephyr-7B-Beta</option>
+                    <option value="microsoft/phi-2">Phi-2 (Lightweight)</option>
+                </select>
+                <p class="aqs-field-hint">Used by Studio chat, Study Hub explanations, and all AI fallback calls.</p>
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-hf-btn" style="background:#16a34a;border-color:#15803d;color:#fff;">🤗 Save HuggingFace Settings</button>
+            <button class="aqs-btn" id="aqs-test-hf-btn" style="background:#059669;color:#fff;border-color:#047857;">🔌 Test All HF Tokens</button>
+            <span id="aqs-hf-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-hf-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
+<!-- AI Creator Studio Image Generation Keys — Dedicated Pool -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#ecfeff,#cffafe);">
+        <span class="aqs-settings-card-icon">🎨</span>
+        <div>
+            <h2 class="aqs-settings-card-title">AI Creator Studio — Image Generation Keys (up to 5)</h2>
+            <p class="aqs-settings-card-desc">Dedicated Hugging Face token pool for the <strong>Creator Studio</strong> image mode. These tokens are separate from the text-AI fallback pool and rotate automatically when a token is rate-limited.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#155e75;">
+            🎨 <strong>How it works:</strong> Creator Studio tries these image tokens in round-robin order, cools down rate-limited tokens for 62 seconds, and uses the public fallback engine only when no image token succeeds. Add a token with image-generation access at <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 1 (Primary) <span id="aqs-creator-image-dot-1"></span></label>
+                <input type="password" id="aqs-creator-image-key-1" placeholder="hf_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 2 <span id="aqs-creator-image-dot-2"></span></label>
+                <input type="password" id="aqs-creator-image-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 3 <span id="aqs-creator-image-dot-3"></span></label>
+                <input type="password" id="aqs-creator-image-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 4 <span id="aqs-creator-image-dot-4"></span></label>
+                <input type="password" id="aqs-creator-image-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Image Token 5 <span id="aqs-creator-image-dot-5"></span></label>
+                <input type="password" id="aqs-creator-image-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-creator-image-model">Image Model</label>
+                <input type="text" id="aqs-creator-image-model" value="black-forest-labs/FLUX.1-schnell" placeholder="black-forest-labs/FLUX.1-schnell" autocomplete="off" />
+                <p class="aqs-field-hint">Recommended: black-forest-labs/FLUX.1-schnell.</p>
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-creator-image-btn" style="background:#0891b2;border-color:#0e7490;color:#fff;">🎨 Save Creator Studio Image Keys</button>
+            <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#0f766e;color:#fff;border-color:#115e59;">🧪 Test Image Tokens</button>
+            <span id="aqs-creator-image-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-creator-image-health-summary" style="margin-top:12px;padding:10px 14px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;color:#115e59;font-size:.78rem;">
+            Health has not been checked yet. Pollinations fallback is ready when no managed token succeeds.
+        </div>
+        <div id="aqs-creator-image-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
+<!-- Gemini TTS Keys -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🎙️</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Gemini TTS — Real AI Voices (up to 5 keys)</h2>
+            <p class="aqs-settings-card-desc">The <strong>primary</strong> voice engine for the TTS page, Study Hub and quiz read-aloud. 30 natural neural voices, all 82 site characters mapped automatically. Free keys (no credit card) at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#1e40af;">
+            🎙️ <strong>How it works:</strong> Key 1 is used first. If it hits its free daily quota (429) or is invalid, Key 2 is tried, and so on. Add more keys to serve more students at once. If every Gemini key fails, the system falls back to the browser voice. (ElevenLabs is disabled.)
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 1 (Primary) <span id="aqs-gtts-dot-1"></span></label>
+                <input type="password" id="aqs-gtts-key-1" placeholder="AIza…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 2 <span id="aqs-gtts-dot-2"></span></label>
+                <input type="password" id="aqs-gtts-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 3 <span id="aqs-gtts-dot-3"></span></label>
+                <input type="password" id="aqs-gtts-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 4 <span id="aqs-gtts-dot-4"></span></label>
+                <input type="password" id="aqs-gtts-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini TTS Key 5 <span id="aqs-gtts-dot-5"></span></label>
+                <input type="password" id="aqs-gtts-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-gtts-btn" style="background:#2563eb;border-color:#1d4ed8;color:#fff;">🎙️ Save Gemini TTS Keys</button>
+            <button class="aqs-btn" id="aqs-test-gtts-btn" style="background:#3b82f6;color:#fff;border-color:#2563eb;">🔌 Test All Gemini TTS Keys</button>
+            <span id="aqs-gtts-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-gtts-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
+<!-- ElevenLabs TTS Keys -->
+<div class="aqs-settings-card">
+    <div class="aqs-settings-card-header">
+        <span class="aqs-settings-card-icon">🔊</span>
+        <div>
+            <h2 class="aqs-settings-card-title">ElevenLabs — AI Text-to-Speech <span style="font-size:11px;font-weight:800;color:#fca5a5;background:#450a0a;border:1px solid #7f1d1d;border-radius:6px;padding:2px 8px;vertical-align:middle;margin-left:6px;">DISABLED</span></h2>
+            <p class="aqs-settings-card-desc">Powers the <strong>TTS page</strong> with real AI voices in 16 languages. The first valid key in the list is used automatically — if it fails, the next one is tried. Free keys at <a href="https://elevenlabs.io" target="_blank" rel="noopener">elevenlabs.io</a> (10,000 chars/month free per account).</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div style="background:#fdf4ff;border:1px solid #e9d5ff;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#6b21a8;">
+            🔊 <strong>How it works:</strong> Key 1 is tried first. If it's rate-limited (429) or invalid, Key 2 is tried, and so on. Add multiple keys to handle more users simultaneously.
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 1 (Primary) <span id="aqs-el-dot-1"></span></label>
+                <input type="password" id="aqs-el-key-1" placeholder="sk_…" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 2 <span id="aqs-el-dot-2"></span></label>
+                <input type="password" id="aqs-el-key-2" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 3 <span id="aqs-el-dot-3"></span></label>
+                <input type="password" id="aqs-el-key-3" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 4 <span id="aqs-el-dot-4"></span></label>
+                <input type="password" id="aqs-el-key-4" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">ElevenLabs Key 5 <span id="aqs-el-dot-5"></span></label>
+                <input type="password" id="aqs-el-key-5" placeholder="(optional)" autocomplete="off" />
+            </div>
+        </div>
+        <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-el-btn" style="background:#7c3aed;border-color:#6d28d9;color:#fff;">🔊 Save ElevenLabs Keys</button>
+            <button class="aqs-btn" id="aqs-test-el-btn" style="background:#8b5cf6;color:#fff;border-color:#7c3aed;">🔌 Test All EL Keys</button>
+            <span id="aqs-el-status" class="aqs-status-msg"></span>
+        </div>
+        <div id="aqs-el-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+    </div>
+</div>
+
 <!-- Plugin Pages -->
 <div class="aqs-settings-card" style="margin-top:24px;">
     <div class="aqs-settings-card-header">
@@ -789,7 +1503,23 @@ window.addEventListener('DOMContentLoaded', function() {
 </div>
 
 <script>
-function btn(id){ return document.getElementById(id); }
+function btn(id){ var el=document.getElementById(id); return el||{addEventListener:function(){},disabled:false,textContent:''}; }
+
+btn('aqs-save-groq-btn').addEventListener('click', function(){
+    var groqKeys = [];
+    for (var gi = 1; gi <= 20; gi++) {
+        var gel = document.getElementById('aqs-groq-key-' + gi);
+        if (gel && gel.value.trim().length > 20) groqKeys.push(gel.value.trim());
+    }
+    var groqModelEl = document.getElementById('aqs-groq-model');
+    if (typeof window.setGroqKeys === 'function') window.setGroqKeys(groqKeys);
+    window._AQS_GROQ_MODEL = groqModelEl ? groqModelEl.value : 'llama-3.3-70b-versatile';
+    saveSettings('/api/settings', {
+        groq_keys: groqKeys,
+        groq_model: groqModelEl ? groqModelEl.value : 'llama-3.3-70b-versatile'
+    }, 'aqs-groq-status', this, '💾 Save Groq Settings');
+    for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
+});
 
 
 btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
@@ -804,6 +1534,91 @@ btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
     }, 'aqs-lib-keys-status', this, '💾 Save Library AI Keys');
 });
 
+
+btn('aqs-save-quiz-groq-btn') && btn('aqs-save-quiz-groq-btn').addEventListener('click', function(){
+    var _k=[];
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-quiz-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    if(!_k.length){var _s=document.getElementById('aqs-quiz-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('quiz',_k);
+    var _d={};_d['quiz_groq_keys']=_k;
+    saveSettings('/api/settings',_d,'aqs-quiz-groq-status',this,'💾 Save Quiz AI Keys');
+    if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,700);
+});
+
+btn('aqs-save-challenge-groq-btn') && btn('aqs-save-challenge-groq-btn').addEventListener('click', function(){
+    var _k=[];
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-challenge-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    if(!_k.length){var _s=document.getElementById('aqs-challenge-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('challenge',_k);
+    var _d={};_d['challenge_groq_keys']=_k;
+    saveSettings('/api/settings',_d,'aqs-challenge-groq-status',this,'💾 Save Challenge AI Keys');
+    if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,700);
+});
+
+btn('aqs-save-studyhub-groq-btn') && btn('aqs-save-studyhub-groq-btn').addEventListener('click', function(){
+    var _k=[];
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-studyhub-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    if(!_k.length){var _s=document.getElementById('aqs-studyhub-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('studyhub',_k);
+    var _d={};_d['studyhub_groq_keys']=_k;
+    saveSettings('/api/settings',_d,'aqs-studyhub-groq-status',this,'💾 Save Study Hub AI Keys');
+    if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,700);
+});
+
+btn('aqs-save-textdocs-groq-btn') && btn('aqs-save-textdocs-groq-btn').addEventListener('click', function(){
+    var _k=[];
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-textdocs-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    if(!_k.length){var _s=document.getElementById('aqs-textdocs-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('textdocs',_k);
+    var _d={};_d['textdocs_groq_keys']=_k;
+    saveSettings('/api/settings',_d,'aqs-textdocs-groq-status',this,'💾 Save Text→Docs AI Keys');
+    if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,700);
+});
+
+btn('aqs-save-puzzle-groq-btn') && btn('aqs-save-puzzle-groq-btn').addEventListener('click', function(){
+    var _k=[];
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-puzzle-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    if(!_k.length){var _s=document.getElementById('aqs-puzzle-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('puzzle',_k);
+    var _d={};_d['puzzle_groq_keys']=_k;
+    saveSettings('/api/settings',_d,'aqs-puzzle-groq-status',this,'💾 Save Puzzle AI Keys');
+    if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,700);
+});
+
+btn('aqs-save-quizstudio-groq-btn') && btn('aqs-save-quizstudio-groq-btn').addEventListener('click', function(){
+    var _k=[];
+    for(var _i=1;_i<=10;_i++){var _el=document.getElementById('aqs-quizstudio-groq-key-'+_i);if(_el&&_el.value.trim().length>20)_k.push(_el.value.trim());}
+    if(!_k.length){var _s=document.getElementById('aqs-quizstudio-groq-status');if(_s){_s.textContent='Add at least one key.';_s.style.color='#ef4444';}return;}
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('quizstudio',_k);
+    var _d={};_d['quizstudio_groq_keys']=_k;
+    saveSettings('/api/settings',_d,'aqs-quizstudio-groq-status',this,'💾 Save Quiz Studio AI Keys');
+    if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,700);
+});
+
+/* Load feature keys from Firestore on page load */
+(function(){
+    function _loadFeatureKeys(){
+        if(typeof window.aqsAjax!=='function')return;
+        window.aqsAjax({action:'aqs_get_settings'},function(res){
+            var s=(res&&res.success&&res.data&&res.data.settings)||{};
+            var MAP={quiz_groq_keys:'aqs-quiz-groq-key-',challenge_groq_keys:'aqs-challenge-groq-key-',studyhub_groq_keys:'aqs-studyhub-groq-key-',textdocs_groq_keys:'aqs-textdocs-groq-key-',puzzle_groq_keys:'aqs-puzzle-groq-key-',quizstudio_groq_keys:'aqs-quizstudio-groq-key-'};
+            var DOTS={quiz_groq_keys:'aqs-qgk-dot-',challenge_groq_keys:'aqs-cgk-dot-',studyhub_groq_keys:'aqs-sgk-dot-',textdocs_groq_keys:'aqs-tgk-dot-',puzzle_groq_keys:'aqs-pgk-dot-',quizstudio_groq_keys:'aqs-qsgk-dot-'};
+            Object.keys(MAP).forEach(function(field){
+                var keys=s[field]||[];
+                if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys(field.replace('_groq_keys',''),keys);
+                for(var i=1;i<=10;i++){
+                    var el=document.getElementById(MAP[field]+i);if(el)el.value=keys[i-1]||'';
+                    var dot=document.getElementById(DOTS[field]+i);
+                    if(dot)dot.innerHTML=keys[i-1]?'<span style="color:#10b981;font-size:1rem;">●</span>':'<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+                }
+            });
+            if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,400);
+        });
+    }
+    if(window._aqsFirebaseReady){_loadFeatureKeys();}
+    else{document.addEventListener('aqs:firebase:ready',_loadFeatureKeys,{once:true});}
+})();
+
 btn('aqs-save-ai-btn').addEventListener('click', function(){
     var mistralKeys = [];
     for (var mi = 1; mi <= 20; mi++) {
@@ -816,12 +1631,74 @@ btn('aqs-save-ai-btn').addEventListener('click', function(){
     saveSettings('/api/settings', {
         mistral_keys: mistralKeys,
         mistral_model: mistralModelEl ? mistralModelEl.value : 'mistral-small-latest'
-    }, 'aqs-ai-status', this, '💾 Save AI Settings');
+    }, 'aqs-ai-status', this, '💾 Save Mistral Settings');
     /* Reset status dots after save */
     for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-mk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
-/* ── AI Key Health Monitor (manual only — never auto-fires) ─────────────── */
+/* ── Groq Key Health Monitor ─────────────────────────────────────────────── */
+async function _aqsTestGroqKeys() {
+    var allKeys = [];
+    for (var gi = 1; gi <= 20; gi++) {
+        var gel = document.getElementById('aqs-groq-key-' + gi);
+        if (gel && gel.value.trim().length > 20) {
+            allKeys.push({ slot: 'Key ' + gi, key: gel.value.trim(), provider: 'groq' });
+        }
+    }
+    var results = document.getElementById('aqs-groq-test-results');
+    var testBtn = document.getElementById('aqs-test-groq-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Groq keys found. Add at least one key above, then click Test.</span>';
+        return;
+    }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
+    async function pingGroq(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 7) + '…' + key.slice(-4);
+        var badge = '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;">GROQ</span>';
+        var tStart = Date.now();
+        try {
+            var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
+                signal: AbortSignal.timeout(12000)
+            });
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                var data = await res.json();
+                var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
+            } else if (res.status === 401) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span></div>' };
+            } else if (res.status === 429) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
+            } else {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+            }
+        } catch(e) {
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (12s)':'Network error') + '</span></div>' };
+        }
+    }
+    var rows = await Promise.all(allKeys.map(pingGroq));
+    rows.forEach(function(r, ri) {
+        var dot = document.getElementById('aqs-gk-dot-' + (ri + 1));
+        if (!dot) return;
+        dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem';
+    });
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Groq keys working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Groq keys active.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Groq Keys'; }
+}
+btn('aqs-test-groq-btn').addEventListener('click', _aqsTestGroqKeys);
+
+/* ── Mistral Key Health Monitor (manual only) ────────────────────────────── */
 async function _aqsTestAllKeys(auto) {
     var allKeys = [];
 
@@ -945,129 +1822,6 @@ async function _aqsTestAllKeys(auto) {
 
 btn('aqs-test-ai-btn').addEventListener('click', function(){ _aqsTestAllKeys(false); });
 
-/* ── GROQ Save ──────────────────────────────────────────────────── */
-btn('aqs-save-groq-btn').addEventListener('click', function(){
-    var groqKeys = [];
-    for (var gi = 1; gi <= 20; gi++) {
-        var gel = document.getElementById('aqs-groq-key-' + gi);
-        if (gel && gel.value.trim().length > 20) groqKeys.push(gel.value.trim());
-    }
-    var groqModelEl = document.getElementById('aqs-groq-model');
-    /* Push keys into the live key pool immediately (no page reload needed) */
-    if (typeof window.setGroqKeys === 'function') window.setGroqKeys(groqKeys);
-    window._AQS_GROQ_MODEL = groqModelEl ? groqModelEl.value : 'llama-3.3-70b-versatile';
-    saveSettings('/api/settings', {
-        groq_keys:  groqKeys,
-        groq_model: groqModelEl ? groqModelEl.value : 'llama-3.3-70b-versatile'
-    }, 'aqs-groq-status', this, '💾 Save Groq Settings');
-    /* Reset status dots */
-    for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
-});
-
-/* ── GROQ Test All Keys ─────────────────────────────────────────── */
-async function _aqsTestAllGroqKeys() {
-    var allKeys = [];
-    for (var gi = 1; gi <= 20; gi++) {
-        var gel = document.getElementById('aqs-groq-key-' + gi);
-        if (gel && gel.value.trim().length > 20) {
-            allKeys.push({ slot: 'Key ' + gi, key: gel.value.trim() });
-        }
-    }
-    var results = document.getElementById('aqs-groq-test-results');
-    var testBtn = document.getElementById('aqs-test-groq-btn');
-    if (!allKeys.length) {
-        results.style.display = 'block';
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No Groq keys found. Add at least one key in the slots above, then click Test.</span>';
-        return;
-    }
-    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-    results.style.display = 'block';
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
-
-    var groqModel = (document.getElementById('aqs-groq-model') || {}).value || 'llama-3.3-70b-versatile';
-    var GROQ_URL  = 'https://api.groq.com/openai/v1/chat/completions';
-    var badge = '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">GROQ</span>';
-
-    async function pingGroqKey(entry) {
-        var key = entry.key, slot = entry.slot;
-        var masked = key.slice(0, 7) + '…' + key.slice(-4);
-        var tStart = Date.now();
-        try {
-            var res = await fetch(GROQ_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({
-                    model: groqModel,
-                    messages: [{ role: 'user', content: 'Say exactly: OK' }],
-                    max_tokens: 3, temperature: 0
-                }),
-                signal: AbortSignal.timeout(12000)
-            });
-            var ms = Date.now() - tStart;
-            if (res.ok) {
-                var data = await res.json();
-                var reply = (((data.choices || [])[0] || {}).message || {}).content || '✓';
-                return { ok: true, status: 'active', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' +
-                    badge + '<span style="color:#86efac;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim().replace(/"/g,'') + '"</em></span></div>'
-                };
-            } else if (res.status === 401) {
-                return { ok: false, status: '401', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' +
-                    badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span></div>'
-                };
-            } else if (res.status === 429) {
-                return { ok: false, status: '429', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' +
-                    badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>'
-                };
-            } else {
-                return { ok: false, status: 'http' + res.status, slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' +
-                    badge + '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>'
-                };
-            }
-        } catch(e) {
-            return { ok: false, status: 'err', slot: slot, html:
-                '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' +
-                badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span>' +
-                '<code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span></div>'
-            };
-        }
-    }
-
-    var rows = await Promise.all(allKeys.map(pingGroqKey));
-
-    /* Update inline status dots */
-    rows.forEach(function(r, ri) {
-        var dot = document.getElementById('aqs-gk-dot-' + (ri + 1));
-        if (!dot) return;
-        dot.textContent = r.status === 'active' ? '✅' : (r.status === '429' ? '⚠️' : '❌');
-        dot.title = r.status === 'active' ? 'Working' : (r.status === '429' ? 'Rate limited' : 'Invalid / Error');
-        dot.style.fontSize = '.9rem';
-    });
-
-    var activeCount = rows.filter(function(r){ return r.ok; }).length;
-    var total = rows.length;
-    var summary = activeCount === total
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + total + ' Groq keys are working!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + activeCount + '/' + total + ' Groq keys active.</div>';
-
-    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){return r.html;}).join('') + '</div>';
-    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Groq Keys'; }
-}
-
-btn('aqs-test-groq-btn').addEventListener('click', function(){ _aqsTestAllGroqKeys(); });
-
 /* Auto-test REMOVED — was burning API quota every time admin page opened.
    Click "Test All Keys" button to test manually. */
 
@@ -1188,6 +1942,344 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
     }, 'aqs-oauth-status', this, '💾 Save OAuth Settings');
 });
 
+  btn('aqs-save-hf-btn').addEventListener('click', function(){
+    var hfKeys = [];
+    for (var hi = 1; hi <= 5; hi++) {
+        var hel = document.getElementById('aqs-hf-key-' + hi);
+        if (hel && hel.value.trim().length > 10) hfKeys.push(hel.value.trim());
+    }
+    var hfModelEl = document.getElementById('aqs-hf-model');
+    if (typeof window.setHFKeys === 'function') window.setHFKeys(hfKeys);
+    window._AQS_HF_MODEL = hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3';
+    saveSettings('/api/settings', {
+        hf_keys: hfKeys,
+        hf_model: hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3'
+    }, 'aqs-hf-status', this, '🤗 Save HuggingFace Settings');
+    for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-hf-dot-' + ci); if (d) d.textContent = ''; }
+});
+
+btn('aqs-save-creator-image-btn').addEventListener('click', function(){
+    var creatorImageKeys = [];
+    for (var cii = 1; cii <= 5; cii++) {
+        var ciel = document.getElementById('aqs-creator-image-key-' + cii);
+        if (ciel && ciel.value.trim().length > 10) creatorImageKeys.push(ciel.value.trim());
+    }
+    var creatorImageModelEl = document.getElementById('aqs-creator-image-model');
+    var creatorImageModel = creatorImageModelEl && creatorImageModelEl.value.trim()
+        ? creatorImageModelEl.value.trim()
+        : 'black-forest-labs/FLUX.1-schnell';
+    if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(creatorImageKeys);
+    window._AQS_CREATOR_IMAGE_MODEL = creatorImageModel;
+    saveSettings('/api/settings', {
+        creator_image_keys: creatorImageKeys,
+        creator_image_model: creatorImageModel
+    }, 'aqs-creator-image-status', this, '🎨 Save Creator Studio Image Keys');
+    for (var cdi = 1; cdi <= 5; cdi++) {
+        var cd = document.getElementById('aqs-creator-image-dot-' + cdi);
+        if (cd) cd.textContent = '';
+    }
+});
+
+async function _aqsTestCreatorImageKeys() {
+    var configuredSlots = [];
+    for (var cti = 1; cti <= 5; cti++) {
+        var ctel = document.getElementById('aqs-creator-image-key-' + cti);
+        if (ctel && ctel.value.trim().length > 10) configuredSlots.push('Token ' + cti);
+    }
+    var results = document.getElementById('aqs-creator-image-test-results');
+    var testBtn = document.getElementById('aqs-test-creator-image-btn');
+    var healthSummary = document.getElementById('aqs-creator-image-health-summary');
+    window._aqsRememberCreatorImageHealth = function(healthy, total, status) {
+        try {
+            localStorage.setItem('aqs_creator_image_health_last', JSON.stringify({
+                at: new Date().toISOString(),
+                healthy: healthy,
+                total: total,
+                status: status || 'checked'
+            }));
+        } catch (e) {}
+    };
+    try {
+        var lastCreatorHealth = JSON.parse(localStorage.getItem('aqs_creator_image_health_last') || 'null');
+        if (healthSummary && lastCreatorHealth && lastCreatorHealth.at) {
+            var lastLabel = lastCreatorHealth.total
+                ? lastCreatorHealth.healthy + '/' + lastCreatorHealth.total + ' managed token(s) healthy'
+                : 'No managed tokens configured';
+            healthSummary.innerHTML = 'Last checked ' + new Date(lastCreatorHealth.at).toLocaleString() + ' · ' + lastLabel + ' · Pollinations fallback ready.';
+        }
+    } catch (e) {}
+    if (!results) return;
+    results.style.display = 'block';
+    if (!configuredSlots.length) {
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, save the pool, then click Test.</span>';
+        if (healthSummary) healthSummary.innerHTML = 'No managed tokens configured · Pollinations fallback is ready.';
+        return;
+    }
+    var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell';
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing the saved image pool through the secure server…</div>';
+    try {
+        var endpoint = window._AQS_CREATOR_IMAGE_FUNCTION_URL || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
+        var res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ testOnly: true, model: model })
+        });
+        var data = await res.json().catch(function(){ return {}; });
+        if (!res.ok) throw new Error(data.error || 'Secure image service unavailable.');
+        var health = Array.isArray(data.health) ? data.health : [];
+        if (!health.length) {
+            results.innerHTML = '<span style="color:#fbbf24;">⚠️ The secure service is reachable, but no saved tokens were found. Save the pool first.</span>';
+            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · No managed tokens configured · Pollinations fallback ready.';
+            if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'empty');
+        } else {
+            var healthyCount = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
+            var rows = health.map(function(entry) {
+                var color = entry.status === 'healthy' ? '#4ade80' : (entry.status === 'rate_limited' ? '#fbbf24' : '#f87171');
+                var status = entry.status === 'healthy' ? '✅ Healthy' : (entry.status === 'rate_limited' ? '⚠️ Rate limited' : (entry.status === 'invalid' ? '❌ Invalid token' : '❌ Unavailable'));
+                return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#cbd5e1;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
+            });
+            results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Secure server test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
+            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Pollinations fallback ready.';
+            if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(healthyCount, health.length, 'checked');
+        }
+    } catch (e) {
+        results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Secure image service unavailable.') + '</span>';
+        if (healthSummary) healthSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Pollinations fallback remains ready.';
+        if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
+    }
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Image Tokens'; }
+}
+btn('aqs-test-creator-image-btn').addEventListener('click', _aqsTestCreatorImageKeys);
+
+async function _aqsTestHFKeys() {
+    var allKeys = [];
+    for (var hi = 1; hi <= 5; hi++) {
+        var hel = document.getElementById('aqs-hf-key-' + hi);
+        if (hel && hel.value.trim().length > 10) allKeys.push({ slot: 'Token ' + hi, key: hel.value.trim() });
+    }
+    var results = document.getElementById('aqs-hf-test-results');
+    var testBtn = document.getElementById('aqs-test-hf-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No HF tokens found. Add at least one above, then click Test.</span>';
+        return;
+    }
+    var model = (document.getElementById('aqs-hf-model') || {}).value || 'mistralai/Mistral-7B-Instruct-v0.3';
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' token(s) via HuggingFace Inference API…</div>';
+    async function pingHF(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 5) + '…' + key.slice(-4);
+        var badge = '<span style="font-size:.7rem;background:#d1fae5;color:#065f46;border-radius:4px;padding:2px 7px;font-weight:700;">HF</span>';
+        var tStart = Date.now();
+        try {
+            var res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 5 }),
+                signal: AbortSignal.timeout(15000)
+            });
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                var data = await res.json();
+                var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
+            } else if (res.status === 401 || res.status === 403) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid token (' + res.status + ')</span></div>' };
+            } else if (res.status === 429) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited</span></div>' };
+            } else {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+            }
+        } catch(e) {
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (15s)':'Network error') + '</span></div>' };
+        }
+    }
+    var rows = await Promise.all(allKeys.map(pingHF));
+    rows.forEach(function(r, ri) {
+        var dot = document.getElementById('aqs-hf-dot-' + (ri + 1));
+        if (!dot) return;
+        dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem';
+    });
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' HF token(s) working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' HF tokens active.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All HF Tokens'; }
+}
+btn('aqs-test-hf-btn').addEventListener('click', _aqsTestHFKeys);
+
+/* ── ElevenLabs TTS Keys — Save ──────────────────────────────────────────── */
+btn('aqs-save-el-btn') && btn('aqs-save-el-btn').addEventListener('click', function(){
+    var _k = [];
+    for (var _i = 1; _i <= 5; _i++) {
+        var _el = document.getElementById('aqs-el-key-' + _i);
+        if (_el && _el.value.trim().length > 20) _k.push(_el.value.trim());
+    }
+    if (!_k.length) {
+        var _s = document.getElementById('aqs-el-status');
+        if (_s) { _s.textContent = 'Add at least one key (starts with sk_).'; _s.style.color = '#ef4444'; }
+        return;
+    }
+    window._AQS_EL_KEYS = _k;
+    saveSettings('/api/settings', { elevenlabs_keys: _k }, 'aqs-el-status', this, '🔊 Save ElevenLabs Keys');
+    if (typeof window._aqsRefreshPoolStatus === 'function') setTimeout(window._aqsRefreshPoolStatus, 700);
+});
+
+/* ── ElevenLabs TTS Keys — Test ──────────────────────────────────────────── */
+async function _aqsTestELKeys() {
+    var allKeys = [];
+    for (var ei = 1; ei <= 5; ei++) {
+        var eel = document.getElementById('aqs-el-key-' + ei);
+        if (eel && eel.value.trim().length > 20) allKeys.push({ slot: ei, key: eel.value.trim() });
+    }
+    var results = document.getElementById('aqs-el-test-results');
+    var testBtn = document.getElementById('aqs-test-el-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No ElevenLabs keys found. Add at least one key above, then click Test.</span>';
+        return;
+    }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' ElevenLabs key(s)…</div>';
+    async function pingEL(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 5) + '…' + key.slice(-4);
+        var badge = '<span style="font-size:.7rem;background:#f3e8ff;color:#6b21a8;border-radius:4px;padding:2px 7px;font-weight:700;">ELEVENLABS</span>';
+        var tStart = Date.now();
+        try {
+            /* Test with a real TTS call (1 char) — most reliable auth check.
+               401 = invalid key. 402 = valid key but free plan (library voices need paid plan).
+               200 = valid key with full access. */
+            var res = await fetch('https://api.elevenlabs.io/v1/text-to-speech/21m00Tcm4TlvDq8ikWAM', {
+                method: 'POST',
+                headers: { 'xi-api-key': key, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+                body: JSON.stringify({ text: 'Hi', model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.75 } }),
+                signal: AbortSignal.timeout(15000)
+            });
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">Key ' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Valid · ' + ms + 'ms · full access</span></div>' };
+            } else if (res.status === 401) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid key (401) — check at elevenlabs.io</span></div>' };
+            } else if (res.status === 402) {
+                /* Key is valid but account is on free plan — library voices need a paid plan */
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1a01;border:1px solid #78700f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d2901;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Valid key · Free plan · Upgrade at elevenlabs.io to use AI voices via API</span></div>' };
+            } else if (res.status === 429) {
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
+            } else {
+                var errBody = {}; try { errBody = await res.json(); } catch(_) {}
+                var errMsg = (errBody.detail && errBody.detail.message) || ('HTTP ' + res.status);
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">Key ' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ ' + errMsg + '</span></div>' };
+            }
+        } catch(e) {
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (15s)' : 'Network error') + '</span></div>' };
+        }
+    }
+    var rows = await Promise.all(allKeys.map(pingEL));
+    rows.forEach(function(r, ri) {
+        var dot = document.getElementById('aqs-el-dot-' + (ri + 1));
+        if (dot) { dot.textContent = r.ok ? '✅' : '❌'; dot.style.fontSize = '.9rem'; }
+    });
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' ElevenLabs key(s) valid!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' ElevenLabs keys valid.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All EL Keys'; }
+}
+btn('aqs-test-el-btn').addEventListener('click', _aqsTestELKeys);
+
+/* ── Gemini TTS Keys — Save ──────────────────────────────────────────────── */
+btn('aqs-save-gtts-btn') && btn('aqs-save-gtts-btn').addEventListener('click', function(){
+    var _k = [];
+    for (var _i = 1; _i <= 5; _i++) {
+        var _el = document.getElementById('aqs-gtts-key-' + _i);
+        if (_el && _el.value.trim().length > 20) _k.push(_el.value.trim());
+    }
+    if (!_k.length) {
+        var _s = document.getElementById('aqs-gtts-status');
+        if (_s) { _s.textContent = 'Add at least one key (starts with AIza).'; _s.style.color = '#ef4444'; }
+        return;
+    }
+    window._AQS_GEMINI_TTS_KEYS = _k;
+    if (window.geminiTTS) window.geminiTTS.setKeys(_k);
+    saveSettings('/api/settings', { gemini_tts_keys: _k }, 'aqs-gtts-status', this, '🎙️ Save Gemini TTS Keys');
+    if (typeof window._aqsRefreshPoolStatus === 'function') setTimeout(window._aqsRefreshPoolStatus, 700);
+});
+
+/* ── Gemini TTS Keys — Test ──────────────────────────────────────────────── */
+async function _aqsTestGeminiTTSKeys() {
+    var allKeys = [];
+    for (var gi = 1; gi <= 5; gi++) {
+        var gel = document.getElementById('aqs-gtts-key-' + gi);
+        if (gel && gel.value.trim().length > 20) allKeys.push({ slot: gi, key: gel.value.trim() });
+    }
+    var results = document.getElementById('aqs-gtts-test-results');
+    var testBtn = document.getElementById('aqs-test-gtts-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Gemini TTS keys found. Add at least one key above, then click Test.</span>';
+        return;
+    }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Gemini TTS key(s)…</div>';
+
+    var MODEL = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
+
+    function row(bg, bd, nameCol, codeBg, codeCol, slot, masked, msgCol, msg) {
+        var badge = '<span style="font-size:.7rem;background:#dbeafe;color:#1e40af;border-radius:4px;padding:2px 7px;font-weight:700;">GEMINI TTS</span>';
+        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:' + bg + ';border:1px solid ' + bd + ';border-radius:8px;">' +
+            badge + '<span style="color:' + nameCol + ';font-weight:700;">Key ' + slot + '</span>' +
+            '<code style="color:' + codeCol + ';font-size:.78rem;background:' + codeBg + ';padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+            '<span style="color:' + msgCol + ';margin-left:auto;font-size:.78rem;">' + msg + '</span></div>';
+    }
+
+    async function pingGTTS(entry) {
+        var key = entry.key, slot = entry.slot;
+        var masked = key.slice(0, 6) + '…' + key.slice(-4);
+        var tStart = Date.now();
+        try {
+            if (!window.geminiTTS || !window.geminiTTS.testKey) {
+                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ TTS engine not loaded — refresh the page') };
+            }
+            var res = await window.geminiTTS.testKey(key);
+            var ms = Date.now() - tStart;
+            if (res.ok) {
+                return { ok: true, html: row('#052e16','#166534','#86efac','#0d3321','#4ade80',slot,masked,'#6ee7b7','✅ Valid · ' + ms + 'ms · audio OK (' + (res.model || MODEL) + ')') };
+            }
+            if (res.reason === 'invalid') {
+                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ Invalid key — check at aistudio.google.com/apikey') };
+            }
+            if (res.reason === 'quota') {
+                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ Valid key · free quota reached — try again later') };
+            }
+            if (res.reason === 'nomodel') {
+                return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ ' + res.message) };
+            }
+            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (res.message || 'Failed')) };
+        } catch(e) {
+            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (e.name === 'TimeoutError' ? 'Timed out' : (e.message || 'Network error'))) };
+        }
+    }
+
+
+    var rows = [];
+    for (var k = 0; k < allKeys.length; k++) { rows.push(await pingGTTS(allKeys[k])); }
+    var active = rows.filter(function(r){ return r.ok; }).length;
+    var summary = active === rows.length
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Gemini TTS key(s) working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Gemini TTS keys working.</div>';
+    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Gemini TTS Keys'; }
+}
+btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _aqsTestGeminiTTSKeys);
+
 
     /* ═══════════════════════════════════════════════════════════════════
        Quote Generation Keys — Save / Load / Test
@@ -1306,6 +2398,260 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
         }
     })();
 </script>
-<script src="js/aqs-quotes.js"></script>
-</body>
-</html>
+<script>
+  /* ═══════════ POOL STATUS DASHBOARD v2 — real per-key API tests ═══════════ */
+  (function(){
+      var GROQ_URL    = 'https://api.groq.com/openai/v1/chat/completions';
+      var MISTRAL_URL = 'https://api.mistral.ai/v1/chat/completions';
+      var HF_URL_BASE = 'https://api-inference.huggingface.co/models/';
+
+      var POOLS = [
+          { id:'groq',       label:'Main Groq',    emoji:'⚡', provider:'groq',    inputPrefix:'aqs-groq-key-',            slots:20, dotPrefix:'aqs-gk-dot-' },
+          { id:'mistral',    label:'Mistral',       emoji:'🌟', provider:'mistral', inputPrefix:'aqs-mistral-key-',         slots:20, dotPrefix:'aqs-mk-dot-' },
+          { id:'hf',         label:'HuggingFace',   emoji:'🤗', provider:'hf',      inputPrefix:'aqs-hf-key-',              slots:5,  dotPrefix:'aqs-hf-dot-' },
+           { id:'creator_image', label:'Creator Studio Image', emoji:'🎨', provider:'creator_image', inputPrefix:'aqs-creator-image-key-', slots:5, dotPrefix:'aqs-creator-image-dot-' },
+          { id:'geminitts',  label:'Gemini TTS',    emoji:'🎙️', provider:'gtts',   inputPrefix:'aqs-gtts-key-',            slots:5,  dotPrefix:'aqs-gtts-dot-' },
+          { id:'elevenlabs', label:'ElevenLabs TTS', emoji:'🔊', provider:'el',      inputPrefix:'aqs-el-key-',              slots:5,  dotPrefix:'aqs-el-dot-' },
+          { id:'library',    label:'Library',       emoji:'📚', provider:'groq',    inputPrefix:'aqs-lib-key-',             slots:10 },
+          { id:'quiz',       label:'Quiz Creation', emoji:'🧠', provider:'groq',    inputPrefix:'aqs-quiz-groq-key-',       slots:10, dotPrefix:'aqs-qgk-dot-' },
+          { id:'challenge',  label:'Challenge',     emoji:'⚔️', provider:'groq',    inputPrefix:'aqs-challenge-groq-key-',  slots:10, dotPrefix:'aqs-cgk-dot-' },
+          { id:'studyhub',   label:'Study Hub',     emoji:'📖', provider:'groq',    inputPrefix:'aqs-studyhub-groq-key-',   slots:10, dotPrefix:'aqs-sgk-dot-' },
+          { id:'textdocs',   label:'Text→Docs',     emoji:'📄', provider:'groq',    inputPrefix:'aqs-textdocs-groq-key-',   slots:10, dotPrefix:'aqs-tgk-dot-' },
+          { id:'puzzle',     label:'Puzzle',        emoji:'🧩', provider:'groq',    inputPrefix:'aqs-puzzle-groq-key-',     slots:10, dotPrefix:'aqs-pgk-dot-' },
+          { id:'quizstudio', label:'Quiz Studio',   emoji:'🎬', provider:'groq',    inputPrefix:'aqs-quizstudio-groq-key-', slots:10, dotPrefix:'aqs-qsgk-dot-' }
+      ];
+
+      /* ── Real direct API ping — returns { ok, status, ms, msg } ── */
+      async function pingKey(key, provider) {
+          var tStart = Date.now(), ms, res, errBody, errMsg;
+          try {
+              if (provider === 'groq') {
+                  var model = window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b';
+                  res = await fetch(GROQ_URL, {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
+                      signal:AbortSignal.timeout(13000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) {
+                      var data = await res.json();
+                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
+                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
+                  }
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = (errBody.error&&errBody.error.message) ? errBody.error.message.slice(0,110) : 'HTTP '+res.status;
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
+                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+
+              } else if (provider === 'mistral') {
+                  var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
+                  res = await fetch(MISTRAL_URL, {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
+                      signal:AbortSignal.timeout(15000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) {
+                      var data = await res.json();
+                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
+                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
+                  }
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = errBody.message||errBody.error||(errBody.error&&errBody.error.message)||'HTTP '+res.status;
+                  if (typeof errMsg !== 'string') errMsg = JSON.stringify(errMsg);
+                  errMsg = errMsg.slice(0,110);
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
+                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+
+              } else if (provider === 'hf') {
+                  var hfModel = window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
+                  res = await fetch(HF_URL_BASE + hfModel, {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+                      body:JSON.stringify({inputs:'Say OK',parameters:{max_new_tokens:3}}),
+                      signal:AbortSignal.timeout(20000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms'};
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = (typeof errBody.error==='string' ? errBody.error : JSON.stringify(errBody.error||errBody)).slice(0,110);
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
+                  if (res.status===401||res.status===403) return {ok:false, status:res.status, ms:ms, msg:'❌ Invalid token ('+res.status+') — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+
+              } else if (provider === 'gtts') {
+                  var gModel = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
+                  res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+gModel+':generateContent?key='+encodeURIComponent(key), {
+                      method:'POST',
+                      headers:{'Content-Type':'application/json'},
+                      body:JSON.stringify({
+                          contents:[{role:'user',parts:[{text:'Hi'}]}],
+                          generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}
+                      }),
+                      signal:AbortSignal.timeout(30000)
+                  });
+                  ms = Date.now() - tStart;
+                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · audio OK'};
+                  errBody={}; try{errBody=await res.json();}catch(_){}
+                  errMsg = ((errBody.error&&errBody.error.message)||('HTTP '+res.status)).slice(0,110);
+                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Free quota reached — '+errMsg};
+                  if (res.status===403) return {ok:false, status:403, ms:ms, msg:'❌ Forbidden (403) — '+errMsg};
+                  if (res.status===400 && /API key not valid|API_KEY_INVALID/i.test(errMsg)) return {ok:false, status:400, ms:ms, msg:'❌ Invalid key — '+errMsg};
+                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
+              }
+          } catch(e) {
+              ms = Date.now() - tStart;
+              return {ok:false, status:'err', ms:ms, msg:'❌ '+(e.name==='TimeoutError'?'Timeout (13s)':e.message||'Network error')};
+          }
+      }
+
+      function _getPoolKeys(p) {
+          var keys = [], minLen = p.provider === 'hf' ? 8 : 20;
+          for (var i = 1; i <= p.slots; i++) {
+              var el = document.getElementById(p.inputPrefix + i);
+              if (el && el.value.trim().length > minLen) keys.push({slot:i, key:el.value.trim()});
+          }
+          return keys;
+      }
+
+      function _dots(n, m) {
+          var s = '';
+          for (var i = 0; i < m; i++)
+              s += i < n ? '<span style="color:#10b981;font-size:.48rem;">●</span>' : '<span style="color:#dde3ec;font-size:.4rem;">○</span>';
+          return s;
+      }
+
+      function _renderGrid() {
+          var grid = document.getElementById('aqs-pool-status-grid');
+          if (!grid) return;
+          grid.innerHTML = POOLS.map(function(p) {
+              var n = _getPoolKeys(p).length, m = p.slots, bar = m > 0 ? Math.round(n/m*100) : 0;
+               var noKeyFallback = p.provider === 'creator_image' && n === 0;
+               var col = noKeyFallback ? '#059669' : (n === 0 ? '#ef4444' : n < m ? '#f59e0b' : '#10b981');
+              return '<div id="aqs-dash-'+p.id+'" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:7px;">'
+                  +'<div style="display:flex;align-items:center;gap:7px;"><span>'+p.emoji+'</span><span style="font-weight:700;color:#1e293b;font-size:.82rem;">'+p.label+'</span></div>'
+                  +'<div style="letter-spacing:1.5px;">'+_dots(n,m)+'</div>'
+                  +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
+                   +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+(noKeyFallback ? 'ready' : n+'/'+m)+'</span></div>'
+                  +'<div style="display:flex;align-items:center;justify-content:space-between;">'
+                   +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">'+(noKeyFallback ? 'Pollinations fallback ready' : '—')+'</span>'
+                  +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
+                  +'</div>'
+                  +'<div id="aqs-pool-detail-'+p.id+'" style="display:none;flex-direction:column;gap:4px;margin-top:2px;"></div>'
+                  +'</div>';
+          }).join('');
+      }
+
+      async function _testPool(id) {
+          var p   = POOLS.find(function(x){ return x.id===id; });
+          var r   = document.getElementById('aqs-dash-result-'+id);
+          var det = document.getElementById('aqs-pool-detail-'+id);
+          if (!p) return;
+
+          var keys = _getPoolKeys(p);
+           if (p.provider === 'creator_image') {
+               if (r) { r.textContent = '🔄 Testing the secure image pool…'; r.style.color = '#f59e0b'; }
+               if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;">Tokens are checked server-side; values never leave this page.</span>'; }
+               try {
+                   var creatorEndpoint = window._AQS_CREATOR_IMAGE_FUNCTION_URL || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
+                   var creatorResponse = await fetch(creatorEndpoint, {
+                       method: 'POST',
+                       headers: {'Content-Type':'application/json'},
+                       body: JSON.stringify({testOnly:true, model:(document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell'})
+                   });
+                   var creatorData = await creatorResponse.json().catch(function(){ return {}; });
+                   if (!creatorResponse.ok) throw new Error(creatorData.error || 'Secure image service unavailable.');
+                   var health = Array.isArray(creatorData.health) ? creatorData.health : [];
+                   var active = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
+                   var total = health.length;
+                   if (!total) {
+                       if (r) { r.innerHTML = '<span style="color:#059669;">✅ Pollinations fallback ready</span>'; r.style.color = '#059669'; }
+                       if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#6b7280;">No managed image tokens saved. The public fallback remains available.</span>'; }
+                   } else {
+                       var creatorRows = health.map(function(entry) {
+                           var healthy = entry.status === 'healthy', limited = entry.status === 'rate_limited';
+                           var color = healthy ? '#86efac' : (limited ? '#fde68a' : '#fca5a5');
+                           var label = healthy ? 'Healthy' : (limited ? 'Rate limited' : (entry.status === 'invalid' ? 'Invalid token' : 'Unavailable'));
+                           var dotEl = document.getElementById('aqs-creator-image-dot-' + entry.slot);
+                           if (dotEl) { dotEl.textContent = healthy ? '✅' : (limited ? '⚠️' : '❌'); dotEl.style.fontSize = '.9rem'; }
+                           return '<div style="padding:5px 8px;background:' + (healthy ? '#052e16' : limited ? '#1c1001' : '#1c0101') + ';border:1px solid ' + (healthy ? '#166534' : limited ? '#78350f' : '#7f1d1d') + ';border-radius:6px;display:flex;align-items:center;gap:6px;"><span style="color:' + color + ';font-weight:700;font-size:.72rem;">Token ' + entry.slot + '</span><span style="color:' + color + ';margin-left:auto;font-size:.7rem;">' + label + ' · ' + (entry.latencyMs || 0) + 'ms</span></div>';
+                       });
+                       if (r) { r.innerHTML = '<span style="color:' + (active === total ? '#059669' : active ? '#d97706' : '#dc2626') + ';">' + active + '/' + total + ' healthy · Pollinations fallback ready</span>'; r.style.color = active === total ? '#059669' : active ? '#d97706' : '#dc2626'; }
+                       if (det) { det.style.display = 'flex'; det.innerHTML = creatorRows.join(''); }
+                   }
+                   var summary = document.getElementById('aqs-creator-image-health-summary');
+                   if (summary) summary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + (total ? active + '/' + total + ' managed token(s) healthy' : 'No managed tokens configured') + ' · Pollinations fallback ready.';
+                   if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(active, total, total ? 'checked' : 'empty');
+               } catch (creatorError) {
+                   if (r) { r.innerHTML = '<span style="color:#d97706;">⚠️ Secure health check unavailable · Pollinations fallback ready</span>'; r.style.color = '#d97706'; }
+                   if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#fca5a5;">' + (creatorError.message || 'Health check failed.') + '</span>'; }
+                   var failedSummary = document.getElementById('aqs-creator-image-health-summary');
+                   if (failedSummary) failedSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Pollinations fallback remains ready.';
+                   if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
+               }
+               return;
+           }
+          if (!keys.length) {
+              if (r) r.innerHTML = '<span style="color:#ef4444;">⚠️ No keys saved in slots</span>';
+              if (det) det.style.display = 'none';
+              return;
+          }
+          if (r) { r.textContent = '🔄 Testing '+keys.length+' key(s)…'; r.style.color = '#f59e0b'; }
+          if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;">Testing in parallel…</span>'; }
+
+          var results = await Promise.all(keys.map(async function(entry) {
+              var masked = entry.key.slice(0,7)+'…'+entry.key.slice(-4);
+              var ping   = await pingKey(entry.key, p.provider);
+              if (p.dotPrefix) {
+                  var dotEl = document.getElementById(p.dotPrefix+entry.slot);
+                  if (dotEl) { dotEl.textContent = ping.ok ? '✅' : (ping.status===429 ? '⚠️' : '❌'); dotEl.style.fontSize='.9rem'; }
+              }
+              var bg = ping.ok ? '#052e16' : (ping.status===429 ? '#1c1001' : '#1c0101');
+              var bc = ping.ok ? '#166534' : (ping.status===429 ? '#78350f' : '#7f1d1d');
+              var mc = ping.ok ? '#86efac' : (ping.status===429 ? '#fde68a' : '#fca5a5');
+              return {
+                  ok: ping.ok,
+                  html: '<div style="padding:5px 8px;background:'+bg+';border:1px solid '+bc+';border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:5px;">'
+                      +'<span style="color:'+mc+';font-weight:700;min-width:46px;font-size:.72rem;">Slot '+entry.slot+'</span>'
+                      +'<code style="color:'+mc+';font-size:.68rem;opacity:.8;background:rgba(0,0,0,.25);padding:0 5px;border-radius:4px;">'+masked+'</code>'
+                      +'<span style="margin-left:auto;color:'+mc+';font-size:.7rem;text-align:right;">'+ping.msg+'</span>'
+                      +'</div>'
+              };
+          }));
+
+          var active = results.filter(function(r){ return r.ok; }).length, total = results.length;
+          var sc = active===total ? '#10b981' : (active>0 ? '#f59e0b' : '#ef4444');
+          var st = active===total ? '✅ All '+total+' keys working' : (active===0 ? '❌ All '+total+' keys failed' : '⚠️ '+active+'/'+total+' active');
+          if (r) r.innerHTML = '<span style="color:'+sc+';font-weight:700;">'+st+'</span>';
+          if (det) det.innerHTML = results.map(function(r){ return r.html; }).join('');
+      }
+
+      window._aqsTestPool = _testPool;
+      window._aqsRefreshPoolStatus = _renderGrid;
+
+      var taBtn = document.getElementById('aqs-test-all-btn');
+      if (taBtn) taBtn.addEventListener('click', async function() {
+          _renderGrid();
+          taBtn.disabled = true; taBtn.textContent = '⏳ Testing All…';
+          await Promise.all(POOLS.map(function(p){ return _testPool(p.id); }));
+          taBtn.disabled = false; taBtn.textContent = '🧪 Test All Pools';
+      });
+
+      /* Render immediately — grid reads DOM inputs, no Firebase needed */
+      _renderGrid();
+      /* Re-render after settings may have loaded into inputs */
+      setTimeout(_renderGrid, 1500);
+      setTimeout(_renderGrid, 4000);
+      /* Also re-render when Firebase fires (keys may be freshly populated) */
+      if (!window._aqsFirebaseReady) {
+          document.addEventListener('aqs:firebase:ready', function(){ setTimeout(_renderGrid, 400); }, {once:true});
+      }
+  })();
+  </script>
+
+
+<script src="js/aqs-quotes.js">

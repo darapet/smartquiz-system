@@ -434,3 +434,33 @@
   })();
 
 })();
+
+
+/* ── AQS_MEDIA_PLAY_FALLBACK ───────────────────────────────────────────────
+   Android WebView often resolves/rejects <audio>.play() without producing
+   sound for blob/data URLs. Route those through the unlocked AudioContext
+   player (window.aqsPlayAudioBlob) so TTS and quiz voices stay audible.
+   ─────────────────────────────────────────────────────────────────────── */
+(function () {
+  if (typeof window === 'undefined' || !window.HTMLMediaElement) return;
+  var origPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function () {
+    var el = this;
+    var res;
+    try { res = origPlay.apply(el, arguments); } catch (e) { res = Promise.reject(e); }
+    if (!res || typeof res.catch !== 'function') return res;
+    return res.catch(function (err) {
+      try {
+        var src = el.currentSrc || el.src || '';
+        if (window.aqsPlayAudioBlob && /^(blob:|data:)/.test(src)) {
+          return fetch(src).then(function (r) { return r.blob(); }).then(function (b) {
+            window.aqsPlayAudioBlob(b, function () {
+              try { el.dispatchEvent(new Event('ended')); } catch (e) {}
+            }, function () {});
+          });
+        }
+      } catch (e) {}
+      throw err;
+    });
+  };
+})();

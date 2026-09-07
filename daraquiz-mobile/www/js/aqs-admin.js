@@ -1,5 +1,5 @@
 /* ============================================================
-   DaraQuiz AI — Admin Panel JS
+   XZILY AI — Admin Panel JS
    Locked to: daramolapeter98@gmail.com ONLY
    All other users are immediately redirected out.
    ============================================================ */
@@ -34,6 +34,202 @@ var _printedDocs = new Set();
 
 /* ── Current quiz data loaded in the view modal ── */
 var _currentViewData = null;
+
+/* ── Bulk table controls ──
+   Selection is intentionally DOM-scoped so switching sections cannot carry
+   stale IDs into a destructive action. */
+function bulkIds(scope) {
+    return Array.from(document.querySelectorAll('[data-bulk-scope="' + scope + '"] input[data-bulk-id]:checked'))
+        .map(function (el) { return el.dataset.bulkId; })
+        .filter(Boolean);
+}
+
+/* ── Bulk-delete backup gate ──
+   Every destructive bulk action gets one complete JSON backup first.
+   This is deliberately client-side: the same authenticated Firestore reads
+   used to render the table are used to build the download. */
+var _bulkDeleteRequest = null;
+
+function serializeBackupValue(value) {
+    if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (Array.isArray(value)) return value.map(serializeBackupValue);
+    if (value && typeof value === 'object') {
+        var output = {};
+        Object.keys(value).forEach(function (key) { output[key] = serializeBackupValue(value[key]); });
+        return output;
+    }
+    return value;
+}
+
+function closeBulkDeleteModal() {
+    var modal = document.getElementById('aqs-bulk-delete-backup-modal');
+    if (modal) modal.remove();
+    _bulkDeleteRequest = null;
+}
+
+function showBulkDeleteModal(request) {
+    closeBulkDeleteModal();
+    _bulkDeleteRequest = request;
+    var modal = document.createElement('div');
+    modal.id = 'aqs-bulk-delete-backup-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.68);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;font-family:inherit;';
+    modal.innerHTML =
+        '<div role="dialog" aria-modal="true" aria-labelledby="aqs-bulk-delete-title" style="background:#fff;width:min(560px,100%);border-radius:14px;box-shadow:0 24px 70px rgba(0,0,0,.28);overflow:hidden;">' +
+            '<div style="padding:20px 22px;border-bottom:1px solid #e5e7eb;display:flex;align-items:flex-start;justify-content:space-between;gap:16px;">' +
+                '<div><h2 id="aqs-bulk-delete-title" style="margin:0;color:#991b1b;font-size:1.12rem;">Backup required before deletion</h2><p style="margin:6px 0 0;color:#64748b;font-size:.84rem;">' + request.ids.length + ' selected ' + esc(request.label) + '</p></div>' +
+                '<button type="button" data-bulk-close aria-label="Close" style="border:0;background:none;color:#64748b;font-size:1.5rem;cursor:pointer;line-height:1;">&times;</button>' +
+            '</div>' +
+            '<div style="padding:22px;">' +
+                '<div id="aqs-bulk-delete-status" style="background:#fff7ed;border:1px solid #fed7aa;border-radius:9px;padding:13px 14px;color:#9a3412;font-size:.86rem;line-height:1.5;">Download a complete backup of everything selected before continuing. Deletion will remain locked until the download starts successfully.</div>' +
+                '<div id="aqs-bulk-delete-error" style="display:none;margin-top:12px;color:#b91c1c;font-size:.84rem;"></div>' +
+            '</div>' +
+            '<div style="padding:14px 22px;background:#f8fafc;border-top:1px solid #e5e7eb;display:flex;justify-content:flex-end;gap:9px;flex-wrap:wrap;">' +
+                '<button type="button" class="adm-btn" data-bulk-close>Cancel</button>' +
+                '<button type="button" class="adm-btn adm-btn-primary" id="aqs-bulk-download-btn">⬇ Download backup</button>' +
+                '<button type="button" class="adm-btn adm-btn-danger" id="aqs-bulk-confirm-delete-btn" disabled style="opacity:.45;cursor:not-allowed;">Delete selected</button>' +
+            '</div>' +
+        '</div>';
+    document.body.appendChild(modal);
+    modal.querySelectorAll('[data-bulk-close]').forEach(function (button) {
+        button.addEventListener('click', closeBulkDeleteModal);
+    });
+    modal.addEventListener('click', function (event) {
+        if (event.target === modal) closeBulkDeleteModal();
+    });
+    modal.querySelector('#aqs-bulk-download-btn').addEventListener('click', async function () {
+        var downloadButton = this;
+        var status = modal.querySelector('#aqs-bulk-delete-status');
+        var error = modal.querySelector('#aqs-bulk-delete-error');
+        downloadButton.disabled = true;
+        downloadButton.textContent = 'Preparing backup…';
+        error.style.display = 'none';
+        try {
+            var records = [];
+            await Promise.all(request.ids.map(async function (id) {
+                var snap = await getDoc(doc(db, request.collectionName, id));
+                if (!snap.exists()) return;
+                var record = { id: snap.id, data: serializeBackupValue(snap.data()) };
+                if (request.collectionName === 'quizzes') {
+                    var attempts = await getDocs(query(collection(db, 'attempts'), where('quiz_id', '==', id)));
+                    record.related_attempts = attempts.docs.map(function (attempt) {
+                        return { id: attempt.id, data: serializeBackupValue(attempt.data()) };
+                    });
+                }
+                records.push(record);
+            }));
+            records.sort(function (a, b) { return request.ids.indexOf(a.id) - request.ids.indexOf(b.id); });
+            var backup = {
+                exported_at: new Date().toISOString(),
+                source: 'xzily AI Admin Panel',
+                collection: request.collectionName,
+                record_count: records.length,
+                records: records
+            };
+            downloadText(JSON.stringify(backup, null, 2), 'admin-backup-' + request.collectionName + '-' + new Date().toISOString().slice(0, 10) + '.json', 'application/json');
+            request.downloaded = true;
+            status.style.background = '#ecfdf5';
+            status.style.borderColor = '#a7f3d0';
+            status.style.color = '#065f46';
+            status.textContent = '✓ Backup downloaded. You can now permanently delete the selected records.';
+            var deleteButton = modal.querySelector('#aqs-bulk-confirm-delete-btn');
+            deleteButton.disabled = false;
+            deleteButton.style.opacity = '1';
+            deleteButton.style.cursor = 'pointer';
+            downloadButton.textContent = '✓ Backup downloaded';
+        } catch (e) {
+            downloadButton.disabled = false;
+            downloadButton.textContent = '⬇ Download backup';
+            error.textContent = 'Backup failed: ' + (e.message || e) + '. Nothing was deleted.';
+            error.style.display = 'block';
+        }
+    });
+    modal.querySelector('#aqs-bulk-confirm-delete-btn').addEventListener('click', async function () {
+        if (!request.downloaded || !confirm('Permanently delete ' + request.ids.length + ' selected ' + request.label + '? This cannot be undone.')) return;
+        var deleteButton = this;
+        deleteButton.disabled = true;
+        deleteButton.textContent = 'Deleting…';
+        try {
+            await request.deleteRecords();
+            closeBulkDeleteModal();
+            request.reload();
+            loadDashboardStats();
+        } catch (e) {
+            deleteButton.disabled = false;
+            deleteButton.textContent = 'Delete selected';
+            var error = modal.querySelector('#aqs-bulk-delete-error');
+            error.textContent = 'Delete failed: ' + (e.message || e) + '. Your backup is still available.';
+            error.style.display = 'block';
+        }
+    });
+}
+
+window.adminToggleBulk = function(scope, checked) {
+    document.querySelectorAll('[data-bulk-scope="' + scope + '"] input[data-bulk-id]')
+        .forEach(function (el) { el.checked = checked; });
+    var count = bulkIds(scope).length;
+    var label = document.querySelector('[data-bulk-count="' + scope + '"]');
+    if (label) label.textContent = count ? count + ' selected' : 'Select items';
+};
+
+window.updateBulkCount = function(scope) {
+    var count = bulkIds(scope).length;
+    var label = document.querySelector('[data-bulk-count="' + scope + '"]');
+    if (label) label.textContent = count ? count + ' selected' : 'Select items';
+}
+
+window.adminBulkAction = async function(scope, action) {
+    var ids = bulkIds(scope);
+    if (!ids.length) { alert('Select at least one item first.'); return; }
+    if (action === 'delete') {
+        showBulkDeleteModal({
+            ids: ids,
+            collectionName: 'quizzes',
+            label: 'quiz(es)',
+            reload: function () { loadQuizzes(); },
+            deleteRecords: function () {
+                return Promise.all(ids.map(function (id) { return window.adminDeleteQuiz(id, 'selected quiz', true); }));
+            }
+        });
+        return;
+    }
+    if (action === 'permanent') {
+        showBulkDeleteModal({
+            ids: ids,
+            collectionName: 'deleted_quizzes',
+            label: 'archived quiz(es)',
+            reload: function () { loadDeletedQuizzes(); },
+            deleteRecords: function () {
+                return Promise.all(ids.map(function (id) { return deleteDoc(doc(db, 'deleted_quizzes', id)); }));
+            }
+        });
+        return;
+    }
+    var message = action === 'restore'
+        ? 'Restore ' + ids.length + ' selected quiz(es) as drafts?'
+        : 'Permanently remove ' + ids.length + ' selected archived quiz(es)? This cannot be undone.';
+    if (!confirm(message)) return;
+    try {
+        var runner = action === 'restore' ? window.adminRestoreQuiz :
+            action === 'delete' ? window.adminDeleteQuiz : window.adminPermanentDelete;
+        await Promise.all(ids.map(function (id) { return runner(id, 'selected quiz', true); }));
+        if (scope === 'quizzes') { loadQuizzes(); loadDashboardStats(); }
+        if (scope === 'deleted') loadDeletedQuizzes();
+    } catch (e) { alert('Bulk action error: ' + (e.message || e)); }
+};
+
+window.adminBulkCollection = async function(scope, collectionName, reloadFn, label) {
+    var ids = bulkIds(scope);
+    if (!ids.length) { alert('Select at least one item first.'); return; }
+    showBulkDeleteModal({
+        ids: ids,
+        collectionName: collectionName,
+        label: label,
+        reload: reloadFn,
+        deleteRecords: function () {
+            return Promise.all(ids.map(function (id) { return deleteDoc(doc(db, collectionName, id)); }));
+        }
+    });
+};
 
 /* ── Safe event-bind helper ── */
 function bind(id, evt, fn) {
@@ -163,7 +359,8 @@ async function loadQuizzes() {
         });
         populateDateFilter('adm-quiz-year', years);
 
-        var html = '<table class="adm-table"><thead><tr><th>Title</th><th>Host</th><th>Questions</th><th>Status</th><th>Created</th><th>Token</th><th>Actions</th></tr></thead><tbody>';
+        var html = '<div class="adm-bulk-toolbar"><label><input type="checkbox" onchange="adminToggleBulk(\'quizzes\',this.checked)"> Select all</label><span data-bulk-count="quizzes">Select items</span><button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminBulkAction(\'quizzes\',\'delete\')">🗑 Archive selected</button></div>' +
+            '<table class="adm-table" data-bulk-scope="quizzes"><thead><tr><th><span class="sr-only">Select</span></th><th>Title</th><th>Host</th><th>Questions</th><th>Status</th><th>Created</th><th>Token</th><th>Actions</th></tr></thead><tbody>';
         snap.docs.forEach(function(d) {
             var q = d.data();
             var statusCls = q.status === 'published' ? 'adm-badge-green' : 'adm-badge-yellow';
@@ -175,6 +372,7 @@ async function loadQuizzes() {
             var mon = dt ? (dt.getMonth()+1) : '';
             var day = dt ? dt.getDate() : '';
             html += '<tr data-year="' + yr + '" data-month="' + mon + '" data-day="' + day + '">' +
+                '<td><input type="checkbox" data-bulk-id="' + d.id + '" aria-label="Select ' + esc(q.title) + '" onchange="updateBulkCount(\'quizzes\')"></td>' +
                 '<td><strong>' + esc(q.title) + '</strong><br><small style="color:#94a3b8">' + esc(q.subject) + '</small></td>' +
                 '<td>' + esc(hostName) + '</td>' +
                 '<td>' + numQ + '</td>' +
@@ -205,8 +403,8 @@ window.adminToggleQuiz = async function(quizId, currentStatus) {
     } catch(e) { alert('Error: ' + e.message); }
 };
 
-window.adminDeleteQuiz = async function(quizId, title) {
-    if (!confirm('Delete quiz "' + title + '"?\n\nThis archives the quiz then removes it permanently.')) return;
+window.adminDeleteQuiz = async function(quizId, title, skipConfirm) {
+    if (!skipConfirm && !confirm('Delete quiz "' + title + '"?\n\nThis archives the quiz then removes it permanently.')) return;
     try {
         var qSnap = await getDoc(doc(db, 'quizzes', quizId));
         if (qSnap.exists()) {
@@ -256,12 +454,14 @@ async function loadUsers() {
     try {
         var snap = await getDocs(query(collection(db, 'users'), orderBy('created_at', 'desc')));
         if (snap.empty) { container.innerHTML = '<div class="adm-empty">No users yet.</div>'; return; }
-        var html = '<table class="adm-table"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
+        var html = '<div class="adm-bulk-toolbar"><label><input type="checkbox" onchange="adminToggleBulk(\'users\',this.checked)"> Select all</label><span data-bulk-count="users">Select items</span><button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminBulkCollection(\'users\',\'users\',loadUsers,\'users\')">🗑 Delete selected</button></div>' +
+            '<table class="adm-table" data-bulk-scope="users"><thead><tr><th><span class="sr-only">Select</span></th><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
         snap.docs.forEach(function(d) {
             var u = d.data();
             var roleCls   = u.role === 'admin' ? 'adm-badge-purple' : (u.role === 'host' ? 'adm-badge-blue' : 'adm-badge-gray');
             var statusCls = u.status === 'active' ? 'adm-badge-green' : 'adm-badge-red';
             html += '<tr>' +
+                '<td><input type="checkbox" data-bulk-id="' + d.id + '" aria-label="Select ' + esc(u.name || u.email || 'user') + '" onchange="updateBulkCount(\'users\')"></td>' +
                 '<td><strong>' + esc(u.name || '—') + '</strong></td>' +
                 '<td>' + esc(u.username || '—') + '</td>' +
                 '<td>' + esc(u.email || '—') + '</td>' +
@@ -323,7 +523,8 @@ async function loadAttempts() {
                 quizTitles[qid] = qSnap.exists() ? qSnap.data().title : qid;
             } catch(_) { quizTitles[qid] = qid; }
         }));
-        var html = '<table class="adm-table"><thead><tr><th>Participant</th><th>Quiz</th><th>Score</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
+        var html = '<div class="adm-bulk-toolbar"><label><input type="checkbox" onchange="adminToggleBulk(\'attempts\',this.checked)"> Select all</label><span data-bulk-count="attempts">Select items</span><button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminBulkCollection(\'attempts\',\'attempts\',loadAttempts,\'attempts\')">🗑 Delete selected</button></div>' +
+            '<table class="adm-table" data-bulk-scope="attempts"><thead><tr><th><span class="sr-only">Select</span></th><th>Participant</th><th>Quiz</th><th>Score</th><th>Date</th><th>Actions</th></tr></thead><tbody>';
         snap.docs.forEach(function(d) {
             var a = d.data();
             var pct = a.total > 0 ? Math.round((a.score / a.total) * 100) : 0;
@@ -331,6 +532,7 @@ async function loadAttempts() {
             var date = '';
             if (a.finished_at && a.finished_at.toDate) date = a.finished_at.toDate().toLocaleDateString();
             html += '<tr>' +
+                '<td><input type="checkbox" data-bulk-id="' + d.id + '" aria-label="Select attempt" onchange="updateBulkCount(\'attempts\')"></td>' +
                 '<td><strong>' + esc(a.participant_name || 'Anonymous') + '</strong></td>' +
                 '<td>' + esc(quizTitles[a.quiz_id] || '—') + '</td>' +
                 '<td><span class="adm-badge ' + scoreCls + '">' + a.score + '/' + a.total + ' (' + pct + '%)</span></td>' +
@@ -359,10 +561,12 @@ async function loadAds() {
     try {
         var snap = await getDocs(collection(db, 'ads'));
         if (snap.empty) { container.innerHTML = '<div class="adm-empty">No ads yet. Add one below.</div>'; return; }
-        var html = '<table class="adm-table"><thead><tr><th>Title</th><th>Image URL</th><th>Link</th><th>Active</th><th>Actions</th></tr></thead><tbody>';
+        var html = '<div class="adm-bulk-toolbar"><label><input type="checkbox" onchange="adminToggleBulk(\'ads\',this.checked)"> Select all</label><span data-bulk-count="ads">Select items</span><button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminBulkCollection(\'ads\',\'ads\',loadAds,\'ads\')">🗑 Delete selected</button></div>' +
+            '<table class="adm-table" data-bulk-scope="ads"><thead><tr><th><span class="sr-only">Select</span></th><th>Title</th><th>Image URL</th><th>Link</th><th>Active</th><th>Actions</th></tr></thead><tbody>';
         snap.docs.forEach(function(d) {
             var a = d.data();
             html += '<tr>' +
+                '<td><input type="checkbox" data-bulk-id="' + d.id + '" aria-label="Select ' + esc(a.title || 'ad') + '" onchange="updateBulkCount(\'ads\')"></td>' +
                 '<td><strong>' + esc(a.title || '—') + '</strong></td>' +
                 '<td><a href="' + esc(a.image_url || '') + '" target="_blank" style="font-size:.75rem">' + (a.image_url ? 'View Image' : '—') + '</a></td>' +
                 '<td><a href="' + esc(a.link_url || '') + '" target="_blank" style="font-size:.75rem">' + (a.link_url ? 'Visit Link' : '—') + '</a></td>' +
@@ -479,8 +683,8 @@ async function loadDeletedQuizzes() {
         });
         populateDateFilter('adm-del-year', years);
 
-        var html = '<table class="adm-table"><thead><tr>' +
-            '<th>Title</th><th>Host</th><th>Questions</th>' +
+        var html = '<div class="adm-bulk-toolbar"><label><input type="checkbox" onchange="adminToggleBulk(\'deleted\',this.checked)"> Select all</label><span data-bulk-count="deleted">Select items</span><button class="adm-btn adm-btn-sm adm-btn-success" onclick="adminBulkAction(\'deleted\',\'restore\')">♻ Restore selected</button><button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminBulkAction(\'deleted\',\'permanent\')">🗑 Remove selected</button></div>' +
+            '<table class="adm-table" data-bulk-scope="deleted"><thead><tr><th><span class="sr-only">Select</span></th><th>Title</th><th>Host</th><th>Questions</th>' +
             '<th>Attempts</th><th>Mode</th><th>Deleted</th><th>Actions</th>' +
             '</tr></thead><tbody>';
 
@@ -501,6 +705,7 @@ async function loadDeletedQuizzes() {
             } catch(_) {}
 
             html += '<tr data-year="' + yr + '" data-month="' + mon + '" data-day="' + day + '">' +
+                '<td><input type="checkbox" data-bulk-id="' + d.id + '" aria-label="Select ' + esc(q.title || 'quiz') + '" onchange="updateBulkCount(\'deleted\')"></td>' +
                 '<td><strong>' + esc(q.title || '—') + '</strong>' +
                 '<br><small style="color:#94a3b8">' + esc(q.subject || '') + '</small></td>' +
                 '<td>' + esc(q.host_name || 'Unknown') + '</td>' +
@@ -526,8 +731,8 @@ async function loadDeletedQuizzes() {
     }
 }
 
-window.adminRestoreQuiz = async function(deletedDocId, title) {
-    if (!confirm('Restore quiz "' + title + '" back to active quizzes?')) return;
+window.adminRestoreQuiz = async function(deletedDocId, title, skipConfirm) {
+    if (!skipConfirm && !confirm('Restore quiz "' + title + '" back to active quizzes?')) return;
     try {
         var delSnap = await getDoc(doc(db, 'deleted_quizzes', deletedDocId));
         if (!delSnap.exists()) { alert('Archive record not found.'); return; }
@@ -552,12 +757,12 @@ window.adminRestoreQuiz = async function(deletedDocId, title) {
 };
 
 /* ── Permanent delete — requires print/export first ── */
-window.adminPermanentDelete = async function(deletedDocId, title) {
+window.adminPermanentDelete = async function(deletedDocId, title, skipConfirm) {
     if (!_printedDocs.has(deletedDocId)) {
         alert('⚠️  You must View and Print (or Export) this quiz activity first before permanently deleting it.\n\nClick "👁 View" → then use 🖨️ Print or ⬇️ Export → then you can remove it.');
         return;
     }
-    if (!confirm('Permanently remove "' + title + '" from archive?\n\nThis CANNOT be undone.')) return;
+    if (!skipConfirm && !confirm('Permanently remove "' + title + '" from archive?\n\nThis CANNOT be undone.')) return;
     try {
         await deleteDoc(doc(db, 'deleted_quizzes', deletedDocId));
         _printedDocs.delete(deletedDocId);
@@ -737,7 +942,7 @@ window.adminPrintActivity = function() {
         '<h2>Attendance & Activity</h2>' +
         '<table><thead><tr><th>#</th><th>Participant Name</th><th>Score</th><th>%</th><th>Submitted</th>' + extraHeaders + '</tr></thead>' +
         '<tbody>' + (tableRows || '<tr><td colspan="' + (5+extraKeys.length) + '" style="text-align:center;padding:20px">No attendance recorded.</td></tr>') + '</tbody></table>' +
-        '<div class="footer">Printed by daraquiz AI Admin Panel — ' + new Date().toLocaleString() + '</div>' +
+        '<div class="footer">Printed by xzily AI Admin Panel — ' + new Date().toLocaleString() + '</div>' +
         '</body></html>');
     win.document.close();
     win.focus();

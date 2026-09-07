@@ -184,7 +184,7 @@
     });
 
     /* ── Upload zone — click + drag/drop ── */
-    /* click handled natively by label[for="aqs-ie-file-input"] */
+    $uploadZone.addEventListener('click', function () { $fileInput.click(); });
     $fileInput.addEventListener('change', function () { if (this.files[0]) setFile(this.files[0]); });
 
     $uploadZone.addEventListener('dragover', function (e) { e.preventDefault(); $uploadZone.classList.add('drag-over'); });

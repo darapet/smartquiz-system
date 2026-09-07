@@ -1984,8 +1984,8 @@
       'deepseek','command-r'
   ];
   function chCallGroqDirect(prompt){
-      if(typeof window.groqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
-      return window.groqFetch({
+      if(typeof window.challengeGroqFetch !== 'function') return Promise.reject(new Error('No AI key — add Mistral keys in Admin Settings.'));
+      return window.challengeGroqFetch({
           model:'llama-3.1-8b-instant',
           messages:[
               {role:'system',content:'You are an expert quiz maker. Output ONLY raw valid JSON. No markdown, no code fences.\n\nMATH FORMATTING RULE — STRICTLY FOLLOW:\n- ALWAYS wrap ALL mathematical expressions in LaTeX dollar delimiters.\n- Inline: $x^2$, $\\frac{a}{b}$, $\\sqrt{x}$, $\\sin\\theta$.\n- Display: $$x = \\frac{-b}{2a}$$.\n- NEVER write bare math like \\frac{a}{b} or x^2 without $ signs.'},
@@ -2008,7 +2008,7 @@
          1. Mistral primary — fastest quality (groqFetch handles key rotation)
          2. Pollinations direct — free, no key needed, always available
          3. Server AJAX — last resort, only when proxy URL is configured       */
-      var step1 = typeof window.groqFetch === 'function'
+      var step1 = typeof window.challengeGroqFetch === 'function'
           ? chCallGroqDirect(prompt)
           : Promise.reject(new Error('no key'));
       return step1.catch(function(){

@@ -293,8 +293,6 @@
           var u     = window._aqsFirebaseUser;
           var name  = (u && (u.displayName || (u.email || '').split('@')[0])) || 'Scholar';
 
-          /* Don't show quote if an app update was just downloaded */
-          if (window._aqsUpdatePending) return;
           setTimeout(function() { showPopup(quote, name); }, force ? 0 : 900);
       }
 
@@ -305,7 +303,7 @@
       window._aqsForceGenerate = async function(onStatus) {
           var key = todayKey();
           function status(msg) { if (typeof onStatus === 'function') onStatus(msg); }
-          status('🗑️ Clearing today\'s cache…');
+          status("🗑️ Clearing today's cache…");
           try { localStorage.removeItem(LS_CACHE + key); } catch(e) {}
           if (window._aqsFS) {
               try { await window._aqsFS.set(COL, key, { quotes: [], generatedAt: 0, date: key }); } catch(e) {}

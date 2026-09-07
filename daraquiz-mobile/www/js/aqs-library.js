@@ -344,14 +344,7 @@ window.libSearchBooks=async function(f){
   if(f.level)  docs=docs.filter(function(b){ return b.level===f.level; });
   if(f.keyword){
     const kw=f.keyword.toLowerCase();
-    docs=docs.filter(function(b){
-      return (b.title||'').toLowerCase().includes(kw)
-          ||(b.course||'').toLowerCase().includes(kw)
-          ||(b.courseCode||'').toLowerCase().includes(kw)
-          ||(b.author||'').toLowerCase().includes(kw)
-          ||(b.institution||'').toLowerCase().includes(kw)
-          ||(b.uploaderName||'').toLowerCase().includes(kw);
-    });
+    docs=docs.filter(function(b){ return (b.title||'').toLowerCase().includes(kw)||(b.course||'').toLowerCase().includes(kw)||(b.author||'').toLowerCase().includes(kw); });
   }
   docs.sort(function(a,b){ return ((b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0))-((a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0)); });
   return docs;
@@ -433,12 +426,15 @@ window.libGetHostComments=async function(uploaderUid){
   await _init();
   const books=await window.libGetMyBooks(uploaderUid);
   if(!books.length) return [];
+  const snaps=await Promise.all(books.map(function(book){
+    return getDocs(query(collection(_db,'library_comments'),where('bookId','==',book.id),limit(50)));
+  }));
   const result=[];
-  for(const book of books){
-    const snap=await getDocs(query(collection(_db,'library_comments'),where('bookId','==',book.id),limit(50)));
+  snaps.forEach(function(snap,i){
+    const book=books[i];
     const comments=snap.docs.map(function(d){return{id:d.id,...d.data()};}).sort(function(a,b){const ta=a.createdAt?.toMillis?a.createdAt.toMillis():0;const tb=b.createdAt?.toMillis?b.createdAt.toMillis():0;return tb-ta;});
     if(comments.length) result.push({book,comments});
-  }
+  });
   return result;
 };
 
@@ -532,6 +528,8 @@ function _cldXHR(url,formData){
 window.libUploadFile=async function(file,bookId,type){
   const isThumb=(type==='thumb');
   const preset=isThumb?_CLD_THUMB_PRESET:_CLD_FILE_PRESET;
+  /* Thumbs → /image/upload (smartquiz_thumbs preset, image type)
+     Documents → /raw/upload (smartquiz_docs preset, raw type — must match preset resource_type) */
   const resourceType=isThumb?'image':'raw';
   const url='https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/'+resourceType+'/upload';
   const formData=new FormData();

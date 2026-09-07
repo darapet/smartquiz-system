@@ -1,17 +1,7 @@
 /* aqs-study.js — AI Study v4 | Groq · KaTeX · File Upload · Voice AI
    ─────────────────────────────────────────────────────────────────────
-   Uses window.groqFetch() from aqs-groq-key.js — no manual key needed.
+   Uses window.studyhubGroqFetch() from aqs-groq-key.js — no manual key needed.
    ─────────────────────────────────────────────────────────────────────── */
-
-/* ── AbortSignal.timeout polyfill (not in older Capacitor WebViews) ── */
-if (typeof AbortSignal !== 'undefined' && !AbortSignal.timeout) {
-  AbortSignal.timeout = function(ms) {
-    var ctrl = new AbortController();
-    setTimeout(function() { ctrl.abort(new DOMException('TimeoutError','TimeoutError')); }, ms);
-    return ctrl.signal;
-  };
-}
-
 (function () {
 'use strict';
 
@@ -68,6 +58,16 @@ var _IS_MOBILE_APP = !!(
     (window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform()) ||
     /Android|iPhone|iPad/i.test(navigator.userAgent || '')
 );
+
+/* ── AbortSignal.timeout COMPAT ─────────────────────────────── */
+/* AbortSignal.timeout is not available on older browsers / Android WebViews.
+   Always use _sig(ms) instead of AbortSignal.timeout(ms) directly. */
+function _sig(ms) {
+    if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+        return AbortSignal.timeout(ms);
+    }
+    return undefined;
+}
 
 /* ── MIC RECORDING STATE (getUserMedia + Whisper) ───────────── */
 var _MIC_STATE = { active:false, mediaRecorder:null, chunks:[], stream:null, _autoStop:null };
@@ -289,24 +289,19 @@ async function loadUploadedDoc(name, type) {
 function setupSearch() {
     var form = document.getElementById('std-search-form');
     var inp  = document.getElementById('std-search-input');
-    var btn  = form ? (form.querySelector('button[type="button"]') || form.querySelector('button')) : null;
+    var btn  = form ? form.querySelector('button[type="submit"]') : null;
     function _doSearch() {
         var q = (inp ? inp.value : '').trim();
         if (q) doSearch(q);
     }
-    /* Expose globally so the button's onclick attr works even if JS init partly fails */
-    window._aqsStudySearch = _doSearch;
     if (form) form.addEventListener('submit', function (e) {
-        e.preventDefault(); e.stopPropagation();
-        _doSearch();
-    });
-    if (btn) btn.addEventListener('click', function (e) {
         e.preventDefault();
         _doSearch();
     });
-    /* Enter key on mobile keyboard */
-    if (inp) inp.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); _doSearch(); }
+    /* Backup: direct click on button in case form submit is swallowed */
+    if (btn) btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        _doSearch();
     });
 }
 
@@ -321,7 +316,7 @@ async function doSearch(q) {
 }
 
 async function wikiSearch(q) {
-    var r = await fetch(WIKI_API + '?action=query&list=search&srsearch=' + encodeURIComponent(q) + '&srlimit=6&format=json&origin=*', {signal:AbortSignal.timeout(8000)});
+    var r = await fetch(WIKI_API + '?action=query&list=search&srsearch=' + encodeURIComponent(q) + '&srlimit=6&format=json&origin=*', {signal:_sig(8000)});
     if (!r.ok) throw new Error('Wiki error');
     var d = await r.json();
     return ((d.query && d.query.search) || []).map(function (x) {
@@ -330,7 +325,7 @@ async function wikiSearch(q) {
 }
 
 async function bookSearch(q) {
-    var r = await fetch(BOOKS_API + '?q=' + encodeURIComponent(q) + '&maxResults=6&orderBy=relevance', {signal:AbortSignal.timeout(8000)});
+    var r = await fetch(BOOKS_API + '?q=' + encodeURIComponent(q) + '&maxResults=6&orderBy=relevance', {signal:_sig(8000)});
     if (!r.ok) return [];
     var d = await r.json();
     return (d.items || []).map(function (b) {
@@ -378,14 +373,14 @@ async function loadWiki(title) {
     setLoadMsg('📖 Loading "' + esc(title) + '" from Wikipedia…');
     try {
         var [sumRes, secRes] = await Promise.all([
-            fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:AbortSignal.timeout(10000)}),
-            fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=sections&format=json&origin=*', {signal:AbortSignal.timeout(10000)})
+            fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:_sig(10000)}),
+            fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=sections&format=json&origin=*', {signal:_sig(10000)})
         ]);
         var sum = await sumRes.json();
         var sec = await secRes.json();
         var rawSecs  = (sec.parse && sec.parse.sections) ? sec.parse.sections : [];
         var chapters = [{title:'Introduction', index:0, level:1}];
-        rawSecs.filter(function (s) { return parseInt(s.toclevel) <= 2 && s.line; })
+        rawSecs.filter(function (s) { return parseInt(s.toclevel) <= 2 && s.line; }).slice(0, 20)
             .forEach(function (s) { chapters.push({title:s.line.replace(/<[^>]*>/g,''), index:parseInt(s.index), level:parseInt(s.toclevel)}); });
         S.source = 'wiki'; S.title = title; S.wikiTitle = title;
         S.description = sum.extract || sum.description || '';
@@ -498,14 +493,14 @@ async function loadChapterContent(idx) {
 
 async function fetchWikiSection(title, sectionIdx) {
     if (sectionIdx === 0) {
-        var r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:AbortSignal.timeout(10000)});
+        var r = await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title.replace(/ /g,'_')), {signal:_sig(10000)});
         var d = await r.json();
         return d.extract || d.description || '';
     }
-    var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', {signal:AbortSignal.timeout(10000)});
+    var r2 = await fetch(WIKI_API + '?action=parse&page=' + encodeURIComponent(title) + '&prop=wikitext&section=' + sectionIdx + '&format=json&origin=*', {signal:_sig(10000)});
     var d2 = await r2.json();
     var wt = (d2.parse && d2.parse.wikitext && d2.parse.wikitext['*']) || '';
-    return wt.replace(/\{\{[^}]*\}\}/g,'').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,'$2').replace(/'{2,3}/g,'').replace(/==+[^=]+=+/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0, 10000);
+    return wt.replace(/\{\{[^}]*\}\}/g,'').replace(/\[\[([^\]|]+\|)?([^\]]+)\]\]/g,'$2').replace(/'{2,3}/g,'').replace(/==+[^=]+=+/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0, 4000);
 }
 
 function showContent(idx, text) {
@@ -525,11 +520,11 @@ async function streamToPanel(panelTitle, messages, temp) {
     if (!bE) return;
 
     // groqFetch: Groq key rotation (62s cooldown) → Mistral fallback → throw
-    if (typeof window.groqFetch === 'function') {
+    if (typeof window.studyhubGroqFetch === 'function') {
         try {
-            var res = await window.groqFetch(
-                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:4000, stream:true},
-                {signal:AbortSignal.timeout(60000)}
+            var res = await window.studyhubGroqFetch(
+                {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:2000, stream:true},
+                {signal:_sig(60000)}
             );
             if (res.ok) {
                 var reader = res.body.getReader(), decoder = new TextDecoder(), full = '';
@@ -799,12 +794,12 @@ function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
 
 async function aiChat(messages, temp) {
     // groqFetch handles: Groq rotation → Mistral fallback → throws if all fail
-    if (typeof window.groqFetch !== 'function') {
+    if (typeof window.studyhubGroqFetch !== 'function') {
         throw new Error('No AI key configured. Please add a Groq key in Settings.');
     }
-    var rg = await window.groqFetch(
+    var rg = await window.studyhubGroqFetch(
         {model:GROQ_MODEL, messages:messages, temperature:temp||0.7, max_tokens:3000},
-        {signal:AbortSignal.timeout(60000)}
+        {signal:_sig(60000)}
     );
     if (!rg.ok) {
         var errTxt = '';
@@ -819,8 +814,8 @@ async function aiChat(messages, temp) {
 async function aiChatVision(messages, temp) {
     /* Use groqFetch (Mistral) — Mistral large models support vision via pixtral.
        Falls back gracefully if no key configured. */
-    if (typeof window.groqFetch !== 'function') throw new Error('AI not ready — no keys configured.');
-    var r = await window.groqFetch(
+    if (typeof window.studyhubGroqFetch !== 'function') throw new Error('AI not ready — no keys configured.');
+    var r = await window.studyhubGroqFetch(
         { messages: messages, temperature: temp || 0.7, max_tokens: 2000 },
         { signal: AbortSignal.timeout ? AbortSignal.timeout(60000) : undefined }
     );
@@ -859,8 +854,6 @@ function setupEvents() {
 
     $('std-close-ai-btn') && $('std-close-ai-btn').addEventListener('click', hideAIPanel);
 
-    $('std-send-to-wp-btn') && $('std-send-to-wp-btn').addEventListener('click', sendToWordProcessor);
-
     $('std-test-close-btn') && $('std-test-close-btn').addEventListener('click', function () {
         var m = $('std-test-modal'); if (m) m.style.display = 'none';
     });
@@ -883,46 +876,6 @@ function setupEvents() {
 
     var tm = $('std-test-modal');
     if (tm) tm.addEventListener('click', function (e) { if (e.target === tm) tm.style.display = 'none'; });
-}
-
-/* ── SEND STUDY CONTENT TO WORD PROCESSOR ───────────────────── */
-function sendToWordProcessor() {
-    try {
-        /* Build a full HTML document from all loaded chapters */
-        var title = S.title || 'Study Guide';
-        var html  = '<h1>' + esc(title) + '</h1>';
-        if (S.description) html += '<p><em>' + esc(S.description) + '</em></p><hr>';
-
-        var hasCached = false;
-        S.chapters.forEach(function (ch, idx) {
-            var cached = S.cache && S.cache[idx];
-            if (cached) {
-                hasCached = true;
-                html += '<h2>' + esc(ch.title) + '</h2>';
-                /* cached content is plain text; convert newlines to paragraphs */
-                cached.split(/\n{2,}/).forEach(function (para) {
-                    var p = para.trim();
-                    if (p) html += '<p>' + p.replace(/\n/g, '<br>') + '</p>';
-                });
-            }
-        });
-
-        /* If no cached chapters, at least show the current chapter content */
-        if (!hasCached) {
-            var contentEl = document.getElementById('std-chapter-content');
-            var bodyEl    = contentEl && contentEl.querySelector('.std-content-body');
-            if (bodyEl) {
-                var curCh = S.chapters[S.activeIdx];
-                if (curCh) html += '<h2>' + esc(curCh.title) + '</h2>';
-                html += bodyEl.innerHTML;
-            }
-        }
-
-        localStorage.setItem('aqs_wdoc_import', JSON.stringify({title: title, html: html, ts: Date.now()}));
-        window.location.href = 'text-to-docs.html';
-    } catch(e) {
-        showErr('Could not open in Word Processor: ' + e.message);
-    }
 }
 
 /* ── HISTORY ────────────────────────────────────────────────── */
@@ -1093,19 +1046,20 @@ function summonStartSetup() {
         if (femaleVoice) VS.voice = femaleVoice;
     }
 
-    var welcomeMsg =
-        'Welcome to Darapet Learning System. ' +
-        'I am your personal AI tutor. I am here to teach you from the very beginning — ' +
-        'starting with definitions, types, and real examples, just like a real classroom teacher. ' +
-        'I will now play ' + n + ' different voice samples. ' +
-        'Please listen carefully and choose the voice you would like me to use throughout your sessions.';
+    /* Show Tesla full-screen intro overlay */
+    if (window.aitProOnShow) window.aitProOnShow();
 
-    summonSetAiText(welcomeMsg);
-    summonSpeak(welcomeMsg, function () {
-        VS.voiceIndex = savedIdx;
-        VS._demoIdx = 0;
-        VS._setupStep = 1;
-        setTimeout(function () { _summonDemoNextVoice(0); }, 400);
+    /* Step 0 — ask user to name the AI teacher */
+    VS._setupStep = 0;
+    VS._savedVoiceIdx = savedIdx;
+    var nameQ = 'Hello! I am your personal AI tutor for Darapet Learning System. ' +
+                'Before we begin, what would you like to name me? ' +
+                'You can call me anything — Professor, Aria, Max, or any name you choose. ' +
+                'Say it now!';
+    summonSetAiText(nameQ);
+    summonSpeak(nameQ, function () {
+        summonSetState('listening');
+        if (!_IS_MOBILE_APP) summonStartListening();
     });
 }
 
@@ -1114,10 +1068,10 @@ function _summonDemoNextVoice(idx) {
     if (!voices || idx >= voices.length) {
         /* All voices played — show Tesla visual voice selection grid */
         VS._setupStep = 2;
-        var pickMsg = 'All ' + voices.length + ' voices done! Tap the card you liked, or type its number.';
+        var pickMsg = 'All ' + voices.length + ' voices done! Tap the card you liked, or say/type its number.';
         var gridHtml = '<div class="summon-tesla-setup">' +
             '<div class="summon-tesla-title">✦ Choose Your Voice</div>' +
-            '<div class="summon-tesla-sub">Tap a card or type a number below</div>' +
+            '<div class="summon-tesla-sub">Tap a card or say / type a number</div>' +
             '<div class="summon-voice-grid">';
         for (var vi = 0; vi < voices.length; vi++) {
             var vv = voices[vi];
@@ -1131,6 +1085,8 @@ function _summonDemoNextVoice(idx) {
         }
         gridHtml += '</div></div>';
         summonSetAiText(gridHtml);
+        /* Mirror voice grid in Tesla overlay */
+        if (window.aitProOnVoiceGrid) window.aitProOnVoiceGrid(voices);
         summonSpeak(pickMsg, function () {
             summonSetState('listening');
             if (!_IS_MOBILE_APP) summonStartListening();
@@ -1208,6 +1164,23 @@ function _summonPlayDemoVoice(idx, text, onDone) {
 function summonHandleSetup(q) {
     var voices = VS._demoVoices;
 
+    /* Step 0 — user names the AI */
+    if (VS._setupStep === 0) {
+        var aiNameRaw = q.trim().replace(/[^a-zA-Z0-9\s\-'\.]/g, '').trim();
+        VS.aiName = aiNameRaw || 'Tutor';
+        VS._setupStep = 1;
+        var n0 = voices ? voices.length : 5;
+        var ackMsg = 'Great! I will be known as ' + VS.aiName + '. ' +
+                     'Now I will play ' + n0 + ' different voice samples. ' +
+                     'Listen carefully and choose the voice you prefer.';
+        summonSetAiText(ackMsg);
+        return summonSpeak(ackMsg, function () {
+            VS.voiceIndex = (VS._savedVoiceIdx !== undefined) ? VS._savedVoiceIdx : -1;
+            VS._demoIdx = 0;
+            setTimeout(function () { _summonDemoNextVoice(0); }, 400);
+        });
+    }
+
     /* Step 2 — user picks a voice by number */
     if (VS._setupStep === 2) {
         var num = parseInt(q.replace(/[^0-9]/g, ''), 10);
@@ -1233,12 +1206,17 @@ function summonHandleSetup(q) {
                 return '<button class="summon-lang-btn" onclick="window._summonPickLangUI(\'' + l + '\')">' + l + '</button>';
             }).join('') +
             '</div>' +
-            '<div style="color:#64748b;font-size:.7rem;text-align:center;margin:2px 0 6px">or type any language below:</div>' +
-            '</div>';
+            '<div style="color:#64748b;font-size:.7rem;text-align:center;margin:2px 0 6px">or type any language:</div>' +
+            '<div style="display:flex;gap:6px">' +
+            '<input id="summon-lang-custom" class="summon-tesla-input" placeholder="e.g. German, Hindi, Pidgin…" style="margin:0">' +
+            '<button class="summon-sess-btn" style="flex:0 0 auto;width:auto;padding:9px 13px" ' +
+            'onclick="var v=document.getElementById(\'summon-lang-custom\');if(v&&v.value.trim())window._summonPickLangUI(v.value.trim())">Go ➤</button>' +
+            '</div></div>';
         var langQ = 'Voice ' + num + ' locked in! What language would you like me to teach in?';
         summonSetAiText(langHtml);
         return summonSpeak(langQ, function () {
             summonSetState('listening');
+            if (!_IS_MOBILE_APP) summonStartListening();
         });
     }
 
@@ -1246,24 +1224,37 @@ function summonHandleSetup(q) {
     if (VS._setupStep === 3) {
         var lang = q.trim().replace(/[^a-zA-Z\s\-']/g, '').trim();
         if (!lang) {
-            var retryLang = 'Please type a language — for example English, French, or Yoruba.';
+            var retryLang = 'Please say or type a language — for example English, French, or Yoruba.';
             summonSetAiText(retryLang);
-            return summonSpeak(retryLang, function () { summonSetState('listening'); });
+            return summonSpeak(retryLang, function () {
+                summonSetState('listening');
+                if (!_IS_MOBILE_APP) summonStartListening();
+            });
         }
         VS.language = lang.charAt(0).toUpperCase() + lang.slice(1);
         VS._setupStep = 4;
-        var nameQ2 = 'Great! Teaching in ' + VS.language + '. Now, what is your full name? Type it below and press Send.';
+        var nameQ2 = _IS_MOBILE_APP
+            ? 'Great! Teaching in ' + VS.language + '. Now, what is your full name? Type it below and press Send.'
+            : 'Excellent! Teaching in ' + VS.language + '. Now, what is your full name? Say it or type it below.';
         summonSetAiText(nameQ2);
-        return summonSpeak(nameQ2, function () { summonSetState('listening'); });
+        return summonSpeak(nameQ2, function () {
+            summonSetState('listening');
+            if (!_IS_MOBILE_APP) summonStartListening();
+        });
     }
 
     /* Step 4 — user gives their name */
     if (VS._setupStep === 4) {
         var raw = q.trim().replace(/[^a-zA-Z0-9\s\-']/g, '').trim();
         if (!raw) {
-            var retryName = 'Please type your full name below and press Send.';
+            var retryName = _IS_MOBILE_APP
+                ? 'Please type your full name below and press Send.'
+                : 'I did not catch your name. Please say or type your full name.';
             summonSetAiText(retryName);
-            return summonSpeak(retryName, function () { summonSetState('listening'); });
+            return summonSpeak(retryName, function () {
+                summonSetState('listening');
+                if (!_IS_MOBILE_APP) summonStartListening();
+            });
         }
 
         /* Capitalise each word; store first name and surname */
@@ -1277,6 +1268,7 @@ function summonHandleSetup(q) {
 
         summonSaveSettings();
         VS._inSetup = false; VS._setupDone = true;
+        if (window.aitProOnSetupDone) window.aitProOnSetupDone();
 
         var topicLine = S.title
             ? ' I can see you are studying "' + S.title + '". Excellent choice — let us dive right in!'
@@ -1577,7 +1569,7 @@ async function summonStreamResponse(messages) {
     /* groqFetch: Groq key rotation + Mistral fallback — no direct fetch */
     summonStopListening();
 
-    if (typeof window.groqFetch !== 'function') {
+    if (typeof window.studyhubGroqFetch !== 'function') {
         summonSetAiText('⚠️ No AI key configured. Add Mistral keys in Admin Settings.');
         summonSetState('listening'); summonStartListening();
         return;
@@ -1590,7 +1582,7 @@ async function summonStreamResponse(messages) {
 
     var res;
     try {
-        res = await window.groqFetch(
+        res = await window.studyhubGroqFetch(
             {model:GROQ_MODEL, messages:messages, temperature:0.7, max_tokens:1200, stream:true},
             {signal:signal}
         );
@@ -1625,6 +1617,7 @@ async function summonStreamResponse(messages) {
             return;
         }
     }
+    try {
     var reader = res.body.getReader(), decoder = new TextDecoder();
     var full = '', sentenceBuf = '', seenDisplay = false, displayStart = -1;
     summonSetState('speaking'); VS.speakingQueue = true; VS.sentenceQueue = [];
@@ -2005,29 +1998,34 @@ function injectSummonStyles() {
         '.summon-tesla-sub{font-size:.72rem;color:#64748b;text-align:center;margin-bottom:12px}',
         '.summon-voice-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));gap:7px;margin-bottom:10px}',
         '.summon-vcard{background:rgba(99,102,241,.1);border:1.5px solid rgba(99,102,241,.25);border-radius:10px;padding:8px 5px 6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:all .18s ease}',
-        '.summon-vcard:active{background:rgba(99,102,241,.35)!important;border-color:#a78bfa!important}',
+        '.summon-vcard:hover{background:rgba(99,102,241,.22);border-color:#6366f1;transform:translateY(-2px)}',
         '.summon-vcard.selected{background:rgba(99,102,241,.35)!important;border-color:#a78bfa!important;box-shadow:0 0 0 2px rgba(167,139,250,.3)}',
         '.summon-vcard-num{width:22px;height:22px;border-radius:50%;background:rgba(99,102,241,.3);font-size:.72rem;font-weight:900;color:#c4b5fd;display:flex;align-items:center;justify-content:center;line-height:1}',
         '.summon-vcard-name{font-size:.68rem;font-weight:700;color:#e2e8f0;margin-top:1px}',
         '.summon-lang-grid{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;justify-content:center}',
-        '.summon-lang-btn{background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:6px 14px;font-size:.76rem;font-weight:700;color:#6ee7b7;cursor:pointer;transition:all .15s ease;min-height:36px}',
-        '.summon-lang-btn:active{background:rgba(16,185,129,.35);border-color:#10b981;color:#fff}',
+        '.summon-lang-btn{background:rgba(16,185,129,.1);border:1.5px solid rgba(16,185,129,.25);border-radius:20px;padding:5px 12px;font-size:.76rem;font-weight:700;color:#6ee7b7;cursor:pointer;transition:all .15s ease}',
+        '.summon-lang-btn:hover{background:rgba(16,185,129,.25);border-color:#10b981;color:#fff}',
         '.summon-tesla-input{width:100%;background:rgba(30,41,59,.8);border:1.5px solid rgba(99,102,241,.25);border-radius:8px;padding:9px 12px;font-size:.82rem;color:#e2e8f0;outline:none;box-sizing:border-box;margin-bottom:6px}',
         '#std-summon-session-btns{display:flex;gap:6px;padding:7px 14px 9px;border-top:1px solid rgba(99,102,241,.12);flex-shrink:0}',
-        '.summon-sess-btn{flex:1;padding:10px 6px;font-size:.75rem;font-weight:700;border:1.5px solid rgba(99,102,241,.3);border-radius:8px;background:rgba(99,102,241,.1);color:#a78bfa;cursor:pointer;transition:all .15s ease;white-space:nowrap;min-height:40px}',
-        '.summon-sess-btn:active{background:rgba(99,102,241,.3)}',
+        '.summon-sess-btn{flex:1;padding:8px 6px;font-size:.75rem;font-weight:700;border:1.5px solid rgba(99,102,241,.3);border-radius:8px;background:rgba(99,102,241,.1);color:#a78bfa;cursor:pointer;transition:all .15s ease;white-space:nowrap}',
+        '.summon-sess-btn:hover{background:rgba(99,102,241,.22)}',
         '.summon-sess-end{border-color:rgba(239,68,68,.3)!important;background:rgba(239,68,68,.08)!important;color:#fca5a5!important}',
-        '.summon-sess-end:active{background:rgba(239,68,68,.25)!important}',
+        '.summon-sess-end:hover{background:rgba(239,68,68,.2)!important}',
     ].join('');
     document.head.appendChild(s);
 }
 
 /* ── INJECT UI ───────────────────────────────────────────────── */
 function injectSummonUI() {
-    if (document.getElementById('std-summon-fab')) return;
-    var fab = document.createElement('div');
-    fab.id = 'std-summon-fab'; fab.title = 'XZILY AI Voice'; fab.textContent = '✦';
-    document.body.appendChild(fab);
+    /* Guard on OVERLAY not FAB — FAB is now hardcoded in study.html HTML */
+    if (document.getElementById('std-summon-overlay')) return;
+    /* Wire FAB click — it may already be in HTML or created below */
+    var fab = document.getElementById('std-summon-fab');
+    if (!fab) {
+        fab = document.createElement('div');
+        fab.id = 'std-summon-fab'; fab.title = 'XZILY AI Voice'; fab.textContent = '✦';
+        document.body.appendChild(fab);
+    }
     fab.addEventListener('click', summonToggle);
 
     var overlay = document.createElement('div');
@@ -2200,6 +2198,8 @@ function summonMicTranscribe() {
     })
     .then(function (data) {
         var transcript = (data.text || '').trim();
+        /* Filter filler words and immediate repetitions */
+        if (transcript && window.aitProFilterText) transcript = window.aitProFilterText(transcript);
         if (!transcript) {
             summonSetTranscript('⚠️ No speech detected. Try speaking again.');
             summonSetState('listening');
@@ -2228,6 +2228,7 @@ function summonSetState(state) {
         ? {idle:'XZILY AI', listening:'Type your question ↓', thinking:'Thinking…', speaking:'Speaking…'}
         : {idle:'XZILY AI', listening:'Listening…', thinking:'Thinking…', speaking:'Speaking…'};
     if (txt) txt.textContent = labels[state] || 'XZILY AI';
+    if (window.aitProOnState) window.aitProOnState(state);
 }
 
 function summonToggle() { if (VS.active) summonHide(); else summonShow(); }
@@ -2259,6 +2260,7 @@ function summonSetTranscript(text) {
     /* Shows what the user just said as a small "You said:" strip */
     var el = document.getElementById('std-summon-transcript');
     if (el) el.textContent = text ? '🎙 You: ' + text : '';
+    if (window.aitProOnTranscript) window.aitProOnTranscript(text);
 }
 
 function summonSetAiText(text) {
@@ -2286,6 +2288,7 @@ function summonSetAiText(text) {
     }
     /* Auto-scroll to bottom so latest text is visible */
     el.scrollTop = el.scrollHeight;
+    if (window.aitProOnAiText) window.aitProOnAiText(text);
 }
 
 function summonHide() {
@@ -2706,11 +2709,24 @@ function stdVoiceMicTranscribe() {
 /* FIX: functions inside an IIFE are not global — expose only what onclick HTML needs */
 window._stdRetry = loadChapterContent;
 
-/* ── TESLA SETUP UI — GLOBAL HANDLERS (mobile) ──────────────── */
+/* Expose interrupt function for the Pro interrupt button */
+window._summonInterrupt = function () {
+    summonStopQueue();
+    _summonAbortStream();
+    summonSetState('listening');
+    if (!_IS_MOBILE_APP) setTimeout(summonStartListening, 300);
+};
+
+/* Expose openTest so the Pro exam mode chooser can wrap it */
+window._stdOpenTestOrig = function () { openTest(); };
+
+/* ── TESLA SETUP UI — GLOBAL HANDLERS ───────────────────────── */
 window._summonPickVoiceUI = function (n) {
+    /* Highlight the selected voice card */
     var cards = document.querySelectorAll('.summon-vcard');
     cards.forEach(function (c) { c.classList.remove('selected'); });
     if (cards[n - 1]) cards[n - 1].classList.add('selected');
+    /* Route through the normal send button so the existing flow handles it */
     var inp = document.getElementById('std-summon-text');
     if (inp) inp.value = String(n);
     var btn = document.getElementById('std-summon-send');
