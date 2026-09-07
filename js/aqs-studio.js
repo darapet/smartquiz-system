@@ -925,6 +925,7 @@
                 max_tokens:  1500,
                 temperature: 0.7
             }).then(function (res) {
+                if (!res) return { error: { message: 'All AI keys were rejected (invalid, expired or out of quota). Add a fresh Groq key in Admin Settings \u2192 AI Keys.' } };
                 return res.json();
             }).then(function (data) {
                 showTyping(false);
