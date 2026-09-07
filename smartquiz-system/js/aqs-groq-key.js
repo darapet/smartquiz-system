@@ -520,6 +520,17 @@ window._aqsKeysReady = new Promise(function(resolve) {
         function _h(k) { return k ? k.slice(-8) : '?'; }
         function _isRL(k) { return (rl[_h(k)] || 0) > Date.now(); }
         function _markRL(k) { rl[_h(k)] = Date.now() + RL_MS; }
+        /* shared dead-key quarantine (revoked / expired / invalid keys) */
+        window._aqsDeadKeys = window._aqsDeadKeys || {};
+        var DEAD_MS = 30 * 60 * 1000;
+        function _isDead(k) { return (window._aqsDeadKeys[_h(k)] || 0) > Date.now(); }
+        function _markDead(k, why) {
+            window._aqsDeadKeys[_h(k)] = Date.now() + DEAD_MS;
+            console.warn('[' + id + '-pool] key ...' + _h(k) + ' invalid (' + why + ') - skipped for 30 min');
+        }
+        function _looksInvalidKey(t) {
+            return !!t && /invalid[_ ]api[_ ]key|invalid_api_key|incorrect api key|api key not valid|authentication|unauthorized/i.test(t);
+        }
         function _idx() {
             var i = 0;
             try { i = parseInt(localStorage.getItem(IDX) || '0') || 0; } catch(e) {}
@@ -543,7 +554,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                     var start = _idx();
                     for (var i = 0; i < slots.length; i++) {
                         var at = (start + i) % slots.length, key = slots[at];
-                        if (_isRL(key)) { _setIdx(at + 1); continue; }
+                        if (_isDead(key) || _isRL(key)) { _setIdx(at + 1); continue; }
                         try {
                             var res = await fetch(URL_, {
                                 method: 'POST',
@@ -552,6 +563,12 @@ window._aqsKeysReady = new Promise(function(resolve) {
                             });
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
+                            if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(at + 1); continue; }
+                            if (res.status === 400) {
+                                var _t4 = await res.clone().text().catch(function(){ return ''; });
+                                if (_looksInvalidKey(_t4)) { _markDead(key, 'invalid_api_key'); _setIdx(at + 1); continue; }
+                            }
+                            if (res.status >= 500) { _setIdx(at + 1); continue; }
                             if (id === 'quiz' && !res.ok && typeof window._mistralFetchDirect === 'function') {
                                 var mistralRes = await window._mistralFetchDirect(bodyObj);
                                 if (mistralRes) return mistralRes;
