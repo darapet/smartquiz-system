@@ -23,14 +23,21 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class MainActivity extends BridgeActivity {
 
-    private static final int MIC_PERMISSION_CODE = 1001;
+    private static final int PERMISSION_CODE = 1001;
+
     private ValueCallback<Uri[]> fileUploadCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
     private volatile long activeDownloadId = -1;
     private WebView appWebView;
     private DownloadManager downloadManager;
+
+    /** Pending web permission request waiting on the Android runtime dialog. */
+    private PermissionRequest pendingWebRequest;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,23 +59,53 @@ public class MainActivity extends BridgeActivity {
             }
         );
 
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-                != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                new String[]{ Manifest.permission.RECORD_AUDIO },
-                MIC_PERMISSION_CODE);
-        }
-
         appWebView = getBridge().getWebView();
         WebSettings settings = appWebView.getSettings();
         settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
 
         appWebView.addJavascriptInterface(new AqsDownloadBridge(), "AqsDownloadBridge");
 
         appWebView.setWebChromeClient(new WebChromeClient() {
             @Override
             public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(() -> request.grant(request.getResources()));
+                runOnUiThread(() -> {
+                    boolean needsMic = false;
+                    boolean needsCam = false;
+                    for (String res : request.getResources()) {
+                        if (PermissionRequest.RESOURCE_AUDIO_CAPTURE.equals(res)) needsMic = true;
+                        if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(res)) needsCam = true;
+                    }
+
+                    List<String> missing = new ArrayList<>();
+                    if (needsMic && !granted(Manifest.permission.RECORD_AUDIO)) {
+                        missing.add(Manifest.permission.RECORD_AUDIO);
+                    }
+                    if (needsCam && !granted(Manifest.permission.CAMERA)) {
+                        missing.add(Manifest.permission.CAMERA);
+                    }
+
+                    if (missing.isEmpty()) {
+                        // OS already allows it -> grant the web page immediately.
+                        request.grant(request.getResources());
+                        return;
+                    }
+
+                    // Ask Android first; the web request is answered in onRequestPermissionsResult.
+                    pendingWebRequest = request;
+                    ActivityCompat.requestPermissions(
+                        MainActivity.this,
+                        missing.toArray(new String[0]),
+                        PERMISSION_CODE
+                    );
+                });
+            }
+
+            @Override
+            public void onPermissionRequestCanceled(PermissionRequest request) {
+                pendingWebRequest = null;
             }
 
             @Override
@@ -84,6 +121,8 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         });
+
+        requestStartupPermissions();
 
         BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
             @Override
@@ -118,6 +157,61 @@ public class MainActivity extends BridgeActivity {
             registerReceiver(downloadReceiver,
                 new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
         }
+    }
+
+    private boolean granted(String permission) {
+        return ContextCompat.checkSelfPermission(this, permission)
+            == PackageManager.PERMISSION_GRANTED;
+    }
+
+    /** Ask once, on first launch, for the permissions the app really needs. */
+    private void requestStartupPermissions() {
+        List<String> want = new ArrayList<>();
+
+        if (!granted(Manifest.permission.RECORD_AUDIO)) {
+            want.add(Manifest.permission.RECORD_AUDIO);
+        }
+        if (!granted(Manifest.permission.CAMERA)) {
+            want.add(Manifest.permission.CAMERA);
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (!granted(Manifest.permission.POST_NOTIFICATIONS)) {
+                want.add(Manifest.permission.POST_NOTIFICATIONS);
+            }
+            if (!granted(Manifest.permission.READ_MEDIA_IMAGES)) {
+                want.add(Manifest.permission.READ_MEDIA_IMAGES);
+            }
+            if (!granted(Manifest.permission.READ_MEDIA_AUDIO)) {
+                want.add(Manifest.permission.READ_MEDIA_AUDIO);
+            }
+        } else if (!granted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
+            want.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+        }
+
+        if (!want.isEmpty()) {
+            ActivityCompat.requestPermissions(this, want.toArray(new String[0]), PERMISSION_CODE);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
+        super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode != PERMISSION_CODE || pendingWebRequest == null) return;
+
+        boolean allGranted = results.length > 0;
+        for (int r : results) {
+            if (r != PackageManager.PERMISSION_GRANTED) allGranted = false;
+        }
+
+        final PermissionRequest req = pendingWebRequest;
+        pendingWebRequest = null;
+        runOnUiThread(() -> {
+            if (allGranted) {
+                req.grant(req.getResources());
+            } else {
+                req.deny();
+            }
+        });
     }
 
     private void notifyJs(final int pct) {

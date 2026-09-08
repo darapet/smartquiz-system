@@ -1,8 +1,8 @@
 {
-  "version": "1.351",
-  "versionCode": 329,
-  "releaseDate": "2026-09-07",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.351/daraquiz-v1.351.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.351/daraquiz-v1.351.apk"
+  "version": "1.352",
+  "versionCode": 330,
+  "releaseDate": "2026-09-08",
+  "notes": "Fixed microphone, camera, notification and storage permission prompts on Android.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.352/daraquiz-v1.352.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.352/daraquiz-v1.352.apk"
 }
