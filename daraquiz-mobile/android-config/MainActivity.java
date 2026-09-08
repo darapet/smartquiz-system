@@ -198,11 +198,12 @@ public class MainActivity extends BridgeActivity {
         super.onRequestPermissionsResult(requestCode, permissions, results);
         if (requestCode != PERMISSION_CODE || pendingWebRequest == null) return;
 
-        boolean allGranted = results.length > 0;
+        boolean granted = results.length > 0;
         for (int r : results) {
-            if (r != PackageManager.PERMISSION_GRANTED) allGranted = false;
+            if (r != PackageManager.PERMISSION_GRANTED) granted = false;
         }
 
+        final boolean allGranted = granted;
         final PermissionRequest req = pendingWebRequest;
         pendingWebRequest = null;
         runOnUiThread(() -> {
