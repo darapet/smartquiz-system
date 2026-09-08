@@ -33,7 +33,10 @@ service cloud.firestore {
     // ─── Usernames ──────────────────────────────────────────────────
     match /usernames/{username} {
       allow read: if true;
-      allow write: if isAdmin() || isSignedIn();
+      allow create: if isAdmin()
+          || (isSignedIn() && request.resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
     }
 
     // ─── Settings ───────────────────────────────────────────────────
@@ -56,7 +59,11 @@ service cloud.firestore {
     // ─── Challenges ─────────────────────────────────────────────────
     match /challenges/{challengeId} {
       allow read: if true;
-      allow write: if isAdmin() || isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isAdmin() || isSignedIn();
+      allow delete: if isAdmin()
+          || (isSignedIn() && resource.data.host_uid == request.auth.uid)
+          || (isSignedIn() && resource.data.uid == request.auth.uid);
     }
 
     // ─── Library Books ──────────────────────────────────────────────
@@ -88,7 +95,10 @@ service cloud.firestore {
     match /library_comments/{commentId} {
       allow read: if true;
       allow create: if isSignedIn();
-      allow update: if isSignedIn();
+      allow update: if isAdmin()
+          || (isSignedIn() && resource.data.uid == request.auth.uid)
+          || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']))
+          || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount']));
       allow delete: if isAdmin()
           || (isSignedIn() && resource.data.uid == request.auth.uid);
     }
