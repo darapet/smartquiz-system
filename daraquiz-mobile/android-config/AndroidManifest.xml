@@ -9,6 +9,14 @@
 
     <!-- ── Microphone ── -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- ── Allow lookup of the device speech-recognition service ── -->
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+    </queries>
 
     <!-- ── Camera ── -->
     <uses-permission android:name="android.permission.CAMERA" />
