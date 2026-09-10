@@ -115,12 +115,17 @@ jobs:
         if: steps.skip_check.outputs.skip != 'true'
         run: npx cap sync android
 
-      - name: Copy and verify Android manifest
+      - name: Inject and verify required permissions
         if: steps.skip_check.outputs.skip != 'true'
         run: |
-          cp android-config/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
-          grep -q 'android.permission.RECORD_AUDIO' android/app/src/main/AndroidManifest.xml || { echo "ERROR: RECORD_AUDIO missing"; exit 1; }
-          grep -q 'android.permission.CAMERA' android/app/src/main/AndroidManifest.xml || { echo "ERROR: CAMERA missing"; exit 1; }
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          for PERMISSION in RECORD_AUDIO MODIFY_AUDIO_SETTINGS CAMERA POST_NOTIFICATIONS READ_MEDIA_AUDIO READ_MEDIA_IMAGES READ_MEDIA_VIDEO; do
+            if ! grep -q "android.permission.${PERMISSION}" "$MANIFEST"; then
+              sed -i "s|<application|<uses-permission android:name=\"android.permission.${PERMISSION}\" />\n    <application|" "$MANIFEST"
+            fi
+          done
+          grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST" || { echo "ERROR: RECORD_AUDIO missing"; exit 1; }
+          grep -q 'android.permission.CAMERA' "$MANIFEST" || { echo "ERROR: CAMERA missing"; exit 1; }
 
       - name: Copy custom build.gradle
         if: steps.skip_check.outputs.skip != 'true'
