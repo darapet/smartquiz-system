@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.provider.Settings;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
@@ -28,7 +29,6 @@ import java.util.List;
 
 public class MainActivity extends BridgeActivity {
 
-    private static final int STARTUP_PERMISSION_CODE = 1001;
     private static final int WEBVIEW_PERMISSION_CODE = 1002;
 
     private ValueCallback<Uri[]> fileUploadCallback;
@@ -68,6 +68,7 @@ public class MainActivity extends BridgeActivity {
         settings.setAllowFileAccess(true);
 
         appWebView.addJavascriptInterface(new AqsDownloadBridge(), "AqsDownloadBridge");
+        appWebView.addJavascriptInterface(new AqsPermissionsBridge(), "AqsPermissionsBridge");
 
         appWebView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -130,7 +131,6 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
-        requestStartupPermissions();
 
         BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
             @Override
@@ -170,35 +170,6 @@ public class MainActivity extends BridgeActivity {
     private boolean granted(String permission) {
         return ContextCompat.checkSelfPermission(this, permission)
             == PackageManager.PERMISSION_GRANTED;
-    }
-
-    /** Ask once, on first launch, for the permissions the app really needs. */
-    private void requestStartupPermissions() {
-        List<String> want = new ArrayList<>();
-
-        if (!granted(Manifest.permission.RECORD_AUDIO)) {
-            want.add(Manifest.permission.RECORD_AUDIO);
-        }
-        if (!granted(Manifest.permission.CAMERA)) {
-            want.add(Manifest.permission.CAMERA);
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (!granted(Manifest.permission.POST_NOTIFICATIONS)) {
-                want.add(Manifest.permission.POST_NOTIFICATIONS);
-            }
-            if (!granted(Manifest.permission.READ_MEDIA_IMAGES)) {
-                want.add(Manifest.permission.READ_MEDIA_IMAGES);
-            }
-            if (!granted(Manifest.permission.READ_MEDIA_AUDIO)) {
-                want.add(Manifest.permission.READ_MEDIA_AUDIO);
-            }
-        } else if (!granted(Manifest.permission.READ_EXTERNAL_STORAGE)) {
-            want.add(Manifest.permission.READ_EXTERNAL_STORAGE);
-        }
-
-        if (!want.isEmpty()) {
-            ActivityCompat.requestPermissions(this, want.toArray(new String[0]), STARTUP_PERMISSION_CODE);
-        }
     }
 
     @Override
@@ -277,6 +248,22 @@ public class MainActivity extends BridgeActivity {
                 if (total > 0) notifyJs((int) Math.min(99, (done * 100) / total));
             }
         }).start();
+    }
+
+
+    /** Opens this app's Android settings page after a permission was permanently denied. */
+    private void openAppSettings() {
+        Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+        intent.setData(Uri.parse("package:" + getPackageName()));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+    }
+
+    private class AqsPermissionsBridge {
+        @JavascriptInterface
+        public void openSettings() {
+            runOnUiThread(() -> openAppSettings());
+        }
     }
 
     private class AqsDownloadBridge {

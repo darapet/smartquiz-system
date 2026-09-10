@@ -115,6 +115,13 @@ jobs:
         if: steps.skip_check.outputs.skip != 'true'
         run: npx cap sync android
 
+      - name: Copy and verify Android manifest
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          cp android-config/AndroidManifest.xml android/app/src/main/AndroidManifest.xml
+          grep -q 'android.permission.RECORD_AUDIO' android/app/src/main/AndroidManifest.xml || { echo "ERROR: RECORD_AUDIO missing"; exit 1; }
+          grep -q 'android.permission.CAMERA' android/app/src/main/AndroidManifest.xml || { echo "ERROR: CAMERA missing"; exit 1; }
+
       - name: Copy custom build.gradle
         if: steps.skip_check.outputs.skip != 'true'
         run: |
@@ -205,6 +212,14 @@ jobs:
             -Pandroid.injected.signing.store.password="${KEYSTORE_PASSWORD:-DaraQuiz_Release2024}" \
             -Pandroid.injected.signing.key.alias="daraquiz" \
             -Pandroid.injected.signing.key.password="${KEYSTORE_PASSWORD:-DaraQuiz_Release2024}"
+
+      - name: Verify permissions in release manifest
+        if: steps.skip_check.outputs.skip != 'true'
+        run: |
+          MERGED_MANIFEST="android/app/build/intermediates/merged_manifests/release/processReleaseManifest/AndroidManifest.xml"
+          test -f "$MERGED_MANIFEST" || { echo "ERROR: merged release manifest missing"; exit 1; }
+          grep -q 'android.permission.RECORD_AUDIO' "$MERGED_MANIFEST" || { echo "ERROR: RECORD_AUDIO missing from release"; exit 1; }
+          grep -q 'android.permission.CAMERA' "$MERGED_MANIFEST" || { echo "ERROR: CAMERA missing from release"; exit 1; }
 
       - name: Locate and rename APK
         if: steps.skip_check.outputs.skip != 'true'

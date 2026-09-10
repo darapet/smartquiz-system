@@ -222,7 +222,13 @@
           'border-radius:6px;padding:6px 10px;font-size:14px;font-weight:bold;cursor:pointer;flex-shrink:0">✕</button>';
         document.body.appendChild(banner);
         document.getElementById('_aqsMicRetry').addEventListener('click', function () {
-          removeMicBanner(); micGranted = false; requestMicPermission(false);
+          removeMicBanner();
+          micGranted = false;
+          if (window.AqsPermissionsBridge && typeof window.AqsPermissionsBridge.openSettings === 'function') {
+            window.AqsPermissionsBridge.openSettings();
+          } else {
+            requestMicPermission(false);
+          }
         });
         document.getElementById('_aqsMicDismiss').addEventListener('click', removeMicBanner);
         return false;
