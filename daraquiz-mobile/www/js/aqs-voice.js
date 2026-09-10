@@ -61,6 +61,10 @@
       p = Perm.requestPermissions().catch(function () {});
     }
     return p.then(function () {
+      /* Use the shared request so mic prompts never overlap (median-bridge.js) */
+      if (typeof window.AQSRequestMicrophone === 'function') {
+        return window.AQSRequestMicrophone();
+      }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Microphone is not available on this device.');
       }

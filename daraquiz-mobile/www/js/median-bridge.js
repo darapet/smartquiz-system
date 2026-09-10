@@ -36,6 +36,31 @@
     /* Expose globally so challenge.js / tts.js can reuse the same context */
     window.AQSGetAudioCtx = getSharedAudioCtx;
 
+    /* ── Shared microphone request ──────────────────────────────────────
+       All mic requests go through here so they never overlap (two pending
+       getUserMedia calls make the native layer answer only the last one,
+       which is why "allow" used to do nothing). */
+    var _micInflight = null;
+    window.AQSRequestMicrophone = function () {
+        if (_micInflight) return _micInflight;
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            return Promise.reject(new Error('Microphone is not available on this device.'));
+        }
+        _micInflight = navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function (stream) {
+                stream.getTracks().forEach(function (t) { t.stop(); });
+                window._aqsMicGranted = true;
+                var b = document.getElementById('_aqsMicBanner');
+                if (b) b.remove();
+            })
+            .then(function () { _micInflight = null; }, function (err) {
+                _micInflight = null;
+                window._aqsMicGranted = false;
+                throw err;
+            });
+        return _micInflight;
+    };
+
     /* ── Unlock audio + microphone on first user gesture ──────────────── */
     function unlockAll() {
         if (_audioUnlocked) return;
@@ -63,18 +88,13 @@
         } catch (e) {}
 
         /* 3. Request microphone permission — triggers native dialog in Median */
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-                .then(function (stream) {
-                    stream.getTracks().forEach(function (t) { t.stop(); });
-                    window._aqsMicGranted = true;
-                })
-                .catch(function (err) {
-                    window._aqsMicGranted = false;
-                    console.warn('[Median Bridge] Mic permission denied:', err.message);
-                    _showMicBanner();
-                });
-        }
+        window.AQSRequestMicrophone()
+            .then(function () { window._aqsMicGranted = true; })
+            .catch(function (err) {
+                window._aqsMicGranted = false;
+                console.warn('[Median Bridge] Mic permission denied:', err && err.message);
+                _showMicBanner();
+            });
 
         window._aqsAudioUnlocked = true;
         window._aqsSharedAudioCtx = _sharedCtx;
@@ -104,10 +124,18 @@
         document.body.appendChild(banner);
 
         document.getElementById('_aqsMicRetry').addEventListener('click', function () {
-            banner.remove();
-            _audioUnlocked = false;
-            window._aqsMicGranted = false;
-            unlockAll();
+            /* Re-ask for the mic for real — this re-triggers the Android
+               permission dialog. Banner only closes once access works. */
+            var btn = this;
+            btn.disabled = true;
+            btn.textContent = 'Asking…';
+            window.AQSRequestMicrophone()
+                .then(function () { banner.remove(); })
+                .catch(function () {
+                    /* Still blocked — keep the banner, re-arm the button */
+                    btn.disabled = false;
+                    btn.textContent = 'Retry';
+                });
         });
     }
 

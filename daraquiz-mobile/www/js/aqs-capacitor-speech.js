@@ -299,14 +299,19 @@
       }
 
       /* ── Pre-check permission state so we can give a clear message ── */
-      function _doRecord() {
-        navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            sampleRate: 16000
+      function _openMic() {
+        var ideal = { audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 16000 } };
+        return navigator.mediaDevices.getUserMedia(ideal).catch(function (err) {
+          var n = err.name || '';
+          /* Some WebViews reject the 16 kHz / optional constraints — fall back to plain audio */
+          if (n === 'OverconstrainedError' || n === 'NotReadableError' || n === 'TrackStartError' || n === 'NotFoundError' || n === 'DevicesNotFoundError') {
+            return navigator.mediaDevices.getUserMedia({ audio: true });
           }
-        })
+          throw err;
+        });
+      }
+      function _doRecord() {
+        _openMic()
         .then(function (stream) {
           if (!_active) { stream.getTracks().forEach(function (t) { t.stop(); }); return; }
 

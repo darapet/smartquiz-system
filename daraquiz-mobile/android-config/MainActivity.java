@@ -28,7 +28,8 @@ import java.util.List;
 
 public class MainActivity extends BridgeActivity {
 
-    private static final int PERMISSION_CODE = 1001;
+    private static final int STARTUP_PERMISSION_CODE = 1001;
+    private static final int WEBVIEW_PERMISSION_CODE = 1002;
 
     private ValueCallback<Uri[]> fileUploadCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
@@ -93,12 +94,19 @@ public class MainActivity extends BridgeActivity {
                         return;
                     }
 
+                    // Only one pending web request at a time — a second
+                    // getUserMedia call would overwrite the callback and the
+                    // first request would never be answered.
+                    if (pendingWebRequest != null) {
+                        request.deny();
+                        return;
+                    }
                     // Ask Android first; the web request is answered in onRequestPermissionsResult.
                     pendingWebRequest = request;
                     ActivityCompat.requestPermissions(
                         MainActivity.this,
                         missing.toArray(new String[0]),
-                        PERMISSION_CODE
+                        WEBVIEW_PERMISSION_CODE
                     );
                 });
             }
@@ -189,14 +197,14 @@ public class MainActivity extends BridgeActivity {
         }
 
         if (!want.isEmpty()) {
-            ActivityCompat.requestPermissions(this, want.toArray(new String[0]), PERMISSION_CODE);
+            ActivityCompat.requestPermissions(this, want.toArray(new String[0]), STARTUP_PERMISSION_CODE);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
-        if (requestCode != PERMISSION_CODE || pendingWebRequest == null) return;
+        if (requestCode != WEBVIEW_PERMISSION_CODE || pendingWebRequest == null) return;
 
         boolean granted = results.length > 0;
         for (int r : results) {
