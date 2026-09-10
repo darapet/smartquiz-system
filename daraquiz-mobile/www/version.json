@@ -1,8 +1,8 @@
 {
-  "version": "1.356",
-  "versionCode": 334,
+  "version": "1.357",
+  "versionCode": 335,
   "releaseDate": "2026-09-10",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.356/daraquiz-v1.356.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.356/daraquiz-v1.356.apk"
+  "notes": "Fix microphone permission request flow and add direct Android Settings fallback.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.357/daraquiz-v1.357.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.357/daraquiz-v1.357.apk"
 }
