@@ -7,6 +7,11 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.provider.Settings;
 import android.content.pm.PackageManager;
+import android.speech.RecognitionListener;
+import android.speech.RecognizerIntent;
+import android.speech.SpeechRecognizer;
+import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -26,16 +31,24 @@ import com.getcapacitor.BridgeActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import org.json.JSONObject;
 
 public class MainActivity extends BridgeActivity {
 
     private static final int WEBVIEW_PERMISSION_CODE = 1002;
+    private static final int NATIVE_SPEECH_PERMISSION_CODE = 1003;
 
     private ValueCallback<Uri[]> fileUploadCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
     private volatile long activeDownloadId = -1;
     private WebView appWebView;
     private DownloadManager downloadManager;
+    private SpeechRecognizer speechRecognizer;
+    private TextToSpeech textToSpeech;
+    private boolean ttsReady = false;
+    private boolean startListeningAfterPermission = false;
+    private String pendingRecognitionLanguage = "en-US";
 
     /** Pending web permission request waiting on the Android runtime dialog. */
     private PermissionRequest pendingWebRequest;
@@ -69,6 +82,8 @@ public class MainActivity extends BridgeActivity {
 
         appWebView.addJavascriptInterface(new AqsDownloadBridge(), "AqsDownloadBridge");
         appWebView.addJavascriptInterface(new AqsPermissionsBridge(), "AqsPermissionsBridge");
+        appWebView.addJavascriptInterface(new AqsNativeVoiceBridge(), "AqsNativeVoice");
+        initialiseTextToSpeech();
 
         appWebView.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -175,6 +190,18 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
+        if (requestCode == NATIVE_SPEECH_PERMISSION_CODE) {
+            boolean allowed = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
+            if (allowed && startListeningAfterPermission) {
+                startListeningAfterPermission = false;
+                startNativeListening(pendingRecognitionLanguage);
+            } else if (!allowed) {
+                startListeningAfterPermission = false;
+                sendVoiceEvent("error", "not-allowed");
+                sendVoiceEvent("end", "");
+            }
+            return;
+        }
         if (requestCode != WEBVIEW_PERMISSION_CODE || pendingWebRequest == null) return;
 
         boolean granted = results.length > 0;
@@ -192,6 +219,103 @@ public class MainActivity extends BridgeActivity {
                 req.deny();
             }
         });
+    }
+
+    private void sendVoiceEvent(String type, String value) {
+        if (appWebView == null) return;
+        final String detail = "{type:" + JSONObject.quote(type) + ",value:" + JSONObject.quote(value == null ? "" : value) + "}";
+        runOnUiThread(() -> appWebView.evaluateJavascript(
+            "window.dispatchEvent(new CustomEvent('aqs-native-voice',{detail:" + detail + "}));",
+            null));
+    }
+
+    private void initialiseTextToSpeech() {
+        textToSpeech = new TextToSpeech(this, status -> {
+            ttsReady = status == TextToSpeech.SUCCESS;
+            if (ttsReady) {
+                textToSpeech.setLanguage(Locale.US);
+                textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                    @Override public void onStart(String utteranceId) { sendVoiceEvent("speech-start", utteranceId); }
+                    @Override public void onDone(String utteranceId) { sendVoiceEvent("speech-end", utteranceId); }
+                    @Override public void onError(String utteranceId) { sendVoiceEvent("speech-error", utteranceId); }
+                });
+            }
+            sendVoiceEvent("tts-ready", ttsReady ? "true" : "false");
+        });
+    }
+
+    private void startNativeListening(String language) {
+        runOnUiThread(() -> {
+            if (!granted(Manifest.permission.RECORD_AUDIO)) {
+                pendingRecognitionLanguage = language == null ? "en-US" : language;
+                startListeningAfterPermission = true;
+                ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.RECORD_AUDIO}, NATIVE_SPEECH_PERMISSION_CODE);
+                return;
+            }
+            if (!SpeechRecognizer.isRecognitionAvailable(this)) {
+                sendVoiceEvent("error", "service-unavailable");
+                sendVoiceEvent("end", "");
+                return;
+            }
+            if (speechRecognizer != null) speechRecognizer.destroy();
+            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
+            speechRecognizer.setRecognitionListener(new RecognitionListener() {
+                @Override public void onReadyForSpeech(Bundle params) { sendVoiceEvent("start", ""); }
+                @Override public void onBeginningOfSpeech() { sendVoiceEvent("speech-started", ""); }
+                @Override public void onRmsChanged(float rmsdB) {}
+                @Override public void onBufferReceived(byte[] buffer) {}
+                @Override public void onEndOfSpeech() { sendVoiceEvent("speech-ended", ""); }
+                @Override public void onError(int error) {
+                    String name = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
+                        ? "no-speech" : error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS
+                        ? "not-allowed" : "recognition-error-" + error;
+                    sendVoiceEvent("error", name);
+                    sendVoiceEvent("end", "");
+                }
+                @Override public void onResults(Bundle results) {
+                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (matches != null && !matches.isEmpty()) sendVoiceEvent("result", matches.get(0));
+                    else sendVoiceEvent("error", "no-speech");
+                    sendVoiceEvent("end", "");
+                }
+                @Override public void onPartialResults(Bundle partialResults) {
+                    ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                    if (matches != null && !matches.isEmpty()) sendVoiceEvent("partial", matches.get(0));
+                }
+                @Override public void onEvent(int eventType, Bundle params) {}
+            });
+            Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+            intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, language == null ? "en-US" : language);
+            intent.putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true);
+            speechRecognizer.startListening(intent);
+        });
+    }
+
+    private void stopNativeListening() {
+        runOnUiThread(() -> {
+            if (speechRecognizer != null) speechRecognizer.stopListening();
+        });
+    }
+
+    private void speakNative(String text, float rate, float pitch, String utteranceId) {
+        runOnUiThread(() -> {
+            if (!ttsReady || textToSpeech == null) {
+                sendVoiceEvent("speech-error", utteranceId);
+                return;
+            }
+            textToSpeech.setSpeechRate(Math.max(0.5f, Math.min(2.0f, rate)));
+            textToSpeech.setPitch(Math.max(0.5f, Math.min(2.0f, pitch)));
+            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+        });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (speechRecognizer != null) speechRecognizer.destroy();
+        if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
+        super.onDestroy();
     }
 
     private void notifyJs(final int pct) {
@@ -264,6 +388,22 @@ public class MainActivity extends BridgeActivity {
         public void openSettings() {
             runOnUiThread(() -> openAppSettings());
         }
+    }
+
+    private class AqsNativeVoiceBridge {
+        @JavascriptInterface public boolean isRecognitionAvailable() {
+            return SpeechRecognizer.isRecognitionAvailable(MainActivity.this);
+        }
+        @JavascriptInterface public boolean isTtsReady() { return ttsReady; }
+        @JavascriptInterface public void startListening(String language) { startNativeListening(language); }
+        @JavascriptInterface public void stopListening() { stopNativeListening(); }
+        @JavascriptInterface public void speak(String text, float rate, float pitch, String utteranceId) {
+            speakNative(text, rate, pitch, utteranceId);
+        }
+        @JavascriptInterface public void stopSpeaking() {
+            runOnUiThread(() -> { if (textToSpeech != null) textToSpeech.stop(); });
+        }
+        @JavascriptInterface public void openSettings() { runOnUiThread(() -> openAppSettings()); }
     }
 
     private class AqsDownloadBridge {

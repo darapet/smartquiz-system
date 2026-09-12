@@ -30,6 +30,25 @@
 
   var NativeSR = window.SpeechRecognition || window.webkitSpeechRecognition || null;
   var hasNativeSR = typeof NativeSR === 'function';
+  var androidVoice = window.AqsNativeVoice || null;
+  var hasAndroidRecognition = !!(androidVoice && typeof androidVoice.startListening === 'function');
+  var nativeRecognition = null;
+  var nativeSpeechCallbacks = {};
+
+  window.addEventListener('aqs-native-voice', function (event) {
+    var detail = (event && event.detail) || {};
+    if (/^speech-/.test(detail.type || '')) {
+      var cb = nativeSpeechCallbacks[detail.value];
+      if (cb) {
+        if (detail.type === 'speech-start' && cb.onstart) cb.onstart({});
+        if (detail.type === 'speech-end' && cb.onend) cb.onend({});
+        if (detail.type === 'speech-error' && cb.onerror) cb.onerror({ error: 'native-tts-error' });
+        if (detail.type === 'speech-end' || detail.type === 'speech-error') delete nativeSpeechCallbacks[detail.value];
+      }
+      return;
+    }
+    if (nativeRecognition) nativeRecognition._handleNativeEvent(detail.type, detail.value);
+  });
 
   /* ── helpers ───────────────────────────────────────────────────────────── */
   function log() { try { console.log.apply(console, ['[AQSVoice]'].concat([].slice.call(arguments))); } catch (e) {} }
@@ -55,16 +74,13 @@
 
   /* ── microphone permission ─────────────────────────────────────────────── */
   function ensureMic() {
+    if (hasAndroidRecognition) return Promise.resolve(true);
     var Perm = capPlugin('SpeechRecognition');
     var p = Promise.resolve();
     if (Perm && typeof Perm.requestPermissions === 'function') {
       p = Perm.requestPermissions().catch(function () {});
     }
     return p.then(function () {
-      /* Use the shared request so mic prompts never overlap (median-bridge.js) */
-      if (typeof window.AQSRequestMicrophone === 'function') {
-        return window.AQSRequestMicrophone();
-      }
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Microphone is not available on this device.');
       }
@@ -115,6 +131,58 @@
       return true;
     });
   };
+
+  /* ── Android native speech recognition bridge ─────────────────────────── */
+  function NativeRecognition() {
+    this.lang = 'en-US'; this.continuous = false; this.interimResults = false;
+    this.maxAlternatives = 1; this.onstart = null; this.onresult = null;
+    this.onerror = null; this.onend = null; this.onspeechend = null;
+    this._running = false; this._aborted = false;
+  }
+  NativeRecognition.prototype._result = function (text, isFinal) {
+    var alt = { transcript: text || '', confidence: isFinal ? 0.9 : 0.5 };
+    var res = [alt]; res.isFinal = isFinal; res.length = 1;
+    var list = [res]; list.length = 1;
+    if (this.onresult) this.onresult({ results: list, resultIndex: 0, isTrusted: true });
+  };
+  NativeRecognition.prototype._handleNativeEvent = function (type, value) {
+    if (this._aborted) return;
+    if (type === 'start') { if (this.onstart) this.onstart({}); return; }
+    if (type === 'partial') { if (this.interimResults) this._result(value, false); return; }
+    if (type === 'result') { this._result(value, true); return; }
+    if (type === 'speech-ended') { if (this.onspeechend) this.onspeechend({}); return; }
+    if (type === 'error' && this.onerror) this.onerror({ error: value || 'audio-capture', message: value || '' });
+    if (type === 'end') {
+      this._running = false;
+      if (this.onend) this.onend({});
+      if (nativeRecognition === this) nativeRecognition = null;
+      if (this.continuous && !this._aborted) {
+        var self = this; setTimeout(function () { self.start(); }, 250);
+      }
+    }
+  };
+  NativeRecognition.prototype.start = function () {
+    if (this._running) return;
+    if (nativeRecognition && nativeRecognition !== this) nativeRecognition.abort();
+    this._running = true; this._aborted = false; nativeRecognition = this;
+    try { androidVoice.startListening(this.lang || 'en-US'); }
+    catch (err) {
+      this._running = false; nativeRecognition = null;
+      if (this.onerror) this.onerror({ error: 'audio-capture', message: err && err.message });
+      if (this.onend) this.onend({});
+    }
+  };
+  NativeRecognition.prototype.stop = function () {
+    this.continuous = false;
+    try { androidVoice.stopListening(); } catch (e) {}
+  };
+  NativeRecognition.prototype.abort = function () {
+    this._aborted = true; this.continuous = false; this._running = false;
+    try { androidVoice.stopListening(); } catch (e) {}
+    if (nativeRecognition === this) nativeRecognition = null;
+  };
+  NativeRecognition.prototype.addEventListener = function (type, fn) { this['on' + type] = fn; };
+  NativeRecognition.prototype.removeEventListener = function (type) { this['on' + type] = null; };
   Recorder.prototype._watchSilence = function () {
     var self = this;
     try {
@@ -227,15 +295,16 @@
   ShimRecognition.prototype.addEventListener = function (type, fn) { this['on' + type] = fn; };
   ShimRecognition.prototype.removeEventListener = function (type) { this['on' + type] = null; };
 
-  if (!hasNativeSR) {
+  if (hasAndroidRecognition || !hasNativeSR) {
+    var RecognitionImpl = hasAndroidRecognition ? NativeRecognition : ShimRecognition;
     try {
-      Object.defineProperty(window, 'SpeechRecognition', { value: ShimRecognition, writable: true, configurable: true });
-      Object.defineProperty(window, 'webkitSpeechRecognition', { value: ShimRecognition, writable: true, configurable: true });
+      Object.defineProperty(window, 'SpeechRecognition', { value: RecognitionImpl, writable: true, configurable: true });
+      Object.defineProperty(window, 'webkitSpeechRecognition', { value: RecognitionImpl, writable: true, configurable: true });
     } catch (e) {
-      window.SpeechRecognition = ShimRecognition;
-      window.webkitSpeechRecognition = ShimRecognition;
+      window.SpeechRecognition = RecognitionImpl;
+      window.webkitSpeechRecognition = RecognitionImpl;
     }
-    log('record-and-transcribe microphone enabled (no native speech engine)');
+    log(hasAndroidRecognition ? 'Android native microphone enabled' : 'record-and-transcribe microphone enabled');
   }
 
   /* ── speaking fallback (online voices) ─────────────────────────────────── */
@@ -247,6 +316,19 @@
 
   function speakOnline(text, opts) {
     opts = opts || {};
+    if (androidVoice && typeof androidVoice.speak === 'function') {
+      stopSpeaking();
+      var id = 'aqs-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      nativeSpeechCallbacks[id] = { onstart: opts.onstart, onend: opts.onend, onerror: opts.onerror };
+      try {
+        androidVoice.speak(String(text), Math.max(0.5, Math.min(2, opts.rate || 1)),
+          /male|onyx|echo/i.test(opts.voice || '') ? 0.9 : 1.08, id);
+        return { pause: function () { stopSpeaking(); }, play: function () {} };
+      } catch (err) {
+        delete nativeSpeechCallbacks[id];
+        log('native speaking failed, using online fallback', err);
+      }
+    }
     var voice = VOICE_MAP[(opts.voice || '').toLowerCase()] || VOICE_MAP.default;
     var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
               '?model=openai-audio&voice=' + encodeURIComponent(voice);
@@ -262,6 +344,8 @@
   }
 
   function stopSpeaking() {
+    try { if (androidVoice && typeof androidVoice.stopSpeaking === 'function') androidVoice.stopSpeaking(); } catch (e) {}
+    nativeSpeechCallbacks = {};
     try { if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; } } catch (e) {}
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
   }
@@ -272,6 +356,16 @@
     if (synth && typeof synth.speak === 'function') {
       var origSpeak = synth.speak.bind(synth);
       synth.speak = function (utt) {
+        if (androidVoice && typeof androidVoice.speak === 'function') {
+          var nativeName = (utt && utt.voice && utt.voice.name) || '';
+          return speakOnline((utt && utt.text) || '', {
+            voice: nativeName,
+            rate: (utt && utt.rate) || 1,
+            onstart: function () { if (utt && utt.onstart) try { utt.onstart({}); } catch (e) {} },
+            onend: function () { if (utt && utt.onend) try { utt.onend({}); } catch (e) {} },
+            onerror: function () { if (utt && utt.onerror) try { utt.onerror({ error: 'native-tts-error' }); } catch (e) {} }
+          });
+        }
         var voices = [];
         try { voices = synth.getVoices() || []; } catch (e) {}
         if (voices.length) return origSpeak(utt);
@@ -307,8 +401,9 @@
   /* ── public API ────────────────────────────────────────────────────────── */
   window.AQSVoice = {
     supported: true,
-    usingShim: !hasNativeSR,
-    ensureMic: function () { return ensureMic().then(function (s) { try { s.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return true; }); },
+    usingShim: hasAndroidRecognition || !hasNativeSR,
+    usingAndroidNative: hasAndroidRecognition,
+    ensureMic: function () { return ensureMic().then(function (s) { try { if (s && s.getTracks) s.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {} return true; }); },
     transcribe: transcribe,
     speak: speakOnline,
     stop: stopSpeaking,
@@ -330,5 +425,5 @@
     }
   };
 
-  log('ready — mic:', hasNativeSR ? 'native' : 'record+transcribe');
+  log('ready — mic:', hasAndroidRecognition ? 'Android native' : hasNativeSR ? 'browser native' : 'record+transcribe');
 })();

@@ -18,6 +18,16 @@
 
     <!-- Microphone (TTS / speech input) -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <queries>
+        <intent>
+            <action android:name="android.speech.RecognitionService" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE" />
+        </intent>
+    </queries>
 
     <!-- Vibration (haptic feedback) -->
     <uses-permission android:name="android.permission.VIBRATE" />
