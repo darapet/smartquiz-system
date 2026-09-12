@@ -61,7 +61,7 @@
         return _micInflight;
     };
 
-    /* ── Unlock audio + microphone on first user gesture ──────────────── */
+    /* ── Unlock audio on first user gesture ───────────────────────────── */
     function unlockAll() {
         if (_audioUnlocked) return;
         _audioUnlocked = true;
@@ -86,15 +86,6 @@
             sil.volume = 0;
             sil.play().catch(function () {});
         } catch (e) {}
-
-        /* 3. Request microphone permission — triggers native dialog in Median */
-        window.AQSRequestMicrophone()
-            .then(function () { window._aqsMicGranted = true; })
-            .catch(function (err) {
-                window._aqsMicGranted = false;
-                console.warn('[Median Bridge] Mic permission denied:', err && err.message);
-                _showMicBanner();
-            });
 
         window._aqsAudioUnlocked = true;
         window._aqsSharedAudioCtx = _sharedCtx;
@@ -138,6 +129,7 @@
                 });
         });
     }
+    window.AQSShowMicHelp = _showMicBanner;
 
     /* ── Fix: patch challenge.js getVoiceCtx to use shared context ───── */
     /* challenge.js calls new AudioContext() independently — we intercept

@@ -12,6 +12,8 @@ import android.speech.RecognizerIntent;
 import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
+import android.media.AudioAttributes;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -47,6 +49,10 @@ public class MainActivity extends BridgeActivity {
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
     private boolean ttsReady = false;
+    private String pendingSpeechText;
+    private float pendingSpeechRate = 1.0f;
+    private float pendingSpeechPitch = 1.0f;
+    private String pendingSpeechId;
     private boolean startListeningAfterPermission = false;
     private String pendingRecognitionLanguage = "en-US";
 
@@ -83,6 +89,7 @@ public class MainActivity extends BridgeActivity {
         appWebView.addJavascriptInterface(new AqsDownloadBridge(), "AqsDownloadBridge");
         appWebView.addJavascriptInterface(new AqsPermissionsBridge(), "AqsPermissionsBridge");
         appWebView.addJavascriptInterface(new AqsNativeVoiceBridge(), "AqsNativeVoice");
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         initialiseTextToSpeech();
 
         appWebView.setWebChromeClient(new WebChromeClient() {
@@ -234,11 +241,26 @@ public class MainActivity extends BridgeActivity {
             ttsReady = status == TextToSpeech.SUCCESS;
             if (ttsReady) {
                 textToSpeech.setLanguage(Locale.US);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    textToSpeech.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build());
+                }
                 textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                     @Override public void onStart(String utteranceId) { sendVoiceEvent("speech-start", utteranceId); }
                     @Override public void onDone(String utteranceId) { sendVoiceEvent("speech-end", utteranceId); }
                     @Override public void onError(String utteranceId) { sendVoiceEvent("speech-error", utteranceId); }
                 });
+                if (pendingSpeechText != null) {
+                    String text = pendingSpeechText;
+                    float rate = pendingSpeechRate;
+                    float pitch = pendingSpeechPitch;
+                    String id = pendingSpeechId;
+                    pendingSpeechText = null;
+                    pendingSpeechId = null;
+                    speakNative(text, rate, pitch, id);
+                }
             }
             sendVoiceEvent("tts-ready", ttsReady ? "true" : "false");
         });
@@ -302,7 +324,10 @@ public class MainActivity extends BridgeActivity {
     private void speakNative(String text, float rate, float pitch, String utteranceId) {
         runOnUiThread(() -> {
             if (!ttsReady || textToSpeech == null) {
-                sendVoiceEvent("speech-error", utteranceId);
+                pendingSpeechText = text;
+                pendingSpeechRate = rate;
+                pendingSpeechPitch = pitch;
+                pendingSpeechId = utteranceId;
                 return;
             }
             textToSpeech.setSpeechRate(Math.max(0.5f, Math.min(2.0f, rate)));

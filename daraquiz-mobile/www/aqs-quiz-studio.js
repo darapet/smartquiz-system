@@ -1245,9 +1245,12 @@
                 setVoiceState('idle');
                 setVoiceTranscript('Requesting microphone access…');
                 if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                    navigator.mediaDevices.getUserMedia({ audio: true })
+                    var requestMic = typeof window.AQSRequestMicrophone === 'function'
+                        ? window.AQSRequestMicrophone
+                        : function() { return navigator.mediaDevices.getUserMedia({ audio: true }); };
+                    requestMic()
                         .then(function(stream) {
-                            stream.getTracks().forEach(function(t) { t.stop(); });
+                            if (stream && stream.getTracks) stream.getTracks().forEach(function(t) { t.stop(); });
                             setVoiceTranscript('Microphone granted — tap mic to speak.');
                             voiceRestartTimer = setTimeout(startVoiceListening, 800);
                         })

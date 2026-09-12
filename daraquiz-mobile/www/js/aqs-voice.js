@@ -84,6 +84,9 @@
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Microphone is not available on this device.');
       }
+      if (typeof window.AQSRequestMicrophone === 'function') {
+        return window.AQSRequestMicrophone();
+      }
       return navigator.mediaDevices.getUserMedia({ audio: true });
     });
   }
@@ -314,33 +317,54 @@
   };
   var currentAudio = null;
 
+  function playOnlineVoice(text, opts) {
+    opts = opts || {};
+    var voice = VOICE_MAP[(opts.voice || '').toLowerCase()] || VOICE_MAP.default;
+    var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
+              '?model=openai-audio&voice=' + encodeURIComponent(voice);
+    fetch(url, { cache: 'no-store' }).then(function (response) {
+      if (!response.ok) throw new Error('Voice service returned ' + response.status);
+      return response.blob();
+    }).then(function (blob) {
+      if (typeof window.aqsPlayAudioBlob === 'function') {
+        window.aqsPlayAudioBlob(blob, opts.onend, opts.onerror);
+        return;
+      }
+      var a = new Audio(URL.createObjectURL(blob));
+      a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
+      currentAudio = a;
+      a.onended = function () { URL.revokeObjectURL(a.src); if (opts.onend) opts.onend(); };
+      a.onerror = opts.onerror;
+      var pr = a.play();
+      if (pr && pr.catch) pr.catch(function (e) { if (opts.onerror) opts.onerror(e); });
+    }).catch(function (err) { if (opts.onerror) opts.onerror(err); });
+    return { pause: function () { stopSpeaking(); }, play: function () {} };
+  }
+
   function speakOnline(text, opts) {
     opts = opts || {};
+    stopSpeaking();
     if (androidVoice && typeof androidVoice.speak === 'function') {
-      stopSpeaking();
       var id = 'aqs-' + Date.now() + '-' + Math.random().toString(36).slice(2);
-      nativeSpeechCallbacks[id] = { onstart: opts.onstart, onend: opts.onend, onerror: opts.onerror };
+      nativeSpeechCallbacks[id] = {
+        onstart: opts.onstart,
+        onend: opts.onend,
+        onerror: function () {
+          delete nativeSpeechCallbacks[id];
+          log('native speaking failed, using online audio');
+          playOnlineVoice(text, opts);
+        }
+      };
       try {
         androidVoice.speak(String(text), Math.max(0.5, Math.min(2, opts.rate || 1)),
           /male|onyx|echo/i.test(opts.voice || '') ? 0.9 : 1.08, id);
         return { pause: function () { stopSpeaking(); }, play: function () {} };
       } catch (err) {
         delete nativeSpeechCallbacks[id];
-        log('native speaking failed, using online fallback', err);
+        log('native speaking failed, using online audio', err);
       }
     }
-    var voice = VOICE_MAP[(opts.voice || '').toLowerCase()] || VOICE_MAP.default;
-    var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
-              '?model=openai-audio&voice=' + encodeURIComponent(voice);
-    stopSpeaking();
-    var a = new Audio(url);
-    a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
-    currentAudio = a;
-    if (opts.onend) a.onended = opts.onend;
-    if (opts.onerror) a.onerror = opts.onerror;
-    var pr = a.play();
-    if (pr && pr.catch) pr.catch(function (e) { if (opts.onerror) opts.onerror(e); });
-    return a;
+    return playOnlineVoice(text, opts);
   }
 
   function stopSpeaking() {
