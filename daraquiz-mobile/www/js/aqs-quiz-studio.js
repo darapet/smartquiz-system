@@ -1545,6 +1545,30 @@
                 .then(function(blob) {
                     if (!voiceAiTalking) { finish(); return; }
 
+                    /* Android WebView may resolve audio.play() without
+                       producing sound for blob URLs. Reuse the unlocked
+                       AudioContext player used by the universal voice layer. */
+                    if (typeof window.aqsPlayAudioBlob === 'function') {
+                        var playback = {
+                            pause: function() {
+                                try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch(_) {}
+                                if (currentStudioAudio === playback) currentStudioAudio = null;
+                            },
+                            src: ''
+                        };
+                        currentStudioAudio = playback;
+                        window.aqsPlayAudioBlob(blob, function() {
+                            if (currentStudioAudio !== playback) return;
+                            currentStudioAudio = null;
+                            playNext();
+                        }, function() {
+                            if (currentStudioAudio !== playback) return;
+                            currentStudioAudio = null;
+                            fallbackRemaining();
+                        });
+                        return;
+                    }
+
                     var blobUrl = URL.createObjectURL(blob);
                     var audio   = new Audio();
                     audio.setAttribute('playsinline', '');   /* iOS inline playback */

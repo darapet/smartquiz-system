@@ -248,36 +248,64 @@
       }
     }
     var ctx = window._aqsAudioCtx;
-    if (ctx.state === 'suspended') { ctx.resume().catch(function () {}); }
 
     /* Stop any previous source */
     window.aqsStopCurrentAudio();
 
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      var arrBuf = e.target.result;
-      ctx.decodeAudioData(arrBuf, function (audioBuffer) {
-        if (ctx.state === 'suspended') { ctx.resume().catch(function () {}); }
-        var source = ctx.createBufferSource();
-        window._aqsCurrentSource = source;
-        source.buffer = audioBuffer;
-        source.connect(ctx.destination);
-        source.onended = function () {
-          if (window._aqsCurrentSource === source) window._aqsCurrentSource = null;
-          if (onEnd) onEnd();
-        };
-        try { source.start(0); } catch (startErr) {
-          if (onError) onError(startErr);
+    /* Android can resolve resume() asynchronously. Decoding and starting the
+       source before it resolves produces a completely silent player even
+       though the Promise returned by HTMLMediaElement.play() would succeed. */
+    function startDecodedAudio() {
+      if (ctx.state !== 'running') {
+        if (onError) onError(new Error('Audio output is suspended'));
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var arrBuf = e.target.result;
+        ctx.decodeAudioData(arrBuf, function (audioBuffer) {
+          if (ctx.state !== 'running') {
+            if (onError) onError(new Error('Audio output was suspended'));
+            return;
+          }
+          var source = ctx.createBufferSource();
+          window._aqsCurrentSource = source;
+          source.buffer = audioBuffer;
+          source.connect(ctx.destination);
+          source.onended = function () {
+            if (window._aqsCurrentSource === source) window._aqsCurrentSource = null;
+            if (onEnd) onEnd();
+          };
+          try { source.start(0); } catch (startErr) {
+            if (onError) onError(startErr);
+          }
+        }, function (decodeErr) {
+          console.warn('[AQS] decodeAudioData failed:', decodeErr);
+          if (onError) onError(decodeErr);
+        });
+      };
+      reader.onerror = function () {
+        if (onError) onError(new Error('Audio file could not be read'));
+      };
+      reader.readAsArrayBuffer(blob);
+    }
+
+    if (ctx.state === 'suspended' && typeof ctx.resume === 'function') {
+      try {
+        var resumeResult = ctx.resume();
+        if (resumeResult && typeof resumeResult.then === 'function') {
+          resumeResult.then(startDecodedAudio).catch(function (resumeErr) {
+            if (onError) onError(resumeErr);
+          });
+        } else {
+          startDecodedAudio();
         }
-      }, function (decodeErr) {
-        console.warn('[AQS] decodeAudioData failed:', decodeErr);
-        if (onError) onError(decodeErr);
-      });
+      } catch (resumeErr) {
+        if (onError) onError(resumeErr);
+      }
+    } else {
+      startDecodedAudio();
     };
-    reader.onerror = function () {
-      if (onError) onError(new Error('FileReader error'));
-    };
-    reader.readAsArrayBuffer(blob);
   };
 
   /* ── 7. MediaRecorder STT via Groq Whisper ──────────────────────────────

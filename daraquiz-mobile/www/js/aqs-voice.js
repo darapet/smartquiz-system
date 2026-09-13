@@ -371,6 +371,8 @@
   var currentAudio = null;
 
   function nativeTtsUsable() {
+    /* The JavaScript bridge can be injected after this file is evaluated. */
+    androidVoice = window.AqsNativeVoice || androidVoice;
     if (!androidVoice || typeof androidVoice.speak !== 'function') return false;
     /* Android WebView can report TextToSpeech.onStart while the engine sends
        no audible samples to the speaker. The cloud audio route is the same
@@ -456,6 +458,7 @@
 
   function speakOnline(text, opts) {
     opts = opts || {};
+    androidVoice = window.AqsNativeVoice || androidVoice;
     if (nativeTtsUsable()) {
       stopSpeaking();
       var id = 'aqs-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -549,6 +552,7 @@
   }
 
   function stopSpeaking() {
+    androidVoice = window.AqsNativeVoice || androidVoice;
     try { if (androidVoice && typeof androidVoice.stopSpeaking === 'function') androidVoice.stopSpeaking(); } catch (e) {}
     try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
     nativeSpeechCallbacks = {};
@@ -562,6 +566,7 @@
     if (synth && typeof synth.speak === 'function') {
       var origSpeak = synth.speak.bind(synth);
       synth.speak = function (utt) {
+        androidVoice = window.AqsNativeVoice || androidVoice;
         if (androidVoice && typeof androidVoice.speak === 'function') {
           var nativeName = (utt && utt.voice && utt.voice.name) || '';
           return speakOnline((utt && utt.text) || '', {
