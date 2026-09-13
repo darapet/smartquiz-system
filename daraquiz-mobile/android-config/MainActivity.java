@@ -240,26 +240,38 @@ public class MainActivity extends BridgeActivity {
         textToSpeech = new TextToSpeech(this, status -> {
             ttsReady = status == TextToSpeech.SUCCESS;
             if (ttsReady) {
-                textToSpeech.setLanguage(Locale.US);
+                // Initialising the engine is not enough: the selected voice
+                // data may still be missing on the device. Do not advertise
+                // native TTS as usable in that case; the web layer will use
+                // its online audio fallback instead.
+                int languageStatus = textToSpeech.setLanguage(Locale.US);
+                ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA
+                    && languageStatus != TextToSpeech.LANG_NOT_SUPPORTED;
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     textToSpeech.setAudioAttributes(new AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
+                        // The app's volume controls and the phone speaker use
+                        // the media stream. Accessibility volume can be muted
+                        // independently, which made TTS appear to work while
+                        // producing no audible output.
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build());
                 }
-                textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
-                    @Override public void onStart(String utteranceId) { sendVoiceEvent("speech-start", utteranceId); }
-                    @Override public void onDone(String utteranceId) { sendVoiceEvent("speech-end", utteranceId); }
-                    @Override public void onError(String utteranceId) { sendVoiceEvent("speech-error", utteranceId); }
-                });
-                if (pendingSpeechText != null) {
-                    String text = pendingSpeechText;
-                    float rate = pendingSpeechRate;
-                    float pitch = pendingSpeechPitch;
-                    String id = pendingSpeechId;
-                    pendingSpeechText = null;
-                    pendingSpeechId = null;
-                    speakNative(text, rate, pitch, id);
+                if (ttsReady) {
+                    textToSpeech.setOnUtteranceProgressListener(new UtteranceProgressListener() {
+                        @Override public void onStart(String utteranceId) { sendVoiceEvent("speech-start", utteranceId); }
+                        @Override public void onDone(String utteranceId) { sendVoiceEvent("speech-end", utteranceId); }
+                        @Override public void onError(String utteranceId) { sendVoiceEvent("speech-error", utteranceId); }
+                    });
+                    if (pendingSpeechText != null) {
+                        String text = pendingSpeechText;
+                        float rate = pendingSpeechRate;
+                        float pitch = pendingSpeechPitch;
+                        String id = pendingSpeechId;
+                        pendingSpeechText = null;
+                        pendingSpeechId = null;
+                        speakNative(text, rate, pitch, id);
+                    }
                 }
             }
             sendVoiceEvent("tts-ready", ttsReady ? "true" : "false");
@@ -332,7 +344,10 @@ public class MainActivity extends BridgeActivity {
             }
             textToSpeech.setSpeechRate(Math.max(0.5f, Math.min(2.0f, rate)));
             textToSpeech.setPitch(Math.max(0.5f, Math.min(2.0f, pitch)));
-            textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+            int result = textToSpeech.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId);
+            if (result != TextToSpeech.SUCCESS) {
+                sendVoiceEvent("speech-error", utteranceId);
+            }
         });
     }
 

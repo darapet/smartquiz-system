@@ -365,12 +365,38 @@
   /* Play a WAV/MP3 ArrayBuffer through the speaker. */
   function playBuffer(buf, opts) {
     opts = opts || {};
+    var blob = new Blob([buf], { type: opts.mime || 'audio/wav' });
+    stopSpeaking();
+
+    /* Android WebView can resolve HTMLMediaElement.play() while emitting no
+       sound for blob URLs. Use the unlocked AudioContext player first. */
+    if (typeof window.aqsPlayAudioBlob === 'function') {
+      var playback = {
+        pause: function () {
+          try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
+          if (currentAudio === playback) currentAudio = null;
+        },
+        play: function () {}
+      };
+      currentAudio = playback;
+      if (opts.onstart) { try { opts.onstart(); } catch (e) {} }
+      window.aqsPlayAudioBlob(blob, function () {
+        if (currentAudio !== playback) return;
+        currentAudio = null;
+        if (opts.onend) opts.onend();
+      }, function (err) {
+        if (currentAudio !== playback) return;
+        currentAudio = null;
+        if (opts.onerror) opts.onerror(err);
+      });
+      return playback;
+    }
+
     try {
-      var url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      var url = URL.createObjectURL(blob);
       var a = new Audio(url);
       a.setAttribute('playsinline', '');
       a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
-      stopSpeaking();
       currentAudio = a;
       a.onended = function () { try { URL.revokeObjectURL(url); } catch (e) {} if (opts.onend) opts.onend(); };
       a.onerror = function (e) { if (opts.onerror) opts.onerror(e); };
@@ -443,6 +469,45 @@
     var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
               '?model=openai-audio&voice=' + encodeURIComponent(voice);
     stopSpeaking();
+
+    /* Fetch remote audio and decode it through AudioContext on Android. This
+       avoids the WebView blob/HTMLMediaElement path that can be silent even
+       when play() resolves successfully. */
+    if (typeof window.aqsPlayAudioBlob === 'function') {
+      var playback = {
+        pause: function () {
+          try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
+          if (currentAudio === playback) currentAudio = null;
+        },
+        play: function () {}
+      };
+      currentAudio = playback;
+      if (opts.onstart) { try { opts.onstart(); } catch (e) {} }
+      fetch(url)
+        .then(function (r) {
+          if (!r.ok) throw new Error('TTS audio request failed (' + r.status + ')');
+          return r.blob();
+        })
+        .then(function (blob) {
+          if (currentAudio !== playback) return;
+          window.aqsPlayAudioBlob(blob, function () {
+            if (currentAudio !== playback) return;
+            currentAudio = null;
+            if (opts.onend) opts.onend();
+          }, function (err) {
+            if (currentAudio !== playback) return;
+            currentAudio = null;
+            if (opts.onerror) opts.onerror(err);
+          });
+        })
+        .catch(function (err) {
+          if (currentAudio !== playback) return;
+          currentAudio = null;
+          if (opts.onerror) opts.onerror(err);
+        });
+      return playback;
+    }
+
     var a = new Audio(url);
     a.setAttribute('playsinline', '');
     a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
@@ -457,6 +522,7 @@
 
   function stopSpeaking() {
     try { if (androidVoice && typeof androidVoice.stopSpeaking === 'function') androidVoice.stopSpeaking(); } catch (e) {}
+    try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
     nativeSpeechCallbacks = {};
     try { if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; } } catch (e) {}
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}

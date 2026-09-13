@@ -67,14 +67,15 @@
   var _audioUnlocked = false;
   var _synthUnlocked = false;
 
-  function _unlockAudio() {
-    if (_audioUnlocked) return;
-    _audioUnlocked = true;
+  function _unlockAudio(fromGesture) {
+    var existingCtx = window._aqsAudioCtx;
+    if (_audioUnlocked && existingCtx && existingCtx.state === 'running') return;
+    var ctx = null;
     try {
       var AC = window.AudioContext || window.webkitAudioContext;
       if (AC) {
         /* Save context globally so TTS can reuse it after async responses */
-        var ctx = window._aqsAudioCtx || new AC();
+        ctx = window._aqsAudioCtx || new AC();
         window._aqsAudioCtx = ctx;
         /* Create and immediately discard a zero-length silent buffer */
         var buf = ctx.createBuffer(1, 1, 22050);
@@ -82,9 +83,22 @@
         src.buffer = buf;
         src.connect(ctx.destination);
         src.start(0);
-        ctx.resume();
+        var resumeResult = ctx.state === 'suspended' && typeof ctx.resume === 'function'
+          ? ctx.resume()
+          : null;
+        if (resumeResult && typeof resumeResult.then === 'function') {
+          resumeResult.then(function () {
+            _audioUnlocked = true;
+          }).catch(function () {});
+        } else if (ctx.state === 'running') {
+          _audioUnlocked = true;
+        }
       }
     } catch (e) {}
+    /* A resume attempted during page load may be rejected by Android. Only
+       consider the pipeline unlocked after a real user gesture or a running
+       context, so the next gesture can retry it. */
+    if (fromGesture && ctx) _audioUnlocked = true;
 
     /* Also play a truly silent Audio element so future Audio() calls work */
     try {
@@ -117,7 +131,7 @@
   }
 
   function _onFirstGesture() {
-    _unlockAudio();
+    _unlockAudio(true);
     _unlockSynth();
   }
 
@@ -127,7 +141,7 @@
 
   /* Also try immediately (may already be inside a gesture if this script
      loaded during a user-initiated page open on some Android versions) */
-  try { _unlockAudio(); } catch (e) {}
+  try { _unlockAudio(false); } catch (e) {}
 
   /* ── 4. Wrap speechSynthesis.speak() ────────────────────────────────────── */
   /*
