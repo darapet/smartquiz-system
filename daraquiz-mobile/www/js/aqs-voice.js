@@ -32,8 +32,24 @@
   var hasNativeSR = typeof NativeSR === 'function';
   var androidVoice = window.AqsNativeVoice || null;
   var hasAndroidRecognition = !!(androidVoice && typeof androidVoice.startListening === 'function');
+  var isAndroidApp = false;
+  try {
+    var cap = window.Capacitor;
+    isAndroidApp = !!(
+      cap &&
+      typeof cap.isNativePlatform === 'function' &&
+      cap.isNativePlatform() &&
+      (!cap.getPlatform || cap.getPlatform() === 'android')
+    );
+  } catch (e) {}
+  /* Older Capacitor builds may not expose isNativePlatform(). The injected
+     bridge is Android-only, so it is a safe second signal for this app. */
+  if (!isAndroidApp && androidVoice && /Android/i.test(navigator.userAgent || '')) {
+    isAndroidApp = true;
+  }
   var nativeRecognition = null;
   var nativeSpeechCallbacks = {};
+  var nativeTtsBypassed = false;
 
   window.addEventListener('aqs-native-voice', function (event) {
     var detail = (event && event.detail) || {};
@@ -356,6 +372,18 @@
 
   function nativeTtsUsable() {
     if (!androidVoice || typeof androidVoice.speak !== 'function') return false;
+    /* Android WebView can report TextToSpeech.onStart while the engine sends
+       no audible samples to the speaker. The cloud audio route is the same
+       route that works in the web app and is decoded through AudioContext on
+       Android, so prefer it for this APK instead of allowing silent native
+       TTS to mask the fallback. */
+    if (isAndroidApp) {
+      if (!nativeTtsBypassed) {
+        nativeTtsBypassed = true;
+        log('Android native TTS bypassed; using cloud audio playback');
+      }
+      return false;
+    }
     try {
       if (typeof androidVoice.isTtsReady === 'function') return !!androidVoice.isTtsReady();
     } catch (e) {}

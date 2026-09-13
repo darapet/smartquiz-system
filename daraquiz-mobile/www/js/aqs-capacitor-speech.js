@@ -108,7 +108,10 @@
       );
       sil.setAttribute('playsinline', '');
       sil.setAttribute('webkit-playsinline', '');
-      sil.volume = 0.001;
+       /* Do not let the unlock probe become the only audible sound on
+          Android devices whose TTS engine is silent. */
+       sil.muted = true;
+       sil.volume = 0;
       sil.play().catch(function () {});
     } catch (e) {}
   }

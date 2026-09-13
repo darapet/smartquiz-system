@@ -247,6 +247,9 @@ public class MainActivity extends BridgeActivity {
                 int languageStatus = textToSpeech.setLanguage(Locale.US);
                 ttsReady = languageStatus != TextToSpeech.LANG_MISSING_DATA
                     && languageStatus != TextToSpeech.LANG_NOT_SUPPORTED;
+                // Keep compatibility with engines that ignore AudioAttributes
+                // and still use the legacy stream selector.
+                textToSpeech.setAudioStreamType(AudioManager.STREAM_MUSIC);
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     textToSpeech.setAudioAttributes(new AudioAttributes.Builder()
                         // The app's volume controls and the phone speaker use
