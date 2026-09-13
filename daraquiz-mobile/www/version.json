@@ -1,8 +1,8 @@
 {
   "version": "1.358",
   "versionCode": 336,
-  "releaseDate": "2026-09-12",
-  "notes": "Add native Android microphone recognition and reliable device text-to-speech for AI voice features.",
+  "releaseDate": "2026-09-13",
+  "notes": "Fix microphone permission and Retry button, and route all app sounds (music, quiz voice, text-to-speech) through reliable playback.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.358/daraquiz-v1.358.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.358/daraquiz-v1.358.apk"
 }
