@@ -84,9 +84,6 @@
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error('Microphone is not available on this device.');
       }
-      if (typeof window.AQSRequestMicrophone === 'function') {
-        return window.AQSRequestMicrophone();
-      }
       return navigator.mediaDevices.getUserMedia({ audio: true });
     });
   }
@@ -152,22 +149,60 @@
     if (this._aborted) return;
     if (type === 'start') { if (this.onstart) this.onstart({}); return; }
     if (type === 'partial') { if (this.interimResults) this._result(value, false); return; }
-    if (type === 'result') { this._result(value, true); return; }
+    if (type === 'result') { this._got = true; this._result(value, true); return; }
     if (type === 'speech-ended') { if (this.onspeechend) this.onspeechend({}); return; }
-    if (type === 'error' && this.onerror) this.onerror({ error: value || 'audio-capture', message: value || '' });
+    if (type === 'error') {
+      var err = value || 'audio-capture';
+      /* Android's recogniser reports "no-speech" / service errors very eagerly
+         (no Google voice data, offline, engine busy...). Instead of showing the
+         user a mic error, record the audio ourselves and transcribe it. */
+      if (err !== 'not-allowed' && !this._fellBack) { this._pendingErr = err; this._fellBack = true; return; }
+      if (this.onerror) this.onerror({ error: err, message: err });
+      return;
+    }
     if (type === 'end') {
-      this._running = false;
-      if (this.onend) this.onend({});
-      if (nativeRecognition === this) nativeRecognition = null;
-      if (this.continuous && !this._aborted) {
-        var self = this; setTimeout(function () { self.start(); }, 250);
+      if (this._fellBack && !this._got) { this._startShimFallback(); return; }
+      this._finishRun();
+    }
+  };
+  NativeRecognition.prototype._finishRun = function () {
+    this._running = false;
+    if (this.onend) this.onend({});
+    if (nativeRecognition === this) nativeRecognition = null;
+    if (this.continuous && !this._aborted) {
+      var self = this; setTimeout(function () { self.start(); }, 250);
+    }
+  };
+  /* Record with the microphone and transcribe with Groq when the Android
+     speech service fails — keeps voice input working on every device. */
+  NativeRecognition.prototype._startShimFallback = function () {
+    var self = this;
+    var shim = new ShimRecognition();
+    this._shim = shim;
+    shim.lang = this.lang;
+    shim.interimResults = this.interimResults;
+    shim.continuous = false;
+    shim.onresult = function (e) { self._got = true; if (self.onresult) self.onresult(e); };
+    shim.onerror = function (e) { self._shimErr = e; };
+    shim.onend = function () {
+      self._shim = null;
+      if (!self._got && self.onerror) {
+        self.onerror(self._shimErr || { error: self._pendingErr || 'no-speech', message: self._pendingErr || '' });
       }
+      self._finishRun();
+    };
+    try { shim.start(); }
+    catch (e) {
+      this._shim = null;
+      if (this.onerror) this.onerror({ error: this._pendingErr || 'audio-capture', message: e && e.message });
+      this._finishRun();
     }
   };
   NativeRecognition.prototype.start = function () {
     if (this._running) return;
     if (nativeRecognition && nativeRecognition !== this) nativeRecognition.abort();
     this._running = true; this._aborted = false; nativeRecognition = this;
+    this._got = false; this._fellBack = false; this._pendingErr = null; this._shimErr = null;
     try { androidVoice.startListening(this.lang || 'en-US'); }
     catch (err) {
       this._running = false; nativeRecognition = null;
@@ -177,10 +212,12 @@
   };
   NativeRecognition.prototype.stop = function () {
     this.continuous = false;
+    if (this._shim) { try { this._shim.stop(); } catch (e) {} return; }
     try { androidVoice.stopListening(); } catch (e) {}
   };
   NativeRecognition.prototype.abort = function () {
     this._aborted = true; this.continuous = false; this._running = false;
+    if (this._shim) { try { this._shim.abort(); } catch (e) {} this._shim = null; }
     try { androidVoice.stopListening(); } catch (e) {}
     if (nativeRecognition === this) nativeRecognition = null;
   };
@@ -317,54 +354,105 @@
   };
   var currentAudio = null;
 
-  function playOnlineVoice(text, opts) {
+  function nativeTtsUsable() {
+    if (!androidVoice || typeof androidVoice.speak !== 'function') return false;
+    try {
+      if (typeof androidVoice.isTtsReady === 'function') return !!androidVoice.isTtsReady();
+    } catch (e) {}
+    return true;
+  }
+
+  /* Play a WAV/MP3 ArrayBuffer through the speaker. */
+  function playBuffer(buf, opts) {
     opts = opts || {};
-    var voice = VOICE_MAP[(opts.voice || '').toLowerCase()] || VOICE_MAP.default;
-    var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
-              '?model=openai-audio&voice=' + encodeURIComponent(voice);
-    fetch(url, { cache: 'no-store' }).then(function (response) {
-      if (!response.ok) throw new Error('Voice service returned ' + response.status);
-      return response.blob();
-    }).then(function (blob) {
-      if (typeof window.aqsPlayAudioBlob === 'function') {
-        window.aqsPlayAudioBlob(blob, opts.onend, opts.onerror);
-        return;
-      }
-      var a = new Audio(URL.createObjectURL(blob));
+    try {
+      var url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      var a = new Audio(url);
+      a.setAttribute('playsinline', '');
       a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
+      stopSpeaking();
       currentAudio = a;
-      a.onended = function () { URL.revokeObjectURL(a.src); if (opts.onend) opts.onend(); };
-      a.onerror = opts.onerror;
+      a.onended = function () { try { URL.revokeObjectURL(url); } catch (e) {} if (opts.onend) opts.onend(); };
+      a.onerror = function (e) { if (opts.onerror) opts.onerror(e); };
+      if (opts.onstart) { try { opts.onstart(); } catch (e) {} }
       var pr = a.play();
       if (pr && pr.catch) pr.catch(function (e) { if (opts.onerror) opts.onerror(e); });
-    }).catch(function (err) { if (opts.onerror) opts.onerror(err); });
-    return { pause: function () { stopSpeaking(); }, play: function () {} };
+      return a;
+    } catch (e) {
+      if (opts.onerror) opts.onerror(e);
+      return null;
+    }
+  }
+
+  /* Cloud voices: Gemini TTS first (real neural voice), then Pollinations. */
+  function speakRemote(text, opts) {
+    opts = opts || {};
+    try {
+      if (window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
+          window.geminiTTS.hasKeys && window.geminiTTS.hasKeys()) {
+        var gv = /male|onyx|echo|man|david|daniel|puck/i.test(opts.voice || '') ? 'Puck' : 'Kore';
+        window.geminiTTS.synth(String(text).slice(0, 4000), gv, '')
+          .then(function (buf) { playBuffer(buf, opts); })
+          .catch(function (e) { log('Gemini voice failed, using online fallback', e && e.message); speakPollinations(text, opts); });
+        return { pause: function () { stopSpeaking(); }, play: function () {} };
+      }
+    } catch (e) {}
+    return speakPollinations(text, opts);
   }
 
   function speakOnline(text, opts) {
     opts = opts || {};
-    stopSpeaking();
-    if (androidVoice && typeof androidVoice.speak === 'function') {
+    if (nativeTtsUsable()) {
+      stopSpeaking();
       var id = 'aqs-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      var state = { started: false, done: false, fellBack: false };
       nativeSpeechCallbacks[id] = {
-        onstart: opts.onstart,
-        onend: opts.onend,
+        onstart: function () { state.started = true; if (opts.onstart) opts.onstart(); },
+        onend: function () { state.done = true; if (opts.onend) opts.onend(); },
         onerror: function () {
-          delete nativeSpeechCallbacks[id];
-          log('native speaking failed, using online audio');
-          playOnlineVoice(text, opts);
+          if (state.done || state.fellBack) return;
+          state.fellBack = true;
+          speakRemote(text, opts);
         }
       };
       try {
         androidVoice.speak(String(text), Math.max(0.5, Math.min(2, opts.rate || 1)),
           /male|onyx|echo/i.test(opts.voice || '') ? 0.9 : 1.08, id);
+        /* If the device engine produces nothing (missing voice data), switch
+           to a cloud voice so the user always hears the answer. */
+        setTimeout(function () {
+          if (state.started || state.done || state.fellBack) return;
+          state.fellBack = true;
+          delete nativeSpeechCallbacks[id];
+          try { androidVoice.stopSpeaking(); } catch (e) {}
+          log('native TTS silent — switching to cloud voice');
+          speakRemote(text, opts);
+        }, 2500);
         return { pause: function () { stopSpeaking(); }, play: function () {} };
       } catch (err) {
         delete nativeSpeechCallbacks[id];
-        log('native speaking failed, using online audio', err);
+        log('native speaking failed, using online fallback', err);
       }
     }
-    return playOnlineVoice(text, opts);
+    return speakRemote(text, opts);
+  }
+
+  function speakPollinations(text, opts) {
+    opts = opts || {};
+    var voice = VOICE_MAP[(opts.voice || '').toLowerCase()] || VOICE_MAP.default;
+    var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
+              '?model=openai-audio&voice=' + encodeURIComponent(voice);
+    stopSpeaking();
+    var a = new Audio(url);
+    a.setAttribute('playsinline', '');
+    a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
+    currentAudio = a;
+    if (opts.onend) a.onended = opts.onend;
+    if (opts.onerror) a.onerror = opts.onerror;
+    if (opts.onstart) { try { opts.onstart(); } catch (e) {} }
+    var pr = a.play();
+    if (pr && pr.catch) pr.catch(function (e) { if (opts.onerror) opts.onerror(e); });
+    return a;
   }
 
   function stopSpeaking() {
