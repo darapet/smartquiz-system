@@ -23,6 +23,8 @@ var AQS_APP_VERSION_CODE = 342;
 
   var VERSION_JSON_URL =
     'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
+  var VERSION_JSON_FALLBACK_URL =
+    'https://github.com/darapet/smartquiz-system/raw/refs/heads/main/daraquiz-mobile/www/version.json';
 
   var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
   var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
@@ -249,12 +251,25 @@ var AQS_APP_VERSION_CODE = 342;
   /* ── Main check ─────────────────────────────────────────────────────────── */
   var _remoteCode = 0;
 
-  function runCheck() {
-    fetch(VERSION_JSON_URL + '?_=' + Date.now())
+  function fetchVersionJson() {
+    var cacheBust = '?_=' + Date.now();
+    return fetch(VERSION_JSON_URL + cacheBust, { cache: 'no-store' })
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
+      .catch(function (firstErr) {
+        console.warn('[AQS-UPD] Primary version source failed:', firstErr.message || firstErr);
+        return fetch(VERSION_JSON_FALLBACK_URL + cacheBust, { cache: 'no-store' })
+          .then(function (r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+          });
+      });
+  }
+
+  function runCheck(attempt) {
+    fetchVersionJson()
       .then(function (data) {
         _remoteCode = parseInt(data.versionCode, 10) || 0;
         console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', _remoteCode);
@@ -286,9 +301,12 @@ var AQS_APP_VERSION_CODE = 342;
       })
       .catch(function (err) {
         console.warn('[AQS-UPD] Check failed:', err.message || err);
+        if ((attempt || 0) < 2) {
+          setTimeout(function () { runCheck((attempt || 0) + 1); }, 3000);
+        }
       });
   }
 
-  setTimeout(runCheck, 4000);
+  setTimeout(function () { runCheck(0); }, 4000);
 
 })();
