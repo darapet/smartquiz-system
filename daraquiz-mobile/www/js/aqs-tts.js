@@ -546,7 +546,6 @@
     function showRealPlayer(url, blob, voiceObj, speed, originalText) {
         var audio = document.getElementById('tts-audio');
         if (audio) {
-            audio.style.display = 'block';
             audio.src = url;
             audio.load();
             /* Real AI audio already carries the character's own pacing —
@@ -557,7 +556,23 @@
                 ? 1.0
                 : parseFloat((voiceObj && voiceObj.voiceSpeed) || 1.0);
             audio.playbackRate = Math.min(Math.max(baseRate * speed, 0.1), 4.0);
-            audio.play().catch(function() {});
+
+            /* Capacitor/Android WebView can resolve audio.play() without
+               sending any sound to the speaker. Decode generated audio
+               through the shared AudioContext when available. */
+            if (typeof window.aqsPlayAudioBlob === 'function') {
+                audio.style.display = 'none';
+                window.aqsPlayAudioBlob(blob, function () {}, function (err) {
+                    audio.style.display = 'block';
+                    showError('Audio playback failed: ' + ((err && err.message) || 'tap Play to try again.'));
+                });
+            } else {
+                audio.style.display = 'block';
+                audio.play().catch(function (err) {
+                    showError('Audio playback was blocked. Tap the Play button to start the voice.');
+                    try { console.warn('[AQS TTS] playback failed:', err); } catch (e) {}
+                });
+            }
         }
 
         var bp = document.getElementById('tts-browser-player');
