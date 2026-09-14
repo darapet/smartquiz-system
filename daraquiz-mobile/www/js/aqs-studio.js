@@ -15,6 +15,7 @@
     var voiceRecognition   = null;
     var voiceActive        = false;
     var voiceMicLocked     = false;
+    var voiceSpeechWatchdog = null;
     var voiceSessionId     = 0;
     var voiceOperationId   = 0;
     var voiceRestartTimer  = null;
@@ -28,6 +29,7 @@
 
     var STORAGE_KEY = 'dts_chat_sessions';
     var ACTIVE_KEY  = 'dts_active_session';
+    var VOICE_RECOVERY_KEY = 'dts_voice_session_active';
 
     /* ═══════════════════════════════════════════════════════════
        SYSTEM PROMPT — Professional General AI
@@ -1154,6 +1156,7 @@
         voiceMicLocked = false;
         clearTimeout(voiceRestartTimer);
         voiceRestartTimer = null;
+        try { sessionStorage.setItem(VOICE_RECOVERY_KEY, '1'); } catch (e) {}
         setVoiceState('idle');
         voiceActive = true;
     }
@@ -1161,6 +1164,9 @@
     function closeVoiceModal() {
         voiceActive = false;
         voiceMicLocked = true;
+        clearTimeout(voiceSpeechWatchdog);
+        voiceSpeechWatchdog = null;
+        try { sessionStorage.removeItem(VOICE_RECOVERY_KEY); } catch (e) {}
         voiceSessionId += 1;
         voiceOperationId += 1;
         clearTimeout(voiceRestartTimer);
@@ -1184,6 +1190,8 @@
 
     function stopAiSpeech() {
         voiceOperationId += 1;
+        clearTimeout(voiceSpeechWatchdog);
+        voiceSpeechWatchdog = null;
         stopVoiceListening();
         voiceAiTalking = false;
         if (currentStudioAudio) {
@@ -1344,21 +1352,47 @@
             voiceRestartTimer = null;
             stopVoiceListening();
             var speechOperationId = ++voiceOperationId;
-            speakStudioChunked(spoken, function () {
+            clearTimeout(voiceSpeechWatchdog);
+            voiceSpeechWatchdog = setTimeout(function () {
                 if (!voiceActive || sessionId !== voiceSessionId ||
-                    speechOperationId !== voiceOperationId) return;
+                    !voiceAiTalking || speechOperationId !== voiceOperationId) return;
+                voiceOperationId += 1;
+                stopVoiceListening();
+                if (currentStudioAudio) {
+                    try { currentStudioAudio.pause(); } catch (e) {}
+                    currentStudioAudio = null;
+                }
                 voiceAiTalking = false;
                 voiceMicLocked = false;
-                setVoiceState('idle');
-                /* One guarded restart only — never stack retries after an interrupt. */
-                scheduleVoiceRestart(sessionId, 450);
-            }, function () {
-                /* Do not show "speaking" while the first Gemini chunk is
-                   still being generated. Change state immediately before
-                   the first real audio starts. */
-                setVoiceState('speaking');
-                setVoiceTranscript('');
-            });
+                setVoiceState('error');
+                setVoiceTranscript('Audio stopped unexpectedly. Tap Retry to continue.');
+            }, 90000);
+            try {
+                speakStudioChunked(spoken, function () {
+                    if (!voiceActive || sessionId !== voiceSessionId ||
+                        speechOperationId !== voiceOperationId) return;
+                    clearTimeout(voiceSpeechWatchdog);
+                    voiceSpeechWatchdog = null;
+                    voiceAiTalking = false;
+                    voiceMicLocked = false;
+                    setVoiceState('idle');
+                    /* One guarded restart only — never stack retries after an interrupt. */
+                    scheduleVoiceRestart(sessionId, 450);
+                }, function () {
+                    /* Do not show "speaking" while the first Gemini chunk is
+                       still being generated. Change state immediately before
+                       the first real audio starts. */
+                    setVoiceState('speaking');
+                    setVoiceTranscript('');
+                });
+            } catch (err) {
+                clearTimeout(voiceSpeechWatchdog);
+                voiceSpeechWatchdog = null;
+                voiceAiTalking = false;
+                voiceMicLocked = false;
+                setVoiceState('error');
+                setVoiceTranscript('Audio could not start. Tap Retry to continue.');
+            }
         }).catch(function () {
             if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);
@@ -1421,9 +1455,27 @@
     function speakWithBrowserFallback(text, onDone) {
         if (typeof window.speechSynthesis === 'undefined') { if (onDone) onDone(); return; }
         var utt   = new SpeechSynthesisUtterance(text);
+        var done  = false;
+        var timer = null;
+        function finishFallback() {
+            if (done) return;
+            done = true;
+            clearTimeout(timer);
+            if (onDone) onDone();
+        }
         utt.rate  = 1.0;
-        utt.onend = utt.onerror = function () { if (onDone) onDone(); };
-        window.speechSynthesis.speak(utt);
+        utt.onend = utt.onerror = finishFallback;
+        try {
+            window.speechSynthesis.speak(utt);
+            /* Android WebView can leave speechSynthesis pending forever after
+               an audio-focus change. Do not strand the voice session. */
+            timer = setTimeout(function () {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+                finishFallback();
+            }, Math.max(20000, Math.min(90000, text.length * 140)));
+        } catch (e) {
+            finishFallback();
+        }
     }
 
     function studioGeminiStyle(isContinuation) {
@@ -1736,15 +1788,17 @@
             });
         }
 
-        /* ── Restore last active session (optional) ── */
+        /* ── Restore an interrupted voice session without reopening the mic ── */
         try {
-            var lastId = localStorage.getItem(ACTIVE_KEY);
-            if (lastId) {
+            if (sessionStorage.getItem(VOICE_RECOVERY_KEY) === '1') {
+                var lastId = localStorage.getItem(ACTIVE_KEY);
                 var sessions = loadSessions();
-                if (sessions.some(function (s) { return s.id === lastId; })) {
-                    /* Uncomment to restore last session on load: */
-                    /* loadSessionById(lastId); */
+                if (lastId && sessions.some(function (s) { return s.id === lastId; })) {
+                    loadSessionById(lastId);
                 }
+                openVoiceModal();
+                setVoiceState('idle');
+                setVoiceTranscript('Voice session was interrupted. Tap Start Listening to continue.');
             }
         } catch (e) {}
 

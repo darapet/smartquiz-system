@@ -236,9 +236,14 @@
   window._aqsCurrentSource = null;
 
   window.aqsStopCurrentAudio = function () {
-    if (window._aqsCurrentSource) {
-      try { window._aqsCurrentSource.stop(0); } catch (e) {}
-      window._aqsCurrentSource = null;
+    var source = window._aqsCurrentSource;
+    window._aqsCurrentSource = null;
+    if (source) {
+      /* A cancelled source must not fire the previous chunk's onended
+         callback and advance the Studio voice session unexpectedly. */
+      try { source.onended = null; } catch (e) {}
+      try { source.stop(0); } catch (e) {}
+      try { source.disconnect(); } catch (e) {}
     }
   };
 
@@ -277,10 +282,12 @@
           source.buffer = audioBuffer;
           source.connect(ctx.destination);
           source.onended = function () {
+             if (window._aqsCurrentSource !== source) return;
             if (window._aqsCurrentSource === source) window._aqsCurrentSource = null;
             if (onEnd) onEnd();
           };
           try { source.start(0); } catch (startErr) {
+             if (window._aqsCurrentSource === source) window._aqsCurrentSource = null;
             if (onError) onError(startErr);
           }
         }, function (decodeErr) {
