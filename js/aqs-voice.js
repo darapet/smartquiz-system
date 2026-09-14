@@ -507,7 +507,7 @@
 
     /* Android WebView can silently fail to output fetched/decoded audio.
        Let the native media stack stream this HTTPS URL directly instead. */
-    if (nativeAndroidAudioAvailable()) {
+    if (nativeAndroidAudioAvailable() && !opts.forceWebAudio) {
       var id = 'aqs-audio-' + Date.now() + '-' + Math.random().toString(36).slice(2);
       var playback = {
         pause: function () {
@@ -517,23 +517,57 @@
         play: function () {}
       };
       currentAudio = playback;
+      var startupTimer = null;
+      var playbackTimer = null;
+      var settled = false;
+      var fallbackToWebAudio = function () {
+        if (settled || currentAudio !== playback) return;
+        settled = true;
+        clearTimeout(startupTimer);
+        clearTimeout(playbackTimer);
+        delete nativeSpeechCallbacks[id];
+        try { androidVoice.stopSpeaking(); } catch (e) {}
+        currentAudio = null;
+        log('native cloud audio did not complete; switching to WebView audio');
+        speakPollinations(text, Object.assign({}, opts, { forceWebAudio: true }));
+      };
       nativeSpeechCallbacks[id] = {
-        onstart: function () { if (opts.onstart) opts.onstart(); },
+        onstart: function () {
+          if (settled) return;
+          clearTimeout(startupTimer);
+          playbackTimer = setTimeout(fallbackToWebAudio,
+            Math.min(45000, Math.max(15000, 8000 + String(text).length * 55)));
+          if (opts.onstart) opts.onstart();
+        },
         onend: function () {
+          if (settled) return;
+          settled = true;
+          clearTimeout(startupTimer);
+          clearTimeout(playbackTimer);
           if (currentAudio !== playback) return;
           currentAudio = null;
           if (opts.onend) opts.onend();
         },
         onerror: function (err) {
+          if (settled) return;
+          settled = true;
+          clearTimeout(startupTimer);
+          clearTimeout(playbackTimer);
           if (currentAudio !== playback) return;
+          delete nativeSpeechCallbacks[id];
           currentAudio = null;
-          if (opts.onerror) opts.onerror(err);
+          log('native cloud audio error; switching to WebView audio', err);
+          speakPollinations(text, Object.assign({}, opts, { forceWebAudio: true }));
         }
       };
       try {
+        /* Watchdog also covers bridges that return without a callback. */
+        startupTimer = setTimeout(fallbackToWebAudio, 9000);
         androidVoice.playAudioUrl(url, id);
         return playback;
       } catch (e) {
+        clearTimeout(startupTimer);
+        clearTimeout(playbackTimer);
         delete nativeSpeechCallbacks[id];
         currentAudio = null;
         log('native cloud audio failed, using WebView audio', e);

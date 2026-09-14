@@ -56,6 +56,7 @@ public class MainActivity extends BridgeActivity {
     private float pendingSpeechPitch = 1.0f;
     private String pendingSpeechId;
     private boolean startListeningAfterPermission = false;
+    private int recognitionGeneration = 0;
     private String pendingRecognitionLanguage = "en-US";
 
     /** Pending web permission request waiting on the Android runtime dialog. */
@@ -294,15 +295,27 @@ public class MainActivity extends BridgeActivity {
                 sendVoiceEvent("end", "");
                 return;
             }
-            if (speechRecognizer != null) speechRecognizer.destroy();
+            final int generation = ++recognitionGeneration;
+            if (speechRecognizer != null) {
+                try { speechRecognizer.cancel(); } catch (Exception ignored) {}
+                speechRecognizer.destroy();
+                speechRecognizer = null;
+            }
             speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this);
             speechRecognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onReadyForSpeech(Bundle params) { sendVoiceEvent("start", ""); }
-                @Override public void onBeginningOfSpeech() { sendVoiceEvent("speech-started", ""); }
+                @Override public void onReadyForSpeech(Bundle params) {
+                    if (generation == recognitionGeneration) sendVoiceEvent("start", "");
+                }
+                @Override public void onBeginningOfSpeech() {
+                    if (generation == recognitionGeneration) sendVoiceEvent("speech-started", "");
+                }
                 @Override public void onRmsChanged(float rmsdB) {}
                 @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() { sendVoiceEvent("speech-ended", ""); }
+                @Override public void onEndOfSpeech() {
+                    if (generation == recognitionGeneration) sendVoiceEvent("speech-ended", "");
+                }
                 @Override public void onError(int error) {
+                    if (generation != recognitionGeneration) return;
                     String name = error == SpeechRecognizer.ERROR_NO_MATCH || error == SpeechRecognizer.ERROR_SPEECH_TIMEOUT
                         ? "no-speech" : error == SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS
                         ? "not-allowed" : "recognition-error-" + error;
@@ -310,12 +323,14 @@ public class MainActivity extends BridgeActivity {
                     sendVoiceEvent("end", "");
                 }
                 @Override public void onResults(Bundle results) {
+                    if (generation != recognitionGeneration) return;
                     ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) sendVoiceEvent("result", matches.get(0));
                     else sendVoiceEvent("error", "no-speech");
                     sendVoiceEvent("end", "");
                 }
                 @Override public void onPartialResults(Bundle partialResults) {
+                    if (generation != recognitionGeneration) return;
                     ArrayList<String> matches = partialResults.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
                     if (matches != null && !matches.isEmpty()) sendVoiceEvent("partial", matches.get(0));
                 }
@@ -331,7 +346,12 @@ public class MainActivity extends BridgeActivity {
 
     private void stopNativeListening() {
         runOnUiThread(() -> {
-            if (speechRecognizer != null) speechRecognizer.stopListening();
+            recognitionGeneration += 1;
+            if (speechRecognizer != null) {
+                try { speechRecognizer.cancel(); } catch (Exception ignored) {}
+                try { speechRecognizer.destroy(); } catch (Exception ignored) {}
+                speechRecognizer = null;
+            }
         });
     }
 
