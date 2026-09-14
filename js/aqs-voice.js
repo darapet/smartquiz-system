@@ -32,18 +32,39 @@
   var hasNativeSR = typeof NativeSR === 'function';
   var androidVoice = window.AqsNativeVoice || null;
   var hasAndroidRecognition = !!(androidVoice && typeof androidVoice.startListening === 'function');
+  var isAndroidApp = false;
+  try {
+    var cap = window.Capacitor;
+    isAndroidApp = !!(
+      cap &&
+      typeof cap.isNativePlatform === 'function' &&
+      cap.isNativePlatform() &&
+      (!cap.getPlatform || cap.getPlatform() === 'android')
+    );
+  } catch (e) {}
+  /* Older Capacitor builds may not expose isNativePlatform(). The injected
+     bridge is Android-only, so it is a safe second signal for this app. */
+  if (!isAndroidApp && androidVoice && /Android/i.test(navigator.userAgent || '')) {
+    isAndroidApp = true;
+  }
   var nativeRecognition = null;
   var nativeSpeechCallbacks = {};
+  var nativeTtsBypassed = false;
+
+  function nativeAndroidAudioAvailable() {
+    androidVoice = window.AqsNativeVoice || androidVoice;
+    return !!(androidVoice && typeof androidVoice.playAudioUrl === 'function');
+  }
 
   window.addEventListener('aqs-native-voice', function (event) {
     var detail = (event && event.detail) || {};
-    if (/^speech-/.test(detail.type || '')) {
+    if (/^(speech|audio)-/.test(detail.type || '')) {
       var cb = nativeSpeechCallbacks[detail.value];
       if (cb) {
-        if (detail.type === 'speech-start' && cb.onstart) cb.onstart({});
-        if (detail.type === 'speech-end' && cb.onend) cb.onend({});
-        if (detail.type === 'speech-error' && cb.onerror) cb.onerror({ error: 'native-tts-error' });
-        if (detail.type === 'speech-end' || detail.type === 'speech-error') delete nativeSpeechCallbacks[detail.value];
+        if ((detail.type === 'speech-start' || detail.type === 'audio-start') && cb.onstart) cb.onstart({});
+        if ((detail.type === 'speech-end' || detail.type === 'audio-end') && cb.onend) cb.onend({});
+        if ((detail.type === 'speech-error' || detail.type === 'audio-error') && cb.onerror) cb.onerror({ error: 'native-audio-error' });
+        if (/-(end|error)$/.test(detail.type)) delete nativeSpeechCallbacks[detail.value];
       }
       return;
     }
@@ -355,7 +376,19 @@
   var currentAudio = null;
 
   function nativeTtsUsable() {
+    /* The JavaScript bridge can be injected after this file is evaluated. */
+    androidVoice = window.AqsNativeVoice || androidVoice;
     if (!androidVoice || typeof androidVoice.speak !== 'function') return false;
+    /* Android WebView can report TextToSpeech.onStart while the engine sends
+       no audible samples to the speaker. The native MediaPlayer route below
+       is more reliable for cloud audio, so prefer it for this APK. */
+    if (isAndroidApp || nativeAndroidAudioAvailable()) {
+      if (!nativeTtsBypassed) {
+        nativeTtsBypassed = true;
+        log('Android native TTS bypassed; using cloud audio playback');
+      }
+      return false;
+    }
     try {
       if (typeof androidVoice.isTtsReady === 'function') return !!androidVoice.isTtsReady();
     } catch (e) {}
@@ -365,12 +398,38 @@
   /* Play a WAV/MP3 ArrayBuffer through the speaker. */
   function playBuffer(buf, opts) {
     opts = opts || {};
+    var blob = new Blob([buf], { type: opts.mime || 'audio/wav' });
+    stopSpeaking();
+
+    /* Android WebView can resolve HTMLMediaElement.play() while emitting no
+       sound for blob URLs. Use the shared WebAudio player when available. */
+    if (typeof window.aqsPlayAudioBlob === 'function') {
+      var playback = {
+        pause: function () {
+          try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
+          if (currentAudio === playback) currentAudio = null;
+        },
+        play: function () {}
+      };
+      currentAudio = playback;
+      if (opts.onstart) { try { opts.onstart(); } catch (e) {} }
+      window.aqsPlayAudioBlob(blob, function () {
+        if (currentAudio !== playback) return;
+        currentAudio = null;
+        if (opts.onend) opts.onend();
+      }, function (err) {
+        if (currentAudio !== playback) return;
+        currentAudio = null;
+        if (opts.onerror) opts.onerror(err);
+      });
+      return playback;
+    }
+
     try {
-      var url = URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+      var url = URL.createObjectURL(blob);
       var a = new Audio(url);
       a.setAttribute('playsinline', '');
       a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
-      stopSpeaking();
       currentAudio = a;
       a.onended = function () { try { URL.revokeObjectURL(url); } catch (e) {} if (opts.onend) opts.onend(); };
       a.onerror = function (e) { if (opts.onerror) opts.onerror(e); };
@@ -388,7 +447,8 @@
   function speakRemote(text, opts) {
     opts = opts || {};
     try {
-      if (window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
+      if (!nativeAndroidAudioAvailable() && !isAndroidApp &&
+          window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
           window.geminiTTS.hasKeys && window.geminiTTS.hasKeys()) {
         var gv = /male|onyx|echo|man|david|daniel|puck/i.test(opts.voice || '') ? 'Puck' : 'Kore';
         window.geminiTTS.synth(String(text).slice(0, 4000), gv, '')
@@ -402,6 +462,7 @@
 
   function speakOnline(text, opts) {
     opts = opts || {};
+    androidVoice = window.AqsNativeVoice || androidVoice;
     if (nativeTtsUsable()) {
       stopSpeaking();
       var id = 'aqs-' + Date.now() + '-' + Math.random().toString(36).slice(2);
@@ -443,6 +504,80 @@
     var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
               '?model=openai-audio&voice=' + encodeURIComponent(voice);
     stopSpeaking();
+
+    /* Android WebView can silently fail to output fetched/decoded audio.
+       Let the native media stack stream this HTTPS URL directly instead. */
+    if (nativeAndroidAudioAvailable()) {
+      var id = 'aqs-audio-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      var playback = {
+        pause: function () {
+          try { if (androidVoice.stopSpeaking) androidVoice.stopSpeaking(); } catch (e) {}
+          if (currentAudio === playback) currentAudio = null;
+        },
+        play: function () {}
+      };
+      currentAudio = playback;
+      nativeSpeechCallbacks[id] = {
+        onstart: function () { if (opts.onstart) opts.onstart(); },
+        onend: function () {
+          if (currentAudio !== playback) return;
+          currentAudio = null;
+          if (opts.onend) opts.onend();
+        },
+        onerror: function (err) {
+          if (currentAudio !== playback) return;
+          currentAudio = null;
+          if (opts.onerror) opts.onerror(err);
+        }
+      };
+      try {
+        androidVoice.playAudioUrl(url, id);
+        return playback;
+      } catch (e) {
+        delete nativeSpeechCallbacks[id];
+        currentAudio = null;
+        log('native cloud audio failed, using WebView audio', e);
+      }
+    }
+
+    /* Fetch remote audio and decode it through the shared AudioContext when
+       available. This avoids the WebView blob/HTMLMediaElement path that can
+       be silent even when play() resolves successfully. */
+    if (typeof window.aqsPlayAudioBlob === 'function') {
+      var webPlayback = {
+        pause: function () {
+          try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
+          if (currentAudio === webPlayback) currentAudio = null;
+        },
+        play: function () {}
+      };
+      currentAudio = webPlayback;
+      if (opts.onstart) { try { opts.onstart(); } catch (e) {} }
+      fetch(url)
+        .then(function (r) {
+          if (!r.ok) throw new Error('TTS audio request failed (' + r.status + ')');
+          return r.blob();
+        })
+        .then(function (blob) {
+          if (currentAudio !== webPlayback) return;
+          window.aqsPlayAudioBlob(blob, function () {
+            if (currentAudio !== webPlayback) return;
+            currentAudio = null;
+            if (opts.onend) opts.onend();
+          }, function (err) {
+            if (currentAudio !== webPlayback) return;
+            currentAudio = null;
+            if (opts.onerror) opts.onerror(err);
+          });
+        })
+        .catch(function (err) {
+          if (currentAudio !== webPlayback) return;
+          currentAudio = null;
+          if (opts.onerror) opts.onerror(err);
+        });
+      return webPlayback;
+    }
+
     var a = new Audio(url);
     a.setAttribute('playsinline', '');
     a.playbackRate = Math.max(0.5, Math.min(2, opts.rate || 1));
@@ -456,7 +591,9 @@
   }
 
   function stopSpeaking() {
+    androidVoice = window.AqsNativeVoice || androidVoice;
     try { if (androidVoice && typeof androidVoice.stopSpeaking === 'function') androidVoice.stopSpeaking(); } catch (e) {}
+    try { if (window.aqsStopCurrentAudio) window.aqsStopCurrentAudio(); } catch (e) {}
     nativeSpeechCallbacks = {};
     try { if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; } } catch (e) {}
     try { if (window.speechSynthesis) window.speechSynthesis.cancel(); } catch (e) {}
@@ -468,6 +605,7 @@
     if (synth && typeof synth.speak === 'function') {
       var origSpeak = synth.speak.bind(synth);
       synth.speak = function (utt) {
+        androidVoice = window.AqsNativeVoice || androidVoice;
         if (androidVoice && typeof androidVoice.speak === 'function') {
           var nativeName = (utt && utt.voice && utt.voice.name) || '';
           return speakOnline((utt && utt.text) || '', {

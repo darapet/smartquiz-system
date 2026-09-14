@@ -61,6 +61,53 @@
         return _micInflight;
     };
 
+    /* Expose the shared WebAudio player for cloud speech and generated audio. */
+    var _currentAudioSource = null;
+    window.aqsStopCurrentAudio = function () {
+        if (_currentAudioSource) {
+            try { _currentAudioSource.onended = null; _currentAudioSource.stop(0); } catch (e) {}
+            try { _currentAudioSource.disconnect(); } catch (e) {}
+            _currentAudioSource = null;
+        }
+    };
+    window.aqsPlayAudioBlob = function (blob, onEnded, onError) {
+        var ctx = getSharedAudioCtx();
+        if (!ctx || !blob) {
+            if (onError) onError(new Error('Audio playback is unavailable.'));
+            return;
+        }
+        window.aqsStopCurrentAudio();
+        try {
+            var read = blob.arrayBuffer ? blob.arrayBuffer() : Promise.reject(new Error('Audio data cannot be read.'));
+            read.then(function (arrayBuffer) {
+                var decoded = function (audioBuffer) {
+                    try {
+                        if (ctx.state === 'suspended' && ctx.resume) ctx.resume().catch(function () {});
+                        var source = ctx.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(ctx.destination);
+                        _currentAudioSource = source;
+                        source.onended = function () {
+                            if (_currentAudioSource === source) _currentAudioSource = null;
+                            try { source.disconnect(); } catch (e) {}
+                            if (onEnded) onEnded();
+                        };
+                        source.start(0);
+                    } catch (e) {
+                        if (onError) onError(e);
+                    }
+                };
+                var failed = function (err) {
+                    if (onError) onError(err || new Error('Audio decoding failed.'));
+                };
+                var result = ctx.decodeAudioData(arrayBuffer, decoded, failed);
+                if (result && typeof result.catch === 'function') result.catch(failed);
+            }).catch(function (e) { if (onError) onError(e); });
+        } catch (e) {
+            if (onError) onError(e);
+        }
+    };
+
     /* ── Unlock audio on first user gesture ───────────────────────────── */
     function unlockAll() {
         if (_audioUnlocked) return;

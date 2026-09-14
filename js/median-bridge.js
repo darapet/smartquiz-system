@@ -35,6 +35,63 @@
 
     /* Expose globally so challenge.js / tts.js can reuse the same context */
     window.AQSGetAudioCtx = getSharedAudioCtx;
+    var _currentAudioSource = null;
+
+    /* Play downloaded speech through Web Audio. Android WebView can resolve
+       HTMLAudioElement.play() without producing speaker output, while the
+       shared AudioContext is reliable after unlockAll() has run. */
+    window.aqsStopCurrentAudio = function () {
+        if (_currentAudioSource) {
+            try { _currentAudioSource.onended = null; _currentAudioSource.stop(0); } catch (e) {}
+            try { _currentAudioSource.disconnect(); } catch (e) {}
+            _currentAudioSource = null;
+        }
+    };
+
+    window.aqsPlayAudioBlob = function (blob, onEnded, onError) {
+        var ctx = getSharedAudioCtx();
+        if (!ctx || !blob) {
+            if (onError) onError(new Error('Audio playback is unavailable.'));
+            return;
+        }
+        window.aqsStopCurrentAudio();
+        var start = function (arrayBuffer) {
+            try {
+                var decoded = function (audioBuffer) {
+                    try {
+                        if (ctx.state === 'suspended' && ctx.resume) {
+                            ctx.resume().catch(function () {});
+                        }
+                        var source = ctx.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(ctx.destination);
+                        _currentAudioSource = source;
+                        source.onended = function () {
+                            if (_currentAudioSource === source) _currentAudioSource = null;
+                            try { source.disconnect(); } catch (e) {}
+                            if (onEnded) onEnded();
+                        };
+                        source.start(0);
+                    } catch (e) {
+                        if (onError) onError(e);
+                    }
+                };
+                var failed = function (err) {
+                    if (onError) onError(err || new Error('Audio decoding failed.'));
+                };
+                var result = ctx.decodeAudioData(arrayBuffer, decoded, failed);
+                if (result && typeof result.catch === 'function') result.catch(failed);
+            } catch (e) {
+                if (onError) onError(e);
+            }
+        };
+        try {
+            var read = blob.arrayBuffer ? blob.arrayBuffer() : Promise.reject(new Error('Audio data cannot be read.'));
+            read.then(start).catch(function (e) { if (onError) onError(e); });
+        } catch (e) {
+            if (onError) onError(e);
+        }
+    };
 
     /* ── Unlock audio + microphone on first user gesture ──────────────── */
     function unlockAll() {
