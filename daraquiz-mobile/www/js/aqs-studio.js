@@ -14,6 +14,9 @@
     var voiceAiTalking     = false;
     var voiceRecognition   = null;
     var voiceActive        = false;
+    var voiceSessionId     = 0;
+    var voiceOperationId   = 0;
+    var voiceRestartTimer  = null;
     var chatHistory        = [];
     var conversationId     = null;
     var attachedFileText   = null;
@@ -1145,17 +1148,25 @@
     function openVoiceModal() {
         var overlay = document.getElementById('dts-voice-overlay');
         if (overlay) overlay.style.display = 'flex';
+        voiceSessionId += 1;
+        voiceOperationId += 1;
+        clearTimeout(voiceRestartTimer);
+        voiceRestartTimer = null;
         setVoiceState('idle');
         voiceActive = true;
     }
 
     function closeVoiceModal() {
+        voiceActive = false;
+        voiceSessionId += 1;
+        voiceOperationId += 1;
+        clearTimeout(voiceRestartTimer);
+        voiceRestartTimer = null;
         stopVoiceListening();
         stopAiSpeech();
         var overlay = document.getElementById('dts-voice-overlay');
         if (overlay) overlay.style.display = 'none';
         setVoiceState('closed');
-        voiceActive = false;
     }
 
     function stopVoiceListening() {
@@ -1166,26 +1177,41 @@
     }
 
     function stopAiSpeech() {
+        voiceOperationId += 1;
         voiceAiTalking = false;
         if (currentStudioAudio) {
             try { currentStudioAudio.pause(); } catch (e) {}
             currentStudioAudio = null;
+        }
+        if (window.AQSVoice && typeof window.AQSVoice.stop === 'function') {
+            try { window.AQSVoice.stop(); } catch (e) {}
         }
         if (typeof window.speechSynthesis !== 'undefined') {
             window.speechSynthesis.cancel();
         }
     }
 
+    function scheduleVoiceRestart(sessionId, delay) {
+        clearTimeout(voiceRestartTimer);
+        voiceRestartTimer = setTimeout(function () {
+            voiceRestartTimer = null;
+            if (voiceActive && sessionId === voiceSessionId &&
+                !voiceAiTalking && !voiceRecognition) {
+                startVoiceListening();
+            }
+        }, delay || 450);
+    }
+
     function startVoiceListening() {
         /* Guard: never start mic while AI is speaking — prevents echo */
-        if (voiceAiTalking) return;
+        if (!voiceActive || voiceAiTalking || voiceRecognition) return;
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
             setVoiceState('error');
             setVoiceTranscript('Speech recognition is not supported in this browser. Try Chrome or Edge.');
             return;
         }
-        stopVoiceListening();
+        var sessionId = voiceSessionId;
         var rec = new SR();
         rec.continuous     = false;
         rec.interimResults = true;
@@ -1194,39 +1220,62 @@
         setVoiceState('listening');
         setVoiceTranscript('Listening\u2026');
 
+        function isCurrentRecognition() {
+            return voiceActive && sessionId === voiceSessionId && voiceRecognition === rec;
+        }
+
         rec.onresult = function (e) {
+            if (!isCurrentRecognition()) return;
             var transcript = '';
             for (var i = e.resultIndex; i < e.results.length; i++) {
                 transcript += e.results[i][0].transcript;
             }
             setVoiceTranscript(transcript);
             if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
-                rec.stop();
+                try { rec.stop(); } catch (err) {}
+                voiceRecognition = null;
                 setVoiceState('thinking');
-                handleVoiceInput(transcript.trim());
+                handleVoiceInput(transcript.trim(), sessionId);
             }
         };
 
         rec.onerror = function (e) {
+            if (!isCurrentRecognition()) return;
+            voiceRecognition = null;
+            if (e && e.error === 'aborted') return;
             setVoiceState('error');
             setVoiceTranscript('Mic error: ' + (e.error || 'unknown'));
         };
 
+        rec.onend = function () {
+            if (voiceRecognition !== rec) return;
+            voiceRecognition = null;
+            if (voiceActive && !voiceAiTalking) {
+                var orb = document.getElementById('dts-voice-orb');
+                if (orb && orb.dataset.state === 'listening') setVoiceState('idle');
+            }
+        };
+
         setTimeout(function () {
+            if (!isCurrentRecognition()) return;
             try { rec.start(); } catch (e) {
+                if (!isCurrentRecognition()) return;
+                voiceRecognition = null;
                 setVoiceState('error');
                 setVoiceTranscript('Could not access microphone: ' + e.message);
             }
         }, 120);
     }
 
-    async function handleVoiceInput(text) {
+    async function handleVoiceInput(text, sessionId) {
+        if (!voiceActive || sessionId !== voiceSessionId) return;
         chatHistory.push({ role: 'user', content: text });
         appendMessage('user', text);
         showTyping(true, 'XZILY AI is thinking\u2026');
 
         if (typeof window.groqFetch !== 'function') {
             showTyping(false);
+            if (!voiceActive || sessionId !== voiceSessionId) return;
             setVoiceState('error');
             setVoiceTranscript('API not available.');
             return;
@@ -1255,6 +1304,7 @@
         window.groqFetch({
             model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
         }).then(function (r) { return r.json(); }).then(function (data) {
+            if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);
             if (data.error || !data.choices) {
                 setVoiceState('idle');
@@ -1275,15 +1325,14 @@
                 .slice(0, 600);
 
             voiceAiTalking = true;
+            var speechOperationId = ++voiceOperationId;
             speakStudioChunked(spoken, function () {
+                if (!voiceActive || sessionId !== voiceSessionId ||
+                    speechOperationId !== voiceOperationId) return;
                 voiceAiTalking = false;
-                if (voiceActive) {
-                    setVoiceState('idle');
-                    /* Auto-restart mic after AI finishes — continuous conversation loop, no echo */
-                    setTimeout(function () {
-                        if (voiceActive && !voiceAiTalking) startVoiceListening();
-                    }, 450);
-                }
+                setVoiceState('idle');
+                /* One guarded restart only — never stack retries after an interrupt. */
+                scheduleVoiceRestart(sessionId, 450);
             }, function () {
                 /* Do not show "speaking" while the first Gemini chunk is
                    still being generated. Change state immediately before
@@ -1292,6 +1341,7 @@
                 setVoiceTranscript('');
             });
         }).catch(function () {
+            if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);
             setVoiceState('error');
             setVoiceTranscript('Connection error.');
@@ -1646,7 +1696,7 @@
                     stopAiSpeech();
                     setVoiceState('idle');
                     /* Interrupt: mic turns back on so user can continue immediately */
-                    setTimeout(function () { if (voiceActive) startVoiceListening(); }, 300);
+                    scheduleVoiceRestart(voiceSessionId, 300);
                 }
             });
         }
