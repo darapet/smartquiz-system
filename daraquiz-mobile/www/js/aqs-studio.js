@@ -1374,9 +1374,20 @@
 
         /* Android must not use blob URLs with HTMLAudioElement. Route each
            chunk through the shared voice layer, which uses native MediaPlayer
-           for the packaged app and reports completion consistently. */
-        if (window.AQSVoice && window.AQSVoice.usingAndroidNative &&
-            typeof window.AQSVoice.speak === 'function') {
+           for the packaged app and reports completion consistently.
+
+           Check the bridge at playback time. It can be injected after the
+           voice layer has initialised, so the startup-only
+           AQSVoice.usingAndroidNative flag is not reliable here. */
+        var nativeAndroidApp = !!(
+            window.AqsNativeVoice ||
+            (window.Capacitor &&
+             typeof window.Capacitor.isNativePlatform === 'function' &&
+             window.Capacitor.isNativePlatform() &&
+             (!window.Capacitor.getPlatform || window.Capacitor.getPlatform() === 'android'))
+        );
+        if (window.AQSVoice && typeof window.AQSVoice.speak === 'function' &&
+            (window.AQSVoice.usingAndroidNative || nativeAndroidApp)) {
             function playNativeNext() {
                 if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
                 var chunk = chunks[idx++];
