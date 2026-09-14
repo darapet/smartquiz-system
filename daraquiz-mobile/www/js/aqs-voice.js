@@ -51,6 +51,11 @@
   var nativeSpeechCallbacks = {};
   var nativeTtsBypassed = false;
 
+  function nativeAndroidAudioAvailable() {
+    androidVoice = window.AqsNativeVoice || androidVoice;
+    return !!(androidVoice && typeof androidVoice.playAudioUrl === 'function');
+  }
+
   window.addEventListener('aqs-native-voice', function (event) {
     var detail = (event && event.detail) || {};
     if (/^(speech|audio)-/.test(detail.type || '')) {
@@ -379,7 +384,7 @@
        route that works in the web app and is decoded through AudioContext on
        Android, so prefer it for this APK instead of allowing silent native
        TTS to mask the fallback. */
-    if (isAndroidApp) {
+    if (isAndroidApp || nativeAndroidAudioAvailable()) {
       if (!nativeTtsBypassed) {
         nativeTtsBypassed = true;
         log('Android native TTS bypassed; using cloud audio playback');
@@ -444,7 +449,8 @@
   function speakRemote(text, opts) {
     opts = opts || {};
     try {
-      if (!isAndroidApp && window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
+      if (!nativeAndroidAudioAvailable() && !isAndroidApp &&
+          window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
           window.geminiTTS.hasKeys && window.geminiTTS.hasKeys()) {
         var gv = /male|onyx|echo|man|david|daniel|puck/i.test(opts.voice || '') ? 'Puck' : 'Kore';
         window.geminiTTS.synth(String(text).slice(0, 4000), gv, '')
@@ -503,7 +509,7 @@
 
     /* Android WebView can silently fail to output fetched/decoded audio.
        Let the native media stack stream this HTTPS URL directly instead. */
-    if (isAndroidApp && androidVoice && typeof androidVoice.playAudioUrl === 'function') {
+    if (nativeAndroidAudioAvailable()) {
       var id = 'aqs-audio-' + Date.now() + '-' + Math.random().toString(36).slice(2);
       var playback = {
         pause: function () {
