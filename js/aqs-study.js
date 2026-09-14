@@ -1114,6 +1114,16 @@ function _summonPlayDemoVoice(idx, text, onDone) {
         var voices = VS._demoVoices || POLL_VOICES;
         var v = voices[idx] || voices[0];
         var voiceId = (v && v.id) ? v.id : 'alloy';
+        if (window.AQSVoice && typeof window.AQSVoice.speak === 'function') {
+            VS.speaking = true;
+            window.AQSVoice.speak(text.slice(0, 200), {
+                voice: voiceId,
+                rate: 1.05,
+                onend: function () { VS.speaking = false; if (onDone) onDone(); },
+                onerror: function () { VS.speaking = false; if (onDone) onDone(); }
+            });
+            return;
+        }
         VS.speaking = true;
         var chunk = text.slice(0, 200);
         var url = 'https://audio.pollinations.ai/' + encodeURIComponent(chunk) +
@@ -1769,6 +1779,19 @@ function _summonPollTTS(text, onDone) {
               '?model=openai-audio&voice=' + voiceId + '&seed=42';
 
     VS.speaking = true;
+
+    /* Use the shared Android MediaPlayer/WebAudio route instead of this
+       page's older direct AudioContext implementation. */
+    if (_IS_MOBILE_APP && window.AQSVoice &&
+        typeof window.AQSVoice.speak === 'function') {
+        window.AQSVoice.speak(chunk, {
+            voice: voiceId,
+            rate: 1.05,
+            onend: function () { VS.speaking = false; if (onDone) onDone(); },
+            onerror: function () { VS.speaking = false; if (onDone) onDone(); }
+        });
+        return;
+    }
 
     var ctx = window._aqsAudioCtx;
 
@@ -2548,6 +2571,17 @@ function stdVoiceSpeak(text) {
         VP._currentAudio = null;
         if (stopBtn) stopBtn.style.display = 'none';
     };
+
+    if (_IS_MOBILE_APP && window.AQSVoice &&
+        typeof window.AQSVoice.speak === 'function') {
+        VP._currentAudio = window.AQSVoice.speak(text.slice(0, 900), {
+            voice: 'nova',
+            rate: 1.0,
+            onend: onDone,
+            onerror: onDone
+        });
+        return;
+    }
 
     /* AudioContext path — bypasses Android autoplay block */
     var ctx = window._aqsAudioCtx;

@@ -1372,6 +1372,31 @@
             if (onDone) onDone();
         }
 
+        /* Android must not use blob URLs with HTMLAudioElement. Route each
+           chunk through the shared voice layer, which uses native MediaPlayer
+           for the packaged app and reports completion consistently. */
+        if (window.AQSVoice && window.AQSVoice.usingAndroidNative &&
+            typeof window.AQSVoice.speak === 'function') {
+            function playNativeNext() {
+                if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
+                var chunk = chunks[idx++];
+                currentStudioAudio = window.AQSVoice.speak(chunk, {
+                    voice: 'onyx',
+                    rate: 1.0,
+                    onend: function () {
+                        currentStudioAudio = null;
+                        playNativeNext();
+                    },
+                    onerror: function () {
+                        currentStudioAudio = null;
+                        playNativeNext();
+                    }
+                });
+            }
+            playNativeNext();
+            return;
+        }
+
         function fallbackRemaining() {
             if (!voiceAiTalking) { finish(); return; }
             var remaining = chunks.slice(idx - 1).join(' ');
