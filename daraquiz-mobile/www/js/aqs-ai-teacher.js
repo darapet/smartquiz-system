@@ -132,6 +132,18 @@ function nextChunk(){
   u.rate = T.rate; u.pitch = 1; u.volume = 1;
   u.onend = function(){ if(T.speaking && !T.paused) nextChunk(); };
   u.onerror = function(){ if(T.speaking && !T.paused) nextChunk(); };
+  /* Do not let Android WebView choose Chrome/system speech synthesis.
+     AQSVoice owns the native cloud-audio route in the Capacitor app. */
+  if(window.AQSVoice && window.AQSVoice.usingAndroidNative &&
+     typeof window.AQSVoice.speak === 'function'){
+    window.AQSVoice.speak(u.text, {
+      voice: (v && v.name) || '',
+      rate: T.rate,
+      onend: u.onend,
+      onerror: u.onerror
+    });
+    return;
+  }
   try{ speechSynthesis.resume(); speechSynthesis.speak(u); }catch(e){}
 }
 /* strip markup/latex noise so the voice reads naturally */
