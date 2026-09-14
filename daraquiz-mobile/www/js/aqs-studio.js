@@ -14,6 +14,7 @@
     var voiceAiTalking     = false;
     var voiceRecognition   = null;
     var voiceActive        = false;
+    var voiceMicLocked     = false;
     var voiceSessionId     = 0;
     var voiceOperationId   = 0;
     var voiceRestartTimer  = null;
@@ -1150,6 +1151,7 @@
         if (overlay) overlay.style.display = 'flex';
         voiceSessionId += 1;
         voiceOperationId += 1;
+        voiceMicLocked = false;
         clearTimeout(voiceRestartTimer);
         voiceRestartTimer = null;
         setVoiceState('idle');
@@ -1158,6 +1160,7 @@
 
     function closeVoiceModal() {
         voiceActive = false;
+        voiceMicLocked = true;
         voiceSessionId += 1;
         voiceOperationId += 1;
         clearTimeout(voiceRestartTimer);
@@ -1170,14 +1173,18 @@
     }
 
     function stopVoiceListening() {
-        if (voiceRecognition) {
-            try { voiceRecognition.abort(); } catch (e) {}
-            voiceRecognition = null;
+        /* Invalidate before aborting: browsers can dispatch a late callback
+           during abort, and stale callbacks must not reopen the microphone. */
+        var activeRecognition = voiceRecognition;
+        voiceRecognition = null;
+        if (activeRecognition) {
+            try { activeRecognition.abort(); } catch (e) {}
         }
     }
 
     function stopAiSpeech() {
         voiceOperationId += 1;
+        stopVoiceListening();
         voiceAiTalking = false;
         if (currentStudioAudio) {
             try { currentStudioAudio.pause(); } catch (e) {}
@@ -1196,15 +1203,16 @@
         voiceRestartTimer = setTimeout(function () {
             voiceRestartTimer = null;
             if (voiceActive && sessionId === voiceSessionId &&
-                !voiceAiTalking && !voiceRecognition) {
+                !voiceMicLocked && !voiceAiTalking && !voiceRecognition) {
                 startVoiceListening();
             }
         }, delay || 450);
     }
 
     function startVoiceListening() {
-        /* Guard: never start mic while AI is speaking — prevents echo */
-        if (!voiceActive || voiceAiTalking || voiceRecognition) return;
+        /* Hard lock: do not reopen while thinking, speaking, or while a
+           previous recognition instance is still unwinding. */
+        if (!voiceActive || voiceMicLocked || voiceAiTalking || voiceRecognition) return;
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
             setVoiceState('error');
@@ -1232,8 +1240,8 @@
             }
             setVoiceTranscript(transcript);
             if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
-                try { rec.stop(); } catch (err) {}
-                voiceRecognition = null;
+                /* Stop recognition before the AI request and playback start. */
+                stopVoiceListening();
                 setVoiceState('thinking');
                 handleVoiceInput(transcript.trim(), sessionId);
             }
@@ -1250,7 +1258,7 @@
         rec.onend = function () {
             if (voiceRecognition !== rec) return;
             voiceRecognition = null;
-            if (voiceActive && !voiceAiTalking) {
+            if (voiceActive && !voiceMicLocked && !voiceAiTalking) {
                 var orb = document.getElementById('dts-voice-orb');
                 if (orb && orb.dataset.state === 'listening') setVoiceState('idle');
             }
@@ -1269,6 +1277,10 @@
 
     async function handleVoiceInput(text, sessionId) {
         if (!voiceActive || sessionId !== voiceSessionId) return;
+        voiceMicLocked = true;
+        clearTimeout(voiceRestartTimer);
+        voiceRestartTimer = null;
+        stopVoiceListening();
         chatHistory.push({ role: 'user', content: text });
         appendMessage('user', text);
         showTyping(true, 'XZILY AI is thinking\u2026');
@@ -1276,6 +1288,7 @@
         if (typeof window.groqFetch !== 'function') {
             showTyping(false);
             if (!voiceActive || sessionId !== voiceSessionId) return;
+            voiceMicLocked = false;
             setVoiceState('error');
             setVoiceTranscript('API not available.');
             return;
@@ -1307,6 +1320,7 @@
             if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);
             if (data.error || !data.choices) {
+                voiceMicLocked = false;
                 setVoiceState('idle');
                 setVoiceTranscript('Could not get response.');
                 return;
@@ -1325,11 +1339,16 @@
                 .slice(0, 600);
 
             voiceAiTalking = true;
+            voiceMicLocked = true;
+            clearTimeout(voiceRestartTimer);
+            voiceRestartTimer = null;
+            stopVoiceListening();
             var speechOperationId = ++voiceOperationId;
             speakStudioChunked(spoken, function () {
                 if (!voiceActive || sessionId !== voiceSessionId ||
                     speechOperationId !== voiceOperationId) return;
                 voiceAiTalking = false;
+                voiceMicLocked = false;
                 setVoiceState('idle');
                 /* One guarded restart only — never stack retries after an interrupt. */
                 scheduleVoiceRestart(sessionId, 450);
@@ -1343,6 +1362,7 @@
         }).catch(function () {
             if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);
+            voiceMicLocked = false;
             setVoiceState('error');
             setVoiceTranscript('Connection error.');
         });
@@ -1694,6 +1714,7 @@
                     setVoiceState('idle');
                 } else if (state === 'speaking') {
                     stopAiSpeech();
+                    voiceMicLocked = false;
                     setVoiceState('idle');
                     /* Interrupt: mic turns back on so user can continue immediately */
                     scheduleVoiceRestart(voiceSessionId, 300);
