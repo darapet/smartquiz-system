@@ -14,6 +14,7 @@ import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.media.AudioAttributes;
 import android.media.AudioManager;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -48,6 +49,7 @@ public class MainActivity extends BridgeActivity {
     private DownloadManager downloadManager;
     private SpeechRecognizer speechRecognizer;
     private TextToSpeech textToSpeech;
+    private MediaPlayer nativeAudioPlayer;
     private boolean ttsReady = false;
     private String pendingSpeechText;
     private float pendingSpeechRate = 1.0f;
@@ -351,10 +353,66 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    private void playNativeAudioUrl(String url, String audioId) {
+        runOnUiThread(() -> {
+            stopNativeAudio();
+            if (url == null || url.trim().isEmpty()) {
+                sendVoiceEvent("audio-error", audioId);
+                return;
+            }
+            try {
+                MediaPlayer player = new MediaPlayer();
+                nativeAudioPlayer = player;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    player.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                        .build());
+                } else {
+                    player.setAudioStreamType(AudioManager.STREAM_MUSIC);
+                }
+                player.setDataSource(url);
+                player.setOnPreparedListener(mp -> {
+                    if (nativeAudioPlayer != mp) return;
+                    mp.start();
+                    sendVoiceEvent("audio-start", audioId);
+                });
+                player.setOnCompletionListener(mp -> {
+                    if (nativeAudioPlayer == mp) {
+                        nativeAudioPlayer = null;
+                        mp.release();
+                    }
+                    sendVoiceEvent("audio-end", audioId);
+                });
+                player.setOnErrorListener((mp, what, extra) -> {
+                    if (nativeAudioPlayer == mp) {
+                        nativeAudioPlayer = null;
+                        mp.release();
+                    }
+                    sendVoiceEvent("audio-error", audioId);
+                    return true;
+                });
+                player.prepareAsync();
+            } catch (Exception e) {
+                stopNativeAudio();
+                sendVoiceEvent("audio-error", audioId);
+            }
+        });
+    }
+
+    private void stopNativeAudio() {
+        if (nativeAudioPlayer != null) {
+            try { nativeAudioPlayer.stop(); } catch (Exception ignored) {}
+            try { nativeAudioPlayer.release(); } catch (Exception ignored) {}
+            nativeAudioPlayer = null;
+        }
+    }
+
     @Override
     public void onDestroy() {
         if (speechRecognizer != null) speechRecognizer.destroy();
         if (textToSpeech != null) { textToSpeech.stop(); textToSpeech.shutdown(); }
+        stopNativeAudio();
         super.onDestroy();
     }
 
@@ -441,7 +499,13 @@ public class MainActivity extends BridgeActivity {
             speakNative(text, rate, pitch, utteranceId);
         }
         @JavascriptInterface public void stopSpeaking() {
-            runOnUiThread(() -> { if (textToSpeech != null) textToSpeech.stop(); });
+            runOnUiThread(() -> {
+                if (textToSpeech != null) textToSpeech.stop();
+                stopNativeAudio();
+            });
+        }
+        @JavascriptInterface public void playAudioUrl(String url, String audioId) {
+            playNativeAudioUrl(url, audioId);
         }
         @JavascriptInterface public void openSettings() { runOnUiThread(() -> openAppSettings()); }
     }

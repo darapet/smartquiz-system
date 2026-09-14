@@ -53,13 +53,13 @@
 
   window.addEventListener('aqs-native-voice', function (event) {
     var detail = (event && event.detail) || {};
-    if (/^speech-/.test(detail.type || '')) {
+    if (/^(speech|audio)-/.test(detail.type || '')) {
       var cb = nativeSpeechCallbacks[detail.value];
       if (cb) {
-        if (detail.type === 'speech-start' && cb.onstart) cb.onstart({});
-        if (detail.type === 'speech-end' && cb.onend) cb.onend({});
-        if (detail.type === 'speech-error' && cb.onerror) cb.onerror({ error: 'native-tts-error' });
-        if (detail.type === 'speech-end' || detail.type === 'speech-error') delete nativeSpeechCallbacks[detail.value];
+        if ((detail.type === 'speech-start' || detail.type === 'audio-start') && cb.onstart) cb.onstart({});
+        if ((detail.type === 'speech-end' || detail.type === 'audio-end') && cb.onend) cb.onend({});
+        if ((detail.type === 'speech-error' || detail.type === 'audio-error') && cb.onerror) cb.onerror({ error: 'native-audio-error' });
+        if (/-(end|error)$/.test(detail.type)) delete nativeSpeechCallbacks[detail.value];
       }
       return;
     }
@@ -444,7 +444,7 @@
   function speakRemote(text, opts) {
     opts = opts || {};
     try {
-      if (window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
+      if (!isAndroidApp && window.geminiTTS && typeof window.geminiTTS.synth === 'function' &&
           window.geminiTTS.hasKeys && window.geminiTTS.hasKeys()) {
         var gv = /male|onyx|echo|man|david|daniel|puck/i.test(opts.voice || '') ? 'Puck' : 'Kore';
         window.geminiTTS.synth(String(text).slice(0, 4000), gv, '')
@@ -500,6 +500,41 @@
     var url = 'https://audio.pollinations.ai/' + encodeURIComponent(String(text).slice(0, 900)) +
               '?model=openai-audio&voice=' + encodeURIComponent(voice);
     stopSpeaking();
+
+    /* Android WebView can silently fail to output fetched/decoded audio.
+       Let the native media stack stream this HTTPS URL directly instead. */
+    if (isAndroidApp && androidVoice && typeof androidVoice.playAudioUrl === 'function') {
+      var id = 'aqs-audio-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+      var playback = {
+        pause: function () {
+          try { if (androidVoice.stopSpeaking) androidVoice.stopSpeaking(); } catch (e) {}
+          if (currentAudio === playback) currentAudio = null;
+        },
+        play: function () {}
+      };
+      currentAudio = playback;
+      nativeSpeechCallbacks[id] = {
+        onstart: function () { if (opts.onstart) opts.onstart(); },
+        onend: function () {
+          if (currentAudio !== playback) return;
+          currentAudio = null;
+          if (opts.onend) opts.onend();
+        },
+        onerror: function (err) {
+          if (currentAudio !== playback) return;
+          currentAudio = null;
+          if (opts.onerror) opts.onerror(err);
+        }
+      };
+      try {
+        androidVoice.playAudioUrl(url, id);
+        return playback;
+      } catch (e) {
+        delete nativeSpeechCallbacks[id];
+        currentAudio = null;
+        log('native cloud audio failed, using WebView audio', e);
+      }
+    }
 
     /* Fetch remote audio and decode it through AudioContext on Android. This
        avoids the WebView blob/HTMLMediaElement path that can be silent even
