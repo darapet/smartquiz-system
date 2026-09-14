@@ -1274,8 +1274,6 @@
                 .trim()
                 .slice(0, 600);
 
-            setVoiceState('speaking');
-            setVoiceTranscript('');
             voiceAiTalking = true;
             speakStudioChunked(spoken, function () {
                 voiceAiTalking = false;
@@ -1286,6 +1284,12 @@
                         if (voiceActive && !voiceAiTalking) startVoiceListening();
                     }, 450);
                 }
+            }, function () {
+                /* Do not show "speaking" while the first Gemini chunk is
+                   still being generated. Change state immediately before
+                   the first real audio starts. */
+                setVoiceState('speaking');
+                setVoiceTranscript('');
             });
         }).catch(function () {
             showTyping(false);
@@ -1389,10 +1393,15 @@
         return audio;
     }
 
-    function speakStudioChunked(spoken, onDone) {
+    function speakStudioChunked(spoken, onDone, onStart) {
         var chunks    = splitSpeechChunks(spoken, 200);
-        var idx       = 0;
         var doneCalled = false;
+        var started = false;
+        var fallbackStarted = false;
+        var nextChunk = 0;
+        var pendingBuffer = null;
+        var synthInFlight = false;
+        var gem = window.geminiTTS;
 
         function finish() {
             if (doneCalled) return; doneCalled = true;
@@ -1401,54 +1410,94 @@
             if (onDone) onDone();
         }
 
-        function playGeminiNext() {
-            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
-            var chunk = chunks[idx++];
-            var gem = window.geminiTTS;
-            if (!gem || typeof gem.synth !== 'function' || !gem.hasKeys()) {
-                speakWithBrowserFallback(spoken, finish);
+        function announceStart() {
+            if (started) return;
+            started = true;
+            if (onStart) onStart();
+        }
+
+        function useBrowserFallback() {
+            if (fallbackStarted) return;
+            fallbackStarted = true;
+            if (!voiceAiTalking) { finish(); return; }
+            if (currentStudioAudio) {
+                try { currentStudioAudio.pause(); } catch (_) {}
+                currentStudioAudio = null;
+            }
+            announceStart();
+            speakWithBrowserFallback(spoken, finish);
+        }
+
+        function playReady() {
+            if (fallbackStarted) return;
+            if (!voiceAiTalking) { finish(); return; }
+            if (!pendingBuffer) {
+                if (!synthInFlight && nextChunk >= chunks.length) finish();
                 return;
             }
 
-            gem.synth(chunk, 'Puck', studioGeminiStyle(idx > 1))
-                .then(function (audioBuffer) {
-                    if (!voiceAiTalking) { finish(); return; }
-
-                    var blob = new Blob([audioBuffer], { type: 'audio/wav' });
-                    var htmlAudio = null;
-                    var playback = {
-                        pause: function () {
-                            try {
-                                if (htmlAudio) {
-                                    htmlAudio.pause();
-                                    htmlAudio.src = '';
-                                } else if (typeof window.aqsStopCurrentAudio === 'function') {
-                                    window.aqsStopCurrentAudio();
-                                }
-                                if (currentStudioAudio === playback) currentStudioAudio = null;
-                            } catch (_) {}
+            var audioBuffer = pendingBuffer;
+            pendingBuffer = null;
+            var blob = new Blob([audioBuffer], { type: 'audio/wav' });
+            var htmlAudio = null;
+            var playback = {
+                pause: function () {
+                    try {
+                        if (htmlAudio) {
+                            htmlAudio.pause();
+                            htmlAudio.src = '';
+                        } else if (typeof window.aqsStopCurrentAudio === 'function') {
+                            window.aqsStopCurrentAudio();
                         }
-                    };
-                    currentStudioAudio = playback;
+                        if (currentStudioAudio === playback) currentStudioAudio = null;
+                    } catch (_) {}
+                }
+            };
+            currentStudioAudio = playback;
+            announceStart();
 
-                    htmlAudio = playStudioTTSBlob(blob, function () {
-                        if (currentStudioAudio === playback) currentStudioAudio = null;
-                        playGeminiNext();
-                    }, function (err) {
-                        if (currentStudioAudio === playback) currentStudioAudio = null;
-                        try { console.warn('[AQS Studio] shared TTS playback failed:', err); } catch (_) {}
-                        if (!voiceAiTalking) { finish(); return; }
-                        speakWithBrowserFallback(spoken, finish);
-                    });
+            /* Start synthesizing the next chunk while this one plays. */
+            requestNext();
+
+            htmlAudio = playStudioTTSBlob(blob, function () {
+                if (currentStudioAudio === playback) currentStudioAudio = null;
+                playReady();
+            }, function (err) {
+                if (currentStudioAudio === playback) currentStudioAudio = null;
+                try { console.warn('[AQS Studio] shared TTS playback failed:', err); } catch (_) {}
+                if (!voiceAiTalking) { finish(); return; }
+                useBrowserFallback();
+            });
+        }
+
+        function requestNext() {
+            if (fallbackStarted || !voiceAiTalking || synthInFlight ||
+                pendingBuffer || nextChunk >= chunks.length) return;
+            if (!gem || typeof gem.synth !== 'function' || !gem.hasKeys()) {
+                useBrowserFallback();
+                return;
+            }
+
+            var chunk = chunks[nextChunk];
+            var isContinuation = nextChunk > 0;
+            nextChunk++;
+            synthInFlight = true;
+            gem.synth(chunk, 'Puck', studioGeminiStyle(isContinuation))
+                .then(function (audioBuffer) {
+                    synthInFlight = false;
+                    if (!voiceAiTalking) { finish(); return; }
+                    pendingBuffer = audioBuffer;
+                    playReady();
                 })
                 .catch(function (err) {
+                    synthInFlight = false;
                     try { console.warn('[AQS Studio] Gemini TTS failed:', err); } catch (_) {}
                     if (!voiceAiTalking) { finish(); return; }
-                    speakWithBrowserFallback(spoken, finish);
+                    useBrowserFallback();
                 });
         }
 
-        playGeminiNext();
+        requestNext();
     }
 
     /* ═══════════════════════════════════════════════════════════
