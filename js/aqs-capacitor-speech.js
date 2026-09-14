@@ -101,6 +101,10 @@
 
   function _unlockSynth() {
     if (_synthUnlocked) return;
+    /* The Capacitor Android bridge uses cloud audio/MediaPlayer through
+       aqs-voice.js. Starting a zero-length native TTS utterance here is not
+       needed and some Android engines emit an audible pop when it starts. */
+    if (window.AqsNativeVoice) return;
     if (!window.speechSynthesis) return;
     _synthUnlocked = true;
 
