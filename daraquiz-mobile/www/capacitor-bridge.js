@@ -25,14 +25,15 @@
   };
 
   /* Browser speech works reliably in Chrome/custom tabs, not in the
-     packaged WebView. Keep TTS native, but move conversational voice tools
-     to their matching public web pages. */
+     packaged WebView. Keep TTS and prerecorded-audio features native, but
+     move browser-dependent conversational voice tools to the web. */
   document.addEventListener('click', function (event) {
     if (!isCapacitor || !event.target || !event.target.closest) return;
-    var trigger = event.target.closest('#dts-voice-btn, #aqs-ch-mic-btn');
+    var trigger = event.target.closest('#dts-voice-btn');
     if (!trigger) return;
     var page = window.location.pathname.split('/').pop() || 'index.html';
-    var route = page === 'challenge.html' ? 'challenge.html' : 'studio.html';
+    var route = page === 'studio.html' ? 'studio.html' : '';
+    if (!route) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     window.aqsOpenExternalPage('https://darapet.github.io/smartquiz-system/' + route);
