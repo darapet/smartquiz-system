@@ -422,12 +422,13 @@ html, body {
     /* Main area — push content below the hamburger and above footer */
     .dts-main {
         padding-top: 56px;
-        padding-bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+        padding-bottom: calc(154px + env(safe-area-inset-bottom, 0px));
     }
 
     /* Footer chat input — full width, safe-area aware */
     .dts-footer {
         left: 0;
+        bottom: calc(64px + env(safe-area-inset-bottom, 0px));
         padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px));
     }
 
