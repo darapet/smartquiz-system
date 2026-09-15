@@ -64,7 +64,10 @@ jobs:
 
       - name: Setup Android SDK
         if: steps.skip_check.outputs.skip != 'true'
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
+        with:
+          # The legacy `tools` package was removed from current Android SDK repositories.
+          packages: platform-tools
 
       - name: Install npm dependencies
         if: steps.skip_check.outputs.skip != 'true'
