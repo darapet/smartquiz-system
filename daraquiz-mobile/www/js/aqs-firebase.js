@@ -2491,7 +2491,7 @@ function _updateAqsGlobals(user, profile) {
         'aqs-quiz-studio.html','tts.html','audio.html','ai-animate.html'
     ];
     /* Pages that are open to everyone (guests OK) */
-    var openPages = ['index.html','studio.html','login.html','register.html','login','register','unauthorized.html',
+    var openPages = ['index.html','studio.html','studyhub.html','ai-teacher.html','login.html','register.html','login','register','unauthorized.html',
                      'take-quiz.html','challenge.html'];
     /* Cloudflare Workers may expose these pages as clean routes (/login and
        /register) while legacy links still use .html. Both forms are auth

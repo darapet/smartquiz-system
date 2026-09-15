@@ -9,6 +9,35 @@
   var isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
   var platform    = isCapacitor ? (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'web') : 'web';
 
+  /* Open browser-dependent experiences outside the local WebView. */
+  window.aqsOpenExternalPage = function (url) {
+    if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {
+      try {
+        var result = window.Capacitor.Plugins.Browser.open({ url: url });
+        if (result && typeof result.catch === 'function') {
+          result.catch(function () { window.open(url, '_blank'); });
+        }
+        return false;
+      } catch (e) {}
+    }
+    window.open(url, '_blank');
+    return false;
+  };
+
+  /* Browser speech works reliably in Chrome/custom tabs, not in the
+     packaged WebView. Keep TTS native, but move conversational voice tools
+     to their matching public web pages. */
+  document.addEventListener('click', function (event) {
+    if (!isCapacitor || !event.target || !event.target.closest) return;
+    var trigger = event.target.closest('#dts-voice-btn, #aqs-ch-mic-btn');
+    if (!trigger) return;
+    var page = window.location.pathname.split('/').pop() || 'index.html';
+    var route = page === 'challenge.html' ? 'challenge.html' : 'studio.html';
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    window.aqsOpenExternalPage('https://darapet.github.io/smartquiz-system/' + route);
+  }, true);
+
   /* ── Platform class on body for CSS targeting ── */
   document.addEventListener('DOMContentLoaded', function () {
     document.body.classList.add('platform-' + platform);
