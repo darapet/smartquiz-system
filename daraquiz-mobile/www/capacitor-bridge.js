@@ -24,21 +24,6 @@
     return false;
   };
 
-  /* Browser speech works reliably in Chrome/custom tabs, not in the
-     packaged WebView. Keep TTS and prerecorded-audio features native, but
-     move browser-dependent conversational voice tools to the web. */
-  document.addEventListener('click', function (event) {
-    if (!isCapacitor || !event.target || !event.target.closest) return;
-    var trigger = event.target.closest('#dts-voice-btn');
-    if (!trigger) return;
-    var page = window.location.pathname.split('/').pop() || 'index.html';
-    var route = page === 'studio.html' ? 'studio.html' : '';
-    if (!route) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    window.aqsOpenExternalPage('https://darapet.github.io/smartquiz-system/' + route);
-  }, true);
-
   /* ── Platform class on body for CSS targeting ── */
   document.addEventListener('DOMContentLoaded', function () {
     document.body.classList.add('platform-' + platform);
@@ -154,7 +139,7 @@
     /* Styles */
     var style = document.createElement('style');
     style.textContent = [
-      '._aqsbn{position:fixed;bottom:0;left:0;right:0;z-index:9990;',
+       '._aqsbn{position:relative;width:100%;height:calc(74px + env(safe-area-inset-bottom,0px));',
       'background:linear-gradient(180deg,rgba(15,12,41,0.97),rgba(13,46,125,0.99));',
       'backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);',
       'border-top:1px solid rgba(99,102,241,0.25);',
@@ -175,7 +160,15 @@
       '._aqsbn-dot{width:5px;height:5px;border-radius:50%;background:#818cf8;',
       'margin-top:1px;opacity:0;transition:opacity .2s;}',
       '._aqsbn-item._active ._aqsbn-dot{opacity:1;}',
-      'body{padding-bottom:calc(64px + env(safe-area-inset-bottom,0px)) !important;}'
+       '._aqsbn{box-sizing:border-box;flex-shrink:0;z-index:10000;}',
+       'body{padding-bottom:0 !important;}',
+       '@media(max-width:768px){body.aqs-studio-shell{display:flex;flex-direction:column;height:100vh;}',
+       'body.aqs-studio-shell #dts-app{height:calc(100dvh - 74px - env(safe-area-inset-bottom,0px) - var(--aqs-cd-bar-h,0px)) !important;',
+       'flex:0 0 calc(100dvh - 74px - env(safe-area-inset-bottom,0px) - var(--aqs-cd-bar-h,0px));}',
+       'body.aqs-studio-shell #dts-footer{bottom:calc(74px + env(safe-area-inset-bottom,0px) + var(--aqs-ticker-bar-h,0px)) !important;}',
+       'body.aqs-studio-shell #dts-main{padding-bottom:calc(var(--dts-footer-h,80px) + var(--aqs-ticker-bar-h,0px)) !important;}',
+       'body.aqs-studio-shell #dts-messages{padding-bottom:calc(100px + env(safe-area-inset-bottom,0px)) !important;}}',
+       '@media(min-width:769px){._aqsbn{display:none !important;}}'
     ].join('');
     document.head.appendChild(style);
 
@@ -203,6 +196,9 @@
       nav.appendChild(a);
     });
 
+    if (document.getElementById('dts-app')) {
+      document.body.classList.add('aqs-studio-shell');
+    }
     document.body.appendChild(nav);
   }
 
