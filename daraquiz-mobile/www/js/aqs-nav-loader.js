@@ -286,6 +286,7 @@
     'image-editor':   'Image Editor',
     'tts':            'Text to Speech',
     'profile':        'Profile',
+    'social':         'Social',
     'quiz-results':   'Results',
     'quiz-manage':    'Manage Quiz',
     'puzzle':         'Puzzle',

@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080910">
+  <title>Social — DaraQuiz AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/aqs-style.css">
+  <link rel="stylesheet" href="css/aqs-social.css">
+  <script defer src="capacitor-bridge.js"></script>
+  <script defer src="js/aqs-update-check.js"></script>
+</head>
+<body class="social-page">
+  <header class="social-topbar">
+    <a class="social-brand" href="index.html"><span class="social-brand-mark">✦</span><span>DaraQuiz Social</span></a>
+    <div class="social-top-actions">
+      <a href="user-dashboard.html">Dashboard</a>
+      <a href="library.html">Library</a>
+      <a href="profile.html">Profile</a>
+      <button id="social-logout" type="button">Log out</button>
+      <a class="social-top-avatar" id="social-top-avatar" href="#social-profile" aria-label="My profile">U</a>
+    </div>
+  </header>
+
+  <div class="social-layout">
+    <aside class="social-sidebar">
+      <div class="social-side-card">
+        <div class="social-side-profile" id="social-side-profile"></div>
+        <button class="social-side-link active" data-section="feed" type="button"><span class="icon">⌂</span>Discover</button>
+        <button class="social-side-link" data-section="friends" type="button"><span class="icon">♧</span>Friends <span class="count" id="social-request-count-side"></span></button>
+        <button class="social-side-link" data-section="messages" type="button"><span class="icon">◌</span>Messages</button>
+        <button class="social-side-link" data-section="profile" type="button"><span class="icon">◎</span>My profile</button>
+      </div>
+    </aside>
+
+    <main class="social-main">
+      <section class="social-section active" id="social-feed">
+        <div class="social-card social-welcome">
+          <h1>Study together, stay connected<span id="social-welcome-name"></span>.</h1>
+          <p>Find classmates, add friends and have focused conversations without leaving DaraQuiz. Your phone number is used for your social profile only — no OTP is required for now.</p>
+        </div>
+        <div class="social-section-head">
+          <div><h1>Discover people</h1><p>Search for a study partner by name or username.</p></div>
+          <button class="social-button ghost" id="social-refresh" type="button">Refresh</button>
+        </div>
+        <div class="social-card">
+          <div class="social-search"><span>⌕</span><input id="social-search-input" type="search" placeholder="Search name or @username" autocomplete="off"></div>
+          <div id="social-search-results" class="social-grid" style="display:none;margin-top:15px;"></div>
+        </div>
+        <div class="social-card">
+          <div class="social-section-head"><div><h1 style="font-size:1.05rem;">People you may know</h1><p>Connect with other DaraQuiz learners.</p></div></div>
+          <div id="social-suggestions" class="social-grid"></div>
+        </div>
+      </section>
+
+      <section class="social-section" id="social-friends">
+        <div class="social-section-head">
+          <div><h1>Friends</h1><p>Manage your study connections and requests.</p></div>
+          <button class="social-button primary" data-section="feed" type="button" onclick="document.querySelector('[data-section=feed]').click()">Find people</button>
+        </div>
+        <div class="social-card">
+          <div class="social-tabs">
+            <button class="social-tab active" id="social-friends-tab" type="button">My friends</button>
+            <button class="social-tab" id="social-requests-tab" type="button">Requests <span id="social-request-count">0</span></button>
+          </div>
+          <div id="social-friends-list" class="social-list"></div>
+          <div id="social-requests-list" class="social-list" style="display:none;"></div>
+        </div>
+      </section>
+
+      <section class="social-section" id="social-messages">
+        <div class="social-section-head"><div><h1>Messages</h1><p>Private conversations with your accepted friends.</p></div></div>
+        <div class="social-card social-messages">
+          <div class="social-conversations">
+            <div class="social-conversations-head"><h2>Your chats</h2><div class="social-search"><span>⌕</span><input id="social-chat-search" type="search" placeholder="Find a chat" autocomplete="off"></div></div>
+            <div class="social-conversation-list" id="social-conversation-list"></div>
+          </div>
+          <div class="social-chat">
+            <div class="social-chat-empty" id="social-chat-empty"><div><strong>Select a conversation</strong><span>Choose a friend from the left to start chatting.</span></div></div>
+            <div id="social-chat-content" style="display:none;flex-direction:column;height:100%;">
+              <div class="social-chat-head"><div id="social-chat-avatar"></div><div><strong id="social-chat-name">Friend</strong><span id="social-chat-handle"></span></div></div>
+              <div class="social-chat-messages" id="social-chat-messages"></div>
+              <div class="social-recording-label" id="social-record-label"></div>
+              <div class="social-chat-compose">
+                <label class="social-icon-button" title="Send picture"><input class="social-file" id="social-image-input" type="file" accept="image/*">▧</label>
+                <button class="social-icon-button" id="social-record-button" title="Record voice note" type="button">◉</button>
+                <textarea id="social-chat-text" rows="1" placeholder="Write a message…" maxlength="2000"></textarea>
+                <button class="social-button primary" id="social-send-button" type="button">Send</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="social-section" id="social-profile">
+        <div class="social-section-head"><div><h1>My profile</h1><p>Share the details that help your friends know you.</p></div></div>
+        <div class="social-profile-cover" id="social-profile-cover">
+          <div class="social-cover-shade"></div>
+        </div>
+        <div class="social-profile-main">
+          <div class="social-profile-avatar" id="social-profile-avatar"></div>
+          <div class="social-profile-summary">
+            <div><h1 id="social-profile-name">Your name</h1><p id="social-profile-handle">@username</p></div>
+            <button class="social-button primary" id="social-edit-profile" type="button">Edit profile</button>
+          </div>
+          <p class="social-profile-bio" id="social-profile-bio"></p>
+          <div class="social-profile-details">
+            <div class="social-detail"><span>☎</span><div><strong id="social-detail-phone">Not added</strong><span>Phone</span></div></div>
+            <div class="social-detail"><span>✉</span><div><strong id="social-detail-email">Not added</strong><span>Email</span></div></div>
+            <div class="social-detail"><span>⌖</span><div><strong id="social-detail-location">Not added</strong><span>Location</span></div></div>
+          </div>
+        </div>
+        <div class="social-card" style="margin-top:18px;">
+          <div class="social-section-head"><div><h1 style="font-size:1.05rem;">Change password</h1><p>Keep your DaraQuiz account secure.</p></div></div>
+          <form id="social-password-form" class="social-form-grid">
+            <div class="social-form-field"><label for="social-new-password">New password</label><input id="social-new-password" type="password" minlength="6" autocomplete="new-password" placeholder="At least 6 characters" required></div>
+            <div class="social-form-field" style="justify-content:flex-end;"><button class="social-button soft" type="submit">Update password</button></div>
+          </form>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- First-time social profile setup -->
+  <div class="social-modal-backdrop" id="social-onboarding">
+    <div class="social-modal" role="dialog" aria-modal="true" aria-labelledby="social-onboarding-title">
+      <div class="social-modal-head"><div><h2 id="social-onboarding-title">Set up your DaraQuiz profile</h2><p>A few details help friends recognise you. We do not send an OTP yet.</p></div></div>
+      <div class="social-modal-body">
+        <div class="social-stepper"><span class="social-step-dot active" data-step="1">1</span><span class="social-step-line"></span><span class="social-step-dot" data-step="2">2</span><span class="social-step-line"></span><span class="social-step-dot" data-step="3">3</span></div>
+        <div class="social-step active" data-step="1">
+          <div class="social-form-note">Your phone number is collected so your social profile can be recognisable later. It is not verified yet and no code will be sent.</div>
+          <div class="social-form-grid">
+            <div class="social-form-field full"><label for="social-country">Country</label><select id="social-country"></select></div>
+            <div class="social-form-field full"><label for="social-phone">Phone number</label><div class="social-phone-row"><input id="social-phone" type="tel" placeholder="801 234 5678" autocomplete="tel"><input id="social-contact-email" type="email" readonly aria-label="Email"></div></div>
+          </div>
+          <div class="social-modal-actions"><button class="social-button primary" id="social-onboarding-next-1" type="button">Continue</button></div>
+        </div>
+        <div class="social-step" data-step="2">
+          <div class="social-form-grid">
+            <div class="social-form-field"><label for="social-first-name">First name</label><input id="social-first-name" type="text" autocomplete="given-name" required></div>
+            <div class="social-form-field"><label for="social-last-name">Last name</label><input id="social-last-name" type="text" autocomplete="family-name" required></div>
+            <div class="social-form-field full"><label for="social-username">Username</label><input id="social-username" type="text" placeholder="e.g. sandraemmy" autocomplete="username" required><small style="color:#718096;font-size:.72rem;">3–24 lowercase letters, numbers, dots, underscores or dashes.</small></div>
+          </div>
+          <div class="social-modal-actions"><button class="social-button ghost" id="social-onboarding-back-2" type="button">Back</button><button class="social-button primary" id="social-onboarding-next-2" type="button">Continue</button></div>
+        </div>
+        <div class="social-step" data-step="3">
+          <div class="social-upload-grid" style="margin-bottom:16px;">
+            <label class="social-upload-box" id="onboarding-photo-preview"><input class="social-file" id="social-onboarding-photo" type="file" accept="image/*"><span>Choose profile photo</span></label>
+            <label class="social-upload-box" id="onboarding-cover-preview"><input class="social-file" id="social-onboarding-cover" type="file" accept="image/*"><span>Choose cover photo</span></label>
+          </div>
+          <div class="social-form-grid">
+            <div class="social-form-field full"><label for="social-bio">Short bio</label><textarea id="social-bio" placeholder="Tell your study friends about yourself…" maxlength="240"></textarea></div>
+            <div class="social-form-field full"><label for="social-location">Location or school</label><input id="social-location" type="text" placeholder="e.g. Lagos, Nigeria"></div>
+          </div>
+          <div class="social-modal-actions"><button class="social-button ghost" id="social-onboarding-back-3" type="button">Back</button><button class="social-button primary" id="social-onboarding-save" type="button">Finish profile</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile editor -->
+  <div class="social-modal-backdrop" id="social-edit">
+    <div class="social-modal" role="dialog" aria-modal="true" aria-labelledby="social-edit-title">
+      <div class="social-modal-head"><div><h2 id="social-edit-title">Edit profile</h2><p>Update your photos, bio and contact details.</p></div><button class="social-modal-close" data-close-modal="social-edit" type="button">×</button></div>
+      <div class="social-modal-body">
+        <div class="social-upload-grid" style="margin-bottom:18px;">
+          <label class="social-upload-box" id="edit-photo-preview"><input class="social-file" id="social-edit-photo" type="file" accept="image/*"><span>Choose profile photo</span></label>
+          <label class="social-upload-box" id="edit-cover-preview"><input class="social-file" id="social-edit-cover" type="file" accept="image/*"><span>Choose cover photo</span></label>
+        </div>
+        <div class="social-form-grid">
+          <div class="social-form-field"><label for="edit-first-name">First name</label><input id="edit-first-name" type="text"></div>
+          <div class="social-form-field"><label for="edit-last-name">Last name</label><input id="edit-last-name" type="text"></div>
+          <div class="social-form-field full"><label for="edit-bio">Bio</label><textarea id="edit-bio" maxlength="240" placeholder="Tell people about yourself"></textarea></div>
+          <div class="social-form-field full"><label for="edit-location">Location or school</label><input id="edit-location" type="text"></div>
+          <div class="social-form-field"><label for="edit-country">Country</label><select id="edit-country"></select></div>
+          <div class="social-form-field"><label for="edit-phone">Phone number</label><input id="edit-phone" type="tel"></div>
+          <div class="social-form-field full"><label for="edit-email">Email</label><input id="edit-email" type="email" readonly></div>
+        </div>
+        <div class="social-modal-actions"><button class="social-button ghost" data-close-modal="social-edit" type="button">Cancel</button><button class="social-button primary" id="social-edit-save" type="button">Save changes</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="social-toast" id="social-toast" role="status"></div>
+  <script type="module" src="js/aqs-social.js"></script>
+</body>
+</html>
