@@ -1,8 +1,8 @@
 {
-  "version": "1.381",
-  "versionCode": 359,
+  "version": "1.382",
+  "versionCode": 360,
   "releaseDate": "2026-09-16",
-  "notes": "Studio voice transcription and persistent AI Teacher conversations.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.381/daraquiz-v1.381.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.381/daraquiz-v1.381.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.382/daraquiz-v1.382.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.382/daraquiz-v1.382.apk"
 }
