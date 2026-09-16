@@ -1,0 +1,1 @@
+- [Quiz generation key-pool fallback](quiz-generation-pool.md) — dedicated quiz slots must fall through to the shared pool when exhausted.

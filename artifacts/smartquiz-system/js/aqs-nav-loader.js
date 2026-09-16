@@ -1,0 +1,317 @@
+/**
+ * aqs-nav-loader.js — Page transition skeleton loader
+ * ─────────────────────────────────────────────────────
+ * • Shows a shimmer skeleton screen when the page starts loading
+ * • Hides it smoothly once the page is ready
+ * • Shows it again when the user taps a nav link (instant feedback)
+ * • Skipped on index.html (which has its own splash screen)
+ */
+(function () {
+  'use strict';
+
+  var isIndex = (function () {
+    var p = location.pathname;
+    return p.endsWith('index.html') || p === '/' ||
+           p.endsWith('/www/') || p.endsWith('/www');
+  })();
+
+  /* ── Inject styles ─────────────────────────────────────────────────── */
+  var css = [
+    '#_aqsNL{position:fixed;inset:0;z-index:99998;',
+      'background:linear-gradient(155deg,#0f0c1d 0%,#1a1640 55%,#0f0c1d 100%);',
+      'display:flex;flex-direction:column;align-items:center;',
+      'padding-top:72px;opacity:1;pointer-events:all;',
+      'transition:opacity .3s ease;}',
+    '#_aqsNL.nl-out{opacity:0;pointer-events:none;}',
+
+    /* Top progress bar */
+    '#_aqsNLProg{position:absolute;top:0;left:0;height:3px;width:0%;',
+      'background:linear-gradient(90deg,#6366f1 0%,#a855f7 50%,#6366f1 100%);',
+      'background-size:200% 100%;',
+      'border-radius:0 3px 3px 0;',
+      'animation:_nlProgGrow 2.2s ease-out forwards,_nlProgShine 1.3s linear infinite;}',
+    '@keyframes _nlProgGrow{0%{width:0%}30%{width:45%}70%{width:78%}100%{width:88%}}',
+    '@keyframes _nlProgShine{0%{background-position:100% 0}100%{background-position:-100% 0}}',
+
+    /* Logo */
+    '#_aqsNLLogo{display:flex;align-items:center;gap:10px;margin-bottom:32px;',
+      'opacity:.9;}',
+    '#_aqsNLLogoIcon{width:36px;height:36px;border-radius:10px;',
+      'background:rgba(99,102,241,.18);border:1.5px solid rgba(99,102,241,.35);',
+      'display:flex;align-items:center;justify-content:center;}',
+    '#_aqsNLLogoTxt{font-size:16px;font-weight:800;color:#e0e7ff;',
+      'font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;',
+      'letter-spacing:-.02em;}',
+
+    /* Skeleton container */
+    '#_aqsNLSkel{width:calc(100% - 48px);max-width:420px;',
+      'display:flex;flex-direction:column;gap:11px;}',
+
+    /* Individual skeleton bars */
+    '._nlBar{border-radius:8px;',
+      'background:linear-gradient(90deg,',
+        'rgba(255,255,255,.05) 0%,',
+        'rgba(255,255,255,.11) 50%,',
+        'rgba(255,255,255,.05) 100%);',
+      'background-size:200% 100%;',
+      'animation:_nlShim 1.5s ease-in-out infinite;}',
+    '@keyframes _nlShim{0%{background-position:200% 0}100%{background-position:-200% 0}}',
+
+    /* Bar height and width variants */
+    '._nlBar:nth-child(1){height:16px;width:72%;}',
+    '._nlBar:nth-child(2){height:11px;width:46%;opacity:.7;}',
+    '._nlBar:nth-child(3){height:14px;width:88%;margin-top:6px;}',
+    '._nlBar:nth-child(4){height:14px;width:64%;}',
+    '._nlBar:nth-child(5){height:14px;width:78%;}',
+    '._nlBar:nth-child(6){height:11px;width:52%;opacity:.7;}',
+
+    /* Stagger shimmer so each bar shines at a slightly different time */
+    '._nlBar:nth-child(2){animation-delay:.1s;}',
+    '._nlBar:nth-child(3){animation-delay:.2s;}',
+    '._nlBar:nth-child(4){animation-delay:.3s;}',
+    '._nlBar:nth-child(5){animation-delay:.15s;}',
+    '._nlBar:nth-child(6){animation-delay:.25s;}',
+
+    /* Destination hint */
+    '#_aqsNLHint{margin-top:26px;font-size:11px;font-weight:600;',
+      'color:rgba(255,255,255,.18);letter-spacing:.07em;text-transform:uppercase;',
+      'font-family:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif;}',
+  ].join('');
+
+  var styleEl = document.createElement('style');
+  styleEl.id = '_aqsNLStyle';
+  styleEl.textContent = css;
+  document.head.appendChild(styleEl);
+
+  /* ── Build overlay DOM ─────────────────────────────────────────────── */
+  var overlay = document.createElement('div');
+  overlay.id = '_aqsNL';
+  overlay.innerHTML =
+    '<div id="_aqsNLProg"></div>' +
+    '<div id="_aqsNLLogo">' +
+      '<div id="_aqsNLLogoIcon">' +
+        '<svg width="20" height="20" viewBox="0 0 36 36" fill="none">' +
+          '<polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#1e1b4b" stroke="#6366f1" stroke-width="2.5"/>' +
+          '<circle cx="18" cy="18" r="6" fill="#6366f1"/>' +
+        '</svg>' +
+      '</div>' +
+      '<span id="_aqsNLLogoTxt">xzily AI</span>' +
+    '</div>' +
+    '<div id="_aqsNLSkel">' +
+      '<div class="_nlBar"></div>' +
+      '<div class="_nlBar"></div>' +
+      '<div class="_nlBar"></div>' +
+      '<div class="_nlBar"></div>' +
+      '<div class="_nlBar"></div>' +
+      '<div class="_nlBar"></div>' +
+    '</div>' +
+    '<div id="_aqsNLHint">Loading…</div>';
+
+  /* ── Mount ─────────────────────────────────────────────────────────── */
+  function mount() {
+    if (isIndex || overlay.parentNode) return;
+    var body = document.body || document.documentElement;
+    body.insertBefore(overlay, body.firstChild);
+  }
+
+  if (document.body) {
+    mount();
+  } else {
+    document.addEventListener('DOMContentLoaded', mount);
+  }
+
+  /* ── Hide (smooth fade-out once page ready) ────────────────────────── */
+  function hide() {
+    if (!overlay.parentNode) return;
+    var prog = document.getElementById('_aqsNLProg');
+    if (prog) {
+      prog.style.animation = 'none';
+      prog.style.transition = 'width .18s ease';
+      prog.style.width = '100%';
+    }
+    setTimeout(function () {
+      overlay.classList.add('nl-out');
+      setTimeout(function () {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      }, 320);
+    }, 120);
+  }
+
+  /* ── Show (on nav click — instant transition feel) ─────────────────── */
+  function show(hintText) {
+    var hint = document.getElementById('_aqsNLHint');
+    if (hint) hint.textContent = hintText || 'Loading…';
+    var prog = document.getElementById('_aqsNLProg');
+    if (prog) {
+      prog.style.cssText = '';
+    }
+    overlay.classList.remove('nl-out');
+    if (!overlay.parentNode) mount();
+  }
+
+  /* ── Auto-hide when page is fully ready ────────────────────────────── */
+  if (!isIndex) {
+    if (document.readyState === 'complete') {
+      setTimeout(hide, 60);
+    } else {
+      window.addEventListener('load', function () { setTimeout(hide, 60); });
+    }
+  }
+
+  /* ── Compact the public navigation ──────────────────────────────────
+     Keep the five primary destinations visible and group every other
+     destination under one accessible Explore menu. */
+  function compactNavigation() {
+    document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
+      if (nav.dataset.aqsCompactNav === 'true') return;
+      nav.dataset.aqsCompactNav = 'true';
+
+      var auth = nav.querySelector('.aqs-site-nav-mobile-auth');
+      var links = Array.from(nav.children).filter(function (child) {
+        return child.tagName === 'A' && (!auth || !auth.contains(child));
+      });
+      var primary = [];
+      var secondary = [];
+      var hasStudyHub = false;
+      var hasChallenge = false;
+      var hasLibrary = false;
+      var hasCreatorStudio = false;
+
+      links.forEach(function (link) {
+        var rawHref = (link.getAttribute('href') || '').replace(/\?.*$/, '');
+        var href = rawHref.replace(/^.*\//, '');
+        var creatorStudioLink = rawHref === 'ai-creator-studio-pro' ||
+          rawHref === 'ai-creator-studio-pro/' ||
+          rawHref === 'ai-creator-studio-pro/index.html';
+        if (creatorStudioLink) {
+          primary.push(link);
+          hasCreatorStudio = true;
+        } else if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+            href === 'challenge.html' || href === 'library.html') {
+          primary.push(link);
+          if (href === 'studyhub.html') hasStudyHub = true;
+          if (href === 'challenge.html') hasChallenge = true;
+          if (href === 'library.html') hasLibrary = true;
+          if (href === 'studio.html') {
+            Array.from(link.childNodes).reverse().some(function (node) {
+              if (node.nodeType === 3 && node.nodeValue.trim()) {
+                node.nodeValue = ' Studio AI';
+                return true;
+              }
+              return false;
+            });
+          }
+        } else {
+          secondary.push(link);
+        }
+      });
+
+      if (!hasStudyHub) {
+        var studyHub = document.createElement('a');
+        studyHub.href = 'studyhub.html';
+        studyHub.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        studyHub.style.cssText = 'color:#6366f1;font-weight:700;';
+        studyHub.textContent = '📚 Study Hub';
+        primary.push(studyHub);
+      }
+      [
+        { present: hasChallenge, href: 'challenge.html', label: '⚔️ Challenge', color: '#e11d48' },
+        { present: hasLibrary, href: 'library.html', label: '📖 Library', color: '#4f46e5' }
+      ].forEach(function (item) {
+        if (item.present) return;
+        var link = document.createElement('a');
+        link.href = item.href;
+        link.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        link.style.cssText = 'color:' + item.color + ';font-weight:700;';
+        link.textContent = item.label;
+        primary.push(link);
+      });
+      if (!hasCreatorStudio) {
+        var creatorStudio = document.createElement('a');
+        creatorStudio.href = 'ai-creator-studio-pro/';
+        creatorStudio.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
+          (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
+        creatorStudio.style.cssText = 'color:#0f766e;font-weight:700;';
+        creatorStudio.textContent = 'Creator Studio';
+        primary.push(creatorStudio);
+      }
+
+      primary.forEach(function (link) { nav.insertBefore(link, auth || null); });
+      if (!secondary.length) return;
+
+      var more = document.createElement('div');
+      more.className = 'aqs-site-nav-more';
+      more.innerHTML = '<button type="button" class="aqs-site-nav-more-toggle" aria-expanded="false" aria-haspopup="true">Explore <span aria-hidden="true">⌄</span></button><div class="aqs-site-nav-more-menu" role="menu"></div>';
+      var menu = more.querySelector('.aqs-site-nav-more-menu');
+      secondary.forEach(function (link) {
+        link.setAttribute('role', 'menuitem');
+        menu.appendChild(link);
+      });
+      nav.insertBefore(more, auth || null);
+
+      var toggle = more.querySelector('.aqs-site-nav-more-toggle');
+      toggle.addEventListener('click', function () {
+        var open = more.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', String(open));
+      });
+      document.addEventListener('click', function (event) {
+        if (!more.contains(event.target)) {
+          more.classList.remove('open');
+          toggle.setAttribute('aria-expanded', 'false');
+        }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', compactNavigation, { once: true });
+  } else {
+    compactNavigation();
+  }
+
+  /* ── Intercept nav link clicks ──────────────────────────────────────── */
+  var PAGE_LABELS = {
+    'index':          'Home',
+    'studio':         'AI Studio',
+    'dashboard':      'Dashboard',
+    'user-dashboard': 'My Dashboard',
+    'create-quiz':    'Create Quiz',
+    'challenge':      'Challenge',
+    'studyhub':       'Study Hub',
+    'text-to-docs':   'Word Processor',
+    'docs-gen':       'AI Docs Generator',
+    'image-gen':      'Image Creator',
+    'image-editor':   'Image Editor',
+    'tts':            'Text to Speech',
+    'profile':        'Profile',
+    'quiz-results':   'Results',
+    'quiz-manage':    'Manage Quiz',
+    'puzzle':         'Puzzle',
+    'library':        'Library',
+    'library-upload': 'Library Upload',
+    'library-read':   'Library',
+    'ai-creator-studio-pro': 'Creator Studio',
+  };
+
+  document.addEventListener('click', function (e) {
+    var anchor = e.target.closest('a[href]');
+    if (!anchor) return;
+    var href = anchor.getAttribute('href') || '';
+    if (href.charAt(0) === '#' ||
+        href.indexOf('javascript') === 0 ||
+        href.indexOf('mailto') === 0 ||
+        href.indexOf('http') === 0 ||
+        anchor.target === '_blank') return;
+
+    var slug = href.replace(/\?.*$/, '').replace(/#.*$/, '')
+                   .replace(/\.html$/, '').replace(/^.*\//, '');
+    var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1;
+    var label = isCreatorStudio ? PAGE_LABELS['ai-creator-studio-pro'] :
+      PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
+    show(label + '…');
+  }, true);
+
+  window.aqsNavLoader = { show: show, hide: hide };
+})();
