@@ -1248,10 +1248,21 @@
             }
             setVoiceTranscript(transcript);
             if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
-                /* Stop recognition before the AI request and playback start. */
+                /* Studio voice input is transcription only. Keep sending
+                   separate so the user can review or edit the text first. */
                 stopVoiceListening();
-                setVoiceState('thinking');
-                handleVoiceInput(transcript.trim(), sessionId);
+                var input = document.getElementById('dts-input');
+                if (input) {
+                    var existing = input.value.trim();
+                    input.value = existing ? existing + ' ' + transcript.trim() : transcript.trim();
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.focus();
+                }
+                setVoiceTranscript('Transcription added to the message box.');
+                setVoiceState('idle');
+                setTimeout(function () {
+                    if (voiceActive && sessionId === voiceSessionId) closeVoiceModal();
+                }, 450);
             }
         };
 

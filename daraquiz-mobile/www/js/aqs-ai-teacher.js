@@ -8,6 +8,7 @@
 
 function $(id){ return document.getElementById(id); }
 var LS = 'aqs_ai_teacher_prefs_v2';
+var CHAT_LS = 'aqs_ai_teacher_conversation_v1';
 
 var T = {
   step:0, teacherName:'', studentName:'', voiceURI:'', rate:1,
@@ -379,6 +380,7 @@ function handleUser(text){
   if(!text || T.thinking) return;
   addMsg('me', text);
   T.history.push({ role:'user', content:text });
+  saveConversation();
   ask();
 }
 function ask(){
@@ -388,6 +390,7 @@ function ask(){
     var txt = extractText(data);
     if(!txt) throw new Error('The lesson service returned an empty response.');
     T.history.push({ role:'assistant', content: txt });
+    saveConversation();
     T.thinking = false;
     addMsg('ai', txt);
     renderBoard(txt);
@@ -411,6 +414,23 @@ function show(id){
 }
 function savePrefs(){
   try{ localStorage.setItem(LS, JSON.stringify({ teacherName:T.teacherName, studentName:T.studentName, voiceURI:T.voiceURI, rate:T.rate })); }catch(e){}
+}
+function saveConversation(){
+  try{
+    localStorage.setItem(CHAT_LS, JSON.stringify({
+      teacherName:T.teacherName,
+      studentName:T.studentName,
+      history:T.history.slice(-60),
+      updatedAt:Date.now()
+    }));
+  }catch(e){}
+}
+function loadConversation(){
+  try{
+    var saved = JSON.parse(localStorage.getItem(CHAT_LS)||'null');
+    if(saved && Array.isArray(saved.history) && saved.history.length) return saved;
+  }catch(e){}
+  return null;
 }
 function loadPrefs(){
   try{
@@ -439,10 +459,22 @@ function enterClassroom(){
   show('ait-room');
   $('ait-room-teacher').textContent = T.teacherName || 'Teacher';
   $('ait-room-student').textContent = T.studentName || 'Student';
+  var saved = loadConversation();
+  if(saved && saved.history.length){
+    T.history = saved.history.filter(function(msg){
+      return msg && (msg.role === 'user' || msg.role === 'assistant') && msg.content;
+    });
+    T.history.forEach(function(msg){ addMsg(msg.role === 'assistant' ? 'ai' : 'me', msg.content); });
+    var last = T.history[T.history.length - 1];
+    if(last && last.role === 'assistant') renderBoard(last.content);
+    toast('Your previous AI Teacher conversation has been restored.');
+    return;
+  }
   var opener = 'Wonderful, ' + (T.studentName||'friend') + '. I am ' + (T.teacherName||'your teacher') +
     ', and I am ready to teach. Tell me the topic or question you want to work on, and I will explain it step by step on the board.';
   addMsg('ai', opener);
   T.history.push({ role:'assistant', content: opener });
+  saveConversation();
   speak(opener);
 }
 
@@ -528,6 +560,7 @@ function init(){
   $('ait-reset').onclick = function(){
     stopSpeak(); stopListening();
     T.history = []; T.started = false;
+    try{ localStorage.removeItem(CHAT_LS); }catch(e){}
     var tr = $('ait-transcript'); if(tr) tr.innerHTML = '';
     var bd = $('ait-board'); if(bd) bd.innerHTML = '<div class="empty">The board is clear.</div>';
     show('ait-s1');
