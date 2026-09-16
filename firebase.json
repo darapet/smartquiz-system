@@ -27,5 +27,8 @@
         }
       }
     ]
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

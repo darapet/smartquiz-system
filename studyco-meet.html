@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#10152f">
+  <title>StudyCo Meet — SmartQuiz AI</title>
+  <link rel="stylesheet" href="css/aqs-style.css">
+  <link rel="stylesheet" href="css/studyco-meet.css">
+</head>
+<body class="studyco-page">
+  <div id="studyco-auth-screen" class="studyco-auth-screen">
+    <div class="studyco-auth-brand"><span class="studyco-mark">SC</span><span>StudyCo Meet</span></div>
+    <div class="studyco-auth-grid">
+      <div class="studyco-auth-intro">
+        <p class="studyco-eyebrow">SmartQuiz AI community</p>
+        <h1>Find the people who make studying feel lighter.</h1>
+        <p>Meet classmates, share quick study wins, ask questions, and stay connected with the people learning alongside you.</p>
+        <div class="studyco-auth-proof"><span>Profiles</span><span>Study friends</span><span>Private chats</span></div>
+      </div>
+      <div class="studyco-auth-card">
+        <div class="studyco-auth-tabs">
+          <button class="studyco-auth-tab active" data-auth-view="register" type="button">Create account</button>
+          <button class="studyco-auth-tab" data-auth-view="login" type="button">Log in</button>
+        </div>
+        <form id="studyco-register-form" class="studyco-auth-form">
+          <label>Full name<input id="studyco-register-name" type="text" autocomplete="name" placeholder="Your full name" required></label>
+          <label>Email or phone number<input id="studyco-register-identifier" type="text" autocomplete="username" placeholder="you@example.com or 0801..." required></label>
+          <label>Password<input id="studyco-register-password" type="password" minlength="6" autocomplete="new-password" placeholder="At least 6 characters" required></label>
+          <p class="studyco-auth-note">No OTP is required. A phone number is used as your StudyCo login handle.</p>
+          <button class="studyco-button primary wide" type="submit">Join StudyCo Meet</button>
+        </form>
+        <form id="studyco-login-form" class="studyco-auth-form" hidden>
+          <label>Email or phone number<input id="studyco-login-identifier" type="text" autocomplete="username" placeholder="you@example.com or 0801..." required></label>
+          <label>Password<input id="studyco-login-password" type="password" autocomplete="current-password" placeholder="Your password" required></label>
+          <button class="studyco-button primary wide" type="submit">Log in to StudyCo</button>
+        </form>
+        <div id="studyco-auth-error" class="studyco-form-error" role="alert"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="studyco-app-screen" hidden>
+    <header class="studyco-topbar">
+      <a class="studyco-brand" href="index.html"><span class="studyco-mark">SC</span><span>StudyCo <b>Meet</b></span></a>
+      <div class="studyco-top-search"><span>⌕</span><input id="studyco-global-search" type="search" placeholder="Find classmates" autocomplete="off"></div>
+      <div class="studyco-top-actions"><span id="studyco-top-name"></span><button id="studyco-logout" class="studyco-text-button" type="button">Log out</button><button id="studyco-mobile-menu" class="studyco-icon-button" type="button" aria-label="Open menu">☰</button></div>
+    </header>
+    <div class="studyco-layout">
+      <aside class="studyco-left-rail">
+        <div id="studyco-mini-profile" class="studyco-mini-profile"></div>
+        <nav class="studyco-nav" aria-label="StudyCo navigation">
+          <button class="active" data-studyco-view="home" type="button"><span>⌂</span>Home</button>
+          <button data-studyco-view="friends" type="button"><span>♧</span>Friends</button>
+          <button data-studyco-view="profile" type="button"><span>◎</span>My profile</button>
+          <button id="studyco-open-messages" type="button"><span>◌</span>Messages</button>
+        </nav>
+        <div class="studyco-rail-note"><strong>StudyCo Meet</strong><span>A focused social space for SmartQuiz learners.</span></div>
+      </aside>
+
+      <main class="studyco-main">
+        <section id="studyco-view-home" class="studyco-view active">
+          <div class="studyco-hero">
+            <div><p class="studyco-eyebrow">Your learning circle</p><h1>Study better together<span id="studyco-hello-name"></span>.</h1><p>Share a win, ask for help, or find a classmate who is on the same path.</p></div>
+            <button class="studyco-button light" data-studyco-view="profile" type="button">Complete profile</button>
+          </div>
+          <section class="studyco-stories-section">
+            <div class="studyco-section-title"><div><h2>Stories</h2><p>Quick updates from your study circle.</p></div><button class="studyco-link-button" id="studyco-create-story" type="button">Add story</button></div>
+            <div id="studyco-story-list" class="studyco-story-row"></div>
+          </section>
+          <section class="studyco-composer studyco-card">
+            <div class="studyco-composer-head"><div id="studyco-composer-avatar"></div><div><strong>What are you studying today?</strong><span>Share with your StudyCo friends</span></div></div>
+            <textarea id="studyco-post-text" maxlength="1000" placeholder="Share a thought, question, or small win..."></textarea>
+            <div id="studyco-post-preview" class="studyco-post-preview" hidden></div>
+            <div class="studyco-composer-footer">
+              <div class="studyco-composer-tools"><label class="studyco-tool"><input id="studyco-post-image" type="file" accept="image/*">Add photo</label><span class="studyco-template-label">Card color</span><div class="studyco-template-picker"><button class="selected template-indigo" data-template="indigo" type="button" aria-label="Indigo card"></button><button class="template-sunset" data-template="sunset" type="button" aria-label="Sunset card"></button><button class="template-ocean" data-template="ocean" type="button" aria-label="Ocean card"></button><button class="template-gold" data-template="gold" type="button" aria-label="Gold card"></button><button class="template-night" data-template="night" type="button" aria-label="Dark card"></button><button class="template-berry" data-template="berry" type="button" aria-label="Berry card"></button></div></div>
+              <button id="studyco-publish-post" class="studyco-button primary" type="button">Post</button>
+            </div>
+          </section>
+          <div class="studyco-feed-title"><div><h2>From your circle</h2><p>Recent conversations and study wins.</p></div><button id="studyco-refresh-feed" class="studyco-icon-button" type="button" aria-label="Refresh feed">↻</button></div>
+          <div id="studyco-post-feed" class="studyco-feed"></div>
+        </section>
+
+        <section id="studyco-view-friends" class="studyco-view">
+          <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Social graph</p><h1>Find your people</h1><p>Connect with classmates and keep your study circle close.</p></div></div>
+          <div class="studyco-card studyco-search-card"><span>⌕</span><input id="studyco-people-search" type="search" placeholder="Search by name, username, school, or department"></div>
+          <div id="studyco-people-results" class="studyco-people-grid"></div>
+          <div class="studyco-friends-columns"><section class="studyco-card"><div class="studyco-section-title"><div><h2>Friend requests</h2><p>People who want to connect.</p></div><span id="studyco-request-count" class="studyco-count">0</span></div><div id="studyco-request-list" class="studyco-list"></div></section><section class="studyco-card"><div class="studyco-section-title"><div><h2>Friends list</h2><p>Your accepted study partners.</p></div></div><div id="studyco-friend-list" class="studyco-list"></div></section></div>
+        </section>
+
+        <section id="studyco-view-profile" class="studyco-view">
+          <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Your StudyCo identity</p><h1>My profile</h1><p>Make it easy for classmates to know what you are working on.</p></div><button id="studyco-edit-profile" class="studyco-button primary" type="button">Edit profile</button></div>
+          <div class="studyco-profile-cover" id="studyco-profile-cover"><div class="studyco-profile-cover-shade"></div></div>
+          <div class="studyco-profile-card studyco-card"><div class="studyco-profile-main"><div id="studyco-profile-avatar" class="studyco-profile-avatar"></div><div><h2 id="studyco-profile-name">Your name</h2><p id="studyco-profile-handle">@username</p><p id="studyco-profile-bio">Tell your study circle about yourself.</p></div><button id="studyco-profile-edit-small" class="studyco-button soft" type="button">Edit profile</button></div><div class="studyco-profile-meta"><span id="studyco-profile-school"></span><span id="studyco-profile-major"></span><span id="studyco-profile-location"></span><span id="studyco-profile-contact"></span></div></div>
+          <div class="studyco-card"><div class="studyco-section-title"><div><h2>Your posts</h2><p>Updates you have shared with StudyCo.</p></div></div><div id="studyco-profile-posts" class="studyco-feed"></div></div>
+        </section>
+      </main>
+
+      <aside class="studyco-right-rail"><section class="studyco-card"><div class="studyco-section-title"><div><h2>Friend requests</h2><p id="studyco-right-request-copy">Keep your circle current.</p></div></div><div id="studyco-right-requests" class="studyco-list compact"></div><button class="studyco-link-button" data-studyco-view="friends" type="button">See all requests</button></section><section class="studyco-card"><div class="studyco-section-title"><div><h2>Suggested classmates</h2><p>People learning near you.</p></div></div><div id="studyco-right-suggestions" class="studyco-list compact"></div></section></aside>
+    </div>
+  </div>
+
+  <div id="studyco-chat-drawer" class="studyco-drawer" hidden>
+    <div class="studyco-drawer-head"><div><strong>Messages</strong><span>Private chats with accepted friends</span></div><button class="studyco-icon-button" data-close-drawer type="button">×</button></div>
+    <div class="studyco-chat-layout"><div id="studyco-chat-list" class="studyco-chat-list"></div><div id="studyco-chat-panel" class="studyco-chat-panel"><div class="studyco-chat-empty"><strong>Select a friend</strong><span>Your persistent conversation will appear here.</span></div></div></div>
+  </div>
+
+  <div id="studyco-edit-modal" class="studyco-modal-backdrop" hidden><div class="studyco-modal"><div class="studyco-modal-head"><div><p class="studyco-eyebrow">Profile settings</p><h2>Edit your profile</h2></div><button class="studyco-icon-button" data-close-modal type="button">×</button></div><form id="studyco-profile-form" class="studyco-form"><div class="studyco-upload-row"><label class="studyco-upload-box" id="studyco-photo-preview"><input id="studyco-profile-photo" type="file" accept="image/*"><span>Profile photo</span></label><label class="studyco-upload-box cover" id="studyco-cover-preview"><input id="studyco-cover-photo" type="file" accept="image/*"><span>Cover banner</span></label></div><div class="studyco-form-grid"><label>Full name<input id="studyco-edit-name" type="text" required></label><label>Contact / phone<input id="studyco-edit-contact" type="text"></label><label>Bio<textarea id="studyco-edit-bio" maxlength="240"></textarea></label><label>Student status<input id="studyco-edit-status" type="text" placeholder="e.g. 300 level Computer Science"></label><label>School<input id="studyco-edit-school" type="text"></label><label>Department<input id="studyco-edit-department" type="text"></label><label>Major<input id="studyco-edit-major" type="text"></label><label>Gender<input id="studyco-edit-gender" type="text"></label><label>Location<input id="studyco-edit-location" type="text"></label></div><div class="studyco-modal-actions"><button class="studyco-button soft" data-close-modal type="button">Cancel</button><button class="studyco-button primary" type="submit">Save profile</button></div></form></div></div>
+
+  <div id="studyco-story-modal" class="studyco-modal-backdrop" hidden><div class="studyco-modal small"><div class="studyco-modal-head"><div><p class="studyco-eyebrow">24-hour update</p><h2>Create a story</h2></div><button class="studyco-icon-button" data-close-modal type="button">×</button></div><form id="studyco-story-form" class="studyco-form"><label>Caption<textarea id="studyco-story-text" maxlength="240" placeholder="What is happening in your study day?"></textarea></label><div class="studyco-story-colors"><button class="selected template-indigo" data-story-color="#5b5bd6" type="button"></button><button class="template-sunset" data-story-color="#f97316" type="button"></button><button class="template-ocean" data-story-color="#0284c7" type="button"></button><button class="template-gold" data-story-color="#b7791f" type="button"></button><button class="template-night" data-story-color="#111827" type="button"></button></div><label class="studyco-tool story-upload"><input id="studyco-story-image" type="file" accept="image/*">Add an image (optional)</label><div id="studyco-story-preview" class="studyco-story-preview"></div><div class="studyco-modal-actions"><button class="studyco-button soft" data-close-modal type="button">Cancel</button><button class="studyco-button primary" type="submit">Share story</button></div></form></div></div>
+
+  <div id="studyco-story-viewer" class="studyco-modal-backdrop" hidden><div class="studyco-story-viewer"><button class="studyco-icon-button close" data-close-modal type="button">×</button><div id="studyco-story-viewer-content"></div></div></div>
+  <div id="studyco-call-modal" class="studyco-modal-backdrop" hidden><div class="studyco-modal call-modal"><div id="studyco-call-label" class="studyco-call-label">Incoming audio call</div><div id="studyco-call-avatar" class="studyco-call-avatar">SC</div><h2 id="studyco-call-name">StudyCo friend</h2><p id="studyco-call-status">Calling...</p><audio id="studyco-call-remote-audio" autoplay></audio><div class="studyco-call-actions"><button id="studyco-call-decline" class="studyco-button danger" type="button">Decline</button><button id="studyco-call-accept" class="studyco-button success" type="button">Accept</button></div></div></div>
+  <div id="studyco-toast" class="studyco-toast" role="status"></div>
+  <script type="module" src="js/studyco-meet.js"></script>
+</body>
+</html>

@@ -2490,9 +2490,10 @@ function _updateAqsGlobals(user, profile) {
         'admin-about.html','admin-about-settings.html','admin-hosts.html','admin-create-quiz.html',
         'aqs-quiz-studio.html','tts.html','audio.html','ai-animate.html'
     ];
-    /* Pages that are open to everyone (guests OK) */
+    /* Pages that are open to everyone (guests OK). StudyCo Meet owns its
+       registration/login landing flow, so it must not be redirected first. */
     var openPages = ['index.html','studio.html','login.html','register.html','login','register','unauthorized.html',
-                     'take-quiz.html','challenge.html'];
+                     'take-quiz.html','challenge.html','studyco-meet.html','social.html'];
     /* Cloudflare Workers may expose these pages as clean routes (/login and
        /register) while legacy links still use .html. Both forms are auth
        pages and must never be sent through the protected-page guard. */
