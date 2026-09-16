@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "SmartQuiz System"
+description = "A quiz creation and learning app that lets people generate quizzes for themselves or host shareable quizzes for others."
+version = "1.0.0"
+id = "artifacts/smartquiz-system"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25682
+
+[services.development]
+run = "pnpm --filter @workspace/smartquiz-system run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/smartquiz-system", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/smartquiz-system/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25682"
+BASE_PATH = "/"
