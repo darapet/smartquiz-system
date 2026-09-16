@@ -1,5 +1,5 @@
 import { auth, db } from './aqs-firebase.js';
-import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
@@ -31,15 +31,6 @@ const toast = (message, error = false) => {
   clearTimeout(toast.timer); toast.timer = setTimeout(() => { el.className = 'studyco-toast'; }, 3600);
 };
 const templateClass = (name) => `template-${['indigo', 'sunset', 'ocean', 'gold', 'night', 'berry'].includes(name) ? name : 'indigo'}`;
-const authEmail = (identifier) => {
-  const value = identifier.trim().toLowerCase();
-  if (value.includes('@')) return value;
-  const digits = value.replace(/[^\d]/g, '');
-  if (digits.length < 7) throw new Error('Enter a valid email address or phone number.');
-  return `studyco.${digits}@smartquiz.local`;
-};
-const isEmail = (value) => value.includes('@');
-
 async function uploadImage(file, path) {
   if (!file) return '';
   if (!file.type.startsWith('image/')) throw new Error('StudyCo Meet accepts images only. Video uploads are disabled.');
@@ -76,6 +67,13 @@ async function ensureProfile(user) {
 
 function showAuth() {
   $('studyco-auth-screen').hidden = false; $('studyco-app-screen').hidden = true;
+  const returnPath = `${window.location.pathname.split('/').pop() || 'studyco-meet.html'}${window.location.search}`;
+  const loginUrl = `login.html?redirect=${encodeURIComponent(returnPath)}`;
+  const link = $('studyco-auth-link');
+  if (link) link.href = loginUrl;
+  /* The social area never owns authentication. Send signed-out users to the
+     single SmartQuiz login page, preserving their destination for return. */
+  window.setTimeout(() => window.location.replace(loginUrl), 250);
 }
 
 function showApp() {
@@ -106,15 +104,6 @@ function setView(view) {
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   if (view === 'friends') loadSocialLists();
   if (view === 'profile') { renderProfile(); renderProfilePosts(); }
-}
-
-async function login(event) {
-  event.preventDefault();
-  try {
-    $('studyco-auth-error').textContent = 'Signing you in...';
-    const credential = await signInWithEmailAndPassword(auth, authEmail($('studyco-login-identifier').value), $('studyco-login-password').value);
-    state.user = credential.user; await bootApp();
-  } catch (error) { $('studyco-auth-error').textContent = error.code === 'auth/invalid-credential' ? 'The login details do not match an account.' : (error.message || 'Login failed.'); }
 }
 
 function renderPostPreview() {
@@ -372,7 +361,6 @@ function closeModal(id) { $(id).hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
-  $('studyco-login-form').addEventListener('submit', login);
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
   $('studyco-global-search').addEventListener('input', (event) => { if (event.target.value.trim()) { setView('friends'); $('studyco-people-search').value = event.target.value; loadPeople(event.target.value); } });
   $('studyco-people-search').addEventListener('input', (event) => loadPeople(event.target.value).catch((error) => toast(error.message, true)));
@@ -436,7 +424,7 @@ async function bootApp() {
 }
 
 wire();
-onAuthStateChanged(auth, async (user) => {
+window.onAqsAuthChange(async (user) => {
   if (!user || user.isAnonymous) { state.user = null; showAuth(); return; }
   state.user = user;
   try { await bootApp(); } catch (error) { toast(error.message || 'StudyCo Meet could not load.', true); }
