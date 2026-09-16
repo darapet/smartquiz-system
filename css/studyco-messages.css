@@ -1,0 +1,116 @@
+.studyco-messages-page {
+  min-height: min(680px, calc(100vh - 190px));
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--sc-line);
+  border-radius: 18px;
+  background: var(--sc-paper);
+  box-shadow: var(--sc-shadow);
+}
+
+.studyco-messages-sidebar {
+  min-width: 0;
+  border-right: 1px solid var(--sc-line);
+  background: #fcfcff;
+}
+
+.studyco-messages-sidebar .studyco-chat-new {
+  border-bottom: 1px solid var(--sc-line);
+}
+
+.studyco-messages-page .studyco-chat-list {
+  max-height: none;
+  height: calc(min(680px, 100vh - 190px) - 66px);
+}
+
+.studyco-messages-page .studyco-chat-panel {
+  min-height: 0;
+  height: min(680px, calc(100vh - 190px));
+}
+
+.studyco-chat-list button > div {
+  min-width: 0;
+  flex: 1;
+}
+
+.studyco-chat-list small {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: var(--sc-muted);
+  font-size: .61rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studyco-chat-presence {
+  display: flex !important;
+  align-items: center;
+  gap: 4px;
+}
+
+.studyco-online-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16b981;
+  box-shadow: 0 0 0 3px #16b9811c;
+}
+
+.studyco-message time {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+.studyco-message-status {
+  display: inline-block;
+  font-size: .58rem;
+  font-weight: 900;
+  letter-spacing: -.16em;
+  line-height: 1;
+}
+
+.studyco-message-status.sent,
+.studyco-message-status.delivered {
+  color: #c8cce0;
+}
+
+.studyco-message-status.read {
+  color: #9cc8ff;
+}
+
+@media (max-width: 760px) {
+  .studyco-messages-page {
+    min-height: calc(100vh - 150px);
+    display: flex;
+    flex-direction: column;
+    border-radius: 14px;
+  }
+
+  .studyco-messages-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--sc-line);
+  }
+
+  .studyco-messages-page .studyco-chat-list {
+    display: flex;
+    gap: 3px;
+    height: auto;
+    max-height: 76px;
+    overflow-x: auto;
+    border-right: 0;
+  }
+
+  .studyco-messages-page .studyco-chat-list button {
+    min-width: 170px;
+  }
+
+  .studyco-messages-page .studyco-chat-panel {
+    height: calc(100vh - 330px);
+    min-height: 360px;
+  }
+}

@@ -76,7 +76,16 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read, create: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds;
-        allow update, delete: if isSignedIn()
+        allow update: if isSignedIn()
+          && (
+            request.auth.uid == resource.data.senderId
+            || (
+              request.auth.uid == resource.data.receiverId
+              && request.resource.data.diff(resource.data).affectedKeys()
+                   .hasOnly(['deliveredAt', 'readAt'])
+            )
+          );
+        allow delete: if isSignedIn()
           && request.auth.uid == resource.data.senderId;
       }
     }

@@ -8,7 +8,8 @@ const state = {
   feedUnsub: null, storyUnsub: null, requestUnsub: null, messageUnsub: null,
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
   activeChatUid: null, activeChatId: null, activeCallId: null,
-  pendingIncomingCall: null, rtc: null, localStream: null, ringContext: null, ringTimer: null
+  pendingIncomingCall: null, rtc: null, localStream: null, ringContext: null, ringTimer: null,
+  presenceTimer: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -17,6 +18,8 @@ const profileName = (profile) => profile?.displayName || profile?.name || 'Study
 const initials = (profile) => profileName(profile).split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'SC';
 const pairId = (a, b) => [a, b].sort().join('_');
 const timeMs = (value) => value?.toMillis?.() || (value ? new Date(value).getTime() : 0);
+const isOnline = (profile) => Boolean(profile?.online && (!profile.lastSeenAt || Date.now() - timeMs(profile.lastSeenAt) < 90000));
+const presenceText = (profile) => isOnline(profile) ? 'Online' : (profile?.lastSeenAt ? `Last seen ${timeText(profile.lastSeenAt)}` : 'Offline');
 const timeText = (value) => {
   const ms = timeMs(value); if (!ms) return 'Just now';
   const diff = Math.max(0, Date.now() - ms); const mins = Math.floor(diff / 60000);
@@ -46,6 +49,15 @@ async function getProfile(uid) {
   if (!snap.exists()) return null;
   const profile = { id: snap.id, ...snap.data() };
   state.profiles.set(uid, profile); return profile;
+}
+
+async function refreshProfile(uid) {
+  if (!uid) return null;
+  const snap = await getDoc(doc(db, 'social_profiles', uid));
+  if (!snap.exists()) return null;
+  const profile = { id: snap.id, ...snap.data() };
+  state.profiles.set(uid, profile);
+  return profile;
 }
 
 async function ensureProfile(user) {
@@ -101,6 +113,7 @@ function setView(view) {
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   if (view === 'friends') loadSocialLists();
   if (view === 'profile') { renderProfile(); renderProfilePosts(); }
+  if (view === 'messages') loadChats();
 }
 
 function renderPostPreview() {
@@ -267,29 +280,53 @@ async function loadChats() {
   const snap = await getDocs(query(collection(db, 'social_conversations'), where('participantIds', 'array-contains', state.user.uid), limit(80)));
   const chats = await Promise.all(snap.docs.map(async (item) => {
     const data = item.data(); const uid = data.participantIds.find((value) => value !== state.user.uid);
-    return { id: item.id, uid, profile: await getProfile(uid), data };
+    if (data.lastSenderId && data.lastSenderId !== state.user.uid && data.lastMessageId) {
+      const lastMessageRef = doc(db, 'social_conversations', item.id, 'messages', data.lastMessageId);
+      const lastMessage = await getDoc(lastMessageRef);
+      if (lastMessage.exists() && !lastMessage.data().deliveredAt) {
+        await updateDoc(lastMessageRef, { deliveredAt: serverTimestamp() });
+      }
+    }
+    return { id: item.id, uid, profile: await refreshProfile(uid), data };
   }));
-  $('studyco-chat-list').innerHTML = chats.filter((chat) => chat.profile).map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || 'Start a conversation')}</span></div></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+  $('studyco-chat-list').innerHTML = chats.filter((chat) => chat.profile).sort((a, b) => timeMs(b.data.lastMessageAt) - timeMs(a.data.lastMessageAt)).map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span class="studyco-chat-presence">${isOnline(chat.profile) ? '<i class="studyco-online-dot"></i>' : ''}${esc(presenceText(chat.profile))}</span><small>${esc(chat.data.lastMessageText || 'Start a conversation')}</small></div></button>`).join('') || '<div class="studyco-empty">Open a profile to start chatting.</div>';
+}
+
+function messageTicks(message) {
+  if (message.senderId !== state.user.uid) return '';
+  if (message.readAt) return '<span class="studyco-message-status read" aria-label="Read">✓✓</span>';
+  if (message.deliveredAt) return '<span class="studyco-message-status delivered" aria-label="Delivered">✓✓</span>';
+  return '<span class="studyco-message-status sent" aria-label="Sent">✓</span>';
+}
+
+async function markMessagesRead(messages) {
+  const unread = messages.filter((message) => message.senderId !== state.user.uid && !message.readAt);
+  await Promise.all(unread.map((message) => updateDoc(
+    doc(db, 'social_conversations', state.activeChatId, 'messages', message.id),
+    { deliveredAt: message.deliveredAt || serverTimestamp(), readAt: serverTimestamp() }
+  )));
 }
 
 function renderMessages(messages, profile) {
   const target = document.querySelector('.studyco-chat-messages'); if (!target) return;
-  target.innerHTML = messages.length ? messages.map((message) => `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${esc(message.messageText || message.text || '').replace(/\n/g, '<br>')}<time>${esc(timeText(message.createdAt))}</time></div></div>`).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
+  target.innerHTML = messages.length ? messages.map((message) => `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${esc(message.messageText || message.text || '').replace(/\n/g, '<br>')}<time>${esc(timeText(message.createdAt))}${messageTicks(message)}</time></div></div>`).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
   target.scrollTop = target.scrollHeight;
+  markMessagesRead(messages).catch(() => {});
 }
 
 async function openChat(uid) {
-  const profile = await getProfile(uid); if (!profile) return;
-  $('studyco-chat-drawer').hidden = false; state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
-  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${esc(profile.username ? `@${profile.username}` : 'StudyCo friend')}</span></div><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+  const profile = await refreshProfile(uid); if (!profile) return;
+  setView('messages'); state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
+  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span class="studyco-chat-presence">${isOnline(profile) ? '<i class="studyco-online-dot"></i>' : ''}${esc(presenceText(profile))}</span></div><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
   state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), (snapshot) => renderMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt)), profile));
   loadChats();
 }
 
 async function sendMessage(event) {
   event.preventDefault(); const text = $('studyco-chat-input').value.trim(); if (!text || !state.activeChatId) return;
-  await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText: text, createdAt: serverTimestamp(), is_read: false });
-  await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: text.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, updatedAt: serverTimestamp() });
+  const messageRef = doc(collection(db, 'social_conversations', state.activeChatId, 'messages'));
+  await setDoc(messageRef, { senderId: state.user.uid, receiverId: state.activeChatUid, messageText: text, createdAt: serverTimestamp(), deliveredAt: null, readAt: null });
+  await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageId: messageRef.id, lastMessageText: text.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, updatedAt: serverTimestamp() });
   $('studyco-chat-input').value = '';
 }
 
@@ -412,8 +449,6 @@ function wire() {
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
-  document.querySelector('[data-close-drawer]').addEventListener('click', () => { $('studyco-chat-drawer').hidden = true; state.messageUnsub?.(); });
-  $('studyco-open-messages').addEventListener('click', () => { $('studyco-chat-drawer').hidden = false; loadChats(); });
   $('studyco-post-feed').addEventListener('click', async (event) => { const button = event.target.closest('[data-post-action]'); if (!button) return; if (button.dataset.postAction === 'like') await toggleLike(button.dataset.postId); if (button.dataset.postAction === 'focus-comment') button.closest('.studyco-post').querySelector('input')?.focus(); });
   $('studyco-post-feed').addEventListener('submit', async (event) => { if (!event.target.matches('[data-comment-post]')) return; event.preventDefault(); await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value); event.target.reset(); });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
@@ -452,8 +487,24 @@ async function saveProfile(event) {
   } catch (error) { toast(error.message || 'Profile could not be updated.', true); }
 }
 
+async function setPresence(online) {
+  if (!state.user) return;
+  await setDoc(doc(db, 'social_profiles', state.user.uid), { online, lastSeenAt: serverTimestamp() }, { merge: true });
+  if (state.profile) {
+    state.profile = { ...state.profile, online };
+    state.profiles.set(state.user.uid, state.profile);
+  }
+}
+
+function startPresence() {
+  state.presenceTimer && window.clearInterval(state.presenceTimer);
+  setPresence(true).catch(() => {});
+  state.presenceTimer = window.setInterval(() => setPresence(true).catch(() => {}), 30000);
+  window.addEventListener('beforeunload', () => setPresence(false).catch(() => {}), { once: true });
+}
+
 async function bootApp() {
-  await ensureProfile(state.user); showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); loadSocialLists(); loadChats();
+  await ensureProfile(state.user); startPresence(); showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); loadSocialLists(); loadChats();
 }
 
 wire();
