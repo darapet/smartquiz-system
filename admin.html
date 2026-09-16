@@ -110,6 +110,12 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
 .adm-toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
 .adm-toggle:checked::after{left:21px;}
 .adm-select-sm{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:.75rem;outline:none;}
+.adm-cloudinary-account{border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;background:rgba(255,255,255,.025);margin-bottom:12px;}
+.adm-cloudinary-account-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
+.adm-cloudinary-account-title{font-size:.85rem;font-weight:700;color:#e0e7ff;}
+.adm-cloudinary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
+.adm-cloudinary-grid .adm-field:last-child{grid-column:1/-1;}
+@media(max-width:640px){.adm-cloudinary-grid{grid-template-columns:1fr;}.adm-cloudinary-grid .adm-field:last-child{grid-column:auto;}}
 
 /* ── States ── */
 .adm-loading{padding:32px;text-align:center;color:#475569;}
@@ -215,6 +221,9 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
             </a>
             <a class="adm-nav-link" data-section="notifs">
                 <span class="adm-nav-icon">🔔</span> Notifications
+            </a>
+            <a class="adm-nav-link" data-section="cloudinary">
+                <span class="adm-nav-icon">☁️</span> Cloudinary
             </a>
             <a class="adm-nav-link" href="admin-settings.html">
                 <span class="adm-nav-icon">⚙️</span> Admin Settings
@@ -455,6 +464,23 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
 
                 <button class="adm-btn adm-btn-primary" id="adm-save-notifs-btn">💾 Save Notifications</button>
                 <span class="adm-save-msg" id="adm-notif-save-msg" style="display:none;">✓ Saved!</span>
+            </div>
+
+            <!-- CLOUDINARY STORAGE SECTION -->
+            <div class="adm-section" id="section-cloudinary">
+                <div class="adm-section-header">
+                    <div>
+                        <span class="adm-section-title">Cloudinary Storage</span>
+                        <p style="color:#94a3b8;font-size:.82rem;margin-top:6px;max-width:720px;">Connect up to six Cloudinary accounts for image and media uploads. Use each account's cloud name and an unsigned upload preset. API secrets are not requested or stored in this browser app.</p>
+                    </div>
+                </div>
+                <div class="adm-card">
+                    <div id="cloudinary-accounts"><div class="adm-loading">Loading Cloudinary accounts…</div></div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <button class="adm-btn adm-btn-primary" id="adm-save-cloudinary-btn" type="button">Save Cloudinary settings</button>
+                        <span class="adm-save-msg" id="adm-cloudinary-save-msg" style="display:none;">✓ Saved!</span>
+                    </div>
+                </div>
             </div>
 
         </div>

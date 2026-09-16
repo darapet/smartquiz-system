@@ -1,9 +1,6 @@
 import { auth, db } from './aqs-firebase.js';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-import { getStorage, ref as storageRef, uploadBytes, getDownloadURL } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js';
-
-const storage = getStorage();
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   friends: [], requests: [], activeView: 'home', selectedTemplate: 'indigo',
@@ -46,10 +43,9 @@ const isEmail = (value) => value.includes('@');
 async function uploadImage(file, path) {
   if (!file) return '';
   if (!file.type.startsWith('image/')) throw new Error('StudyCo Meet accepts images only. Video uploads are disabled.');
-  if (file.size > 8 * 1024 * 1024) throw new Error('Choose an image below 8 MB.');
+  if (file.size > 25 * 1024 * 1024) throw new Error('Choose an image below 25 MB.');
   if (typeof window.aqsUploadFile === 'function') return window.aqsUploadFile(file, path);
-  const uploaded = await uploadBytes(storageRef(storage, path), file, { contentType: file.type });
-  return getDownloadURL(uploaded.ref);
+  throw new Error('Cloudinary storage is not ready. Please ask the administrator to configure it.');
 }
 
 async function getProfile(uid) {
@@ -110,26 +106,6 @@ function setView(view) {
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   if (view === 'friends') loadSocialLists();
   if (view === 'profile') { renderProfile(); renderProfilePosts(); }
-}
-
-async function register(event) {
-  event.preventDefault();
-  const name = $('studyco-register-name').value.trim();
-  const identifier = $('studyco-register-identifier').value.trim();
-  const password = $('studyco-register-password').value;
-  if (!name || password.length < 6) { $('studyco-auth-error').textContent = 'Add your name and a password with at least 6 characters.'; return; }
-  try {
-    $('studyco-auth-error').textContent = 'Creating your StudyCo account...';
-    const email = authEmail(identifier);
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
-    await updateProfile(credential.user, { displayName: name });
-    const phone = isEmail(identifier) ? '' : identifier;
-    const profile = { uid: credential.user.uid, displayName: name, username: name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 20) || 'learner', email: isEmail(identifier) ? identifier.toLowerCase() : '', loginIdentifier: identifier, phone, bio: '', studentStatus: '', school: '', department: '', major: '', gender: '', location: '', photoURL: '', coverURL: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-    await setDoc(doc(db, 'social_profiles', credential.user.uid), profile, { merge: true });
-    await setDoc(doc(db, 'users', credential.user.uid), { uid: credential.user.uid, name, email: profile.email || email, phone, role: 'student', status: 'active', updated_at: serverTimestamp() }, { merge: true });
-    state.user = credential.user; state.profile = { ...profile, id: credential.user.uid }; state.profiles.set(credential.user.uid, state.profile);
-    await bootApp();
-  } catch (error) { $('studyco-auth-error').textContent = error.message || 'Account creation failed.'; }
 }
 
 async function login(event) {
@@ -396,12 +372,7 @@ function closeModal(id) { $(id).hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
-  document.querySelectorAll('[data-auth-view]').forEach((button) => button.addEventListener('click', () => {
-    const loginView = button.dataset.authView === 'login';
-    document.querySelectorAll('.studyco-auth-tab').forEach((item) => item.classList.toggle('active', item === button));
-    $('studyco-register-form').hidden = loginView; $('studyco-login-form').hidden = !loginView; $('studyco-auth-error').textContent = '';
-  }));
-  $('studyco-register-form').addEventListener('submit', register); $('studyco-login-form').addEventListener('submit', login);
+  $('studyco-login-form').addEventListener('submit', login);
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
   $('studyco-global-search').addEventListener('input', (event) => { if (event.target.value.trim()) { setView('friends'); $('studyco-people-search').value = event.target.value; loadPeople(event.target.value); } });
   $('studyco-people-search').addEventListener('input', (event) => loadPeople(event.target.value).catch((error) => toast(error.message, true)));

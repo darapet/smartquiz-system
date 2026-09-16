@@ -19,22 +19,17 @@
         <div class="studyco-auth-proof"><span>Profiles</span><span>Study friends</span><span>Private chats</span></div>
       </div>
       <div class="studyco-auth-card">
-        <div class="studyco-auth-tabs">
-          <button class="studyco-auth-tab active" data-auth-view="register" type="button">Create account</button>
-          <button class="studyco-auth-tab" data-auth-view="login" type="button">Log in</button>
+        <div class="studyco-auth-heading">
+          <p class="studyco-eyebrow">Welcome back</p>
+          <h2>Sign in to your study circle</h2>
+          <p>Use the same SmartQuiz account you already use across the platform.</p>
         </div>
-        <form id="studyco-register-form" class="studyco-auth-form">
-          <label>Full name<input id="studyco-register-name" type="text" autocomplete="name" placeholder="Your full name" required></label>
-          <label>Email or phone number<input id="studyco-register-identifier" type="text" autocomplete="username" placeholder="you@example.com or 0801..." required></label>
-          <label>Password<input id="studyco-register-password" type="password" minlength="6" autocomplete="new-password" placeholder="At least 6 characters" required></label>
-          <p class="studyco-auth-note">No OTP is required. A phone number is used as your StudyCo login handle.</p>
-          <button class="studyco-button primary wide" type="submit">Join StudyCo Meet</button>
-        </form>
-        <form id="studyco-login-form" class="studyco-auth-form" hidden>
-          <label>Email or phone number<input id="studyco-login-identifier" type="text" autocomplete="username" placeholder="you@example.com or 0801..." required></label>
+        <form id="studyco-login-form" class="studyco-auth-form">
+          <label>Email address<input id="studyco-login-identifier" type="email" autocomplete="username" placeholder="you@example.com" required></label>
           <label>Password<input id="studyco-login-password" type="password" autocomplete="current-password" placeholder="Your password" required></label>
           <button class="studyco-button primary wide" type="submit">Log in to StudyCo</button>
         </form>
+        <p class="studyco-auth-note">New to SmartQuiz? <a href="register.html">Create your account here</a>, then return to StudyCo Meet.</p>
         <div id="studyco-auth-error" class="studyco-form-error" role="alert"></div>
       </div>
     </div>

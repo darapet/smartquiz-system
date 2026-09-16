@@ -1,0 +1,21 @@
+/* Mobile StudyCo uses the same single registration entry point as the site. */
+.studyco-auth-tabs,
+#studyco-register-form {
+  display: none !important;
+}
+
+.studyco-auth-card #studyco-login-form {
+  display: grid !important;
+}
+
+.studyco-mobile-register-note {
+  margin: 14px 0 0;
+  color: var(--sc-muted);
+  font-size: .69rem;
+  line-height: 1.5;
+}
+
+.studyco-mobile-register-note a {
+  color: var(--sc-primary);
+  font-weight: 800;
+}

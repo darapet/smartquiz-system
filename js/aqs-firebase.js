@@ -232,10 +232,83 @@ window.aqsAjax = async function(data, successFn, failFn) {
     }
 };
 
-/* ── File upload to Firebase Storage (used by admin pages) ──────────────
-   Usage: window.aqsUploadFile(file, 'uploads/music/track.mp3')
-          .then(function(url){ ... })
-   Returns: promise resolving to the public download URL              */
+/* ── File upload to Cloudinary (used by StudyCo and admin pages) ────────
+   Only public cloud names and unsigned upload presets are stored in the
+   public settings document. API secrets never belong in this browser app.
+   Up to six configured accounts are tried in round-robin order so one
+   account can be exhausted without taking uploads down. */
+var _aqsCloudinaryAccounts = null;
+var _aqsCloudinarySettingsPromise = null;
+
+function _aqsCleanCloudinaryAccounts(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(function(account) {
+        return {
+            name: String(account && account.name || '').trim().slice(0, 60),
+            cloudName: String(account && account.cloudName || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
+            uploadPreset: String(account && account.uploadPreset || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
+            folder: String(account && account.folder || 'smartquiz').trim().replace(/[^a-zA-Z0-9_./-]/g, '').replace(/^\/+|\/+$/g, ''),
+            enabled: account && account.enabled !== false
+        };
+    }).filter(function(account) {
+        return account.enabled && account.cloudName && account.uploadPreset;
+    }).slice(0, 6);
+}
+
+async function _aqsGetCloudinaryAccounts() {
+    if (_aqsCloudinaryAccounts) return _aqsCloudinaryAccounts;
+    if (!_aqsCloudinarySettingsPromise) {
+        _aqsCloudinarySettingsPromise = getDoc(doc(db, 'settings', 'cloudinary')).then(function(snap) {
+            _aqsCloudinaryAccounts = snap.exists()
+                ? _aqsCleanCloudinaryAccounts(snap.data().accounts)
+                : [];
+            return _aqsCloudinaryAccounts;
+        }).catch(function() {
+            _aqsCloudinaryAccounts = [];
+            return _aqsCloudinaryAccounts;
+        });
+    }
+    return _aqsCloudinarySettingsPromise;
+}
+
+window.aqsUploadFile = async function(file, storagePath) {
+    if (!file) throw new Error('Choose a file first.');
+    if (file.size > 25 * 1024 * 1024) throw new Error('Choose a file below 25 MB.');
+    var accounts = await _aqsGetCloudinaryAccounts();
+    if (!accounts.length) {
+        throw new Error('Cloudinary storage is not configured yet. Ask an admin to add a Cloudinary cloud name and unsigned upload preset.');
+    }
+
+    var start = 0;
+    try { start = Number(localStorage.getItem('aqs_cloudinary_rotation') || 0) % accounts.length; } catch(_) {}
+    var errors = [];
+    for (var attempt = 0; attempt < accounts.length; attempt++) {
+        var account = accounts[(start + attempt) % accounts.length];
+        var form = new FormData();
+        form.append('file', file);
+        form.append('upload_preset', account.uploadPreset);
+        var safePath = String(storagePath || 'uploads').replace(/^\/+|\/+$/g, '').replace(/\.\./g, '');
+        form.append('folder', [account.folder || 'smartquiz', safePath].filter(Boolean).join('/'));
+        try {
+            var response = await fetch('https://api.cloudinary.com/v1_1/' + encodeURIComponent(account.cloudName) + '/auto/upload', {
+                method: 'POST',
+                body: form
+            });
+            var result = await response.json().catch(function() { return {}; });
+            if (!response.ok || !result.secure_url) {
+                throw new Error(result.error && result.error.message || 'Cloudinary rejected the upload (' + response.status + ').');
+            }
+            try { localStorage.setItem('aqs_cloudinary_rotation', String((start + attempt + 1) % accounts.length)); } catch(_) {}
+            return result.secure_url;
+        } catch (error) {
+            errors.push((account.name || account.cloudName) + ': ' + (error.message || 'upload failed'));
+        }
+    }
+    throw new Error('All configured Cloudinary accounts rejected the upload. ' + errors.join(' | '));
+};
+
+/* Legacy Firebase Storage uploads are intentionally no longer used. */
+/*
 window.aqsUploadFile = async function(file, storagePath) {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('You must be signed in as admin to upload files.');
@@ -258,6 +331,7 @@ window.aqsUploadFile = async function(file, storagePath) {
                       '/o/' + encoded + '?alt=media&token=' + json.downloadTokens;
     return downloadUrl;
 };
+*/
 
 /* Patch jQuery $.post and $.ajax to intercept AQS AJAX calls */
 (function patchJQuery() {

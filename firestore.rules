@@ -47,7 +47,14 @@ service cloud.firestore {
 
     // ─── Friend Requests ───────────────────────────────────────────
     match /social_friend_requests/{requestId} {
-      allow read: if isSignedIn()
+      // A StudyCo profile checks this deterministic document before creating
+      // a request. A missing document has no resource.data, so explicitly
+      // allow that harmless lookup for signed-in users.
+      allow get: if isSignedIn()
+          && (resource == null
+              || resource.data.requesterId == request.auth.uid
+              || resource.data.recipientId == request.auth.uid);
+      allow list: if isSignedIn()
           && (resource.data.requesterId == request.auth.uid
               || resource.data.recipientId == request.auth.uid);
       allow create: if isSignedIn()

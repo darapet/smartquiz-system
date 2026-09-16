@@ -286,7 +286,7 @@ document.querySelectorAll('.adm-nav-link').forEach(function(link) {
         var secEl = document.getElementById('section-' + section);
         if (secEl) secEl.style.display = 'block';
         currentSection = section;
-        var titles = { quizzes:'All Quizzes', users:'All Users', attempts:'Quiz Results', ads:'Ads Management', notifs:'Notifications', deleted:'Deleted Quizzes Archive', hosts:'Host Activity' };
+        var titles = { quizzes:'All Quizzes', users:'All Users', attempts:'Quiz Results', ads:'Ads Management', notifs:'Notifications', cloudinary:'Cloudinary Storage', deleted:'Deleted Quizzes Archive', hosts:'Host Activity' };
         var titleEl = document.getElementById('adm-section-title');
         if (titleEl && titles[section]) titleEl.textContent = titles[section];
         loadSection(section);
@@ -305,10 +305,86 @@ function loadSection(section) {
         case 'attempts':  loadAttempts();       break;
         case 'ads':       loadAds();            break;
         case 'notifs':    loadNotifications();  break;
+        case 'cloudinary': loadCloudinarySettings(); break;
         case 'deleted':   loadDeletedQuizzes(); break;
         case 'hosts':     loadHostActivity();   break;
     }
 }
+
+/* ── CLOUDINARY STORAGE ─────────────────────── */
+function cloudinaryDefaults() {
+    return { name: '', cloudName: '', uploadPreset: '', folder: 'smartquiz', enabled: false };
+}
+
+function renderCloudinarySettings(accounts) {
+    var target = document.getElementById('cloudinary-accounts');
+    if (!target) return;
+    var rows = Array.isArray(accounts) ? accounts : [];
+    target.innerHTML = Array.from({ length: 6 }, function(_, index) {
+        var account = Object.assign(cloudinaryDefaults(), rows[index] || {});
+        var number = index + 1;
+        return '<div class="adm-cloudinary-account">' +
+            '<div class="adm-cloudinary-account-head"><span class="adm-cloudinary-account-title">Cloudinary account ' + number + '</span>' +
+            '<label style="display:flex;align-items:center;gap:7px;color:#94a3b8;font-size:.78rem;"><input type="checkbox" id="cloudinary-enabled-' + number + '"' + (account.enabled ? ' checked' : '') + '> Enabled</label></div>' +
+            '<div class="adm-cloudinary-grid">' +
+            '<div class="adm-field"><label for="cloudinary-name-' + number + '">Label</label><input class="adm-input" id="cloudinary-name-' + number + '" value="' + esc(account.name) + '" placeholder="Primary images"></div>' +
+            '<div class="adm-field"><label for="cloudinary-cloud-' + number + '">Cloud name</label><input class="adm-input" id="cloudinary-cloud-' + number + '" value="' + esc(account.cloudName) + '" placeholder="your-cloud-name" autocomplete="off"></div>' +
+            '<div class="adm-field"><label for="cloudinary-preset-' + number + '">Unsigned upload preset</label><input class="adm-input" id="cloudinary-preset-' + number + '" value="' + esc(account.uploadPreset) + '" placeholder="smartquiz_unsigned" autocomplete="off"></div>' +
+            '<div class="adm-field"><label for="cloudinary-folder-' + number + '">Folder prefix</label><input class="adm-input" id="cloudinary-folder-' + number + '" value="' + esc(account.folder || 'smartquiz') + '" placeholder="smartquiz"></div>' +
+            '</div></div>';
+    }).join('');
+}
+
+async function loadCloudinarySettings() {
+    var target = document.getElementById('cloudinary-accounts');
+    if (!target) return;
+    try {
+        var snap = await getDoc(doc(db, 'settings', 'cloudinary'));
+        renderCloudinarySettings(snap.exists() ? snap.data().accounts : []);
+    } catch (error) {
+        target.innerHTML = '<div class="adm-error">Cloudinary settings could not load: ' + esc(error.message || error) + '</div>';
+    }
+}
+
+bind('adm-save-cloudinary-btn', 'click', async function() {
+    var button = this;
+    var status = document.getElementById('adm-cloudinary-save-msg');
+    var accounts = Array.from({ length: 6 }, function(_, index) {
+        var number = index + 1;
+        return {
+            name: document.getElementById('cloudinary-name-' + number).value.trim().slice(0, 60),
+            cloudName: document.getElementById('cloudinary-cloud-' + number).value.trim(),
+            uploadPreset: document.getElementById('cloudinary-preset-' + number).value.trim(),
+            folder: document.getElementById('cloudinary-folder-' + number).value.trim() || 'smartquiz',
+            enabled: document.getElementById('cloudinary-enabled-' + number).checked
+        };
+    }).filter(function(account) {
+        return account.cloudName || account.uploadPreset || account.name;
+    });
+    if (accounts.some(function(account) { return !account.cloudName || !account.uploadPreset; })) {
+        alert('Each filled Cloudinary account needs both a cloud name and an unsigned upload preset.');
+        return;
+    }
+    if (accounts.length > 6) {
+        alert('You can configure up to six Cloudinary accounts.');
+        return;
+    }
+    button.disabled = true;
+    button.textContent = 'Saving…';
+    try {
+        await setDoc(doc(db, 'settings', 'cloudinary'), { accounts: accounts.slice(0, 6), updatedAt: serverTimestamp() });
+        if (status) {
+            status.textContent = '✓ Saved ' + accounts.filter(function(account) { return account.enabled; }).length + ' enabled account(s)';
+            status.style.display = 'inline';
+            setTimeout(function() { status.style.display = 'none'; }, 4000);
+        }
+    } catch (error) {
+        alert('Cloudinary settings could not be saved: ' + (error.message || error));
+    } finally {
+        button.disabled = false;
+        button.textContent = 'Save Cloudinary settings';
+    }
+});
 
 /* ─────────────────────────────────────────────
    DASHBOARD STATS
