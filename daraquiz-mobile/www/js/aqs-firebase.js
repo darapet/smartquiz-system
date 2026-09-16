@@ -16,7 +16,7 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithPopup,
+    signInWithCredential,
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -540,17 +540,85 @@ async function actionRegister(data) {
     };
 }
 
-/* ── Google / Social Sign-In ──
-     Uses Google Identity Services (GIS) token client + signInWithCredential.
-     This bypasses Firebase Hosting entirely — no /__/firebase/init.json needed.
-     Works on GitHub Pages, any static host, any domain. */
+/* ── Google / Social Sign-In ───────────────────────────────────────────────
+   Firebase's signInWithPopup relies on a browser popup and is unreliable in
+   GitHub Pages subfolders and Capacitor WebViews. Google Identity Services
+   returns an OAuth access token directly; Firebase then exchanges that token
+   with signInWithCredential. This also avoids Firebase Hosting's
+   /__/auth/handler requirement. */
+function _loadGoogleIdentityServices() {
+    if (typeof window !== 'undefined' && window.google &&
+        window.google.accounts && window.google.accounts.oauth2) {
+        return Promise.resolve();
+    }
+
+    return new Promise(function(resolve, reject) {
+        var existing = document.querySelector('script[data-aqs-google-identity]');
+        var settled = false;
+        var timeoutId;
+        var pollId;
+
+        function finish(error) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            clearInterval(pollId);
+            if (error) reject(error);
+            else resolve();
+        }
+
+        function checkReady() {
+            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+                finish();
+            }
+        }
+
+        if (!existing) {
+            existing = document.createElement('script');
+            existing.src = 'https://accounts.google.com/gsi/client';
+            existing.async = true;
+            existing.defer = true;
+            existing.dataset.aqsGoogleIdentity = 'true';
+            existing.onerror = function() {
+                finish(new Error('Google Sign-In could not load. Check your internet connection and try again.'));
+            };
+            document.head.appendChild(existing);
+        }
+
+        existing.addEventListener('load', checkReady, { once: true });
+        pollId = setInterval(checkReady, 100);
+        timeoutId = setTimeout(function() {
+            finish(new Error('Google Sign-In is taking too long to load. Check your internet connection and try again.'));
+        }, 10000);
+        checkReady();
+    });
+}
+
 async function actionSocialLogin(data) {
     var providerName = data.provider || 'google';
     if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
 
-    /* Use Firebase's provider flow so the Firebase authorized-domain list is
-       the only browser-origin configuration required on Cloudflare. */
-    var result = await signInWithPopup(auth, new GoogleAuthProvider());
+    await _loadGoogleIdentityServices();
+
+    var result = await new Promise(function(resolve, reject) {
+        var tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
+            scope: 'email profile openid',
+            callback: async function(tokenResponse) {
+                if (tokenResponse.error) {
+                    reject(new Error(tokenResponse.error_description || tokenResponse.error));
+                    return;
+                }
+                try {
+                    var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
+                    resolve(await signInWithCredential(auth, credential));
+                } catch (error) {
+                    reject(error);
+                }
+            }
+        });
+        tokenClient.requestAccessToken({ prompt: '' });
+    });
     var user = result.user;
     var profileRef = doc(db, 'users', user.uid);
     var profileDoc = await getDoc(profileRef);
