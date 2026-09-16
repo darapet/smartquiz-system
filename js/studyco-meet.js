@@ -86,6 +86,7 @@ function renderProfile() {
   $('studyco-hello-name').textContent = `, ${profileName(p).split(' ')[0] || 'there'}`;
   $('studyco-mini-profile').innerHTML = `${avatar(p, 'small')}<div><strong>${esc(profileName(p))}</strong><span>${esc(p.username ? `@${p.username}` : 'Complete your profile')}</span></div>`;
   $('studyco-composer-avatar').innerHTML = avatar(p, 'small');
+  $('studyco-top-avatar').innerHTML = avatar(p, 'small');
   $('studyco-profile-avatar').innerHTML = avatar(p, 'large');
   $('studyco-profile-name').textContent = profileName(p);
   $('studyco-profile-handle').textContent = p.username ? `@${p.username}` : '';
@@ -104,11 +105,14 @@ function setView(view) {
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   if (view === 'friends') loadSocialLists();
   if (view === 'profile') { renderProfile(); renderProfilePosts(); }
+  if (view === 'messages') loadChats();
 }
 
 function renderPostPreview() {
   const preview = $('studyco-post-preview'); const text = $('studyco-post-text').value.trim();
-  preview.hidden = !text; preview.textContent = text; preview.className = `studyco-post-preview ${templateClass(state.selectedTemplate)}`;
+  const hasContent = Boolean(text || state.postImage);
+  preview.hidden = !hasContent; preview.className = `studyco-post-preview ${templateClass(state.selectedTemplate)}`;
+  preview.innerHTML = `${text ? `<span>${esc(text)}</span>` : ''}${state.postImage ? `<img src="${esc(URL.createObjectURL(state.postImage))}" alt="Selected study image">` : ''}`;
 }
 
 async function renderPost(post) {
@@ -235,7 +239,7 @@ async function handleFriendAction(uid, action) {
     if (action === 'request') await setDoc(ref, { requesterId: state.user.uid, recipientId: uid, status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     if (action === 'accept') await updateDoc(ref, { status: 'accepted', updatedAt: serverTimestamp() });
     if (action === 'unfriend' || action === 'reject') await deleteDoc(ref);
-    if (action === 'message') { openChat(uid); return; }
+    if (action === 'message') { setView('messages'); openChat(uid); return; }
     await loadPeople($('studyco-people-search').value); await loadSocialLists(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
   } catch (error) { toast(error.message || 'That action could not be completed.', true); }
 }
@@ -270,7 +274,13 @@ async function loadChats() {
     const data = item.data(); const uid = data.participantIds.find((value) => value !== state.user.uid);
     return { id: item.id, uid, profile: await getProfile(uid), data };
   }));
-  $('studyco-chat-list').innerHTML = chats.filter((chat) => chat.profile).map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || 'Start a conversation')}</span></div></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+  const validChats = chats.filter((chat) => chat.profile);
+  const term = $('studyco-message-search')?.value.trim().toLowerCase() || '';
+  const visibleChats = validChats.filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term));
+  $('studyco-chat-count').textContent = String(validChats.length);
+  $('studyco-message-badge').hidden = !validChats.some((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid);
+  $('studyco-message-badge').textContent = String(validChats.filter((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid).length || '');
+  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || 'Start a conversation')}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
 }
 
 function renderMessages(messages, profile) {
@@ -282,7 +292,7 @@ function renderMessages(messages, profile) {
 async function openChat(uid) {
   const profile = await getProfile(uid); if (!profile) return;
   const relation = await relationship(uid); if (relation !== 'friends') { toast('You can message accepted friends only.', true); return; }
-  $('studyco-chat-drawer').hidden = false; state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
+  setView('messages'); state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
   $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${esc(profile.username ? `@${profile.username}` : 'StudyCo friend')}</span></div><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
   state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), (snapshot) => renderMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt)), profile));
   loadChats();
@@ -367,7 +377,7 @@ function wire() {
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
-  $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; });
+  $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; renderPostPreview(); });
   $('studyco-publish-post').addEventListener('click', publishPost);
   $('studyco-create-story').addEventListener('click', () => openModal('studyco-story-modal'));
   $('studyco-story-list').addEventListener('click', (event) => { const card = event.target.closest('[data-story-id]'); if (card) showStory(state.stories.find((story) => story.id === card.dataset.storyId)); else if (event.target.closest('#studyco-story-add-card')) openModal('studyco-story-modal'); });
@@ -379,8 +389,8 @@ function wire() {
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
-  document.querySelector('[data-close-drawer]').addEventListener('click', () => { $('studyco-chat-drawer').hidden = true; state.messageUnsub?.(); });
-  $('studyco-open-messages').addEventListener('click', () => { $('studyco-chat-drawer').hidden = false; loadChats(); });
+  $('studyco-new-message')?.addEventListener('click', () => { setView('friends'); $('studyco-people-search').focus(); });
+  $('studyco-message-search')?.addEventListener('input', () => loadChats());
   $('studyco-post-feed').addEventListener('click', async (event) => { const button = event.target.closest('[data-post-action]'); if (!button) return; if (button.dataset.postAction === 'like') await toggleLike(button.dataset.postId); if (button.dataset.postAction === 'focus-comment') button.closest('.studyco-post').querySelector('input')?.focus(); });
   $('studyco-post-feed').addEventListener('submit', async (event) => { if (!event.target.matches('[data-comment-post]')) return; event.preventDefault(); await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value); event.target.reset(); });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
