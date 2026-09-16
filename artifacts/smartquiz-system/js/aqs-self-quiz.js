@@ -36,14 +36,17 @@
   (function(){
     var shared=window.groqFetch;
     if(!shared)return;
+    var dedicatedInFlight=false;
     window.groqFetch=function(body){
       var keysReady=window._aqsKeysReady||Promise.resolve();
+      if(dedicatedInFlight)return shared(body);
+      dedicatedInFlight=true;
       return keysReady.then(function(){
         if(typeof window.quizGroqFetch==='function'){
           return window.quizGroqFetch(body).catch(function(){return shared(body);});
         }
         return shared(body);
-      });
+      }).finally(function(){dedicatedInFlight=false;});
     };
   }());
   function addSection(){var id=++uid;sections.push({id:id,source:'topic',topic:'',doc:'',type:'mixed',count:10,generated:false});renderSections();}
