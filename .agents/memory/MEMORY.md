@@ -1,0 +1,1 @@
+- [Cloudinary configuration boundary](cloudinary-upload-config.md) — keep browser upload settings public and separate from admin API secrets; rotate across enabled accounts.
