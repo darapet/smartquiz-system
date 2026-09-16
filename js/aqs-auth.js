@@ -265,7 +265,11 @@
               window.aqsAjax(
                   { action: 'aqs_social_login', provider: 'google' },
                   function (res) {
-                      /* GIS popup returns result directly — handle redirect here */
+                      /* Firebase redirect flow navigates away immediately. */
+                      if (res && res.success && res.data && res.data.redirect_started) {
+                          if (alertId) showAlert(alertId, 'Redirecting to Google sign-in…', false);
+                          return;
+                      }
                       if (res && res.success && res.data && res.data.redirect) {
                           if (alertId) showAlert(alertId, '✓ Signed in as ' + (res.data.user_name || 'you') + '! Redirecting…', false);
                           setTimeout(function() { window.location.href = res.data.redirect; }, 900);
@@ -280,6 +284,11 @@
               );
           });
       }
+
+      document.addEventListener('aqs:googleautherror', function (event) {
+          var alertEl = document.getElementById('aqs-login-alert') || document.getElementById('aqs-register-alert');
+          if (alertEl) showAlert(alertEl.id, event.detail && event.detail.message || 'Google sign-in failed. Try again.', true);
+      });
   
     document.addEventListener('DOMContentLoaded', function () {
         setupPasswordToggles();

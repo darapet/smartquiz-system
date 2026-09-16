@@ -16,7 +16,8 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
-    signInWithPopup,
+    getRedirectResult,
+    signInWithRedirect,
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -615,15 +616,9 @@ async function actionRegister(data) {
 }
 
 /* ── Google / Social Sign-In ───────────────────────────────────────────────
-   Use Firebase's hosted Google provider flow. This keeps OAuth configuration
-   inside the Firebase project and avoids requiring a separately configured
-   Google Identity Services JavaScript origin for the public website. */
-async function actionSocialLogin(data) {
-    var providerName = data.provider || 'google';
-    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
-
-    var result = await signInWithPopup(auth, new GoogleAuthProvider());
-    var user = result.user;
+   Use Firebase's hosted Google redirect flow. Redirect is more reliable than
+   a popup on mobile browsers and on browsers that block popup communication. */
+async function _completeGoogleLogin(user) {
     var profileRef = doc(db, 'users', user.uid);
     var profileDoc = await getDoc(profileRef);
     var profile;
@@ -657,6 +652,29 @@ async function actionSocialLogin(data) {
     _updateAqsGlobals(user, profile);
     return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
 }
+
+async function actionSocialLogin(data) {
+    var providerName = data.provider || 'google';
+    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
+
+    await signInWithRedirect(auth, new GoogleAuthProvider());
+    return { redirect_started: true };
+}
+
+/* Firebase returns to the same login/register URL after Google completes.
+   Finish the profile setup here, then send the user to their dashboard. */
+getRedirectResult(auth).then(function(result) {
+    if (!result || !result.user) return;
+    return _completeGoogleLogin(result.user).then(function(data) {
+        if (data && data.redirect) window.location.replace(data.redirect);
+    });
+}).catch(function(error) {
+    console.error('[AQS Firebase] Google redirect sign-in failed:', error);
+    document.dispatchEvent(new CustomEvent('aqs:googleautherror', {
+        detail: { message: error && error.message || 'Google sign-in failed.' }
+    }));
+});
+
 async function actionLogout() {
     await signOut(auth);
     window._aqsFirebaseUser = null;
