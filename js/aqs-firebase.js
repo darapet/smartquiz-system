@@ -2384,7 +2384,7 @@ async function actionSaveSettings(data) {
         puzzle_groq_keys: 'puzzle', quizstudio_groq_keys: 'quizstudio'
     };
     Object.keys(_fpMap).forEach(function(field) {
-        if (Array.isArray(payload[field]) && payload[field].length) {
+        if (Array.isArray(payload[field])) {
             if (typeof window.setFeatureGroqKeys === 'function') {
                 window.setFeatureGroqKeys(_fpMap[field], payload[field]);
             }

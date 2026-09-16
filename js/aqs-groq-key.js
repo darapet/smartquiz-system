@@ -229,6 +229,13 @@ window._aqsKeysReady = new Promise(function(resolve) {
         return _providerFetch(HF_URL, _getHFKeys(), HF_IDX_KEY, bodyObj, extraOpts,
             window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
     }
+    function _fallbackOpts(extraOpts) {
+        var opts = Object.assign({}, extraOpts || {});
+        /* A caller timeout may stop one stalled provider, but must not cancel
+           the next provider in the fallback chain. */
+        if (opts.signal && opts.signal.aborted) delete opts.signal;
+        return opts;
+    }
 
     function _creatorImageDimensions(aspectRatio) {
         if (aspectRatio === 'square') return { width: 1024, height: 1024 };
@@ -357,22 +364,28 @@ window._aqsKeysReady = new Promise(function(resolve) {
             await window._aqsKeysReady;
         }
 
-        /* 1. Try Groq (fastest, free tier) */
+        var lastResponse = null;
+
+        /* 1. Try Groq (fastest, free tier). A provider can return an error
+           response object, so only a successful response ends the chain. */
         var res = await _groqFetch(bodyObj, extraOpts);
-        if (res) return res;
+        if (res && res.ok) return res;
+        if (res) lastResponse = res;
 
         /* 2. Fall back to Mistral */
         if (_getMistralKeys().length) {
             _aqsLog('warn', 'All Groq keys busy — falling back to Mistral');
-            res = await _mistralFetch(bodyObj, extraOpts);
-            if (res) return res;
+            res = await _mistralFetch(bodyObj, _fallbackOpts(extraOpts));
+            if (res && res.ok) return res;
+            if (res) lastResponse = res;
         }
 
         /* 3. Fall back to HuggingFace (Study Hub + Studio also benefit) */
         if (_getHFKeys().length) {
             _aqsLog('warn', 'All Mistral keys busy — falling back to HuggingFace');
-            res = await _hfFetch(bodyObj, extraOpts);
-            if (res) return res;
+            res = await _hfFetch(bodyObj, _fallbackOpts(extraOpts));
+            if (res && res.ok) return res;
+            if (res) lastResponse = res;
         }
 
         /* 4. Nothing left */
@@ -380,6 +393,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
         if (!gc && !mc && !hc) {
             _aqsShowUserError('config'); throw new Error('AI features not configured.');
         }
+        if (lastResponse) return lastResponse;
         throw new Error('All AI keys are busy or rate-limited. Please wait a moment and try again.');
     };
 
@@ -482,7 +496,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
             };
             Object.keys(_fp).forEach(function(id) {
                 var field = _fp[id];
-                if (Array.isArray(s[field]) && s[field].length && typeof window.setFeatureGroqKeys === 'function') {
+                if (Array.isArray(s[field]) && typeof window.setFeatureGroqKeys === 'function') {
                     window.setFeatureGroqKeys(id, s[field]);
                 }
             });
@@ -513,6 +527,33 @@ window._aqsKeysReady = new Promise(function(resolve) {
 (function () {
     var RL_MS = 62000;
     var _pools = {};
+    /* Capture the shared chain before Self Quiz wraps window.groqFetch.
+       This prevents a feature-pool fallback from recursively calling itself. */
+    var _sharedGroqFetch = window.groqFetch;
+
+    function _responseHasQuizContent(res) {
+        if (!res || !res.ok) return false;
+        if (typeof res.clone !== 'function') return true;
+        return res.clone().json().then(function(body) {
+            var content = body && body.choices && body.choices[0] &&
+                body.choices[0].message && body.choices[0].message.content;
+            return typeof content === 'string' && content.trim().length > 20;
+        }).catch(function() { return false; });
+    }
+
+    function _fallbackOptions(extraOpts) {
+        var opts = Object.assign({}, extraOpts || {});
+        if (opts.signal && opts.signal.aborted) delete opts.signal;
+        return opts;
+    }
+
+    function _sharedKeyCount() {
+        var count = 0;
+        ['_aqsGroqKeyCount', '_aqsMistralKeyCount', '_aqsHFKeyCount'].forEach(function(name) {
+            if (typeof window[name] === 'function') count += window[name]();
+        });
+        return count;
+    }
 
     function _createPool(id, opts) {
         opts = opts || {};
@@ -548,7 +589,16 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 try { localStorage.setItem(IDX, '0'); } catch(e) {}
             },
             keyCount: function() { return slots.length; },
-            fetch: async function(bodyObj) {
+            fetch: async function(bodyObj, extraOpts) {
+                /* Firebase settings load asynchronously. Wait once before
+                   concluding that the dedicated slots are empty. */
+                if (!slots.length && !_sharedKeyCount() && window._aqsKeysReady) {
+                    await window._aqsKeysReady;
+                }
+                var request = Object.assign({
+                    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
+                }, bodyObj || {});
+                var lastResponse = null;
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
                 if (slots.length) {
                     var start = _idx();
@@ -556,42 +606,55 @@ window._aqsKeysReady = new Promise(function(resolve) {
                         var at = (start + i) % slots.length, key = slots[at];
                         if (_isDead(key) || _isRL(key)) { _setIdx(at + 1); continue; }
                         try {
-                            var res = await fetch(URL_, {
+                            var res = await fetch(URL_, Object.assign({}, _fallbackOptions(extraOpts), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                                body: JSON.stringify(bodyObj)
-                            });
+                                body: JSON.stringify(request)
+                            }));
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
                             if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(at + 1); continue; }
-                            if (res.status === 400) {
-                                var _t4 = await res.clone().text().catch(function(){ return ''; });
-                                if (_looksInvalidKey(_t4)) { _markDead(key, 'invalid_api_key'); _setIdx(at + 1); continue; }
-                            }
                             if (res.status >= 500) { _setIdx(at + 1); continue; }
-                            if (id === 'quiz' && !res.ok && typeof window._mistralFetchDirect === 'function') {
-                                var mistralRes = await window._mistralFetchDirect(bodyObj);
-                                if (mistralRes) return mistralRes;
+                            if (!res.ok) {
+                                lastResponse = res;
+                                _setIdx(at + 1);
+                                continue;
+                            }
+                            if (id === 'quiz' && !(await _responseHasQuizContent(res))) {
+                                lastResponse = res;
+                                _setIdx(at + 1);
+                                continue;
                             }
                             _setIdx(at + 1);
                             return res;
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
-                /* Groq slots are empty or rate-limited: use Mistral for quizzes. */
+                /* Dedicated quiz Groq slots are empty or exhausted: use the
+                   shared Mistral pool before trying the shared AI chain. */
                 if (id === 'quiz' && typeof window._mistralFetchDirect === 'function') {
-                    var fallbackRes = await window._mistralFetchDirect(bodyObj);
-                    if (fallbackRes) return fallbackRes;
+                    var fallbackRes = await window._mistralFetchDirect(request, _fallbackOptions(extraOpts));
+                    if (fallbackRes && await _responseHasQuizContent(fallbackRes)) return fallbackRes;
+                    if (fallbackRes) lastResponse = fallbackRes;
                 }
-                /* Own keys exhausted or empty */
-                if (!opts.noFallback && typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
-                throw new Error('No quiz AI keys configured — add Groq keys in Admin Settings → Quiz AI Keys.');
+                /* Shared Groq → Mistral → HuggingFace chain. Use the
+                   captured function so Self Quiz cannot recurse here. */
+                if (!opts.noFallback && typeof _sharedGroqFetch === 'function') {
+                    var sharedRes = await _sharedGroqFetch(request, _fallbackOptions(extraOpts));
+                    if (sharedRes && sharedRes.ok) {
+                        if (id !== 'quiz' || await _responseHasQuizContent(sharedRes)) return sharedRes;
+                    }
+                    if (sharedRes) lastResponse = sharedRes;
+                }
+                if (lastResponse) return lastResponse;
+                throw new Error('No quiz AI keys configured — add Groq or Mistral keys in Admin Settings.');
             }
         };
     }
 
-    /* Initialise all feature pools — quiz uses noFallback so it never silently uses the main pool */
-    var _poolOpts = { quiz: { noFallback: true } };
+    /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
+       available so a missing or exhausted dedicated slot does not stop it. */
+    var _poolOpts = { quiz: { noFallback: false } };
     ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
@@ -605,10 +668,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.quizGroqFetch       = function(b) { return _pools.quiz.fetch(b); };
-    window.challengeGroqFetch  = function(b) { return _pools.challenge.fetch(b); };
-    window.studyhubGroqFetch   = function(b) { return _pools.studyhub.fetch(b); };
-    window.textdocsGroqFetch   = function(b) { return _pools.textdocs.fetch(b); };
-    window.puzzleGroqFetch     = function(b) { return _pools.puzzle.fetch(b); };
-    window.quizstudioGroqFetch = function(b) { return _pools.quizstudio.fetch(b); };
+    window.quizGroqFetch       = function(b, o) { return _pools.quiz.fetch(b, o); };
+    window.challengeGroqFetch  = function(b, o) { return _pools.challenge.fetch(b, o); };
+    window.studyhubGroqFetch   = function(b, o) { return _pools.studyhub.fetch(b, o); };
+    window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
+    window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
+    window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
 })();
