@@ -1,7 +1,7 @@
 {
   "name": "DaraQuiz AI",
   "short_name": "DaraQuiz",
-  "version": "1.381",
+  "version": "1.382",
   "description": "AI-powered quiz platform by Darapet Technology",
   "start_url": "index.html",
   "display": "standalone",
