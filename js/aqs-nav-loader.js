@@ -162,6 +162,21 @@
      Keep the five primary destinations visible and group every other
      destination under one accessible Explore menu. */
   function compactNavigation() {
+    /* Quiz creation is one entry point. Keep the choice between a personal
+       quiz and a hosted quiz on the next screen instead of splitting it into
+       two competing nav links. */
+    document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
+      Array.from(nav.children).forEach(function (child) {
+        if (child.tagName !== 'A') return;
+        var href = (child.getAttribute('href') || '').replace(/\?.*$/, '').replace(/^.*\//, '');
+        if (href === 'create-quiz.html') {
+          child.setAttribute('href', 'quiz-setup.html');
+        } else if (href === 'self-quiz.html') {
+          child.parentNode.removeChild(child);
+        }
+      });
+    });
+
     document.querySelectorAll('.aqs-site-nav, .aqs-hdr-nav, .aqs-hdr-drawer, .aqs-sidebar-nav').forEach(function (nav) {
       if (nav.dataset.aqsCompactNav === 'true') return;
       nav.dataset.aqsCompactNav = 'true';
@@ -186,7 +201,7 @@
         if (creatorStudioLink) {
           primary.push(link);
           hasCreatorStudio = true;
-        } else if (href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
+        } else if (href === 'quiz-setup.html' || href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
             href === 'challenge.html' || href === 'library.html') {
           primary.push(link);
           if (href === 'studyhub.html') hasStudyHub = true;
@@ -277,6 +292,7 @@
     'studio':         'AI Studio',
     'dashboard':      'Dashboard',
     'user-dashboard': 'My Dashboard',
+    'quiz-setup':    'Create Quiz',
     'create-quiz':    'Create Quiz',
     'challenge':      'Challenge',
     'studyhub':       'Study Hub',

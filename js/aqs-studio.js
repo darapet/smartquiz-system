@@ -1022,7 +1022,7 @@
         bar.querySelector('#dts-go-create-quiz').addEventListener('click', function () {
             try { sessionStorage.setItem('dts_quiz_content', content.slice(0, 5000)); } catch (e) {}
             var cfg = window.DTS_CONFIG || {};
-            window.location.href = cfg.create_url || 'create-quiz.html';
+            window.location.href = cfg.create_url || 'quiz-setup.html';
         });
 
         var msgs = document.getElementById('dts-messages');

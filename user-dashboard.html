@@ -66,7 +66,7 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 <script>
 window.AQS = {
     ajax_url: 'firebase', nonce:'', auth_nonce:'',
-    home_url:'index.html', create_page_url:'create-quiz.html',
+    home_url:'index.html', create_page_url:'quiz-setup.html',
     studio_url:'studio.html', dashboard_url:'dashboard.html',
     imagegen_url:'',
     is_logged_in:true, is_host:true, is_admin:false,
@@ -87,7 +87,7 @@ window.AQS = {
         <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
         <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
         <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
-        <a href="study.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
+        <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
     
         <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
     </nav>
@@ -97,7 +97,7 @@ window.AQS = {
     <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
     <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
     <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
-    <a href="study.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
+    <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
 
     <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
 </div>
@@ -115,7 +115,7 @@ window.AQS = {
       </div>
     </div>
     <div class="aqs-user-topbar-actions">
-      <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
+      <a href="quiz-setup.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
       <a href="studio.html"      class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;">⬡ xzily Ai</a>
       <button class="aqs-btn aqs-btn-sm" id="aqs-user-logout-btn" style="color:#dc2626;border-color:#fecaca;">Log Out</button>
     </div>
@@ -139,7 +139,7 @@ window.AQS = {
 
   <!-- Quick Links -->
   <div class="udash-quick-grid">
-    <a href="create-quiz.html" class="udash-quick-card">
+    <a href="quiz-setup.html" class="udash-quick-card">
       <div class="udash-quick-icon">✏️</div>
       <div class="udash-quick-name">Create Quiz</div>
       <div class="udash-quick-desc">Build and share a new quiz</div>
@@ -159,7 +159,7 @@ window.AQS = {
       <div class="udash-quick-name">AI Studio</div>
       <div class="udash-quick-desc">Chat with XZILY AI, web search</div>
     </a>
-    <a href="study.html" class="udash-quick-card">
+    <a href="studyhub.html" class="udash-quick-card">
       <div class="udash-quick-icon">📚</div>
       <div class="udash-quick-name">Study AI</div>
       <div class="udash-quick-desc">Study any subject with AI help</div>
