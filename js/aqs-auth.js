@@ -133,6 +133,7 @@
             var name     = (document.getElementById('reg-name') || {}).value || '';
             var username = (document.getElementById('reg-username') || {}).value || '';
             var email    = (document.getElementById('reg-email') || {}).value || '';
+            var phone    = (document.getElementById('reg-phone') || {}).value || '';
             var role     = (document.getElementById('reg-role') || {}).value || 'student';
             var password = (document.getElementById('reg-password') || {}).value || '';
             var confirm  = (document.getElementById('reg-confirm') || {}).value || '';
@@ -166,7 +167,7 @@
                 return;
             }
             window.aqsAjax(
-                { action: 'aqs_register', name: name, username: username, email: email, role: role, password: password },
+                { action: 'aqs_register', name: name, username: username, email: email, phone: phone, role: role, password: password },
                 function (res) {
                     if (res && res.success) {
                         var msg = (res.data && res.data.message) || '✓ Account created! Redirecting…';

@@ -564,6 +564,7 @@ async function actionRegister(data) {
     var name     = (data.name || '').trim();
     var username = (data.username || '').trim();
     var email    = (data.email || '').trim();
+    var phone    = (data.phone || '').trim();
     var role     = (data.role || 'student').trim();
     var password = (data.password || '').trim();
 
@@ -588,7 +589,7 @@ async function actionRegister(data) {
        block the user from getting into the app. The write will be retried
        automatically by Firestore's offline persistence when connectivity returns. */
     var profile = {
-        uid: user.uid, name: name, username: username, email: email,
+        uid: user.uid, name: name, username: username, email: email, phone: phone,
         role: role, created_at: serverTimestamp(), status: 'active'
     };
     try {

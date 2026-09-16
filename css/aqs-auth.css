@@ -72,6 +72,8 @@
 .aqs-auth-alert.error   { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); color: #fca5a5; }
 .aqs-auth-alert.success { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); color: #6ee7b7; }
 .aqs-auth-alert.show    { display: block; }
+.aqs-auth-optional { font-weight: 500; color: rgba(255,255,255,.58); font-size: .72rem; }
+.aqs-auth-help { display: block; margin-top: 6px; color: rgba(255,255,255,.62); font-size: .7rem; line-height: 1.45; }
 
 /* ── Social buttons ── */
 .aqs-social-grid {

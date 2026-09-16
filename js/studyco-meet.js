@@ -8,7 +8,7 @@ const state = {
   feedUnsub: null, storyUnsub: null, requestUnsub: null, messageUnsub: null,
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
   activeChatUid: null, activeChatId: null, activeCallId: null,
-  pendingIncomingCall: null, rtc: null, localStream: null
+  pendingIncomingCall: null, rtc: null, localStream: null, ringContext: null, ringTimer: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -66,18 +66,15 @@ async function ensureProfile(user) {
 }
 
 function showAuth() {
-  $('studyco-auth-screen').hidden = false; $('studyco-app-screen').hidden = true;
   const returnPath = `${window.location.pathname.split('/').pop() || 'studyco-meet.html'}${window.location.search}`;
   const loginUrl = `login.html?redirect=${encodeURIComponent(returnPath)}`;
-  const link = $('studyco-auth-link');
-  if (link) link.href = loginUrl;
-  /* The social area never owns authentication. Send signed-out users to the
-     single SmartQuiz login page, preserving their destination for return. */
-  window.setTimeout(() => window.location.replace(loginUrl), 250);
+  /* The social area never owns authentication. Send signed-out users straight
+     to the single normal SmartQuiz login page, preserving their destination. */
+  window.location.replace(loginUrl);
 }
 
 function showApp() {
-  $('studyco-auth-screen').hidden = true; $('studyco-app-screen').hidden = false;
+  $('studyco-app-screen').hidden = false;
 }
 
 function renderProfile() {
@@ -216,7 +213,9 @@ async function renderPeople(profiles, target) {
     if (relation === 'none') action = `<button class="studyco-button primary" data-friend-action="request" data-uid="${esc(profile.id)}">Add friend</button>`;
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
-    if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
+    const messageButton = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button>`;
+    if (relation === 'friends') action = `${messageButton}<button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
+    else action = `${action}${messageButton}`;
     return `<article class="studyco-person">${avatar(profile)}<strong>${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
   }).join('');
 }
@@ -281,7 +280,6 @@ function renderMessages(messages, profile) {
 
 async function openChat(uid) {
   const profile = await getProfile(uid); if (!profile) return;
-  const relation = await relationship(uid); if (relation !== 'friends') { toast('You can message accepted friends only.', true); return; }
   $('studyco-chat-drawer').hidden = false; state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
   $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${esc(profile.username ? `@${profile.username}` : 'StudyCo friend')}</span></div><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
   state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), (snapshot) => renderMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt)), profile));
@@ -308,6 +306,39 @@ function openCallModal(profile, incoming = false) {
   $('studyco-call-name').textContent = profileName(profile); $('studyco-call-avatar').textContent = initials(profile);
   $('studyco-call-status').textContent = incoming ? 'Your StudyCo friend is calling.' : 'Calling...';
   $('studyco-call-accept').hidden = !incoming; $('studyco-call-modal').hidden = false;
+  startRingtone();
+}
+
+function startRingtone() {
+  stopRingtone();
+  const AudioContext = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContext) return;
+  const context = new AudioContext();
+  const ringOnce = () => {
+    const now = context.currentTime;
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(880, now);
+    oscillator.frequency.setValueAtTime(660, now + 0.28);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.12, now + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.58);
+    oscillator.connect(gain).connect(context.destination);
+    oscillator.start(now);
+    oscillator.stop(now + 0.6);
+  };
+  state.ringContext = context;
+  context.resume().catch(() => {});
+  ringOnce();
+  state.ringTimer = window.setInterval(ringOnce, 1300);
+}
+
+function stopRingtone() {
+  if (state.ringTimer) window.clearInterval(state.ringTimer);
+  state.ringTimer = null;
+  if (state.ringContext) state.ringContext.close().catch(() => {});
+  state.ringContext = null;
 }
 
 async function startCall(uid) {
@@ -318,12 +349,13 @@ async function startCall(uid) {
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
     await setDoc(callRef, { callerId: state.user.uid, receiverId: uid, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    openCallModal(profile); state.callUnsub = onSnapshot(callRef, async (snapshot) => { const data = snapshot.data(); if (!data) return; if (data.answer && !state.rtc.currentRemoteDescription) await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer)); if (['declined', 'ended'].includes(data.status)) finishCall(); });
+    openCallModal(profile); state.callUnsub = onSnapshot(callRef, async (snapshot) => { const data = snapshot.data(); if (!data) return; if (data.status === 'accepted') { stopRingtone(); $('studyco-call-status').textContent = 'Connected'; } if (data.answer && !state.rtc.currentRemoteDescription) await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer)); if (['declined', 'ended'].includes(data.status)) finishCall(); });
   } catch (error) { toast(error.message || 'Microphone permission is needed for calls.', true); finishCall(); }
 }
 
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
+  stopRingtone();
   try {
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     state.activeCallId = incoming.id; state.rtc = callPeer(incoming.id, incoming.data.callerId);
@@ -343,6 +375,7 @@ async function declineCall() {
 }
 
 function finishCall() {
+  stopRingtone();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
   state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; $('studyco-call-modal').hidden = true;
 }
@@ -351,7 +384,7 @@ function listenForCalls() {
   state.incomingCallUnsub?.();
   state.incomingCallUnsub = onSnapshot(query(collection(db, 'studyco_calls'), where('receiverId', '==', state.user.uid), limit(20)), async (snapshot) => {
     const call = snapshot.docs.map((item) => ({ id: item.id, data: item.data() })).find((item) => item.data.status === 'ringing');
-    if (!call || state.activeCallId) return;
+    if (!call || state.activeCallId || state.pendingIncomingCall?.id === call.id) return;
     state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); openCallModal(profile || {}, true);
   });
 }
