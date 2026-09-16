@@ -83,6 +83,13 @@
   color: #9cc8ff;
 }
 
+.studyco-call-tools {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+}
+
 @media (max-width: 760px) {
   .studyco-messages-page {
     min-height: calc(100vh - 150px);

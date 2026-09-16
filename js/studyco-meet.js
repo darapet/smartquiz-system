@@ -332,10 +332,57 @@ async function sendMessage(event) {
 
 function callPeer(callId, remoteUid) {
   const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  pc.pendingRemoteCandidates = [];
   pc.onicecandidate = (event) => { if (event.candidate) addDoc(collection(db, 'studyco_calls', callId, 'candidates'), { from: state.user.uid, candidate: event.candidate.toJSON(), createdAt: serverTimestamp() }).catch(() => {}); };
-  pc.ontrack = (event) => { $('studyco-call-remote-audio').srcObject = event.streams[0]; };
-  state.candidateUnsub?.(); state.candidateUnsub = onSnapshot(collection(db, 'studyco_calls', callId, 'candidates'), (snapshot) => snapshot.docs.forEach((item) => { const data = item.data(); if (data.from !== state.user.uid && data.candidate) pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {}); }));
+  pc.ontrack = (event) => {
+    const audio = $('studyco-call-remote-audio');
+    if (!audio) return;
+    audio.srcObject = event.streams[0] || new MediaStream([event.track]);
+    audio.muted = false;
+    audio.volume = 1;
+    audio.play().catch(() => {
+      $('studyco-call-status').textContent = 'Connected — tap Enable speaker to hear audio.';
+    });
+  };
+  state.candidateUnsub?.(); state.candidateUnsub = onSnapshot(collection(db, 'studyco_calls', callId, 'candidates'), (snapshot) => snapshot.docs.forEach((item) => {
+    const data = item.data();
+    if (data.from === state.user.uid || !data.candidate) return;
+    const candidate = new RTCIceCandidate(data.candidate);
+    if (pc.remoteDescription) pc.addIceCandidate(candidate).catch(() => {});
+    else pc.pendingRemoteCandidates.push(candidate);
+  }));
   return pc;
+}
+
+async function setRemoteDescription(pc, description) {
+  await pc.setRemoteDescription(description);
+  const queued = pc.pendingRemoteCandidates.splice(0);
+  await Promise.all(queued.map((candidate) => pc.addIceCandidate(candidate).catch(() => {})));
+}
+
+function prepareCallControls() {
+  const muteButton = $('studyco-call-mute');
+  const speakerButton = $('studyco-call-speaker');
+  if (muteButton) muteButton.textContent = 'Mute microphone';
+  if (speakerButton) speakerButton.textContent = 'Enable speaker';
+}
+
+function toggleMute() {
+  const tracks = state.localStream?.getAudioTracks?.() || [];
+  if (!tracks.length) return;
+  const muted = tracks[0].enabled;
+  tracks.forEach((track) => { track.enabled = !muted; });
+  $('studyco-call-mute').textContent = muted ? 'Unmute microphone' : 'Mute microphone';
+}
+
+function enableSpeaker() {
+  const audio = $('studyco-call-remote-audio');
+  if (!audio) return;
+  audio.muted = false;
+  audio.volume = 1;
+  audio.play().then(() => { $('studyco-call-status').textContent = 'Connected'; }).catch(() => {
+    $('studyco-call-status').textContent = 'Please tap Enable speaker again.';
+  });
 }
 
 function openCallModal(profile, incoming = false) {
@@ -343,6 +390,7 @@ function openCallModal(profile, incoming = false) {
   $('studyco-call-name').textContent = profileName(profile); $('studyco-call-avatar').textContent = initials(profile);
   $('studyco-call-status').textContent = incoming ? 'Your StudyCo friend is calling.' : 'Calling...';
   $('studyco-call-accept').hidden = !incoming; $('studyco-call-modal').hidden = false;
+  prepareCallControls();
   startRingtone();
 }
 
@@ -381,12 +429,13 @@ function stopRingtone() {
 async function startCall(uid) {
   const profile = await getProfile(uid); if (!profile) return;
   try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Voice calls need microphone access in a secure browser connection.');
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const callRef = doc(collection(db, 'studyco_calls')); state.activeCallId = callRef.id; state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
     await setDoc(callRef, { callerId: state.user.uid, receiverId: uid, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    openCallModal(profile); state.callUnsub = onSnapshot(callRef, async (snapshot) => { const data = snapshot.data(); if (!data) return; if (data.status === 'accepted') { stopRingtone(); $('studyco-call-status').textContent = 'Connected'; } if (data.answer && !state.rtc.currentRemoteDescription) await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer)); if (['declined', 'ended'].includes(data.status)) finishCall(); });
+    openCallModal(profile); state.callUnsub = onSnapshot(callRef, async (snapshot) => { const data = snapshot.data(); if (!data) return; if (data.status === 'accepted') { stopRingtone(); $('studyco-call-status').textContent = 'Connected'; } if (data.answer && !state.rtc.currentRemoteDescription) await setRemoteDescription(state.rtc, new RTCSessionDescription(data.answer)); if (['declined', 'ended'].includes(data.status)) finishCall(); });
   } catch (error) { toast(error.message || 'Microphone permission is needed for calls.', true); finishCall(); }
 }
 
@@ -394,13 +443,14 @@ async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
   stopRingtone();
   try {
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('Voice calls need microphone access in a secure browser connection.');
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     state.activeCallId = incoming.id; state.rtc = callPeer(incoming.id, incoming.data.callerId);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
-    await state.rtc.setRemoteDescription(new RTCSessionDescription(incoming.data.offer));
+    await setRemoteDescription(state.rtc, new RTCSessionDescription(incoming.data.offer));
     const answer = await state.rtc.createAnswer(); await state.rtc.setLocalDescription(answer);
     await updateDoc(doc(db, 'studyco_calls', incoming.id), { status: 'accepted', answer: { type: answer.type, sdp: answer.sdp }, updatedAt: serverTimestamp() });
-    $('studyco-call-status').textContent = 'Connected'; $('studyco-call-accept').hidden = true;
+    $('studyco-call-status').textContent = 'Connected'; $('studyco-call-accept').hidden = true; prepareCallControls();
     state.callUnsub = onSnapshot(doc(db, 'studyco_calls', incoming.id), (snapshot) => { if (['declined', 'ended'].includes(snapshot.data()?.status)) finishCall(); });
   } catch (error) { toast(error.message || 'Could not accept the call.', true); finishCall(); }
 }
@@ -414,7 +464,7 @@ async function declineCall() {
 function finishCall() {
   stopRingtone();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; $('studyco-call-modal').hidden = true;
+  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; const audio = $('studyco-call-remote-audio'); if (audio) { audio.pause(); audio.srcObject = null; } $('studyco-call-modal').hidden = true;
 }
 
 function listenForCalls() {
@@ -457,6 +507,8 @@ function wire() {
   $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) openChat(button.dataset.chatUid); });
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
   $('studyco-chat-panel').addEventListener('click', (event) => { const button = event.target.closest('[data-start-call]'); if (button) startCall(button.dataset.startCall); });
+  $('studyco-call-mute').addEventListener('click', toggleMute);
+  $('studyco-call-speaker').addEventListener('click', enableSpeaker);
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);
   $('studyco-logout').addEventListener('click', () => signOut(auth));
 }
