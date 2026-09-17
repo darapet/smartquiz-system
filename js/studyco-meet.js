@@ -110,6 +110,7 @@ function renderProfile() {
 function setView(view) {
   state.activeView = view;
   if (view !== 'messages') document.body.classList.remove('studyco-chat-open');
+  document.body.classList.toggle('studyco-mobile-subpage', view === 'friends' || view === 'messages');
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.classList.toggle('active', button.dataset.studycoView === view));
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   if (view === 'friends') loadSocialLists();
@@ -262,6 +263,13 @@ async function loadSocialLists() {
   const friendIds = [...sent.docs, ...received.docs].map((item) => item.data()).filter((item) => item.status === 'accepted').map((item) => item.requesterId === state.user.uid ? item.recipientId : item.requesterId);
   state.requests = await Promise.all(requests.map(async (item) => ({ ...item, profile: await getProfile(item.requesterId) })));
   state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
+  const notice = $('studyco-friends-notice');
+  if (notice) {
+    const names = state.requests.slice(0, 2).map((item) => profileName(item.profile));
+    notice.innerHTML = names.length
+      ? `<div class="studyco-notice-avatars">${state.requests.slice(0, 2).map((item) => avatar(item.profile, 'small')).join('')}</div><strong>${esc(names.join(', '))}${state.requests.length > 2 ? ` and ${state.requests.length - 2} other${state.requests.length > 3 ? 's' : ''}` : ''} sent you a friend request${state.requests.length > 1 ? 's' : ''}.</strong>`
+      : '<div class="studyco-notice-avatars"><span>◎</span><span>♧</span></div><strong>Your friend updates will appear here.</strong>';
+  }
   const requestHtml = state.requests.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Accept</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Reject</button></div>`).join('') || '<div class="studyco-empty">No pending requests.</div>';
   const friendHtml = state.friends.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>${esc(item.profile.school || item.profile.username || 'StudyCo friend')}</span></div><button class="studyco-button soft" data-friend-action="message" data-uid="${esc(item.uid)}">Message</button></div>`).join('') || '<div class="studyco-empty">Your friends list is empty.</div>';
   $('studyco-request-list').innerHTML = requestHtml; $('studyco-friend-list').innerHTML = friendHtml; $('studyco-request-count').textContent = String(state.requests.length);
@@ -318,7 +326,7 @@ async function markMessagesRead(messages) {
 
 function renderMessages(messages, profile) {
   const target = document.querySelector('.studyco-chat-messages'); if (!target) return;
-  target.innerHTML = messages.length ? messages.map((message) => `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${esc(message.messageText || message.text || '').replace(/\n/g, '<br>')}<time>${esc(timeText(message.createdAt))}${messageTicks(message)}</time></div></div>`).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
+  target.innerHTML = messages.length ? messages.map((message) => `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${esc(message.messageText || message.text || '').replace(/\n/g, '<br>')}<time>${esc(timeText(message.createdAt))}${messageTicks(message)}</time></div></div>`).join('') : `<div class="studyco-chat-empty">${avatar(profile, 'large')}<strong>${esc(profileName(profile))}</strong><button type="button" class="studyco-chat-profile-button">View profile</button><p>Messages and calls are secured with end-to-end encryption. Only people in this chat can read, listen to, or share them. <b>Learn more.</b></p><small>You're now friends with ${esc(profileName(profile))}.</small></div>`;
   target.scrollTop = target.scrollHeight;
   markMessagesRead(messages).catch(() => {});
 }
@@ -327,7 +335,7 @@ async function openChat(uid) {
   const profile = await refreshProfile(uid); if (!profile) return;
   setView('messages'); state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
   document.body.classList.add('studyco-chat-open');
-  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-close-chat type="button" aria-label="Back to messages">‹</button>${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span class="studyco-chat-presence">${isOnline(profile) ? '<i class="studyco-online-dot"></i>' : ''}${esc(presenceText(profile))}</span></div><div class="studyco-chat-head-actions"><button data-start-call="${esc(uid)}" type="button" aria-label="Start audio call">☎</button><button type="button" aria-label="Start video call">▣</button><button type="button" aria-label="Chat settings">⚙</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Message"></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-close-chat type="button" aria-label="Back to messages">‹</button>${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span class="studyco-chat-presence">${isOnline(profile) ? '<i class="studyco-online-dot"></i>' : ''}${esc(presenceText(profile))}</span></div><div class="studyco-chat-head-actions"><button data-start-call="${esc(uid)}" type="button" aria-label="Start audio call">☎</button><button type="button" aria-label="Start video call">▣</button><button type="button" aria-label="Chat settings">⚙</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><button type="button" aria-label="Add photo">▧</button><button type="button" aria-label="Record voice message">♩</button><textarea id="studyco-chat-input" maxlength="2000" placeholder="Message"></textarea><button type="button" aria-label="Add emoji">☺</button><button class="studyco-button primary" type="submit" aria-label="Send message">➤</button></form>`;
   state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), (snapshot) => renderMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt)), profile));
   loadChats();
 }
@@ -537,6 +545,9 @@ function wire() {
     $('studyco-view-friends').classList.add('mobile-search-open');
     $('studyco-people-search').focus();
   }));
+  document.querySelector('[data-chat-notification]')?.addEventListener('click', () => toast('Chat notifications can be enabled from your device settings.'));
+  document.querySelector('.studyco-chat-notice > button:last-child')?.addEventListener('click', (event) => { event.currentTarget.closest('.studyco-chat-notice').hidden = true; });
+  document.querySelector('[data-new-message]')?.addEventListener('click', () => { setView('friends'); $('studyco-view-friends').classList.add('mobile-search-open'); $('studyco-people-search').focus(); });
   $('studyco-call-mute').addEventListener('click', toggleMute);
   $('studyco-call-speaker').addEventListener('click', enableSpeaker);
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);

@@ -27,6 +27,14 @@
     border-bottom: 1px solid var(--sc-mobile-border);
   }
 
+  body.studyco-mobile-subpage .studyco-mobile-brand-row {
+    display: none;
+  }
+
+  body.studyco-mobile-subpage .studyco-mobile-icon-nav {
+    height: 60px;
+  }
+
   .studyco-mobile-brand-row {
     display: flex;
     align-items: center;
@@ -374,6 +382,23 @@
     font-size: .85rem;
   }
 
+  .studyco-friends-notice .studyco-avatar {
+    width: 43px;
+    height: 43px;
+    margin-right: -10px;
+    border: 2px solid #fff;
+  }
+
+  .studyco-mobile-see-all {
+    display: inline-block;
+    margin-left: auto;
+    border: 0;
+    background: transparent;
+    color: #1877f2;
+    font-size: .92rem;
+    font-weight: 500;
+  }
+
   .studyco-notice-avatars {
     display: flex;
     width: 75px;
@@ -501,6 +526,38 @@
     flex-direction: column;
   }
 
+  .studyco-chat-notice {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 5px 10px;
+    background: #f5f6f7;
+    color: #050505;
+    font-size: .76rem;
+  }
+
+  .studyco-chat-notice > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .studyco-chat-notice button {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1877f2;
+    font-weight: 800;
+  }
+
+  .studyco-chat-notice > button:last-child {
+    margin-left: 8px;
+    color: #65676b;
+    font-size: 1.25rem;
+  }
+
   .studyco-message-stories {
     display: flex;
     gap: 13px;
@@ -544,6 +601,37 @@
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .studyco-message-fab-stack {
+    position: fixed;
+    right: 17px;
+    bottom: 17px;
+    z-index: 35;
+    display: grid;
+    gap: 10px;
+  }
+
+  .studyco-message-fab-stack button {
+    width: 58px;
+    height: 58px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: #1877f2;
+    color: #fff;
+    font-size: 1.9rem;
+    box-shadow: 0 5px 15px #0002;
+  }
+
+  .studyco-message-fab-stack button:first-child {
+    width: 51px;
+    height: 51px;
+    margin-left: 4px;
+    background: #fff;
+    color: #8d31df;
+    font-size: 1.55rem;
   }
 
   .studyco-messages-sidebar {
@@ -680,20 +768,58 @@
     margin: auto;
     padding: 30px;
     color: #65676b;
+    text-align: center;
   }
 
-  body.studyco-chat-open .studyco-chat-empty::before {
-    content: "🔒";
-    display: block;
-    margin-bottom: 12px;
-    font-size: 1.35rem;
+  body.studyco-chat-open .studyco-chat-empty > .studyco-avatar {
+    width: 103px;
+    height: 103px;
+    margin: 0 auto 14px;
+    font-size: 1.6rem;
   }
 
-  body.studyco-chat-open .studyco-chat-empty strong {
+  body.studyco-chat-open .studyco-chat-empty > strong {
     display: block;
-    margin-bottom: 10px;
+    margin-bottom: 11px;
     color: #050505;
-    font-size: 1.65rem;
+    font-size: 1.5rem;
+  }
+
+  body.studyco-chat-open .studyco-chat-empty .studyco-chat-profile-button {
+    margin-bottom: 28px;
+    border: 0;
+    border-radius: 8px;
+    padding: 10px 15px;
+    background: #e4e6eb;
+    color: #050505;
+    font-weight: 800;
+  }
+
+  body.studyco-chat-open .studyco-chat-empty p {
+    max-width: 320px;
+    margin: 0 auto 23px;
+    font-size: .78rem;
+    line-height: 1.2;
+  }
+
+  body.studyco-chat-open .studyco-chat-empty p b {
+    color: #1877f2;
+  }
+
+  body.studyco-chat-open .studyco-chat-empty small {
+    display: block;
+    font-size: .78rem;
+  }
+
+  body.studyco-chat-open .studyco-chat-compose > button:not(.studyco-button) {
+    flex: 0 0 28px;
+    width: 28px;
+    height: 38px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: #1877f2;
+    font-size: 1.4rem;
   }
 
   body.studyco-chat-open .studyco-chat-compose {
@@ -718,7 +844,7 @@
   }
 
   body.studyco-chat-open .studyco-chat-compose .studyco-button {
-    min-width: 54px;
+    min-width: 38px;
     height: 40px;
     padding: 0 10px;
     border-radius: 20px;
@@ -731,6 +857,12 @@
   .studyco-mobile-pills,
   .studyco-friends-notice,
   .studyco-message-stories {
+    display: none;
+  }
+
+  .studyco-mobile-see-all,
+  .studyco-chat-notice,
+  .studyco-message-fab-stack {
     display: none;
   }
 }
