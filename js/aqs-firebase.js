@@ -552,10 +552,14 @@ async function actionLogin(data) {
     /* identifier may be email or username — try email first, then look up by username */
     var email = identifier;
     if (identifier.indexOf('@') === -1) {
-        /* Look up email by username */
-        var uSnap = await getDocs(query(collection(db, 'users'), where('username', '==', identifier)));
-        if (uSnap.empty) throw new Error('User not found. Please check your username or email.');
-        email = uSnap.docs[0].data().email;
+        /* Username lookup must use the public mapping. Querying the private
+           users collection before authentication is rejected by Firestore. */
+        var usernameSnap = await getDoc(doc(db, 'usernames', identifier));
+        if (!usernameSnap.exists()) throw new Error('User not found. Please check your username or email.');
+        email = String(usernameSnap.data().email || '').trim();
+        if (!email) {
+            throw new Error('This username needs an email sign-in. Please use the email address for this account.');
+        }
     }
 
     var cred = await signInWithEmailAndPassword(auth, email, password);
@@ -611,7 +615,7 @@ async function actionRegister(data) {
     };
     try {
         await setDoc(doc(db, 'users', user.uid), profile);
-        await setDoc(doc(db, 'usernames', username), { uid: user.uid });
+        await setDoc(doc(db, 'usernames', username), { uid: user.uid, email: email });
     } catch(fsErr) {
         console.warn('[AQS Register] Firestore write failed (will retry):', fsErr && fsErr.message);
         /* Do NOT throw — Firebase Auth user was created successfully.
@@ -663,7 +667,7 @@ async function _completeGoogleLogin(user) {
             last_login: serverTimestamp()
         };
         await setDoc(profileRef, profile);
-        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid, email: user.email });
     }
 
     _updateAqsGlobals(user, profile);
