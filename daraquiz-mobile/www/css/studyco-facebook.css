@@ -594,6 +594,23 @@
     background: #fff;
   }
 
+  .studyco-chat-list button.unread {
+    background: #eef5ff;
+  }
+
+  .studyco-chat-list button.unread strong {
+    font-weight: 900;
+  }
+
+  .studyco-chat-list button.unread::after {
+    content: "";
+    width: 8px;
+    height: 8px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: #1877f2;
+  }
+
   .studyco-chat-list .studyco-avatar {
     width: 52px;
     height: 52px;

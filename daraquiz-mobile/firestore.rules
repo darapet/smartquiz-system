@@ -64,9 +64,25 @@ service cloud.firestore {
           && request.resource.data.participantIds == resource.data.participantIds;
 
       match /messages/{messageId} {
-        allow read, create: if isSignedIn()
+        allow read: if isSignedIn()
           && request.auth.uid in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds;
-        allow update, delete: if isSignedIn()
+        allow create: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.receiverId in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds
+          && request.resource.data.messageText is string
+          && request.resource.data.messageText.size() > 0
+          && request.resource.data.messageText.size() <= 2000;
+        allow update: if isSignedIn()
+          && request.auth.uid in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds
+          && (
+            request.auth.uid == resource.data.senderId
+            || (
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['is_read', 'readAt'])
+              && request.resource.data.is_read == true
+            )
+          );
+        allow delete: if isSignedIn()
           && request.auth.uid == resource.data.senderId;
       }
     }

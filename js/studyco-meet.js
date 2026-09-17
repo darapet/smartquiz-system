@@ -6,9 +6,9 @@ const state = {
   friends: [], requests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
-  feedUnsub: null, storyUnsub: null, requestUnsub: null, messageUnsub: null,
+  feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null,
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
-  activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
+  conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
   pendingIncomingCall: null, rtc: null, localStream: null
 };
 
@@ -295,23 +295,48 @@ async function loadSocialLists() {
 
 async function ensureConversation(uid) {
   const id = pairId(state.user.uid, uid);
-  await setDoc(doc(db, 'social_conversations', id), { participantIds: [state.user.uid, uid], updatedAt: serverTimestamp() }, { merge: true });
+  await setDoc(doc(db, 'social_conversations', id), { participantIds: [state.user.uid, uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
   return id;
 }
 
-async function loadChats() {
-  const snap = await getDocs(query(collection(db, 'social_conversations'), where('participantIds', 'array-contains', state.user.uid), limit(80)));
-  const chats = await Promise.all(snap.docs.map(async (item) => {
+function renderChatList() {
+  const term = $('studyco-message-search')?.value.trim().toLowerCase() || '';
+  const validChats = state.conversations.filter((chat) => chat.profile);
+  const visibleChats = validChats.filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term));
+  const unreadChats = validChats.filter((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true);
+  $('studyco-chat-count').textContent = String(validChats.length);
+  $('studyco-message-badge').hidden = unreadChats.length < 1;
+  $('studyco-message-badge').textContent = unreadChats.length > 99 ? '99+' : String(unreadChats.length || '');
+  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}${chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true ? ' unread' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || 'Start a conversation')}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+}
+
+function subscribeChats() {
+  state.chatListUnsub?.();
+  state.chatListUnsub = onSnapshot(query(collection(db, 'social_conversations'), where('participantIds', 'array-contains', state.user.uid), limit(80)), async (snapshot) => {
+    const chats = await Promise.all(snapshot.docs.map(async (item) => {
     const data = item.data(); const uid = data.participantIds.find((value) => value !== state.user.uid);
     return { id: item.id, uid, profile: await getProfile(uid), data };
-  }));
-  const validChats = chats.filter((chat) => chat.profile);
-  const term = $('studyco-message-search')?.value.trim().toLowerCase() || '';
-  const visibleChats = validChats.filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term));
-  $('studyco-chat-count').textContent = String(validChats.length);
-  $('studyco-message-badge').hidden = !validChats.some((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid);
-  $('studyco-message-badge').textContent = String(validChats.filter((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid).length || '');
-  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || 'Start a conversation')}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+    }));
+    state.conversations = chats.sort((a, b) => timeMs(b.data.lastMessageAt || b.data.updatedAt) - timeMs(a.data.lastMessageAt || a.data.updatedAt));
+    renderChatList();
+  }, (error) => toast(error.message || 'Messages could not load.', true));
+}
+
+function loadChats() {
+  if (!state.chatListUnsub) subscribeChats();
+  else renderChatList();
+}
+
+async function markMessagesRead(messages) {
+  const unread = messages.filter((message) => message.senderId !== state.user.uid && message.is_read !== true);
+  if (!unread.length) return;
+  await Promise.all(unread.slice(-50).map((message) => updateDoc(
+    doc(db, 'social_conversations', state.activeChatId, 'messages', message.id),
+    { is_read: true, readAt: serverTimestamp() }
+  ).catch(() => {})));
+  await updateDoc(doc(db, 'social_conversations', state.activeChatId), {
+    [`lastReadBy.${state.user.uid}`]: true
+  }).catch(() => {});
 }
 
 function renderMessages(messages, profile) {
@@ -323,17 +348,28 @@ function renderMessages(messages, profile) {
 async function openChat(uid) {
   const profile = await getProfile(uid); if (!profile) return;
   const relation = await relationship(uid); if (relation !== 'friends') { toast('You can message accepted friends only.', true); return; }
-  setView('messages'); state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid);
+  state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid); setView('messages');
   $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${esc(profile.username ? `@${profile.username}` : 'StudyCo friend')}</span></div><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
-  state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), (snapshot) => renderMessages(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt)), profile));
-  loadChats();
+  state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
+    const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
+    renderMessages(messages, profile);
+    await markMessagesRead(messages);
+  }, (error) => toast(error.message || 'This conversation could not load.', true));
+  renderChatList();
 }
 
 async function sendMessage(event) {
-  event.preventDefault(); const text = $('studyco-chat-input').value.trim(); if (!text || !state.activeChatId) return;
-  await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText: text, createdAt: serverTimestamp(), is_read: false });
-  await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: text.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, updatedAt: serverTimestamp() });
-  $('studyco-chat-input').value = '';
+  event.preventDefault(); const input = $('studyco-chat-input'); const button = event.target.querySelector('button[type="submit"]'); const text = input.value.trim(); if (!text || !state.activeChatId) return;
+  button.disabled = true;
+  try {
+    await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText: text.slice(0, 2000), createdAt: serverTimestamp(), is_read: false });
+    await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: text.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, [`lastReadBy.${state.user.uid}`]: true, updatedAt: serverTimestamp() });
+    input.value = '';
+  } catch (error) {
+    toast(error.message || 'Your message could not be sent.', true);
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function callPeer(callId, remoteUid) {
