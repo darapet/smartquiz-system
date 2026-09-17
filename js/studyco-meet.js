@@ -4,6 +4,7 @@ import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   friends: [], requests: [], activeView: 'home', selectedTemplate: 'indigo',
+  dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
   feedUnsub: null, storyUnsub: null, requestUnsub: null, messageUnsub: null,
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
@@ -237,7 +238,7 @@ async function renderPeople(profiles, target) {
   const relations = await Promise.all(profiles.map((profile) => relationship(profile.id)));
   target.innerHTML = profiles.map((profile, index) => {
     const relation = relations[index]; let action = '';
-    if (relation === 'none') action = `<button class="studyco-button primary" data-friend-action="request" data-uid="${esc(profile.id)}">Add friend</button>`;
+    if (relation === 'none') action = `<button class="studyco-button primary" data-friend-action="request" data-uid="${esc(profile.id)}">Add friend</button><button class="studyco-button soft" data-friend-action="dismiss" data-uid="${esc(profile.id)}">Remove</button>`;
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
     if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
@@ -249,13 +250,20 @@ async function loadPeople(term = '') {
   const target = $('studyco-people-results'); target.innerHTML = '<div class="studyco-card studyco-empty">Finding classmates...</div>';
   const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
   const needle = term.trim().toLowerCase();
-  const profiles = snap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((profile) => profile.id !== state.user.uid && (!needle || `${profileName(profile)} ${profile.username || ''} ${profile.school || ''} ${profile.department || ''}`.toLowerCase().includes(needle))).slice(0, 12);
+  const profiles = snap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id) && (!needle || `${profileName(profile)} ${profile.username || ''} ${profile.school || ''} ${profile.department || ''}`.toLowerCase().includes(needle))).slice(0, 12);
   profiles.forEach((profile) => state.profiles.set(profile.id, profile)); await renderPeople(profiles, target);
 }
 
 async function handleFriendAction(uid, action) {
   const ref = doc(db, 'social_friend_requests', pairId(state.user.uid, uid));
   try {
+    if (action === 'dismiss') {
+      state.dismissedSuggestions.add(uid);
+      try { localStorage.setItem(`studyco-dismissed-suggestions:${state.user.uid}`, JSON.stringify([...state.dismissedSuggestions])); } catch (_) {}
+      await loadPeople($('studyco-people-search').value);
+      toast('Suggestion removed.');
+      return;
+    }
     if (action === 'request') await setDoc(ref, { requesterId: state.user.uid, recipientId: uid, status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     if (action === 'accept') {
       await updateDoc(ref, { status: 'accepted', updatedAt: serverTimestamp() });
@@ -275,7 +283,7 @@ async function loadSocialLists() {
   const friendIds = [...sent.docs, ...received.docs].map((item) => item.data()).filter((item) => item.status === 'accepted').map((item) => item.requesterId === state.user.uid ? item.recipientId : item.requesterId);
   state.requests = await Promise.all(requests.map(async (item) => ({ ...item, profile: await getProfile(item.requesterId) })));
   state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
-  const requestHtml = state.requests.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Accept</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Reject</button></div>`).join('') || '<div class="studyco-empty">No pending requests.</div>';
+  const requestHtml = state.requests.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Delete</button></div>`).join('') || '<div class="studyco-empty">No pending requests.</div>';
   const friendHtml = state.friends.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>${esc(item.profile.school || item.profile.username || 'StudyCo friend')}</span></div><button class="studyco-button soft" data-friend-action="message" data-uid="${esc(item.uid)}">Message</button></div>`).join('') || '<div class="studyco-empty">Your friends list is empty.</div>';
   $('studyco-request-list').innerHTML = requestHtml; $('studyco-friend-list').innerHTML = friendHtml; $('studyco-request-count').textContent = String(state.requests.length);
   setNavBadge('studyco-friend-badge', state.requests.length);
@@ -492,7 +500,9 @@ async function saveProfile(event) {
 }
 
 async function bootApp() {
-  await ensureProfile(state.user); showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats();
+  await ensureProfile(state.user);
+  try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
+  showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats();
 }
 
 wire();

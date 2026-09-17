@@ -1,134 +1,440 @@
-/* Facebook-style home/feed treatment for the mobile app. */
+/* Facebook-style home/feed treatment. Other StudyCo views keep their current UI
+   until each screen is migrated separately. */
 @media (max-width: 860px) {
-  body.studyco-page { background: #f0f2f5; color: #050505; }
-  .studyco-topbar {
-    position: sticky; top: 0; z-index: 40; height: 112px; display: flex;
-    flex-wrap: wrap; align-content: flex-start; gap: 0; padding: 0 10px;
-    background: #fff; color: #050505; border-bottom: 1px solid #d8dade;
-    box-shadow: 0 1px 3px rgba(0,0,0,.08);
-  }
-  .studyco-brand {
-    order: 1; min-width: 0; height: 58px; color: #1877f2;
-    font-size: 1.55rem; letter-spacing: -.07em;
-  }
-  .studyco-brand .studyco-mark { display: none; }
-  .studyco-brand b { color: #1877f2; }
-  .studyco-top-search {
-    order: 2; width: 38px; height: 38px; margin: 10px 0 0 auto; padding: 0;
-    justify-content: center; border: 0; border-radius: 50%; background: #f0f2f5;
+  body.studyco-page {
+    background: #f0f2f5;
     color: #050505;
   }
-  .studyco-top-search input { display: none; }
-  .studyco-top-actions { order: 3; height: 58px; margin-left: 8px; gap: 8px; }
-  .studyco-top-actions > span, .studyco-top-actions .studyco-text-button { display: none; }
-  .studyco-topbar .studyco-icon-button, .studyco-top-avatar {
-    display: grid; width: 38px; height: 38px; padding: 0; border: 0;
-    border-radius: 50%; background: #f0f2f5; color: #050505;
+
+  .studyco-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    height: 112px;
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+    gap: 0;
+    padding: 0 10px;
+    background: #fff;
+    color: #050505;
+    border-bottom: 1px solid #d8dade;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
   }
-  .studyco-top-avatar .studyco-avatar { border: 0; }
+
+  .studyco-brand {
+    order: 1;
+    min-width: 0;
+    height: 58px;
+    color: #1877f2;
+    font-size: 1.55rem;
+    letter-spacing: -.07em;
+  }
+
+  .studyco-brand .studyco-mark {
+    display: none;
+  }
+
+  .studyco-brand b {
+    color: #1877f2;
+  }
+
+  .studyco-top-search {
+    order: 2;
+    width: 38px;
+    height: 38px;
+    margin: 10px 0 0 auto;
+    padding: 0;
+    justify-content: center;
+    border: 0;
+    border-radius: 50%;
+    background: #f0f2f5;
+    color: #050505;
+  }
+
+  .studyco-top-search input {
+    display: none;
+  }
+
+  .studyco-top-actions {
+    order: 3;
+    height: 58px;
+    margin-left: 8px;
+    gap: 8px;
+  }
+
+  .studyco-top-actions > span,
+  .studyco-top-actions .studyco-text-button {
+    display: none;
+  }
+
+  .studyco-topbar .studyco-icon-button,
+  .studyco-top-avatar {
+    display: grid;
+    width: 38px;
+    height: 38px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: #f0f2f5;
+    color: #050505;
+  }
+
+  .studyco-top-avatar .studyco-avatar {
+    border: 0;
+  }
+
   .studyco-top-nav {
-    order: 4; display: grid; grid-template-columns: repeat(3, 1fr);
-    width: 100%; height: 54px; border-top: 1px solid #edf0f2;
+    order: 4;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width: 100%;
+    height: 54px;
+    border-top: 1px solid #edf0f2;
   }
+
   .studyco-top-nav button {
-    min-width: 0; height: 54px; border: 0; border-bottom: 3px solid transparent;
-    background: #fff; color: #65676b; font-size: 1.4rem;
+    min-width: 0;
+    height: 54px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: #fff;
+    color: #65676b;
+    font-size: 1.4rem;
   }
-  .studyco-top-nav button > span { font-size: 1.4rem; }
-  .studyco-top-nav button b { display: none; }
-  .studyco-top-nav button.active, .studyco-top-nav button:hover {
-    border-bottom-color: #1877f2; color: #1877f2; background: #fff;
+
+  .studyco-top-nav button > span {
+    font-size: 1.4rem;
   }
-  .studyco-layout { display: block; padding: 0; }
-  .studyco-left-rail, .studyco-right-rail { display: none; }
-  .studyco-main, .studyco-view-home { width: 100%; background: #f0f2f5; }
-  .studyco-home-heading { display: none; }
-  .studyco-stories-section { margin: 8px 0; padding: 10px 8px 8px; background: #fff; }
-  .studyco-stories-section .studyco-section-title { display: none; }
-  .studyco-story-row { gap: 8px; padding: 0; }
+
+  .studyco-top-nav button b {
+    display: none;
+  }
+
+  .studyco-top-nav button.active,
+  .studyco-top-nav button:hover {
+    border-bottom-color: #1877f2;
+    color: #1877f2;
+    background: #fff;
+  }
+
+  .studyco-layout {
+    display: block;
+    padding: 0;
+  }
+
+  .studyco-left-rail,
+  .studyco-right-rail {
+    display: none;
+  }
+
+  .studyco-main,
+  .studyco-view-home {
+    width: 100%;
+    background: #f0f2f5;
+  }
+
+  .studyco-home-heading {
+    display: none;
+  }
+
+  .studyco-stories-section {
+    margin: 8px 0;
+    padding: 10px 8px 8px;
+    background: #fff;
+  }
+
+  .studyco-stories-section .studyco-section-title {
+    display: none;
+  }
+
+  .studyco-story-row {
+    gap: 8px;
+    padding: 0;
+  }
+
   .studyco-story {
-    width: 112px; height: 190px; border-radius: 12px;
-    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+    width: 112px;
+    height: 190px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
   }
-  .studyco-story.add { background: #fff; color: #050505; border: 1px solid #d8dade; }
-  .studyco-story.add:before { width: 38px; height: 38px; background: #1877f2; color: #fff; }
+
+  .studyco-story.add {
+    background: #fff;
+    color: #050505;
+    border: 1px solid #d8dade;
+  }
+
+  .studyco-story.add:before {
+    width: 38px;
+    height: 38px;
+    background: #1877f2;
+    color: #fff;
+  }
+
   .studyco-composer {
-    margin: 0 0 8px; padding: 12px; border: 0; border-radius: 0; box-shadow: none;
+    position: relative;
+    margin: 0 0 8px;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
   }
-  .studyco-composer-head { margin-bottom: 8px; }
+
+  .studyco-composer-head {
+    margin-bottom: 8px;
+  }
+
   .studyco-composer-head strong {
-    display: block; padding: 10px 14px; border-radius: 22px; background: #f0f2f5;
-    color: #65676b; font-size: .84rem; font-weight: 500;
+    display: block;
+    padding: 10px 14px;
+    border-radius: 22px;
+    background: #f0f2f5;
+    color: #65676b;
+    font-size: .84rem;
+    font-weight: 500;
   }
-  .studyco-composer-head span { display: none; }
+
+  .studyco-composer-head span {
+    display: none;
+  }
+
   .studyco-composer textarea {
-    min-height: 48px; border: 0; border-radius: 12px; background: #f0f2f5;
+    min-height: 48px;
+    border: 0;
+    border-radius: 12px;
+    background: #f0f2f5;
   }
-  .studyco-composer-footer { margin-top: 9px; }
-  .studyco-composer-tools { width: 100%; justify-content: space-between; }
-  .studyco-template-label, .studyco-template-picker { display: none; }
-  .studyco-tool { border: 0; padding: 6px 0; color: #45bd62; }
-  .studyco-feed-title { display: none; }
-  .studyco-feed { gap: 8px; }
-  .studyco-post { margin: 0; padding: 12px; border: 0; border-radius: 0; box-shadow: none; }
-  .studyco-post-head strong { color: #050505; font-size: .9rem; }
-  .studyco-post-head span, .studyco-post-body { color: #65676b; }
-  .studyco-post-body { font-size: .96rem; line-height: 1.35; }
-  .studyco-post-actions { justify-content: space-around; border-top: 1px solid #e4e6eb; }
 
-  .studyco-view-friends { padding-bottom: 40px; background: #f0f2f5; }
+  .studyco-composer-footer {
+    margin-top: 9px;
+  }
+
+  .studyco-composer-tools {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .studyco-template-label,
+  .studyco-template-picker {
+    display: none;
+  }
+
+  .studyco-tool {
+    border: 0;
+    padding: 6px 0;
+    color: #45bd62;
+  }
+
+  .studyco-feed-title {
+    display: none;
+  }
+
+  .studyco-feed {
+    gap: 8px;
+  }
+
+  .studyco-post {
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-post-head strong {
+    color: #050505;
+    font-size: .9rem;
+  }
+
+  .studyco-post-head span,
+  .studyco-post-body {
+    color: #65676b;
+  }
+
+  .studyco-post-body {
+    font-size: .96rem;
+    line-height: 1.35;
+  }
+
+  .studyco-post-actions {
+    justify-content: space-around;
+    border-top: 1px solid #e4e6eb;
+  }
+
+  .studyco-view-friends {
+    padding-bottom: 40px;
+    background: #f0f2f5;
+  }
+
   .studyco-view-friends .studyco-page-heading {
-    display: block; margin: 0; padding: 18px 14px 12px; background: #fff;
+    display: block;
+    margin: 0;
+    padding: 18px 14px 12px;
+    background: #fff;
   }
-  .studyco-view-friends .studyco-page-heading h1 {
-    margin: 5px 0 0; color: #050505; font-family: inherit; font-size: 1.4rem;
-    font-weight: 800; letter-spacing: -.04em;
-  }
-  .studyco-view-friends .studyco-page-heading > div > p:not(.studyco-eyebrow) {
-    margin: 5px 0 0; color: #65676b; font-size: .75rem;
-  }
-  .studyco-view-friends .studyco-eyebrow { color: #1877f2; }
-  .studyco-view-friends .studyco-search-card {
-    margin: 8px 0; padding: 0 14px; border: 0; border-radius: 0; background: #fff; box-shadow: none;
-  }
-  .studyco-view-friends .studyco-search-card input { padding: 13px 0; color: #050505; }
-  .studyco-view-friends .studyco-search-card:focus-within { box-shadow: inset 0 0 0 2px #1877f2; }
-  .studyco-people-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0 0 8px; padding: 0 8px;
-  }
-  .studyco-person {
-    overflow: hidden; padding: 0 0 10px; border: 0; border-radius: 0; background: #fff; text-align: left;
-  }
-  .studyco-person .studyco-avatar {
-    width: 100%; height: 142px; border-radius: 0; font-size: 1.5rem;
-  }
-  .studyco-person strong {
-    margin-top: 0; padding: 9px 10px 0; color: #050505; font-size: .8rem;
-  }
-  .studyco-person span { min-height: 31px; padding: 3px 10px 0; color: #65676b; font-size: .64rem; }
-  .studyco-person-actions { display: flex; flex-direction: column; gap: 6px; padding: 0 10px; }
-  .studyco-person-actions .studyco-button { width: 100%; padding: 8px 6px; font-size: .68rem; }
-  .studyco-friends-columns { display: block; margin: 0; }
-  .studyco-friends-columns > .studyco-card {
-    margin: 8px 0 0; padding: 13px 12px; border: 0; border-radius: 0; box-shadow: none;
-  }
-  .studyco-friends-columns .studyco-section-title h2 {
-    color: #050505; font-family: inherit; font-size: .98rem; font-weight: 800;
-  }
-  .studyco-friends-columns .studyco-section-title p { color: #65676b; }
-  .studyco-friends-columns .studyco-count { background: #e7f3ff; color: #1877f2; }
-  .studyco-friends-columns .studyco-list { gap: 7px; margin-top: 12px; }
-  .studyco-friends-columns .studyco-list-row {
-    flex-wrap: wrap; gap: 8px; padding: 10px 0; border-color: #e4e6eb;
-  }
-  .studyco-friends-columns .studyco-list-row > div:nth-child(2) { flex: 1; min-width: 120px; }
-  .studyco-friends-columns .studyco-list-row .studyco-button {
-    flex: 1 1 78px; padding: 8px 7px; font-size: .66rem;
-  }
-  .studyco-friends-columns .studyco-empty { padding: 18px 4px; color: #65676b; }
 
-  .studyco-top-search { display: none; }
-  .studyco-top-nav { grid-template-columns: repeat(5, 1fr); }
+  .studyco-view-friends .studyco-page-heading h1 {
+    margin: 5px 0 0;
+    color: #050505;
+    font-family: inherit;
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: -.04em;
+  }
+
+  .studyco-view-friends .studyco-page-heading > div > p:not(.studyco-eyebrow) {
+    margin: 5px 0 0;
+    color: #65676b;
+    font-size: .75rem;
+  }
+
+  .studyco-view-friends .studyco-eyebrow {
+    color: #1877f2;
+  }
+
+  .studyco-view-friends .studyco-search-card {
+    margin: 8px 0;
+    padding: 0 14px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    box-shadow: none;
+  }
+
+  .studyco-view-friends .studyco-search-card input {
+    padding: 13px 0;
+    color: #050505;
+  }
+
+  .studyco-view-friends .studyco-search-card:focus-within {
+    box-shadow: inset 0 0 0 2px #1877f2;
+  }
+
+  .studyco-people-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0 0 8px;
+    padding: 0 8px;
+  }
+
+  .studyco-person {
+    overflow: hidden;
+    padding: 0 0 10px;
+    border: 0;
+    border-radius: 0;
+    background: #fff;
+    text-align: left;
+  }
+
+  .studyco-person .studyco-avatar {
+    width: 100%;
+    height: 142px;
+    border-radius: 0;
+    font-size: 1.5rem;
+  }
+
+  .studyco-person strong {
+    margin-top: 0;
+    padding: 9px 10px 0;
+    color: #050505;
+    font-size: .8rem;
+  }
+
+  .studyco-person span {
+    min-height: 31px;
+    padding: 3px 10px 0;
+    color: #65676b;
+    font-size: .64rem;
+  }
+
+  .studyco-person-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 0 10px;
+  }
+
+  .studyco-person-actions .studyco-button {
+    width: 100%;
+    padding: 8px 6px;
+    font-size: .68rem;
+  }
+
+  .studyco-friends-columns {
+    display: block;
+    margin: 0;
+  }
+
+  .studyco-friends-columns > .studyco-card {
+    margin: 8px 0 0;
+    padding: 13px 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-friends-columns .studyco-section-title h2 {
+    color: #050505;
+    font-family: inherit;
+    font-size: .98rem;
+    font-weight: 800;
+  }
+
+  .studyco-friends-columns .studyco-section-title p {
+    color: #65676b;
+  }
+
+  .studyco-friends-columns .studyco-count {
+    background: #e7f3ff;
+    color: #1877f2;
+  }
+
+  .studyco-friends-columns .studyco-list {
+    gap: 7px;
+    margin-top: 12px;
+  }
+
+  .studyco-friends-columns .studyco-list-row {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 0;
+    border-color: #e4e6eb;
+  }
+
+  .studyco-friends-columns .studyco-list-row > div:nth-child(2) {
+    flex: 1;
+    min-width: 120px;
+  }
+
+  .studyco-friends-columns .studyco-list-row .studyco-button {
+    flex: 1 1 78px;
+    padding: 8px 7px;
+    font-size: .66rem;
+  }
+
+  .studyco-friends-columns .studyco-empty {
+    padding: 18px 4px;
+    color: #65676b;
+  }
+
+  .studyco-top-search {
+    display: none;
+  }
+
+  .studyco-top-nav {
+    grid-template-columns: repeat(5, 1fr);
+  }
+
+  .studyco-top-actions {
+    margin-left: auto;
+  }
+
+  .studyco-top-actions .studyco-top-avatar {
+    display: none;
+  }
+
   .studyco-circle-action {
     display: grid;
     place-items: center;
@@ -142,13 +448,928 @@
     font-size: 1.2rem;
     line-height: 1;
   }
-  .studyco-view-home { display: flex !important; flex-direction: column; }
-  .studyco-view-home .studyco-hero { order: 0; }
-  .studyco-view-home .studyco-composer { order: 1; }
-  .studyco-view-home .studyco-stories-section { order: 2; }
-  .studyco-view-home .studyco-feed-title { order: 3; }
-  .studyco-view-home .studyco-feed { order: 4; }
-  .studyco-view-home .studyco-hero { display: none; }
-  .studyco-composer-head strong { font-size: 0; }
-  .studyco-composer-head strong::before { content: "What’s on your mind?"; font-size: .84rem; }
+
+  .studyco-circle-action:hover {
+    background: #e4e6eb;
+  }
+}
+
+.studyco-circle-action {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #f0f2f5;
+  color: #050505;
+  font-size: 1.15rem;
+  line-height: 1;
+}
+
+@media (max-width: 860px) {
+  .studyco-view-messages {
+    min-height: calc(100vh - 112px);
+    background: #f0f2f5;
+  }
+
+  .studyco-message-page-heading {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 12px 14px;
+    background: #fff;
+  }
+
+  .studyco-message-page-heading h1 {
+    margin: 0;
+    color: #050505;
+    font-size: 1.45rem;
+    letter-spacing: -.04em;
+  }
+
+  .studyco-message-page-heading .studyco-eyebrow,
+  .studyco-message-page-heading > div > p:not(.studyco-eyebrow) {
+    display: none;
+  }
+
+  .studyco-message-back {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    background: #f0f2f5;
+    color: #050505;
+    font-size: 1.65rem;
+    line-height: 1;
+  }
+
+  .studyco-message-heading-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .studyco-message-heading-actions .studyco-icon-button {
+    width: 34px;
+    height: 34px;
+    border: 0;
+    border-radius: 50%;
+    background: #f0f2f5;
+  }
+
+  .studyco-message-heading-actions .studyco-button {
+    width: 34px;
+    height: 34px;
+    overflow: hidden;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 0;
+  }
+
+  .studyco-message-heading-actions .studyco-button::before {
+    content: "+";
+    font-size: 1.15rem;
+  }
+
+  .studyco-messages-shell {
+    min-height: calc(100vh - 172px);
+    display: block;
+    overflow: visible;
+    border: 0;
+    border-radius: 0;
+    background: #f0f2f5;
+    box-shadow: none;
+  }
+
+  .studyco-conversations-panel {
+    border: 0;
+    background: #fff;
+  }
+
+  .studyco-conversations-head {
+    align-items: center;
+    padding: 14px;
+  }
+
+  .studyco-conversations-head h2 {
+    margin: 0;
+    color: #050505;
+    font-family: inherit;
+    font-size: 1rem;
+    font-weight: 800;
+  }
+
+  .studyco-conversations-head .studyco-eyebrow {
+    display: none;
+  }
+
+  .studyco-message-search {
+    margin: 0 14px 8px;
+    border: 0;
+    border-radius: 22px;
+    background: #f0f2f5;
+  }
+
+  .studyco-chat-list {
+    display: grid;
+    gap: 0;
+    max-height: none;
+    overflow: visible;
+    padding: 0 14px 14px;
+  }
+
+  .studyco-chat-list button {
+    min-width: 0;
+    padding: 12px 0;
+    border-radius: 0;
+    border-bottom: 1px solid #e4e6eb;
+  }
+
+  .studyco-chat-list button.active,
+  .studyco-chat-list button:hover {
+    background: #fff;
+  }
+
+  .studyco-chat-list .studyco-avatar {
+    width: 52px;
+    height: 52px;
+  }
+
+  .studyco-chat-list strong {
+    color: #050505;
+    font-size: .9rem;
+  }
+
+  .studyco-chat-list span {
+    color: #65676b;
+    font-size: .76rem;
+  }
+
+  .studyco-chat-list time {
+    color: #65676b;
+    font-size: .68rem;
+  }
+
+  .studyco-chat-panel-full:has(> .studyco-chat-empty) {
+    display: none;
+  }
+
+  .studyco-chat-panel-full {
+    min-height: calc(100vh - 172px);
+    border-top: 8px solid #f0f2f5;
+    background: #fff;
+  }
+
+  .studyco-chat-head {
+    padding: 12px 14px;
+  }
+
+  .studyco-chat-messages {
+    min-height: 420px;
+    padding: 18px 14px;
+  }
+
+  .studyco-chat-compose {
+    padding: 10px 14px;
+  }
+}
+
+/* Homepage pass: match the compact mobile Facebook-style reference. */
+@media (max-width: 860px) {
+  body.studyco-page {
+    background: #f0f2f5;
+    color: #050505;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .studyco-topbar {
+    height: 112px;
+    padding: 0 14px;
+    background: #fff;
+    border-bottom: 1px solid #d8dade;
+    box-shadow: none;
+  }
+
+  .studyco-brand {
+    order: 1;
+    height: 56px;
+    min-width: 0;
+    color: #1877f2;
+    font-size: 2rem;
+    letter-spacing: -.075em;
+  }
+
+  .studyco-logo {
+    display: grid;
+    width: 31px;
+    height: 31px;
+    place-items: center;
+    flex: 0 0 auto;
+    border-radius: 10px;
+    background: #1877f2;
+    color: #fff;
+  }
+
+  .studyco-logo svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-wordmark {
+    color: #1877f2;
+    font-size: 1.25rem;
+    font-weight: 800;
+    letter-spacing: -.06em;
+  }
+
+  .studyco-top-actions {
+    order: 2;
+    position: relative;
+    height: 56px;
+    margin-left: auto;
+    gap: 6px;
+  }
+
+  .studyco-top-actions > span,
+  .studyco-top-actions .studyco-text-button,
+  .studyco-top-avatar {
+    display: none;
+  }
+
+  .studyco-circle-action {
+    width: 38px;
+    height: 38px;
+    background: #e4e6eb;
+    color: #050505;
+    font-size: 0;
+  }
+
+  .studyco-circle-action svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-circle-action:hover {
+    background: #d8dadf;
+  }
+
+  .studyco-menu-panel {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    z-index: 60;
+    min-width: 130px;
+    padding: 6px;
+    border: 1px solid #d8dade;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .16);
+  }
+
+  .studyco-menu-panel button {
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #050505;
+    text-align: left;
+    font-size: .8rem;
+    font-weight: 700;
+  }
+
+  .studyco-menu-panel button:hover {
+    background: #f0f2f5;
+  }
+
+  .studyco-top-nav {
+    order: 3;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width: calc(100% + 28px);
+    height: 56px;
+    margin: 0 -14px;
+    padding: 0 7px;
+    border-top: 1px solid #edf0f2;
+  }
+
+  .studyco-top-nav button {
+    position: relative;
+    height: 56px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: #fff;
+    color: #65676b;
+  }
+
+  .studyco-top-nav button > span {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    font-size: 0;
+  }
+
+  .studyco-top-nav button > span > svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-top-nav button.active {
+    border-bottom-color: #1877f2;
+    color: #1877f2;
+  }
+
+  .studyco-top-nav button b {
+    display: none;
+  }
+
+  .studyco-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 22px);
+    display: grid;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #e41e3f;
+    color: #fff;
+    font-size: .63rem;
+    font-style: normal;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .studyco-top-nav button > span > .studyco-nav-badge {
+    height: 20px;
+  }
+
+  .studyco-layout {
+    display: block;
+    padding: 0;
+  }
+
+  .studyco-left-rail,
+  .studyco-right-rail,
+  .studyco-home-heading {
+    display: none;
+  }
+
+  .studyco-main,
+  .studyco-view-home {
+    width: 100%;
+    background: #f0f2f5;
+  }
+
+  .studyco-composer {
+    margin: 0 0 8px;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-composer-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .studyco-composer-head .studyco-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .studyco-composer-head > div:nth-child(2) {
+    min-width: 0;
+    padding-right: 54px;
+  }
+
+  .studyco-composer-head button {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 22px;
+    background: #f0f2f5;
+    color: #65676b;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .9rem;
+    font-weight: 400;
+  }
+
+  .studyco-composer-head span {
+    display: none;
+  }
+
+  .studyco-composer textarea {
+    display: none;
+    min-height: 70px;
+    margin-top: 10px;
+    border: 1px solid #d8dade;
+    border-radius: 12px;
+    background: #f0f2f5;
+  }
+
+  .studyco-composer.is-open textarea {
+    display: block;
+  }
+
+  .studyco-composer-footer {
+    position: absolute;
+    top: 14px;
+    right: 10px;
+    width: auto;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .studyco-composer-tools {
+    width: auto;
+    justify-content: flex-start;
+  }
+
+  .studyco-tool {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    color: #45bd62;
+    font-size: .72rem;
+    font-weight: 700;
+  }
+
+  .studyco-tool svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-template-label,
+  .studyco-template-picker,
+  #studyco-publish-post {
+    display: none;
+  }
+
+  .studyco-stories-section {
+    margin: 0 0 8px;
+    padding: 10px 8px 8px;
+    background: #fff;
+  }
+
+  .studyco-stories-section .studyco-section-title {
+    display: none;
+  }
+
+  .studyco-story-row {
+    display: flex;
+    gap: 8px;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .studyco-story-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .studyco-story {
+    width: 124px;
+    height: 222px;
+    flex: 0 0 124px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+  }
+
+  .studyco-story.add {
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 12px;
+    background: #fff url("../img/darapet-logo.png") center 14px / 78px auto no-repeat;
+    color: #050505;
+    border: 1px solid #d8dade;
+  }
+
+  .studyco-story.add:before {
+    position: absolute;
+    bottom: 38px;
+    width: 38px;
+    height: 38px;
+    background: #1877f2;
+    color: #fff;
+    font-size: 1.8rem;
+  }
+
+  .studyco-story.add span {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    height: auto;
+    border: 0;
+    background: transparent;
+    color: #050505;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  .studyco-feed-title {
+    display: none;
+  }
+
+  .studyco-feed {
+    gap: 8px;
+  }
+
+  .studyco-post {
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-post-head {
+    position: relative;
+    padding-right: 30px;
+  }
+
+  .studyco-post-head strong {
+    color: #050505;
+    font-size: .9rem;
+  }
+
+  .studyco-post-head span {
+    color: #65676b;
+  }
+
+  .studyco-post-menu {
+    position: absolute;
+    top: 1px;
+    right: 0;
+    padding: 4px;
+    border: 0;
+    background: transparent;
+    color: #65676b;
+    font-size: .88rem;
+    letter-spacing: .08em;
+  }
+
+  .studyco-post-body {
+    color: #050505;
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .studyco-post-actions {
+    justify-content: space-around;
+    border-top: 1px solid #e4e6eb;
+  }
+}
+
+.studyco-mobile-friends-header,
+.studyco-friend-tabs,
+.studyco-friend-activity {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .studyco-view-friends {
+    display: none;
+    min-height: calc(100vh - 112px);
+    padding-bottom: 40px;
+    background: #f0f2f5;
+  }
+
+  .studyco-view-friends.active {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .studyco-mobile-friends-header {
+    display: grid;
+    grid-template-columns: 36px minmax(0, 1fr) 36px;
+    align-items: center;
+    gap: 8px;
+    height: 68px;
+    padding: 0 14px;
+    background: #fff;
+    border-bottom: 1px solid #e4e6eb;
+  }
+
+  .studyco-mobile-friends-header h1 {
+    margin: 0;
+    color: #050505;
+    font-size: 1.55rem;
+    font-weight: 800;
+    letter-spacing: -.045em;
+  }
+
+  .studyco-mobile-back,
+  .studyco-mobile-search {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: #050505;
+  }
+
+  .studyco-mobile-back {
+    font-size: 2.25rem;
+    font-weight: 300;
+    line-height: 1;
+  }
+
+  .studyco-mobile-search svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+  }
+
+  .studyco-friend-tabs {
+    display: flex;
+    gap: 8px;
+    padding: 12px 16px 10px;
+    background: #fff;
+  }
+
+  .studyco-friend-tabs button {
+    padding: 10px 14px;
+    border: 0;
+    border-radius: 999px;
+    background: #e4e6eb;
+    color: #050505;
+    font-size: .82rem;
+    font-weight: 800;
+  }
+
+  .studyco-friend-tabs button.active {
+    background: #dfe3e8;
+  }
+
+  .studyco-friend-activity {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    min-height: 92px;
+    padding: 12px 16px;
+    background: #fff;
+    border-top: 1px solid #f0f2f5;
+    border-bottom: 1px solid #d8dade;
+  }
+
+  .studyco-friend-activity-avatars {
+    display: flex;
+    flex: 0 0 78px;
+    align-items: center;
+  }
+
+  .studyco-friend-activity-avatars span {
+    display: grid;
+    width: 47px;
+    height: 47px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: #171238;
+    color: #fff;
+    font-size: .62rem;
+    font-weight: 800;
+  }
+
+  .studyco-friend-activity-avatars span + span {
+    margin-left: -14px;
+    background: #e6b4ad;
+    color: #4c2625;
+  }
+
+  .studyco-friend-activity p {
+    margin: 0;
+    color: #050505;
+    font-size: .88rem;
+    line-height: 1.35;
+  }
+
+  .studyco-friend-activity strong {
+    font-weight: 800;
+  }
+
+  .studyco-view-friends > .studyco-page-heading {
+    display: none;
+  }
+
+  .studyco-view-friends > .studyco-search-card {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .studyco-view-friends > .studyco-friends-columns {
+    order: 4;
+    margin: 0;
+  }
+
+  .studyco-friends-columns > .studyco-card {
+    margin: 0;
+    padding: 16px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-friends-columns > .studyco-card:nth-child(2) {
+    display: none;
+  }
+
+  .studyco-friends-columns .studyco-section-title {
+    margin: 0 0 9px;
+  }
+
+  .studyco-friends-columns .studyco-section-title h2 {
+    color: #050505;
+    font-size: 1.02rem;
+    font-weight: 800;
+  }
+
+  .studyco-friends-columns .studyco-section-title p {
+    display: none;
+  }
+
+  .studyco-friends-columns .studyco-count {
+    color: #1877f2;
+    background: transparent;
+    font-size: 1rem;
+  }
+
+  .studyco-friends-columns .studyco-list {
+    gap: 8px;
+    margin-top: 0;
+  }
+
+  .studyco-friends-columns .studyco-list-row {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr) minmax(0, 1fr);
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0 12px;
+    border: 0;
+    border-bottom: 1px solid #e4e6eb;
+  }
+
+  .studyco-friends-columns .studyco-list-row > .studyco-avatar {
+    grid-row: 1 / span 2;
+    width: 120px;
+    height: 120px;
+    font-size: 1.25rem;
+  }
+
+  .studyco-friends-columns .studyco-list-row > div:nth-child(2) {
+    grid-column: 2 / span 2;
+    min-width: 0;
+    align-self: end;
+  }
+
+  .studyco-friends-columns .studyco-list-row > div:nth-child(2) strong,
+  .studyco-friends-columns .studyco-list-row > div:nth-child(2) span {
+    display: block;
+    overflow: hidden;
+    color: #050505;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .studyco-friends-columns .studyco-list-row > div:nth-child(2) strong {
+    font-size: 1rem;
+  }
+
+  .studyco-friends-columns .studyco-list-row > div:nth-child(2) span {
+    margin-top: 3px;
+    color: #65676b;
+    font-size: .78rem;
+  }
+
+  .studyco-friends-columns .studyco-list-row .studyco-button {
+    grid-row: 2;
+    width: 100%;
+    min-height: 38px;
+    padding: 8px 5px;
+    border-radius: 9px;
+    font-size: .8rem;
+  }
+
+  .studyco-view-friends > .studyco-people-grid {
+    order: 5;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    margin: 0;
+    padding: 0 16px 20px;
+  }
+
+  .studyco-view-friends > .studyco-people-grid::before {
+    content: "People you may know";
+    display: block;
+    padding: 15px 0 8px;
+    color: #050505;
+    font-size: 1.02rem;
+    font-weight: 800;
+  }
+
+  .studyco-people-grid .studyco-person {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr);
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    gap: 3px 14px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e4e6eb;
+    background: #fff;
+  }
+
+  .studyco-people-grid .studyco-person .studyco-avatar {
+    grid-row: 1 / span 3;
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    font-size: 1.25rem;
+  }
+
+  .studyco-people-grid .studyco-person strong,
+  .studyco-people-grid .studyco-person > span {
+    min-height: 0;
+    padding: 0;
+  }
+
+  .studyco-people-grid .studyco-person strong {
+    color: #050505;
+    font-size: 1rem;
+  }
+
+  .studyco-people-grid .studyco-person > span {
+    color: #65676b;
+    font-size: .8rem;
+  }
+
+  .studyco-people-grid .studyco-person-actions {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .studyco-people-grid .studyco-person-actions .studyco-button {
+    flex: 1;
+    min-height: 38px;
+    padding: 8px 6px;
+    border-radius: 9px;
+    font-size: .78rem;
+  }
 }
