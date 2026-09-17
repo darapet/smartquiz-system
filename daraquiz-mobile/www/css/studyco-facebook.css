@@ -1,0 +1,78 @@
+/* Facebook-style home/feed treatment for the mobile app. */
+@media (max-width: 860px) {
+  body.studyco-page { background: #f0f2f5; color: #050505; }
+  .studyco-topbar {
+    position: sticky; top: 0; z-index: 40; height: 112px; display: flex;
+    flex-wrap: wrap; align-content: flex-start; gap: 0; padding: 0 10px;
+    background: #fff; color: #050505; border-bottom: 1px solid #d8dade;
+    box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  }
+  .studyco-brand {
+    order: 1; min-width: 0; height: 58px; color: #1877f2;
+    font-size: 1.55rem; letter-spacing: -.07em;
+  }
+  .studyco-brand .studyco-mark { display: none; }
+  .studyco-brand b { color: #1877f2; }
+  .studyco-top-search {
+    order: 2; width: 38px; height: 38px; margin: 10px 0 0 auto; padding: 0;
+    justify-content: center; border: 0; border-radius: 50%; background: #f0f2f5;
+    color: #050505;
+  }
+  .studyco-top-search input { display: none; }
+  .studyco-top-actions { order: 3; height: 58px; margin-left: 8px; gap: 8px; }
+  .studyco-top-actions > span, .studyco-top-actions .studyco-text-button { display: none; }
+  .studyco-topbar .studyco-icon-button, .studyco-top-avatar {
+    display: grid; width: 38px; height: 38px; padding: 0; border: 0;
+    border-radius: 50%; background: #f0f2f5; color: #050505;
+  }
+  .studyco-top-avatar .studyco-avatar { border: 0; }
+  .studyco-top-nav {
+    order: 4; display: grid; grid-template-columns: repeat(3, 1fr);
+    width: 100%; height: 54px; border-top: 1px solid #edf0f2;
+  }
+  .studyco-top-nav button {
+    min-width: 0; height: 54px; border: 0; border-bottom: 3px solid transparent;
+    background: #fff; color: #65676b; font-size: 1.4rem;
+  }
+  .studyco-top-nav button > span { font-size: 1.4rem; }
+  .studyco-top-nav button b { display: none; }
+  .studyco-top-nav button.active, .studyco-top-nav button:hover {
+    border-bottom-color: #1877f2; color: #1877f2; background: #fff;
+  }
+  .studyco-layout { display: block; padding: 0; }
+  .studyco-left-rail, .studyco-right-rail { display: none; }
+  .studyco-main, .studyco-view-home { width: 100%; background: #f0f2f5; }
+  .studyco-home-heading { display: none; }
+  .studyco-stories-section { margin: 8px 0; padding: 10px 8px 8px; background: #fff; }
+  .studyco-stories-section .studyco-section-title { display: none; }
+  .studyco-story-row { gap: 8px; padding: 0; }
+  .studyco-story {
+    width: 112px; height: 190px; border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,.2);
+  }
+  .studyco-story.add { background: #fff; color: #050505; border: 1px solid #d8dade; }
+  .studyco-story.add:before { width: 38px; height: 38px; background: #1877f2; color: #fff; }
+  .studyco-composer {
+    margin: 0 0 8px; padding: 12px; border: 0; border-radius: 0; box-shadow: none;
+  }
+  .studyco-composer-head { margin-bottom: 8px; }
+  .studyco-composer-head strong {
+    display: block; padding: 10px 14px; border-radius: 22px; background: #f0f2f5;
+    color: #65676b; font-size: .84rem; font-weight: 500;
+  }
+  .studyco-composer-head span { display: none; }
+  .studyco-composer textarea {
+    min-height: 48px; border: 0; border-radius: 12px; background: #f0f2f5;
+  }
+  .studyco-composer-footer { margin-top: 9px; }
+  .studyco-composer-tools { width: 100%; justify-content: space-between; }
+  .studyco-template-label, .studyco-template-picker { display: none; }
+  .studyco-tool { border: 0; padding: 6px 0; color: #45bd62; }
+  .studyco-feed-title { display: none; }
+  .studyco-feed { gap: 8px; }
+  .studyco-post { margin: 0; padding: 12px; border: 0; border-radius: 0; box-shadow: none; }
+  .studyco-post-head strong { color: #050505; font-size: .9rem; }
+  .studyco-post-head span, .studyco-post-body { color: #65676b; }
+  .studyco-post-body { font-size: .96rem; line-height: 1.35; }
+  .studyco-post-actions { justify-content: space-around; border-top: 1px solid #e4e6eb; }
+}
