@@ -128,7 +128,7 @@ async function renderPost(post) {
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
   const visual = post.bgTemplateId && post.content && post.content.length <= 240 ? `<div class="studyco-post-visual ${templateClass(post.bgTemplateId)}">${esc(post.content)}</div>` : '';
   const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment">` : '';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div></div>${visual || text}${image}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}">${liked ? 'Liked' : 'Like'} · ${likesSnap.size}</button><button data-post-action="focus-comment" data-post-id="${esc(post.id)}">Comment · ${post.commentCount || commentsSnap.size}</button></div><div class="studyco-comments">${comments.join('')}</div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}"><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${visual || text}${image}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}">${liked ? 'Liked' : 'Like'} · ${likesSnap.size}</button><button data-post-action="focus-comment" data-post-id="${esc(post.id)}">Comment · ${post.commentCount || commentsSnap.size}</button></div><div class="studyco-comments">${comments.join('')}</div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}"><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts) {
@@ -372,6 +372,22 @@ function closeModal(id) { $(id).hidden = true; }
 function wire() {
   if (state.wired) return; state.wired = true;
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
+  $('studyco-open-composer').addEventListener('click', () => {
+    $('studyco-composer').classList.add('is-open');
+    $('studyco-post-text').focus();
+  });
+  $('studyco-menu-button').addEventListener('click', () => {
+    const menu = $('studyco-menu-panel');
+    menu.hidden = !menu.hidden;
+    $('studyco-menu-button').setAttribute('aria-expanded', String(!menu.hidden));
+  });
+  document.addEventListener('click', (event) => {
+    const menu = $('studyco-menu-panel');
+    if (!menu.hidden && !event.target.closest('.studyco-top-actions')) {
+      menu.hidden = true;
+      $('studyco-menu-button').setAttribute('aria-expanded', 'false');
+    }
+  });
   $('studyco-global-search')?.addEventListener('input', (event) => { if (event.target.value.trim()) { setView('friends'); $('studyco-people-search').value = event.target.value; loadPeople(event.target.value); } });
   $('studyco-people-search').addEventListener('input', (event) => loadPeople(event.target.value).catch((error) => toast(error.message, true)));
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());

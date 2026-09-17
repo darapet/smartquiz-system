@@ -174,6 +174,7 @@
   }
 
   .studyco-composer {
+    position: relative;
     margin: 0 0 8px;
     padding: 12px;
     border: 0;
@@ -634,5 +635,406 @@
 
   .studyco-chat-compose {
     padding: 10px 14px;
+  }
+}
+
+/* Homepage pass: match the compact mobile Facebook-style reference. */
+@media (max-width: 860px) {
+  body.studyco-page {
+    background: #f0f2f5;
+    color: #050505;
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  .studyco-topbar {
+    height: 112px;
+    padding: 0 14px;
+    background: #fff;
+    border-bottom: 1px solid #d8dade;
+    box-shadow: none;
+  }
+
+  .studyco-brand {
+    order: 1;
+    height: 56px;
+    min-width: 0;
+    color: #1877f2;
+    font-size: 2rem;
+    letter-spacing: -.075em;
+  }
+
+  .studyco-facebook-word {
+    color: #1877f2;
+    font-weight: 700;
+  }
+
+  .studyco-top-actions {
+    order: 2;
+    position: relative;
+    height: 56px;
+    margin-left: auto;
+    gap: 10px;
+  }
+
+  .studyco-top-actions > span,
+  .studyco-top-actions .studyco-text-button,
+  .studyco-top-avatar {
+    display: none;
+  }
+
+  .studyco-circle-action {
+    width: 38px;
+    height: 38px;
+    background: #e4e6eb;
+    color: #050505;
+    font-size: 0;
+  }
+
+  .studyco-circle-action svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-circle-action:hover {
+    background: #d8dadf;
+  }
+
+  .studyco-menu-panel {
+    position: absolute;
+    top: 50px;
+    right: 0;
+    z-index: 60;
+    min-width: 130px;
+    padding: 6px;
+    border: 1px solid #d8dade;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, .16);
+  }
+
+  .studyco-menu-panel button {
+    width: 100%;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #050505;
+    text-align: left;
+    font-size: .8rem;
+    font-weight: 700;
+  }
+
+  .studyco-menu-panel button:hover {
+    background: #f0f2f5;
+  }
+
+  .studyco-top-nav {
+    order: 3;
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    width: calc(100% + 28px);
+    height: 56px;
+    margin: 0 -14px;
+    padding: 0 7px;
+    border-top: 1px solid #edf0f2;
+  }
+
+  .studyco-top-nav button {
+    position: relative;
+    height: 56px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    background: #fff;
+    color: #65676b;
+  }
+
+  .studyco-top-nav button > span {
+    position: relative;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    place-items: center;
+    font-size: 0;
+  }
+
+  .studyco-top-nav button > span > svg {
+    width: 25px;
+    height: 25px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-top-nav button.active {
+    border-bottom-color: #1877f2;
+    color: #1877f2;
+  }
+
+  .studyco-top-nav button b {
+    display: none;
+  }
+
+  .studyco-nav-badge {
+    position: absolute;
+    top: 4px;
+    right: calc(50% - 22px);
+    display: grid;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    place-items: center;
+    border: 2px solid #fff;
+    border-radius: 999px;
+    background: #e41e3f;
+    color: #fff;
+    font-size: .63rem;
+    font-style: normal;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .studyco-top-nav button > span > .studyco-nav-badge {
+    height: 20px;
+  }
+
+  .studyco-layout {
+    display: block;
+    padding: 0;
+  }
+
+  .studyco-left-rail,
+  .studyco-right-rail,
+  .studyco-home-heading {
+    display: none;
+  }
+
+  .studyco-main,
+  .studyco-view-home {
+    width: 100%;
+    background: #f0f2f5;
+  }
+
+  .studyco-composer {
+    margin: 0 0 8px;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-composer-head {
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    margin: 0;
+  }
+
+  .studyco-composer-head .studyco-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .studyco-composer-head > div:nth-child(2) {
+    min-width: 0;
+    padding-right: 54px;
+  }
+
+  .studyco-composer-head button {
+    display: block;
+    width: 100%;
+    padding: 10px 14px;
+    overflow: hidden;
+    border: 0;
+    border-radius: 22px;
+    background: #f0f2f5;
+    color: #65676b;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .9rem;
+    font-weight: 400;
+  }
+
+  .studyco-composer-head span {
+    display: none;
+  }
+
+  .studyco-composer textarea {
+    display: none;
+    min-height: 70px;
+    margin-top: 10px;
+    border: 1px solid #d8dade;
+    border-radius: 12px;
+    background: #f0f2f5;
+  }
+
+  .studyco-composer.is-open textarea {
+    display: block;
+  }
+
+  .studyco-composer-footer {
+    position: absolute;
+    top: 14px;
+    right: 10px;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border-top: 0;
+  }
+
+  .studyco-composer-tools {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .studyco-tool {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 0;
+    border: 0;
+    color: #45bd62;
+    font-size: .72rem;
+    font-weight: 700;
+  }
+
+  .studyco-tool svg {
+    width: 23px;
+    height: 23px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .studyco-template-label,
+  .studyco-template-picker,
+  #studyco-publish-post {
+    display: none;
+  }
+
+  .studyco-stories-section {
+    margin: 0 0 8px;
+    padding: 10px 8px 8px;
+    background: #fff;
+  }
+
+  .studyco-stories-section .studyco-section-title {
+    display: none;
+  }
+
+  .studyco-story-row {
+    display: flex;
+    gap: 8px;
+    padding: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .studyco-story-row::-webkit-scrollbar {
+    display: none;
+  }
+
+  .studyco-story {
+    width: 124px;
+    height: 222px;
+    flex: 0 0 124px;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .2);
+  }
+
+  .studyco-story.add {
+    align-items: flex-end;
+    justify-content: center;
+    padding-bottom: 12px;
+    background: #fff;
+    color: #050505;
+    border: 1px solid #d8dade;
+  }
+
+  .studyco-story.add:before {
+    position: absolute;
+    bottom: 38px;
+    width: 38px;
+    height: 38px;
+    background: #1877f2;
+    color: #fff;
+    font-size: 1.8rem;
+  }
+
+  .studyco-story.add span {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    height: auto;
+    border: 0;
+    background: transparent;
+    color: #050505;
+    font-size: .78rem;
+    font-weight: 700;
+  }
+
+  .studyco-feed-title {
+    display: none;
+  }
+
+  .studyco-feed {
+    gap: 8px;
+  }
+
+  .studyco-post {
+    margin: 0;
+    padding: 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .studyco-post-head {
+    position: relative;
+    padding-right: 30px;
+  }
+
+  .studyco-post-head strong {
+    color: #050505;
+    font-size: .9rem;
+  }
+
+  .studyco-post-head span {
+    color: #65676b;
+  }
+
+  .studyco-post-menu {
+    position: absolute;
+    top: 1px;
+    right: 0;
+    padding: 4px;
+    border: 0;
+    background: transparent;
+    color: #65676b;
+    font-size: .88rem;
+    letter-spacing: .08em;
+  }
+
+  .studyco-post-body {
+    color: #050505;
+    font-size: 1rem;
+    line-height: 1.35;
+  }
+
+  .studyco-post-actions {
+    justify-content: space-around;
+    border-top: 1px solid #e4e6eb;
   }
 }

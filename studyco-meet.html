@@ -24,14 +24,30 @@
     <header class="studyco-topbar">
       <a class="studyco-brand" href="index.html"><span class="studyco-facebook-word">facebook</span></a>
       <nav class="studyco-top-nav" aria-label="Primary">
-        <button class="active" data-studyco-view="home" type="button" aria-label="Home"><span aria-hidden="true">⌂</span><b>Home</b></button>
-        <button data-studyco-view="friends" type="button" aria-label="Friends"><span aria-hidden="true">♧</span><b>Friends</b></button>
-        <button data-studyco-view="messages" type="button" aria-label="Messages"><span aria-hidden="true">◌</span><b>Messages</b><i id="studyco-message-badge" hidden>0</i></button>
-        <button type="button" aria-label="Notifications"><span aria-hidden="true">♧</span><b>Notifications</b></button>
-        <button data-studyco-view="profile" type="button" aria-label="Profile"><span aria-hidden="true">◉</span><b>Profile</b></button>
+        <button class="active" data-studyco-view="home" type="button" aria-label="Home">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 10.8 12 3l9 7.8v9.2a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg><i class="studyco-nav-badge">15+</i></span><b>Home</b>
+        </button>
+        <button data-studyco-view="friends" type="button" aria-label="Friends">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M3.5 19c.5-3.1 2.3-4.7 5.5-4.7s5 1.6 5.5 4.7"/><circle cx="17" cy="9" r="2.4"/><path d="M15.3 14.7c2.9-.1 4.6 1.3 5.2 3.8"/></svg><i class="studyco-nav-badge">3</i></span><b>Friends</b>
+        </button>
+        <button data-studyco-view="messages" type="button" aria-label="Messages">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.8A3.8 3.8 0 0 1 7.8 2h8.4A3.8 3.8 0 0 1 20 5.8v5.7a3.8 3.8 0 0 1-3.8 3.8H11l-4.7 4v-4.4A3.8 3.8 0 0 1 4 11.5z"/><path d="m8 8 3 2.4L16 7"/></svg></span><b>Messages</b><i id="studyco-message-badge" class="studyco-nav-badge" hidden>0</i>
+        </button>
+        <button type="button" aria-label="Notifications">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i class="studyco-nav-badge">6</i></span><b>Notifications</b>
+        </button>
+        <button data-studyco-view="profile" type="button" aria-label="Profile">
+          <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 10l2-5h14l2 5M8 10v10m8-10v10M9 5V3h6v2"/></svg><i class="studyco-nav-badge">1</i></span><b>Profile</b>
+        </button>
       </nav>
       <div class="studyco-top-search"><span aria-hidden="true">⌕</span><input id="studyco-global-search" type="search" placeholder="Search your circle" autocomplete="off"></div>
-      <div class="studyco-top-actions"><button class="studyco-circle-action" type="button" aria-label="Create">＋</button><button class="studyco-circle-action studyco-search-action" type="button" aria-label="Search">⌕</button><span id="studyco-top-name" hidden></span><button class="studyco-top-avatar" id="studyco-top-avatar" type="button" data-studyco-view="profile" aria-label="Open your profile"></button><button id="studyco-logout" class="studyco-circle-action" type="button" aria-label="Sign out">⋮</button></div>
+      <div class="studyco-top-actions">
+        <button class="studyco-circle-action" type="button" aria-label="Create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+        <button class="studyco-circle-action studyco-search-action" type="button" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+        <span id="studyco-top-name" hidden></span><button class="studyco-top-avatar" id="studyco-top-avatar" type="button" data-studyco-view="profile" aria-label="Open your profile"></button>
+        <button id="studyco-menu-button" class="studyco-circle-action" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <div id="studyco-menu-panel" class="studyco-menu-panel" hidden><button id="studyco-logout" type="button">Sign out</button></div>
+      </div>
     </header>
     <div class="studyco-layout">
       <aside class="studyco-left-rail">
@@ -42,12 +58,12 @@
       <main class="studyco-main">
         <section id="studyco-view-home" class="studyco-view active">
           <div class="studyco-page-heading studyco-home-heading"><div><p class="studyco-eyebrow">Your learning circle</p><h1>Good morning<span id="studyco-hello-name"></span><em>.</em></h1><p>See what your circle is learning today.</p></div><button class="studyco-button light" data-studyco-view="profile" type="button">Complete profile</button></div>
-          <section class="studyco-composer studyco-card">
-            <div class="studyco-composer-head"><div id="studyco-composer-avatar"></div><div><strong>What’s on your mind?</strong><span>Share with your SmartQuiz friends</span></div></div>
+          <section id="studyco-composer" class="studyco-composer studyco-card">
+            <div class="studyco-composer-head"><div id="studyco-composer-avatar"></div><div><button id="studyco-open-composer" type="button">What’s on your mind?</button><span>Share with your SmartQuiz friends</span></div></div>
             <textarea id="studyco-post-text" maxlength="1000" placeholder="Share a thought, question, or small win..."></textarea>
             <div id="studyco-post-preview" class="studyco-post-preview" hidden></div>
             <div class="studyco-composer-footer">
-              <div class="studyco-composer-tools"><label class="studyco-tool"><input id="studyco-post-image" type="file" accept="image/*">Add photo</label><span class="studyco-template-label">Card color</span><div class="studyco-template-picker"><button class="selected template-indigo" data-template="indigo" type="button" aria-label="Indigo card"></button><button class="template-sunset" data-template="sunset" type="button" aria-label="Sunset card"></button><button class="template-ocean" data-template="ocean" type="button" aria-label="Ocean card"></button><button class="template-gold" data-template="gold" type="button" aria-label="Gold card"></button><button class="template-night" data-template="night" type="button" aria-label="Dark card"></button><button class="template-berry" data-template="berry" type="button" aria-label="Berry card"></button></div></div>
+              <div class="studyco-composer-tools"><label class="studyco-tool"><input id="studyco-post-image" type="file" accept="image/*"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.2 3.2 2.3-2.3L20 19"/></svg><span>Photo</span></label><span class="studyco-template-label">Card color</span><div class="studyco-template-picker"><button class="selected template-indigo" data-template="indigo" type="button" aria-label="Indigo card"></button><button class="template-sunset" data-template="sunset" type="button" aria-label="Sunset card"></button><button class="template-ocean" data-template="ocean" type="button" aria-label="Ocean card"></button><button class="template-gold" data-template="gold" type="button" aria-label="Gold card"></button><button class="template-night" data-template="night" type="button" aria-label="Dark card"></button><button class="template-berry" data-template="berry" type="button" aria-label="Berry card"></button></div></div>
               <button id="studyco-publish-post" class="studyco-button primary" type="button">Post</button>
             </div>
           </section>
