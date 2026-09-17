@@ -222,9 +222,26 @@ async function getOrCreateGuestSession() {
    AJAX DISPATCHER
    Replaces all $.post(AQS.ajax_url, { action: '...' })
    ============================================================ */
+var AQS_ACTION_TIMEOUT_MS = 15000;
+
+function _withAqsActionTimeout(promise, action) {
+    return Promise.race([
+        promise,
+        new Promise(function(_, reject) {
+            setTimeout(function() {
+                reject(new Error(
+                    'Firebase did not respond within 15 seconds while processing ' +
+                    (action || 'this request') +
+                    '. Check your connection and try again.'
+                ));
+            }, AQS_ACTION_TIMEOUT_MS);
+        })
+    ]);
+}
+
 window.aqsAjax = async function(data, successFn, failFn) {
     try {
-        var res = await handleAction(data);
+        var res = await _withAqsActionTimeout(handleAction(data), data && data.action);
         if (successFn) successFn({ success: true, data: res });
     } catch(e) {
         console.error('[AQS Firebase]', data.action, e);
