@@ -7,7 +7,7 @@ const state = {
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
   feedUnsub: null, storyUnsub: null, requestUnsub: null, messageUnsub: null,
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
-  activeChatUid: null, activeChatId: null, activeCallId: null,
+  activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
   pendingIncomingCall: null, rtc: null, localStream: null
 };
 
@@ -30,6 +30,26 @@ const toast = (message, error = false) => {
   el.textContent = message; el.className = `studyco-toast show${error ? ' error' : ''}`;
   clearTimeout(toast.timer); toast.timer = setTimeout(() => { el.className = 'studyco-toast'; }, 3600);
 };
+function setNavBadge(id, count) {
+  const badge = $(id); if (!badge) return;
+  const value = Number(count) || 0;
+  badge.textContent = value > 99 ? '99+' : String(value);
+  badge.hidden = value < 1;
+}
+async function refreshNavCounts() {
+  if (!state.user) return;
+  const [ownPosts, notifications] = await Promise.all([
+    getDocs(query(collection(db, 'studyco_posts'), where('userId', '==', state.user.uid), limit(1000))).catch(() => null),
+    getDocs(query(collection(db, 'studyco_notifications'), where('recipientId', '==', state.user.uid), limit(100))).catch(() => null)
+  ]);
+  setNavBadge('studyco-home-badge', ownPosts?.size ?? state.posts.filter((post) => post.userId === state.user.uid).length);
+  setNavBadge('studyco-friend-badge', state.requests.length);
+  /* Until the notifications screen is migrated, pending requests are the
+     account's visible notification activity when that collection is absent. */
+  setNavBadge('studyco-notification-badge', notifications
+    ? notifications.docs.filter((item) => item.data().read !== true).length
+    : state.requests.length);
+}
 const templateClass = (name) => `template-${['indigo', 'sunset', 'ocean', 'gold', 'night', 'berry'].includes(name) ? name : 'indigo'}`;
 async function uploadImage(file, path) {
   if (!file) return '';
@@ -145,7 +165,7 @@ function subscribeFeed() {
   state.feedUnsub?.();
   state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), limit(60)), (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
-    renderFeed(); if (state.activeView === 'profile') renderProfilePosts();
+    renderFeed(); if (state.activeView === 'profile') renderProfilePosts(); refreshNavCounts();
   }, (error) => toast(error.message || 'The feed could not load.', true));
 }
 
@@ -237,10 +257,12 @@ async function handleFriendAction(uid, action) {
   const ref = doc(db, 'social_friend_requests', pairId(state.user.uid, uid));
   try {
     if (action === 'request') await setDoc(ref, { requesterId: state.user.uid, recipientId: uid, status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    if (action === 'accept') await updateDoc(ref, { status: 'accepted', updatedAt: serverTimestamp() });
+    if (action === 'accept') {
+      await updateDoc(ref, { status: 'accepted', updatedAt: serverTimestamp() });
+    }
     if (action === 'unfriend' || action === 'reject') await deleteDoc(ref);
     if (action === 'message') { setView('messages'); openChat(uid); return; }
-    await loadPeople($('studyco-people-search').value); await loadSocialLists(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
+    await loadPeople($('studyco-people-search').value); await loadSocialLists(); refreshNavCounts(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
   } catch (error) { toast(error.message || 'That action could not be completed.', true); }
 }
 
@@ -256,6 +278,7 @@ async function loadSocialLists() {
   const requestHtml = state.requests.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Accept</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Reject</button></div>`).join('') || '<div class="studyco-empty">No pending requests.</div>';
   const friendHtml = state.friends.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>${esc(item.profile.school || item.profile.username || 'StudyCo friend')}</span></div><button class="studyco-button soft" data-friend-action="message" data-uid="${esc(item.uid)}">Message</button></div>`).join('') || '<div class="studyco-empty">Your friends list is empty.</div>';
   $('studyco-request-list').innerHTML = requestHtml; $('studyco-friend-list').innerHTML = friendHtml; $('studyco-request-count').textContent = String(state.requests.length);
+  setNavBadge('studyco-friend-badge', state.requests.length);
   $('studyco-right-requests').innerHTML = state.requests.slice(0, 3).map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request</span></div></div>`).join('') || '<div class="studyco-empty">No new requests.</div>';
   const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.friends.some((friend) => friend.uid === item.id)).slice(0, 4);
   suggestions.forEach((item) => state.profiles.set(item.id, item));
@@ -392,8 +415,27 @@ function wire() {
       $('studyco-menu-button').setAttribute('aria-expanded', 'false');
     }
   });
-  $('studyco-global-search')?.addEventListener('input', (event) => { if (event.target.value.trim()) { setView('friends'); $('studyco-people-search').value = event.target.value; loadPeople(event.target.value); } });
-  $('studyco-people-search').addEventListener('input', (event) => loadPeople(event.target.value).catch((error) => toast(error.message, true)));
+  const searchCircle = (value) => {
+    const term = value.trim();
+    setView('friends');
+    $('studyco-people-search').value = value;
+    clearTimeout(state.searchTimer);
+    state.searchTimer = setTimeout(() => loadPeople(term).catch((error) => toast(error.message, true)), 220);
+  };
+  $('studyco-global-search')?.addEventListener('input', (event) => searchCircle(event.target.value));
+  $('studyco-global-search')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); searchCircle(event.target.value); $('studyco-people-search').focus(); }
+  });
+  $('studyco-top-search')?.addEventListener('click', (event) => {
+    if (event.target !== $('studyco-global-search')) { setView('friends'); $('studyco-people-search').focus(); }
+  });
+  document.querySelectorAll('.studyco-search-action').forEach((button) => button.addEventListener('click', () => {
+    setView('friends');
+    $('studyco-people-search').value = $('studyco-global-search')?.value || '';
+    $('studyco-people-search').focus();
+    $('studyco-people-search').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }));
+  $('studyco-people-search').addEventListener('input', (event) => searchCircle(event.target.value));
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
@@ -450,7 +492,7 @@ async function saveProfile(event) {
 }
 
 async function bootApp() {
-  await ensureProfile(state.user); showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); loadSocialLists(); loadChats();
+  await ensureProfile(state.user); showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats();
 }
 
 wire();
