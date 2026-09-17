@@ -884,6 +884,7 @@
     position: absolute;
     top: 14px;
     right: 10px;
+    width: auto;
     align-items: center;
     margin: 0;
     padding: 0;
@@ -891,7 +892,7 @@
   }
 
   .studyco-composer-tools {
-    width: 100%;
+    width: auto;
     justify-content: flex-start;
   }
 
@@ -957,7 +958,7 @@
     align-items: flex-end;
     justify-content: center;
     padding-bottom: 12px;
-    background: #fff;
+    background: #fff url("../img/darapet-logo.png") center 14px / 78px auto no-repeat;
     color: #050505;
     border: 1px solid #d8dade;
   }
