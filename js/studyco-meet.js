@@ -372,7 +372,7 @@ function closeModal(id) { $(id).hidden = true; }
 function wire() {
   if (state.wired) return; state.wired = true;
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
-  $('studyco-global-search').addEventListener('input', (event) => { if (event.target.value.trim()) { setView('friends'); $('studyco-people-search').value = event.target.value; loadPeople(event.target.value); } });
+  $('studyco-global-search')?.addEventListener('input', (event) => { if (event.target.value.trim()) { setView('friends'); $('studyco-people-search').value = event.target.value; loadPeople(event.target.value); } });
   $('studyco-people-search').addEventListener('input', (event) => loadPeople(event.target.value).catch((error) => toast(error.message, true)));
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
   $('studyco-post-text').addEventListener('input', renderPostPreview);

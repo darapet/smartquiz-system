@@ -1,3 +1,4 @@
+- [StudyCo social UI copies](studyco-social-ui-copies.md) — keep root web and Capacitor social screens aligned in each visual correction.
 - [Cloudinary configuration boundary](cloudinary-upload-config.md) — keep browser upload settings public and separate from admin API secrets; rotate across enabled accounts.
 - [Remote main UI sync](remote-main-ui-sync.md) — inspect current origin markup before rebasing UI changes from a stale checkout.
 - [GitHub push checkout](github-push-checkout.md) — after secure-secret handoff, verify nested Git metadata and use a fresh remote checkout if the local origin is replaced.

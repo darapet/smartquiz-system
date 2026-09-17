@@ -22,14 +22,16 @@
 
   <div id="studyco-app-screen" hidden>
     <header class="studyco-topbar">
-      <a class="studyco-brand" href="index.html"><span class="studyco-mark">SQ</span><span>SmartQuiz <b>Circle</b></span></a>
+      <a class="studyco-brand" href="index.html"><span class="studyco-facebook-word">facebook</span></a>
       <nav class="studyco-top-nav" aria-label="Primary">
         <button class="active" data-studyco-view="home" type="button" aria-label="Home"><span aria-hidden="true">⌂</span><b>Home</b></button>
         <button data-studyco-view="friends" type="button" aria-label="Friends"><span aria-hidden="true">♧</span><b>Friends</b></button>
         <button data-studyco-view="messages" type="button" aria-label="Messages"><span aria-hidden="true">◌</span><b>Messages</b><i id="studyco-message-badge" hidden>0</i></button>
+        <button type="button" aria-label="Notifications"><span aria-hidden="true">♧</span><b>Notifications</b></button>
+        <button data-studyco-view="profile" type="button" aria-label="Profile"><span aria-hidden="true">◉</span><b>Profile</b></button>
       </nav>
       <div class="studyco-top-search"><span aria-hidden="true">⌕</span><input id="studyco-global-search" type="search" placeholder="Search your circle" autocomplete="off"></div>
-      <div class="studyco-top-actions"><span id="studyco-top-name"></span><button class="studyco-top-avatar" id="studyco-top-avatar" type="button" data-studyco-view="profile" aria-label="Open your profile"></button><button id="studyco-logout" class="studyco-text-button" type="button">Log out</button><button id="studyco-mobile-menu" class="studyco-icon-button" type="button" aria-label="Open menu">☰</button></div>
+      <div class="studyco-top-actions"><button class="studyco-circle-action" type="button" aria-label="Create">＋</button><button class="studyco-circle-action studyco-search-action" type="button" aria-label="Search">⌕</button><span id="studyco-top-name" hidden></span><button class="studyco-top-avatar" id="studyco-top-avatar" type="button" data-studyco-view="profile" aria-label="Open your profile"></button><button id="studyco-logout" class="studyco-circle-action" type="button" aria-label="Sign out">⋮</button></div>
     </header>
     <div class="studyco-layout">
       <aside class="studyco-left-rail">
@@ -40,10 +42,6 @@
       <main class="studyco-main">
         <section id="studyco-view-home" class="studyco-view active">
           <div class="studyco-page-heading studyco-home-heading"><div><p class="studyco-eyebrow">Your learning circle</p><h1>Good morning<span id="studyco-hello-name"></span><em>.</em></h1><p>See what your circle is learning today.</p></div><button class="studyco-button light" data-studyco-view="profile" type="button">Complete profile</button></div>
-          <section class="studyco-stories-section">
-            <div class="studyco-section-title"><div><h2>Stories</h2><p>Quick updates from your study circle.</p></div><button class="studyco-link-button" id="studyco-create-story" type="button">Add story</button></div>
-            <div id="studyco-story-list" class="studyco-story-row"></div>
-          </section>
           <section class="studyco-composer studyco-card">
             <div class="studyco-composer-head"><div id="studyco-composer-avatar"></div><div><strong>What’s on your mind?</strong><span>Share with your SmartQuiz friends</span></div></div>
             <textarea id="studyco-post-text" maxlength="1000" placeholder="Share a thought, question, or small win..."></textarea>
@@ -52,6 +50,10 @@
               <div class="studyco-composer-tools"><label class="studyco-tool"><input id="studyco-post-image" type="file" accept="image/*">Add photo</label><span class="studyco-template-label">Card color</span><div class="studyco-template-picker"><button class="selected template-indigo" data-template="indigo" type="button" aria-label="Indigo card"></button><button class="template-sunset" data-template="sunset" type="button" aria-label="Sunset card"></button><button class="template-ocean" data-template="ocean" type="button" aria-label="Ocean card"></button><button class="template-gold" data-template="gold" type="button" aria-label="Gold card"></button><button class="template-night" data-template="night" type="button" aria-label="Dark card"></button><button class="template-berry" data-template="berry" type="button" aria-label="Berry card"></button></div></div>
               <button id="studyco-publish-post" class="studyco-button primary" type="button">Post</button>
             </div>
+          </section>
+          <section class="studyco-stories-section">
+            <div class="studyco-section-title"><div><h2>Stories</h2><p>Quick updates from your study circle.</p></div><button class="studyco-link-button" id="studyco-create-story" type="button">Add story</button></div>
+            <div id="studyco-story-list" class="studyco-story-row"></div>
           </section>
           <div class="studyco-feed-title"><div><p class="studyco-eyebrow">Your circle</p><h2>Fresh from the feed</h2></div><button id="studyco-refresh-feed" class="studyco-icon-button" type="button" aria-label="Refresh feed">↻</button></div>
           <div id="studyco-post-feed" class="studyco-feed"></div>
@@ -72,7 +74,7 @@
         </section>
 
         <section id="studyco-view-messages" class="studyco-view">
-          <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Stay in the loop</p><h1>Messages</h1><p>Keep the good questions going.</p></div><button id="studyco-new-message" class="studyco-button primary" type="button">New message</button></div>
+          <div class="studyco-page-heading studyco-message-page-heading"><button class="studyco-message-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button><div><p class="studyco-eyebrow">Stay in the loop</p><h1>Messages</h1><p>Keep the good questions going.</p></div><div class="studyco-message-heading-actions"><button class="studyco-icon-button" type="button" aria-label="Search messages">⌕</button><button id="studyco-new-message" class="studyco-button primary" type="button">New message</button></div></div>
           <div class="studyco-messages-shell">
             <section class="studyco-conversations-panel" aria-label="Recent conversations">
               <div class="studyco-conversations-head"><div><span class="studyco-eyebrow">Inbox</span><h2>Recent chats</h2></div><span id="studyco-chat-count" class="studyco-count">0</span></div>
