@@ -239,6 +239,20 @@ function _withAqsActionTimeout(promise, action) {
     ]);
 }
 
+function _withAqsStepTimeout(promise, step) {
+    return Promise.race([
+        promise,
+        new Promise(function(_, reject) {
+            setTimeout(function() {
+                reject(new Error(
+                    'Firebase did not respond within 15 seconds during ' + step +
+                    '. This is usually a blocked or stalled Firebase connection, not a rules denial.'
+                ));
+            }, AQS_ACTION_TIMEOUT_MS);
+        })
+    ]);
+}
+
 window.aqsAjax = async function(data, successFn, failFn) {
     try {
         var res = await _withAqsActionTimeout(handleAction(data), data && data.action);
@@ -554,7 +568,10 @@ async function actionLogin(data) {
     if (identifier.indexOf('@') === -1) {
         /* Username lookup must use the public mapping. Querying the private
            users collection before authentication is rejected by Firestore. */
-        var usernameSnap = await getDoc(doc(db, 'usernames', identifier));
+        var usernameSnap = await _withAqsStepTimeout(
+            getDoc(doc(db, 'usernames', identifier)),
+            'checking the username'
+        );
         if (!usernameSnap.exists()) throw new Error('User not found. Please check your username or email.');
         email = String(usernameSnap.data().email || '').trim();
         if (!email) {
@@ -562,11 +579,17 @@ async function actionLogin(data) {
         }
     }
 
-    var cred = await signInWithEmailAndPassword(auth, email, password);
+    var cred = await _withAqsStepTimeout(
+        signInWithEmailAndPassword(auth, email, password),
+        'signing in with email'
+    );
     var user = cred.user;
 
     /* Get user profile from Firestore */
-    var profileDoc = await getDoc(doc(db, 'users', user.uid));
+    var profileDoc = await _withAqsStepTimeout(
+        getDoc(doc(db, 'users', user.uid)),
+        'loading your profile'
+    );
     var profile = profileDoc.exists() ? profileDoc.data() : {};
 
     /* Update AQS globals */
@@ -591,20 +614,33 @@ async function actionRegister(data) {
 
     /* Check username uniqueness via public /usernames collection
        (avoids a permission error — users collection requires auth) */
-    var usernameSnap = await getDoc(doc(db, 'usernames', username));
+    var usernameSnap = await _withAqsStepTimeout(
+        getDoc(doc(db, 'usernames', username)),
+        'checking username availability'
+    );
     if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
 
     /* Create Firebase Auth user — this is the critical step.
        Everything after this is best-effort; we ALWAYS redirect on auth success. */
     window._aqsIsRegistering = true;
-    var cred = await createUserWithEmailAndPassword(auth, email, password);
+    var cred = await _withAqsStepTimeout(
+        createUserWithEmailAndPassword(auth, email, password),
+        'creating your email account'
+    );
     var user = cred.user;
 
     /* Force token refresh so Firestore immediately recognises the new user */
-    try { await user.getIdToken(true); } catch(_) {}
+    try {
+        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing the auth token');
+    } catch(_) {}
 
     /* Update display name (non-fatal) */
-    try { await updateProfile(user, { displayName: name }); } catch(_) {}
+    try {
+        await _withAqsStepTimeout(
+            updateProfile(user, { displayName: name }),
+            'saving your display name'
+        );
+    } catch(_) {}
 
     /* Save profile to Firestore — wrapped so a rules/network error doesn't
        block the user from getting into the app. The write will be retried
@@ -614,8 +650,14 @@ async function actionRegister(data) {
         role: role, created_at: serverTimestamp(), status: 'active'
     };
     try {
-        await setDoc(doc(db, 'users', user.uid), profile);
-        await setDoc(doc(db, 'usernames', username), { uid: user.uid, email: email });
+        await _withAqsStepTimeout(
+            setDoc(doc(db, 'users', user.uid), profile),
+            'saving your user profile'
+        );
+        await _withAqsStepTimeout(
+            setDoc(doc(db, 'usernames', username), { uid: user.uid, email: email }),
+            'saving your username'
+        );
     } catch(fsErr) {
         console.warn('[AQS Register] Firestore write failed (will retry):', fsErr && fsErr.message);
         /* Do NOT throw — Firebase Auth user was created successfully.
