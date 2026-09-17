@@ -45,6 +45,21 @@ service cloud.firestore {
       allow create, update, delete: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // ─── StudyCo online presence and last seen ───────────────────────
+    match /studyco_presence/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.online is bool;
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && resource.data.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.online is bool;
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
     // ─── Friend Requests ───────────────────────────────────────────
     match /social_friend_requests/{requestId} {
       // A StudyCo profile checks this deterministic document before creating

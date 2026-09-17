@@ -8,8 +8,10 @@ const state = {
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
   feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null,
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
+  presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
   conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
-  pendingIncomingCall: null, rtc: null, localStream: null
+  pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null,
+  ringToneTimer: null, audioContext: null, presenceWired: false
 };
 
 const $ = (id) => document.getElementById(id);
@@ -25,7 +27,30 @@ const timeText = (value) => {
   const hours = Math.floor(mins / 60); if (hours < 24) return `${hours}h`;
   return new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
+const presenceIsOnline = (presence) => {
+  if (!presence?.online) return false;
+  const updatedAt = timeMs(presence.updatedAt);
+  return !updatedAt || Date.now() - updatedAt < 90000;
+};
+const lastSeenText = (presence) => {
+  if (presenceIsOnline(presence)) return 'Online now';
+  const ms = timeMs(presence?.lastSeen);
+  if (!ms) return 'Last seen unavailable';
+  const diff = Math.max(0, Date.now() - ms);
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Last seen just now';
+  if (mins < 60) return `Last seen ${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `Last seen ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `Last seen ${days}d ago`;
+  return `Last seen ${new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
+};
 const avatar = (profile, size = '') => `<div class="studyco-avatar ${size}">${profile?.photoURL ? `<img src="${esc(profile.photoURL)}" alt="">` : esc(initials(profile))}</div>`;
+const avatarWithPresence = (profile, uid, size = '') => {
+  const presence = state.presence.get(uid);
+  return `<span class="studyco-presence-wrap">${avatar(profile, size)}<i class="studyco-presence-dot${presenceIsOnline(presence) ? ' online' : ''}" title="${esc(lastSeenText(presence))}" aria-label="${esc(lastSeenText(presence))}"></i></span>`;
+};
 const toast = (message, error = false) => {
   const el = $('studyco-toast'); if (!el) return;
   el.textContent = message; el.className = `studyco-toast show${error ? ' error' : ''}`;
@@ -67,6 +92,72 @@ async function getProfile(uid) {
   if (!snap.exists()) return null;
   const profile = { id: snap.id, ...snap.data() };
   state.profiles.set(uid, profile); return profile;
+}
+
+async function getPresence(uid) {
+  if (!uid) return null;
+  if (state.presence.has(uid)) return state.presence.get(uid);
+  try {
+    const snap = await getDoc(doc(db, 'studyco_presence', uid));
+    const presence = snap.exists() ? snap.data() : null;
+    if (presence) state.presence.set(uid, presence);
+    return presence;
+  } catch (_) {
+    return null;
+  }
+}
+
+function watchPresence(uid) {
+  if (!uid || state.presenceUnsubs.has(uid)) return;
+  const unsubscribe = onSnapshot(doc(db, 'studyco_presence', uid), (snapshot) => {
+    state.presence.set(uid, snapshot.exists() ? snapshot.data() : null);
+    renderChatList();
+    if (uid === state.activeChatUid) updateActiveChatPresence();
+  }, () => {
+    state.presence.set(uid, null);
+    renderChatList();
+    if (uid === state.activeChatUid) updateActiveChatPresence();
+  });
+  state.presenceUnsubs.set(uid, unsubscribe);
+}
+
+function stopPresenceWatchers() {
+  state.presenceUnsubs.forEach((unsubscribe) => unsubscribe());
+  state.presenceUnsubs.clear();
+  state.presence.clear();
+}
+
+async function setPresence(online) {
+  if (!state.user) return;
+  const presence = {
+    uid: state.user.uid,
+    online: Boolean(online),
+    updatedAt: serverTimestamp()
+  };
+  if (!online) presence.lastSeen = serverTimestamp();
+  try {
+    await setDoc(doc(db, 'studyco_presence', state.user.uid), presence, { merge: true });
+  } catch (_) {
+    /* Presence must never block chat or calls if rules are being deployed. */
+  }
+}
+
+function startPresence() {
+  clearInterval(state.presenceHeartbeat);
+  setPresence(true);
+  state.presenceHeartbeat = setInterval(() => {
+    if (document.visibilityState === 'visible') setPresence(true);
+  }, 30000);
+  if (!state.presenceWired) {
+    state.presenceWired = true;
+    document.addEventListener('visibilitychange', () => setPresence(document.visibilityState === 'visible'));
+    window.addEventListener('beforeunload', () => { setPresence(false); });
+  }
+}
+
+function stopPresenceHeartbeat() {
+  clearInterval(state.presenceHeartbeat);
+  state.presenceHeartbeat = null;
 }
 
 async function ensureProfile(user) {
@@ -120,13 +211,31 @@ function renderProfile() {
   cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>`;
 }
 
-function setView(view) {
+function viewHash(view, chatUid = '') {
+  return view === 'messages' && chatUid ? `#messages/${encodeURIComponent(chatUid)}` : `#${view}`;
+}
+
+function setView(view, { updateUrl = true, chatUid = state.activeChatUid } = {}) {
   state.activeView = view;
+  if (updateUrl && window.location.hash !== viewHash(view, chatUid)) {
+    window.history.pushState({ studycoView: view, chatUid }, '', viewHash(view, chatUid));
+  }
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.classList.toggle('active', button.dataset.studycoView === view));
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
+  const menu = $('studyco-menu-panel');
+  if (menu) menu.hidden = true;
   if (view === 'friends') loadSocialLists();
   if (view === 'profile') { renderProfile(); renderProfilePosts(); }
   if (view === 'messages') loadChats();
+}
+
+async function syncRoute() {
+  const parts = window.location.hash.replace(/^#/, '').split('/');
+  const view = ['friends', 'messages', 'profile'].includes(parts[0]) ? parts[0] : 'home';
+  setView(view, { updateUrl: false, chatUid: parts[1] ? decodeURIComponent(parts[1]) : '' });
+  if (view === 'messages' && parts[1] && state.user) {
+    await openChat(decodeURIComponent(parts[1]), { updateUrl: false });
+  }
 }
 
 function renderPostPreview() {
@@ -302,12 +411,26 @@ async function ensureConversation(uid) {
 function renderChatList() {
   const term = $('studyco-message-search')?.value.trim().toLowerCase() || '';
   const validChats = state.conversations.filter((chat) => chat.profile);
+  validChats.forEach((chat) => watchPresence(chat.uid));
   const visibleChats = validChats.filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term));
   const unreadChats = validChats.filter((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true);
   $('studyco-chat-count').textContent = String(validChats.length);
   $('studyco-message-badge').hidden = unreadChats.length < 1;
   $('studyco-message-badge').textContent = unreadChats.length > 99 ? '99+' : String(unreadChats.length || '');
-  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}${chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true ? ' unread' : ''}" data-chat-uid="${esc(chat.uid)}">${avatar(chat.profile, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || 'Start a conversation')}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}${chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true ? ' unread' : ''}" data-chat-uid="${esc(chat.uid)}">${avatarWithPresence(chat.profile, chat.uid, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || lastSeenText(state.presence.get(chat.uid)))}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+}
+
+function updateActiveChatPresence() {
+  const status = $('studyco-chat-presence');
+  if (!status || !state.activeChatUid) return;
+  const presence = state.presence.get(state.activeChatUid);
+  status.textContent = lastSeenText(presence);
+  status.classList.toggle('online', presenceIsOnline(presence));
+  const dot = $('studyco-chat-presence-dot');
+  if (dot) {
+    dot.classList.toggle('online', presenceIsOnline(presence));
+    dot.title = lastSeenText(presence);
+  }
 }
 
 function subscribeChats() {
@@ -345,11 +468,12 @@ function renderMessages(messages, profile) {
   target.scrollTop = target.scrollHeight;
 }
 
-async function openChat(uid) {
+async function openChat(uid, { updateUrl = true } = {}) {
   const profile = await getProfile(uid); if (!profile) return;
   const relation = await relationship(uid); if (relation !== 'friends') { toast('You can message accepted friends only.', true); return; }
-  state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid); setView('messages');
-  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatar(profile, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${esc(profile.username ? `@${profile.username}` : 'StudyCo friend')}</span></div><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+  state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid); watchPresence(uid); setView('messages', { updateUrl, chatUid: uid });
+  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+  updateActiveChatPresence();
   state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
     const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
     renderMessages(messages, profile);
@@ -380,22 +504,74 @@ function callPeer(callId, remoteUid) {
   return pc;
 }
 
-function openCallModal(profile, incoming = false) {
+function stopRingingTone() {
+  clearInterval(state.ringToneTimer);
+  state.ringToneTimer = null;
+  if (state.audioContext) {
+    state.audioContext.close().catch(() => {});
+    state.audioContext = null;
+  }
+}
+
+function startRingingTone(kind = 'online') {
+  stopRingingTone();
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const context = new AudioContext();
+    state.audioContext = context;
+    const play = () => {
+      const now = context.currentTime;
+      const notes = kind === 'online'
+        ? [{ frequency: 660, offset: 0, duration: .16 }, { frequency: 880, offset: .2, duration: .2 }]
+        : [{ frequency: 300, offset: 0, duration: .22 }, { frequency: 240, offset: .28, duration: .22 }, { frequency: 180, offset: .56, duration: .28 }];
+      notes.forEach(({ frequency, offset, duration }) => {
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+        oscillator.type = kind === 'online' ? 'sine' : 'triangle';
+        oscillator.frequency.value = frequency;
+        gain.gain.setValueAtTime(.0001, now + offset);
+        gain.gain.exponentialRampToValueAtTime(.08, now + offset + .025);
+        gain.gain.exponentialRampToValueAtTime(.0001, now + offset + duration);
+        oscillator.connect(gain).connect(context.destination);
+        oscillator.start(now + offset);
+        oscillator.stop(now + offset + duration + .02);
+      });
+    };
+    context.resume().then(play).catch(() => {});
+    state.ringToneTimer = setInterval(play, kind === 'online' ? 1800 : 2500);
+  } catch (_) {
+    /* A blocked audio context must not stop the call from connecting. */
+  }
+}
+
+function openCallModal(profile, incoming = false, targetOnline = true) {
   $('studyco-call-label').textContent = incoming ? 'Incoming audio call' : 'Audio call';
   $('studyco-call-name').textContent = profileName(profile); $('studyco-call-avatar').textContent = initials(profile);
-  $('studyco-call-status').textContent = incoming ? 'Your StudyCo friend is calling.' : 'Calling...';
+  $('studyco-call-status').textContent = incoming ? 'Your StudyCo friend is calling.' : `Ringing — ${targetOnline ? 'online now' : 'appears offline'}.`;
   $('studyco-call-accept').hidden = !incoming; $('studyco-call-modal').hidden = false;
 }
 
 async function startCall(uid) {
   const profile = await getProfile(uid); if (!profile) return;
   try {
+    const targetPresence = await getPresence(uid);
+    const targetOnline = presenceIsOnline(targetPresence);
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const callRef = doc(collection(db, 'studyco_calls')); state.activeCallId = callRef.id; state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
     await setDoc(callRef, { callerId: state.user.uid, receiverId: uid, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    openCallModal(profile); state.callUnsub = onSnapshot(callRef, async (snapshot) => { const data = snapshot.data(); if (!data) return; if (data.answer && !state.rtc.currentRemoteDescription) await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer)); if (['declined', 'ended'].includes(data.status)) finishCall(); });
+    openCallModal(profile, false, targetOnline); startRingingTone(targetOnline ? 'online' : 'offline');
+    state.callTimeout = setTimeout(() => declineCall(), 45000);
+    state.callUnsub = onSnapshot(callRef, async (snapshot) => {
+      const data = snapshot.data(); if (!data) return;
+      if (data.answer && !state.rtc.currentRemoteDescription) {
+        await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        stopRingingTone(); $('studyco-call-status').textContent = 'Connected';
+      }
+      if (['declined', 'ended'].includes(data.status)) finishCall();
+    });
   } catch (error) { toast(error.message || 'Microphone permission is needed for calls.', true); finishCall(); }
 }
 
@@ -408,6 +584,7 @@ async function acceptIncomingCall() {
     await state.rtc.setRemoteDescription(new RTCSessionDescription(incoming.data.offer));
     const answer = await state.rtc.createAnswer(); await state.rtc.setLocalDescription(answer);
     await updateDoc(doc(db, 'studyco_calls', incoming.id), { status: 'accepted', answer: { type: answer.type, sdp: answer.sdp }, updatedAt: serverTimestamp() });
+    stopRingingTone();
     $('studyco-call-status').textContent = 'Connected'; $('studyco-call-accept').hidden = true;
     state.callUnsub = onSnapshot(doc(db, 'studyco_calls', incoming.id), (snapshot) => { if (['declined', 'ended'].includes(snapshot.data()?.status)) finishCall(); });
   } catch (error) { toast(error.message || 'Could not accept the call.', true); finishCall(); }
@@ -420,6 +597,7 @@ async function declineCall() {
 }
 
 function finishCall() {
+  stopRingingTone(); clearTimeout(state.callTimeout); state.callTimeout = null;
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
   state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; $('studyco-call-modal').hidden = true;
 }
@@ -429,7 +607,7 @@ function listenForCalls() {
   state.incomingCallUnsub = onSnapshot(query(collection(db, 'studyco_calls'), where('receiverId', '==', state.user.uid), limit(20)), async (snapshot) => {
     const call = snapshot.docs.map((item) => ({ id: item.id, data: item.data() })).find((item) => item.data.status === 'ringing');
     if (!call || state.activeCallId) return;
-    state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); openCallModal(profile || {}, true);
+    state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); openCallModal(profile || {}, true, true); startRingingTone('online');
   });
 }
 
@@ -452,6 +630,8 @@ function wire() {
     menu.hidden = !menu.hidden;
     $('studyco-menu-button').setAttribute('aria-expanded', String(!menu.hidden));
   });
+  window.addEventListener('hashchange', syncRoute);
+  window.addEventListener('popstate', syncRoute);
   document.addEventListener('click', (event) => {
     const menu = $('studyco-menu-panel');
     if (!menu.hidden && !event.target.closest('.studyco-top-actions')) {
@@ -506,7 +686,7 @@ function wire() {
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
   $('studyco-chat-panel').addEventListener('click', (event) => { const button = event.target.closest('[data-start-call]'); if (button) startCall(button.dataset.startCall); });
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);
-  $('studyco-logout').addEventListener('click', () => signOut(auth));
+  $('studyco-logout').addEventListener('click', async () => { await setPresence(false); await signOut(auth); });
 }
 
 function previewFile(file, targetId) {
@@ -538,12 +718,16 @@ async function saveProfile(event) {
 async function bootApp() {
   await ensureProfile(state.user);
   try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
-  showApp(); renderProfile(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats();
+  showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }
 
 wire();
 window.onAqsAuthChange(async (user) => {
-  if (!user || user.isAnonymous) { state.user = null; showAuth(); return; }
+  if (!user || user.isAnonymous) {
+    if (state.user) setPresence(false);
+    stopPresenceHeartbeat(); stopPresenceWatchers();
+    state.user = null; showAuth(); return;
+  }
   state.user = user;
   try { await bootApp(); } catch (error) { toast(error.message || 'StudyCo Meet could not load.', true); }
 });
