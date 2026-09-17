@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/aqs-style.css">
   <link rel="stylesheet" href="css/studyco-meet.css">
   <link rel="stylesheet" href="css/studyco-messages.css">
+  <link rel="stylesheet" href="css/studyco-mobile-facebook.css">
 </head>
 <body class="studyco-page">
   <div id="studyco-app-screen" hidden>
@@ -15,6 +16,24 @@
       <a class="studyco-brand" href="index.html"><span class="studyco-mark">SQ</span><span>SmartQuiz <b>Circle</b></span></a>
       <div class="studyco-top-search"><span>⌕</span><input id="studyco-global-search" type="search" placeholder="Find classmates" autocomplete="off"></div>
       <div class="studyco-top-actions"><span id="studyco-top-name"></span><button id="studyco-logout" class="studyco-text-button" type="button">Log out</button><button id="studyco-mobile-menu" class="studyco-icon-button" type="button" aria-label="Open menu">☰</button></div>
+    </header>
+    <header class="studyco-mobile-header" aria-label="Mobile navigation">
+      <div class="studyco-mobile-brand-row">
+        <a href="index.html" class="studyco-mobile-brand">SmartQuiz</a>
+        <div class="studyco-mobile-header-actions">
+          <button type="button" aria-label="Create">＋</button>
+          <button type="button" aria-label="Search" data-mobile-search>⌕</button>
+          <button type="button" aria-label="More options" data-studyco-view="profile">☰</button>
+        </div>
+      </div>
+      <nav class="studyco-mobile-icon-nav" aria-label="Mobile sections">
+        <button class="active" data-studyco-view="home" type="button" aria-label="Home"><span>⌂</span><b>15+</b></button>
+        <button data-studyco-view="friends" type="button" aria-label="Friends"><span>♧</span><b>3</b></button>
+        <button data-studyco-view="messages" type="button" aria-label="Messages"><span>◌</span></button>
+        <button type="button" aria-label="Study videos"><span>▣</span><b>15+</b></button>
+        <button type="button" aria-label="Notifications"><span>♢</span><b>6</b></button>
+        <button type="button" aria-label="Marketplace"><span>▤</span><b>1</b></button>
+      </nav>
     </header>
     <div class="studyco-layout">
       <aside class="studyco-left-rail">
@@ -52,7 +71,10 @@
         </section>
 
         <section id="studyco-view-friends" class="studyco-view">
+          <div class="studyco-mobile-screen-heading"><button type="button" data-studyco-view="home" aria-label="Back">‹</button><h1>Friends</h1><button type="button" data-focus-people-search aria-label="Search friends">⌕</button></div>
           <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Social graph</p><h1>Find your people</h1><p>Connect with classmates and keep your study circle close.</p></div></div>
+          <div class="studyco-mobile-pills"><button class="active" type="button">Your friends</button><button type="button">Suggestions</button></div>
+          <div class="studyco-friends-notice"><div class="studyco-notice-avatars"><span>◎</span><span>♧</span></div><strong>Your friend updates will appear here.</strong></div>
           <div class="studyco-card studyco-search-card"><span>⌕</span><input id="studyco-people-search" type="search" placeholder="Search by name, username, school, or department"></div>
           <div id="studyco-people-results" class="studyco-people-grid"></div>
           <div class="studyco-friends-columns"><section class="studyco-card"><div class="studyco-section-title"><div><h2>Friend requests</h2><p>People who want to connect.</p></div><span id="studyco-request-count" class="studyco-count">0</span></div><div id="studyco-request-list" class="studyco-list"></div></section><section class="studyco-card"><div class="studyco-section-title"><div><h2>Friends list</h2><p>Your accepted study partners.</p></div></div><div id="studyco-friend-list" class="studyco-list"></div></section></div>
@@ -66,7 +88,9 @@
         </section>
 
         <section id="studyco-view-messages" class="studyco-view">
+          <div class="studyco-mobile-screen-heading"><button type="button" data-studyco-view="home" aria-label="Back">‹</button><h1>Messages</h1><div><button type="button" aria-label="Message settings">⚙</button><button type="button" data-focus-message-search aria-label="Search messages">⌕</button></div></div>
           <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Private conversations</p><h1>Messages</h1><p>Keep your study conversations in one place.</p></div></div>
+          <div id="studyco-message-stories" class="studyco-message-stories"></div>
           <div id="studyco-messages-page" class="studyco-messages-page">
             <div class="studyco-messages-sidebar">
               <div class="studyco-chat-new"><span>Start a chat</span><input id="studyco-message-search" type="search" placeholder="Search people"></div>
