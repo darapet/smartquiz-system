@@ -132,7 +132,7 @@ async function renderPost(post) {
 }
 
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts) {
-  if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty"><strong>Your circle is quiet for now.</strong>Share the first study win or invite a classmate.</div>'; return; }
+  if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   target.innerHTML = (await Promise.all(posts.map(renderPost))).join('');
 }
