@@ -331,6 +331,16 @@
     display: none;
   }
 
+  #studyco-view-friends.mobile-search-open .studyco-search-card {
+    display: flex;
+    margin: 0 16px 8px;
+    min-height: 45px;
+    border: 0;
+    border-radius: 999px;
+    background: #f0f2f5;
+    box-shadow: none;
+  }
+
   .studyco-mobile-pills {
     display: flex;
     gap: 9px;
