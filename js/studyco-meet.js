@@ -376,6 +376,10 @@ function wire() {
     $('studyco-composer').classList.add('is-open');
     $('studyco-post-text').focus();
   });
+  $('studyco-friend-search-action').addEventListener('click', () => {
+    $('studyco-people-search').focus();
+    $('studyco-people-search').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  });
   $('studyco-menu-button').addEventListener('click', () => {
     const menu = $('studyco-menu-panel');
     menu.hidden = !menu.hidden;
