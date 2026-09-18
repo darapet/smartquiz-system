@@ -13,6 +13,7 @@ import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.net.Uri;
@@ -59,6 +60,8 @@ public class MainActivity extends BridgeActivity {
     private boolean startListeningAfterPermission = false;
     private int recognitionGeneration = 0;
     private String pendingRecognitionLanguage = "en-US";
+    private AudioFocusRequest callAudioFocusRequest;
+    private boolean callAudioActive = false;
 
     /** Pending web permission request waiting on the Android runtime dialog. */
     private PermissionRequest pendingWebRequest;
@@ -215,6 +218,57 @@ public class MainActivity extends BridgeActivity {
                 STARTUP_MIC_PERMISSION_CODE
             );
         }
+    }
+
+    private void beginCallAudio() {
+        runOnUiThread(() -> {
+            AudioManager audioManager =
+                (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager == null) return;
+
+            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.setSpeakerphoneOn(true);
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                AudioAttributes attributes = new AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build();
+                callAudioFocusRequest = new AudioFocusRequest.Builder(
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
+                    .setAudioAttributes(attributes)
+                    .setAcceptsDelayedFocusGain(false)
+                    .build();
+                audioManager.requestAudioFocus(callAudioFocusRequest);
+            } else {
+                audioManager.requestAudioFocus(
+                    null,
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                );
+            }
+            callAudioActive = true;
+        });
+    }
+
+    private void endCallAudio() {
+        runOnUiThread(() -> {
+            AudioManager audioManager =
+                (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager == null) return;
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                    && callAudioFocusRequest != null) {
+                audioManager.abandonAudioFocusRequest(callAudioFocusRequest);
+                callAudioFocusRequest = null;
+            } else {
+                audioManager.abandonAudioFocus(null);
+            }
+            audioManager.setSpeakerphoneOn(false);
+            audioManager.setMode(AudioManager.MODE_NORMAL);
+            callAudioActive = false;
+        });
     }
 
     @Override
@@ -530,6 +584,16 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface
         public void openSettings() {
             runOnUiThread(() -> openAppSettings());
+        }
+
+        @JavascriptInterface
+        public void beginCallAudio() {
+            MainActivity.this.beginCallAudio();
+        }
+
+        @JavascriptInterface
+        public void endCallAudio() {
+            MainActivity.this.endCallAudio();
         }
     }
 

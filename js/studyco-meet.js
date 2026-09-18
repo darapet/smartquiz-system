@@ -680,6 +680,17 @@ function prepareCallAudioStream(stream) {
   track.applyConstraints(getCallAudioConstraints()).catch(() => {});
 }
 
+function setNativeCallAudio(enabled) {
+  try {
+    const bridge = window.AqsPermissionsBridge;
+    if (!bridge) return;
+    if (enabled) bridge.beginCallAudio?.();
+    else bridge.endCallAudio?.();
+  } catch (_) {
+    /* The website has no native bridge; Web Audio remains browser-controlled. */
+  }
+}
+
 function callPeer(callId, remoteUid) {
   const pc = new RTCPeerConnection({
     iceServers: [
@@ -994,6 +1005,7 @@ async function startCall(uid) {
     const targetPresence = await getPresence(uid);
     const targetOnline = presenceIsOnline(targetPresence);
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
+    setNativeCallAudio(true);
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
     prepareCallAudioStream(state.localStream);
     const callRef = doc(collection(db, 'studyco_calls'));
@@ -1042,6 +1054,7 @@ async function acceptIncomingCall() {
     state.speakerOn = true;
     state.muted = false;
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
+    setNativeCallAudio(true);
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
     prepareCallAudioStream(state.localStream);
     state.activeCallId = incoming.id; state.rtc = callPeer(incoming.id, incoming.data.callerId);
@@ -1064,6 +1077,7 @@ async function declineCall(timedOut = false) {
 
 async function finishCall() {
   stopRingingTone(); stopCallElapsed(); clearTimeout(state.callTimeout); state.callTimeout = null;
+  setNativeCallAudio(false);
   stopVoiceTranslation();
   if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
