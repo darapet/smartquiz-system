@@ -716,13 +716,20 @@ function callPeer(callId, remoteUid) {
   };
 
   pc.ontrack = (event) => {
-    const tracks = event.streams?.[0]?.getTracks?.() || (event.track ? [event.track] : []);
+    /* Some WebViews deliver a stream with no tracks yet, while others only
+       populate event.track. Keep both paths so audio is never dropped. */
+    const tracks = [
+      ...(event.streams?.[0]?.getTracks?.() || []),
+      ...(event.track ? [event.track] : [])
+    ];
     tracks.forEach((track) => {
       if (!remoteStream.getTracks().some((existing) => existing.id === track.id)) remoteStream.addTrack(track);
     });
     if (remoteStream.getTracks().length && remoteAudio) {
       remoteAudio.srcObject = remoteStream;
       playRemoteAudio();
+      remoteAudio.onloadedmetadata = playRemoteAudio;
+      remoteAudio.oncanplay = playRemoteAudio;
     }
   };
 
@@ -989,20 +996,42 @@ async function startCall(uid) {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
     prepareCallAudioStream(state.localStream);
-    const callRef = doc(collection(db, 'studyco_calls')); state.activeCallId = callRef.id; state.rtc = callPeer(callRef.id, uid);
+    const callRef = doc(collection(db, 'studyco_calls'));
+    state.activeCallId = callRef.id;
+    /*
+     * Create the parent before WebRTC starts trickling ICE candidates.
+     * Firestore candidate rules use get() on this document; starting
+     * callPeer first makes early candidates/listeners fail with permission
+     * denied, which is why the reverse call direction could lose audio.
+     */
+    await setDoc(callRef, {
+      callerId: state.user.uid,
+      receiverId: uid,
+      status: 'preparing',
+      targetOnline,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    });
+    state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
-    await setDoc(callRef, { callerId: state.user.uid, receiverId: uid, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, targetOnline, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     openCallModal(profile, false, targetOnline, targetPresence); startRingingTone(targetOnline ? 'online' : 'offline');
     state.callTimeout = setTimeout(() => declineCall(true), 45000);
     state.callUnsub = onSnapshot(callRef, async (snapshot) => {
       const data = snapshot.data(); if (!data) return;
-      if (data.answer && !state.rtc.currentRemoteDescription) {
+      if (data.answer && !state.rtc.remoteDescription) {
         await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer));
         await state.rtc.flushRemoteCandidates?.();
         setCallConnected();
       }
       if (['declined', 'ended', 'missed'].includes(data.status)) finishCall();
+    });
+    /* Publish the offer last, atomically changing the call to ringable.
+       The receiver cannot accept until the offer is present. */
+    await updateDoc(callRef, {
+      status: 'ringing',
+      offer: { type: offer.type, sdp: offer.sdp },
+      updatedAt: serverTimestamp()
     });
   } catch (error) { toast(error.message || 'Microphone permission is needed for calls.', true); finishCall(); }
 }
