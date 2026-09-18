@@ -650,10 +650,82 @@ async function sendMessage(event) {
 }
 
 function callPeer(callId, remoteUid) {
-  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
-  pc.onicecandidate = (event) => { if (event.candidate) addDoc(collection(db, 'studyco_calls', callId, 'candidates'), { from: state.user.uid, candidate: event.candidate.toJSON(), createdAt: serverTimestamp() }).catch(() => {}); };
-  pc.ontrack = (event) => { $('studyco-call-remote-audio').srcObject = event.streams[0]; };
-  state.candidateUnsub?.(); state.candidateUnsub = onSnapshot(collection(db, 'studyco_calls', callId, 'candidates'), (snapshot) => snapshot.docs.forEach((item) => { const data = item.data(); if (data.from !== state.user.uid && data.candidate) pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {}); }));
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  });
+  const remoteStream = new MediaStream();
+  const remoteAudio = $('studyco-call-remote-audio');
+  const pendingCandidates = [];
+  const seenCandidateIds = new Set();
+  let remoteDescriptionReady = false;
+
+  const playRemoteAudio = () => {
+    if (!remoteAudio) return;
+    remoteAudio.autoplay = true;
+    remoteAudio.playsInline = true;
+    remoteAudio.muted = !state.speakerOn;
+    remoteAudio.volume = 1;
+    const playPromise = remoteAudio.play();
+    if (playPromise?.catch) playPromise.catch(() => {
+      /* The call controls remain a user gesture fallback on stricter mobile browsers. */
+    });
+  };
+
+  pc.onicecandidate = (event) => {
+    if (!event.candidate) return;
+    addDoc(collection(db, 'studyco_calls', callId, 'candidates'), {
+      from: state.user.uid,
+      candidate: event.candidate.toJSON(),
+      createdAt: serverTimestamp()
+    }).catch(() => {});
+  };
+
+  pc.ontrack = (event) => {
+    const tracks = event.streams?.[0]?.getTracks?.() || (event.track ? [event.track] : []);
+    tracks.forEach((track) => {
+      if (!remoteStream.getTracks().some((existing) => existing.id === track.id)) remoteStream.addTrack(track);
+    });
+    if (remoteStream.getTracks().length && remoteAudio) {
+      remoteAudio.srcObject = remoteStream;
+      playRemoteAudio();
+    }
+  };
+
+  pc.onconnectionstatechange = () => {
+    if (['failed', 'disconnected'].includes(pc.connectionState) && state.activeCallId === callId) {
+      $('studyco-call-status').textContent = 'Connection interrupted. Trying to recover…';
+    }
+  };
+
+  const addRemoteCandidate = async (candidate) => {
+    if (!candidate || seenCandidateIds.has(candidate.candidate)) return;
+    seenCandidateIds.add(candidate.candidate);
+    if (!remoteDescriptionReady) {
+      pendingCandidates.push(candidate);
+      return;
+    }
+    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+  };
+
+  pc.flushRemoteCandidates = async () => {
+    remoteDescriptionReady = true;
+    const candidates = pendingCandidates.splice(0);
+    await Promise.all(candidates.map(addRemoteCandidate));
+  };
+
+  state.candidateUnsub?.();
+  state.candidateUnsub = onSnapshot(
+    collection(db, 'studyco_calls', callId, 'candidates'),
+    (snapshot) => snapshot.docChanges().forEach((change) => {
+      if (change.type !== 'removed') {
+        const data = change.doc.data();
+        if (data.from !== state.user.uid && data.candidate) addRemoteCandidate(data.candidate);
+      }
+    })
+  );
   return pc;
 }
 
@@ -753,6 +825,12 @@ function setCallConnected() {
   $('studyco-call-status').textContent = 'Connected';
   $('studyco-call-presence').textContent = 'Live audio connection';
   $('studyco-call-accept').hidden = true;
+  const remoteAudio = $('studyco-call-remote-audio');
+  if (remoteAudio) {
+    remoteAudio.muted = !state.speakerOn;
+    remoteAudio.volume = 1;
+    remoteAudio.play().catch(() => {});
+  }
   startCallElapsed();
 }
 
@@ -874,7 +952,15 @@ async function startCall(uid) {
   try {
     const targetPresence = await getPresence(uid);
     const targetOnline = presenceIsOnline(targetPresence);
-    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
+    state.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1
+      }
+    });
     const callRef = doc(collection(db, 'studyco_calls')); state.activeCallId = callRef.id; state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
@@ -885,6 +971,7 @@ async function startCall(uid) {
       const data = snapshot.data(); if (!data) return;
       if (data.answer && !state.rtc.currentRemoteDescription) {
         await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer));
+        await state.rtc.flushRemoteCandidates?.();
         setCallConnected();
       }
       if (['declined', 'ended', 'missed'].includes(data.status)) finishCall();
@@ -895,10 +982,19 @@ async function startCall(uid) {
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
   try {
-    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
+    state.localStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: true,
+        autoGainControl: true,
+        channelCount: 1
+      }
+    });
     state.activeCallId = incoming.id; state.rtc = callPeer(incoming.id, incoming.data.callerId);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     await state.rtc.setRemoteDescription(new RTCSessionDescription(incoming.data.offer));
+    await state.rtc.flushRemoteCandidates?.();
     const answer = await state.rtc.createAnswer(); await state.rtc.setLocalDescription(answer);
     await updateDoc(doc(db, 'studyco_calls', incoming.id), { status: 'accepted', answer: { type: answer.type, sdp: answer.sdp }, updatedAt: serverTimestamp() });
     stopRingingTone();
@@ -919,6 +1015,8 @@ async function finishCall() {
   if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
   state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.muted = false; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
+  const remoteAudio = $('studyco-call-remote-audio');
+  if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; }
 }
 
 function listenForCalls() {
