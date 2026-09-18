@@ -887,6 +887,8 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
 
 function setCallConnected() {
   stopRingingTone();
+  clearTimeout(state.callTimeout);
+  state.callTimeout = null;
   $('studyco-call-status').textContent = 'Connected';
   $('studyco-call-presence').textContent = 'Live audio connection';
   $('studyco-call-accept').hidden = true;
@@ -1071,6 +1073,8 @@ async function startCall(uid) {
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
   try {
+    clearTimeout(state.incomingCallTimers.get(incoming.id));
+    state.incomingCallTimers.delete(incoming.id);
     state.speakerOn = true;
     state.muted = false;
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
@@ -1096,7 +1100,12 @@ async function declineCall(timedOut = false) {
 }
 
 async function finishCall() {
+  const finishedIncomingCallId = state.pendingIncomingCall?.id;
   stopRingingTone(); stopCallElapsed(); clearTimeout(state.callTimeout); state.callTimeout = null;
+  if (finishedIncomingCallId) {
+    clearTimeout(state.incomingCallTimers.get(finishedIncomingCallId));
+    state.incomingCallTimers.delete(finishedIncomingCallId);
+  }
   setNativeCallAudio(false);
   stopVoiceTranslation();
   if (state.recording) stopRecording();
@@ -1116,6 +1125,7 @@ function listenForCalls() {
     state.incomingCallIds.add(call.id);
     state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); const presence = await getPresence(call.data.callerId); openCallModal(profile || {}, true, presenceIsOnline(presence), presence); startRingingTone('online');
     state.incomingCallTimers.set(call.id, setTimeout(async () => {
+      state.incomingCallTimers.delete(call.id);
       const current = await getDoc(doc(db, 'studyco_calls', call.id)).catch(() => null);
       if (current?.data()?.status === 'ringing') {
         await updateDoc(doc(db, 'studyco_calls', call.id), { status: 'missed', updatedAt: serverTimestamp() }).catch(() => {});
