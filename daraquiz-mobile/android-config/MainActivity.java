@@ -41,6 +41,7 @@ public class MainActivity extends BridgeActivity {
 
     private static final int WEBVIEW_PERMISSION_CODE = 1002;
     private static final int NATIVE_SPEECH_PERMISSION_CODE = 1003;
+    private static final int STARTUP_MIC_PERMISSION_CODE = 1004;
 
     private ValueCallback<Uri[]> fileUploadCallback;
     private ActivityResultLauncher<Intent> fileChooserLauncher;
@@ -156,6 +157,14 @@ public class MainActivity extends BridgeActivity {
             }
         });
 
+        /*
+         * Ask for the Android microphone permission before the first call.
+         * WebRTC's WebView permission callback still grants capture to the
+         * page after this OS permission is approved, but relying on that
+         * callback alone can leave getUserMedia() in a denied state on some
+         * Android WebView versions.
+         */
+        requestStartupMicrophonePermission();
 
         BroadcastReceiver downloadReceiver = new BroadcastReceiver() {
             @Override
@@ -197,6 +206,17 @@ public class MainActivity extends BridgeActivity {
             == PackageManager.PERMISSION_GRANTED;
     }
 
+    private void requestStartupMicrophonePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
+                && !granted(Manifest.permission.RECORD_AUDIO)) {
+            ActivityCompat.requestPermissions(
+                this,
+                new String[]{ Manifest.permission.RECORD_AUDIO },
+                STARTUP_MIC_PERMISSION_CODE
+            );
+        }
+    }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] results) {
         super.onRequestPermissionsResult(requestCode, permissions, results);
@@ -210,6 +230,11 @@ public class MainActivity extends BridgeActivity {
                 sendVoiceEvent("error", "not-allowed");
                 sendVoiceEvent("end", "");
             }
+            return;
+        }
+        if (requestCode == STARTUP_MIC_PERMISSION_CODE) {
+            // The WebView permission callback will grant page capture once
+            // getUserMedia() is called. Nothing else is required here.
             return;
         }
         if (requestCode != WEBVIEW_PERMISSION_CODE || pendingWebRequest == null) return;
