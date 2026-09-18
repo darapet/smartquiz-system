@@ -11,3 +11,51 @@
 .studyco-chat-head .studyco-presence-text.online{color:#16865c;font-weight:800}
 .studyco-chat-head>.studyco-presence-dot{position:relative;right:auto;bottom:auto;width:9px;height:9px;flex:0 0 auto}
 @media(max-width:760px){.studyco-auth-screen{padding:22px 16px}.studyco-auth-grid{display:block;margin-top:70px}.studyco-auth-intro{margin-bottom:30px}.studyco-auth-intro h1{font-size:2.8rem}.studyco-topbar{height:62px;padding:0 14px;gap:10px}.studyco-brand{min-width:0;font-size:.86rem}.studyco-brand .studyco-mark{width:32px;height:32px}.studyco-top-search{width:auto;flex:1;max-width:210px}.studyco-top-actions>span,.studyco-top-actions .studyco-text-button{display:none}.studyco-topbar .studyco-icon-button{display:grid}.studyco-layout{display:block;padding:15px 12px 60px}.studyco-left-rail{position:static;margin-bottom:15px}.studyco-mini-profile{display:none}.studyco-nav{display:flex;gap:4px;overflow:auto;padding:5px;border:1px solid var(--sc-line);border-radius:12px;background:#fff}.studyco-nav button{width:auto;flex:0 0 auto;justify-content:center;padding:9px 11px;font-size:.7rem}.studyco-rail-note{display:none}.studyco-hero{display:block;min-height:0;padding:23px}.studyco-hero .studyco-button{margin-top:18px}.studyco-composer-footer{align-items:flex-end;flex-direction:column}.studyco-composer-footer,.studyco-composer-footer .studyco-button{width:100%}.studyco-composer-tools{width:100%;justify-content:space-between}.studyco-people-grid,.studyco-friends-columns{grid-template-columns:1fr}.studyco-page-heading{align-items:flex-start;flex-direction:column}.studyco-profile-cover{height:175px}.studyco-profile-main{align-items:flex-start;flex-wrap:wrap}.studyco-profile-main>div:nth-child(2){padding-top:48px}.studyco-profile-main .studyco-button{margin-left:auto}.studyco-profile-meta{display:grid;grid-template-columns:1fr 1fr}.studyco-form-grid,.studyco-upload-row{grid-template-columns:1fr}.studyco-form-grid label:nth-child(3){grid-column:auto}.studyco-modal-head,.studyco-form{padding-left:17px;padding-right:17px}.studyco-drawer{right:10px;bottom:10px;width:calc(100vw - 20px);height:calc(100vh - 90px)}.studyco-chat-layout{grid-template-columns:1fr}.studyco-chat-list{display:flex;gap:3px;max-height:70px;border-right:0;border-bottom:1px solid var(--sc-line)}.studyco-chat-list button{min-width:145px}.studyco-story-row{margin-right:-12px}.studyco-top-search{display:none}}
+.studyco-profile-heading-actions{display:flex;gap:8px;flex-wrap:wrap}
+.studyco-profile-hero{padding:0;overflow:hidden}
+.studyco-profile-cover{height:260px}
+.studyco-profile-cover-label{position:absolute;right:18px;bottom:16px;z-index:1;padding:7px 10px;border-radius:999px;background:#ffffff33;color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
+.studyco-profile-identity{display:flex;align-items:center;gap:16px;padding:0 24px 18px}
+.studyco-profile-identity .studyco-profile-avatar{margin-top:-54px;position:relative;z-index:2}
+.studyco-profile-identity-copy{flex:1;min-width:0;padding-top:14px}
+.studyco-profile-name-row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.studyco-profile-name-row h2{margin:0;font-size:1.45rem;letter-spacing:-.05em}
+.studyco-profile-status{padding:5px 8px;border-radius:999px;background:#e9fbf3;color:#087b59;font-size:10px;font-weight:900}
+.studyco-profile-identity-copy p{margin:4px 0 0;color:var(--sc-muted);font-size:.75rem}
+.studyco-profile-identity-copy p:last-child{margin-top:10px;color:#4d5773;line-height:1.55}
+.studyco-profile-stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--sc-line);padding:14px 24px}
+.studyco-profile-stats div{display:grid;gap:3px;padding:0 14px;border-right:1px solid var(--sc-line)}
+.studyco-profile-stats div:first-child{padding-left:0}
+.studyco-profile-stats div:last-child{border-right:0}
+.studyco-profile-stats strong{font-size:1.15rem}
+.studyco-profile-stats span{color:var(--sc-muted);font-size:.65rem}
+.studyco-profile-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-bottom:18px}
+.studyco-profile-about,.studyco-profile-next{margin-bottom:0}
+.studyco-profile-about-copy{margin:15px 0;color:#4d5773;font-size:.78rem;line-height:1.65}
+.studyco-profile-meta{margin-top:14px}
+.studyco-profile-progress{margin-top:18px;padding-top:14px;border-top:1px solid var(--sc-line)}
+.studyco-profile-progress>div:first-child{display:flex;justify-content:space-between;gap:10px;color:var(--sc-muted);font-size:.67rem}
+.studyco-profile-progress strong{color:var(--sc-ink)}
+.studyco-profile-progress-track{height:7px;margin-top:9px;overflow:hidden;border-radius:999px;background:var(--sc-soft)}
+.studyco-profile-progress-track span{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,var(--sc-primary),#c268ce);transition:width .25s ease}
+.studyco-profile-next{background:linear-gradient(145deg,#292766,#5c5cd8);color:#fff}
+.studyco-profile-next .studyco-eyebrow{color:#c9c9ff}
+.studyco-profile-next h2{margin:8px 0;font-size:1.3rem;letter-spacing:-.04em}
+.studyco-profile-next p:not(.studyco-eyebrow){margin:0 0 18px;color:#e0e0ff;font-size:.74rem;line-height:1.6}
+.studyco-profile-next .studyco-button{background:#fff;color:#403ca8}
+.studyco-notification-summary{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:linear-gradient(135deg,#ebeaff,#fff)}
+.studyco-notification-summary>div:first-child{display:grid;gap:3px}
+.studyco-notification-summary strong{font-size:2rem;letter-spacing:-.06em}
+.studyco-notification-summary>div:first-child>span:last-child{color:var(--sc-muted);font-size:.72rem}
+.studyco-notification-summary-icon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:var(--sc-primary);color:#fff;font-size:1.4rem;box-shadow:0 10px 20px #5b5bd633}
+.studyco-notification-card{padding:10px}
+.studyco-notification-list{display:grid;gap:4px}
+.studyco-notification-row{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:13px 12px;border:0;border-radius:13px;background:transparent;color:var(--sc-ink);text-align:left}
+.studyco-notification-row:hover,.studyco-notification-row.unread{background:var(--sc-soft)}
+.studyco-notification-icon{width:34px;height:34px;display:grid;place-items:center;flex:0 0 auto;border-radius:11px;background:#e7e8ff;color:var(--sc-primary-dark);font-size:1rem;font-weight:900}
+.studyco-notification-copy{display:grid;gap:3px;min-width:0}
+.studyco-notification-copy strong{font-size:.76rem}
+.studyco-notification-copy>span{color:#4d5773;font-size:.72rem}
+.studyco-notification-copy time{color:var(--sc-muted);font-size:.62rem}
+.studyco-notification-unread{width:7px;height:7px;margin-left:auto;flex:0 0 auto;border-radius:50%;background:var(--sc-primary)}
+@media(max-width:760px){.studyco-profile-heading-actions{width:100%}.studyco-profile-heading-actions .studyco-button{flex:1}.studyco-profile-cover{height:190px}.studyco-profile-identity{align-items:flex-start;flex-wrap:wrap;padding:0 16px 16px}.studyco-profile-identity .studyco-profile-avatar{margin-top:-42px}.studyco-profile-identity-copy{padding-top:9px}.studyco-profile-identity>.studyco-button{margin-left:auto}.studyco-profile-stats{padding:12px 16px}.studyco-profile-stats div{padding:0 8px}.studyco-profile-grid{grid-template-columns:1fr}.studyco-profile-next{margin-bottom:0}.studyco-notification-heading .studyco-button{width:100%}}

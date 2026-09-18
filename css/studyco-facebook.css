@@ -1,6 +1,6 @@
 /* Facebook-style home/feed treatment. Other StudyCo views keep their current UI
    until each screen is migrated separately. */
-@media (max-width: 860px) {
+@media (max-width: 99999px) {
   body.studyco-page {
     background: #f0f2f5;
     color: #050505;
@@ -468,7 +468,7 @@
   line-height: 1;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 99999px) {
   .studyco-view-messages {
     min-height: calc(100vh - 112px);
     background: #f0f2f5;
@@ -656,7 +656,7 @@
 }
 
 /* Homepage pass: match the compact mobile Facebook-style reference. */
-@media (max-width: 860px) {
+@media (max-width: 99999px) {
   body.studyco-page {
     background: #f0f2f5;
     color: #050505;
@@ -1086,7 +1086,7 @@
   display: none;
 }
 
-@media (max-width: 860px) {
+@media (max-width: 99999px) {
   .studyco-view-friends {
     display: none;
     min-height: calc(100vh - 112px);

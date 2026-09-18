@@ -35,7 +35,7 @@
         <button data-studyco-view="messages" type="button" aria-label="Messages">
           <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5.8A3.8 3.8 0 0 1 7.8 2h8.4A3.8 3.8 0 0 1 20 5.8v5.7a3.8 3.8 0 0 1-3.8 3.8H11l-4.7 4v-4.4A3.8 3.8 0 0 1 4 11.5z"/><path d="m8 8 3 2.4L16 7"/></svg></span><b>Messages</b><i id="studyco-message-badge" class="studyco-nav-badge" hidden>0</i>
         </button>
-        <button type="button" aria-label="Notifications">
+        <button data-studyco-view="notifications" type="button" aria-label="Notifications">
           <span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><i id="studyco-notification-badge" class="studyco-nav-badge" hidden>0</i></span><b>Notifications</b>
         </button>
         <button data-studyco-view="profile" type="button" aria-label="Profile">
@@ -97,10 +97,20 @@
         </section>
 
         <section id="studyco-view-profile" class="studyco-view">
-          <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Your StudyCo identity</p><h1>My profile</h1><p>Make it easy for classmates to know what you are working on.</p></div><button id="studyco-edit-profile" class="studyco-button primary" type="button">Edit profile</button></div>
-          <div class="studyco-profile-cover" id="studyco-profile-cover"><div class="studyco-profile-cover-shade"></div></div>
-          <div class="studyco-profile-card studyco-card"><div class="studyco-profile-main"><div id="studyco-profile-avatar" class="studyco-profile-avatar"></div><div><h2 id="studyco-profile-name">Your name</h2><p id="studyco-profile-handle">@username</p><p id="studyco-profile-bio">Tell your study circle about yourself.</p></div><button id="studyco-profile-edit-small" class="studyco-button soft" type="button">Edit profile</button></div><div class="studyco-profile-meta"><span id="studyco-profile-school"></span><span id="studyco-profile-major"></span><span id="studyco-profile-location"></span><span id="studyco-profile-contact"></span></div></div>
+          <div class="studyco-page-heading"><div><p class="studyco-eyebrow">Your StudyCo identity</p><h1>My profile</h1><p>Make it easy for classmates to know what you are working on.</p></div><div class="studyco-profile-heading-actions"><button id="studyco-profile-complete-action" class="studyco-button light" type="button">Complete profile</button><button id="studyco-edit-profile" class="studyco-button primary" type="button">Edit profile</button></div></div>
+          <section class="studyco-profile-hero studyco-card">
+            <div class="studyco-profile-cover" id="studyco-profile-cover"><div class="studyco-profile-cover-shade"></div><span class="studyco-profile-cover-label">Your learning space</span></div>
+            <div class="studyco-profile-identity"><div id="studyco-profile-avatar" class="studyco-profile-avatar"></div><div class="studyco-profile-identity-copy"><div class="studyco-profile-name-row"><h2 id="studyco-profile-name">Your name</h2><span id="studyco-profile-status" class="studyco-profile-status">Learning</span></div><p id="studyco-profile-handle">@username</p><p id="studyco-profile-bio">Tell your study circle about yourself.</p></div><button id="studyco-profile-edit-small" class="studyco-button soft" type="button">Edit profile</button></div>
+            <div class="studyco-profile-stats"><div><strong id="studyco-profile-post-count">0</strong><span>Posts</span></div><div><strong id="studyco-profile-friend-count">0</strong><span>Friends</span></div><div><strong id="studyco-profile-completion">0%</strong><span>Profile complete</span></div></div>
+          </section>
+          <div class="studyco-profile-grid"><section class="studyco-profile-about studyco-card"><div class="studyco-section-title"><div><p class="studyco-eyebrow">About you</p><h2>Study identity</h2></div></div><p id="studyco-profile-about-copy" class="studyco-profile-about-copy">Add a short bio so classmates know what you are learning and how they can connect with you.</p><div class="studyco-profile-meta"><span id="studyco-profile-school"></span><span id="studyco-profile-major"></span><span id="studyco-profile-location"></span><span id="studyco-profile-contact"></span></div><div class="studyco-profile-progress"><div><strong>Profile progress</strong><span id="studyco-profile-progress-label">0 of 6 details</span></div><div class="studyco-profile-progress-track"><span id="studyco-profile-progress-bar"></span></div></div></section><section class="studyco-profile-next studyco-card"><p class="studyco-eyebrow">Make a stronger first impression</p><h2>Help your people find you.</h2><p>Add your school, interests, and a photo to make your profile feel like you.</p><button id="studyco-profile-next-action" class="studyco-button" type="button">Update details</button></section></div>
           <div class="studyco-card"><div class="studyco-section-title"><div><h2>Your posts</h2><p>Updates you have shared with StudyCo.</p></div></div><div id="studyco-profile-posts" class="studyco-feed"></div></div>
+        </section>
+
+        <section id="studyco-view-notifications" class="studyco-view">
+          <div class="studyco-page-heading studyco-notification-heading"><div><p class="studyco-eyebrow">Stay close to your circle</p><h1>Notifications</h1><p>See friend requests, messages, and the moments that need your attention.</p></div><button id="studyco-mark-all-notifications" class="studyco-button soft" type="button">Mark all as read</button></div>
+          <section class="studyco-notification-summary studyco-card"><div><strong id="studyco-notification-count">0</strong><span>unread notifications</span></div><span class="studyco-notification-summary-icon">✦</span></section>
+          <section class="studyco-notification-card studyco-card"><div id="studyco-notification-list" class="studyco-notification-list"><div class="studyco-empty">You are all caught up. New activity will appear here.</div></div></section>
         </section>
 
         <section id="studyco-view-messages" class="studyco-view">

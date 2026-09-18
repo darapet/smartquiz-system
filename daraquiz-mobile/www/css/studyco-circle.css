@@ -389,11 +389,11 @@ button, input, textarea { font-family: inherit; }
 .studyco-chat-compose { padding: 15px 18px; border-top-color: var(--circle-line); background: #fbf7f0; }
 .studyco-chat-compose textarea { border-color: var(--circle-line); background: var(--circle-paper); }
 
-@media (max-width: 1160px) {
+@media (max-width: 99999px) {
   .studyco-layout { grid-template-columns: 190px minmax(0, 1fr); }
   .studyco-right-rail { display: none; }
 }
-@media (max-width: 860px) {
+@media (max-width: 99999px) {
   .studyco-topbar { gap: 14px; padding: 0 16px; }
   .studyco-brand { min-width: auto; }
   .studyco-top-nav { order: 3; width: 100%; height: 48px; justify-content: space-around; }
@@ -409,7 +409,7 @@ button, input, textarea { font-family: inherit; }
   .studyco-chat-list button { min-width: 210px; }
   .studyco-chat-panel-full { min-height: 540px; }
 }
-@media (max-width: 560px) {
+@media (max-width: 99999px) {
   .studyco-page-heading { align-items: flex-start; flex-direction: column; }
   .studyco-page-heading h1, .studyco-home-heading h1 { font-size: 44px; }
   .studyco-home-heading .studyco-button { margin-top: 7px; }

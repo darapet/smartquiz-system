@@ -6,7 +6,8 @@ const state = {
   friends: [], requests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
-  feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null,
+  feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
+  notifications: [],
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
   conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
@@ -70,12 +71,82 @@ async function refreshNavCounts() {
   ]);
   setNavBadge('studyco-home-badge', ownPosts?.size ?? state.posts.filter((post) => post.userId === state.user.uid).length);
   setNavBadge('studyco-friend-badge', state.requests.length);
-  /* Until the notifications screen is migrated, pending requests are the
-     account's visible notification activity when that collection is absent. */
   setNavBadge('studyco-notification-badge', notifications
     ? notifications.docs.filter((item) => item.data().read !== true).length
     : state.requests.length);
 }
+
+async function createNotification(recipientId, type, entityId = '', conversationId = '') {
+  if (!state.user || !recipientId || recipientId === state.user.uid) return;
+  await addDoc(collection(db, 'studyco_notifications'), {
+    recipientId, actorId: state.user.uid, type, entityId, conversationId,
+    read: false, createdAt: serverTimestamp()
+  });
+}
+
+function notificationCopy(notification) {
+  const actor = notification.actor ? profileName(notification.actor) : 'A StudyCo learner';
+  if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: '＋' };
+  if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: '✓' };
+  if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: '✉' };
+  return { title: actor, body: notification.message || 'shared an update with you.', icon: '✦' };
+}
+
+function renderNotifications() {
+  const target = $('studyco-notification-list');
+  if (!target) return;
+  const unread = state.notifications.filter((item) => item.read !== true).length;
+  $('studyco-notification-count').textContent = String(unread);
+  setNavBadge('studyco-notification-badge', unread);
+  target.innerHTML = state.notifications.length
+    ? state.notifications.map((notification) => {
+      const copy = notificationCopy(notification);
+      return `<button class="studyco-notification-row${notification.read === true ? '' : ' unread'}" data-notification-id="${esc(notification.id)}" type="button"><span class="studyco-notification-icon">${copy.icon}</span><span class="studyco-notification-copy"><strong>${esc(copy.title)}</strong><span>${esc(copy.body)}</span><time>${esc(timeText(notification.createdAt))}</time></span>${notification.read === true ? '' : '<i class="studyco-notification-unread" aria-label="Unread"></i>'}</button>`;
+    }).join('')
+    : '<div class="studyco-empty">You are all caught up. New activity will appear here.</div>';
+}
+
+function subscribeNotifications() {
+  state.notificationUnsub?.();
+  state.notificationUnsub = onSnapshot(
+    query(collection(db, 'studyco_notifications'), where('recipientId', '==', state.user.uid), limit(100)),
+    async (snapshot) => {
+      const notifications = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+        .sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
+      await Promise.all(notifications.map(async (notification) => {
+        notification.actor = await getProfile(notification.actorId);
+      }));
+      state.notifications = notifications;
+      renderNotifications();
+    },
+    (error) => toast(error.message || 'Notifications could not load.', true)
+  );
+}
+
+async function markNotificationRead(id) {
+  const notification = state.notifications.find((item) => item.id === id);
+  if (!notification || notification.read === true) return;
+  await updateDoc(doc(db, 'studyco_notifications', id), { read: true }).catch(() => {});
+}
+
+async function markAllNotificationsRead() {
+  const unread = state.notifications.filter((item) => item.read !== true);
+  if (!unread.length) { toast('You are all caught up.'); return; }
+  await Promise.all(unread.map((item) => updateDoc(doc(db, 'studyco_notifications', item.id), { read: true }).catch(() => {})));
+  toast('All notifications marked as read.');
+}
+
+async function openNotification(id) {
+  const notification = state.notifications.find((item) => item.id === id);
+  if (!notification) return;
+  await markNotificationRead(id);
+  if (notification.type === 'message' && notification.actorId) {
+    const relation = await relationship(notification.actorId);
+    if (relation === 'friends') { await openChat(notification.actorId); return; }
+  }
+  setView('friends');
+}
+
 const templateClass = (name) => `template-${['indigo', 'sunset', 'ocean', 'gold', 'night', 'berry'].includes(name) ? name : 'indigo'}`;
 async function uploadImage(file, path) {
   if (!file) return '';
@@ -207,6 +278,16 @@ function renderProfile() {
   $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ');
   $('studyco-profile-location').textContent = p.location || '';
   $('studyco-profile-contact').textContent = p.loginIdentifier || p.email || '';
+  $('studyco-profile-status').textContent = p.studentStatus || 'Learning';
+  $('studyco-profile-about-copy').textContent = p.bio || 'Add a short bio so classmates know what you are learning and how they can connect with you.';
+  const profileFields = [p.displayName, p.bio, p.photoURL, p.school, p.department || p.major, p.location];
+  const complete = profileFields.filter(Boolean).length;
+  const completion = Math.round((complete / profileFields.length) * 100);
+  $('studyco-profile-completion').textContent = `${completion}%`;
+  $('studyco-profile-progress-label').textContent = `${complete} of ${profileFields.length} details`;
+  $('studyco-profile-progress-bar').style.width = `${completion}%`;
+  $('studyco-profile-post-count').textContent = String(state.posts.filter((post) => post.userId === state.user.uid).length);
+  $('studyco-profile-friend-count').textContent = String(state.friends.length);
   const cover = $('studyco-profile-cover');
   cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>`;
 }
@@ -227,11 +308,12 @@ function setView(view, { updateUrl = true, chatUid = state.activeChatUid } = {})
   if (view === 'friends') loadSocialLists();
   if (view === 'profile') { renderProfile(); renderProfilePosts(); }
   if (view === 'messages') loadChats();
+  if (view === 'notifications') renderNotifications();
 }
 
 async function syncRoute() {
   const parts = window.location.hash.replace(/^#/, '').split('/');
-  const view = ['friends', 'messages', 'profile'].includes(parts[0]) ? parts[0] : 'home';
+  const view = ['friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
   setView(view, { updateUrl: false, chatUid: parts[1] ? decodeURIComponent(parts[1]) : '' });
   if (view === 'messages' && parts[1] && state.user) {
     await openChat(decodeURIComponent(parts[1]), { updateUrl: false });
@@ -373,9 +455,13 @@ async function handleFriendAction(uid, action) {
       toast('Suggestion removed.');
       return;
     }
-    if (action === 'request') await setDoc(ref, { requesterId: state.user.uid, recipientId: uid, status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    if (action === 'request') {
+      await setDoc(ref, { requesterId: state.user.uid, recipientId: uid, status: 'pending', createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+      await createNotification(uid, 'friend_request', ref.id).catch(() => {});
+    }
     if (action === 'accept') {
       await updateDoc(ref, { status: 'accepted', updatedAt: serverTimestamp() });
+      await createNotification(uid, 'friend_accepted', ref.id).catch(() => {});
     }
     if (action === 'unfriend' || action === 'reject') await deleteDoc(ref);
     if (action === 'message') { setView('messages'); openChat(uid); return; }
@@ -400,6 +486,7 @@ async function loadSocialLists() {
   const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.friends.some((friend) => friend.uid === item.id)).slice(0, 4);
   suggestions.forEach((item) => state.profiles.set(item.id, item));
   $('studyco-right-suggestions').innerHTML = suggestions.map((item) => `<div class="studyco-list-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || 'StudyCo learner')}</span></div></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
+  if (state.activeView === 'profile') renderProfile();
 }
 
 async function ensureConversation(uid) {
@@ -488,6 +575,7 @@ async function sendMessage(event) {
   try {
     await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText: text.slice(0, 2000), createdAt: serverTimestamp(), is_read: false });
     await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: text.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, [`lastReadBy.${state.user.uid}`]: true, updatedAt: serverTimestamp() });
+    await createNotification(state.activeChatUid, 'message', state.activeChatId, state.activeChatId).catch(() => {});
     input.value = '';
   } catch (error) {
     toast(error.message || 'Your message could not be sent.', true);
@@ -671,12 +759,18 @@ function wire() {
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
   [$('studyco-edit-profile'), $('studyco-profile-edit-small')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
   $('studyco-new-message')?.addEventListener('click', () => { setView('friends'); $('studyco-people-search').focus(); });
   $('studyco-message-search')?.addEventListener('input', () => loadChats());
+  $('studyco-mark-all-notifications')?.addEventListener('click', markAllNotificationsRead);
+  $('studyco-notification-list')?.addEventListener('click', (event) => {
+    const row = event.target.closest('[data-notification-id]');
+    if (row) openNotification(row.dataset.notificationId);
+  });
   $('studyco-post-feed').addEventListener('click', async (event) => { const button = event.target.closest('[data-post-action]'); if (!button) return; if (button.dataset.postAction === 'like') await toggleLike(button.dataset.postId); if (button.dataset.postAction === 'focus-comment') button.closest('.studyco-post').querySelector('input')?.focus(); });
   $('studyco-post-feed').addEventListener('submit', async (event) => { if (!event.target.matches('[data-comment-post]')) return; event.preventDefault(); await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value); event.target.reset(); });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
@@ -718,7 +812,7 @@ async function saveProfile(event) {
 async function bootApp() {
   await ensureProfile(state.user);
   try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
-  showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
+  showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }
 
 wire();
