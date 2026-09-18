@@ -691,6 +691,11 @@ function setNativeCallAudio(enabled) {
   }
 }
 
+function showRemoteAudioUnlock(show) {
+  const button = $('studyco-call-enable-audio');
+  if (button) button.hidden = !show;
+}
+
 function callPeer(callId, remoteUid) {
   const pc = new RTCPeerConnection({
     iceServers: [
@@ -712,9 +717,11 @@ function callPeer(callId, remoteUid) {
     remoteAudio.muted = !state.speakerOn;
     remoteAudio.volume = 0.88;
     const playPromise = remoteAudio.play();
-    if (playPromise?.catch) playPromise.catch(() => {
-      /* The call controls remain a user gesture fallback on stricter mobile browsers. */
-    });
+    if (playPromise?.then) {
+      playPromise
+        .then(() => showRemoteAudioUnlock(false))
+        .catch(() => showRemoteAudioUnlock(true));
+    }
   };
 
   pc.onicecandidate = (event) => {
@@ -747,6 +754,13 @@ function callPeer(callId, remoteUid) {
   pc.onconnectionstatechange = () => {
     if (['failed', 'disconnected'].includes(pc.connectionState) && state.activeCallId === callId) {
       $('studyco-call-status').textContent = 'Connection interrupted. Trying to recover…';
+    }
+  };
+
+  pc.oniceconnectionstatechange = () => {
+    if (state.activeCallId !== callId) return;
+    if (pc.iceConnectionState === 'failed') {
+      $('studyco-call-status').textContent = 'Network could not connect the call audio.';
     }
   };
 
@@ -866,6 +880,7 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
   $('studyco-call-last-seen').textContent = incoming || targetOnline ? '' : lastSeenText(presence);
   $('studyco-call-accept').hidden = !incoming;
   $('studyco-call-decline').textContent = incoming ? 'Decline' : 'End call';
+  showRemoteAudioUnlock(false);
   $('studyco-call-modal').hidden = false;
   updateCallControls();
 }
@@ -879,7 +894,12 @@ function setCallConnected() {
   if (remoteAudio) {
     remoteAudio.muted = !state.speakerOn;
     remoteAudio.volume = 1;
-    remoteAudio.play().catch(() => {});
+    const playPromise = remoteAudio.play();
+    if (playPromise?.then) {
+      playPromise
+        .then(() => showRemoteAudioUnlock(false))
+        .catch(() => showRemoteAudioUnlock(true));
+    }
   }
   startCallElapsed();
 }
@@ -1084,6 +1104,7 @@ async function finishCall() {
   state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.muted = false; state.speakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
   const remoteAudio = $('studyco-call-remote-audio');
   if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; remoteAudio.volume = 0.88; }
+  showRemoteAudioUnlock(false);
 }
 
 function listenForCalls() {
@@ -1229,6 +1250,16 @@ function wire() {
     updateCallControls();
   });
   $('studyco-call-record').addEventListener('click', () => state.recording ? stopRecording() : startRecording());
+  $('studyco-call-enable-audio').addEventListener('click', () => {
+    const remoteAudio = $('studyco-call-remote-audio');
+    if (!remoteAudio) return;
+    state.speakerOn = true;
+    remoteAudio.muted = false;
+    remoteAudio.play()
+      .then(() => showRemoteAudioUnlock(false))
+      .catch(() => toast('The browser still blocked call audio. Check the site sound permission.', true));
+    $('studyco-call-speaker').classList.add('active');
+  });
   $('studyco-call-speaker').addEventListener('click', () => {
     state.speakerOn = !state.speakerOn;
     $('studyco-call-remote-audio').muted = !state.speakerOn;
