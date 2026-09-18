@@ -296,11 +296,19 @@ function viewHash(view, chatUid = '') {
   return view === 'messages' && chatUid ? `#messages/${encodeURIComponent(chatUid)}` : `#${view}`;
 }
 
-function setView(view, { updateUrl = true, chatUid = state.activeChatUid } = {}) {
+function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid } = {}) {
+  if (view === 'messages' && !chatUid && state.activeChatUid) {
+    state.activeChatUid = null;
+    state.activeChatId = null;
+    state.messageUnsub?.();
+    state.messageUnsub = null;
+  }
   state.activeView = view;
   if (updateUrl && window.location.hash !== viewHash(view, chatUid)) {
     window.history.pushState({ studycoView: view, chatUid }, '', viewHash(view, chatUid));
   }
+  const messagesShell = document.querySelector('.studyco-messages-shell');
+  if (messagesShell) messagesShell.classList.toggle('chat-open', view === 'messages' && Boolean(chatUid));
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.classList.toggle('active', button.dataset.studycoView === view));
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   const menu = $('studyco-menu-panel');
@@ -487,6 +495,7 @@ async function loadSocialLists() {
   suggestions.forEach((item) => state.profiles.set(item.id, item));
   $('studyco-right-suggestions').innerHTML = suggestions.map((item) => `<div class="studyco-list-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || 'StudyCo learner')}</span></div></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
   if (state.activeView === 'profile') renderProfile();
+  if (state.activeView === 'messages') renderChatList();
 }
 
 async function ensureConversation(uid) {
@@ -497,14 +506,22 @@ async function ensureConversation(uid) {
 
 function renderChatList() {
   const term = $('studyco-message-search')?.value.trim().toLowerCase() || '';
-  const validChats = state.conversations.filter((chat) => chat.profile);
+  const conversationsByUid = new Map(state.conversations.filter((chat) => chat.profile).map((chat) => [chat.uid, chat]));
+  const validChats = state.friends.map((friend) => conversationsByUid.get(friend.uid) || {
+    id: pairId(state.user.uid, friend.uid),
+    uid: friend.uid,
+    profile: friend.profile,
+    data: {}
+  });
   validChats.forEach((chat) => watchPresence(chat.uid));
-  const visibleChats = validChats.filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term));
+  const visibleChats = validChats
+    .filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term))
+    .sort((a, b) => timeMs(b.data.lastMessageAt || b.data.updatedAt) - timeMs(a.data.lastMessageAt || a.data.updatedAt) || profileName(a.profile).localeCompare(profileName(b.profile)));
   const unreadChats = validChats.filter((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true);
   $('studyco-chat-count').textContent = String(validChats.length);
   $('studyco-message-badge').hidden = unreadChats.length < 1;
   $('studyco-message-badge').textContent = unreadChats.length > 99 ? '99+' : String(unreadChats.length || '');
-  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}${chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true ? ' unread' : ''}" data-chat-uid="${esc(chat.uid)}">${avatarWithPresence(chat.profile, chat.uid, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || lastSeenText(state.presence.get(chat.uid)))}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Open a friend profile to start chatting.</div>';
+  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}${chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true ? ' unread' : ''}" data-chat-uid="${esc(chat.uid)}" type="button">${avatarWithPresence(chat.profile, chat.uid, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || lastSeenText(state.presence.get(chat.uid)))}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Your accepted friends will appear here.</div>';
 }
 
 function updateActiveChatPresence() {
@@ -559,13 +576,22 @@ async function openChat(uid, { updateUrl = true } = {}) {
   const profile = await getProfile(uid); if (!profile) return;
   const relation = await relationship(uid); if (relation !== 'friends') { toast('You can message accepted friends only.', true); return; }
   state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid); watchPresence(uid); setView('messages', { updateUrl, chatUid: uid });
-  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
   updateActiveChatPresence();
   state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
     const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
     renderMessages(messages, profile);
     await markMessagesRead(messages);
   }, (error) => toast(error.message || 'This conversation could not load.', true));
+  renderChatList();
+}
+
+function closeChat() {
+  state.activeChatUid = null;
+  state.activeChatId = null;
+  state.messageUnsub?.();
+  state.messageUnsub = null;
+  setView('messages', { chatUid: '' });
   renderChatList();
 }
 
@@ -779,6 +805,7 @@ function wire() {
   $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) openChat(button.dataset.chatUid); });
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
   $('studyco-chat-panel').addEventListener('click', (event) => { const button = event.target.closest('[data-start-call]'); if (button) startCall(button.dataset.startCall); });
+  $('studyco-chat-panel').addEventListener('click', (event) => { if (event.target.closest('[data-chat-back]')) closeChat(); });
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);
   $('studyco-logout').addEventListener('click', async () => { await setPresence(false); await signOut(auth); });
 }

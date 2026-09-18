@@ -369,6 +369,7 @@ button, input, textarea { font-family: inherit; }
   padding: 18px 21px;
   border-bottom: 1px solid var(--circle-line);
 }
+.studyco-chat-back { display: none; }
 .studyco-chat-head > div { flex: 1; min-width: 0; }
 .studyco-chat-head strong,
 .studyco-chat-head span { display: block; }

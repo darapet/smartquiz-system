@@ -635,6 +635,14 @@
     display: none;
   }
 
+  .studyco-messages-shell:not(.chat-open) .studyco-chat-panel-full {
+    display: none;
+  }
+
+  .studyco-messages-shell.chat-open .studyco-conversations-panel {
+    display: none;
+  }
+
   .studyco-chat-panel-full {
     min-height: calc(100vh - 172px);
     border-top: 8px solid #f0f2f5;
@@ -643,6 +651,20 @@
 
   .studyco-chat-head {
     padding: 12px 14px;
+  }
+
+  .studyco-chat-back {
+    display: grid;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+    place-items: center;
+    border: 0;
+    border-radius: 50%;
+    background: #e4e6eb;
+    color: #050505;
+    font-size: 1.4rem;
+    line-height: 1;
   }
 
   .studyco-chat-messages {
