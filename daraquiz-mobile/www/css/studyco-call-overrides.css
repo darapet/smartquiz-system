@@ -58,3 +58,47 @@
     padding-right: 16px;
   }
 }
+
+.studyco-friends-stack {
+  display: grid;
+  gap: 15px;
+}
+
+.studyco-friends-stack .studyco-card {
+  margin-bottom: 0;
+}
+
+.studyco-friend-row {
+  min-height: 52px;
+  padding: 8px 0;
+  border: 0;
+  border-top: 1px solid var(--sc-line);
+  border-radius: 0;
+}
+
+.studyco-friend-row:first-child {
+  border-top: 0;
+}
+
+.studyco-friend-row > div:nth-child(2) {
+  min-width: 0;
+}
+
+.studyco-friend-row strong,
+.studyco-friend-row span {
+  white-space: nowrap;
+}
+
+.studyco-friend-row .studyco-button {
+  flex: 0 0 auto;
+  padding: 7px 9px;
+  font-size: .64rem;
+}
+
+.studyco-friend-row .studyco-button + .studyco-button {
+  margin-left: -2px;
+}
+
+.studyco-sent-request {
+  background: #fafaff;
+}

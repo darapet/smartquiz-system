@@ -3,7 +3,7 @@ import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
-  friends: [], requests: [], activeView: 'home', selectedTemplate: 'indigo',
+  friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
   feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
@@ -458,6 +458,7 @@ async function renderPeople(profiles, target) {
 
 async function loadPeople(term = '') {
   const target = $('studyco-people-results'); target.innerHTML = '<div class="studyco-card studyco-empty">Finding classmates...</div>';
+  if (!term.trim()) { target.innerHTML = ''; return; }
   const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
   const needle = term.trim().toLowerCase();
   const profiles = snap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id) && (!needle || `${profileName(profile)} ${profile.username || ''} ${profile.school || ''} ${profile.department || ''}`.toLowerCase().includes(needle))).slice(0, 12);
@@ -482,7 +483,7 @@ async function handleFriendAction(uid, action) {
       await updateDoc(ref, { status: 'accepted', updatedAt: serverTimestamp() });
       await createNotification(uid, 'friend_accepted', ref.id).catch(() => {});
     }
-    if (action === 'unfriend' || action === 'reject') await deleteDoc(ref);
+    if (action === 'unfriend' || action === 'reject' || action === 'cancel') await deleteDoc(ref);
     if (action === 'message') { setView('messages'); openChat(uid); return; }
     await loadPeople($('studyco-people-search').value); await loadSocialLists(); refreshNavCounts(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
   } catch (error) { toast(error.message || 'That action could not be completed.', true); }
@@ -494,17 +495,25 @@ async function loadSocialLists() {
     getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', state.user.uid), limit(100)))
   ]);
   const requests = received.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status === 'pending');
+  const sentRequests = sent.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status === 'pending');
   const friendIds = [...sent.docs, ...received.docs].map((item) => item.data()).filter((item) => item.status === 'accepted').map((item) => item.requesterId === state.user.uid ? item.recipientId : item.requesterId);
   state.requests = await Promise.all(requests.map(async (item) => ({ ...item, profile: await getProfile(item.requesterId) })));
+  state.sentRequests = await Promise.all(sentRequests.map(async (item) => ({ ...item, profile: await getProfile(item.recipientId) })));
   state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
-  const requestHtml = state.requests.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Delete</button></div>`).join('') || '<div class="studyco-empty">No pending requests.</div>';
+  const incomingRequestHtml = state.requests.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('');
+  const sentRequestHtml = state.sentRequests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-sent-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request sent</span></div><button class="studyco-button danger" data-friend-action="cancel" data-uid="${esc(item.recipientId)}">Remove</button></div>`).join('');
+  const requestHtml = incomingRequestHtml || sentRequestHtml
+    ? `${incomingRequestHtml}${sentRequestHtml}`
+    : '<div class="studyco-empty">No pending requests.</div>';
   const friendHtml = state.friends.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>${esc(item.profile.school || item.profile.username || 'StudyCo friend')}</span></div><button class="studyco-button soft" data-friend-action="message" data-uid="${esc(item.uid)}">Message</button></div>`).join('') || '<div class="studyco-empty">Your friends list is empty.</div>';
-  $('studyco-request-list').innerHTML = requestHtml; $('studyco-friend-list').innerHTML = friendHtml; $('studyco-request-count').textContent = String(state.requests.length);
-  setNavBadge('studyco-friend-badge', state.requests.length);
-  $('studyco-right-requests').innerHTML = state.requests.slice(0, 3).map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request</span></div></div>`).join('') || '<div class="studyco-empty">No new requests.</div>';
-  const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.friends.some((friend) => friend.uid === item.id)).slice(0, 4);
+  const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.dismissedSuggestions.has(item.id) && !state.friends.some((friend) => friend.uid === item.id) && !state.requests.some((request) => request.requesterId === item.id) && !state.sentRequests.some((request) => request.recipientId === item.id)).slice(0, 6);
   suggestions.forEach((item) => state.profiles.set(item.id, item));
-  $('studyco-right-suggestions').innerHTML = suggestions.map((item) => `<div class="studyco-list-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || 'StudyCo learner')}</span></div></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
+  const suggestionHtml = suggestions.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || item.username ? (item.school || `@${item.username}`) : 'StudyCo learner')}</span></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
+  $('studyco-request-list').innerHTML = requestHtml; $('studyco-friend-list').innerHTML = friendHtml; $('studyco-request-count').textContent = String(state.requests.length);
+  $('studyco-suggestion-list').innerHTML = suggestionHtml;
+  setNavBadge('studyco-friend-badge', state.requests.length);
+  $('studyco-right-requests').innerHTML = state.requests.slice(0, 3).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('') || '<div class="studyco-empty">No new requests.</div>';
+  $('studyco-right-suggestions').innerHTML = suggestions.slice(0, 4).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
   if (state.activeView === 'profile') renderProfile();
   if (state.activeView === 'messages') renderChatList();
 }
@@ -1146,6 +1155,9 @@ function wire() {
   $('studyco-post-feed').addEventListener('submit', async (event) => { if (!event.target.matches('[data-comment-post]')) return; event.preventDefault(); await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value); event.target.reset(); });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-request-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
+  $('studyco-suggestion-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
+  $('studyco-right-requests').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
+  $('studyco-right-suggestions').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-friend-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) void openChat(button.dataset.chatUid); });
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
