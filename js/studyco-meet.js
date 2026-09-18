@@ -471,7 +471,7 @@ async function handleFriendAction(uid, action) {
     if (action === 'dismiss') {
       state.dismissedSuggestions.add(uid);
       try { localStorage.setItem(`studyco-dismissed-suggestions:${state.user.uid}`, JSON.stringify([...state.dismissedSuggestions])); } catch (_) {}
-      await loadPeople($('studyco-people-search').value);
+      await loadPeople('');
       toast('Suggestion removed.');
       return;
     }
@@ -485,7 +485,7 @@ async function handleFriendAction(uid, action) {
     }
     if (action === 'unfriend' || action === 'reject' || action === 'cancel') await deleteDoc(ref);
     if (action === 'message') { setView('messages'); openChat(uid); return; }
-    await loadPeople($('studyco-people-search').value); await loadSocialLists(); refreshNavCounts(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
+    await loadPeople(''); await loadSocialLists(); refreshNavCounts(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
   } catch (error) { toast(error.message || 'That action could not be completed.', true); }
 }
 
@@ -502,14 +502,14 @@ async function loadSocialLists() {
   state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
   const incomingRequestHtml = state.requests.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('');
   const sentRequestHtml = state.sentRequests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-sent-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request sent</span></div><button class="studyco-button danger" data-friend-action="cancel" data-uid="${esc(item.recipientId)}">Remove</button></div>`).join('');
-  const requestHtml = incomingRequestHtml || sentRequestHtml
-    ? `${incomingRequestHtml}${sentRequestHtml}`
-    : '<div class="studyco-empty">No pending requests.</div>';
-  const friendHtml = state.friends.map((item) => `<div class="studyco-list-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>${esc(item.profile.school || item.profile.username || 'StudyCo friend')}</span></div><button class="studyco-button soft" data-friend-action="message" data-uid="${esc(item.uid)}">Message</button></div>`).join('') || '<div class="studyco-empty">Your friends list is empty.</div>';
+  const hasRequests = Boolean(incomingRequestHtml || sentRequestHtml);
+  const requestHtml = hasRequests ? `${incomingRequestHtml}${sentRequestHtml}` : '';
   const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.dismissedSuggestions.has(item.id) && !state.friends.some((friend) => friend.uid === item.id) && !state.requests.some((request) => request.requesterId === item.id) && !state.sentRequests.some((request) => request.recipientId === item.id)).slice(0, 6);
   suggestions.forEach((item) => state.profiles.set(item.id, item));
   const suggestionHtml = suggestions.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || item.username ? (item.school || `@${item.username}`) : 'StudyCo learner')}</span></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
-  $('studyco-request-list').innerHTML = requestHtml; $('studyco-friend-list').innerHTML = friendHtml; $('studyco-request-count').textContent = String(state.requests.length);
+  $('studyco-request-section').hidden = !hasRequests;
+  $('studyco-right-request-section').hidden = state.requests.length === 0;
+  $('studyco-request-list').innerHTML = requestHtml; $('studyco-request-count').textContent = String(state.requests.length);
   $('studyco-suggestion-list').innerHTML = suggestionHtml;
   setNavBadge('studyco-friend-badge', state.requests.length);
   $('studyco-right-requests').innerHTML = state.requests.slice(0, 3).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('') || '<div class="studyco-empty">No new requests.</div>';
@@ -643,8 +643,10 @@ async function sendMessage(event) {
   const input = $('studyco-chat-input'); const fileInput = $('studyco-chat-file');
   const button = event.target.querySelector('button[type="submit"]'); const text = input.value.trim(); const file = fileInput?.files?.[0];
   if (!text && !file) return;
+  if (!state.activeChatUid) { toast('Choose a friend before sending a message.', true); return; }
   button.disabled = true;
   try {
+    if (!state.activeChatId) state.activeChatId = await ensureConversation(state.activeChatUid);
     const attachmentUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/messages/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
     const messageText = text.slice(0, 2000) || `Shared ${file?.name || 'a file'}`;
     await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText, attachmentUrl, attachmentName: file?.name || '', attachmentType: file?.type || '', attachmentSize: file?.size || 0, createdAt: serverTimestamp(), is_read: false });
@@ -656,6 +658,26 @@ async function sendMessage(event) {
   } finally {
     button.disabled = false;
   }
+}
+
+function getCallAudioConstraints() {
+  return {
+    echoCancellation: { ideal: true },
+    noiseSuppression: { ideal: true },
+    autoGainControl: { ideal: true },
+    voiceIsolation: { ideal: true },
+    channelCount: { ideal: 1, max: 1 },
+    sampleRate: { ideal: 48000 },
+    sampleSize: { ideal: 16 },
+    latency: { ideal: 0 }
+  };
+}
+
+function prepareCallAudioStream(stream) {
+  const track = stream?.getAudioTracks?.()[0];
+  if (!track) return;
+  track.contentHint = 'speech';
+  track.applyConstraints(getCallAudioConstraints()).catch(() => {});
 }
 
 function callPeer(callId, remoteUid) {
@@ -675,8 +697,9 @@ function callPeer(callId, remoteUid) {
     if (!remoteAudio) return;
     remoteAudio.autoplay = true;
     remoteAudio.playsInline = true;
+    remoteAudio.setAttribute('disableRemotePlayback', '');
     remoteAudio.muted = !state.speakerOn;
-    remoteAudio.volume = 1;
+    remoteAudio.volume = 0.88;
     const playPromise = remoteAudio.play();
     if (playPromise?.catch) playPromise.catch(() => {
       /* The call controls remain a user gesture fallback on stricter mobile browsers. */
@@ -962,14 +985,8 @@ async function startCall(uid) {
     const targetPresence = await getPresence(uid);
     const targetOnline = presenceIsOnline(targetPresence);
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
-    state.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1
-      }
-    });
+    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
+    prepareCallAudioStream(state.localStream);
     const callRef = doc(collection(db, 'studyco_calls')); state.activeCallId = callRef.id; state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
@@ -992,14 +1009,8 @@ async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
   try {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
-    state.localStream = await navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true,
-        channelCount: 1
-      }
-    });
+    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
+    prepareCallAudioStream(state.localStream);
     state.activeCallId = incoming.id; state.rtc = callPeer(incoming.id, incoming.data.callerId);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     await state.rtc.setRemoteDescription(new RTCSessionDescription(incoming.data.offer));
@@ -1090,8 +1101,7 @@ function wire() {
     $('studyco-post-text').focus();
   });
   $('studyco-friend-search-action').addEventListener('click', () => {
-    $('studyco-people-search').focus();
-    $('studyco-people-search').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('studyco-global-search')?.focus();
   });
   $('studyco-menu-button').addEventListener('click', () => {
     const menu = $('studyco-menu-panel');
@@ -1110,24 +1120,20 @@ function wire() {
   const searchCircle = (value) => {
     const term = value.trim();
     setView('friends');
-    $('studyco-people-search').value = value;
     clearTimeout(state.searchTimer);
     state.searchTimer = setTimeout(() => loadPeople(term).catch((error) => toast(error.message, true)), 220);
   };
   $('studyco-global-search')?.addEventListener('input', (event) => searchCircle(event.target.value));
   $('studyco-global-search')?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') { event.preventDefault(); searchCircle(event.target.value); $('studyco-people-search').focus(); }
+    if (event.key === 'Enter') { event.preventDefault(); searchCircle(event.target.value); }
   });
   $('studyco-top-search')?.addEventListener('click', (event) => {
-    if (event.target !== $('studyco-global-search')) { setView('friends'); $('studyco-people-search').focus(); }
+    if (event.target !== $('studyco-global-search')) { setView('friends'); $('studyco-global-search')?.focus(); }
   });
   document.querySelectorAll('.studyco-search-action').forEach((button) => button.addEventListener('click', () => {
     setView('friends');
-    $('studyco-people-search').value = $('studyco-global-search')?.value || '';
-    $('studyco-people-search').focus();
-    $('studyco-people-search').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    $('studyco-global-search')?.focus();
   }));
-  $('studyco-people-search').addEventListener('input', (event) => searchCircle(event.target.value));
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
@@ -1144,7 +1150,7 @@ function wire() {
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
-  $('studyco-new-message')?.addEventListener('click', () => { setView('friends'); $('studyco-people-search').focus(); });
+  $('studyco-new-message')?.addEventListener('click', () => { setView('friends'); $('studyco-global-search')?.focus(); });
   $('studyco-message-search')?.addEventListener('input', () => loadChats());
   $('studyco-mark-all-notifications')?.addEventListener('click', markAllNotificationsRead);
   $('studyco-notification-list')?.addEventListener('click', (event) => {
@@ -1158,7 +1164,6 @@ function wire() {
   $('studyco-suggestion-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-right-requests').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-right-suggestions').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
-  $('studyco-friend-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) void openChat(button.dataset.chatUid); });
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
   $('studyco-chat-panel').addEventListener('change', (event) => {
