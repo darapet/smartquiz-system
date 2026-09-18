@@ -454,6 +454,132 @@
   }
 }
 
+/* Search results and the full create-post flow. */
+.studyco-post-editor {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow-y: auto;
+  background: #f0f2f5;
+}
+
+.studyco-post-editor[hidden],
+.studyco-search-results[hidden],
+.studyco-search-result-section[hidden] {
+  display: none !important;
+}
+
+.studyco-post-editor-inner {
+  width: min(760px, 100%);
+  min-height: 100%;
+  margin: 0 auto;
+  padding: 24px 18px 48px;
+}
+
+.studyco-post-editor-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.studyco-post-editor-head h1 {
+  margin: 0;
+  color: #050505;
+  font-size: 1.65rem;
+}
+
+.studyco-post-editor-head .studyco-eyebrow {
+  margin: 0 0 3px;
+}
+
+.studyco-post-editor .studyco-composer {
+  margin: 0;
+}
+
+.studyco-search-results {
+  margin: 0 0 12px;
+  padding: 18px;
+}
+
+.studyco-search-results > .studyco-section-title {
+  margin-bottom: 16px;
+}
+
+.studyco-search-results .studyco-section-title h2,
+.studyco-search-results .studyco-section-title h3 {
+  color: #050505;
+}
+
+.studyco-search-result-section + .studyco-search-result-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #e4e6eb;
+}
+
+.studyco-search-result-section .studyco-section-title {
+  margin-bottom: 10px;
+}
+
+.studyco-search-result-section .studyco-section-title h3 {
+  font-size: 1rem;
+}
+
+.studyco-search-result-section .studyco-feed {
+  margin-top: 0;
+}
+
+@media (max-width: 99999px) {
+  .studyco-top-search.is-open {
+    position: absolute;
+    z-index: 60;
+    left: 10px;
+    top: 10px;
+    width: min(460px, calc(100% - 20px));
+    justify-content: flex-start;
+    padding: 0 12px;
+    border: 1px solid #d8dade;
+    border-radius: 22px;
+    background: #fff;
+  }
+
+  .studyco-top-search.is-open input {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: #050505;
+  }
+
+  .studyco-top-search.is-open input:focus {
+    box-shadow: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .studyco-post-editor-inner {
+    padding: 16px 0 28px;
+  }
+
+  .studyco-post-editor-head {
+    padding: 0 14px;
+  }
+
+  .studyco-post-editor .studyco-composer {
+    border-radius: 0;
+  }
+
+  .studyco-search-results {
+    margin: 0 0 8px;
+    padding: 14px 12px;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
+
 .studyco-circle-action {
   display: grid;
   place-items: center;

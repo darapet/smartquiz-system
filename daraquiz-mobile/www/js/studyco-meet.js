@@ -11,7 +11,7 @@ const state = {
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
-  conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
+  conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0,
   pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
   callElapsedTimer: null, muted: false, speakerOn: true, mediaRecorder: null,
@@ -346,6 +346,74 @@ function renderPostPreview() {
   preview.innerHTML = `${text ? `<span>${esc(text)}</span>` : ''}${state.postImage ? `<img src="${esc(URL.createObjectURL(state.postImage))}" alt="Selected study image">` : ''}`;
 }
 
+function openPostEditor() {
+  const editor = $('studyco-post-editor'); const composer = $('studyco-composer');
+  if (!editor || !composer) return;
+  $('studyco-post-editor-body').appendChild(composer);
+  editor.hidden = false;
+  composer.classList.add('is-open');
+  document.body.classList.add('studyco-post-editor-open');
+  $('studyco-post-text').focus();
+}
+
+function closePostEditor() {
+  const editor = $('studyco-post-editor'); const composer = $('studyco-composer');
+  if (!editor || !composer) return;
+  $('studyco-composer-slot').appendChild(composer);
+  editor.hidden = true;
+  composer.classList.remove('is-open');
+  document.body.classList.remove('studyco-post-editor-open');
+}
+
+async function findPeople(term = '') {
+  const needle = term.trim().toLowerCase();
+  const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
+  return snap.docs.map((item) => ({ id: item.id, ...item.data() }))
+    .filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id)
+      && (!needle || `${profileName(profile)} ${profile.username || ''} ${profile.school || ''} ${profile.department || ''}`.toLowerCase().includes(needle)))
+    .slice(0, 12);
+}
+
+async function findPosts(term) {
+  const needle = term.trim().toLowerCase();
+  const matches = await Promise.all(state.posts.map(async (post) => {
+    const author = await getProfile(post.userId);
+    const searchable = `${post.content || ''} ${profileName(author)} ${author?.username || ''} ${author?.school || ''} ${author?.department || ''}`.toLowerCase();
+    return searchable.includes(needle) ? post : null;
+  }));
+  return matches.filter(Boolean);
+}
+
+async function renderSearchResults(value) {
+  const term = value.trim();
+  const panel = $('studyco-search-results');
+  if (!panel) return;
+  if (!term) {
+    panel.hidden = true;
+    $('studyco-search-people-group').hidden = true;
+    $('studyco-search-posts-group').hidden = true;
+    return;
+  }
+
+  const requestId = ++state.searchRequestId;
+  panel.hidden = false;
+  $('studyco-search-title').textContent = `Results for “${term}”`;
+  $('studyco-search-empty').hidden = true;
+  $('studyco-search-people-group').hidden = false;
+  $('studyco-search-posts-group').hidden = false;
+  $('studyco-search-people-results').innerHTML = '<div class="studyco-card studyco-empty">Finding people...</div>';
+  $('studyco-search-post-results').innerHTML = '<div class="studyco-card studyco-empty">Finding posts...</div>';
+
+  const [profiles, posts] = await Promise.all([findPeople(term), findPosts(term)]);
+  if (requestId !== state.searchRequestId || $('studyco-global-search')?.value.trim() !== term) return;
+  profiles.forEach((profile) => state.profiles.set(profile.id, profile));
+  await renderPeople(profiles, $('studyco-search-people-results'));
+  await renderFeed($('studyco-search-post-results'), posts);
+  $('studyco-search-people-group').hidden = !profiles.length;
+  $('studyco-search-posts-group').hidden = !posts.length;
+  $('studyco-search-empty').hidden = Boolean(profiles.length || posts.length);
+}
+
 async function renderPost(post) {
   const [author, likesSnap, commentsSnap] = await Promise.all([
     getProfile(post.userId), getDocs(collection(db, 'studyco_posts', post.id, 'likes')),
@@ -387,7 +455,7 @@ async function publishPost() {
   try {
     const imageUrl = file ? await uploadImage(file, `studyco/${state.user.uid}/posts/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
     await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; state.postImage = null; $('studyco-post-preview').hidden = true; toast('Posted to StudyCo Meet.');
+    $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; state.postImage = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
   } catch (error) { toast(error.message || 'Your post could not be published.', true); } finally { button.disabled = false; }
 }
 
@@ -459,9 +527,7 @@ async function renderPeople(profiles, target) {
 async function loadPeople(term = '') {
   const target = $('studyco-people-results'); target.innerHTML = '<div class="studyco-card studyco-empty">Finding classmates...</div>';
   if (!term.trim()) { target.innerHTML = ''; return; }
-  const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
-  const needle = term.trim().toLowerCase();
-  const profiles = snap.docs.map((item) => ({ id: item.id, ...item.data() })).filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id) && (!needle || `${profileName(profile)} ${profile.username || ''} ${profile.school || ''} ${profile.department || ''}`.toLowerCase().includes(needle))).slice(0, 12);
+  const profiles = await findPeople(term);
   profiles.forEach((profile) => state.profiles.set(profile.id, profile)); await renderPeople(profiles, target);
 }
 
@@ -1174,10 +1240,8 @@ function closeModal(id) { $(id).hidden = true; }
 function wire() {
   if (state.wired) return; state.wired = true;
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
-  $('studyco-open-composer').addEventListener('click', () => {
-    $('studyco-composer').classList.add('is-open');
-    $('studyco-post-text').focus();
-  });
+  $('studyco-open-composer').addEventListener('click', openPostEditor);
+  $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
   $('studyco-friend-search-action').addEventListener('click', () => {
     $('studyco-global-search')?.focus();
   });
@@ -1195,23 +1259,35 @@ function wire() {
       $('studyco-menu-button').setAttribute('aria-expanded', 'false');
     }
   });
+  const openGlobalSearch = () => {
+    setView('home', { updateUrl: false });
+    $('studyco-top-search')?.classList.add('is-open');
+    $('studyco-global-search')?.focus();
+  };
   const searchCircle = (value) => {
     const term = value.trim();
-    setView('friends');
+    setView('home', { updateUrl: false });
     clearTimeout(state.searchTimer);
-    state.searchTimer = setTimeout(() => loadPeople(term).catch((error) => toast(error.message, true)), 220);
+    state.searchTimer = setTimeout(() => renderSearchResults(term).catch((error) => toast(error.message, true)), 220);
   };
   $('studyco-global-search')?.addEventListener('input', (event) => searchCircle(event.target.value));
   $('studyco-global-search')?.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') { event.preventDefault(); searchCircle(event.target.value); }
+    if (event.key === 'Escape') { event.preventDefault(); $('studyco-clear-search')?.click(); }
   });
   $('studyco-top-search')?.addEventListener('click', (event) => {
-    if (event.target !== $('studyco-global-search')) { setView('friends'); $('studyco-global-search')?.focus(); }
+    if (event.target !== $('studyco-global-search')) openGlobalSearch();
   });
   document.querySelectorAll('.studyco-search-action').forEach((button) => button.addEventListener('click', () => {
-    setView('friends');
-    $('studyco-global-search')?.focus();
+    openGlobalSearch();
   }));
+  $('studyco-clear-search')?.addEventListener('click', () => {
+    $('studyco-global-search').value = '';
+    state.searchRequestId += 1;
+    renderSearchResults('');
+    $('studyco-top-search')?.classList.remove('is-open');
+    $('studyco-global-search')?.blur();
+  });
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
@@ -1238,6 +1314,7 @@ function wire() {
   $('studyco-post-feed').addEventListener('click', async (event) => { const button = event.target.closest('[data-post-action]'); if (!button) return; if (button.dataset.postAction === 'like') await toggleLike(button.dataset.postId); if (button.dataset.postAction === 'focus-comment') button.closest('.studyco-post').querySelector('input')?.focus(); });
   $('studyco-post-feed').addEventListener('submit', async (event) => { if (!event.target.matches('[data-comment-post]')) return; event.preventDefault(); await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value); event.target.reset(); });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
+  $('studyco-search-people-results')?.addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-request-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-suggestion-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-right-requests').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
