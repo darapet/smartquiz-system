@@ -125,6 +125,13 @@
               <div class="studyco-chat-empty"><strong>Select a friend</strong><span>Your conversation will appear here.</span></div>
             </section>
           </div>
+           <section class="studyco-call-history-card studyco-card" aria-labelledby="studyco-call-history-title">
+             <div class="studyco-section-title">
+               <div><p class="studyco-eyebrow">Your calls</p><h2 id="studyco-call-history-title">Recent call activity</h2><p>Missed, answered, and recorded StudyCo calls.</p></div>
+               <span id="studyco-call-history-count" class="studyco-count">0</span>
+             </div>
+             <div id="studyco-call-history" class="studyco-call-history-list"><div class="studyco-empty">Your call activity will appear here.</div></div>
+           </section>
         </section>
       </main>
 
@@ -137,7 +144,34 @@
   <div id="studyco-story-modal" class="studyco-modal-backdrop" hidden><div class="studyco-modal small"><div class="studyco-modal-head"><div><p class="studyco-eyebrow">24-hour update</p><h2>Create a story</h2></div><button class="studyco-icon-button" data-close-modal type="button">×</button></div><form id="studyco-story-form" class="studyco-form"><label>Caption<textarea id="studyco-story-text" maxlength="240" placeholder="What is happening in your study day?"></textarea></label><div class="studyco-story-colors"><button class="selected template-indigo" data-story-color="#5b5bd6" type="button"></button><button class="template-sunset" data-story-color="#f97316" type="button"></button><button class="template-ocean" data-story-color="#0284c7" type="button"></button><button class="template-gold" data-story-color="#b7791f" type="button"></button><button class="template-night" data-story-color="#111827" type="button"></button></div><label class="studyco-tool story-upload"><input id="studyco-story-image" type="file" accept="image/*">Add an image (optional)</label><div id="studyco-story-preview" class="studyco-story-preview"></div><div class="studyco-modal-actions"><button class="studyco-button soft" data-close-modal type="button">Cancel</button><button class="studyco-button primary" type="submit">Share story</button></div></form></div></div>
 
   <div id="studyco-story-viewer" class="studyco-modal-backdrop" hidden><div class="studyco-story-viewer"><button class="studyco-icon-button close" data-close-modal type="button">×</button><div id="studyco-story-viewer-content"></div></div></div>
-   <div id="studyco-call-modal" class="studyco-modal-backdrop" hidden><div class="studyco-modal call-modal"><div id="studyco-call-label" class="studyco-call-label">Incoming audio call</div><div id="studyco-call-avatar" class="studyco-call-avatar">SQ</div><div class="studyco-call-pulse" aria-hidden="true"></div><h2 id="studyco-call-name">SmartQuiz friend</h2><p id="studyco-call-status">Calling...</p><audio id="studyco-call-remote-audio" autoplay></audio><div class="studyco-call-actions"><button id="studyco-call-decline" class="studyco-button danger" type="button">Decline</button><button id="studyco-call-accept" class="studyco-button success" type="button">Accept</button></div></div></div>
+   <div id="studyco-call-modal" class="studyco-modal-backdrop" hidden>
+     <div class="studyco-modal call-modal" role="dialog" aria-modal="true" aria-labelledby="studyco-call-name">
+       <div class="studyco-call-topline"><span id="studyco-call-label" class="studyco-call-label">Incoming audio call</span><span id="studyco-call-elapsed">00:00</span></div>
+       <div class="studyco-call-stage">
+         <div class="studyco-call-avatar" id="studyco-call-avatar">SQ</div>
+         <div class="studyco-call-pulse" aria-hidden="true"></div>
+         <div class="studyco-call-signal"><i></i><span id="studyco-call-presence">Connecting securely</span></div>
+         <h2 id="studyco-call-name">SmartQuiz friend</h2>
+         <p id="studyco-call-status">Calling...</p>
+         <p id="studyco-call-last-seen"></p>
+       </div>
+       <audio id="studyco-call-remote-audio" autoplay></audio>
+       <div class="studyco-call-translation">
+         <div><strong>Live voice translation</strong><span>Translated speech plays as audio, not chat text.</span></div>
+         <label class="studyco-switch"><input id="studyco-call-translation-toggle" type="checkbox"><span></span><b>Off</b></label>
+         <select id="studyco-call-language" aria-label="Translation language">
+           <option value="en">English</option><option value="fr">French</option><option value="es">Spanish</option><option value="pt">Portuguese</option><option value="ar">Arabic</option><option value="yo">Yoruba</option>
+         </select>
+       </div>
+       <div class="studyco-call-tools">
+         <button id="studyco-call-mute" class="studyco-call-tool" type="button"><span>⌁</span><b>Mute</b></button>
+         <button id="studyco-call-record" class="studyco-call-tool" type="button"><span>●</span><b>Record</b></button>
+         <button id="studyco-call-speaker" class="studyco-call-tool active" type="button"><span>◖</span><b>Speaker</b></button>
+       </div>
+       <div class="studyco-call-actions"><button id="studyco-call-decline" class="studyco-button danger" type="button">End call</button><button id="studyco-call-accept" class="studyco-button success" type="button">Accept call</button></div>
+       <p id="studyco-call-translation-status" class="studyco-call-translation-status" role="status"></p>
+     </div>
+   </div>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>
   <script type="module" src="js/studyco-meet.js"></script>
 </body>
