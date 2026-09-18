@@ -982,6 +982,8 @@ function toggleVoiceTranslation(enabled) {
 async function startCall(uid) {
   const profile = await getProfile(uid); if (!profile) return;
   try {
+    state.speakerOn = true;
+    state.muted = false;
     const targetPresence = await getPresence(uid);
     const targetOnline = presenceIsOnline(targetPresence);
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
@@ -1008,6 +1010,8 @@ async function startCall(uid) {
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
   try {
+    state.speakerOn = true;
+    state.muted = false;
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
     state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
     prepareCallAudioStream(state.localStream);
@@ -1034,9 +1038,9 @@ async function finishCall() {
   stopVoiceTranslation();
   if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.muted = false; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
+  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.muted = false; state.speakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
   const remoteAudio = $('studyco-call-remote-audio');
-  if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; }
+  if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; remoteAudio.volume = 0.88; }
 }
 
 function listenForCalls() {
