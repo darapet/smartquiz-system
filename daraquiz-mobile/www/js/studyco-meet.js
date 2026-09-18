@@ -607,7 +607,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
     updateActiveChatPresence();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
       const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
@@ -808,11 +808,11 @@ function updateCallControls() {
 function openCallModal(profile, incoming = false, targetOnline = true, presence = null) {
   state.callProfile = profile || {};
   state.callIncoming = incoming;
-  $('studyco-call-label').textContent = incoming ? 'Incoming audio call' : (targetOnline ? 'Ringing securely' : 'Calling securely');
+  $('studyco-call-label').textContent = incoming ? 'Incoming audio call' : 'Calling securely';
   $('studyco-call-name').textContent = profileName(profile);
   $('studyco-call-avatar').textContent = initials(profile);
-  $('studyco-call-presence').textContent = incoming ? 'StudyCo call' : (targetOnline ? 'Online now' : 'Contact is offline');
-  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : (targetOnline ? 'Ringing loudly — online now.' : 'Calling — they may be offline.');
+  $('studyco-call-presence').textContent = incoming ? 'StudyCo call' : (targetOnline ? 'Online now' : 'Waiting for answer');
+  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : 'Calling — waiting for answer.';
   $('studyco-call-last-seen').textContent = incoming || targetOnline ? '' : lastSeenText(presence);
   $('studyco-call-accept').hidden = !incoming;
   $('studyco-call-decline').textContent = incoming ? 'Decline' : 'End call';
@@ -1152,7 +1152,11 @@ function wire() {
   $('studyco-chat-panel').addEventListener('change', (event) => {
     if (event.target.id === 'studyco-chat-file') $('studyco-chat-file-name').textContent = event.target.files[0]?.name || '';
   });
-  $('studyco-chat-panel').addEventListener('click', (event) => { const button = event.target.closest('[data-start-call]'); if (button) startCall(button.dataset.startCall); });
+  $('studyco-chat-panel').addEventListener('click', (event) => {
+    const callButton = event.target.closest('[data-start-call]');
+    if (callButton) { void startCall(callButton.dataset.startCall); return; }
+    if (event.target.closest('[data-call-history]')) { renderCallHistory(); openModal('studyco-call-history-modal'); }
+  });
   $('studyco-chat-panel').addEventListener('click', (event) => { if (event.target.closest('[data-chat-back]')) closeChat(); });
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);
   $('studyco-call-mute').addEventListener('click', () => {

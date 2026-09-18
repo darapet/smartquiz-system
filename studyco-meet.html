@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="css/studyco-meet.css">
   <link rel="stylesheet" href="css/studyco-circle.css">
   <link rel="stylesheet" href="css/studyco-facebook.css">
+   <link rel="stylesheet" href="css/studyco-call-overrides.css">
 </head>
 <body class="studyco-page">
   <div id="studyco-auth-screen" class="studyco-auth-screen" hidden>
@@ -121,17 +122,10 @@
               <label class="studyco-message-search"><span aria-hidden="true">⌕</span><input id="studyco-message-search" type="search" placeholder="Search conversations" aria-label="Search conversations"></label>
               <div id="studyco-chat-list" class="studyco-chat-list"></div>
             </section>
-            <section id="studyco-chat-panel" class="studyco-chat-panel studyco-chat-panel-full" aria-label="Conversation">
+           <section id="studyco-chat-panel" class="studyco-chat-panel studyco-chat-panel-full" aria-label="Conversation">
               <div class="studyco-chat-empty"><strong>Select a friend</strong><span>Your conversation will appear here.</span></div>
             </section>
           </div>
-           <section class="studyco-call-history-card studyco-card" aria-labelledby="studyco-call-history-title">
-             <div class="studyco-section-title">
-               <div><p class="studyco-eyebrow">Your calls</p><h2 id="studyco-call-history-title">Recent call activity</h2><p>Missed, answered, and recorded StudyCo calls.</p></div>
-               <span id="studyco-call-history-count" class="studyco-count">0</span>
-             </div>
-             <div id="studyco-call-history" class="studyco-call-history-list"><div class="studyco-empty">Your call activity will appear here.</div></div>
-           </section>
         </section>
       </main>
 
@@ -170,6 +164,18 @@
        </div>
        <div class="studyco-call-actions"><button id="studyco-call-decline" class="studyco-button danger" type="button">End call</button><button id="studyco-call-accept" class="studyco-button success" type="button">Accept call</button></div>
        <p id="studyco-call-translation-status" class="studyco-call-translation-status" role="status"></p>
+     </div>
+   </div>
+   <div id="studyco-call-history-modal" class="studyco-modal-backdrop" hidden>
+     <div class="studyco-modal studyco-call-history-modal" role="dialog" aria-modal="true" aria-labelledby="studyco-call-history-title">
+       <div class="studyco-modal-head">
+         <div><p class="studyco-eyebrow">Your calls</p><h2 id="studyco-call-history-title">Recent call activity</h2><p class="studyco-call-history-subtitle">Missed, answered, and recorded StudyCo calls.</p></div>
+         <button class="studyco-icon-button" data-close-modal type="button" aria-label="Close call history">×</button>
+       </div>
+       <div class="studyco-call-history-body">
+         <div class="studyco-call-history-summary"><span>All calls</span><strong id="studyco-call-history-count">0</strong></div>
+         <div id="studyco-call-history" class="studyco-call-history-list"><div class="studyco-empty">Your call activity will appear here.</div></div>
+       </div>
      </div>
    </div>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>

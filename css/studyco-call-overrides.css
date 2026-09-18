@@ -1,0 +1,60 @@
+.studyco-chat-call-actions {
+  display: flex !important;
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto !important;
+  gap: 6px !important;
+  margin-left: auto;
+}
+
+.studyco-chat-call-actions .studyco-button {
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+
+.studyco-call-history-modal {
+  width: min(560px, 100%);
+}
+
+.studyco-call-history-subtitle {
+  margin: 6px 0 0;
+  color: var(--sc-muted);
+  font-size: .7rem;
+}
+
+.studyco-call-history-body {
+  padding: 0 24px 22px;
+}
+
+.studyco-call-history-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 15px 0 7px;
+  color: var(--sc-muted);
+  font-size: .7rem;
+  font-weight: 800;
+}
+
+.studyco-call-history-summary strong {
+  display: grid;
+  min-width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 999px;
+  background: #eef0ff;
+  color: var(--sc-primary-dark);
+  font-size: .68rem;
+}
+
+@media (max-width: 520px) {
+  .studyco-chat-call-actions .studyco-button {
+    padding: 7px 8px;
+    font-size: .66rem;
+  }
+
+  .studyco-call-history-body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
