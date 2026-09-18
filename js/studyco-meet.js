@@ -573,17 +573,34 @@ function renderMessages(messages, profile) {
 }
 
 async function openChat(uid, { updateUrl = true } = {}) {
-  const profile = await getProfile(uid); if (!profile) return;
-  const relation = await relationship(uid); if (relation !== 'friends') { toast('You can message accepted friends only.', true); return; }
-  state.activeChatUid = uid; state.activeChatId = await ensureConversation(uid); watchPresence(uid); setView('messages', { updateUrl, chatUid: uid });
-  $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
-  updateActiveChatPresence();
-  state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
-    const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
-    renderMessages(messages, profile);
-    await markMessagesRead(messages);
-  }, (error) => toast(error.message || 'This conversation could not load.', true));
-  renderChatList();
+  try {
+    const profile = await getProfile(uid);
+    if (!profile) { toast('That friend profile could not be found.', true); return; }
+    const isAcceptedFriend = state.friends.some((friend) => friend.uid === uid);
+    if (!isAcceptedFriend && await relationship(uid) !== 'friends') {
+      toast('You can message accepted friends only.', true);
+      return;
+    }
+    state.activeChatUid = uid;
+    state.activeChatId = pairId(state.user.uid, uid);
+    try {
+      state.activeChatId = await ensureConversation(uid);
+    } catch (error) {
+      toast(error.message || 'The chat opened, but Firestore rules are blocking conversation setup.', true);
+    }
+    watchPresence(uid);
+    setView('messages', { updateUrl, chatUid: uid });
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+    updateActiveChatPresence();
+    state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
+      const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
+      renderMessages(messages, profile);
+      await markMessagesRead(messages);
+    }, (error) => toast(error.message || 'This conversation could not load.', true));
+    renderChatList();
+  } catch (error) {
+    toast(error.message || 'This chat could not be opened.', true);
+  }
 }
 
 function closeChat() {
@@ -802,7 +819,7 @@ function wire() {
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-request-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-friend-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
-  $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) openChat(button.dataset.chatUid); });
+  $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) void openChat(button.dataset.chatUid); });
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
   $('studyco-chat-panel').addEventListener('click', (event) => { const button = event.target.closest('[data-start-call]'); if (button) startCall(button.dataset.startCall); });
   $('studyco-chat-panel').addEventListener('click', (event) => { if (event.target.closest('[data-chat-back]')) closeChat(); });
