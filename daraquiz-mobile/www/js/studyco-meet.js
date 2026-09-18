@@ -8,11 +8,14 @@ const state = {
   storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
   feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
-  incomingCallUnsub: null, callUnsub: null, candidateUnsub: null,
+  incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
+  callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
   conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null,
-  pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null,
-  ringToneTimer: null, audioContext: null, presenceWired: false
+  pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false,
+  ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
+  callElapsedTimer: null, muted: false, speakerOn: true, mediaRecorder: null,
+  recordedChunks: [], recording: false, recordingCallId: null, translation: { enabled: false, language: 'en', recognition: null, busy: false }
 };
 
 const $ = (id) => document.getElementById(id);
@@ -89,6 +92,7 @@ function notificationCopy(notification) {
   if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: '＋' };
   if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: '✓' };
   if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: '✉' };
+  if (notification.type === 'call_missed') return { title: actor, body: 'missed your audio call.', icon: '☎' };
   return { title: actor, body: notification.message || 'shared an update with you.', icon: '✦' };
 }
 
@@ -154,6 +158,13 @@ async function uploadImage(file, path) {
   if (file.size > 25 * 1024 * 1024) throw new Error('Choose an image below 25 MB.');
   if (typeof window.aqsUploadFile === 'function') return window.aqsUploadFile(file, path);
   throw new Error('Cloudinary storage is not ready. Please ask the administrator to configure it.');
+}
+
+async function uploadAttachment(file, path) {
+  if (!file) return '';
+  if (file.size > 25 * 1024 * 1024) throw new Error('Choose a file below 25 MB.');
+  if (typeof window.aqsUploadFile === 'function') return window.aqsUploadFile(file, path);
+  throw new Error('File storage is not ready. Please ask the administrator to configure it.');
 }
 
 async function getProfile(uid) {
@@ -568,7 +579,13 @@ async function markMessagesRead(messages) {
 
 function renderMessages(messages, profile) {
   const target = document.querySelector('.studyco-chat-messages'); if (!target) return;
-  target.innerHTML = messages.length ? messages.map((message) => `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${esc(message.messageText || message.text || '').replace(/\n/g, '<br>')}<time>${esc(timeText(message.createdAt))}</time></div></div>`).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
+  target.innerHTML = messages.length ? messages.map((message) => {
+    const body = esc(message.messageText || message.text || '').replace(/\n/g, '<br>');
+    const attachment = message.attachmentUrl
+      ? `<a class="studyco-message-attachment" href="${esc(message.attachmentUrl)}" target="_blank" rel="noopener"><span>${message.attachmentType?.startsWith('image/') ? '▧' : '↧'}</span><b>${esc(message.attachmentName || 'Shared file')}</b><small>${esc(message.attachmentType || 'Attachment')}</small></a>`
+      : '';
+    return `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${body}${attachment}<time>${esc(timeText(message.createdAt))}</time></div></div>`;
+  }).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
   target.scrollTop = target.scrollHeight;
 }
 
@@ -590,7 +607,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><button class="studyco-button primary" type="submit">Send</button></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
     updateActiveChatPresence();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
       const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
@@ -613,13 +630,18 @@ function closeChat() {
 }
 
 async function sendMessage(event) {
-  event.preventDefault(); const input = $('studyco-chat-input'); const button = event.target.querySelector('button[type="submit"]'); const text = input.value.trim(); if (!text || !state.activeChatId) return;
+  event.preventDefault();
+  const input = $('studyco-chat-input'); const fileInput = $('studyco-chat-file');
+  const button = event.target.querySelector('button[type="submit"]'); const text = input.value.trim(); const file = fileInput?.files?.[0];
+  if (!text && !file) return;
   button.disabled = true;
   try {
-    await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText: text.slice(0, 2000), createdAt: serverTimestamp(), is_read: false });
-    await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: text.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, [`lastReadBy.${state.user.uid}`]: true, updatedAt: serverTimestamp() });
+    const attachmentUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/messages/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
+    const messageText = text.slice(0, 2000) || `Shared ${file?.name || 'a file'}`;
+    await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText, attachmentUrl, attachmentName: file?.name || '', attachmentType: file?.type || '', attachmentSize: file?.size || 0, createdAt: serverTimestamp(), is_read: false });
+    await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: messageText.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, [`lastReadBy.${state.user.uid}`]: true, updatedAt: serverTimestamp() });
     await createNotification(state.activeChatUid, 'message', state.activeChatId, state.activeChatId).catch(() => {});
-    input.value = '';
+    input.value = ''; if (fileInput) fileInput.value = ''; if ($('studyco-chat-file-name')) $('studyco-chat-file-name').textContent = '';
   } catch (error) {
     toast(error.message || 'Your message could not be sent.', true);
   } finally {
@@ -633,6 +655,29 @@ function callPeer(callId, remoteUid) {
   pc.ontrack = (event) => { $('studyco-call-remote-audio').srcObject = event.streams[0]; };
   state.candidateUnsub?.(); state.candidateUnsub = onSnapshot(collection(db, 'studyco_calls', callId, 'candidates'), (snapshot) => snapshot.docs.forEach((item) => { const data = item.data(); if (data.from !== state.user.uid && data.candidate) pc.addIceCandidate(new RTCIceCandidate(data.candidate)).catch(() => {}); }));
   return pc;
+}
+
+function callDurationText(ms) {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function updateCallElapsed() {
+  const elapsed = $('studyco-call-elapsed');
+  if (elapsed && state.callStartedAt) elapsed.textContent = callDurationText(Date.now() - state.callStartedAt);
+}
+
+function startCallElapsed() {
+  clearInterval(state.callElapsedTimer);
+  state.callStartedAt = Date.now();
+  updateCallElapsed();
+  state.callElapsedTimer = setInterval(updateCallElapsed, 1000);
+}
+
+function stopCallElapsed() {
+  clearInterval(state.callElapsedTimer);
+  state.callElapsedTimer = null;
+  state.callStartedAt = 0;
 }
 
 function stopRingingTone() {
@@ -653,16 +698,16 @@ function startRingingTone(kind = 'online') {
     state.audioContext = context;
     const play = () => {
       const now = context.currentTime;
-      const notes = kind === 'online'
-        ? [{ frequency: 660, offset: 0, duration: .16 }, { frequency: 880, offset: .2, duration: .2 }]
-        : [{ frequency: 300, offset: 0, duration: .22 }, { frequency: 240, offset: .28, duration: .22 }, { frequency: 180, offset: .56, duration: .28 }];
+       const notes = kind === 'online'
+         ? [{ frequency: 520, offset: 0, duration: .7 }, { frequency: 660, offset: .78, duration: .82 }]
+         : [{ frequency: 210, offset: 0, duration: .85 }, { frequency: 160, offset: .94, duration: .9 }];
       notes.forEach(({ frequency, offset, duration }) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         oscillator.type = kind === 'online' ? 'sine' : 'triangle';
         oscillator.frequency.value = frequency;
         gain.gain.setValueAtTime(.0001, now + offset);
-        gain.gain.exponentialRampToValueAtTime(.08, now + offset + .025);
+         gain.gain.exponentialRampToValueAtTime(.2, now + offset + .045);
         gain.gain.exponentialRampToValueAtTime(.0001, now + offset + duration);
         oscillator.connect(gain).connect(context.destination);
         oscillator.start(now + offset);
@@ -670,17 +715,158 @@ function startRingingTone(kind = 'online') {
       });
     };
     context.resume().then(play).catch(() => {});
-    state.ringToneTimer = setInterval(play, kind === 'online' ? 1800 : 2500);
+     state.ringToneTimer = setInterval(play, kind === 'online' ? 2800 : 2500);
   } catch (_) {
     /* A blocked audio context must not stop the call from connecting. */
   }
 }
 
-function openCallModal(profile, incoming = false, targetOnline = true) {
-  $('studyco-call-label').textContent = incoming ? 'Incoming audio call' : 'Audio call';
-  $('studyco-call-name').textContent = profileName(profile); $('studyco-call-avatar').textContent = initials(profile);
-  $('studyco-call-status').textContent = incoming ? 'Your StudyCo friend is calling.' : `Ringing — ${targetOnline ? 'online now' : 'appears offline'}.`;
-  $('studyco-call-accept').hidden = !incoming; $('studyco-call-modal').hidden = false;
+function updateCallControls() {
+  const mute = $('studyco-call-mute');
+  const record = $('studyco-call-record');
+  const translation = $('studyco-call-translation-toggle');
+  if (mute) { mute.classList.toggle('active', state.muted); mute.querySelector('b').textContent = state.muted ? 'Unmute' : 'Mute'; }
+  if (record) { record.classList.toggle('active', state.recording); record.querySelector('b').textContent = state.recording ? 'Stop recording' : 'Record'; }
+  if (translation) {
+    translation.checked = state.translation.enabled;
+    translation.parentElement.querySelector('b').textContent = state.translation.enabled ? 'On' : 'Off';
+  }
+}
+
+function openCallModal(profile, incoming = false, targetOnline = true, presence = null) {
+  state.callProfile = profile || {};
+  state.callIncoming = incoming;
+  $('studyco-call-label').textContent = incoming ? 'Incoming audio call' : (targetOnline ? 'Ringing securely' : 'Calling securely');
+  $('studyco-call-name').textContent = profileName(profile);
+  $('studyco-call-avatar').textContent = initials(profile);
+  $('studyco-call-presence').textContent = incoming ? 'StudyCo call' : (targetOnline ? 'Online now' : 'Contact is offline');
+  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : (targetOnline ? 'Ringing loudly — online now.' : 'Calling — they may be offline.');
+  $('studyco-call-last-seen').textContent = incoming || targetOnline ? '' : lastSeenText(presence);
+  $('studyco-call-accept').hidden = !incoming;
+  $('studyco-call-decline').textContent = incoming ? 'Decline' : 'End call';
+  $('studyco-call-modal').hidden = false;
+  updateCallControls();
+}
+
+function setCallConnected() {
+  stopRingingTone();
+  $('studyco-call-status').textContent = 'Connected';
+  $('studyco-call-presence').textContent = 'Live audio connection';
+  $('studyco-call-accept').hidden = true;
+  startCallElapsed();
+}
+
+function startRecording() {
+  if (!state.localStream || !window.MediaRecorder) {
+    toast('Audio recording is not supported on this device.', true);
+    return;
+  }
+  try {
+    state.recordedChunks = [];
+    state.mediaRecorder = new MediaRecorder(state.localStream);
+    state.mediaRecorder.ondataavailable = (event) => { if (event.data.size) state.recordedChunks.push(event.data); };
+    state.mediaRecorder.onstop = () => { void saveCallRecording(); };
+    state.mediaRecorder.start(1000);
+    state.recordingCallId = state.activeCallId;
+    state.recording = true;
+    updateCallControls();
+    toast('Call recording started. Use Stop recording when you are done.');
+  } catch (error) {
+    toast(error.message || 'Call recording could not start.', true);
+  }
+}
+
+async function saveCallRecording() {
+  const chunks = state.recordedChunks.splice(0);
+  const callId = state.recordingCallId || state.activeCallId;
+  state.recording = false;
+  state.recordingCallId = null;
+  updateCallControls();
+  if (!chunks.length || !callId) return;
+  try {
+    const blob = new Blob(chunks, { type: state.mediaRecorder?.mimeType || 'audio/webm' });
+    const file = new File([blob], `studyco-call-${callId}.webm`, { type: blob.type });
+    const recordingUrl = await uploadAttachment(file, `studyco/${state.user.uid}/call-recordings/${callId}`);
+    await updateDoc(doc(db, 'studyco_calls', callId), { recordingUrl, recordingType: blob.type, recordedAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    toast('Audio recording saved to this call.');
+  } catch (error) {
+    toast(error.message || 'The audio recording could not be saved.', true);
+  }
+}
+
+function stopRecording() {
+  if (!state.mediaRecorder || state.mediaRecorder.state === 'inactive') return;
+  state.mediaRecorder.stop();
+  state.mediaRecorder = null;
+}
+
+async function translatePhrase(phrase) {
+  const language = state.translation.language;
+  if (!phrase || language === 'en' || state.translation.busy) return;
+  state.translation.busy = true;
+  const status = $('studyco-call-translation-status');
+  if (status) status.textContent = `Translating voice to ${$('studyco-call-language').selectedOptions[0].text}…`;
+  try {
+    const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(phrase)}&langpair=en|${encodeURIComponent(language)}`);
+    const result = await response.json();
+    const translated = result?.responseData?.translatedText;
+    if (!translated) throw new Error('No translation returned.');
+    const utterance = new SpeechSynthesisUtterance(translated);
+    utterance.lang = language;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utterance);
+    if (status) status.textContent = 'Translated audio is playing on this device.';
+  } catch (error) {
+    if (status) status.textContent = 'Translation is unavailable right now.';
+    toast(error.message || 'Voice translation could not start.', true);
+  } finally {
+    state.translation.busy = false;
+  }
+}
+
+function stopVoiceTranslation() {
+  state.translation.recognition?.stop?.();
+  state.translation.recognition = null;
+  window.speechSynthesis?.cancel?.();
+}
+
+function startVoiceTranslation() {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Recognition) {
+    toast('Voice translation needs a browser with speech recognition support.', true);
+    state.translation.enabled = false;
+    updateCallControls();
+    return;
+  }
+  stopVoiceTranslation();
+  const recognition = new Recognition();
+  recognition.continuous = true;
+  recognition.interimResults = false;
+  recognition.lang = 'en-US';
+  recognition.onresult = (event) => {
+    const phrase = Array.from(event.results).slice(event.resultIndex).map((result) => result[0].transcript).join(' ');
+    void translatePhrase(phrase);
+  };
+  recognition.onerror = () => {
+    if (state.translation.enabled) setTimeout(() => state.translation.enabled && startVoiceTranslation(), 900);
+  };
+  recognition.onend = () => {
+    if (state.translation.enabled) setTimeout(() => state.translation.enabled && startVoiceTranslation(), 500);
+  };
+  state.translation.recognition = recognition;
+  recognition.start();
+  const status = $('studyco-call-translation-status');
+  if (status) status.textContent = `Listening for English voice and translating to ${$('studyco-call-language').selectedOptions[0].text}.`;
+}
+
+function toggleVoiceTranslation(enabled) {
+  state.translation.enabled = enabled;
+  state.translation.language = $('studyco-call-language').value;
+  if (enabled) startVoiceTranslation(); else {
+    stopVoiceTranslation();
+    $('studyco-call-translation-status').textContent = '';
+  }
+  updateCallControls();
 }
 
 async function startCall(uid) {
@@ -692,16 +878,16 @@ async function startCall(uid) {
     const callRef = doc(collection(db, 'studyco_calls')); state.activeCallId = callRef.id; state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
-    await setDoc(callRef, { callerId: state.user.uid, receiverId: uid, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    openCallModal(profile, false, targetOnline); startRingingTone(targetOnline ? 'online' : 'offline');
-    state.callTimeout = setTimeout(() => declineCall(), 45000);
+    await setDoc(callRef, { callerId: state.user.uid, receiverId: uid, status: 'ringing', offer: { type: offer.type, sdp: offer.sdp }, targetOnline, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    openCallModal(profile, false, targetOnline, targetPresence); startRingingTone(targetOnline ? 'online' : 'offline');
+    state.callTimeout = setTimeout(() => declineCall(true), 45000);
     state.callUnsub = onSnapshot(callRef, async (snapshot) => {
       const data = snapshot.data(); if (!data) return;
       if (data.answer && !state.rtc.currentRemoteDescription) {
         await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer));
-        stopRingingTone(); $('studyco-call-status').textContent = 'Connected';
+        setCallConnected();
       }
-      if (['declined', 'ended'].includes(data.status)) finishCall();
+      if (['declined', 'ended', 'missed'].includes(data.status)) finishCall();
     });
   } catch (error) { toast(error.message || 'Microphone permission is needed for calls.', true); finishCall(); }
 }
@@ -716,21 +902,23 @@ async function acceptIncomingCall() {
     const answer = await state.rtc.createAnswer(); await state.rtc.setLocalDescription(answer);
     await updateDoc(doc(db, 'studyco_calls', incoming.id), { status: 'accepted', answer: { type: answer.type, sdp: answer.sdp }, updatedAt: serverTimestamp() });
     stopRingingTone();
-    $('studyco-call-status').textContent = 'Connected'; $('studyco-call-accept').hidden = true;
-    state.callUnsub = onSnapshot(doc(db, 'studyco_calls', incoming.id), (snapshot) => { if (['declined', 'ended'].includes(snapshot.data()?.status)) finishCall(); });
+    setCallConnected();
+    state.callUnsub = onSnapshot(doc(db, 'studyco_calls', incoming.id), (snapshot) => { if (['declined', 'ended', 'missed'].includes(snapshot.data()?.status)) finishCall(); });
   } catch (error) { toast(error.message || 'Could not accept the call.', true); finishCall(); }
 }
 
-async function declineCall() {
-  if (state.pendingIncomingCall) await updateDoc(doc(db, 'studyco_calls', state.pendingIncomingCall.id), { status: 'declined', updatedAt: serverTimestamp() }).catch(() => {});
-  else if (state.activeCallId) await updateDoc(doc(db, 'studyco_calls', state.activeCallId), { status: 'ended', updatedAt: serverTimestamp() }).catch(() => {});
+async function declineCall(timedOut = false) {
+  if (state.pendingIncomingCall) await updateDoc(doc(db, 'studyco_calls', state.pendingIncomingCall.id), { status: timedOut ? 'missed' : 'declined', updatedAt: serverTimestamp() }).catch(() => {});
+  else if (state.activeCallId) await updateDoc(doc(db, 'studyco_calls', state.activeCallId), { status: timedOut ? 'missed' : 'ended', updatedAt: serverTimestamp() }).catch(() => {});
   finishCall();
 }
 
-function finishCall() {
-  stopRingingTone(); clearTimeout(state.callTimeout); state.callTimeout = null;
+async function finishCall() {
+  stopRingingTone(); stopCallElapsed(); clearTimeout(state.callTimeout); state.callTimeout = null;
+  stopVoiceTranslation();
+  if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; $('studyco-call-modal').hidden = true;
+  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.muted = false; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
 }
 
 function listenForCalls() {
@@ -738,8 +926,50 @@ function listenForCalls() {
   state.incomingCallUnsub = onSnapshot(query(collection(db, 'studyco_calls'), where('receiverId', '==', state.user.uid), limit(20)), async (snapshot) => {
     const call = snapshot.docs.map((item) => ({ id: item.id, data: item.data() })).find((item) => item.data.status === 'ringing');
     if (!call || state.activeCallId) return;
-    state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); openCallModal(profile || {}, true, true); startRingingTone('online');
+    if (state.incomingCallIds.has(call.id)) return;
+    state.incomingCallIds.add(call.id);
+    state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); const presence = await getPresence(call.data.callerId); openCallModal(profile || {}, true, presenceIsOnline(presence), presence); startRingingTone('online');
+    state.incomingCallTimers.set(call.id, setTimeout(async () => {
+      const current = await getDoc(doc(db, 'studyco_calls', call.id)).catch(() => null);
+      if (current?.data()?.status === 'ringing') {
+        await updateDoc(doc(db, 'studyco_calls', call.id), { status: 'missed', updatedAt: serverTimestamp() }).catch(() => {});
+        await createNotification(call.data.callerId, 'call_missed', call.id).catch(() => {});
+        if (state.pendingIncomingCall?.id === call.id) finishCall();
+      }
+    }, 45000));
   });
+}
+
+function mergeCallHistory(snapshot) {
+  const merged = new Map(state.callHistory.map((call) => [call.id, call]));
+  snapshot.docs.forEach((item) => merged.set(item.id, { id: item.id, ...item.data() }));
+  state.callHistory = [...merged.values()].sort((a, b) => timeMs(b.createdAt || b.updatedAt) - timeMs(a.createdAt || a.updatedAt)).slice(0, 40);
+  renderCallHistory();
+}
+
+async function renderCallHistory() {
+  const target = $('studyco-call-history');
+  if (!target) return;
+  const calls = state.callHistory;
+  $('studyco-call-history-count').textContent = String(calls.length);
+  const rows = await Promise.all(calls.slice(0, 12).map(async (call) => {
+    const uid = call.callerId === state.user.uid ? call.receiverId : call.callerId;
+    const profile = await getProfile(uid);
+    const outgoing = call.callerId === state.user.uid;
+    const missed = call.status === 'missed' || call.status === 'declined' && !outgoing;
+    const label = missed ? 'Missed call' : call.status === 'accepted' ? 'Audio call' : outgoing ? 'Call placed' : 'Call ended';
+    const action = call.recordingUrl ? `<a class="studyco-call-recording" href="${esc(call.recordingUrl)}" target="_blank" rel="noopener">Listen to recording</a>` : '';
+    return `<div class="studyco-call-history-row">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${missed ? 'Missed call' : label} · ${esc(timeText(call.createdAt || call.updatedAt))}</span></div><div class="studyco-call-history-meta"><i class="${missed ? 'missed' : outgoing ? 'outgoing' : 'incoming'}">${missed ? '↙' : outgoing ? '↗' : '↙'}</i>${action}</div></div>`;
+  }));
+  target.innerHTML = rows.join('') || '<div class="studyco-empty">Your call activity will appear here.</div>';
+}
+
+function subscribeCallHistory() {
+  state.callHistoryUnsubs.forEach((unsubscribe) => unsubscribe());
+  state.callHistoryUnsubs = [
+    onSnapshot(query(collection(db, 'studyco_calls'), where('callerId', '==', state.user.uid), limit(40)), mergeCallHistory),
+    onSnapshot(query(collection(db, 'studyco_calls'), where('receiverId', '==', state.user.uid), limit(40)), mergeCallHistory)
+  ];
 }
 
 function openModal(id) { $(id).hidden = false; }
@@ -821,9 +1051,28 @@ function wire() {
   $('studyco-friend-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) void openChat(button.dataset.chatUid); });
   $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
+  $('studyco-chat-panel').addEventListener('change', (event) => {
+    if (event.target.id === 'studyco-chat-file') $('studyco-chat-file-name').textContent = event.target.files[0]?.name || '';
+  });
   $('studyco-chat-panel').addEventListener('click', (event) => { const button = event.target.closest('[data-start-call]'); if (button) startCall(button.dataset.startCall); });
   $('studyco-chat-panel').addEventListener('click', (event) => { if (event.target.closest('[data-chat-back]')) closeChat(); });
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);
+  $('studyco-call-mute').addEventListener('click', () => {
+    state.muted = !state.muted;
+    state.localStream?.getAudioTracks().forEach((track) => { track.enabled = !state.muted; });
+    updateCallControls();
+  });
+  $('studyco-call-record').addEventListener('click', () => state.recording ? stopRecording() : startRecording());
+  $('studyco-call-speaker').addEventListener('click', () => {
+    state.speakerOn = !state.speakerOn;
+    $('studyco-call-remote-audio').muted = !state.speakerOn;
+    $('studyco-call-speaker').classList.toggle('active', state.speakerOn);
+  });
+  $('studyco-call-translation-toggle').addEventListener('change', (event) => toggleVoiceTranslation(event.target.checked));
+  $('studyco-call-language').addEventListener('change', () => {
+    state.translation.language = $('studyco-call-language').value;
+    if (state.translation.enabled) startVoiceTranslation();
+  });
   $('studyco-logout').addEventListener('click', async () => { await setPresence(false); await signOut(auth); });
 }
 
@@ -856,7 +1105,7 @@ async function saveProfile(event) {
 async function bootApp() {
   await ensureProfile(state.user);
   try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
-  showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
+  showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }
 
 wire();
