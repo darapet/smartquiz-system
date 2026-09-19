@@ -1500,9 +1500,52 @@ async function acceptIncomingCall() {
 }
 
 async function declineCall(timedOut = false) {
-  if (state.pendingIncomingCall) await updateDoc(doc(db, 'studyco_calls', state.pendingIncomingCall.id), { status: timedOut ? 'missed' : 'declined', updatedAt: serverTimestamp() }).catch(() => {});
-  else if (state.activeCallId) await updateDoc(doc(db, 'studyco_calls', state.activeCallId), { status: timedOut ? 'missed' : 'ended', updatedAt: serverTimestamp() }).catch(() => {});
-  finishCall();
+  const callId = state.pendingIncomingCall?.id || state.activeCallId;
+  const status = state.pendingIncomingCall
+    ? (timedOut ? 'missed' : 'declined')
+    : (timedOut ? 'missed' : 'ended');
+  const finishPromise = finishCall();
+  if (callId) {
+    await updateDoc(doc(db, 'studyco_calls', callId), { status, updatedAt: serverTimestamp() }).catch(() => {});
+  }
+  await finishPromise;
+}
+
+function stopMediaTracks(stream) {
+  stream?.getTracks?.().forEach((track) => {
+    track.enabled = false;
+    track.stop();
+  });
+}
+
+function releaseCallMedia() {
+  const peer = state.rtc;
+  peer?.getSenders?.().forEach((sender) => {
+    sender.track?.stop?.();
+  });
+  peer?.getReceivers?.().forEach((receiver) => receiver.track?.stop?.());
+  peer?.close?.();
+  stopMediaTracks(state.localStream);
+  state.localStream = null;
+
+  const remoteAudio = $('studyco-call-remote-audio');
+  if (remoteAudio) {
+    remoteAudio.pause();
+    remoteAudio.srcObject = null;
+    remoteAudio.muted = true;
+  }
+  const remoteVideo = $('studyco-call-remote-video');
+  if (remoteVideo) {
+    remoteVideo.pause();
+    remoteVideo.srcObject = null;
+    remoteVideo.hidden = true;
+  }
+  const localVideo = $('studyco-call-local-video');
+  if (localVideo) {
+    localVideo.pause();
+    localVideo.srcObject = null;
+    localVideo.hidden = true;
+  }
 }
 
 async function finishCall() {
@@ -1515,8 +1558,10 @@ async function finishCall() {
   setNativeCallAudio(false);
   stopVoiceTranslation();
   if (state.recording) stopRecording();
-  state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.incomingPreviewPromise = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.callConnected = false; state.muted = false; state.speakerOn = true; state.callSpeakerOn = true; state.translation.enabled = false;
+  state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null;
+  releaseCallMedia();
+  state.rtc = null;
+  state.activeCallId = null; state.pendingIncomingCall = null; state.incomingPreviewPromise = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.callConnected = false; state.muted = false; state.speakerOn = true; state.callSpeakerOn = true; state.translation.enabled = false;
   const callModal = $('studyco-call-modal');
   callModal?.classList.remove('is-incoming-call', 'is-call-connected');
   if (callModal) callModal.hidden = true;
@@ -1524,12 +1569,6 @@ async function finishCall() {
   state.callMinimized = false;
   document.body.classList.remove('studyco-call-hidden');
   $('studyco-call-minimized-bar').hidden = true;
-  const remoteAudio = $('studyco-call-remote-audio');
-  if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; remoteAudio.volume = 0.78; }
-  const remoteVideo = $('studyco-call-remote-video');
-  if (remoteVideo) { remoteVideo.pause(); remoteVideo.srcObject = null; remoteVideo.hidden = true; }
-  const localVideo = $('studyco-call-local-video');
-  if (localVideo) { localVideo.pause(); localVideo.srcObject = null; localVideo.hidden = true; }
   $('studyco-call-stage')?.classList.remove('has-remote-video', 'has-local-video');
   updateCallModeUi();
   showRemoteAudioUnlock(false);
@@ -1548,9 +1587,10 @@ function listenForCalls() {
       state.incomingCallTimers.delete(call.id);
       const current = await getDoc(doc(db, 'studyco_calls', call.id)).catch(() => null);
       if (current?.data()?.status === 'ringing') {
+        const shouldFinishActiveCall = state.pendingIncomingCall?.id === call.id;
+        if (shouldFinishActiveCall) void finishCall();
         await updateDoc(doc(db, 'studyco_calls', call.id), { status: 'missed', updatedAt: serverTimestamp() }).catch(() => {});
         await createNotification(call.data.callerId, 'call_missed', call.id).catch(() => {});
-        if (state.pendingIncomingCall?.id === call.id) finishCall();
       }
     }, 45000));
   });
