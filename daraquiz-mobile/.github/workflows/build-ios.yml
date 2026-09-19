@@ -31,6 +31,11 @@ jobs:
       - name: Add iOS platform
         run: npx cap add ios
 
+      - name: Add call permission descriptions
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :NSCameraUsageDescription string StudyCo uses your camera for video calls with friends." ios/App/App/Info.plist
+          /usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string StudyCo uses your microphone for voice and video calls with friends." ios/App/App/Info.plist
+
       - name: Sync Capacitor
         run: npx cap sync ios
 

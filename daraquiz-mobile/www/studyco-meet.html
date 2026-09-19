@@ -164,8 +164,15 @@
    <div id="studyco-call-modal" class="studyco-modal-backdrop" hidden>
      <div class="studyco-modal call-modal" role="dialog" aria-modal="true" aria-labelledby="studyco-call-name">
        <div class="studyco-call-topline"><span id="studyco-call-label" class="studyco-call-label">Incoming audio call</span><span id="studyco-call-elapsed">00:00</span></div>
-       <div class="studyco-call-stage">
-         <div class="studyco-call-avatar" id="studyco-call-avatar">SQ</div>
+       <div class="studyco-call-stage" id="studyco-call-stage">
+         <div class="studyco-call-video-surface" aria-label="Video call">
+           <video id="studyco-call-remote-video" autoplay playsinline hidden></video>
+           <div class="studyco-call-avatar" id="studyco-call-avatar">SQ</div>
+           <div class="studyco-call-local-video-wrap">
+             <video id="studyco-call-local-video" autoplay muted playsinline hidden></video>
+             <span>You</span>
+           </div>
+         </div>
          <div class="studyco-call-pulse" aria-hidden="true"></div>
          <div class="studyco-call-signal"><i></i><span id="studyco-call-presence">Connecting securely</span></div>
          <h2 id="studyco-call-name">SmartQuiz friend</h2>
@@ -183,6 +190,7 @@
        </div>
        <div class="studyco-call-tools">
          <button id="studyco-call-mute" class="studyco-call-tool" type="button"><span>⌁</span><b>Mute</b></button>
+         <button id="studyco-call-camera" class="studyco-call-tool" type="button" hidden><span>▣</span><b>Camera</b></button>
          <button id="studyco-call-record" class="studyco-call-tool" type="button"><span>●</span><b>Record</b></button>
          <button id="studyco-call-speaker" class="studyco-call-tool active" type="button"><span>◖</span><b>Speaker</b></button>
        </div>

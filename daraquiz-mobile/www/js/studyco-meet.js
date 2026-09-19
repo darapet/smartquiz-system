@@ -14,7 +14,7 @@ const state = {
   conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0,
   pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
-  callElapsedTimer: null, muted: false, speakerOn: true, mediaRecorder: null,
+  callElapsedTimer: null, muted: false, speakerOn: true, callMode: 'audio', mediaRecorder: null,
   recordedChunks: [], recording: false, recordingCallId: null, translation: { enabled: false, language: 'en', recognition: null, busy: false }
 };
 
@@ -92,7 +92,7 @@ function notificationCopy(notification) {
   if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: '＋' };
   if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: '✓' };
   if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: '✉' };
-  if (notification.type === 'call_missed') return { title: actor, body: 'missed your audio call.', icon: '☎' };
+  if (notification.type === 'call_missed') return { title: actor, body: 'missed your call.', icon: '☎' };
   return { title: actor, body: notification.message || 'shared an update with you.', icon: '✦' };
 }
 
@@ -734,7 +734,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" type="button">Call</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
     updateActiveChatPresence();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
       const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
@@ -819,13 +819,23 @@ function callPeer(callId, remoteUid) {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+    ],
+    iceCandidatePoolSize: 10
   });
   const remoteStream = new MediaStream();
   const remoteAudio = $('studyco-call-remote-audio');
+  const remoteVideo = $('studyco-call-remote-video');
   const pendingCandidates = [];
   const seenCandidateIds = new Set();
   let remoteDescriptionReady = false;
+
+  const playRemoteVideo = () => {
+    if (!remoteVideo) return;
+    remoteVideo.autoplay = true;
+    remoteVideo.playsInline = true;
+    remoteVideo.muted = true;
+    remoteVideo.play().catch(() => {});
+  };
 
   const playRemoteAudio = () => {
     if (!remoteAudio) return;
@@ -839,6 +849,19 @@ function callPeer(callId, remoteUid) {
       playPromise
         .then(() => showRemoteAudioUnlock(false))
         .catch(() => showRemoteAudioUnlock(true));
+    }
+  };
+
+  const syncRemoteMedia = () => {
+    if (remoteAudio && remoteStream.getAudioTracks().length) {
+      remoteAudio.srcObject = remoteStream;
+      playRemoteAudio();
+    }
+    if (remoteVideo && remoteStream.getVideoTracks().length) {
+      remoteVideo.srcObject = remoteStream;
+      remoteVideo.hidden = false;
+      $('studyco-call-stage')?.classList.add('has-remote-video');
+      playRemoteVideo();
     }
   };
 
@@ -859,13 +882,26 @@ function callPeer(callId, remoteUid) {
       ...(event.track ? [event.track] : [])
     ];
     tracks.forEach((track) => {
+      track.enabled = true;
       if (!remoteStream.getTracks().some((existing) => existing.id === track.id)) remoteStream.addTrack(track);
+      track.onunmute = syncRemoteMedia;
     });
-    if (remoteStream.getTracks().length && remoteAudio) {
-      remoteAudio.srcObject = remoteStream;
-      playRemoteAudio();
+    syncRemoteMedia();
+    const incomingStream = event.streams?.[0];
+    if (incomingStream) {
+      if (remoteAudio && incomingStream.getAudioTracks?.().length) remoteAudio.srcObject = incomingStream;
+      if (remoteVideo && incomingStream.getVideoTracks?.().length) {
+        remoteVideo.srcObject = incomingStream;
+        remoteVideo.hidden = false;
+      }
+    }
+    if (remoteAudio) {
       remoteAudio.onloadedmetadata = playRemoteAudio;
       remoteAudio.oncanplay = playRemoteAudio;
+    }
+    if (remoteVideo) {
+      remoteVideo.onloadedmetadata = playRemoteVideo;
+      remoteVideo.oncanplay = playRemoteVideo;
     }
   };
 
@@ -878,7 +914,7 @@ function callPeer(callId, remoteUid) {
   pc.oniceconnectionstatechange = () => {
     if (state.activeCallId !== callId) return;
     if (pc.iceConnectionState === 'failed') {
-      $('studyco-call-status').textContent = 'Network could not connect the call audio.';
+      $('studyco-call-status').textContent = 'Network could not connect the call.';
     }
   };
 
@@ -975,11 +1011,71 @@ function startRingingTone(kind = 'online') {
   }
 }
 
+function getCallVideoConstraints() {
+  return {
+    width: { ideal: 1280, max: 1920 },
+    height: { ideal: 720, max: 1080 },
+    frameRate: { ideal: 24, max: 30 },
+    facingMode: 'user'
+  };
+}
+
+async function getCallMediaStream(mode) {
+  if (mode === 'video') {
+    try {
+      return await navigator.mediaDevices.getUserMedia({
+        audio: getCallAudioConstraints(),
+        video: getCallVideoConstraints()
+      });
+    } catch (videoError) {
+      try {
+        const audioStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
+        state.callMode = 'audio';
+        toast('Camera access was unavailable, so the call continued as voice only.');
+        return audioStream;
+      } catch (_) {
+        throw videoError;
+      }
+    }
+  }
+  return navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
+}
+
+function bindLocalVideo(stream) {
+  const localVideo = $('studyco-call-local-video');
+  const hasVideo = Boolean(stream?.getVideoTracks?.().length);
+  const stage = $('studyco-call-stage');
+  if (stage) stage.classList.toggle('has-local-video', hasVideo);
+  if (!localVideo) return;
+  localVideo.srcObject = hasVideo ? stream : null;
+  localVideo.hidden = !hasVideo;
+  if (hasVideo) {
+    localVideo.muted = true;
+    localVideo.playsInline = true;
+    localVideo.play().catch(() => {});
+  }
+}
+
+function updateCallModeUi() {
+  const modal = $('studyco-call-modal');
+  const isVideo = state.callMode === 'video';
+  modal?.classList.toggle('is-video-call', isVideo);
+  const camera = $('studyco-call-camera');
+  if (camera) camera.hidden = !isVideo;
+}
+
 function updateCallControls() {
   const mute = $('studyco-call-mute');
+  const camera = $('studyco-call-camera');
   const record = $('studyco-call-record');
   const translation = $('studyco-call-translation-toggle');
   if (mute) { mute.classList.toggle('active', state.muted); mute.querySelector('b').textContent = state.muted ? 'Unmute' : 'Mute'; }
+  if (camera) {
+    const track = state.localStream?.getVideoTracks?.()[0];
+    camera.hidden = state.callMode !== 'video';
+    camera.classList.toggle('active', Boolean(track?.enabled));
+    camera.querySelector('b').textContent = track?.enabled ? 'Camera' : 'Camera off';
+  }
   if (record) { record.classList.toggle('active', state.recording); record.querySelector('b').textContent = state.recording ? 'Stop recording' : 'Record'; }
   if (translation) {
     translation.checked = state.translation.enabled;
@@ -987,10 +1083,13 @@ function updateCallControls() {
   }
 }
 
-function openCallModal(profile, incoming = false, targetOnline = true, presence = null) {
+function openCallModal(profile, incoming = false, targetOnline = true, presence = null, mode = 'audio') {
   state.callProfile = profile || {};
   state.callIncoming = incoming;
-  $('studyco-call-label').textContent = incoming ? 'Incoming audio call' : 'Calling securely';
+  state.callMode = mode === 'video' ? 'video' : 'audio';
+  $('studyco-call-label').textContent = incoming
+    ? `Incoming ${state.callMode} call`
+    : `Starting ${state.callMode} call`;
   $('studyco-call-name').textContent = profileName(profile);
   $('studyco-call-avatar').textContent = initials(profile);
   $('studyco-call-presence').textContent = incoming ? 'StudyCo call' : (targetOnline ? 'Online now' : 'Waiting for answer');
@@ -999,6 +1098,7 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
   $('studyco-call-accept').hidden = !incoming;
   $('studyco-call-decline').textContent = incoming ? 'Decline' : 'End call';
   showRemoteAudioUnlock(false);
+  updateCallModeUi();
   $('studyco-call-modal').hidden = false;
   updateCallControls();
 }
@@ -1008,7 +1108,7 @@ function setCallConnected() {
   clearTimeout(state.callTimeout);
   state.callTimeout = null;
   $('studyco-call-status').textContent = 'Connected';
-  $('studyco-call-presence').textContent = 'Live audio connection';
+  $('studyco-call-presence').textContent = state.callMode === 'video' ? 'Live video connection' : 'Live audio connection';
   $('studyco-call-accept').hidden = true;
   const remoteAudio = $('studyco-call-remote-audio');
   if (remoteAudio) {
@@ -1137,17 +1237,19 @@ function toggleVoiceTranslation(enabled) {
   updateCallControls();
 }
 
-async function startCall(uid) {
+async function startCall(uid, requestedMode = 'audio') {
   const profile = await getProfile(uid); if (!profile) return;
   try {
+    state.callMode = requestedMode === 'video' ? 'video' : 'audio';
     state.speakerOn = true;
     state.muted = false;
     const targetPresence = await getPresence(uid);
     const targetOnline = presenceIsOnline(targetPresence);
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
     setNativeCallAudio(true);
-    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
+    state.localStream = await getCallMediaStream(state.callMode);
     prepareCallAudioStream(state.localStream);
+    bindLocalVideo(state.localStream);
     const callRef = doc(collection(db, 'studyco_calls'));
     state.activeCallId = callRef.id;
     /*
@@ -1160,6 +1262,7 @@ async function startCall(uid) {
       callerId: state.user.uid,
       receiverId: uid,
       status: 'preparing',
+      callType: state.callMode,
       targetOnline,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -1167,7 +1270,7 @@ async function startCall(uid) {
     state.rtc = callPeer(callRef.id, uid);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     const offer = await state.rtc.createOffer(); await state.rtc.setLocalDescription(offer);
-    openCallModal(profile, false, targetOnline, targetPresence); startRingingTone(targetOnline ? 'online' : 'offline');
+    openCallModal(profile, false, targetOnline, targetPresence, state.callMode); startRingingTone(targetOnline ? 'online' : 'offline');
     state.callTimeout = setTimeout(() => declineCall(true), 45000);
     state.callUnsub = onSnapshot(callRef, async (snapshot) => {
       const data = snapshot.data(); if (!data) return;
@@ -1185,7 +1288,7 @@ async function startCall(uid) {
       offer: { type: offer.type, sdp: offer.sdp },
       updatedAt: serverTimestamp()
     });
-  } catch (error) { toast(error.message || 'Microphone permission is needed for calls.', true); finishCall(); }
+  } catch (error) { toast(error.message || 'Microphone and camera permission are needed for calls.', true); finishCall(); }
 }
 
 async function acceptIncomingCall() {
@@ -1197,8 +1300,11 @@ async function acceptIncomingCall() {
     state.muted = false;
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
     setNativeCallAudio(true);
-    state.localStream = await navigator.mediaDevices.getUserMedia({ audio: getCallAudioConstraints() });
+    state.callMode = incoming.data.callType === 'video' ? 'video' : 'audio';
+    state.localStream = await getCallMediaStream(state.callMode);
     prepareCallAudioStream(state.localStream);
+    bindLocalVideo(state.localStream);
+    updateCallModeUi();
     state.activeCallId = incoming.id; state.rtc = callPeer(incoming.id, incoming.data.callerId);
     state.localStream.getTracks().forEach((track) => state.rtc.addTrack(track, state.localStream));
     await state.rtc.setRemoteDescription(new RTCSessionDescription(incoming.data.offer));
@@ -1228,9 +1334,15 @@ async function finishCall() {
   stopVoiceTranslation();
   if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.muted = false; state.speakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
+  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.muted = false; state.speakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
   const remoteAudio = $('studyco-call-remote-audio');
   if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; remoteAudio.volume = 0.88; }
+  const remoteVideo = $('studyco-call-remote-video');
+  if (remoteVideo) { remoteVideo.pause(); remoteVideo.srcObject = null; remoteVideo.hidden = true; }
+  const localVideo = $('studyco-call-local-video');
+  if (localVideo) { localVideo.pause(); localVideo.srcObject = null; localVideo.hidden = true; }
+  $('studyco-call-stage')?.classList.remove('has-remote-video', 'has-local-video');
+  updateCallModeUi();
   showRemoteAudioUnlock(false);
 }
 
@@ -1241,7 +1353,7 @@ function listenForCalls() {
     if (!call || state.activeCallId) return;
     if (state.incomingCallIds.has(call.id)) return;
     state.incomingCallIds.add(call.id);
-    state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); const presence = await getPresence(call.data.callerId); openCallModal(profile || {}, true, presenceIsOnline(presence), presence); startRingingTone('online');
+    state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); const presence = await getPresence(call.data.callerId); openCallModal(profile || {}, true, presenceIsOnline(presence), presence, call.data.callType || 'audio'); startRingingTone('online');
     state.incomingCallTimers.set(call.id, setTimeout(async () => {
       state.incomingCallTimers.delete(call.id);
       const current = await getDoc(doc(db, 'studyco_calls', call.id)).catch(() => null);
@@ -1271,7 +1383,8 @@ async function renderCallHistory() {
     const profile = await getProfile(uid);
     const outgoing = call.callerId === state.user.uid;
     const missed = call.status === 'missed' || call.status === 'declined' && !outgoing;
-    const label = missed ? 'Missed call' : call.status === 'accepted' ? 'Audio call' : outgoing ? 'Call placed' : 'Call ended';
+    const callLabel = call.callType === 'video' ? 'Video call' : 'Voice call';
+    const label = missed ? 'Missed call' : call.status === 'accepted' ? callLabel : outgoing ? `${callLabel} placed` : `${callLabel} ended`;
     const action = call.recordingUrl ? `<a class="studyco-call-recording" href="${esc(call.recordingUrl)}" target="_blank" rel="noopener">Listen to recording</a>` : '';
     return `<div class="studyco-call-history-row">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${missed ? 'Missed call' : label} · ${esc(timeText(call.createdAt || call.updatedAt))}</span></div><div class="studyco-call-history-meta"><i class="${missed ? 'missed' : outgoing ? 'outgoing' : 'incoming'}">${missed ? '↙' : outgoing ? '↗' : '↙'}</i>${action}</div></div>`;
   }));
@@ -1427,7 +1540,7 @@ function wire() {
   });
   $('studyco-chat-panel').addEventListener('click', (event) => {
     const callButton = event.target.closest('[data-start-call]');
-    if (callButton) { void startCall(callButton.dataset.startCall); return; }
+    if (callButton) { void startCall(callButton.dataset.startCall, callButton.dataset.callKind || 'audio'); return; }
     if (event.target.closest('[data-call-history]')) { renderCallHistory(); openModal('studyco-call-history-modal'); }
   });
   $('studyco-chat-panel').addEventListener('click', (event) => { if (event.target.closest('[data-chat-back]')) closeChat(); });
@@ -1435,6 +1548,15 @@ function wire() {
   $('studyco-call-mute').addEventListener('click', () => {
     state.muted = !state.muted;
     state.localStream?.getAudioTracks().forEach((track) => { track.enabled = !state.muted; });
+    updateCallControls();
+  });
+  $('studyco-call-camera').addEventListener('click', () => {
+    const track = state.localStream?.getVideoTracks?.()[0];
+    if (!track) {
+      toast('Camera video is not available for this call.', true);
+      return;
+    }
+    track.enabled = !track.enabled;
     updateCallControls();
   });
   $('studyco-call-record').addEventListener('click', () => state.recording ? stopRecording() : startRecording());

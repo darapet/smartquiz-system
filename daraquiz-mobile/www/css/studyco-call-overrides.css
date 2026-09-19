@@ -47,10 +47,99 @@
   font-size: .68rem;
 }
 
+.studyco-call-video-surface {
+  display: none;
+}
+
+.studyco-call-modal.is-video-call .studyco-call-video-surface {
+  display: block;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 14px;
+  background: #0c1028;
+}
+
+.studyco-call-modal.is-video-call .studyco-call-stage {
+  padding: 18px 20px 20px;
+}
+
+.studyco-call-video-surface > #studyco-call-remote-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #0c1028;
+}
+
+.studyco-call-video-surface > .studyco-call-avatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  margin: -47px 0 0 -47px;
+}
+
+.studyco-call-stage.has-remote-video .studyco-call-avatar {
+  display: none;
+}
+
+.studyco-call-local-video-wrap {
+  display: none;
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 3;
+  width: 106px;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 2px solid #ffffffcc;
+  border-radius: 12px;
+  background: #20254f;
+  box-shadow: 0 8px 22px #0008;
+}
+
+.studyco-call-stage.has-local-video .studyco-call-local-video-wrap {
+  display: block;
+}
+
+.studyco-call-local-video-wrap video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+.studyco-call-local-video-wrap span {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  padding: 3px 5px;
+  border-radius: 5px;
+  background: #10152fcc;
+  color: #fff;
+  font-size: .56rem;
+  font-weight: 800;
+}
+
+.studyco-call-modal.is-video-call .studyco-call-pulse {
+  display: none;
+}
+
+.studyco-call-modal.is-video-call .studyco-call-stage > .studyco-call-signal {
+  margin-top: 12px;
+}
+
 @media (max-width: 520px) {
   .studyco-chat-call-actions .studyco-button {
     padding: 7px 8px;
     font-size: .66rem;
+  }
+
+  .studyco-call-local-video-wrap {
+    width: 86px;
   }
 
   .studyco-call-history-body {
