@@ -826,7 +826,8 @@ function callPeer(callId, remoteUid) {
   const remoteAudio = $('studyco-call-remote-audio');
   const remoteVideo = $('studyco-call-remote-video');
   const pendingCandidates = [];
-  const seenCandidateIds = new Set();
+  const pendingCandidateIds = new Set();
+  const addedCandidateIds = new Set();
   let remoteDescriptionReady = false;
 
   const playRemoteVideo = () => {
@@ -919,19 +920,36 @@ function callPeer(callId, remoteUid) {
   };
 
   const addRemoteCandidate = async (candidate) => {
-    if (!candidate || seenCandidateIds.has(candidate.candidate)) return;
-    seenCandidateIds.add(candidate.candidate);
+    if (!candidate) return;
+    const candidateId = [
+      candidate.sdpMid || '',
+      candidate.sdpMLineIndex ?? '',
+      candidate.candidate || ''
+    ].join(':');
+    if (addedCandidateIds.has(candidateId) || pendingCandidateIds.has(candidateId)) return;
     if (!remoteDescriptionReady) {
       pendingCandidates.push(candidate);
+      pendingCandidateIds.add(candidateId);
       return;
     }
+    addedCandidateIds.add(candidateId);
     await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
   };
 
   pc.flushRemoteCandidates = async () => {
     remoteDescriptionReady = true;
     const candidates = pendingCandidates.splice(0);
-    await Promise.all(candidates.map(addRemoteCandidate));
+    pendingCandidateIds.clear();
+    await Promise.all(candidates.map(async (candidate) => {
+      const candidateId = [
+        candidate.sdpMid || '',
+        candidate.sdpMLineIndex ?? '',
+        candidate.candidate || ''
+      ].join(':');
+      if (addedCandidateIds.has(candidateId)) return;
+      addedCandidateIds.add(candidateId);
+      await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+    }));
   };
 
   state.candidateUnsub?.();
