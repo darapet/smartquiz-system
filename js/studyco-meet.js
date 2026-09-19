@@ -638,7 +638,18 @@ async function loadSocialLists() {
 
 async function ensureConversation(uid) {
   const id = pairId(state.user.uid, uid);
-  await setDoc(doc(db, 'social_conversations', id), { participantIds: [state.user.uid, uid], createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
+  const conversationRef = doc(db, 'social_conversations', id);
+  const existing = await getDoc(conversationRef);
+  if (existing.exists()) {
+    const participantIds = existing.data().participantIds;
+    if (Array.isArray(participantIds) && participantIds.includes(state.user.uid) && participantIds.includes(uid)) return id;
+    throw new Error('This conversation has invalid participants.');
+  }
+  await setDoc(conversationRef, {
+    participantIds: [state.user.uid, uid].sort(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp()
+  });
   return id;
 }
 
