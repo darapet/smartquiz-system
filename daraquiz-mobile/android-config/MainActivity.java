@@ -13,6 +13,7 @@ import android.speech.SpeechRecognizer;
 import android.speech.tts.TextToSpeech;
 import android.speech.tts.UtteranceProgressListener;
 import android.media.AudioAttributes;
+import android.media.AudioDeviceInfo;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -62,6 +63,8 @@ public class MainActivity extends BridgeActivity {
     private String pendingRecognitionLanguage = "en-US";
     private AudioFocusRequest callAudioFocusRequest;
     private boolean callAudioActive = false;
+    private boolean callSpeakerEnabled = false;
+    private boolean callVideoActive = false;
 
     /** Pending web permission request waiting on the Android runtime dialog. */
     private PermissionRequest pendingWebRequest;
@@ -220,14 +223,16 @@ public class MainActivity extends BridgeActivity {
         }
     }
 
-    private void beginCallAudio() {
+    private void beginCallAudio(boolean video) {
         runOnUiThread(() -> {
             AudioManager audioManager =
                 (AudioManager) getSystemService(Context.AUDIO_SERVICE);
             if (audioManager == null) return;
 
+            callVideoActive = video;
+            callSpeakerEnabled = false;
             audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
-            audioManager.setSpeakerphoneOn(true);
+            routeCallAudio(audioManager);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 AudioAttributes attributes = new AudioAttributes.Builder()
@@ -249,7 +254,48 @@ public class MainActivity extends BridgeActivity {
                 );
             }
             callAudioActive = true;
+            startCallService(video);
         });
+    }
+
+    private void routeCallAudio(AudioManager audioManager) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            AudioDeviceInfo desired = null;
+            int desiredType = callSpeakerEnabled
+                ? AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+                : AudioDeviceInfo.TYPE_BUILTIN_EARPIECE;
+            for (AudioDeviceInfo device : audioManager.getAvailableCommunicationDevices()) {
+                if (device.getType() == desiredType) {
+                    desired = device;
+                    break;
+                }
+            }
+            if (desired != null) {
+                audioManager.setCommunicationDevice(desired);
+                return;
+            }
+        }
+        audioManager.setSpeakerphoneOn(callSpeakerEnabled);
+    }
+
+    private void setCallSpeaker(boolean enabled) {
+        runOnUiThread(() -> {
+            callSpeakerEnabled = enabled;
+            AudioManager audioManager =
+                (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager != null && callAudioActive) routeCallAudio(audioManager);
+        });
+    }
+
+    private void startCallService(boolean video) {
+        Intent intent = new Intent(this, StudyCoCallService.class)
+            .setAction(StudyCoCallService.ACTION_START)
+            .putExtra(StudyCoCallService.EXTRA_VIDEO, video);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent);
+        } else {
+            startService(intent);
+        }
     }
 
     private void endCallAudio() {
@@ -265,9 +311,15 @@ public class MainActivity extends BridgeActivity {
             } else {
                 audioManager.abandonAudioFocus(null);
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                audioManager.clearCommunicationDevice();
+            }
             audioManager.setSpeakerphoneOn(false);
             audioManager.setMode(AudioManager.MODE_NORMAL);
             callAudioActive = false;
+            callSpeakerEnabled = false;
+            callVideoActive = false;
+            stopService(new Intent(this, StudyCoCallService.class));
         });
     }
 
@@ -587,8 +639,13 @@ public class MainActivity extends BridgeActivity {
         }
 
         @JavascriptInterface
-        public void beginCallAudio() {
-            MainActivity.this.beginCallAudio();
+        public void beginCallAudio(boolean video) {
+            MainActivity.this.beginCallAudio(video);
+        }
+
+        @JavascriptInterface
+        public void setCallSpeaker(boolean enabled) {
+            MainActivity.this.setCallSpeaker(enabled);
         }
 
         @JavascriptInterface

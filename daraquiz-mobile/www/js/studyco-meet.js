@@ -14,7 +14,7 @@ const state = {
   conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0,
   pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
-  callElapsedTimer: null, muted: false, speakerOn: true, callMode: 'audio', mediaRecorder: null,
+  callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', mediaRecorder: null,
   recordedChunks: [], recording: false, recordingCallId: null, translation: { enabled: false, language: 'en', recognition: null, busy: false }
 };
 
@@ -791,14 +791,15 @@ async function sendMessage(event) {
 
 function getCallAudioConstraints() {
   return {
-    echoCancellation: { ideal: true },
-    noiseSuppression: { ideal: true },
-    autoGainControl: { ideal: true },
+    echoCancellation: true,
+    noiseSuppression: true,
+    autoGainControl: true,
     voiceIsolation: { ideal: true },
-    channelCount: { ideal: 1, max: 1 },
+    channelCount: 1,
     sampleRate: { ideal: 48000 },
     sampleSize: { ideal: 16 },
-    latency: { ideal: 0 }
+    latency: { ideal: 0 },
+    suppressLocalAudioPlayback: { ideal: true }
   };
 }
 
@@ -809,12 +810,34 @@ function prepareCallAudioStream(stream) {
   track.applyConstraints(getCallAudioConstraints()).catch(() => {});
 }
 
-function setNativeCallAudio(enabled) {
+function isNativeCallEnvironment() {
+  try {
+    return Boolean(window.Capacitor?.isNativePlatform?.() && window.AqsPermissionsBridge);
+  } catch (_) {
+    return false;
+  }
+}
+
+function defaultCallSpeakerRoute() {
+  return !isNativeCallEnvironment();
+}
+
+function setNativeCallSpeaker(enabled) {
+  try {
+    window.AqsPermissionsBridge?.setCallSpeaker?.(Boolean(enabled));
+  } catch (_) {
+    /* Speaker routing is optional outside the native mobile shell. */
+  }
+}
+
+function setNativeCallAudio(enabled, mode = state.callMode) {
   try {
     const bridge = window.AqsPermissionsBridge;
     if (!bridge) return;
-    if (enabled) bridge.beginCallAudio?.();
-    else bridge.endCallAudio?.();
+    if (enabled) {
+      bridge.beginCallAudio?.(mode === 'video');
+      setNativeCallSpeaker(state.callSpeakerOn);
+    } else bridge.endCallAudio?.();
   } catch (_) {
     /* The website has no native bridge; Web Audio remains browser-controlled. */
   }
@@ -856,7 +879,7 @@ function callPeer(callId, remoteUid) {
     remoteAudio.playsInline = true;
     remoteAudio.setAttribute('disableRemotePlayback', '');
     remoteAudio.muted = !state.speakerOn;
-    remoteAudio.volume = 0.88;
+    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
       playPromise
@@ -1141,6 +1164,7 @@ function updateCallControls() {
   const camera = $('studyco-call-camera');
   const record = $('studyco-call-record');
   const translation = $('studyco-call-translation-toggle');
+  const speaker = $('studyco-call-speaker');
   if (mute) { mute.classList.toggle('active', state.muted); mute.querySelector('b').textContent = state.muted ? 'Unmute' : 'Mute'; }
   if (camera) {
     const track = state.localStream?.getVideoTracks?.()[0];
@@ -1152,6 +1176,12 @@ function updateCallControls() {
   if (translation) {
     translation.checked = state.translation.enabled;
     translation.parentElement.querySelector('b').textContent = state.translation.enabled ? 'On' : 'Off';
+  }
+  if (speaker) {
+    speaker.classList.toggle('active', state.callSpeakerOn);
+    speaker.querySelector('b').textContent = isNativeCallEnvironment()
+      ? (state.callSpeakerOn ? 'Speaker' : 'Earpiece')
+      : (state.callSpeakerOn ? 'Speaker' : 'Muted');
   }
 }
 
@@ -1192,7 +1222,7 @@ function setCallConnected() {
   const remoteAudio = $('studyco-call-remote-audio');
   if (remoteAudio) {
     remoteAudio.muted = !state.speakerOn;
-    remoteAudio.volume = 1;
+    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
       playPromise
@@ -1321,11 +1351,12 @@ async function startCall(uid, requestedMode = 'audio') {
   try {
     state.callMode = requestedMode === 'video' ? 'video' : 'audio';
     state.speakerOn = true;
+    state.callSpeakerOn = defaultCallSpeakerRoute();
     state.muted = false;
     const targetPresence = await getPresence(uid);
     const targetOnline = presenceIsOnline(targetPresence);
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
-    setNativeCallAudio(true);
+    setNativeCallAudio(true, state.callMode);
     state.localStream = await getCallMediaStream(state.callMode);
     prepareCallAudioStream(state.localStream);
     bindLocalVideo(state.localStream);
@@ -1376,10 +1407,11 @@ async function acceptIncomingCall() {
     clearTimeout(state.incomingCallTimers.get(incoming.id));
     state.incomingCallTimers.delete(incoming.id);
     state.speakerOn = true;
+    state.callSpeakerOn = defaultCallSpeakerRoute();
     state.muted = false;
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
-    setNativeCallAudio(true);
     state.callMode = incoming.data.callType === 'video' ? 'video' : 'audio';
+    setNativeCallAudio(true, state.callMode);
     state.localStream = await getCallMediaStream(state.callMode);
     prepareCallAudioStream(state.localStream);
     bindLocalVideo(state.localStream);
@@ -1413,12 +1445,12 @@ async function finishCall() {
   stopVoiceTranslation();
   if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.muted = false; state.speakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
+  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.muted = false; state.speakerOn = true; state.callSpeakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
   state.callMinimized = false;
   document.body.classList.remove('studyco-call-hidden');
   $('studyco-call-minimized-bar').hidden = true;
   const remoteAudio = $('studyco-call-remote-audio');
-  if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; remoteAudio.volume = 0.88; }
+  if (remoteAudio) { remoteAudio.pause(); remoteAudio.srcObject = null; remoteAudio.muted = false; remoteAudio.volume = 0.78; }
   const remoteVideo = $('studyco-call-remote-video');
   if (remoteVideo) { remoteVideo.pause(); remoteVideo.srcObject = null; remoteVideo.hidden = true; }
   const localVideo = $('studyco-call-local-video');
@@ -1651,15 +1683,22 @@ function wire() {
     if (!remoteAudio) return;
     state.speakerOn = true;
     remoteAudio.muted = false;
+    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
     remoteAudio.play()
       .then(() => showRemoteAudioUnlock(false))
       .catch(() => toast('The browser still blocked call audio. Check the site sound permission.', true));
-    $('studyco-call-speaker').classList.add('active');
+    updateCallControls();
   });
   $('studyco-call-speaker').addEventListener('click', () => {
-    state.speakerOn = !state.speakerOn;
-    $('studyco-call-remote-audio').muted = !state.speakerOn;
-    $('studyco-call-speaker').classList.toggle('active', state.speakerOn);
+    state.callSpeakerOn = !state.callSpeakerOn;
+    if (!isNativeCallEnvironment()) state.speakerOn = state.callSpeakerOn;
+    setNativeCallSpeaker(state.callSpeakerOn);
+    const remoteAudio = $('studyco-call-remote-audio');
+    if (remoteAudio) {
+      remoteAudio.muted = !state.speakerOn;
+      remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    }
+    updateCallControls();
   });
   $('studyco-call-translation-toggle').addEventListener('change', (event) => toggleVoiceTranslation(event.target.checked));
   $('studyco-call-language').addEventListener('change', () => {

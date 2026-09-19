@@ -10,6 +10,9 @@
     <!-- ── Microphone ── -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CAMERA" />
 
     <!-- ── Allow lookup of the device speech-recognition service ── -->
     <queries>
@@ -68,6 +71,13 @@
             </intent-filter>
 
         </activity>
+
+        <service
+            android:name=".StudyCoCallService"
+            android:enabled="true"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="microphone|camera" />
 
         <meta-data
             android:name="com.google.android.gms.version"
