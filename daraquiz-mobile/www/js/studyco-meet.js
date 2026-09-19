@@ -12,9 +12,9 @@ const state = {
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
   conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0,
-  pendingIncomingCall: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
+  pendingIncomingCall: null, incomingPreviewPromise: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
-  callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', mediaRecorder: null,
+  callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', callConnected: false, mediaRecorder: null,
   recordedChunks: [], recording: false, recordingCallId: null, translation: { enabled: false, language: 'en', recognition: null, busy: false }
 };
 
@@ -878,7 +878,7 @@ function callPeer(callId, remoteUid) {
     remoteAudio.autoplay = true;
     remoteAudio.playsInline = true;
     remoteAudio.setAttribute('disableRemotePlayback', '');
-    remoteAudio.muted = !state.speakerOn;
+    remoteAudio.muted = !state.callConnected || !state.speakerOn;
     remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
@@ -1189,6 +1189,10 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
   state.callProfile = profile || {};
   state.callIncoming = incoming;
   state.callMode = mode === 'video' ? 'video' : 'audio';
+  state.callConnected = false;
+  const modal = $('studyco-call-modal');
+  modal?.classList.toggle('is-incoming-call', incoming);
+  modal?.classList.remove('is-call-connected');
   setCallMinimized(false);
   $('studyco-call-label').textContent = incoming
     ? `Incoming ${state.callMode} call`
@@ -1207,11 +1211,13 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
     : `${state.callMode === 'video' ? 'Video' : 'Voice'} call in progress`;
   showRemoteAudioUnlock(false);
   updateCallModeUi();
-  $('studyco-call-modal').hidden = false;
+  if (modal) modal.hidden = false;
   updateCallControls();
 }
 
 function setCallConnected() {
+  state.callConnected = true;
+  $('studyco-call-modal')?.classList.add('is-call-connected');
   stopRingingTone();
   clearTimeout(state.callTimeout);
   state.callTimeout = null;
@@ -1346,6 +1352,61 @@ function toggleVoiceTranslation(enabled) {
   updateCallControls();
 }
 
+async function prepareIncomingVideoPreview(incoming) {
+  if (incoming.data.callType !== 'video' || !navigator.mediaDevices?.getUserMedia) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: getCallAudioConstraints(),
+      video: getCallVideoConstraints()
+    });
+    if (state.pendingIncomingCall?.id !== incoming.id || state.callConnected) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    state.callMode = 'video';
+    state.callSpeakerOn = defaultCallSpeakerRoute();
+    state.speakerOn = true;
+    state.muted = false;
+    setNativeCallAudio(true, 'video');
+    state.localStream = stream;
+    prepareCallAudioStream(stream);
+    bindLocalVideo(stream);
+    updateCallModeUi();
+
+    /*
+     * Establish the media path while the incoming screen is ringing so the
+     * caller's camera can be previewed before the recipient taps Accept.
+     * Audio playback stays muted until setCallConnected().
+     */
+    state.activeCallId = incoming.id;
+    state.rtc = callPeer(incoming.id, incoming.data.callerId);
+    stream.getTracks().forEach((track) => state.rtc.addTrack(track, stream));
+    await state.rtc.setRemoteDescription(new RTCSessionDescription(incoming.data.offer));
+    await state.rtc.flushRemoteCandidates?.();
+    const answer = await state.rtc.createAnswer();
+    await state.rtc.setLocalDescription(answer);
+    await updateDoc(doc(db, 'studyco_calls', incoming.id), {
+      answer: { type: answer.type, sdp: answer.sdp },
+      updatedAt: serverTimestamp()
+    });
+    state.callUnsub = onSnapshot(doc(db, 'studyco_calls', incoming.id), (snapshot) => {
+      if (['declined', 'ended', 'missed'].includes(snapshot.data()?.status)) finishCall();
+    });
+  } catch (_) {
+    if (state.pendingIncomingCall?.id !== incoming.id || state.callConnected) return;
+    state.callUnsub?.();
+    state.candidateUnsub?.();
+    state.callUnsub = null;
+    state.candidateUnsub = null;
+    state.rtc?.close();
+    state.rtc = null;
+    state.activeCallId = null;
+    state.localStream?.getTracks().forEach((track) => track.stop());
+    state.localStream = null;
+    bindLocalVideo(null);
+  }
+}
+
 async function startCall(uid, requestedMode = 'audio') {
   const profile = await getProfile(uid); if (!profile) return;
   try {
@@ -1387,8 +1448,9 @@ async function startCall(uid, requestedMode = 'audio') {
       if (data.answer && !state.rtc.remoteDescription) {
         await state.rtc.setRemoteDescription(new RTCSessionDescription(data.answer));
         await state.rtc.flushRemoteCandidates?.();
-        setCallConnected();
+        if (data.status === 'accepted') setCallConnected();
       }
+      if (data.status === 'accepted' && !state.callConnected) setCallConnected();
       if (['declined', 'ended', 'missed'].includes(data.status)) finishCall();
     });
     /* Publish the offer last, atomically changing the call to ringable.
@@ -1404,6 +1466,9 @@ async function startCall(uid, requestedMode = 'audio') {
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
   try {
+    const previewPromise = state.incomingPreviewPromise;
+    if (previewPromise) await previewPromise.catch(() => {});
+    if (state.pendingIncomingCall?.id !== incoming.id) return;
     clearTimeout(state.incomingCallTimers.get(incoming.id));
     state.incomingCallTimers.delete(incoming.id);
     state.speakerOn = true;
@@ -1412,6 +1477,12 @@ async function acceptIncomingCall() {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
     state.callMode = incoming.data.callType === 'video' ? 'video' : 'audio';
     setNativeCallAudio(true, state.callMode);
+    if (state.activeCallId === incoming.id && state.rtc && state.localStream?.getVideoTracks?.().length) {
+      await updateDoc(doc(db, 'studyco_calls', incoming.id), { status: 'accepted', updatedAt: serverTimestamp() });
+      stopRingingTone();
+      setCallConnected();
+      return;
+    }
     state.localStream = await getCallMediaStream(state.callMode);
     prepareCallAudioStream(state.localStream);
     bindLocalVideo(state.localStream);
@@ -1445,7 +1516,11 @@ async function finishCall() {
   stopVoiceTranslation();
   if (state.recording) stopRecording();
   state.callUnsub?.(); state.candidateUnsub?.(); state.callUnsub = null; state.candidateUnsub = null; state.rtc?.close(); state.rtc = null;
-  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.muted = false; state.speakerOn = true; state.callSpeakerOn = true; state.translation.enabled = false; $('studyco-call-modal').hidden = true; updateCallControls();
+  state.localStream?.getTracks().forEach((track) => track.stop()); state.localStream = null; state.activeCallId = null; state.pendingIncomingCall = null; state.incomingPreviewPromise = null; state.callProfile = null; state.callIncoming = false; state.callMode = 'audio'; state.callConnected = false; state.muted = false; state.speakerOn = true; state.callSpeakerOn = true; state.translation.enabled = false;
+  const callModal = $('studyco-call-modal');
+  callModal?.classList.remove('is-incoming-call', 'is-call-connected');
+  if (callModal) callModal.hidden = true;
+  updateCallControls();
   state.callMinimized = false;
   document.body.classList.remove('studyco-call-hidden');
   $('studyco-call-minimized-bar').hidden = true;
@@ -1468,6 +1543,7 @@ function listenForCalls() {
     if (state.incomingCallIds.has(call.id)) return;
     state.incomingCallIds.add(call.id);
     state.pendingIncomingCall = call; const profile = await getProfile(call.data.callerId); const presence = await getPresence(call.data.callerId); openCallModal(profile || {}, true, presenceIsOnline(presence), presence, call.data.callType || 'audio'); startRingingTone('online');
+    state.incomingPreviewPromise = call.data.callType === 'video' ? prepareIncomingVideoPreview(call) : null;
     state.incomingCallTimers.set(call.id, setTimeout(async () => {
       state.incomingCallTimers.delete(call.id);
       const current = await getDoc(doc(db, 'studyco_calls', call.id)).catch(() => null);

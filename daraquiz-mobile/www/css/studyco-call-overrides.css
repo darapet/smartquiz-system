@@ -432,3 +432,134 @@ body.studyco-call-hidden {
 .studyco-sent-request {
   background: #fafaff;
 }
+
+/* Video calls use a full-page stage: local preview while ringing, remote
+   video as the main feed after the call is accepted. */
+#studyco-call-modal.is-video-call .studyco-call-modal {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-stage {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: clamp(10px, 2vh, 22px) clamp(12px, 4vw, 48px) 12px;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-video-surface {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  aspect-ratio: auto;
+  margin: 0 auto;
+  border-radius: clamp(12px, 2vw, 22px);
+}
+
+#studyco-call-modal.is-video-call .studyco-call-video-surface > #studyco-call-remote-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-stage.has-local-video:not(.has-remote-video) .studyco-call-avatar {
+  display: none;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-stage.has-local-video:not(.has-remote-video) .studyco-call-local-video-wrap {
+  display: block;
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  aspect-ratio: auto;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: none;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-stage.has-local-video:not(.has-remote-video) .studyco-call-local-video-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#studyco-call-modal.is-video-call.is-incoming-call:not(.is-call-connected) .studyco-call-stage.has-remote-video .studyco-call-local-video-wrap {
+  inset: auto 14px 14px auto;
+  width: clamp(128px, 28vw, 300px);
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border: 2px solid #ffffffcc;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px #0009;
+}
+
+#studyco-call-modal.is-video-call.is-incoming-call:not(.is-call-connected) .studyco-call-stage.has-remote-video .studyco-call-local-video-wrap video {
+  object-fit: cover;
+}
+
+#studyco-call-modal.is-video-call.is-call-connected .studyco-call-local-video-wrap {
+  display: block;
+  position: absolute;
+  inset: 14px 14px auto auto;
+  width: clamp(150px, 30vw, 360px);
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border: 2px solid #ffffffcc;
+  border-radius: 14px;
+  box-shadow: 0 10px 28px #0009;
+}
+
+#studyco-call-modal.is-video-call.is-call-connected .studyco-call-local-video-wrap video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-translation {
+  flex: 0 0 auto;
+  margin: 6px auto 0;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-tools,
+#studyco-call-modal.is-video-call .studyco-call-actions,
+#studyco-call-modal.is-video-call .studyco-call-translation-status {
+  flex: 0 0 auto;
+}
+
+#studyco-call-modal.is-video-call .studyco-call-actions {
+  margin-top: 10px;
+  padding-bottom: max(14px, env(safe-area-inset-bottom));
+}
+
+#studyco-call-modal.is-video-call .studyco-call-tool,
+#studyco-call-modal.is-video-call .studyco-call-actions .studyco-button {
+  position: relative;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+@media (max-width: 760px) {
+  #studyco-call-modal.is-video-call .studyco-call-stage {
+    gap: 6px;
+    padding: 8px 10px 10px;
+  }
+
+  #studyco-call-modal.is-video-call .studyco-call-video-surface {
+    min-height: 220px;
+  }
+
+  #studyco-call-modal.is-video-call.is-call-connected .studyco-call-local-video-wrap,
+  #studyco-call-modal.is-video-call.is-incoming-call:not(.is-call-connected) .studyco-call-stage.has-remote-video .studyco-call-local-video-wrap {
+    width: min(36vw, 220px);
+    min-width: 118px;
+  }
+}
