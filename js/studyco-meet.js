@@ -794,12 +794,7 @@ function getCallAudioConstraints() {
     echoCancellation: true,
     noiseSuppression: true,
     autoGainControl: true,
-    voiceIsolation: { ideal: true },
-    channelCount: 1,
-    sampleRate: { ideal: 48000 },
-    sampleSize: { ideal: 16 },
-    latency: { ideal: 0 },
-    suppressLocalAudioPlayback: { ideal: true }
+    channelCount: { ideal: 1 }
   };
 }
 
@@ -807,7 +802,6 @@ function prepareCallAudioStream(stream) {
   const track = stream?.getAudioTracks?.()[0];
   if (!track) return;
   track.contentHint = 'speech';
-  track.applyConstraints(getCallAudioConstraints()).catch(() => {});
 }
 
 function isNativeCallEnvironment() {
