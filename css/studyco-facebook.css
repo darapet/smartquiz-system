@@ -493,6 +493,18 @@
   margin: 0 0 3px;
 }
 
+.studyco-post-editor-head > .studyco-button {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+#studyco-composer-slot .studyco-composer-footer,
+#studyco-composer-slot .studyco-post-preview,
+#studyco-composer-slot .studyco-post-attachment-status,
+#studyco-composer-slot .studyco-post-url-row {
+  display: none !important;
+}
+
 .studyco-post-editor .studyco-composer {
   margin: 0;
 }
@@ -736,6 +748,10 @@
 
   .studyco-post-editor-head {
     padding: 0 14px;
+  }
+
+  .studyco-post-editor-head > .studyco-button {
+    padding: 9px 12px;
   }
 
   .studyco-post-editor .studyco-composer {

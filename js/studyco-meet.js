@@ -1267,6 +1267,7 @@ function wire() {
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
   $('studyco-open-composer').addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
+  $('studyco-editor-publish-post')?.addEventListener('click', publishPost);
   $('studyco-friend-search-action').addEventListener('click', () => openContactsSearch());
   $('studyco-menu-button').addEventListener('click', () => {
     const menu = $('studyco-menu-panel');
