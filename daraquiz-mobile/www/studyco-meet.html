@@ -162,8 +162,8 @@
 
   <div id="studyco-story-viewer" class="studyco-modal-backdrop" hidden><div class="studyco-story-viewer"><button class="studyco-icon-button close" data-close-modal type="button">×</button><div id="studyco-story-viewer-content"></div></div></div>
    <div id="studyco-call-modal" class="studyco-modal-backdrop" hidden>
-     <div class="studyco-modal call-modal" role="dialog" aria-modal="true" aria-labelledby="studyco-call-name">
-       <div class="studyco-call-topline"><span id="studyco-call-label" class="studyco-call-label">Incoming audio call</span><span id="studyco-call-elapsed">00:00</span></div>
+      <div class="studyco-modal call-modal" role="dialog" aria-modal="true" aria-labelledby="studyco-call-name">
+        <div class="studyco-call-topline"><button id="studyco-call-minimize" class="studyco-call-minimize" type="button" aria-label="Hide call and continue using StudyCo"><span aria-hidden="true">⌄</span><b>Hide</b></button><span id="studyco-call-label" class="studyco-call-label">Incoming audio call</span><span id="studyco-call-elapsed">00:00</span></div>
        <div class="studyco-call-stage" id="studyco-call-stage">
          <div class="studyco-call-video-surface" aria-label="Video call">
            <video id="studyco-call-remote-video" autoplay playsinline hidden></video>
@@ -172,6 +172,14 @@
              <video id="studyco-call-local-video" autoplay muted playsinline hidden></video>
              <span>You</span>
            </div>
+    <div id="studyco-call-minimized-bar" class="studyco-call-minimized-bar" hidden role="status" aria-live="polite">
+      <button id="studyco-call-restore" class="studyco-call-restore" type="button" aria-label="Show active call">
+        <span class="studyco-call-minimized-avatar" id="studyco-call-minimized-avatar">SQ</span>
+        <span class="studyco-call-minimized-copy"><strong id="studyco-call-minimized-name">StudyCo call</strong><small id="studyco-call-minimized-status">Call in progress</small></span>
+        <span class="studyco-call-minimized-elapsed" id="studyco-call-minimized-elapsed">00:00</span>
+      </button>
+      <button id="studyco-call-minimized-end" class="studyco-call-minimized-end" type="button" aria-label="End call">×</button>
+    </div>
          </div>
          <div class="studyco-call-pulse" aria-hidden="true"></div>
          <div class="studyco-call-signal"><i></i><span id="studyco-call-presence">Connecting securely</span></div>
