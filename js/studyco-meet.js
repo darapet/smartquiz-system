@@ -5,7 +5,7 @@ const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
-  storyColor: '#5b5bd6', postImage: null, storyImage: null, wired: false,
+  storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
@@ -308,6 +308,7 @@ function viewHash(view, chatUid = '') {
 }
 
 function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid } = {}) {
+  if (view !== 'home' && !$('studyco-post-editor')?.hidden) closePostEditor();
   if (view === 'messages' && !chatUid && state.activeChatUid) {
     state.activeChatUid = null;
     state.activeChatId = null;
@@ -332,7 +333,7 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
 
 async function syncRoute() {
   const parts = window.location.hash.replace(/^#/, '').split('/');
-  const view = ['friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
+  const view = ['search', 'friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
   setView(view, { updateUrl: false, chatUid: parts[1] ? decodeURIComponent(parts[1]) : '' });
   if (view === 'messages' && parts[1] && state.user) {
     await openChat(decodeURIComponent(parts[1]), { updateUrl: false });
@@ -344,6 +345,25 @@ function renderPostPreview() {
   const hasContent = Boolean(text || state.postImage);
   preview.hidden = !hasContent; preview.className = `studyco-post-preview ${templateClass(state.selectedTemplate)}`;
   preview.innerHTML = `${text ? `<span>${esc(text)}</span>` : ''}${state.postImage ? `<img src="${esc(URL.createObjectURL(state.postImage))}" alt="Selected study image">` : ''}`;
+}
+
+function renderPostAttachmentStatus() {
+  const status = $('studyco-post-attachment-status');
+  if (!status) return;
+  const attachments = [state.postImage?.name ? `Photo: ${state.postImage.name}` : '', state.postFile?.name ? `File: ${state.postFile.name}` : ''].filter(Boolean);
+  status.textContent = attachments.join(' · ');
+  status.hidden = attachments.length === 0;
+}
+
+function normalizeUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const url = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '';
+  } catch (_) {
+    return '';
+  }
 }
 
 function openPostEditor() {
@@ -365,12 +385,12 @@ function closePostEditor() {
   document.body.classList.remove('studyco-post-editor-open');
 }
 
-async function findPeople(term = '') {
+async function findPeople(term = '', { broad = false } = {}) {
   const needle = term.trim().toLowerCase();
   const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
   return snap.docs.map((item) => ({ id: item.id, ...item.data() }))
     .filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id)
-      && (!needle || `${profileName(profile)} ${profile.username || ''} ${profile.school || ''} ${profile.department || ''}`.toLowerCase().includes(needle)))
+      && (!needle || [profileName(profile), profile.username, ...(broad ? [profile.school, profile.department, profile.major] : [])].filter(Boolean).join(' ').toLowerCase().includes(needle)))
     .slice(0, 12);
 }
 
@@ -378,7 +398,7 @@ async function findPosts(term) {
   const needle = term.trim().toLowerCase();
   const matches = await Promise.all(state.posts.map(async (post) => {
     const author = await getProfile(post.userId);
-    const searchable = `${post.content || ''} ${profileName(author)} ${author?.username || ''} ${author?.school || ''} ${author?.department || ''}`.toLowerCase();
+    const searchable = `${post.content || ''} ${post.fileName || ''} ${post.linkUrl || ''} ${profileName(author)} ${author?.username || ''} ${author?.school || ''} ${author?.department || ''}`.toLowerCase();
     return searchable.includes(needle) ? post : null;
   }));
   return matches.filter(Boolean);
@@ -404,8 +424,8 @@ async function renderSearchResults(value) {
   $('studyco-search-people-results').innerHTML = '<div class="studyco-card studyco-empty">Finding people...</div>';
   $('studyco-search-post-results').innerHTML = '<div class="studyco-card studyco-empty">Finding posts...</div>';
 
-  const [profiles, posts] = await Promise.all([findPeople(term), findPosts(term)]);
-  if (requestId !== state.searchRequestId || $('studyco-global-search')?.value.trim() !== term) return;
+  const [profiles, posts] = await Promise.all([findPeople(term, { broad: true }), findPosts(term)]);
+  if (requestId !== state.searchRequestId || $('studyco-page-search')?.value.trim() !== term) return;
   profiles.forEach((profile) => state.profiles.set(profile.id, profile));
   await renderPeople(profiles, $('studyco-search-people-results'));
   await renderFeed($('studyco-search-post-results'), posts);
@@ -427,7 +447,10 @@ async function renderPost(post) {
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
   const visual = post.bgTemplateId && post.content && post.content.length <= 240 ? `<div class="studyco-post-visual ${templateClass(post.bgTemplateId)}">${esc(post.content)}</div>` : '';
   const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment">` : '';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${visual || text}${image}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}">${liked ? 'Liked' : 'Like'} · ${likesSnap.size}</button><button data-post-action="focus-comment" data-post-id="${esc(post.id)}">Comment · ${post.commentCount || commentsSnap.size}</button></div><div class="studyco-comments">${comments.join('')}</div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}"><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
+  const linkUrl = normalizeUrl(post.linkUrl);
+  const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
+  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${visual || text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}">${liked ? 'Liked' : 'Like'} · ${likesSnap.size}</button><button data-post-action="focus-comment" data-post-id="${esc(post.id)}">Comment · ${post.commentCount || commentsSnap.size}</button></div><div class="studyco-comments">${comments.join('')}</div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}"><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts) {
@@ -449,13 +472,15 @@ function subscribeFeed() {
 }
 
 async function publishPost() {
-  const content = $('studyco-post-text').value.trim(); const file = state.postImage;
-  if (!content && !file) { toast('Write something or add an image first.', true); return; }
+  const content = $('studyco-post-text').value.trim(); const image = state.postImage; const file = state.postFile;
+  const linkUrl = normalizeUrl($('studyco-post-url').value);
+  if (!content && !image && !file && !linkUrl) { toast('Write something, add an attachment, or add a URL first.', true); return; }
   const button = $('studyco-publish-post'); button.disabled = true;
   try {
-    const imageUrl = file ? await uploadImage(file, `studyco/${state.user.uid}/posts/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
-    $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; state.postImage = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
+    const imageUrl = image ? await uploadImage(image, `studyco/${state.user.uid}/posts/${Date.now()}-${image.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
+    const fileUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/posts/files/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
+    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; $('studyco-post-file').value = ''; $('studyco-post-url').value = ''; $('studyco-post-url-row').hidden = true; $('studyco-post-attachment-status').hidden = true; state.postImage = null; state.postFile = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
   } catch (error) { toast(error.message || 'Your post could not be published.', true); } finally { button.disabled = false; }
 }
 
@@ -1242,9 +1267,7 @@ function wire() {
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
   $('studyco-open-composer').addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
-  $('studyco-friend-search-action').addEventListener('click', () => {
-    $('studyco-global-search')?.focus();
-  });
+  $('studyco-friend-search-action').addEventListener('click', () => openContactsSearch());
   $('studyco-menu-button').addEventListener('click', () => {
     const menu = $('studyco-menu-panel');
     menu.hidden = !menu.hidden;
@@ -1259,39 +1282,63 @@ function wire() {
       $('studyco-menu-button').setAttribute('aria-expanded', 'false');
     }
   });
-  const openGlobalSearch = () => {
-    setView('home', { updateUrl: false });
+  const openContactsSearch = () => {
+    setView('friends');
     $('studyco-top-search')?.classList.add('is-open');
     $('studyco-global-search')?.focus();
+    clearTimeout(state.searchTimer);
+    state.searchTimer = setTimeout(() => loadPeople($('studyco-global-search')?.value || '').catch((error) => toast(error.message, true)), 0);
   };
-  const searchCircle = (value) => {
+  const openSearchPage = () => {
+    $('studyco-top-search')?.classList.remove('is-open');
+    setView('search');
+    const input = $('studyco-page-search');
+    input?.focus();
+    if (input?.value.trim()) renderSearchResults(input.value).catch((error) => toast(error.message, true));
+  };
+  const searchContacts = (value) => {
     const term = value.trim();
-    setView('home', { updateUrl: false });
+    if (state.activeView !== 'friends') setView('friends');
+    clearTimeout(state.searchTimer);
+    state.searchTimer = setTimeout(() => loadPeople(term).catch((error) => toast(error.message, true)), 220);
+  };
+  const searchPostsAndPeople = (value) => {
+    const term = value.trim();
+    if (state.activeView !== 'search') setView('search');
     clearTimeout(state.searchTimer);
     state.searchTimer = setTimeout(() => renderSearchResults(term).catch((error) => toast(error.message, true)), 220);
   };
-  $('studyco-global-search')?.addEventListener('input', (event) => searchCircle(event.target.value));
+  $('studyco-global-search')?.addEventListener('input', (event) => searchContacts(event.target.value));
   $('studyco-global-search')?.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') { event.preventDefault(); searchCircle(event.target.value); }
-    if (event.key === 'Escape') { event.preventDefault(); $('studyco-clear-search')?.click(); }
+    if (event.key === 'Enter') { event.preventDefault(); searchContacts(event.target.value); }
+    if (event.key === 'Escape') { event.preventDefault(); $('studyco-top-search')?.classList.remove('is-open'); event.target.blur(); }
   });
   $('studyco-top-search')?.addEventListener('click', (event) => {
-    if (event.target !== $('studyco-global-search')) openGlobalSearch();
+    if (event.target !== $('studyco-global-search')) openContactsSearch();
   });
   document.querySelectorAll('.studyco-search-action').forEach((button) => button.addEventListener('click', () => {
-    openGlobalSearch();
+    openSearchPage();
   }));
+  $('studyco-page-search')?.addEventListener('input', (event) => searchPostsAndPeople(event.target.value));
+  $('studyco-page-search')?.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') { event.preventDefault(); searchPostsAndPeople(event.target.value); }
+    if (event.key === 'Escape') { event.preventDefault(); $('studyco-clear-search')?.click(); }
+  });
   $('studyco-clear-search')?.addEventListener('click', () => {
-    $('studyco-global-search').value = '';
+    $('studyco-page-search').value = '';
     state.searchRequestId += 1;
     renderSearchResults('');
-    $('studyco-top-search')?.classList.remove('is-open');
-    $('studyco-global-search')?.blur();
+    $('studyco-page-search').focus();
   });
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
-  $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; renderPostPreview(); });
+  $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; renderPostPreview(); renderPostAttachmentStatus(); });
+  $('studyco-post-file').addEventListener('change', (event) => { state.postFile = event.target.files[0] || null; renderPostAttachmentStatus(); });
+  $('studyco-add-url').addEventListener('click', () => { $('studyco-post-url-row').hidden = false; $('studyco-post-url').focus(); });
+  $('studyco-remove-url').addEventListener('click', () => { $('studyco-post-url').value = ''; $('studyco-post-url-row').hidden = true; });
+  $('studyco-go-live').addEventListener('click', () => { closePostEditor(); openModal('studyco-story-modal'); toast('Live update composer opened.'); });
+  $('studyco-make-call').addEventListener('click', () => { closePostEditor(); setView('friends'); toast('Choose a friend to start a call.'); });
   $('studyco-publish-post').addEventListener('click', publishPost);
   $('studyco-create-story').addEventListener('click', () => openModal('studyco-story-modal'));
   $('studyco-story-list').addEventListener('click', (event) => { const card = event.target.closest('[data-story-id]'); if (card) showStory(state.stories.find((story) => story.id === card.dataset.storyId)); else if (event.target.closest('#studyco-story-add-card')) openModal('studyco-story-modal'); });

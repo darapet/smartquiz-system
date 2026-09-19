@@ -497,6 +497,176 @@
   margin: 0;
 }
 
+.studyco-post-editor .studyco-composer-head {
+  display: none;
+}
+
+.studyco-post-editor .studyco-composer textarea {
+  display: block;
+  width: 100%;
+  min-height: 220px;
+  margin: 0;
+  padding: 18px;
+  resize: vertical;
+  border: 1px solid #d8dade;
+  border-radius: 12px;
+  background: #fff;
+  color: #050505;
+  font-size: 1.05rem;
+  line-height: 1.5;
+}
+
+.studyco-post-editor .studyco-composer-footer {
+  position: static;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e4e6eb;
+}
+
+.studyco-post-editor .studyco-composer-tools {
+  display: flex;
+  flex: 1 1 100%;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.studyco-post-editor .studyco-tool {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 1px solid #d8dade;
+  border-radius: 9px;
+  background: #fff;
+  color: #1877f2;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.studyco-post-editor .studyco-tool span:first-of-type {
+  font-size: 1rem;
+}
+
+.studyco-post-editor .studyco-tool input {
+  display: none;
+}
+
+.studyco-post-attachment-status {
+  margin-top: 10px;
+  color: #65676b;
+  font-size: .8rem;
+}
+
+.studyco-post-url-row {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  margin-top: 10px;
+}
+
+.studyco-post-url-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid #d8dade;
+  border-radius: 9px;
+  outline: 0;
+}
+
+.studyco-post-url-row input:focus {
+  border-color: #1877f2;
+}
+
+.studyco-search-page-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 24px 18px 14px;
+}
+
+.studyco-search-page-heading .studyco-mobile-back {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #050505;
+  font-size: 2.25rem;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.studyco-search-page-heading h1 {
+  margin: 0;
+  color: #050505;
+  font-size: 1.65rem;
+}
+
+.studyco-search-page-heading p {
+  margin: 4px 0 0;
+  color: #65676b;
+}
+
+.studyco-search-page-input {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  max-width: 980px;
+  margin: 0 auto 14px;
+  padding: 0 14px;
+  border: 1px solid #d8dade;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.studyco-search-page-input > span {
+  color: #65676b;
+  font-size: 1.2rem;
+}
+
+.studyco-search-page-input input {
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  outline: 0;
+  color: #050505;
+  background: transparent;
+}
+
+.studyco-search-page-input button {
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: #e4e6eb;
+  color: #65676b;
+  font-size: 1.1rem;
+}
+
+.studyco-view-search {
+  min-height: calc(100vh - 112px);
+  padding-bottom: 42px;
+  background: #f0f2f5;
+}
+
+.studyco-view-search .studyco-search-results {
+  max-width: 980px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
 .studyco-search-results {
   margin: 0 0 12px;
   padding: 18px;
@@ -531,6 +701,7 @@
 
 @media (max-width: 99999px) {
   .studyco-top-search.is-open {
+    display: flex;
     position: absolute;
     z-index: 60;
     left: 10px;
@@ -571,12 +742,35 @@
     border-radius: 0;
   }
 
+  .studyco-post-editor .studyco-composer textarea {
+    min-height: 240px;
+    border-right: 0;
+    border-left: 0;
+    border-radius: 0;
+  }
+
+  .studyco-post-editor .studyco-composer-footer {
+    padding: 12px;
+  }
+
   .studyco-search-results {
     margin: 0 0 8px;
     padding: 14px 12px;
     border: 0;
     border-radius: 0;
     box-shadow: none;
+  }
+
+  .studyco-search-page-heading {
+    padding: 16px 14px 10px;
+  }
+
+  .studyco-search-page-heading > div > p:not(.studyco-eyebrow) {
+    display: none;
+  }
+
+  .studyco-search-page-input {
+    margin: 0 12px 8px;
   }
 }
 

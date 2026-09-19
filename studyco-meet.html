@@ -46,7 +46,7 @@
       <div class="studyco-top-search"><span aria-hidden="true">⌕</span><input id="studyco-global-search" type="search" placeholder="Search your circle" autocomplete="off"></div>
       <div class="studyco-top-actions">
         <button class="studyco-circle-action" type="button" aria-label="Create"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
-        <button class="studyco-circle-action studyco-search-action" type="button" aria-label="Search"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+        <button id="studyco-header-search" class="studyco-circle-action studyco-search-action" type="button" aria-label="Open search page"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
         <span id="studyco-top-name" hidden></span><button class="studyco-top-avatar" id="studyco-top-avatar" type="button" data-studyco-view="profile" aria-label="Open your profile"></button>
         <button id="studyco-menu-button" class="studyco-circle-action" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
         <div id="studyco-menu-panel" class="studyco-menu-panel" hidden><button id="studyco-menu-messages" data-studyco-view="messages" type="button">Messages</button><button id="studyco-logout" type="button">Sign out</button></div>
@@ -65,8 +65,10 @@
               <div class="studyco-composer-head"><div id="studyco-composer-avatar"></div><div><button id="studyco-open-composer" type="button">What’s on your mind?</button><span>Share with your SmartQuiz friends</span></div></div>
               <textarea id="studyco-post-text" maxlength="1000" placeholder="Share a thought, question, or small win..."></textarea>
               <div id="studyco-post-preview" class="studyco-post-preview" hidden></div>
+              <div id="studyco-post-attachment-status" class="studyco-post-attachment-status" hidden></div>
+              <div id="studyco-post-url-row" class="studyco-post-url-row" hidden><input id="studyco-post-url" type="url" placeholder="Paste a URL to share" inputmode="url"><button id="studyco-remove-url" class="studyco-link-button" type="button">Remove</button></div>
               <div class="studyco-composer-footer">
-                <div class="studyco-composer-tools"><label class="studyco-tool"><input id="studyco-post-image" type="file" accept="image/*"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.2 3.2 2.3-2.3L20 19"/></svg><span>Photo</span></label><span class="studyco-template-label">Card color</span><div class="studyco-template-picker"><button class="selected template-indigo" data-template="indigo" type="button" aria-label="Indigo card"></button><button class="template-sunset" data-template="sunset" type="button" aria-label="Sunset card"></button><button class="template-ocean" data-template="ocean" type="button" aria-label="Ocean card"></button><button class="template-gold" data-template="gold" type="button" aria-label="Gold card"></button><button class="template-night" data-template="night" type="button" aria-label="Dark card"></button><button class="template-berry" data-template="berry" type="button" aria-label="Berry card"></button></div></div>
+                <div class="studyco-composer-tools"><label class="studyco-tool"><input id="studyco-post-image" type="file" accept="image/*"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3.2 3.2 2.3-2.3L20 19"/></svg><span>Add a photo</span></label><label class="studyco-tool"><input id="studyco-post-file" type="file" accept="*/*"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h6"/></svg><span>Add a file</span></label><button id="studyco-add-url" class="studyco-tool" type="button"><span aria-hidden="true">↗</span><span>Add a URL</span></button><button id="studyco-go-live" class="studyco-tool" type="button"><span aria-hidden="true">●</span><span>Go live</span></button><button id="studyco-make-call" class="studyco-tool" type="button"><span aria-hidden="true">☎</span><span>Make a call</span></button><span class="studyco-template-label">Card color</span><div class="studyco-template-picker"><button class="selected template-indigo" data-template="indigo" type="button" aria-label="Indigo card"></button><button class="template-sunset" data-template="sunset" type="button" aria-label="Sunset card"></button><button class="template-ocean" data-template="ocean" type="button" aria-label="Ocean card"></button><button class="template-gold" data-template="gold" type="button" aria-label="Gold card"></button><button class="template-night" data-template="night" type="button" aria-label="Dark card"></button><button class="template-berry" data-template="berry" type="button" aria-label="Berry card"></button></div></div>
                 <button id="studyco-publish-post" class="studyco-button primary" type="button">Post</button>
               </div>
             </section>
@@ -77,18 +79,26 @@
               <div id="studyco-post-editor-body"></div>
             </div>
           </section>
-          <section id="studyco-search-results" class="studyco-search-results studyco-card" hidden aria-live="polite">
-            <div class="studyco-section-title"><div><p class="studyco-eyebrow">Search</p><h2 id="studyco-search-title">Search results</h2></div><button id="studyco-clear-search" class="studyco-link-button" type="button">Clear</button></div>
-            <section id="studyco-search-people-group" class="studyco-search-result-section" hidden><div class="studyco-section-title"><div><h3>People</h3><p>Names and usernames from your circle.</p></div></div><div id="studyco-search-people-results" class="studyco-people-grid"></div></section>
-            <section id="studyco-search-posts-group" class="studyco-search-result-section" hidden><div class="studyco-section-title"><div><h3>Posts</h3><p>Thoughts and updates matching your search.</p></div></div><div id="studyco-search-post-results" class="studyco-feed"></div></section>
-            <div id="studyco-search-empty" class="studyco-empty" hidden>No people or posts matched that search.</div>
-          </section>
           <section class="studyco-stories-section">
             <div class="studyco-section-title"><div><h2>Stories</h2><p>Quick updates from your study circle.</p></div><button class="studyco-link-button" id="studyco-create-story" type="button">Add story</button></div>
             <div id="studyco-story-list" class="studyco-story-row"></div>
           </section>
           <div class="studyco-feed-title"><div><p class="studyco-eyebrow">Your circle</p><h2>Fresh from the feed</h2></div><button id="studyco-refresh-feed" class="studyco-icon-button" type="button" aria-label="Refresh feed">↻</button></div>
           <div id="studyco-post-feed" class="studyco-feed"></div>
+        </section>
+
+        <section id="studyco-view-search" class="studyco-view">
+          <div class="studyco-search-page-heading">
+            <button class="studyco-mobile-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button>
+            <div><p class="studyco-eyebrow">Find something in your circle</p><h1>Search</h1><p>Search posts, names, usernames, schools, and departments.</p></div>
+          </div>
+          <label class="studyco-search-page-input"><span aria-hidden="true">⌕</span><input id="studyco-page-search" type="search" placeholder="Search posts or people" autocomplete="off" aria-label="Search posts or people"><button id="studyco-clear-search" type="button" aria-label="Clear search">×</button></label>
+          <section id="studyco-search-results" class="studyco-search-results studyco-card" hidden aria-live="polite">
+            <div class="studyco-section-title"><div><p class="studyco-eyebrow">Search</p><h2 id="studyco-search-title">Search results</h2></div></div>
+            <section id="studyco-search-people-group" class="studyco-search-result-section" hidden><div class="studyco-section-title"><div><h3>People</h3><p>Names and usernames from your circle.</p></div></div><div id="studyco-search-people-results" class="studyco-people-grid"></div></section>
+            <section id="studyco-search-posts-group" class="studyco-search-result-section" hidden><div class="studyco-section-title"><div><h3>Posts</h3><p>Thoughts and updates matching your search.</p></div></div><div id="studyco-search-post-results" class="studyco-feed"></div></section>
+            <div id="studyco-search-empty" class="studyco-empty" hidden>No people or posts matched that search.</div>
+          </section>
         </section>
 
         <section id="studyco-view-friends" class="studyco-view">
