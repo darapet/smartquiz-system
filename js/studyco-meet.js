@@ -437,20 +437,47 @@ async function renderSearchResults(value) {
 async function renderPost(post) {
   const [author, likesSnap, commentsSnap] = await Promise.all([
     getProfile(post.userId), getDocs(collection(db, 'studyco_posts', post.id, 'likes')),
-    getDocs(query(collection(db, 'studyco_posts', post.id, 'comments'), limit(3)))
+    post.commentCount == null ? getDocs(query(collection(db, 'studyco_posts', post.id, 'comments'), limit(1))) : Promise.resolve(null)
   ]);
   const liked = likesSnap.docs.some((item) => item.id === state.user.uid);
-  const comments = await Promise.all(commentsSnap.docs.sort((a, b) => timeMs(a.data().createdAt) - timeMs(b.data().createdAt)).map(async (item) => {
-    const data = item.data(); const commenter = await getProfile(data.userId);
-    return `<div class="studyco-comment">${avatar(commenter, 'small')}<div><strong>${esc(profileName(commenter))}</strong>${esc(data.text)}</div></div>`;
-  }));
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
-  const visual = post.bgTemplateId && post.content && post.content.length <= 240 ? `<div class="studyco-post-visual ${templateClass(post.bgTemplateId)}">${esc(post.content)}</div>` : '';
   const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment">` : '';
   const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${visual || text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}">${liked ? 'Liked' : 'Like'} · ${likesSnap.size}</button><button data-post-action="focus-comment" data-post-id="${esc(post.id)}">Comment · ${post.commentCount || commentsSnap.size}</button></div><div class="studyco-comments">${comments.join('')}</div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}"><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  const commentCount = Number(post.commentCount ?? commentsSnap?.size ?? 0);
+  const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
+  const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
+  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+}
+
+async function loadPostComments(postId, article) {
+  const panel = article.querySelector('[data-comments-panel]');
+  const form = article.querySelector('[data-comment-post]');
+  if (!panel || !form) return;
+  panel.innerHTML = '<div class="studyco-empty">Loading comments...</div>';
+  panel.hidden = false;
+  form.hidden = false;
+  const snapshot = await getDocs(collection(db, 'studyco_posts', postId, 'comments'));
+  const comments = await Promise.all(snapshot.docs
+    .sort((a, b) => timeMs(a.data().createdAt) - timeMs(b.data().createdAt))
+    .map(async (item) => {
+      const data = item.data(); const commenter = await getProfile(data.userId);
+      return `<div class="studyco-comment">${avatar(commenter, 'small')}<div><strong>${esc(profileName(commenter))}</strong><span>${esc(data.text)}</span></div></div>`;
+    }));
+  panel.innerHTML = comments.join('') || '<div class="studyco-empty">No comments yet. Start the conversation.</div>';
+  panel.dataset.loaded = 'true';
+}
+
+async function sharePost(postId) {
+  const url = window.location.href.split('#')[0] + `#post/${encodeURIComponent(postId)}`;
+  try {
+    if (navigator.share) await navigator.share({ title: 'StudyCo post', url });
+    else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(url); toast('Post link copied.'); }
+    else toast(url);
+  } catch (error) {
+    if (error?.name !== 'AbortError') toast('The post could not be shared.', true);
+  }
 }
 
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts) {
@@ -1359,8 +1386,34 @@ function wire() {
     const row = event.target.closest('[data-notification-id]');
     if (row) openNotification(row.dataset.notificationId);
   });
-  $('studyco-post-feed').addEventListener('click', async (event) => { const button = event.target.closest('[data-post-action]'); if (!button) return; if (button.dataset.postAction === 'like') await toggleLike(button.dataset.postId); if (button.dataset.postAction === 'focus-comment') button.closest('.studyco-post').querySelector('input')?.focus(); });
-  $('studyco-post-feed').addEventListener('submit', async (event) => { if (!event.target.matches('[data-comment-post]')) return; event.preventDefault(); await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value); event.target.reset(); });
+  document.addEventListener('click', async (event) => {
+    const button = event.target.closest('[data-post-action]');
+    if (!button) return;
+    const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
+    if (!article) return;
+    if (action === 'like') await toggleLike(button.dataset.postId);
+    if (action === 'share') await sharePost(button.dataset.postId);
+    if (action === 'comments') {
+      const panel = article.querySelector('[data-comments-panel]');
+      if (panel?.dataset.loaded === 'true') {
+        panel.hidden = !panel.hidden;
+        const form = article.querySelector('[data-comment-post]');
+        if (form) form.hidden = panel.hidden;
+      } else {
+        button.disabled = true;
+        try { await loadPostComments(button.dataset.postId, article); } catch (error) { toast(error.message || 'Comments could not load.', true); }
+        button.disabled = false;
+      }
+    }
+  });
+  document.addEventListener('submit', async (event) => {
+    if (!event.target.matches('[data-comment-post]')) return;
+    event.preventDefault();
+    await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value);
+    event.target.reset();
+    const article = event.target.closest('.studyco-post');
+    if (article) await loadPostComments(event.target.dataset.commentPost, article);
+  });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-search-people-results')?.addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-request-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
