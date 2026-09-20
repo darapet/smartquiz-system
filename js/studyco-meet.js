@@ -7,7 +7,7 @@ const state = {
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
-  feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
+  feedUnsub: null, scheduleTimer: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
@@ -527,6 +527,19 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
   target.innerHTML = (await Promise.all(posts.map(renderPost))).join('');
 }
 
+function scheduleNextFeedRefresh() {
+  clearTimeout(state.scheduleTimer);
+  const next = state.posts
+    .filter((post) => post.status === 'scheduled' && timeMs(post.scheduledAt) > Date.now())
+    .sort((a, b) => timeMs(a.scheduledAt) - timeMs(b.scheduledAt))[0];
+  if (!next) return;
+  state.scheduleTimer = setTimeout(() => {
+    renderFeed();
+    if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid);
+    scheduleNextFeedRefresh();
+  }, Math.max(1000, timeMs(next.scheduledAt) - Date.now() + 100));
+}
+
 async function loadProfileView(uid = state.user.uid) {
   const profileUid = uid || state.user.uid;
   const profile = profileUid === state.user.uid ? state.profile : await getProfile(profileUid);
@@ -554,7 +567,7 @@ function subscribeFeed() {
   state.feedUnsub?.();
   state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), limit(60)), (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
-    renderFeed(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
+    renderFeed(); scheduleNextFeedRefresh(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
   }, (error) => toast(error.message || 'The feed could not load.', true));
 }
 
