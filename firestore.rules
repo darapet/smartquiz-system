@@ -30,6 +30,52 @@ service cloud.firestore {
       allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
     }
 
+    // ─── Daily quotes ──────────────────────────────────────────────
+    // Everyone may read the shared quote cache. Only the admin may
+    // generate, refresh, or remove cached quotes.
+    match /aqsDailyQuotes/{quoteId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ─── User feedback questionnaires ──────────────────────────────
+    // The active questionnaire is public so the popup can load before
+    // authentication. Questionnaire management remains admin-only.
+    match /aqsSystem/{settingId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /aqsFeedbacks/{feedbackId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // Feedback responses use one top-level collection per questionnaire
+    // (aqsFeedbackResponses_<questionnaire id>).
+    match /{collectionId}/{responseId} {
+      allow create: if collectionId.matches('aqsFeedbackResponses_.*')
+          && request.resource.data.feedbackId is string
+          && request.resource.data.answers is map
+          && request.resource.data.submittedAt is int;
+      allow read: if isAdmin()
+          && collectionId.matches('aqsFeedbackResponses_.*');
+    }
+
+    // ─── App ratings ───────────────────────────────────────────────
+    match /ratings/{ratingId} {
+      allow create: if isSignedIn()
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.stars is int
+          && request.resource.data.stars >= 1
+          && request.resource.data.stars <= 5
+          && request.resource.data.comment is string;
+      allow read: if isAdmin();
+    }
+
     // ─── Usernames ──────────────────────────────────────────────────
     match /usernames/{username} {
       allow read: if true;

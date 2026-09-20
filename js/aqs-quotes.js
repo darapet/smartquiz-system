@@ -123,6 +123,10 @@
       var COL      = 'aqsDailyQuotes';
       var LS_CACHE = 'aqs_dq_';
 
+      function canWriteQuotes() {
+          return Boolean(window.AQS && window.AQS.is_admin === true);
+      }
+
       function todayKey() {
           var d = new Date();
           return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -139,7 +143,7 @@
 
       /* ── Auto-cleanup: delete old Firestore docs after 11 PM ─────────── */
       async function cleanOldQuotes() {
-          if (!window._aqsFS) return;
+          if (!window._aqsFS || !canWriteQuotes()) return;
           try {
               var all = await window._aqsFS.getAll(COL);
               var today = todayKey();
@@ -188,7 +192,8 @@
 
           if (allQuotes.length < 5) return null;
 
-          if (window._aqsFS) window._aqsFS.set(COL, key, { quotes: allQuotes, generatedAt: Date.now(), date: key });
+          if (window._aqsFS && canWriteQuotes())
+              window._aqsFS.set(COL, key, { quotes: allQuotes, generatedAt: Date.now(), date: key });
           try { localStorage.setItem(LS_CACHE + key, JSON.stringify(allQuotes)); } catch(e2) {}
           return allQuotes;
       }
@@ -303,6 +308,10 @@
       window._aqsForceGenerate = async function(onStatus) {
           var key = todayKey();
           function status(msg) { if (typeof onStatus === 'function') onStatus(msg); }
+          if (!canWriteQuotes()) {
+              status('❌ Only an administrator can regenerate shared quotes.');
+              return null;
+          }
           status("🗑️ Clearing today's cache…");
           try { localStorage.removeItem(LS_CACHE + key); } catch(e) {}
           if (window._aqsFS) {
