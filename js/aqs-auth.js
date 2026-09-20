@@ -127,6 +127,33 @@
         });
     }
 
+    function setupPasswordReset() {
+        var button = document.getElementById('aqs-forgot-password');
+        if (!button) return;
+        button.addEventListener('click', function () {
+            var identifier = (document.getElementById('login-identifier') || {}).value || '';
+            if (identifier.indexOf('@') === -1) {
+                showAlert('aqs-login-alert', 'Enter your email address first, then select Forgot password.', true);
+                return;
+            }
+            button.disabled = true;
+            button.textContent = 'Sending reset email…';
+            window.aqsAjax({ action: 'aqs_reset_password', email: identifier }, function (res) {
+                button.disabled = false;
+                button.textContent = 'Forgot password?';
+                if (res && res.success) {
+                    showAlert('aqs-login-alert', 'If an account exists for that email, a password reset link has been sent.', false);
+                } else {
+                    showAlert('aqs-login-alert', (res && res.data) || 'Could not send a reset email.', true);
+                }
+            }, function (err) {
+                button.disabled = false;
+                button.textContent = 'Forgot password?';
+                showAlert('aqs-login-alert', (err && err.message) || 'Could not send a reset email.', true);
+            });
+        });
+    }
+
     /* ── register form ── */
     function setupRegisterForm() {
         var form = document.getElementById('aqs-register-form');
@@ -377,6 +404,7 @@
     document.addEventListener('DOMContentLoaded', function () {
         setupPasswordToggles();
         setupPasswordStrength();
+        setupPasswordReset();
         setupRoleChips();
         setupLoginForm();
         setupRegisterForm();

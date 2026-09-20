@@ -11,6 +11,7 @@ import {
     getAuth,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    sendPasswordResetEmail,
     sendEmailVerification,
     signOut,
     onAuthStateChanged,
@@ -514,6 +515,7 @@ async function handleAction(data) {
         case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
         case 'aqs_register':         return await actionRegister(data);
+        case 'aqs_reset_password':   return await actionResetPassword(data);
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
         case 'aqs_verify_otp':       return await actionVerifyOtp(data);
@@ -636,6 +638,15 @@ async function actionLogin(data) {
         otp_verified: true,
         user_name:    profile.name || user.displayName || user.email
     };
+}
+
+async function actionResetPassword(data) {
+    var email = String(data.email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') === -1) {
+        throw new Error('Enter your email address first, then select Forgot password.');
+    }
+    await sendPasswordResetEmail(auth, email);
+    return { sent: true };
 }
 
 async function actionRegister(data) {
