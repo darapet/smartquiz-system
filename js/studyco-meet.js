@@ -316,6 +316,7 @@ function renderProfile() {
   $('studyco-profile-back').hidden = isOwnProfile;
   $('studyco-profile-complete-action').hidden = !isOwnProfile;
   $('studyco-edit-profile').hidden = !isOwnProfile;
+  $('studyco-profile-edit-small').hidden = !isOwnProfile;
   $('studyco-profile-next').hidden = !isOwnProfile;
 }
 
