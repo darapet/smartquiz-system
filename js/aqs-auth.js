@@ -173,9 +173,24 @@
                 { action: 'aqs_register', name: name, username: username, email: email, role: role, password: password },
                 function (res) {
                     if (res && res.success) {
+                        var dest = (res.data && res.data.redirect) || 'user-dashboard.html';
+                        var otpRequired = !!(res.data && res.data.otp_required);
+                        if (otpRequired) {
+                            window._aqsRegistrationRedirect = dest;
+                            showAlert(
+                                'aqs-register-alert',
+                                res.data.otp_sent
+                                    ? '✓ Account created. Check your inbox for the verification code.'
+                                    : '✓ Account created. We could not send the code yet—use Resend when email settings are ready.',
+                                !res.data.otp_sent
+                            );
+                            var otpPanel = document.getElementById('aqs-otp-panel');
+                            if (otpPanel) otpPanel.hidden = false;
+                            setBtn('aqs-register-submit', 'Account created', true);
+                            return;
+                        }
                         var msg = (res.data && res.data.message) || '✓ Account created! Redirecting…';
                         showAlert('aqs-register-alert', msg, false);
-                        var dest = (res.data && res.data.redirect) || 'user-dashboard.html';
                         /* Let the protected page wait for this newly-created
                            Firebase session instead of redirecting back here. */
                         try {
@@ -196,6 +211,68 @@
                 }
             );
         });
+    }
+
+    /* ── email OTP verification ── */
+    function setupOtpVerification() {
+        var panel = document.getElementById('aqs-otp-panel');
+        var input = document.getElementById('aqs-register-otp');
+        var verify = document.getElementById('aqs-verify-otp-btn');
+        var resend = document.getElementById('aqs-resend-otp-btn');
+        var status = document.getElementById('aqs-otp-status');
+        if (!panel || !input || !verify || !resend) return;
+
+        function setOtpStatus(message, isError) {
+            if (!status) return;
+            status.textContent = message || '';
+            status.style.color = isError ? '#fca5a5' : '#bbf7d0';
+        }
+        function sendOtp() {
+            verify.disabled = true;
+            resend.disabled = true;
+            setOtpStatus('Sending a new code…', false);
+            window.aqsAjax({ action: 'aqs_send_otp' }, function (res) {
+                verify.disabled = false;
+                resend.disabled = false;
+                if (res && res.success && res.data && res.data.sent) {
+                    setOtpStatus('A new code has been sent.', false);
+                } else {
+                    setOtpStatus((res && res.data && res.data.message) || 'Could not send a code.', true);
+                }
+            }, function (err) {
+                verify.disabled = false;
+                resend.disabled = false;
+                setOtpStatus((err && err.message) || 'Could not send a code.', true);
+            });
+        }
+        verify.addEventListener('click', function () {
+            var code = (input.value || '').replace(/\D/g, '');
+            if (code.length !== 6) {
+                setOtpStatus('Enter the 6-digit code from your email.', true);
+                return;
+            }
+            verify.disabled = true;
+            resend.disabled = true;
+            setOtpStatus('Verifying…', false);
+            window.aqsAjax({ action: 'aqs_verify_otp', otp: code }, function (res) {
+                if (res && res.success && res.data && res.data.verified) {
+                    setOtpStatus('Email verified. Redirecting…', false);
+                    try { sessionStorage.setItem('aqs_registration_complete', String(Date.now())); } catch (_) {}
+                    window.setTimeout(function () {
+                        window.location.replace(window._aqsRegistrationRedirect || 'user-dashboard.html');
+                    }, 700);
+                    return;
+                }
+                verify.disabled = false;
+                resend.disabled = false;
+                setOtpStatus((res && res.data && res.data.message) || 'That code is not valid.', true);
+            }, function (err) {
+                verify.disabled = false;
+                resend.disabled = false;
+                setOtpStatus((err && err.message) || 'That code is not valid.', true);
+            });
+        });
+        resend.addEventListener('click', sendOtp);
     }
 
     /* ── logout buttons ── */
@@ -269,7 +346,6 @@
                   return;
               }
               window.aqsAjax(
-                  { action: 'aqs_social_login', provider: 'google' },
                   function (res) {
                       /* Firebase redirect flow navigates away immediately. */
                       if (res && res.success && res.data && res.data.redirect_started) {
@@ -304,8 +380,8 @@
         setupRoleChips();
         setupLoginForm();
         setupRegisterForm();
+        setupOtpVerification();
         setupLogoutBtns();
         setupDashboardInfo();
-        setupGoogleSignIn();
     });
 })();

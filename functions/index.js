@@ -15,9 +15,106 @@ const DEFAULT_CREATOR_IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
 
 function setCors(response) {
   response.set('Access-Control-Allow-Origin', '*');
-  response.set('Access-Control-Allow-Headers', 'Content-Type');
+  response.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   response.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 }
+
+async function verifyBearerUser(request) {
+  const header = String(request.get('authorization') || '');
+  const token = header.replace(/^Bearer\s+/i, '').trim();
+  if (!token) throw new Error('Authentication required.');
+  return admin.auth().verifyIdToken(token);
+}
+
+async function brevoConfiguration() {
+  const [mainSnapshot, privateSnapshot] = await Promise.all([
+    db.doc('settings/main').get(),
+    db.doc('settings/private').get(),
+  ]);
+  const main = mainSnapshot.exists ? mainSnapshot.data() : {};
+  const privateSettings = privateSnapshot.exists ? privateSnapshot.data() : {};
+  return {
+    apiKey: String(privateSettings.brevo_api_key || main.brevo_api_key || '').trim(),
+    fromName: String(main.brevo_from_name || 'SmartQuiz').trim(),
+    fromEmail: String(main.brevo_from_email || '').trim(),
+  };
+}
+
+async function sendBrevoMessage({ recipient, subject, htmlContent, textContent }) {
+  const config = await brevoConfiguration();
+  if (!config.apiKey || !config.fromEmail) {
+    throw new Error('Brevo is not configured. Add an API key and sender email in Admin Settings.');
+  }
+  const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'api-key': config.apiKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: config.fromName, email: config.fromEmail },
+      to: [{ email: recipient }],
+      subject,
+      htmlContent,
+      textContent,
+    }),
+  });
+  if (!brevoResponse.ok) {
+    let details = '';
+    try {
+      const body = await brevoResponse.json();
+      details = body.message ? ` ${body.message}` : '';
+    } catch (_) {}
+    throw new Error(`Brevo rejected the email.${details}`);
+  }
+  return brevoResponse.json();
+}
+
+exports.brevoEmail = onRequest(
+  { region: 'us-central1', timeoutSeconds: 30, memory: '256MiB' },
+  async (request, response) => {
+    setCors(response);
+    if (request.method === 'OPTIONS') return response.status(204).send('');
+    if (request.method !== 'POST') return response.status(405).json({ error: 'Use POST for email actions.' });
+
+    try {
+      const user = await verifyBearerUser(request);
+      const payload = request.body && typeof request.body === 'object' ? request.body : {};
+      const kind = String(payload.kind || '');
+      const isAdmin = String(user.email || '').toLowerCase() === 'daramolapeter98@gmail.com';
+
+      if (kind === 'test') {
+        if (!isAdmin) return response.status(403).json({ error: 'Admin access required.' });
+        await sendBrevoMessage({
+          recipient: user.email,
+          subject: 'SmartQuiz Brevo test email',
+          htmlContent: '<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Brevo is connected</h2><p>Your SmartQuiz email configuration is working correctly.</p></div>',
+          textContent: 'Brevo is connected. Your SmartQuiz email configuration is working correctly.',
+        });
+        return response.json({ sent: true });
+      }
+
+      if (kind === 'otp') {
+        const code = String(payload.code || '').replace(/\D/g, '');
+        if (code.length !== 6) return response.status(400).json({ error: 'A valid six-digit OTP is required.' });
+        await sendBrevoMessage({
+          recipient: user.email,
+          subject: 'Your SmartQuiz verification code',
+          htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz account</h2><p>Enter this code to finish registration:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
+          textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
+        });
+        return response.json({ sent: true });
+      }
+
+      return response.status(400).json({ error: 'Unknown email action.' });
+    } catch (error) {
+      console.error('Brevo email error:', error);
+      const status = error && error.code === 'auth/id-token-expired' ? 401 : 502;
+      return response.status(status).json({ error: error.message || 'Email service is unavailable.' });
+    }
+  },
+);
 
 function requestIp(request) {
   const forwarded = request.get('x-forwarded-for');

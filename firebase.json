@@ -23,6 +23,13 @@
     ],
     "rewrites": [
       {
+        "source": "/api/email",
+        "function": {
+          "functionId": "brevoEmail",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/api/**",
         "function": {
           "functionId": "creatorImageGenerate",

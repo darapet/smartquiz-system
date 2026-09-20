@@ -252,8 +252,14 @@ service cloud.firestore {
 
     // ─── Settings ───────────────────────────────────────────────────
     match /settings/{settingId} {
-      allow read: if true;
+      allow read: if settingId != 'private';
       allow write: if isAdmin();
+    }
+
+    // API credentials are server-only. The client can never read this
+    // document, even though other public app settings remain readable.
+    match /settings/private {
+      allow read, write: if isAdmin();
     }
 
     // ─── Ads ────────────────────────────────────────────────────────

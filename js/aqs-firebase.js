@@ -15,10 +15,6 @@ import {
     signOut,
     onAuthStateChanged,
     updateProfile,
-    GoogleAuthProvider,
-    signInWithPopup,
-    getRedirectResult,
-    signInWithRedirect,
     setPersistence,
     browserLocalPersistence,
     signInAnonymously,
@@ -39,7 +35,8 @@ import {
     orderBy,
     limit,
     serverTimestamp,
-    Timestamp
+    Timestamp,
+    deleteField
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
     getDatabase,
@@ -66,9 +63,7 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-/* Make the Google session durable before any popup/redirect starts. Without
-   an explicit persistence policy, a browser that falls back from popup to
-   redirect can return to login before Firebase has restored the user. */
+/* Keep email/password sessions durable across reloads. */
 const _aqsAuthPersistenceReady = setPersistence(auth, browserLocalPersistence)
     .catch(function(error) {
         console.warn('[AQS Firebase] Could not set browser auth persistence:', error);
@@ -133,26 +128,7 @@ function tsToStr(ts) {
 window._aqsFirebaseUser = null;
 window._aqsAuthResolved = false;   /* true once auth state is fully determined (after persistence) */
 window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = logged out; object = logged in */
-function _aqsGoogleRedirectIsPending() {
-    try {
-        var startedAt = parseInt(sessionStorage.getItem('aqs_google_redirect_pending') || '0', 10);
-        if (!startedAt) return false;
-        /* Do not let an abandoned Google attempt suppress the auth guard
-           forever. A real callback normally completes in seconds. */
-        if (Date.now() - startedAt > 10 * 60 * 1000) {
-            sessionStorage.removeItem('aqs_google_redirect_pending');
-            return false;
-        }
-        return true;
-    } catch (_) {
-        return false;
-    }
-}
-function _aqsClearGoogleRedirectPending() {
-    try { sessionStorage.removeItem('aqs_google_redirect_pending'); } catch (_) {}
-    window._aqsIsLoggingIn = false;
-}
-window._aqsIsLoggingIn = _aqsGoogleRedirectIsPending();
+window._aqsIsLoggingIn = false;
 
 /* ── Why authStateReady() matters ───────────────────────────────────────────
    Firebase's onAuthStateChanged fires TWICE on page load when a session exists:
@@ -224,6 +200,29 @@ function requireAuth() {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('Not authenticated');
     return user;
+}
+
+function isConfiguredAdmin(user) {
+    return !!user && String(user.email || '').toLowerCase() === 'daramolapeter98@gmail.com';
+}
+
+async function callBrevoEmail(payload) {
+    var user = requireAuth();
+    var token = await user.getIdToken();
+    var endpoint = (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL)
+        || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
+    var response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer ' + token
+        },
+        body: JSON.stringify(payload || {})
+    });
+    var body = {};
+    try { body = await response.json(); } catch (_) {}
+    if (!response.ok) throw new Error(body.error || 'Brevo email service is unavailable.');
+    return body;
 }
 
 /* ── Guest / anonymous session ──────────────────────────────────────────────
@@ -515,10 +514,10 @@ async function handleAction(data) {
         case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
         case 'aqs_register':         return await actionRegister(data);
-        case 'aqs_social_login':     return await actionSocialLogin(data);
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
         case 'aqs_verify_otp':       return await actionVerifyOtp(data);
+        case 'aqs_test_brevo':       return await actionTestBrevo();
 
         /* ── QUIZ CRUD ── */
         case 'aqs_save_quiz':        return await actionSaveQuiz(data);
@@ -641,6 +640,7 @@ async function actionRegister(data) {
     var email    = (data.email || '').trim();
     var role     = (data.role || 'student').trim();
     var password = (data.password || '').trim();
+    if (email.toLowerCase() === 'daramolapeter98@gmail.com') role = 'admin';
 
     /* Check username uniqueness via public /usernames collection
        (avoids a permission error — users collection requires auth) */
@@ -694,7 +694,21 @@ async function actionRegister(data) {
            The profile doc will be written on next login. */
     }
 
-    /* Send email verification (fully non-blocking) */
+    var otpRequired = false;
+    var otpSent = false;
+    try {
+        var otpSettings = await getDoc(doc(db, 'settings', 'main'));
+        otpRequired = otpSettings.exists() && otpSettings.data().otp_enabled === true;
+        if (otpRequired) {
+            var otpResult = await actionSendOtp();
+            otpSent = !!(otpResult && otpResult.sent);
+            await setDoc(doc(db, 'users', user.uid), { otp_verified: false }, { merge: true });
+        }
+    } catch (otpError) {
+        console.warn('[AQS Register] OTP delivery failed:', otpError && otpError.message);
+    }
+
+    /* Send Firebase's normal verification link as an additional fallback. */
     sendEmailVerification(user).catch(function() {});
 
     _updateAqsGlobals(user, profile);
@@ -703,115 +717,10 @@ async function actionRegister(data) {
     return {
         message:      '✓ Account created! Redirecting…',
         redirect:     redirect,
-        otp_required: false,
-        otp_sent:     false
+        otp_required: otpRequired,
+        otp_sent:     otpSent
     };
 }
-
-/* ── Google / Social Sign-In ───────────────────────────────────────────────
-   Use Firebase's hosted Google redirect flow. Redirect is more reliable than
-   a popup on mobile browsers and on browsers that block popup communication. */
-async function _completeGoogleLogin(user) {
-    var profileRef = doc(db, 'users', user.uid);
-    var profileDoc = await getDoc(profileRef);
-    var profile;
-
-    if (profileDoc.exists()) {
-        profile = profileDoc.data();
-        await updateDoc(profileRef, { last_login: serverTimestamp() });
-    } else {
-        var displayName = user.displayName || '';
-        var emailLocal = (user.email || '').split('@')[0];
-        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-        var finalUsername = baseUsername;
-        var collision = await getDoc(doc(db, 'usernames', finalUsername));
-        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
-        profile = {
-            uid: user.uid,
-            name: displayName,
-            username: finalUsername,
-            email: user.email,
-            role: 'student',
-            avatar: user.photoURL || '',
-            provider: 'google',
-            status: 'active',
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp()
-        };
-        await setDoc(profileRef, profile);
-        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid, email: user.email });
-    }
-
-    _updateAqsGlobals(user, profile);
-    return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
-}
-
-async function actionSocialLogin(data) {
-    var providerName = data.provider || 'google';
-    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
-
-    var provider = new GoogleAuthProvider();
-    window._aqsIsLoggingIn = true;
-    try {
-        await _aqsAuthPersistenceReady;
-        /* A popup keeps the user on the current page and avoids the
-           redirect/persistence loop that can occur on custom domains. */
-        var result = await signInWithPopup(auth, provider);
-        try {
-            return await _completeGoogleLogin(result.user);
-        } catch (profileError) {
-            /* Google authentication succeeded even if profile setup is
-               temporarily unavailable. Do not send the user back to login. */
-            console.warn('[AQS Firebase] Google profile setup deferred:', profileError);
-            return {
-                redirect: 'user-dashboard.html',
-                user_name: result.user.displayName || result.user.email || 'you'
-            };
-        }
-    } catch (error) {
-        /* Popups can be blocked on some mobile browsers. Keep redirect as a
-           fallback for those environments. */
-        if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(error && error.code)) {
-            try { sessionStorage.setItem('aqs_google_redirect_pending', String(Date.now())); } catch (_) {}
-            await signInWithRedirect(auth, provider);
-            return { redirect_started: true };
-        }
-        window._aqsIsLoggingIn = false;
-        throw error;
-    }
-}
-
-/* Firebase returns to the same login/register URL after Google completes.
-   Finish the profile setup here, then send the user to their dashboard. */
-_aqsAuthPersistenceReady.then(function() {
-    return getRedirectResult(auth);
-}).then(function(result) {
-    if (!result || !result.user) {
-        /* Do not clear a popup's in-memory guard merely because there was no
-           redirect result. Only consume the persistent marker when one exists. */
-        if (_aqsGoogleRedirectIsPending()) _aqsClearGoogleRedirectPending();
-        return;
-    }
-    window._aqsIsLoggingIn = true;
-    return _completeGoogleLogin(result.user).then(function(data) {
-        _aqsClearGoogleRedirectPending();
-        if (data && data.redirect) window.location.replace(data.redirect);
-    }).catch(function(error) {
-        console.warn('[AQS Firebase] Google profile setup deferred after redirect:', error);
-        _aqsClearGoogleRedirectPending();
-        window.location.replace('user-dashboard.html');
-    });
-}).catch(function(error) {
-    console.error('[AQS Firebase] Google redirect sign-in failed:', error);
-    _aqsClearGoogleRedirectPending();
-    if (auth.currentUser && !auth.currentUser.isAnonymous) {
-        window.location.replace('user-dashboard.html');
-        return;
-    }
-    document.dispatchEvent(new CustomEvent('aqs:googleautherror', {
-        detail: { message: error && error.message || 'Google sign-in failed.' }
-    }));
-});
 
 async function actionLogout() {
     await signOut(auth);
@@ -825,15 +734,17 @@ async function actionLogout() {
 }
 
 async function actionSendOtp() {
-    /* Firebase uses email verification links, not numeric OTPs.
-       We store a 6-digit code in the user's Firestore doc as a workaround. */
     var user = requireAuth();
-    var otp  = String(Math.floor(100000 + Math.random() * 900000));
-    var exp  = Date.now() + 10 * 60 * 1000; /* 10 minutes */
-    await updateDoc(doc(db, 'users', user.uid), { otp: otp, otp_exp: exp });
-    /* In production you'd email the code — here we just store it.
-       The UI will auto-verify since Firebase handles real email verification. */
-    return { sent: true };
+    if (!user.email) throw new Error('Your account does not have an email address.');
+    var settingsSnap = await getDoc(doc(db, 'settings', 'main'));
+    if (!settingsSnap.exists() || settingsSnap.data().otp_enabled !== true) {
+        throw new Error('Email OTP is currently disabled by the administrator.');
+    }
+    var otp = String(Math.floor(100000 + Math.random() * 900000));
+    var exp = Date.now() + 10 * 60 * 1000;
+    await setDoc(doc(db, 'users', user.uid), { otp: otp, otp_exp: exp, otp_verified: false }, { merge: true });
+    await callBrevoEmail({ kind: 'otp', code: otp });
+    return { sent: true, expires_in: 600 };
 }
 
 async function actionVerifyOtp(data) {
@@ -844,8 +755,14 @@ async function actionVerifyOtp(data) {
     var profile = snap.data();
     if (!profile.otp || profile.otp !== code) throw new Error('Incorrect code. Please try again.');
     if (Date.now() > (profile.otp_exp || 0)) throw new Error('Code expired. Please request a new one.');
-    await updateDoc(doc(db, 'users', user.uid), { otp: null, otp_exp: null, email_verified: true });
+    await updateDoc(doc(db, 'users', user.uid), { otp: null, otp_exp: null, otp_verified: true, email_verified: true });
     return { verified: true };
+}
+
+async function actionTestBrevo() {
+    var user = requireAuth();
+    if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
+    return await callBrevoEmail({ kind: 'test' });
 }
 
 /* ============================================================
@@ -2406,6 +2323,12 @@ async function actionGetSettings() {
                 settings = Object.assign({}, settings);
                 delete settings.creator_image_keys;
             }
+            delete settings.brevo_api_key;
+            var currentUser = auth.currentUser || window._aqsFirebaseUser;
+            if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
+                var privateSnap = await getDoc(doc(db, 'settings', 'private'));
+                if (privateSnap.exists()) settings.brevo_api_key = privateSnap.data().brevo_api_key || '';
+            }
             return { settings: settings };
         }
     } catch(_) {}
@@ -2414,8 +2337,9 @@ async function actionGetSettings() {
 
 async function actionSaveSettings(data) {
     var user = auth.currentUser || window._aqsFirebaseUser;
-    if (!user) throw new Error('Not authenticated.');
+    if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
     var payload = {};
+    var privatePayload = {};
     var allowed = [
         'groq_keys','groq_model',
         'mistral_keys','mistral_model',
@@ -2423,7 +2347,7 @@ async function actionSaveSettings(data) {
         'creator_image_keys','creator_image_model',
         'bg_music_url',
         'splash_enabled','splash_logo_url',
-        'brevo_api_key','brevo_from_name','brevo_from_email',
+        'brevo_api_key','brevo_from_name','brevo_from_email','otp_enabled',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
         'ticker_text',
         'google_client_id','google_client_secret',
@@ -2440,7 +2364,11 @@ async function actionSaveSettings(data) {
         'quizstudio_groq_keys',
         'gemini_tts_keys'
     ];
-    allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    allowed.forEach(function(k) {
+        if (!(k in data)) return;
+        if (k === 'brevo_api_key') privatePayload[k] = data[k];
+        else payload[k] = data[k];
+    });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
     if (Array.isArray(payload.gemini_tts_keys)) {
         payload.gemini_tts_keys = payload.gemini_tts_keys
@@ -2501,6 +2429,16 @@ async function actionSaveSettings(data) {
         }
     });
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
+    if ('brevo_api_key' in privatePayload) {
+        var privateValue = String(privatePayload.brevo_api_key || '').trim();
+        if (privateValue) {
+            await setDoc(doc(db, 'settings', 'private'), { brevo_api_key: privateValue }, { merge: true });
+        } else {
+            await setDoc(doc(db, 'settings', 'private'), { brevo_api_key: deleteField() }, { merge: true });
+        }
+        /* Remove the legacy public copy if one exists. */
+        await setDoc(doc(db, 'settings', 'main'), { brevo_api_key: deleteField() }, { merge: true });
+    }
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
         var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
@@ -2736,7 +2674,7 @@ function _updateAqsGlobals(user, profile) {
             var user = auth.currentUser;
             /* null = no session, isAnonymous = guest only — both must register */
             if (!user || user.isAnonymous) {
-                if (window._aqsIsRegistering || window._aqsIsLoggingIn || _aqsGoogleRedirectIsPending()) return;
+                if (window._aqsIsRegistering || window._aqsIsLoggingIn) return;
                 /* A newly-created account may need another event loop tick
                    (or a few seconds in a Cloudflare/WebView environment) to
                    restore from IndexedDB. Do not bounce the user back to the

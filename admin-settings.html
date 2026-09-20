@@ -154,6 +154,7 @@ window.addEventListener('DOMContentLoaded', function() {
             setVal('aqs-brevo-key', s.brevo_api_key);
             setVal('aqs-brevo-from-name', s.brevo_from_name);
             setVal('aqs-brevo-from-email', s.brevo_from_email);
+            setChk('aqs-otp-enabled', s.otp_enabled);
             setChk('aqs-cd-enabled', s.countdown_enabled);
             setVal('aqs-cd-label', s.countdown_label);
             setVal('aqs-cd-date', s.countdown_date);
@@ -1090,8 +1091,19 @@ window.addEventListener('DOMContentLoaded', function() {
                 <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
             </div>
         </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:4px 0 16px;border:1px solid #e0e7ff;border-radius:10px;background:#eef2ff;">
+            <div>
+                <strong style="display:block;color:#3730a3;font-size:.9rem;">Email OTP verification</strong>
+                <span style="display:block;color:#6366f1;font-size:.78rem;margin-top:3px;">Require a one-time code after registration. Codes expire after 10 minutes.</span>
+            </div>
+            <label class="aqs-toggle-switch" title="Enable email OTP">
+                <input type="checkbox" id="aqs-otp-enabled" />
+                <span class="aqs-toggle-slider"></span>
+            </label>
+        </div>
         <div class="aqs-settings-actions">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-brevo-btn">💾 Save Email Settings</button>
+            <button class="aqs-btn" id="aqs-test-brevo-btn" type="button">🧪 Send Test Email</button>
             <span id="aqs-brevo-status" class="aqs-status-msg"></span>
         </div>
     </div>
@@ -1171,7 +1183,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <span class="aqs-settings-card-icon">🔐</span>
         <div>
             <h2 class="aqs-settings-card-title">OAuth / Social Login</h2>
-            <p class="aqs-settings-card-desc">Enable Google, GitHub, Microsoft, and Yahoo login buttons on the sign-in and register pages.</p>
+            <p class="aqs-settings-card-desc">Social sign-in is disabled. Accounts use the secure email-and-password registration flow.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
@@ -1904,8 +1916,37 @@ btn('aqs-save-brevo-btn').addEventListener('click', function(){
     saveSettings('/api/settings', {
         brevo_api_key: document.getElementById('aqs-brevo-key').value.trim(),
         brevo_from_name: document.getElementById('aqs-brevo-from-name').value.trim(),
-        brevo_from_email: document.getElementById('aqs-brevo-from-email').value.trim()
+        brevo_from_email: document.getElementById('aqs-brevo-from-email').value.trim(),
+        otp_enabled: document.getElementById('aqs-otp-enabled').checked
     }, 'aqs-brevo-status', this, '💾 Save Email Settings');
+});
+
+btn('aqs-test-brevo-btn').addEventListener('click', function(){
+    var button = this;
+    var status = document.getElementById('aqs-brevo-status');
+    button.disabled = true;
+    button.textContent = 'Sending test…';
+    if (status) {
+        status.textContent = 'Sending a test email to the signed-in admin address…';
+        status.style.color = '#4f46e5';
+    }
+    window.aqsAjax({ action: 'aqs_test_brevo' }, function(res) {
+        button.disabled = false;
+        button.textContent = '🧪 Send Test Email';
+        if (status) {
+            status.textContent = res && res.success
+                ? '✓ Test email sent successfully.'
+                : ((res && res.data && res.data.message) || 'Test email failed.');
+            status.style.color = res && res.success ? '#059669' : '#dc2626';
+        }
+    }, function(err) {
+        button.disabled = false;
+        button.textContent = '🧪 Send Test Email';
+        if (status) {
+            status.textContent = (err && err.message) || 'Test email failed.';
+            status.style.color = '#dc2626';
+        }
+    });
 });
 
 btn('aqs-save-countdown-btn').addEventListener('click', function(){

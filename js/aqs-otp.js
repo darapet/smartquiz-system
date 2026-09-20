@@ -1,1 +1,1 @@
-/* aqs-otp.js — disabled (email service removed) */
+/* OTP delivery is handled by js/aqs-firebase.js through the Brevo function. */
