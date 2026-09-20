@@ -207,22 +207,61 @@ function isConfiguredAdmin(user) {
     return !!user && String(user.email || '').toLowerCase() === 'daramolapeter98@gmail.com';
 }
 
+function _brevoEmailEndpoint() {
+    if (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL) {
+        return window.AQS_BREVO_FUNCTION_URL;
+    }
+
+    /*
+     * Firebase Hosting can proxy this request through firebase.json. The
+     * public site is currently GitHub Pages, so it must use the direct
+     * Cloud Functions URL instead. Keeping both paths here also makes the
+     * function work if the site is later moved to Firebase Hosting.
+     */
+    var hostname = typeof window !== 'undefined' && window.location
+        ? String(window.location.hostname || '').toLowerCase()
+        : '';
+    if (hostname.endsWith('.web.app') || hostname.endsWith('.firebaseapp.com')) {
+        return '/api/email';
+    }
+    return 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
+}
+
 async function callBrevoEmail(payload) {
     var user = requireAuth();
     var token = await user.getIdToken();
-    var endpoint = (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL)
-        || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
-    var response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: 'Bearer ' + token
-        },
-        body: JSON.stringify(payload || {})
-    });
+    var endpoint = _brevoEmailEndpoint();
+    var response;
+
+    try {
+        response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: 'Bearer ' + token
+            },
+            body: JSON.stringify(payload || {})
+        });
+    } catch (error) {
+        /*
+         * A missing/un-deployed Cloud Function commonly appears as a
+         * browser-level "Failed to fetch" because the provider's 404 page
+         * does not include the CORS headers returned by our function.
+         */
+        throw new Error(
+            'The email service could not be reached. The Firebase brevoEmail function '
+            + 'must be deployed before sending test emails.'
+        );
+    }
+
     var body = {};
     try { body = await response.json(); } catch (_) {}
-    if (!response.ok) throw new Error(body.error || 'Brevo email service is unavailable.');
+    if (!response.ok) {
+        throw new Error(
+            body.error
+            || ('The email service returned HTTP ' + response.status + '.')
+        );
+    }
     return body;
 }
 
