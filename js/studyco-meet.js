@@ -514,7 +514,7 @@ function postStatusLabel(post) {
 function postPreferenceControls(post) {
   if (post.userId === state.user.uid) return '';
   const preference = state.postPreferences.get(post.id);
-  return `<div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button></div>`;
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
 }
 
 function profilePostManagement(post) {
@@ -2000,6 +2000,10 @@ function wire() {
     if (!button) return;
     const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
     if (!article) return;
+    if (action === 'close-preferences') {
+      button.closest('details')?.removeAttribute('open');
+      return;
+    }
     if (['interested', 'not-interested'].includes(action)) {
       button.disabled = true;
       try {

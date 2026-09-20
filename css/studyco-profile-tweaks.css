@@ -100,6 +100,46 @@
   border-color:#c93e50;
   background:#fff2f3;
 }
+.studyco-profile-post-management-viewer{
+  display:block;
+  text-align:right;
+}
+.studyco-profile-post-management-viewer>summary{
+  width:34px;
+  height:32px;
+  justify-content:center;
+  margin-left:auto;
+  padding:0;
+  border-radius:50%;
+  font-size:.82rem;
+  letter-spacing:.08em;
+}
+.studyco-profile-post-management-viewer>summary::before{
+  content:none;
+  margin:0;
+}
+.studyco-profile-post-management-viewer[open]>summary{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences{
+  justify-content:flex-start;
+  text-align:left;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences .close{
+  min-width:30px;
+  padding:4px 8px;
+  border-radius:50%;
+  color:#65676b;
+  font-size:1rem;
+  line-height:1;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences .close:hover{
+  border-color:#c93e50;
+  background:#fff2f3;
+  color:#c93e50;
+}
 .studyco-post-preferences{
   display:flex;
   align-items:center;
