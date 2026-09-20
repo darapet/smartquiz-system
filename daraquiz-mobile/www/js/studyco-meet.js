@@ -319,6 +319,12 @@ function viewHash(view, identifier = '') {
     : `#${view}`;
 }
 
+function profileUidFromPath() {
+  const match = window.location.pathname.match(/\/studyco-meet\/profile\/([^/]+)/i);
+  if (!match) return '';
+  try { return decodeURIComponent(match[1]); } catch (_) { return match[1]; }
+}
+
 function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid, profileUid = view === 'profile' ? state.viewedProfileUid : null } = {}) {
   if (view !== 'home' && !$('studyco-post-editor')?.hidden) closePostEditor();
   if (view === 'messages' && !chatUid && state.activeChatUid) {
@@ -347,6 +353,11 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
 }
 
 async function syncRoute() {
+  const pathProfileUid = profileUidFromPath();
+  if (pathProfileUid) {
+    setView('profile', { updateUrl: false, profileUid: pathProfileUid });
+    return;
+  }
   const parts = window.location.hash.replace(/^#/, '').split('/');
   const view = ['search', 'friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
   const identifier = parts[1] ? decodeURIComponent(parts[1]) : '';
