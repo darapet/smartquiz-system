@@ -620,6 +620,10 @@ async function actionLogin(data) {
         'loading your profile'
     );
     var profile = profileDoc.exists() ? profileDoc.data() : {};
+    if (isConfiguredAdmin(user)) {
+        profile.role = 'admin';
+        setDoc(doc(db, 'users', user.uid), { role: 'admin' }, { merge: true }).catch(function() {});
+    }
 
     /* Update AQS globals */
     _updateAqsGlobals(user, profile);
@@ -2636,8 +2640,10 @@ function _dashboardUrl(role) {
 function _updateAqsGlobals(user, profile) {
     if (typeof AQS === 'undefined') return;
     AQS.is_logged_in      = true;
-    AQS.is_host           = profile.role === 'host' || profile.role === 'admin';
-    AQS.is_admin          = profile.role === 'admin';
+    var adminUser         = isConfiguredAdmin(user);
+    AQS.is_host           = profile.role === 'host' || profile.role === 'admin' || adminUser;
+    AQS.is_admin          = profile.role === 'admin' || adminUser;
+    AQS.current_user_role = (profile.role === 'admin' || adminUser) ? 'admin' : (profile.role || 'student');
     AQS.current_user_name = profile.name || user.displayName || '';
     AQS.current_user_id   = user.uid;
 }
@@ -2722,6 +2728,7 @@ function _updateAqsGlobals(user, profile) {
                 /* Look up the user's role so hosts go to the correct dashboard */
                 getDoc(doc(db, 'users', user.uid)).then(function(profileSnap) {
                     var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
+                    if (isConfiguredAdmin(user)) role = 'admin';
                     window.location.replace(_dashboardUrl(role));
                 }).catch(function() {
                     window.location.replace('user-dashboard.html');
