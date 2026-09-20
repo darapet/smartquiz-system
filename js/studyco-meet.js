@@ -1888,6 +1888,7 @@ function wire() {
   }));
   $('studyco-mini-profile')?.addEventListener('click', openOwnProfile);
   $('studyco-open-composer').addEventListener('click', openPostEditor);
+  $('studyco-top-create')?.addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
   $('studyco-editor-publish-post')?.addEventListener('click', publishPost);
   $('studyco-friend-search-action').addEventListener('click', () => openContactsSearch());

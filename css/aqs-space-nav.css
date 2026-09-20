@@ -1,0 +1,383 @@
+/* Dara product spaces
+   Shared navigation for the Social, Dara Edu, and Workspace entry points. */
+
+:root {
+  --dara-ink: #f8fafc;
+  --dara-muted: #94a3b8;
+  --dara-line: rgba(148, 163, 184, .18);
+  --dara-panel: rgba(15, 23, 42, .78);
+  --dara-blue: #60a5fa;
+  --dara-violet: #a78bfa;
+  --dara-coral: #fb7185;
+}
+
+.dara-space-menu {
+  display: grid;
+  gap: 10px;
+  width: min(100%, 920px);
+  margin: 0 auto 28px;
+  padding: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--dara-line);
+  border-radius: 18px;
+  background: rgba(15, 23, 42, .6);
+  box-shadow: 0 20px 50px rgba(2, 6, 23, .2);
+}
+
+.dara-space-link {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid transparent;
+  border-radius: 13px;
+  color: var(--dara-muted);
+  text-decoration: none;
+  transition: background .18s ease, border-color .18s ease, color .18s ease, transform .18s ease;
+}
+
+.dara-space-link:hover {
+  color: var(--dara-ink);
+  background: rgba(255, 255, 255, .06);
+  border-color: rgba(255, 255, 255, .1);
+  transform: translateY(-1px);
+}
+
+.dara-space-link.active {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(96, 165, 250, .18), rgba(167, 139, 250, .16));
+  border-color: rgba(129, 140, 248, .42);
+}
+
+.dara-space-link-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .08);
+  font-size: 1.15rem;
+}
+
+.dara-space-link-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.dara-space-link-copy strong {
+  color: inherit;
+  font-size: .82rem;
+  line-height: 1.1;
+}
+
+.dara-space-link-copy small {
+  overflow: hidden;
+  color: inherit;
+  font-size: .67rem;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  opacity: .72;
+}
+
+.dara-hub-page {
+  min-height: 100vh;
+  color: var(--dara-ink);
+  background:
+    radial-gradient(circle at 10% 0%, rgba(59, 130, 246, .2), transparent 35%),
+    radial-gradient(circle at 90% 10%, rgba(139, 92, 246, .18), transparent 32%),
+    #080b16;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dara-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: min(1180px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 22px 0;
+}
+
+.dara-hub-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: .95rem;
+  font-weight: 900;
+  letter-spacing: -.02em;
+  text-decoration: none;
+}
+
+.dara-hub-brand-mark {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, .35);
+  font-size: .72rem;
+  letter-spacing: -.08em;
+}
+
+.dara-hub-home {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  border: 1px solid var(--dara-line);
+  border-radius: 10px;
+  color: var(--dara-muted);
+  font-size: .75rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.dara-hub-home:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, .3);
+}
+
+.dara-hub-main {
+  width: min(1180px, calc(100% - 36px));
+  margin: 0 auto;
+  padding: 34px 0 80px;
+}
+
+.dara-hub-hero {
+  max-width: 720px;
+  margin: 0 0 30px;
+}
+
+.dara-hub-kicker {
+  margin: 0 0 10px;
+  color: var(--dara-blue);
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.dara-hub-hero h1 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2rem, 5vw, 4.1rem);
+  line-height: .98;
+  letter-spacing: -.07em;
+}
+
+.dara-hub-hero p {
+  max-width: 620px;
+  margin: 17px 0 0;
+  color: var(--dara-muted);
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.dara-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.dara-tool-card {
+  display: grid;
+  min-height: 170px;
+  align-content: space-between;
+  gap: 26px;
+  padding: 21px;
+  border: 1px solid var(--dara-line);
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, .8), rgba(15, 23, 42, .7));
+  color: #fff;
+  text-decoration: none;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.dara-tool-card:hover {
+  border-color: rgba(129, 140, 248, .55);
+  box-shadow: 0 18px 38px rgba(2, 6, 23, .3);
+  transform: translateY(-3px);
+}
+
+.dara-tool-card-icon {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  background: rgba(96, 165, 250, .15);
+  font-size: 1.35rem;
+}
+
+.dara-tool-card h2 {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.dara-tool-card p {
+  margin: 0;
+  color: var(--dara-muted);
+  font-size: .78rem;
+  line-height: 1.55;
+}
+
+.dara-tool-card-arrow {
+  color: var(--dara-violet);
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.dara-hub-note {
+  margin-top: 20px;
+  padding: 15px 17px;
+  border: 1px solid rgba(96, 165, 250, .18);
+  border-radius: 14px;
+  color: var(--dara-muted);
+  background: rgba(59, 130, 246, .07);
+  font-size: .78rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 760px) {
+  .dara-space-menu { grid-template-columns: 1fr; gap: 5px; }
+  .dara-space-link { padding: 11px 12px; }
+  .dara-tool-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dara-tool-card { min-height: 155px; padding: 17px; }
+}
+
+@media (max-width: 450px) {
+  .dara-hub-header,
+  .dara-hub-main { width: min(100% - 24px, 1180px); }
+  .dara-hub-header { padding: 15px 0; }
+  .dara-hub-main { padding-top: 22px; }
+  .dara-tool-grid { grid-template-columns: 1fr; }
+}
+
+/* Social top-bar additions. These stay separate from the existing feed styles
+   so the three-space navigation can be removed or restyled independently. */
+.studyco-save-action {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
+.studyco-save-action svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.studyco-menu-panel {
+  min-width: 220px !important;
+  padding: 8px !important;
+}
+
+.dara-menu-heading {
+  padding: 7px 10px 6px;
+  color: #8b95a7;
+  font-size: .63rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dara-menu-space {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #475569;
+  text-decoration: none;
+  transition: background .16s ease, color .16s ease;
+}
+
+.dara-menu-space:hover,
+.dara-menu-space.active {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.dara-menu-space > span:first-child {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  font-size: 1rem;
+}
+
+.dara-menu-space > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.dara-menu-space strong {
+  font-size: .78rem;
+  line-height: 1.1;
+}
+
+.dara-menu-space small {
+  color: #94a3b8;
+  font-size: .64rem;
+}
+
+.dara-menu-divider {
+  height: 1px;
+  margin: 7px 4px;
+  background: #e5e7eb;
+}
+
+.dara-studio-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 24px;
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 12px 12px;
+  border: 1px solid rgba(255, 255, 255, .22);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, .32);
+  font-size: .78rem;
+  font-weight: 900;
+  text-decoration: none;
+  transition: transform .18s ease, box-shadow .18s ease;
+}
+
+.dara-studio-fab:hover {
+  color: #fff;
+  box-shadow: 0 15px 34px rgba(124, 58, 237, .42);
+  transform: translateY(-2px);
+}
+
+.dara-studio-fab-spark {
+  display: grid;
+  place-items: center;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .18);
+  font-size: .95rem;
+}
+
+@media (max-width: 560px) {
+  .dara-studio-fab {
+    right: 14px;
+    bottom: 15px;
+    padding: 12px;
+  }
+  .dara-studio-fab > span:last-child { display: none; }
+}
