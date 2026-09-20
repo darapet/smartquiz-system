@@ -40,24 +40,28 @@
    otherwise anchors the menu to a clipped/empty header area. */
 .studyco-view-profile .studyco-post{overflow:visible}
 .studyco-view-profile .studyco-post-head.profile-post-head{
-  display:flex;
-  align-items:center;
-  justify-content:flex-end !important;
+  position:relative !important;
+  display:block !important;
   width:100%;
   box-sizing:border-box;
   min-height:52px;
   padding:8px 16px 0;
 }
+.studyco-view-profile .studyco-profile-posts-card,
+.studyco-view-profile #studyco-profile-posts{
+  overflow:visible !important;
+}
 .studyco-view-profile .studyco-post-menu-wrap{
-  position:relative;
+  position:absolute !important;
+  top:8px;
+  right:16px !important;
   z-index:20;
   display:flex;
   flex:0 0 auto;
-  margin-left:auto !important;
-  margin-right:0;
+  margin:0 !important;
 }
 .studyco-view-profile .studyco-post-menu{
-  position:relative;
+  position:relative !important;
   inset:auto !important;
   width:38px;
   height:38px;
