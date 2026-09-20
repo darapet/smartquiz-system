@@ -19,6 +19,8 @@ import {
     signInWithPopup,
     getRedirectResult,
     signInWithRedirect,
+    setPersistence,
+    browserLocalPersistence,
     signInAnonymously,
 } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {
@@ -64,6 +66,13 @@ const firebaseConfig = {
 
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+/* Make the Google session durable before any popup/redirect starts. Without
+   an explicit persistence policy, a browser that falls back from popup to
+   redirect can return to login before Firebase has restored the user. */
+const _aqsAuthPersistenceReady = setPersistence(auth, browserLocalPersistence)
+    .catch(function(error) {
+        console.warn('[AQS Firebase] Could not set browser auth persistence:', error);
+    });
 /* Use experimentalForceLongPolling on Capacitor/Android — fixes Firestore
    hanging on Android WebView's IndexedDB persistence layer. Falls back to
    the standard getFirestore() on web where long-polling is not needed. */
@@ -124,6 +133,26 @@ function tsToStr(ts) {
 window._aqsFirebaseUser = null;
 window._aqsAuthResolved = false;   /* true once auth state is fully determined (after persistence) */
 window._aqsAuthUser     = undefined; /* undefined = not yet resolved; null = logged out; object = logged in */
+function _aqsGoogleRedirectIsPending() {
+    try {
+        var startedAt = parseInt(sessionStorage.getItem('aqs_google_redirect_pending') || '0', 10);
+        if (!startedAt) return false;
+        /* Do not let an abandoned Google attempt suppress the auth guard
+           forever. A real callback normally completes in seconds. */
+        if (Date.now() - startedAt > 10 * 60 * 1000) {
+            sessionStorage.removeItem('aqs_google_redirect_pending');
+            return false;
+        }
+        return true;
+    } catch (_) {
+        return false;
+    }
+}
+function _aqsClearGoogleRedirectPending() {
+    try { sessionStorage.removeItem('aqs_google_redirect_pending'); } catch (_) {}
+    window._aqsIsLoggingIn = false;
+}
+window._aqsIsLoggingIn = _aqsGoogleRedirectIsPending();
 
 /* ── Why authStateReady() matters ───────────────────────────────────────────
    Firebase's onAuthStateChanged fires TWICE on page load when a session exists:
@@ -722,7 +751,9 @@ async function actionSocialLogin(data) {
     if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
 
     var provider = new GoogleAuthProvider();
+    window._aqsIsLoggingIn = true;
     try {
+        await _aqsAuthPersistenceReady;
         /* A popup keeps the user on the current page and avoids the
            redirect/persistence loop that can occur on custom domains. */
         var result = await signInWithPopup(auth, provider);
@@ -741,25 +772,38 @@ async function actionSocialLogin(data) {
         /* Popups can be blocked on some mobile browsers. Keep redirect as a
            fallback for those environments. */
         if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(error && error.code)) {
+            try { sessionStorage.setItem('aqs_google_redirect_pending', String(Date.now())); } catch (_) {}
             await signInWithRedirect(auth, provider);
             return { redirect_started: true };
         }
+        window._aqsIsLoggingIn = false;
         throw error;
     }
 }
 
 /* Firebase returns to the same login/register URL after Google completes.
    Finish the profile setup here, then send the user to their dashboard. */
-getRedirectResult(auth).then(function(result) {
-    if (!result || !result.user) return;
+_aqsAuthPersistenceReady.then(function() {
+    return getRedirectResult(auth);
+}).then(function(result) {
+    if (!result || !result.user) {
+        /* Do not clear a popup's in-memory guard merely because there was no
+           redirect result. Only consume the persistent marker when one exists. */
+        if (_aqsGoogleRedirectIsPending()) _aqsClearGoogleRedirectPending();
+        return;
+    }
+    window._aqsIsLoggingIn = true;
     return _completeGoogleLogin(result.user).then(function(data) {
+        _aqsClearGoogleRedirectPending();
         if (data && data.redirect) window.location.replace(data.redirect);
     }).catch(function(error) {
         console.warn('[AQS Firebase] Google profile setup deferred after redirect:', error);
+        _aqsClearGoogleRedirectPending();
         window.location.replace('user-dashboard.html');
     });
 }).catch(function(error) {
     console.error('[AQS Firebase] Google redirect sign-in failed:', error);
+    _aqsClearGoogleRedirectPending();
     if (auth.currentUser && !auth.currentUser.isAnonymous) {
         window.location.replace('user-dashboard.html');
         return;
@@ -2692,7 +2736,7 @@ function _updateAqsGlobals(user, profile) {
             var user = auth.currentUser;
             /* null = no session, isAnonymous = guest only — both must register */
             if (!user || user.isAnonymous) {
-                if (window._aqsIsRegistering || window._aqsIsLoggingIn) return;
+                if (window._aqsIsRegistering || window._aqsIsLoggingIn || _aqsGoogleRedirectIsPending()) return;
                 /* A newly-created account may need another event loop tick
                    (or a few seconds in a Cloudflare/WebView environment) to
                    restore from IndexedDB. Do not bounce the user back to the

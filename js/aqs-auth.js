@@ -98,9 +98,11 @@
                 return;
             }
             setBtn('aqs-login-submit', 'Signing in…', true);
+            window._aqsIsLoggingIn = true;
             if (typeof window.aqsAjax !== 'function') {
                 showAlert('aqs-login-alert', 'Firebase is still loading. Please wait a moment and try again.', true);
                 setBtn('aqs-login-submit', 'Sign In', false);
+                window._aqsIsLoggingIn = false;
                 return;
             }
             window.aqsAjax(
@@ -113,11 +115,13 @@
                         var msg = (res && res.data) ? (typeof res.data === 'string' ? res.data : (res.data.message || 'Login failed.')) : 'Login failed.';
                         showAlert('aqs-login-alert', msg, true);
                         setBtn('aqs-login-submit', 'Sign In', false);
+                        window._aqsIsLoggingIn = false;
                     }
                 },
                 function (err) {
                     showAlert('aqs-login-alert', (err && err.message) || 'Login failed. Please try again.', true);
                     setBtn('aqs-login-submit', 'Sign In', false);
+                    window._aqsIsLoggingIn = false;
                 }
             );
         });
@@ -254,10 +258,12 @@
           btn.addEventListener('click', function () {
               btn.disabled = true;
               btn.textContent = 'Opening Google…';
+              window._aqsIsLoggingIn = true;
               if (alertId) showAlert(alertId, 'Opening Google sign-in…', false);
               if (typeof window.aqsAjax !== 'function') {
                   setTimeout(function () {
                       resetBtn();
+                      window._aqsIsLoggingIn = false;
                       if (alertId) showAlert(alertId, 'Still loading — please try again.', true);
                   }, 1500);
                   return;
@@ -272,13 +278,15 @@
                       }
                       if (res && res.success && res.data && res.data.redirect) {
                           if (alertId) showAlert(alertId, '✓ Signed in as ' + (res.data.user_name || 'you') + '! Redirecting…', false);
-                          setTimeout(function() { window.location.href = res.data.redirect; }, 900);
+                          setTimeout(function() { window.location.replace(res.data.redirect); }, 150);
                       } else {
                           resetBtn();
+                          window._aqsIsLoggingIn = false;
                       }
                   },
                   function (err) {
                       resetBtn();
+                      window._aqsIsLoggingIn = false;
                       if (alertId) showAlert(alertId, (err && err.message) || 'Google sign-in failed. Try again.', true);
                   }
               );
