@@ -306,16 +306,8 @@ function renderProfile() {
   $('studyco-profile-friend-count').textContent = isOwnProfile ? String(state.friends.length) : String(p.friendCount || 0);
   const cover = $('studyco-profile-cover');
   cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>`;
-  $('studyco-profile-eyebrow').textContent = isOwnProfile ? 'Your StudyCo identity' : 'StudyCo profile';
-  $('studyco-profile-page-title').textContent = isOwnProfile ? 'My profile' : profileNameText;
-  $('studyco-profile-page-copy').textContent = isOwnProfile
-    ? 'Make it easy for classmates to know what you are working on.'
-    : `See ${profileNameText}'s profile and shared posts.`;
   $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
   $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
-  $('studyco-profile-back').hidden = isOwnProfile;
-  $('studyco-profile-complete-action').hidden = !isOwnProfile;
-  $('studyco-edit-profile').hidden = !isOwnProfile;
   $('studyco-profile-edit-small').hidden = !isOwnProfile;
   $('studyco-profile-next').hidden = !isOwnProfile;
 }
@@ -1884,9 +1876,8 @@ function wire() {
   $('studyco-story-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.storyImage = file || null; if (file) $('studyco-story-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`; });
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
-  [$('studyco-edit-profile'), $('studyco-profile-edit-small')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
-  [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
-  $('studyco-profile-back').addEventListener('click', () => setView('home'));
+  [$('studyco-edit-profile'), $('studyco-profile-edit-small')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
   $('studyco-post-manage-form').addEventListener('submit', savePostChanges);
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
