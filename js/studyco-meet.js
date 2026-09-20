@@ -3,6 +3,7 @@ import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
+  viewedProfileUid: null, viewedProfile: null,
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
@@ -275,7 +276,11 @@ function showApp() {
 }
 
 function renderProfile() {
-  const p = state.profile || {};
+  const p = state.viewedProfile || state.profile || {};
+  const uid = state.viewedProfileUid || state.user?.uid;
+  const isOwnProfile = uid === state.user?.uid;
+  const profileNameText = profileName(p);
+  const profilePostCount = state.posts.filter((post) => post.userId === uid).length;
   $('studyco-top-name').textContent = profileName(p);
   $('studyco-hello-name').textContent = `, ${profileName(p).split(' ')[0] || 'there'}`;
   $('studyco-mini-profile').innerHTML = `${avatar(p, 'small')}<div><strong>${esc(profileName(p))}</strong><span>${esc(p.username ? `@${p.username}` : 'Complete your profile')}</span></div>`;
@@ -288,7 +293,7 @@ function renderProfile() {
   $('studyco-profile-school').textContent = p.school ? `School: ${p.school}` : '';
   $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ');
   $('studyco-profile-location').textContent = p.location || '';
-  $('studyco-profile-contact').textContent = p.loginIdentifier || p.email || '';
+  $('studyco-profile-contact').textContent = isOwnProfile ? (p.loginIdentifier || p.email || '') : '';
   $('studyco-profile-status').textContent = p.studentStatus || 'Learning';
   $('studyco-profile-about-copy').textContent = p.bio || 'Add a short bio so classmates know what you are learning and how they can connect with you.';
   const profileFields = [p.displayName, p.bio, p.photoURL, p.school, p.department || p.major, p.location];
@@ -297,17 +302,30 @@ function renderProfile() {
   $('studyco-profile-completion').textContent = `${completion}%`;
   $('studyco-profile-progress-label').textContent = `${complete} of ${profileFields.length} details`;
   $('studyco-profile-progress-bar').style.width = `${completion}%`;
-  $('studyco-profile-post-count').textContent = String(state.posts.filter((post) => post.userId === state.user.uid).length);
-  $('studyco-profile-friend-count').textContent = String(state.friends.length);
+  $('studyco-profile-post-count').textContent = String(profilePostCount);
+  $('studyco-profile-friend-count').textContent = isOwnProfile ? String(state.friends.length) : String(p.friendCount || 0);
   const cover = $('studyco-profile-cover');
   cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>`;
+  $('studyco-profile-eyebrow').textContent = isOwnProfile ? 'Your StudyCo identity' : 'StudyCo profile';
+  $('studyco-profile-page-title').textContent = isOwnProfile ? 'My profile' : profileNameText;
+  $('studyco-profile-page-copy').textContent = isOwnProfile
+    ? 'Make it easy for classmates to know what you are working on.'
+    : `See ${profileNameText}'s profile and shared posts.`;
+  $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
+  $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
+  $('studyco-profile-back').hidden = isOwnProfile;
+  $('studyco-profile-complete-action').hidden = !isOwnProfile;
+  $('studyco-edit-profile').hidden = !isOwnProfile;
+  $('studyco-profile-next').hidden = !isOwnProfile;
 }
 
-function viewHash(view, chatUid = '') {
-  return view === 'messages' && chatUid ? `#messages/${encodeURIComponent(chatUid)}` : `#${view}`;
+function viewHash(view, identifier = '') {
+  return ((view === 'messages' || view === 'profile') && identifier)
+    ? `#${view}/${encodeURIComponent(identifier)}`
+    : `#${view}`;
 }
 
-function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid } = {}) {
+function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid, profileUid = view === 'profile' ? state.viewedProfileUid : null } = {}) {
   if (view !== 'home' && !$('studyco-post-editor')?.hidden) closePostEditor();
   if (view === 'messages' && !chatUid && state.activeChatUid) {
     state.activeChatUid = null;
@@ -316,8 +334,9 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
     state.messageUnsub = null;
   }
   state.activeView = view;
-  if (updateUrl && window.location.hash !== viewHash(view, chatUid)) {
-    window.history.pushState({ studycoView: view, chatUid }, '', viewHash(view, chatUid));
+  const routeIdentifier = view === 'messages' ? chatUid : view === 'profile' ? profileUid : '';
+  if (updateUrl && window.location.hash !== viewHash(view, routeIdentifier)) {
+    window.history.pushState({ studycoView: view, chatUid, profileUid }, '', viewHash(view, routeIdentifier));
   }
   const messagesShell = document.querySelector('.studyco-messages-shell');
   if (messagesShell) messagesShell.classList.toggle('chat-open', view === 'messages' && Boolean(chatUid));
@@ -326,7 +345,7 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
   const menu = $('studyco-menu-panel');
   if (menu) menu.hidden = true;
   if (view === 'friends') loadSocialLists();
-  if (view === 'profile') { renderProfile(); renderProfilePosts(); }
+  if (view === 'profile') loadProfileView(profileUid || state.user.uid);
   if (view === 'messages') loadChats();
   if (view === 'notifications') renderNotifications();
 }
@@ -334,7 +353,8 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
 async function syncRoute() {
   const parts = window.location.hash.replace(/^#/, '').split('/');
   const view = ['search', 'friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
-  setView(view, { updateUrl: false, chatUid: parts[1] ? decodeURIComponent(parts[1]) : '' });
+  const identifier = parts[1] ? decodeURIComponent(parts[1]) : '';
+  setView(view, { updateUrl: false, chatUid: view === 'messages' ? identifier : '', profileUid: view === 'profile' ? identifier || state.user.uid : null });
   if (view === 'messages' && parts[1] && state.user) {
     await openChat(decodeURIComponent(parts[1]), { updateUrl: false });
   }
@@ -397,6 +417,7 @@ async function findPeople(term = '', { broad = false } = {}) {
 async function findPosts(term) {
   const needle = term.trim().toLowerCase();
   const matches = await Promise.all(state.posts.map(async (post) => {
+    if (!isPublicPost(post)) return null;
     const author = await getProfile(post.userId);
     const searchable = `${post.content || ''} ${post.fileName || ''} ${post.linkUrl || ''} ${profileName(author)} ${author?.username || ''} ${author?.school || ''} ${author?.department || ''}`.toLowerCase();
     return searchable.includes(needle) ? post : null;
@@ -434,6 +455,22 @@ async function renderSearchResults(value) {
   $('studyco-search-empty').hidden = Boolean(profiles.length || posts.length);
 }
 
+function isPublicPost(post) {
+  const status = post.status || 'published';
+  if (status === 'hidden' || status === 'paused') return false;
+  if (status === 'scheduled') return timeMs(post.scheduledAt) <= Date.now();
+  return true;
+}
+
+function postStatusLabel(post) {
+  const status = post.status || 'published';
+  if (status === 'scheduled') return timeMs(post.scheduledAt) > Date.now() ? `Scheduled for ${new Date(timeMs(post.scheduledAt)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : 'Published';
+  if (status === 'hidden') return 'Hidden from your circle';
+  if (status === 'paused') return 'Paused';
+  if (status === 'failed') return 'Needs retry';
+  return '';
+}
+
 async function renderPost(post) {
   const [author, likesSnap, commentsSnap] = await Promise.all([
     getProfile(post.userId), getDocs(collection(db, 'studyco_posts', post.id, 'likes')),
@@ -446,9 +483,12 @@ async function renderPost(post) {
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
   const commentCount = Number(post.commentCount ?? commentsSnap?.size ?? 0);
+  const isOwner = post.userId === state.user.uid;
+  const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  const menu = isOwner ? `<div class="studyco-post-menu-wrap"><button class="studyco-post-menu" data-post-action="menu" data-post-id="${esc(post.id)}" type="button" aria-label="Manage post">•••</button><div class="studyco-post-menu-panel" data-post-menu="${esc(post.id)}" hidden><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${post.status === 'paused' ? 'Resume post' : 'Pause post'}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${post.status === 'hidden' ? 'Show post' : 'Hide post'}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></div>` : '';
+  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head"><button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button>${menu}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function loadPostComments(postId, article) {
@@ -480,21 +520,41 @@ async function sharePost(postId) {
   }
 }
 
-async function renderFeed(target = $('studyco-post-feed'), posts = state.posts) {
+async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, { includePrivate = false } = {}) {
+  if (!includePrivate) posts = posts.filter(isPublicPost);
   if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   target.innerHTML = (await Promise.all(posts.map(renderPost))).join('');
 }
 
-async function renderProfilePosts() {
-  await renderFeed($('studyco-profile-posts'), state.posts.filter((post) => post.userId === state.user.uid));
+async function loadProfileView(uid = state.user.uid) {
+  const profileUid = uid || state.user.uid;
+  const profile = profileUid === state.user.uid ? state.profile : await getProfile(profileUid);
+  if (!profile) {
+    toast('That profile could not be found.', true);
+    setView('home');
+    return;
+  }
+  state.viewedProfileUid = profileUid;
+  state.viewedProfile = profile;
+  if (profileUid !== state.user.uid) {
+    const [sent, received] = await Promise.all([
+      getDocs(query(collection(db, 'social_friend_requests'), where('requesterId', '==', profileUid), limit(100))).catch(() => null),
+      getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', profileUid), limit(100))).catch(() => null)
+    ]);
+    profile.friendCount = [...(sent?.docs || []), ...(received?.docs || [])]
+      .filter((item) => item.data().status === 'accepted').length;
+  }
+  renderProfile();
+  const posts = state.posts.filter((post) => post.userId === profileUid && (profileUid === state.user.uid || isPublicPost(post)));
+  await renderFeed($('studyco-profile-posts'), posts, { includePrivate: profileUid === state.user.uid });
 }
 
 function subscribeFeed() {
   state.feedUnsub?.();
   state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), limit(60)), (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
-    renderFeed(); if (state.activeView === 'profile') renderProfilePosts(); refreshNavCounts();
+    renderFeed(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
   }, (error) => toast(error.message || 'The feed could not load.', true));
 }
 
@@ -506,9 +566,95 @@ async function publishPost() {
   try {
     const imageUrl = image ? await uploadImage(image, `studyco/${state.user.uid}/posts/${Date.now()}-${image.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
     const fileUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/posts/files/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', status: 'published', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; $('studyco-post-file').value = ''; $('studyco-post-url').value = ''; $('studyco-post-url-row').hidden = true; $('studyco-post-attachment-status').hidden = true; state.postImage = null; state.postFile = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
   } catch (error) { toast(error.message || 'Your post could not be published.', true); } finally { button.disabled = false; }
+}
+
+function localDateTimeValue(value) {
+  const ms = timeMs(value);
+  if (!ms) return '';
+  const date = new Date(ms);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function openPostManage(postId, mode = 'edit') {
+  const post = state.posts.find((item) => item.id === postId);
+  if (!post || post.userId !== state.user.uid) return;
+  $('studyco-manage-post-id').value = postId;
+  $('studyco-manage-post-text').value = post.content || '';
+  $('studyco-manage-post-schedule').value = localDateTimeValue(post.scheduledAt);
+  $('studyco-post-manage-title').textContent = mode === 'reschedule' ? 'Reschedule post' : 'Edit post';
+  openModal('studyco-post-manage-modal');
+  if (mode === 'reschedule') $('studyco-manage-post-schedule').focus();
+  else $('studyco-manage-post-text').focus();
+}
+
+async function savePostChanges(event) {
+  event.preventDefault();
+  const postId = $('studyco-manage-post-id').value;
+  const post = state.posts.find((item) => item.id === postId);
+  if (!post || post.userId !== state.user.uid) return;
+  const content = $('studyco-manage-post-text').value.trim();
+  const scheduleValue = $('studyco-manage-post-schedule').value;
+  if (!content && !post.imageUrl && !post.fileUrl && !post.linkUrl) {
+    toast('A post needs text or an attachment.', true);
+    return;
+  }
+  const scheduledDate = scheduleValue ? new Date(scheduleValue) : null;
+  const isFuture = scheduledDate && !Number.isNaN(scheduledDate.getTime()) && scheduledDate.getTime() > Date.now();
+  const update = {
+    content: content.slice(0, 1000),
+    status: isFuture ? 'scheduled' : 'published',
+    scheduledAt: isFuture ? Timestamp.fromDate(scheduledDate) : null,
+    updatedAt: serverTimestamp()
+  };
+  try {
+    await updateDoc(doc(db, 'studyco_posts', postId), update);
+    closeModal('studyco-post-manage-modal');
+    toast(isFuture ? 'Post rescheduled.' : 'Post updated.');
+  } catch (error) {
+    toast(error.message || 'The post could not be updated.', true);
+  }
+}
+
+async function managePost(postId, action) {
+  const post = state.posts.find((item) => item.id === postId);
+  if (!post || post.userId !== state.user.uid) return;
+  if (action === 'menu') {
+    const menu = [...document.querySelectorAll('[data-post-menu]')].find((item) => item.dataset.postMenu === postId);
+    if (menu) menu.hidden = !menu.hidden;
+    return;
+  }
+  if (action === 'edit' || action === 'reschedule') {
+    openPostManage(postId, action);
+    return;
+  }
+  if (action === 'delete') {
+    if (!window.confirm('Delete this post permanently?')) return;
+    try {
+      await deleteDoc(doc(db, 'studyco_posts', postId));
+      toast('Post deleted.');
+    } catch (error) {
+      toast(error.message || 'The post could not be deleted.', true);
+    }
+    return;
+  }
+  const update = { updatedAt: serverTimestamp() };
+  if (action === 'pause') update.status = post.status === 'paused' ? 'published' : 'paused';
+  if (action === 'hide') update.status = post.status === 'hidden' ? 'published' : 'hidden';
+  if (action === 'retry') {
+    update.status = 'published';
+    update.scheduledAt = null;
+    update.retryCount = Number(post.retryCount || 0) + 1;
+  }
+  try {
+    await updateDoc(doc(db, 'studyco_posts', postId), update);
+    toast(action === 'retry' ? 'Post published again.' : 'Post status updated.');
+  } catch (error) {
+    toast(error.message || 'That post action could not be completed.', true);
+  }
 }
 
 async function toggleLike(postId) {
@@ -572,7 +718,7 @@ async function renderPeople(profiles, target) {
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
     if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
-    return `<article class="studyco-person">${avatar(profile)}<strong>${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
+     return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
   }).join('');
 }
 
@@ -1628,7 +1774,10 @@ function closeModal(id) { $(id).hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
-  document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
+  document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => {
+    const view = button.dataset.studycoView;
+    setView(view, view === 'profile' ? { profileUid: state.user.uid } : undefined);
+  }));
   $('studyco-open-composer').addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
   $('studyco-editor-publish-post')?.addEventListener('click', publishPost);
@@ -1712,7 +1861,9 @@ function wire() {
   $('studyco-story-form').addEventListener('submit', createStory);
   [$('studyco-edit-profile'), $('studyco-profile-edit-small')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  $('studyco-profile-back').addEventListener('click', () => setView('home'));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
+  $('studyco-post-manage-form').addEventListener('submit', savePostChanges);
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
@@ -1724,10 +1875,20 @@ function wire() {
     if (row) openNotification(row.dataset.notificationId);
   });
   document.addEventListener('click', async (event) => {
+    const profileLink = event.target.closest('[data-profile-uid]');
+    if (profileLink) {
+      event.preventDefault();
+      setView('profile', { profileUid: profileLink.dataset.profileUid });
+      return;
+    }
     const button = event.target.closest('[data-post-action]');
     if (!button) return;
     const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
     if (!article) return;
+    if (['menu', 'edit', 'reschedule', 'pause', 'hide', 'retry', 'delete'].includes(action)) {
+      await managePost(button.dataset.postId, action);
+      return;
+    }
     if (action === 'like') await toggleLike(button.dataset.postId);
     if (action === 'share') await sharePost(button.dataset.postId);
     if (action === 'comments') {
