@@ -59,6 +59,9 @@
 .studyco-profile-next h2{margin:8px 0;font-size:1.3rem;letter-spacing:-.04em}
 .studyco-profile-next p:not(.studyco-eyebrow){margin:0 0 18px;color:#e0e0ff;font-size:.74rem;line-height:1.6}
 .studyco-profile-next .studyco-button{background:#fff;color:#403ca8}
+.studyco-layout.profile-view{grid-template-columns:minmax(0,1fr);max-width:1440px}
+.studyco-layout.profile-view .studyco-left-rail,.studyco-layout.profile-view .studyco-right-rail{display:none}
+.studyco-view-profile>.studyco-page-heading{display:none}
 .studyco-notification-summary{display:flex;align-items:center;justify-content:space-between;padding:18px 22px;background:linear-gradient(135deg,#ebeaff,#fff)}
 .studyco-notification-summary>div:first-child{display:grid;gap:3px}
 .studyco-notification-summary strong{font-size:2rem;letter-spacing:-.06em}

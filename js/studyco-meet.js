@@ -340,6 +340,8 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
   }
   const messagesShell = document.querySelector('.studyco-messages-shell');
   if (messagesShell) messagesShell.classList.toggle('chat-open', view === 'messages' && Boolean(chatUid));
+  const layout = document.querySelector('.studyco-layout');
+  if (layout) layout.classList.toggle('profile-view', view === 'profile');
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.classList.toggle('active', button.dataset.studycoView === view));
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   const menu = $('studyco-menu-panel');
