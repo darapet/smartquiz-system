@@ -16,6 +16,7 @@ import {
     onAuthStateChanged,
     updateProfile,
     GoogleAuthProvider,
+    signInWithPopup,
     getRedirectResult,
     signInWithRedirect,
     signInAnonymously,
@@ -720,8 +721,31 @@ async function actionSocialLogin(data) {
     var providerName = data.provider || 'google';
     if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
 
-    await signInWithRedirect(auth, new GoogleAuthProvider());
-    return { redirect_started: true };
+    var provider = new GoogleAuthProvider();
+    try {
+        /* A popup keeps the user on the current page and avoids the
+           redirect/persistence loop that can occur on custom domains. */
+        var result = await signInWithPopup(auth, provider);
+        try {
+            return await _completeGoogleLogin(result.user);
+        } catch (profileError) {
+            /* Google authentication succeeded even if profile setup is
+               temporarily unavailable. Do not send the user back to login. */
+            console.warn('[AQS Firebase] Google profile setup deferred:', profileError);
+            return {
+                redirect: 'user-dashboard.html',
+                user_name: result.user.displayName || result.user.email || 'you'
+            };
+        }
+    } catch (error) {
+        /* Popups can be blocked on some mobile browsers. Keep redirect as a
+           fallback for those environments. */
+        if (['auth/popup-blocked', 'auth/operation-not-supported-in-this-environment'].includes(error && error.code)) {
+            await signInWithRedirect(auth, provider);
+            return { redirect_started: true };
+        }
+        throw error;
+    }
 }
 
 /* Firebase returns to the same login/register URL after Google completes.
@@ -730,9 +754,16 @@ getRedirectResult(auth).then(function(result) {
     if (!result || !result.user) return;
     return _completeGoogleLogin(result.user).then(function(data) {
         if (data && data.redirect) window.location.replace(data.redirect);
+    }).catch(function(error) {
+        console.warn('[AQS Firebase] Google profile setup deferred after redirect:', error);
+        window.location.replace('user-dashboard.html');
     });
 }).catch(function(error) {
     console.error('[AQS Firebase] Google redirect sign-in failed:', error);
+    if (auth.currentUser && !auth.currentUser.isAnonymous) {
+        window.location.replace('user-dashboard.html');
+        return;
+    }
     document.dispatchEvent(new CustomEvent('aqs:googleautherror', {
         detail: { message: error && error.message || 'Google sign-in failed.' }
     }));
