@@ -35,10 +35,14 @@
 .studyco-profile-about .studyco-section-title{align-items:center}
 .studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
 
-/* Keep the owner menu visible on posts rendered from the profile view. Profile
-   posts intentionally omit the author row, so the generic feed positioning
-   otherwise anchors the menu to a clipped/empty header area. */
-.studyco-view-profile .studyco-post{overflow:visible}
+/* Profile posts omit the author row, so generic feed positioning must not
+   anchor the owner menu to an empty header or clip its action panel. This
+   stylesheet is loaded last so the Facebook feed rules cannot undo it. */
+.studyco-view-profile .studyco-profile-posts-card,
+.studyco-view-profile #studyco-profile-posts,
+.studyco-view-profile .studyco-post{
+  overflow:visible !important;
+}
 .studyco-view-profile .studyco-post-head.profile-post-head{
   position:relative !important;
   display:block !important;
@@ -47,34 +51,48 @@
   min-height:52px;
   padding:8px 16px 0;
 }
-.studyco-view-profile .studyco-profile-posts-card,
-.studyco-view-profile #studyco-profile-posts{
-  overflow:visible !important;
-}
 .studyco-view-profile .studyco-post-menu-wrap{
   position:absolute !important;
-  top:8px;
+  top:8px !important;
   right:16px !important;
+  left:auto !important;
   z-index:20;
-  display:flex;
+  display:flex !important;
   flex:0 0 auto;
   margin:0 !important;
 }
 .studyco-view-profile .studyco-post-menu{
   position:relative !important;
   inset:auto !important;
-  width:38px;
-  height:38px;
-  padding:0;
+  display:grid !important;
+  place-items:center;
+  width:38px !important;
+  height:38px !important;
+  padding:0 !important;
+  line-height:1 !important;
 }
 .studyco-view-profile .studyco-post-menu-panel{
+  position:absolute !important;
   top:calc(100% + 6px) !important;
   right:0 !important;
   left:auto !important;
-  z-index:50;
+  z-index:50 !important;
   min-width:190px;
   max-width:calc(100vw - 32px);
   white-space:nowrap;
+}
+
+/* Non-owners get preference controls in the same profile-post surface. Keep
+   them visible even when broad feed styles change the post layout. */
+.studyco-view-profile .studyco-profile-post .studyco-post-preferences,
+.studyco-view-profile .studyco-post-preferences{
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+}
+.studyco-view-profile .studyco-post-preferences button{
+  display:inline-flex !important;
+  visibility:visible !important;
 }
 
 .studyco-post-preferences{
