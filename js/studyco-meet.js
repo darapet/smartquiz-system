@@ -677,14 +677,18 @@ async function toggleLike(postId) {
   const existing = await getDoc(likeRef);
   if (existing.exists()) await deleteDoc(likeRef); else await setDoc(likeRef, { userId: state.user.uid, createdAt: serverTimestamp() });
   const likes = await getDocs(collection(db, 'studyco_posts', postId, 'likes'));
-  await updateDoc(doc(db, 'studyco_posts', postId), { likeCount: likes.size });
+  const post = state.posts.find((item) => item.id === postId);
+  if (post) post.likeCount = likes.size;
+  return { liked: !existing.exists(), count: likes.size };
 }
 
 async function addComment(postId, text) {
   if (!text.trim()) return;
   await addDoc(collection(db, 'studyco_posts', postId, 'comments'), { userId: state.user.uid, text: text.trim().slice(0, 500), createdAt: serverTimestamp() });
   const comments = await getDocs(collection(db, 'studyco_posts', postId, 'comments'));
-  await updateDoc(doc(db, 'studyco_posts', postId), { commentCount: comments.size });
+  const post = state.posts.find((item) => item.id === postId);
+  if (post) post.commentCount = comments.size;
+  return comments.size;
 }
 
 function renderStories() {
@@ -1789,10 +1793,15 @@ function closeModal(id) { $(id).hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
+  const openOwnProfile = () => {
+    if (state.user) setView('profile', { profileUid: state.user.uid });
+  };
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => {
     const view = button.dataset.studycoView;
-    setView(view, view === 'profile' ? { profileUid: state.user.uid } : undefined);
+    if (view === 'profile') openOwnProfile();
+    else setView(view);
   }));
+  $('studyco-mini-profile')?.addEventListener('click', openOwnProfile);
   $('studyco-open-composer').addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
   $('studyco-editor-publish-post')?.addEventListener('click', publishPost);
@@ -1904,7 +1913,19 @@ function wire() {
       await managePost(button.dataset.postId, action);
       return;
     }
-    if (action === 'like') await toggleLike(button.dataset.postId);
+    if (action === 'like') {
+      button.disabled = true;
+      try {
+        const result = await toggleLike(button.dataset.postId);
+        button.classList.toggle('liked', result.liked);
+        const count = button.querySelector('.studyco-action-count');
+        if (count) count.textContent = String(result.count);
+      } catch (error) {
+        toast(error.message || 'The post could not be liked.', true);
+      } finally {
+        button.disabled = false;
+      }
+    }
     if (action === 'share') await sharePost(button.dataset.postId);
     if (action === 'comments') {
       const panel = article.querySelector('[data-comments-panel]');
@@ -1922,10 +1943,23 @@ function wire() {
   document.addEventListener('submit', async (event) => {
     if (!event.target.matches('[data-comment-post]')) return;
     event.preventDefault();
-    await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value);
-    event.target.reset();
-    const article = event.target.closest('.studyco-post');
-    if (article) await loadPostComments(event.target.dataset.commentPost, article);
+    const form = event.target;
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      const count = await addComment(form.dataset.commentPost, form.querySelector('input').value);
+      form.reset();
+      const article = form.closest('.studyco-post');
+      if (article) {
+        const commentButton = article.querySelector('[data-post-action="comments"] .studyco-action-count');
+        if (commentButton && count != null) commentButton.textContent = String(count);
+        await loadPostComments(form.dataset.commentPost, article);
+      }
+    } catch (error) {
+      toast(error.message || 'The comment could not be sent.', true);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-search-people-results')?.addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });

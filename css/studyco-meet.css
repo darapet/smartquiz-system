@@ -13,7 +13,7 @@
 .studyco-post-status{display:inline-flex;margin-top:8px;padding:4px 8px;border-radius:999px;background:#fff8e7;color:#9b6415;font-size:.62rem;font-weight:900}
 .studyco-form-help{color:var(--sc-muted);font-size:.65rem;font-weight:500;line-height:1.45}
 .studyco-profile-posts-title{text-transform:none}
-.studyco-person strong[data-profile-uid],.studyco-post-author{cursor:pointer}
+.studyco-person strong[data-profile-uid],.studyco-post-author,.studyco-mini-profile{cursor:pointer}
 .studyco-auth-heading{margin-bottom:22px}.studyco-auth-heading h2{margin:7px 0 8px;font-size:1.45rem;letter-spacing:-.04em}.studyco-auth-heading p:last-child{margin:0;color:var(--sc-muted);font-size:.76rem;line-height:1.55}.studyco-auth-note a{color:var(--sc-primary);font-weight:800}.studyco-auth-redirect{width:min(430px,100%);margin:14vh auto 0;text-align:center}.studyco-auth-redirect .studyco-mark{margin:0 auto 18px}.studyco-auth-redirect h1{margin:0 0 10px;font-size:1.6rem;letter-spacing:-.05em}.studyco-auth-redirect p{margin:0 0 22px;color:var(--sc-muted);font-size:.8rem;line-height:1.6}
 :root{--sc-ink:#151936;--sc-muted:#6f7895;--sc-line:#e6e8f2;--sc-paper:#fff;--sc-bg:#f4f5fb;--sc-primary:#5b5bd6;--sc-primary-dark:#403ca8;--sc-soft:#eef0ff;--sc-green:#0f9d73;--sc-red:#c93e50;--sc-shadow:0 16px 40px rgba(31,35,76,.08)}
 *{box-sizing:border-box}body.studyco-page{margin:0;background:var(--sc-bg);color:var(--sc-ink);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,input,textarea{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.55}
