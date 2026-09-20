@@ -245,14 +245,35 @@ function stopPresenceHeartbeat() {
 
 async function ensureProfile(user) {
   const existing = await getProfile(user.uid);
-  if (existing) { state.profile = existing; return existing; }
   let legacy = {};
   try { const snap = await getDoc(doc(db, 'users', user.uid)); if (snap.exists()) legacy = snap.data(); } catch (_) {}
+  if (existing) {
+    const backfill = {};
+    const legacyValues = {
+      displayName: legacy.name || legacy.displayName || '',
+      username: legacy.username || '',
+      phone: legacy.phone || legacy.phoneNumber || '',
+      school: legacy.institution || legacy.school || '',
+      department: legacy.department || '',
+      gender: legacy.gender || legacy.sex || '',
+      location: legacy.location || legacy.city || ''
+    };
+    Object.entries(legacyValues).forEach(([key, value]) => {
+      if (!existing[key] && value) backfill[key] = value;
+    });
+    if (Object.keys(backfill).length) {
+      await setDoc(doc(db, 'social_profiles', user.uid), backfill, { merge: true });
+    }
+    state.profile = { ...existing, ...backfill };
+    state.profiles.set(user.uid, state.profile);
+    return state.profile;
+  }
   const fallback = {
     uid: user.uid, displayName: user.displayName || legacy.name || user.email?.split('@')[0] || 'StudyCo learner',
     username: legacy.username || (user.email || 'learner').split('@')[0].replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'learner',
-    email: user.email || '', loginIdentifier: user.email || '', bio: '', studentStatus: '',
-    school: legacy.institution || '', department: legacy.department || '', major: '',
+    email: user.email || '', loginIdentifier: user.email || '', phone: legacy.phone || legacy.phoneNumber || '', bio: '', studentStatus: '',
+    school: legacy.institution || legacy.school || '', department: legacy.department || '', major: '',
+    gender: legacy.gender || legacy.sex || '', location: legacy.location || legacy.city || '',
     photoURL: user.photoURL || '', coverURL: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   };
   await setDoc(doc(db, 'social_profiles', user.uid), fallback, { merge: true });
@@ -286,17 +307,19 @@ function renderProfile() {
   $('studyco-mini-profile').innerHTML = `${avatar(p, 'small')}<div><strong>${esc(profileName(p))}</strong><span>${esc(p.username ? `@${p.username}` : 'Complete your profile')}</span></div>`;
   $('studyco-composer-avatar').innerHTML = avatar(p, 'small');
   $('studyco-top-avatar').innerHTML = avatar(p, 'small');
-  $('studyco-profile-avatar').innerHTML = avatar(p, 'large');
+  $('studyco-profile-avatar').innerHTML = `${avatar(p, 'large')}${isOwnProfile ? '<label class="studyco-profile-media-edit studyco-profile-avatar-edit" title="Change profile photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z"/><circle cx="12" cy="13" r="3.2"/></svg><input id="studyco-inline-profile-photo" type="file" accept="image/*"></label>' : ''}`;
   $('studyco-profile-name').textContent = profileName(p);
   $('studyco-profile-handle').textContent = p.username ? `@${p.username}` : '';
   $('studyco-profile-bio').textContent = p.bio || 'Tell your study circle about yourself.';
-  $('studyco-profile-school').textContent = p.school ? `School: ${p.school}` : '';
-  $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ');
-  $('studyco-profile-location').textContent = p.location || '';
-  $('studyco-profile-contact').textContent = isOwnProfile ? (p.loginIdentifier || p.email || '') : '';
   $('studyco-profile-status').textContent = p.studentStatus || 'Learning';
-  $('studyco-profile-about-copy').textContent = p.bio || 'Add a short bio so classmates know what you are learning and how they can connect with you.';
-  const profileFields = [p.displayName, p.bio, p.photoURL, p.school, p.department || p.major, p.location];
+  $('studyco-profile-about-copy').textContent = p.bio || (isOwnProfile ? 'Add a short bio so classmates know what you are learning and how they can connect with you.' : 'No bio added yet.');
+  $('studyco-profile-gender').textContent = p.gender || 'Not added yet';
+  $('studyco-profile-status-detail').textContent = p.studentStatus || 'Not added yet';
+  $('studyco-profile-school').textContent = p.school || 'Not added yet';
+  $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ') || 'Not added yet';
+  $('studyco-profile-location').textContent = p.location || 'Not added yet';
+  $('studyco-profile-contact').textContent = isOwnProfile ? (p.phone || p.loginIdentifier || p.email || 'Not added yet') : 'Not shared';
+  const profileFields = [p.displayName, p.bio, p.photoURL, p.coverURL, p.studentStatus, p.school, p.department || p.major, p.gender, p.location];
   const complete = profileFields.filter(Boolean).length;
   const completion = Math.round((complete / profileFields.length) * 100);
   $('studyco-profile-completion').textContent = `${completion}%`;
@@ -305,7 +328,7 @@ function renderProfile() {
   $('studyco-profile-post-count').textContent = String(profilePostCount);
   $('studyco-profile-friend-count').textContent = isOwnProfile ? String(state.friends.length) : String(p.friendCount || 0);
   const cover = $('studyco-profile-cover');
-  cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>`;
+  cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>${!p.coverURL ? '<span class="studyco-profile-cover-label">Your learning space</span>' : ''}${isOwnProfile ? '<label class="studyco-profile-media-edit studyco-profile-cover-edit" title="Change cover photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z"/><circle cx="12" cy="13" r="3.2"/></svg><input id="studyco-inline-cover-photo" type="file" accept="image/*"></label>' : ''}`;
   $('studyco-profile-posts-heading').hidden = !isOwnProfile;
   $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
   $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
@@ -1783,11 +1806,17 @@ function wire() {
   $('studyco-story-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.storyImage = file || null; if (file) $('studyco-story-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`; });
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
-  [$('studyco-edit-profile'), $('studyco-profile-edit-small')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  [$('studyco-edit-profile'), $('studyco-profile-edit-small'), $('studyco-profile-edit-details')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
-  $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
-  $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
+  $('studyco-profile-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
+  $('studyco-cover-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
+  $('studyco-inline-profile-photo')?.addEventListener('change', (event) => uploadProfileMedia(event, 'photoURL', 'profile photo'));
+  $('studyco-inline-cover-photo')?.addEventListener('change', (event) => uploadProfileMedia(event, 'coverURL', 'cover photo'));
+  document.addEventListener('change', (event) => {
+    if (event.target.id === 'studyco-inline-profile-photo') void uploadProfileMedia(event, 'photoURL', 'profile photo');
+    if (event.target.id === 'studyco-inline-cover-photo') void uploadProfileMedia(event, 'coverURL', 'cover photo');
+  });
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
   $('studyco-new-message')?.addEventListener('click', () => { setView('friends'); $('studyco-global-search')?.focus(); });
   $('studyco-message-search')?.addEventListener('input', () => loadChats());
@@ -1923,28 +1952,65 @@ function wire() {
 }
 
 function previewFile(file, targetId) {
-  if (!file) return; if (!file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); return; }
-  $(targetId).innerHTML = `<img src="${URL.createObjectURL(file)}" alt="Selected image"><span>Change image</span>`;
+  if (!file) return;
+  if (!file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); return; }
+  const target = $(targetId);
+  if (!target) return;
+  let image = target.querySelector('img');
+  if (!image) {
+    image = document.createElement('img');
+    target.prepend(image);
+  }
+  image.src = URL.createObjectURL(file);
+  image.alt = 'Selected image';
+  const caption = target.querySelector('[data-upload-caption]');
+  if (caption) caption.textContent = 'Change image';
 }
 
 function fillEditForm() {
   const p = state.profile || {};
-  $('studyco-edit-name').value = p.displayName || ''; $('studyco-edit-contact').value = p.phone || p.loginIdentifier || '';
+  const gender = String(p.gender || '').trim().toLowerCase();
+  const genderValue = gender === 'm' || gender === 'male' ? 'Male' : gender === 'f' || gender === 'female' ? 'Female' : gender === 'non-binary' || gender === 'nonbinary' ? 'Non-binary' : gender === 'prefer not to say' ? 'Prefer not to say' : '';
+  $('studyco-edit-name').value = p.displayName || ''; $('studyco-edit-contact').value = p.phone || '';
   $('studyco-edit-bio').value = p.bio || ''; $('studyco-edit-status').value = p.studentStatus || '';
   $('studyco-edit-school').value = p.school || ''; $('studyco-edit-department').value = p.department || '';
-  $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = p.gender || ''; $('studyco-edit-location').value = p.location || '';
+  $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = genderValue; $('studyco-edit-location').value = p.location || '';
   $('studyco-photo-preview').innerHTML = p.photoURL ? `<img src="${esc(p.photoURL)}" alt=""><span>Change image</span>` : '<span>Profile photo</span>';
   $('studyco-cover-preview').innerHTML = p.coverURL ? `<img src="${esc(p.coverURL)}" alt=""><span>Change image</span>` : '<span>Cover banner</span>';
+  $('studyco-profile-photo').value = '';
+  $('studyco-cover-photo').value = '';
+}
+
+async function uploadProfileMedia(event, field, label) {
+  const input = event.target;
+  const file = input.files?.[0];
+  if (!file) return;
+  input.disabled = true;
+  try {
+    const url = await uploadImage(file, `studyco/${state.user.uid}/${field === 'photoURL' ? 'profile' : 'cover'}-${Date.now()}`);
+    const update = { [field]: url, updatedAt: serverTimestamp() };
+    await setDoc(doc(db, 'social_profiles', state.user.uid), update, { merge: true });
+    state.profile = { ...state.profile, ...update, [field]: url };
+    state.profiles.set(state.user.uid, state.profile);
+    state.viewedProfile = state.profile;
+    renderProfile();
+    toast(`${label[0].toUpperCase()}${label.slice(1)} updated.`);
+  } catch (error) {
+    toast(error.message || `${label} could not be updated.`, true);
+  } finally {
+    input.disabled = false;
+    input.value = '';
+  }
 }
 
 async function saveProfile(event) {
   event.preventDefault();
   try {
     const update = { displayName: $('studyco-edit-name').value.trim(), phone: $('studyco-edit-contact').value.trim(), bio: $('studyco-edit-bio').value.trim(), studentStatus: $('studyco-edit-status').value.trim(), school: $('studyco-edit-school').value.trim(), department: $('studyco-edit-department').value.trim(), major: $('studyco-edit-major').value.trim(), gender: $('studyco-edit-gender').value.trim(), location: $('studyco-edit-location').value.trim(), updatedAt: serverTimestamp() };
-    const photo = $('studyco-profile-photo').files[0]; const cover = $('studyco-cover-photo').files[0];
+    const photo = $('studyco-profile-photo')?.files?.[0]; const cover = $('studyco-cover-photo')?.files?.[0];
     if (photo) update.photoURL = await uploadImage(photo, `studyco/${state.user.uid}/profile-${Date.now()}`);
     if (cover) update.coverURL = await uploadImage(cover, `studyco/${state.user.uid}/cover-${Date.now()}`);
-    await updateDoc(doc(db, 'social_profiles', state.user.uid), update); state.profile = { ...state.profile, ...update }; state.profiles.set(state.user.uid, state.profile); renderProfile(); closeModal('studyco-edit-modal'); toast('Profile updated.');
+    await setDoc(doc(db, 'social_profiles', state.user.uid), update, { merge: true }); state.profile = { ...state.profile, ...update }; state.profiles.set(state.user.uid, state.profile); state.viewedProfile = state.profile; renderProfile(); closeModal('studyco-edit-modal'); toast('Profile updated.');
   } catch (error) { toast(error.message || 'Profile could not be updated.', true); }
 }
 
