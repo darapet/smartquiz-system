@@ -11,6 +11,12 @@
   object-position:center;
 }
 
+/* Keep profile posts compact while preserving the complete image. */
+.studyco-view-profile .studyco-post-image{
+  max-height:380px;
+  object-fit:contain;
+}
+
 /* Profile media controls are rendered only on the signed-in user's profile. */
 .studyco-profile-cover{position:relative;overflow:hidden}
 .studyco-profile-cover>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -120,6 +126,7 @@
 }
 
 @media(max-width:560px){
+  .studyco-view-profile .studyco-post-image{max-height:280px}
   .studyco-profile-avatar{width:116px;height:116px}
   .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}
   .studyco-profile-avatar>.studyco-avatar.large{width:116px;height:116px}
