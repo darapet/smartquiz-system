@@ -35,72 +35,73 @@
 .studyco-profile-about .studyco-section-title{align-items:center}
 .studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
 
-/* Profile posts omit the author row, so generic feed positioning must not
-   anchor the owner menu to an empty header or clip its action panel. This
-   stylesheet is loaded last so the Facebook feed rules cannot undo it. */
-.studyco-view-profile .studyco-profile-posts-card,
-.studyco-view-profile #studyco-profile-posts,
-.studyco-view-profile .studyco-post{
-  overflow:visible !important;
+/* Profile post actions stay in normal document flow. There is no floating
+   profile menu to clip against the card, feed, or viewport. */
+.studyco-profile-post-management{
+  margin:10px 20px 0;
+  padding-top:9px;
+  border-top:1px solid #e4e6eb;
 }
-.studyco-view-profile .studyco-post-head.profile-post-head{
-  position:relative !important;
-  display:block !important;
-  width:100%;
-  box-sizing:border-box;
-  min-height:52px;
-  padding:8px 16px 0;
+.studyco-profile-post-management summary{
+  display:inline-flex;
+  align-items:center;
+  min-height:32px;
+  padding:6px 11px;
+  border:1px solid #d8dade;
+  border-radius:8px;
+  background:#f0f2f5;
+  color:#050505;
+  cursor:pointer;
+  font-size:.72rem;
+  font-weight:700;
+  list-style:none;
 }
-.studyco-view-profile .studyco-post-menu-wrap{
-  position:absolute !important;
-  top:8px !important;
-  right:16px !important;
-  left:auto !important;
-  z-index:20;
-  display:flex !important;
-  flex:0 0 auto;
-  margin:0 !important;
+.studyco-profile-post-management summary::-webkit-details-marker{display:none}
+.studyco-profile-post-management summary::before{
+  content:"⚙";
+  margin-right:6px;
+  font-size:.8rem;
 }
-.studyco-view-profile .studyco-post-menu{
-  position:relative !important;
-  inset:auto !important;
-  display:grid !important;
-  place-items:center;
-  width:38px !important;
-  height:38px !important;
-  padding:0 !important;
-  line-height:1 !important;
+.studyco-profile-post-management[open] summary{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
 }
-.studyco-view-profile .studyco-post-menu-panel{
-  position:absolute !important;
-  top:calc(100% + 6px) !important;
-  right:0 !important;
-  left:auto !important;
-  z-index:50 !important;
-  min-width:190px;
-  max-width:calc(100vw - 32px);
-  white-space:nowrap;
+.studyco-profile-post-management-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
 }
-
-/* Non-owners get preference controls in the same profile-post surface. Keep
-   them visible even when broad feed styles change the post layout. */
-.studyco-view-profile .studyco-profile-post .studyco-post-preferences,
-.studyco-view-profile .studyco-post-preferences{
-  display:flex !important;
-  visibility:visible !important;
-  opacity:1 !important;
+.studyco-profile-post-management-actions button,
+.studyco-post-preferences button{
+  border:1px solid #d8dade;
+  border-radius:8px;
+  padding:6px 9px;
+  background:#fff;
+  color:#65676b;
+  cursor:pointer;
+  font-size:.68rem;
+  font-weight:700;
 }
-.studyco-view-profile .studyco-post-preferences button{
-  display:inline-flex !important;
-  visibility:visible !important;
+.studyco-profile-post-management-actions button:hover{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
 }
-
+.studyco-profile-post-management-actions button.danger{
+  color:#c93e50;
+}
+.studyco-profile-post-management-actions button.danger:hover{
+  border-color:#c93e50;
+  background:#fff2f3;
+}
 .studyco-post-preferences{
   display:flex;
   align-items:center;
   gap:7px;
   flex-wrap:wrap;
-  margin:0 20px 10px;
+  margin:10px 20px 0;
   padding-top:9px;
   border-top:1px solid #e4e6eb;
 }
@@ -110,13 +111,8 @@
   font-size:.7rem;
 }
 .studyco-post-preferences button{
-  border:1px solid #d8dade;
   border-radius:999px;
   padding:6px 10px;
-  background:#fff;
-  color:#65676b;
-  font-size:.68rem;
-  font-weight:700;
 }
 .studyco-post-preferences button:hover,
 .studyco-post-preferences button.selected{
