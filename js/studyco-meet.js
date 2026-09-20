@@ -2080,6 +2080,33 @@ function previewFile(file, targetId) {
   if (caption) caption.textContent = 'Change image';
 }
 
+function renderUploadPreview(targetId, url, emptyText) {
+  const target = $(targetId);
+  if (!target) return;
+  let image = target.querySelector('img');
+  if (url) {
+    if (!image) {
+      image = document.createElement('img');
+      target.prepend(image);
+    }
+    image.src = url;
+    image.alt = 'Current profile image';
+  } else if (image) {
+    image.remove();
+  }
+  let caption = target.querySelector('[data-upload-caption]');
+  if (!caption) {
+    caption = target.querySelector('span');
+    if (caption) caption.dataset.uploadCaption = '';
+  }
+  if (!caption) {
+    caption = document.createElement('span');
+    caption.dataset.uploadCaption = '';
+    target.append(caption);
+  }
+  caption.textContent = url ? 'Change image' : emptyText;
+}
+
 function fillEditForm() {
   const p = state.profile || {};
   const gender = String(p.gender || '').trim().toLowerCase();
@@ -2088,8 +2115,8 @@ function fillEditForm() {
   $('studyco-edit-bio').value = p.bio || ''; $('studyco-edit-status').value = p.studentStatus || '';
   $('studyco-edit-school').value = p.school || ''; $('studyco-edit-department').value = p.department || '';
   $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = genderValue; $('studyco-edit-location').value = p.location || '';
-  $('studyco-photo-preview').innerHTML = p.photoURL ? `<img src="${esc(p.photoURL)}" alt=""><span>Change image</span>` : '<span>Profile photo</span>';
-  $('studyco-cover-preview').innerHTML = p.coverURL ? `<img src="${esc(p.coverURL)}" alt=""><span>Change image</span>` : '<span>Cover banner</span>';
+  renderUploadPreview('studyco-photo-preview', p.photoURL, 'Profile photo');
+  renderUploadPreview('studyco-cover-preview', p.coverURL, 'Cover banner');
   $('studyco-profile-photo').value = '';
   $('studyco-cover-photo').value = '';
 }
