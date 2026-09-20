@@ -41,10 +41,17 @@
 
 /* Profile post actions stay in normal document flow. There is no floating
    profile menu to clip against the card, feed, or viewport. */
+.studyco-post-management-slot{
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
+  min-height:32px;
+  margin:0 20px 4px;
+}
 .studyco-profile-post-management{
-  margin:10px 20px 0;
-  padding-top:9px;
-  border-top:1px solid #e4e6eb;
+  margin:0;
+  padding:0;
+  border:0;
 }
 .studyco-profile-post-management summary{
   display:inline-flex;
@@ -126,6 +133,7 @@
 .studyco-profile-post-management-viewer .studyco-post-preferences{
   justify-content:flex-start;
   text-align:left;
+  margin:8px 0 0;
 }
 .studyco-profile-post-management-viewer .studyco-post-preferences .close{
   min-width:30px;
