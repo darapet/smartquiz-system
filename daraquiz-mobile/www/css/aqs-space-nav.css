@@ -1,0 +1,165 @@
+/* Dara mobile product-space navigation */
+.dara-mobile-space-menu {
+  position: absolute;
+  top: 54px;
+  right: 12px;
+  z-index: 90;
+  width: min(250px, calc(100vw - 24px));
+  padding: 8px;
+  border: 1px solid #dce3f3;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 14px 35px rgba(22, 32, 68, .2);
+}
+
+.dara-mobile-space-menu[hidden] { display: none; }
+.dara-mobile-space-menu-heading {
+  padding: 6px 9px 7px;
+  color: #7b8499;
+  font-size: .62rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dara-mobile-space-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 9px;
+  border-radius: 9px;
+  color: #53617d;
+  text-decoration: none;
+}
+
+.dara-mobile-space-link:hover,
+.dara-mobile-space-link.active {
+  color: #3730a3;
+  background: #eef2ff;
+}
+
+.dara-mobile-space-link > span:first-child {
+  width: 23px;
+  text-align: center;
+  font-size: 1rem;
+}
+
+.dara-mobile-space-link > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.dara-mobile-space-link strong { font-size: .78rem; line-height: 1.1; }
+.dara-mobile-space-link small { color: #94a3b8; font-size: .63rem; }
+.dara-mobile-space-divider { height: 1px; margin: 6px 4px; background: #e8edf7; }
+
+.dara-mobile-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 18px;
+  z-index: 45;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 11px 14px 11px 11px;
+  border: 1px solid rgba(255, 255, 255, .35);
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, #4f46e5, #7c3aed);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, .32);
+  font-size: .76rem;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.dara-mobile-fab-mark {
+  display: grid;
+  place-items: center;
+  width: 23px;
+  height: 23px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .2);
+}
+
+body.social-page .social-top-actions { position: relative; }
+body.social-page .social-top-actions .dara-mobile-create,
+body.social-page .social-top-actions .dara-mobile-save,
+body.social-page .social-top-actions .dara-mobile-menu-button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 34px;
+  height: 34px;
+  padding: 5px 8px;
+  color: #c7d2fe;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(99, 102, 241, .12);
+  font-size: 1.05rem;
+  line-height: 1;
+  text-decoration: none;
+}
+
+body.social-page .social-top-actions .dara-mobile-create:hover,
+body.social-page .social-top-actions .dara-mobile-save:hover,
+body.social-page .social-top-actions .dara-mobile-menu-button:hover {
+  color: #fff;
+  background: rgba(99, 102, 241, .3);
+}
+
+@media (max-width: 700px) {
+  body.social-page .social-top-actions .dara-mobile-create,
+  body.social-page .social-top-actions .dara-mobile-save,
+  body.social-page .social-top-actions .dara-mobile-menu-button {
+    min-width: 32px;
+    height: 32px;
+    padding: 4px 6px;
+  }
+}
+
+.dara-mobile-hub {
+  min-height: 100vh;
+  padding: 18px 14px 70px;
+  color: #e2e8f0;
+  background:
+    radial-gradient(circle at 0 0, rgba(79, 70, 229, .25), transparent 38%),
+    #080910;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dara-mobile-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.dara-mobile-brand,
+.dara-mobile-home {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 900;
+}
+
+.dara-mobile-brand { display: inline-flex; align-items: center; gap: 8px; font-size: .95rem; }
+.dara-mobile-brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 10px; background: linear-gradient(135deg,#6366f1,#8b5cf6); }
+.dara-mobile-home { padding: 8px 11px; border: 1px solid rgba(255,255,255,.18); border-radius: 9px; color: #a5b4fc; font-size: .72rem; }
+.dara-mobile-space-switcher { display: grid; gap: 6px; margin-bottom: 28px; }
+.dara-mobile-space-switcher .dara-mobile-space-link { border: 1px solid rgba(255,255,255,.12); background: rgba(15,23,42,.75); color: #94a3b8; }
+.dara-mobile-space-switcher .dara-mobile-space-link.active { border-color: rgba(129,140,248,.55); color: #fff; background: rgba(79,70,229,.25); }
+.dara-mobile-hub-kicker { margin: 0 0 9px; color: #818cf8; font-size: .65rem; font-weight: 900; letter-spacing: .13em; text-transform: uppercase; }
+.dara-mobile-hub h1 { margin: 0; color: #fff; font-size: clamp(2rem, 11vw, 3.4rem); line-height: .98; letter-spacing: -.07em; }
+.dara-mobile-hub-intro { margin: 15px 0 26px; color: #94a3b8; font-size: .87rem; line-height: 1.65; }
+.dara-mobile-tool-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.dara-mobile-tool-card { display: grid; align-content: space-between; gap: 18px; min-height: 155px; padding: 15px; border: 1px solid rgba(148,163,184,.18); border-radius: 15px; background: rgba(15,23,42,.82); color: #fff; text-decoration: none; }
+.dara-mobile-tool-card-icon { font-size: 1.25rem; }
+.dara-mobile-tool-card h2 { margin: 0 0 5px; font-size: .84rem; }
+.dara-mobile-tool-card p { margin: 0; color: #94a3b8; font-size: .68rem; line-height: 1.5; }
+.dara-mobile-tool-card-arrow { color: #a5b4fc; font-size: .66rem; font-weight: 800; }
+.dara-mobile-hub-note { margin: 16px 0 0; color: #64748b; font-size: .7rem; line-height: 1.55; }
+
+@media (max-width: 370px) {
+  .dara-mobile-tool-grid { grid-template-columns: 1fr; }
+}
