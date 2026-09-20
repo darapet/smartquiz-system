@@ -9,6 +9,20 @@
 (function () {
   'use strict';
 
+  /* Add the category menu to every page that already uses the shared loader.
+     The category script is intentionally separate so Social remains the main
+     switcher while Edu and Workspace expose only their own tools. */
+  (function loadDaraCategoryNav() {
+    var categoryCss = document.createElement('link');
+    categoryCss.rel = 'stylesheet';
+    categoryCss.href = 'css/aqs-category-nav.css';
+    document.head.appendChild(categoryCss);
+    var categoryScript = document.createElement('script');
+    categoryScript.src = 'js/aqs-category-nav.js';
+    categoryScript.defer = true;
+    document.head.appendChild(categoryScript);
+  })();
+
   var isIndex = (function () {
     var p = location.pathname;
     return p.endsWith('index.html') || p === '/' ||

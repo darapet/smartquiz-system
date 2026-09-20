@@ -9,6 +9,18 @@
 (function () {
   'use strict';
 
+  /* Add the category menu to every mobile page that uses the shared loader. */
+  (function loadDaraCategoryNav() {
+    var categoryCss = document.createElement('link');
+    categoryCss.rel = 'stylesheet';
+    categoryCss.href = 'css/aqs-category-nav.css';
+    document.head.appendChild(categoryCss);
+    var categoryScript = document.createElement('script');
+    categoryScript.src = 'js/aqs-category-nav.js';
+    categoryScript.defer = true;
+    document.head.appendChild(categoryScript);
+  })();
+
   var isIndex = (function () {
     var p = location.pathname;
     return p.endsWith('index.html') || p === '/' ||
