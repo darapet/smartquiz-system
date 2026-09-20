@@ -256,7 +256,8 @@ async function ensureProfile(user) {
       school: legacy.institution || legacy.school || '',
       department: legacy.department || '',
       gender: legacy.gender || legacy.sex || '',
-      location: legacy.location || legacy.city || ''
+      location: legacy.location || legacy.city || '',
+      email: legacy.email || user.email || ''
     };
     Object.entries(legacyValues).forEach(([key, value]) => {
       if (!existing[key] && value) backfill[key] = value;
@@ -315,11 +316,19 @@ function renderProfile() {
   $('studyco-profile-about-copy').textContent = p.bio || (isOwnProfile ? 'Add a short bio so classmates know what you are learning and how they can connect with you.' : 'No bio added yet.');
   $('studyco-profile-gender').textContent = p.gender || 'Not added yet';
   $('studyco-profile-status-detail').textContent = p.studentStatus || 'Not added yet';
+  $('studyco-profile-education-level').textContent = p.educationLevel || 'Not added yet';
+  $('studyco-profile-education-status').textContent = p.educationStatus || 'Not added yet';
   $('studyco-profile-school').textContent = p.school || 'Not added yet';
   $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ') || 'Not added yet';
+  $('studyco-profile-date-of-birth').textContent = isOwnProfile ? (p.dateOfBirth || 'Not added yet') : 'Not shared';
+  $('studyco-profile-marital-status').textContent = p.maritalStatus || 'Not added yet';
+  $('studyco-profile-relationship-name').textContent = isOwnProfile ? (p.relationshipName || 'Not added yet') : 'Not shared';
+  $('studyco-profile-relationship-name-detail').hidden = !isOwnProfile;
+  $('studyco-profile-address').textContent = isOwnProfile ? (p.address || 'Not added yet') : 'Not shared';
   $('studyco-profile-location').textContent = p.location || 'Not added yet';
-  $('studyco-profile-contact').textContent = isOwnProfile ? (p.phone || p.loginIdentifier || p.email || 'Not added yet') : 'Not shared';
-  const profileFields = [p.displayName, p.bio, p.photoURL, p.coverURL, p.studentStatus, p.school, p.department || p.major, p.gender, p.location];
+  $('studyco-profile-phone').textContent = isOwnProfile ? (p.phone || 'Not added yet') : 'Not shared';
+  $('studyco-profile-email').textContent = isOwnProfile ? (p.email || 'Not added yet') : 'Not shared';
+  const profileFields = [p.displayName, p.bio, p.photoURL, p.coverURL, p.studentStatus, p.educationLevel, p.educationStatus, p.school, p.department || p.major, p.gender, p.dateOfBirth, p.maritalStatus, p.address, p.location, p.phone, p.email];
   const complete = profileFields.filter(Boolean).length;
   const completion = Math.round((complete / profileFields.length) * 100);
   $('studyco-profile-completion').textContent = `${completion}%`;
@@ -1954,6 +1963,7 @@ function wire() {
   [$('studyco-edit-profile'), $('studyco-profile-edit-small')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
+  $('studyco-edit-marital-status')?.addEventListener('change', toggleRelationshipNameField);
   $('studyco-post-manage-form').addEventListener('submit', savePostChanges);
   $('studyco-profile-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
@@ -2155,14 +2165,36 @@ function renderUploadPreview(targetId, url, emptyText) {
   caption.textContent = url ? 'Change image' : emptyText;
 }
 
+function toggleRelationshipNameField() {
+  const status = $('studyco-edit-marital-status')?.value;
+  const field = $('studyco-relationship-name-field');
+  const input = $('studyco-edit-relationship-name');
+  const required = status === 'Engaged' || status === 'In a relationship';
+  if (field) field.hidden = !required;
+  if (input) {
+    input.required = required;
+    if (!required) input.value = '';
+  }
+}
+
 function fillEditForm() {
   const p = state.profile || {};
   const gender = String(p.gender || '').trim().toLowerCase();
   const genderValue = gender === 'm' || gender === 'male' ? 'Male' : gender === 'f' || gender === 'female' ? 'Female' : gender === 'non-binary' || gender === 'nonbinary' ? 'Non-binary' : gender === 'prefer not to say' ? 'Prefer not to say' : '';
+  const marital = String(p.maritalStatus || '').trim().toLowerCase();
+  const maritalValue = marital === 'single' ? 'Single' : marital === 'in a relationship' || marital === 'in_relationship' ? 'In a relationship' : marital === 'engaged' ? 'Engaged' : marital === 'married' ? 'Married' : marital === 'divorced' ? 'Divorced' : '';
   $('studyco-edit-name').value = p.displayName || ''; $('studyco-edit-contact').value = p.phone || '';
+  $('studyco-edit-email').value = p.email || state.user?.email || '';
+  $('studyco-edit-date-of-birth').value = p.dateOfBirth || '';
   $('studyco-edit-bio').value = p.bio || ''; $('studyco-edit-status').value = p.studentStatus || '';
+  $('studyco-edit-address').value = p.address || '';
+  $('studyco-edit-education-level').value = p.educationLevel || '';
+  $('studyco-edit-education-status').value = p.educationStatus || '';
   $('studyco-edit-school').value = p.school || ''; $('studyco-edit-department').value = p.department || '';
-  $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = genderValue; $('studyco-edit-location').value = p.location || '';
+  $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = genderValue;
+  $('studyco-edit-marital-status').value = maritalValue; $('studyco-edit-relationship-name').value = p.relationshipName || '';
+  $('studyco-edit-location').value = p.location || '';
+  toggleRelationshipNameField();
   renderUploadPreview('studyco-photo-preview', p.photoURL, 'Profile photo');
   renderUploadPreview('studyco-cover-preview', p.coverURL, 'Cover banner');
   $('studyco-profile-photo').value = '';
@@ -2194,7 +2226,32 @@ async function uploadProfileMedia(event, field, label) {
 async function saveProfile(event) {
   event.preventDefault();
   try {
-    const update = { displayName: $('studyco-edit-name').value.trim(), phone: $('studyco-edit-contact').value.trim(), bio: $('studyco-edit-bio').value.trim(), studentStatus: $('studyco-edit-status').value.trim(), school: $('studyco-edit-school').value.trim(), department: $('studyco-edit-department').value.trim(), major: $('studyco-edit-major').value.trim(), gender: $('studyco-edit-gender').value.trim(), location: $('studyco-edit-location').value.trim(), updatedAt: serverTimestamp() };
+    const phone = $('studyco-edit-contact').value.trim();
+    const email = $('studyco-edit-email').value.trim().toLowerCase();
+    const maritalStatus = $('studyco-edit-marital-status').value.trim();
+    const relationshipName = $('studyco-edit-relationship-name').value.trim();
+    if (!phone) { toast('Phone number is required.', true); $('studyco-edit-contact').focus(); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a valid email address.', true); $('studyco-edit-email').focus(); return; }
+    if (['Engaged', 'In a relationship'].includes(maritalStatus) && !relationshipName) { toast('Add the person’s name for this marital status.', true); $('studyco-edit-relationship-name').focus(); return; }
+    const update = {
+      displayName: $('studyco-edit-name').value.trim(),
+      phone,
+      email,
+      dateOfBirth: $('studyco-edit-date-of-birth').value,
+      bio: $('studyco-edit-bio').value.trim(),
+      address: $('studyco-edit-address').value.trim(),
+      studentStatus: $('studyco-edit-status').value.trim(),
+      educationLevel: $('studyco-edit-education-level').value.trim(),
+      educationStatus: $('studyco-edit-education-status').value.trim(),
+      school: $('studyco-edit-school').value.trim(),
+      department: $('studyco-edit-department').value.trim(),
+      major: $('studyco-edit-major').value.trim(),
+      gender: $('studyco-edit-gender').value.trim(),
+      maritalStatus,
+      relationshipName: ['Engaged', 'In a relationship'].includes(maritalStatus) ? relationshipName : '',
+      location: $('studyco-edit-location').value.trim(),
+      updatedAt: serverTimestamp()
+    };
     const photo = $('studyco-profile-photo')?.files?.[0]; const cover = $('studyco-cover-photo')?.files?.[0];
     if (photo) update.photoURL = await uploadImage(photo, `studyco/${state.user.uid}/profile-${Date.now()}`);
     if (cover) update.coverURL = await uploadImage(cover, `studyco/${state.user.uid}/cover-${Date.now()}`);
