@@ -310,7 +310,8 @@ function renderProfile() {
   $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
   $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
   $('studyco-profile-edit-small').hidden = !isOwnProfile;
-  $('studyco-profile-next').hidden = !isOwnProfile;
+  const profileNext = $('studyco-profile-next');
+  if (profileNext) profileNext.hidden = !isOwnProfile;
 }
 
 function viewHash(view, identifier = '') {

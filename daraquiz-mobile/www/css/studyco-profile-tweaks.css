@@ -1,0 +1,14 @@
+/* Keep profile prompts out of the profile page. */
+.studyco-profile-next{display:none!important}
+
+/* Preserve the complete uploaded image while fitting it to the post card. */
+.studyco-post-image,
+.studyco-post-preview img{
+  display:block;
+  width:100%;
+  max-width:100%;
+  height:auto;
+  max-height:none;
+  object-fit:contain;
+  object-position:center;
+}
