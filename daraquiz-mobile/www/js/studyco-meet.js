@@ -5,7 +5,7 @@ const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null,
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
-  dismissedSuggestions: new Set(),
+  dismissedSuggestions: new Set(), postPreferences: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
@@ -256,7 +256,8 @@ async function ensureProfile(user) {
       school: legacy.institution || legacy.school || '',
       department: legacy.department || '',
       gender: legacy.gender || legacy.sex || '',
-      location: legacy.location || legacy.city || ''
+      location: legacy.location || legacy.city || '',
+      email: legacy.email || user.email || ''
     };
     Object.entries(legacyValues).forEach(([key, value]) => {
       if (!existing[key] && value) backfill[key] = value;
@@ -315,11 +316,19 @@ function renderProfile() {
   $('studyco-profile-about-copy').textContent = p.bio || (isOwnProfile ? 'Add a short bio so classmates know what you are learning and how they can connect with you.' : 'No bio added yet.');
   $('studyco-profile-gender').textContent = p.gender || 'Not added yet';
   $('studyco-profile-status-detail').textContent = p.studentStatus || 'Not added yet';
+  $('studyco-profile-education-level').textContent = p.educationLevel || 'Not added yet';
+  $('studyco-profile-education-status').textContent = p.educationStatus || 'Not added yet';
   $('studyco-profile-school').textContent = p.school || 'Not added yet';
   $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ') || 'Not added yet';
+  $('studyco-profile-date-of-birth').textContent = isOwnProfile ? (p.dateOfBirth || 'Not added yet') : 'Not shared';
+  $('studyco-profile-marital-status').textContent = p.maritalStatus || 'Not added yet';
+  $('studyco-profile-relationship-name').textContent = isOwnProfile ? (p.relationshipName || 'Not added yet') : 'Not shared';
+  $('studyco-profile-relationship-name-detail').hidden = !isOwnProfile;
+  $('studyco-profile-address').textContent = isOwnProfile ? (p.address || 'Not added yet') : 'Not shared';
   $('studyco-profile-location').textContent = p.location || 'Not added yet';
-  $('studyco-profile-contact').textContent = isOwnProfile ? (p.phone || p.loginIdentifier || p.email || 'Not added yet') : 'Not shared';
-  const profileFields = [p.displayName, p.bio, p.photoURL, p.coverURL, p.studentStatus, p.school, p.department || p.major, p.gender, p.location];
+  $('studyco-profile-phone').textContent = isOwnProfile ? (p.phone || 'Not added yet') : 'Not shared';
+  $('studyco-profile-email').textContent = isOwnProfile ? (p.email || 'Not added yet') : 'Not shared';
+  const profileFields = [p.displayName, p.bio, p.photoURL, p.coverURL, p.studentStatus, p.educationLevel, p.educationStatus, p.school, p.department || p.major, p.gender, p.dateOfBirth, p.maritalStatus, p.address, p.location, p.phone, p.email];
   const complete = profileFields.filter(Boolean).length;
   const completion = Math.round((complete / profileFields.length) * 100);
   $('studyco-profile-completion').textContent = `${completion}%`;
@@ -448,6 +457,7 @@ async function findPeople(term = '', { broad = false } = {}) {
 async function findPosts(term) {
   const needle = term.trim().toLowerCase();
   const matches = await Promise.all(state.posts.map(async (post) => {
+    if (!isPublicPost(post)) return null;
     const author = await getProfile(post.userId);
     const searchable = `${post.content || ''} ${post.fileName || ''} ${post.linkUrl || ''} ${profileName(author)} ${author?.username || ''} ${author?.school || ''} ${author?.department || ''}`.toLowerCase();
     return searchable.includes(needle) ? post : null;
@@ -501,7 +511,11 @@ async function renderPost(post, { showAuthor = true } = {}) {
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
   const authorHead = showAuthor ? `<button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button>` : '';
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}">${postHead}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  const isOwner = post.userId === state.user.uid;
+  const status = postStatusLabel(post);
+  const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
+  const postManagement = profilePostManagement(post);
+  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function loadPostComments(postId, article) {
@@ -540,8 +554,34 @@ function isPublicPost(post) {
   return true;
 }
 
+function postStatusLabel(post) {
+  const status = post.status || 'published';
+  if (status === 'scheduled') return timeMs(post.scheduledAt) > Date.now() ? `Scheduled for ${new Date(timeMs(post.scheduledAt)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : 'Published';
+  if (status === 'hidden') return 'Hidden from your circle';
+  if (status === 'paused') return 'Paused';
+  if (status === 'failed') return 'Needs retry';
+  return '';
+}
+
+function postPreferenceControls(post) {
+  if (post.userId === state.user.uid) return '';
+  const preference = state.postPreferences.get(post.id);
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
+}
+
+function profilePostManagement(post) {
+  if (post.userId !== state.user.uid) return postPreferenceControls(post);
+  const pauseLabel = post.status === 'paused' ? 'Resume post' : 'Pause post';
+  const hideLabel = post.status === 'hidden' ? 'Show post' : 'Hide post';
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary>Manage post</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
+}
+
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, { includePrivate = false, showAuthor = true } = {}) {
-  if (!includePrivate) posts = posts.filter(isPublicPost);
+  if (!includePrivate) {
+    posts = posts
+      .filter((post) => isPublicPost(post) && state.postPreferences.get(post.id) !== 'not_interested')
+      .sort((a, b) => Number(state.postPreferences.get(b.id) === 'interested') - Number(state.postPreferences.get(a.id) === 'interested'));
+  }
   if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   target.innerHTML = (await Promise.all(posts.map((post) => renderPost(post, { showAuthor })))).join('');
@@ -571,14 +611,60 @@ async function loadProfileView(uid = state.user.uid) {
       .filter((item) => item.data().status === 'accepted').length;
   }
   renderProfile();
-  await renderProfilePosts();
+  const posts = state.posts.filter((post) => post.userId === profileUid && (profileUid === state.user.uid || isPublicPost(post)));
+  await renderFeed($('studyco-profile-posts'), posts, { includePrivate: profileUid === state.user.uid, showAuthor: false });
+}
+
+function scheduleNextFeedRefresh() {
+  clearTimeout(state.scheduleTimer);
+  const next = state.posts
+    .filter((post) => post.status === 'scheduled' && timeMs(post.scheduledAt) > Date.now())
+    .sort((a, b) => timeMs(a.scheduledAt) - timeMs(b.scheduledAt))[0];
+  if (!next) return;
+  state.scheduleTimer = setTimeout(() => {
+    renderFeed();
+    if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid);
+    scheduleNextFeedRefresh();
+  }, Math.max(1000, timeMs(next.scheduledAt) - Date.now() + 100));
+}
+
+async function loadPostPreferences() {
+  if (!state.user) return;
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'studyco_post_preferences'),
+      where('userId', '==', state.user.uid),
+      limit(500)
+    ));
+    state.postPreferences = new Map(snapshot.docs.map((item) => [item.data().postId, item.data().preference]));
+  } catch (error) {
+    state.postPreferences = new Map();
+    toast(error.message || 'Post preferences could not load.', true);
+  }
+}
+
+async function setPostPreference(postId, preference) {
+  if (!state.user || !postId || !['interested', 'not_interested'].includes(preference)) return;
+  const preferenceRef = doc(db, 'studyco_post_preferences', `${state.user.uid}_${postId}`);
+  await setDoc(preferenceRef, {
+    userId: state.user.uid,
+    postId,
+    preference,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  state.postPreferences.set(postId, preference);
+  if (preference === 'not_interested') toast('You will see fewer posts like this.');
+  else toast('We will show you more posts like this.');
+  if (state.activeView === 'search') await renderSearchResults($('studyco-page-search')?.value || '');
+  else if (state.activeView === 'profile') await loadProfileView(state.viewedProfileUid || state.user.uid);
+  else await renderFeed();
 }
 
 function subscribeFeed() {
   state.feedUnsub?.();
   state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), limit(60)), (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
-    renderFeed(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
+    renderFeed(); scheduleNextFeedRefresh(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
   }, (error) => toast(error.message || 'The feed could not load.', true));
 }
 
@@ -593,6 +679,87 @@ async function publishPost() {
     await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; $('studyco-post-file').value = ''; $('studyco-post-url').value = ''; $('studyco-post-url-row').hidden = true; $('studyco-post-attachment-status').hidden = true; state.postImage = null; state.postFile = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
   } catch (error) { toast(error.message || 'Your post could not be published.', true); } finally { button.disabled = false; }
+}
+
+function localDateTimeValue(value) {
+  const ms = timeMs(value);
+  if (!ms) return '';
+  const date = new Date(ms);
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function openPostManage(postId, mode = 'edit') {
+  const post = state.posts.find((item) => item.id === postId);
+  if (!post || post.userId !== state.user.uid) return;
+  $('studyco-manage-post-id').value = postId;
+  $('studyco-manage-post-text').value = post.content || '';
+  $('studyco-manage-post-schedule').value = localDateTimeValue(post.scheduledAt);
+  $('studyco-post-manage-title').textContent = mode === 'reschedule' ? 'Reschedule post' : 'Edit post';
+  openModal('studyco-post-manage-modal');
+  if (mode === 'reschedule') $('studyco-manage-post-schedule').focus();
+  else $('studyco-manage-post-text').focus();
+}
+
+async function savePostChanges(event) {
+  event.preventDefault();
+  const postId = $('studyco-manage-post-id').value;
+  const post = state.posts.find((item) => item.id === postId);
+  if (!post || post.userId !== state.user.uid) return;
+  const content = $('studyco-manage-post-text').value.trim();
+  const scheduleValue = $('studyco-manage-post-schedule').value;
+  if (!content && !post.imageUrl && !post.fileUrl && !post.linkUrl) {
+    toast('A post needs text or an attachment.', true);
+    return;
+  }
+  const scheduledDate = scheduleValue ? new Date(scheduleValue) : null;
+  const isFuture = scheduledDate && !Number.isNaN(scheduledDate.getTime()) && scheduledDate.getTime() > Date.now();
+  const update = {
+    content: content.slice(0, 1000),
+    status: isFuture ? 'scheduled' : 'published',
+    scheduledAt: isFuture ? Timestamp.fromDate(scheduledDate) : null,
+    updatedAt: serverTimestamp()
+  };
+  try {
+    await updateDoc(doc(db, 'studyco_posts', postId), update);
+    closeModal('studyco-post-manage-modal');
+    toast(isFuture ? 'Post rescheduled.' : 'Post updated.');
+  } catch (error) {
+    toast(error.message || 'The post could not be updated.', true);
+  }
+}
+
+async function managePost(postId, action) {
+  const post = state.posts.find((item) => item.id === postId);
+  if (!post || post.userId !== state.user.uid) return;
+  if (action === 'edit' || action === 'reschedule') {
+    openPostManage(postId, action);
+    return;
+  }
+  if (action === 'delete') {
+    if (!window.confirm('Delete this post permanently?')) return;
+    try {
+      await deleteDoc(doc(db, 'studyco_posts', postId));
+      toast('Post deleted.');
+    } catch (error) {
+      toast(error.message || 'The post could not be deleted.', true);
+    }
+    return;
+  }
+  const update = { updatedAt: serverTimestamp() };
+  if (action === 'pause') update.status = post.status === 'paused' ? 'published' : 'paused';
+  if (action === 'hide') update.status = post.status === 'hidden' ? 'published' : 'hidden';
+  if (action === 'retry') {
+    update.status = 'published';
+    update.scheduledAt = null;
+    update.retryCount = Number(post.retryCount || 0) + 1;
+  }
+  try {
+    await updateDoc(doc(db, 'studyco_posts', postId), update);
+    toast(action === 'retry' ? 'Post published again.' : 'Post status updated.');
+  } catch (error) {
+    toast(error.message || 'That post action could not be completed.', true);
+  }
 }
 
 async function toggleLike(postId) {
@@ -1809,6 +1976,8 @@ function wire() {
   [$('studyco-edit-profile'), $('studyco-profile-edit-small')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
+  $('studyco-edit-marital-status')?.addEventListener('change', toggleRelationshipNameField);
+  $('studyco-post-manage-form').addEventListener('submit', savePostChanges);
   $('studyco-profile-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
   $('studyco-inline-profile-photo')?.addEventListener('change', (event) => uploadProfileMedia(event, 'photoURL', 'profile photo'));
@@ -1836,6 +2005,25 @@ function wire() {
     if (!button) return;
     const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
     if (!article) return;
+    if (action === 'close-preferences') {
+      button.closest('details')?.removeAttribute('open');
+      return;
+    }
+    if (['interested', 'not-interested'].includes(action)) {
+      button.disabled = true;
+      try {
+        await setPostPreference(button.dataset.postId, action === 'interested' ? 'interested' : 'not_interested');
+      } catch (error) {
+        toast(error.message || 'Your post preference could not be saved.', true);
+      } finally {
+        button.disabled = false;
+      }
+      return;
+    }
+    if (['edit', 'reschedule', 'pause', 'hide', 'retry', 'delete'].includes(action)) {
+      await managePost(button.dataset.postId, action);
+      return;
+    }
     if (action === 'like') {
       button.disabled = true;
       try {
@@ -1994,14 +2182,36 @@ function renderUploadPreview(targetId, url, emptyText) {
   caption.textContent = url ? 'Change image' : emptyText;
 }
 
+function toggleRelationshipNameField() {
+  const status = $('studyco-edit-marital-status')?.value;
+  const field = $('studyco-relationship-name-field');
+  const input = $('studyco-edit-relationship-name');
+  const required = status === 'Engaged' || status === 'In a relationship';
+  if (field) field.hidden = !required;
+  if (input) {
+    input.required = required;
+    if (!required) input.value = '';
+  }
+}
+
 function fillEditForm() {
   const p = state.profile || {};
   const gender = String(p.gender || '').trim().toLowerCase();
   const genderValue = gender === 'm' || gender === 'male' ? 'Male' : gender === 'f' || gender === 'female' ? 'Female' : gender === 'non-binary' || gender === 'nonbinary' ? 'Non-binary' : gender === 'prefer not to say' ? 'Prefer not to say' : '';
+  const marital = String(p.maritalStatus || '').trim().toLowerCase();
+  const maritalValue = marital === 'single' ? 'Single' : marital === 'in a relationship' || marital === 'in_relationship' ? 'In a relationship' : marital === 'engaged' ? 'Engaged' : marital === 'married' ? 'Married' : marital === 'divorced' ? 'Divorced' : '';
   $('studyco-edit-name').value = p.displayName || ''; $('studyco-edit-contact').value = p.phone || '';
+  $('studyco-edit-email').value = p.email || state.user?.email || '';
+  $('studyco-edit-date-of-birth').value = p.dateOfBirth || '';
   $('studyco-edit-bio').value = p.bio || ''; $('studyco-edit-status').value = p.studentStatus || '';
+  $('studyco-edit-address').value = p.address || '';
+  $('studyco-edit-education-level').value = p.educationLevel || '';
+  $('studyco-edit-education-status').value = p.educationStatus || '';
   $('studyco-edit-school').value = p.school || ''; $('studyco-edit-department').value = p.department || '';
-  $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = genderValue; $('studyco-edit-location').value = p.location || '';
+  $('studyco-edit-major').value = p.major || ''; $('studyco-edit-gender').value = genderValue;
+  $('studyco-edit-marital-status').value = maritalValue; $('studyco-edit-relationship-name').value = p.relationshipName || '';
+  $('studyco-edit-location').value = p.location || '';
+  toggleRelationshipNameField();
   renderUploadPreview('studyco-photo-preview', p.photoURL, 'Profile photo');
   renderUploadPreview('studyco-cover-preview', p.coverURL, 'Cover banner');
   $('studyco-profile-photo').value = '';
@@ -2033,7 +2243,32 @@ async function uploadProfileMedia(event, field, label) {
 async function saveProfile(event) {
   event.preventDefault();
   try {
-    const update = { displayName: $('studyco-edit-name').value.trim(), phone: $('studyco-edit-contact').value.trim(), bio: $('studyco-edit-bio').value.trim(), studentStatus: $('studyco-edit-status').value.trim(), school: $('studyco-edit-school').value.trim(), department: $('studyco-edit-department').value.trim(), major: $('studyco-edit-major').value.trim(), gender: $('studyco-edit-gender').value.trim(), location: $('studyco-edit-location').value.trim(), updatedAt: serverTimestamp() };
+    const phone = $('studyco-edit-contact').value.trim();
+    const email = $('studyco-edit-email').value.trim().toLowerCase();
+    const maritalStatus = $('studyco-edit-marital-status').value.trim();
+    const relationshipName = $('studyco-edit-relationship-name').value.trim();
+    if (!phone) { toast('Phone number is required.', true); $('studyco-edit-contact').focus(); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a valid email address.', true); $('studyco-edit-email').focus(); return; }
+    if (['Engaged', 'In a relationship'].includes(maritalStatus) && !relationshipName) { toast('Add the person’s name for this marital status.', true); $('studyco-edit-relationship-name').focus(); return; }
+    const update = {
+      displayName: $('studyco-edit-name').value.trim(),
+      phone,
+      email,
+      dateOfBirth: $('studyco-edit-date-of-birth').value,
+      bio: $('studyco-edit-bio').value.trim(),
+      address: $('studyco-edit-address').value.trim(),
+      studentStatus: $('studyco-edit-status').value.trim(),
+      educationLevel: $('studyco-edit-education-level').value.trim(),
+      educationStatus: $('studyco-edit-education-status').value.trim(),
+      school: $('studyco-edit-school').value.trim(),
+      department: $('studyco-edit-department').value.trim(),
+      major: $('studyco-edit-major').value.trim(),
+      gender: $('studyco-edit-gender').value.trim(),
+      maritalStatus,
+      relationshipName: ['Engaged', 'In a relationship'].includes(maritalStatus) ? relationshipName : '',
+      location: $('studyco-edit-location').value.trim(),
+      updatedAt: serverTimestamp()
+    };
     const photo = $('studyco-profile-photo')?.files?.[0]; const cover = $('studyco-cover-photo')?.files?.[0];
     if (photo) update.photoURL = await uploadImage(photo, `studyco/${state.user.uid}/profile-${Date.now()}`);
     if (cover) update.coverURL = await uploadImage(cover, `studyco/${state.user.uid}/cover-${Date.now()}`);
@@ -2050,6 +2285,7 @@ window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
 async function bootApp() {
   await ensureProfile(state.user);
   try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
+  await loadPostPreferences();
   showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }
 

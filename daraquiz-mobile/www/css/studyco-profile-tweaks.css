@@ -34,7 +34,148 @@
 .studyco-profile-detail.full>p{margin-top:7px}
 .studyco-profile-about .studyco-section-title{align-items:center}
 .studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
+
+/* Keep profile posts compact while preserving the complete image. */
+.studyco-view-profile .studyco-post-image{max-height:380px;object-fit:contain}
+
+/* Profile post actions stay in normal document flow. There is no floating
+   profile menu to clip against the card, feed, or viewport. */
+.studyco-post-management-slot{
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
+  min-height:32px;
+  margin:0 20px 4px;
+}
+.studyco-profile-post-management{
+  margin:0;
+  padding:0;
+  border:0;
+}
+.studyco-profile-post-management summary{
+  display:inline-flex;
+  align-items:center;
+  min-height:32px;
+  padding:6px 11px;
+  border:1px solid #d8dade;
+  border-radius:8px;
+  background:#f0f2f5;
+  color:#050505;
+  cursor:pointer;
+  font-size:.72rem;
+  font-weight:700;
+  list-style:none;
+}
+.studyco-profile-post-management summary::-webkit-details-marker{display:none}
+.studyco-profile-post-management summary::before{
+  content:"⚙";
+  margin-right:6px;
+  font-size:.8rem;
+}
+.studyco-profile-post-management[open] summary{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
+}
+.studyco-profile-post-management-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.studyco-profile-post-management-actions button,
+.studyco-post-preferences button{
+  border:1px solid #d8dade;
+  border-radius:8px;
+  padding:6px 9px;
+  background:#fff;
+  color:#65676b;
+  cursor:pointer;
+  font-size:.68rem;
+  font-weight:700;
+}
+.studyco-profile-post-management-actions button:hover{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
+}
+.studyco-profile-post-management-actions button.danger{color:#c93e50}
+.studyco-profile-post-management-actions button.danger:hover{
+  border-color:#c93e50;
+  background:#fff2f3;
+}
+.studyco-profile-post-management-viewer{
+  display:block;
+  text-align:right;
+}
+.studyco-profile-post-management-viewer>summary{
+  width:34px;
+  height:32px;
+  justify-content:center;
+  margin-left:auto;
+  padding:0;
+  border-radius:50%;
+  font-size:.82rem;
+  letter-spacing:.08em;
+}
+.studyco-profile-post-management-viewer>summary::before{content:none;margin:0}
+.studyco-profile-post-management-viewer[open]>summary{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  text-align:left;
+  margin:8px 0 0;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences>span{margin-right:0}
+.studyco-profile-post-management-viewer .studyco-post-preferences button{
+  width:100%;
+  text-align:left;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences .close{
+  align-self:flex-end;
+  width:30px;
+  min-width:30px;
+  padding:4px 8px;
+  border-radius:50%;
+  text-align:center;
+  color:#65676b;
+  font-size:1rem;
+  line-height:1;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences .close:hover{
+  border-color:#c93e50;
+  background:#fff2f3;
+  color:#c93e50;
+}
+.studyco-post-preferences{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:10px 20px 0;
+  padding-top:9px;
+  border-top:1px solid #e4e6eb;
+}
+.studyco-post-preferences>span{
+  margin-right:auto;
+  color:#65676b;
+  font-size:.7rem;
+}
+.studyco-post-preferences button{border-radius:999px;padding:6px 10px}
+.studyco-post-preferences button:hover,
+.studyco-post-preferences button.selected{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
+}
 @media(max-width:560px){
+  .studyco-view-profile .studyco-post-image{max-height:280px}
   .studyco-profile-avatar{width:116px;height:116px}
   .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}
   .studyco-profile-avatar>.studyco-avatar.large{width:116px;height:116px}
