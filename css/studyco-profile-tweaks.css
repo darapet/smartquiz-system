@@ -16,7 +16,7 @@
 /* Profile media controls are rendered only on the signed-in user's profile. */
 .studyco-profile-cover{position:relative;overflow:hidden}
 .studyco-profile-cover>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.studyco-profile-media-edit{position:absolute;z-index:3;display:grid;place-items:center;width:46px;height:46px;border:3px solid #fff;border-radius:50%;background:#151936e8;color:#fff;box-shadow:0 5px 15px #080a2366;cursor:pointer}
+.studyco-profile-media-edit{position:absolute;z-index:3;display:grid;place-items:center;width:52px;height:52px;border:3px solid #fff;border-radius:50%;background:#151936e8;color:#fff;box-shadow:0 5px 15px #080a2366;cursor:pointer}
 .studyco-profile-media-edit:hover{background:var(--sc-primary)}
 .studyco-profile-media-edit svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
 .studyco-profile-media-edit input{display:none}
@@ -33,12 +33,12 @@
 .studyco-profile-detail>p{margin:5px 0 0;color:#4d5773;font-size:.78rem;line-height:1.55;overflow-wrap:anywhere}
 .studyco-profile-detail.full>p{margin-top:7px}
 .studyco-profile-about .studyco-section-title{align-items:center}
-.studyco-profile-about .studyco-section-title .studyco-button{margin-left:auto}
+.studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
 @media(max-width:560px){
   .studyco-profile-avatar{width:116px;height:116px}
   .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}
   .studyco-profile-avatar>.studyco-avatar.large{width:116px;height:116px}
-  .studyco-profile-media-edit{width:44px;height:44px}
+  .studyco-profile-media-edit{width:50px;height:50px}
   .studyco-profile-details{grid-template-columns:1fr}
   .studyco-profile-detail.full{grid-column:auto}
 }

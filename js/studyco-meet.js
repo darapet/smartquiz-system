@@ -1819,7 +1819,7 @@ function subscribeCallHistory() {
   ];
 }
 
-function openModal(id) { $(id).hidden = false; }
+function openModal(id) { const modal = $(id); if (modal) modal.hidden = false; }
 function closeModal(id) { $(id).hidden = true; }
 
 function wire() {
@@ -2126,6 +2126,12 @@ async function saveProfile(event) {
     await setDoc(doc(db, 'social_profiles', state.user.uid), update, { merge: true }); state.profile = { ...state.profile, ...update }; state.profiles.set(state.user.uid, state.profile); state.viewedProfile = state.profile; renderProfile(); closeModal('studyco-edit-modal'); toast('Profile updated.');
   } catch (error) { toast(error.message || 'Profile could not be updated.', true); }
 }
+
+window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
+  if (!state.user) return;
+  fillEditForm();
+  openModal('studyco-edit-modal');
+};
 
 async function bootApp() {
   await ensureProfile(state.user);
