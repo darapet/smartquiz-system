@@ -45,6 +45,21 @@ service cloud.firestore {
       allow create, update, delete: if isSignedIn() && request.auth.uid == uid;
     }
 
+    // ─── StudyCo online presence and last seen ───────────────────────
+    match /studyco_presence/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.online is bool;
+      allow update: if isSignedIn()
+        && request.auth.uid == uid
+        && resource.data.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.online is bool;
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+
     // ─── Friend Requests ───────────────────────────────────────────
     match /social_friend_requests/{requestId} {
       // A missing deterministic pair document is a valid "no relationship"
@@ -62,6 +77,20 @@ service cloud.firestore {
       allow update, delete: if isSignedIn()
           && (resource.data.requesterId == request.auth.uid
               || resource.data.recipientId == request.auth.uid);
+    }
+
+    // ─── StudyCo account notifications ─────────────────────────────
+    match /studyco_notifications/{notificationId} {
+      allow read: if isSignedIn()
+          && resource.data.recipientId == request.auth.uid;
+      allow create: if isSignedIn()
+          && request.resource.data.actorId == request.auth.uid
+          && request.resource.data.recipientId != request.auth.uid;
+      allow update: if isSignedIn()
+          && resource.data.recipientId == request.auth.uid
+          && request.resource.data.recipientId == request.auth.uid;
+      allow delete: if isSignedIn()
+          && resource.data.recipientId == request.auth.uid;
     }
 
     // ─── One-to-one Social Conversations ───────────────────────────
@@ -109,6 +138,23 @@ service cloud.firestore {
         allow update, delete: if isAdmin()
             || (isSignedIn() && resource.data.userId == request.auth.uid);
       }
+    }
+
+    // ─── Per-viewer StudyCo post preferences ─────────────────────────
+    match /studyco_post_preferences/{preferenceId} {
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.preference in ['interested', 'not_interested'];
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.preference in ['interested', 'not_interested'];
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
     }
 
     // ─── StudyCo Meet stories ───────────────────────────────────────
