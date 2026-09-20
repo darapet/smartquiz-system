@@ -1,4 +1,51 @@
 /* Dara mobile product-space navigation */
+.aqs-mobile-space-bottom-nav { display: none; }
+
+@media (max-width: 700px) {
+  body.aqs-has-space-bottom-nav { scroll-padding-bottom: 90px; }
+
+  .aqs-mobile-space-bottom-nav {
+    position: fixed;
+    right: 10px;
+    bottom: calc(8px + env(safe-area-inset-bottom));
+    left: 10px;
+    z-index: 10000;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid rgba(148, 163, 184, .28);
+    border-radius: 17px;
+    background: rgba(10, 15, 34, .96);
+    box-shadow: 0 12px 30px rgba(2, 6, 23, .3);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .aqs-mobile-space-bottom-link {
+    display: grid;
+    justify-items: center;
+    gap: 3px;
+    min-width: 0;
+    padding: 7px 3px 6px;
+    border-radius: 12px;
+    color: #94a3b8;
+    font-size: .6rem;
+    font-weight: 800;
+    line-height: 1.1;
+    text-align: center;
+    text-decoration: none;
+  }
+
+  .aqs-mobile-space-bottom-link.active {
+    color: #fff;
+    background: linear-gradient(135deg, rgba(99, 102, 241, .8), rgba(124, 58, 237, .72));
+  }
+
+  .aqs-mobile-space-bottom-icon { height: 18px; font-size: 1rem; line-height: 18px; }
+  body.aqs-has-space-bottom-nav .dara-mobile-fab { bottom: 86px; }
+}
+
 .dara-mobile-space-menu {
   position: absolute;
   top: 54px;

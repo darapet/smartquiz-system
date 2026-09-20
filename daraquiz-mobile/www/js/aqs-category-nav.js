@@ -2,7 +2,39 @@
 (function () {
   'use strict';
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
-  var isSocial = file === 'social.html' || file === 'studyco-meet.html';
+  var activeSpace = file === 'dara-edu.html' ? 'dara-edu.html' :
+    (file === 'workspace.html' ? 'workspace.html' : 'social.html');
+  var isSocial = file === 'social.html' || file === 'studyco-meet.html' || file === 'profile.html';
+  function mountMobileSpaceBottomNav() {
+    if (!document.body || document.getElementById('aqs-mobile-space-bottom-nav')) return;
+    var nav = document.createElement('nav');
+    nav.id = 'aqs-mobile-space-bottom-nav';
+    nav.className = 'aqs-mobile-space-bottom-nav';
+    nav.setAttribute('aria-label', 'Studyco spaces');
+    nav.innerHTML =
+      '<a class="aqs-mobile-space-bottom-link" data-dara-space="social.html" href="social.html">' +
+        '<span class="aqs-mobile-space-bottom-icon">◎</span><span>Studyco Student Connect</span>' +
+      '</a>' +
+      '<a class="aqs-mobile-space-bottom-link" data-dara-space="dara-edu.html" href="dara-edu.html">' +
+        '<span class="aqs-mobile-space-bottom-icon">📚</span><span>Dara Edu</span>' +
+      '</a>' +
+      '<a class="aqs-mobile-space-bottom-link" data-dara-space="workspace.html" href="workspace.html">' +
+        '<span class="aqs-mobile-space-bottom-icon">✦</span><span>Workspace</span>' +
+      '</a>';
+    document.body.appendChild(nav);
+    document.body.classList.add('aqs-has-space-bottom-nav');
+    nav.querySelectorAll('[data-dara-space]').forEach(function (link) {
+      if (link.getAttribute('data-dara-space') === activeSpace) {
+        link.classList.add('active');
+        link.setAttribute('aria-current', 'page');
+      }
+    });
+  }
+  function ensureBottomNav() {
+    if (document.body) mountMobileSpaceBottomNav();
+    else document.addEventListener('DOMContentLoaded', mountMobileSpaceBottomNav, { once: true });
+  }
+  ensureBottomNav();
   if (isSocial || document.getElementById('dara-category-nav')) return;
   var eduPages = ['dara-edu.html','create-quiz.html','self-quiz.html','take-quiz.html','quiz-results.html','quiz-manage.html','quiz-leaderboard.html','studyhub.html','ai-teacher.html','challenge.html','puzzle.html','library.html','library-upload.html','library-read.html','library-host-profile.html','library-host-view.html','user-dashboard.html'];
   var workspacePages = ['workspace.html','studio.html','text-to-docs.html','docs-gen.html','image-gen.html','image-editor.html','tts.html','ai-animate.html','design-studio.html'];
