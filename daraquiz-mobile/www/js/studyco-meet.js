@@ -3,10 +3,11 @@ import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
+  viewedProfileUid: null, viewedProfile: null,
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
-  feedUnsub: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
+  feedUnsub: null, scheduleTimer: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
@@ -275,7 +276,11 @@ function showApp() {
 }
 
 function renderProfile() {
-  const p = state.profile || {};
+  const p = state.viewedProfile || state.profile || {};
+  const uid = state.viewedProfileUid || state.user?.uid;
+  const isOwnProfile = uid === state.user?.uid;
+  const profileNameText = profileName(p);
+  const profilePostCount = state.posts.filter((post) => post.userId === uid).length;
   $('studyco-top-name').textContent = profileName(p);
   $('studyco-hello-name').textContent = `, ${profileName(p).split(' ')[0] || 'there'}`;
   $('studyco-mini-profile').innerHTML = `${avatar(p, 'small')}<div><strong>${esc(profileName(p))}</strong><span>${esc(p.username ? `@${p.username}` : 'Complete your profile')}</span></div>`;
@@ -288,7 +293,7 @@ function renderProfile() {
   $('studyco-profile-school').textContent = p.school ? `School: ${p.school}` : '';
   $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ');
   $('studyco-profile-location').textContent = p.location || '';
-  $('studyco-profile-contact').textContent = p.loginIdentifier || p.email || '';
+  $('studyco-profile-contact').textContent = isOwnProfile ? (p.loginIdentifier || p.email || '') : '';
   $('studyco-profile-status').textContent = p.studentStatus || 'Learning';
   $('studyco-profile-about-copy').textContent = p.bio || 'Add a short bio so classmates know what you are learning and how they can connect with you.';
   const profileFields = [p.displayName, p.bio, p.photoURL, p.school, p.department || p.major, p.location];
@@ -297,17 +302,31 @@ function renderProfile() {
   $('studyco-profile-completion').textContent = `${completion}%`;
   $('studyco-profile-progress-label').textContent = `${complete} of ${profileFields.length} details`;
   $('studyco-profile-progress-bar').style.width = `${completion}%`;
-  $('studyco-profile-post-count').textContent = String(state.posts.filter((post) => post.userId === state.user.uid).length);
-  $('studyco-profile-friend-count').textContent = String(state.friends.length);
+  $('studyco-profile-post-count').textContent = String(profilePostCount);
+  $('studyco-profile-friend-count').textContent = isOwnProfile ? String(state.friends.length) : String(p.friendCount || 0);
   const cover = $('studyco-profile-cover');
   cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>`;
+  $('studyco-profile-eyebrow').textContent = isOwnProfile ? 'Your StudyCo identity' : 'StudyCo profile';
+  $('studyco-profile-page-title').textContent = isOwnProfile ? 'My profile' : profileNameText;
+  $('studyco-profile-page-copy').textContent = isOwnProfile
+    ? 'Make it easy for classmates to know what you are working on.'
+    : `See ${profileNameText}'s profile and shared posts.`;
+  $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
+  $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
+  $('studyco-profile-back').hidden = isOwnProfile;
+  $('studyco-profile-complete-action').hidden = !isOwnProfile;
+  $('studyco-edit-profile').hidden = !isOwnProfile;
+  $('studyco-profile-edit-small').hidden = !isOwnProfile;
+  $('studyco-profile-next').hidden = !isOwnProfile;
 }
 
-function viewHash(view, chatUid = '') {
-  return view === 'messages' && chatUid ? `#messages/${encodeURIComponent(chatUid)}` : `#${view}`;
+function viewHash(view, identifier = '') {
+  return ((view === 'messages' || view === 'profile') && identifier)
+    ? `#${view}/${encodeURIComponent(identifier)}`
+    : `#${view}`;
 }
 
-function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid } = {}) {
+function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null : state.activeChatUid, profileUid = view === 'profile' ? state.viewedProfileUid : null } = {}) {
   if (view !== 'home' && !$('studyco-post-editor')?.hidden) closePostEditor();
   if (view === 'messages' && !chatUid && state.activeChatUid) {
     state.activeChatUid = null;
@@ -316,17 +335,20 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
     state.messageUnsub = null;
   }
   state.activeView = view;
-  if (updateUrl && window.location.hash !== viewHash(view, chatUid)) {
-    window.history.pushState({ studycoView: view, chatUid }, '', viewHash(view, chatUid));
+  const routeIdentifier = view === 'messages' ? chatUid : view === 'profile' ? profileUid : '';
+  if (updateUrl && window.location.hash !== viewHash(view, routeIdentifier)) {
+    window.history.pushState({ studycoView: view, chatUid, profileUid }, '', viewHash(view, routeIdentifier));
   }
   const messagesShell = document.querySelector('.studyco-messages-shell');
   if (messagesShell) messagesShell.classList.toggle('chat-open', view === 'messages' && Boolean(chatUid));
+  const layout = document.querySelector('.studyco-layout');
+  if (layout) layout.classList.toggle('profile-view', view === 'profile');
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.classList.toggle('active', button.dataset.studycoView === view));
   document.querySelectorAll('.studyco-view').forEach((section) => section.classList.toggle('active', section.id === `studyco-view-${view}`));
   const menu = $('studyco-menu-panel');
   if (menu) menu.hidden = true;
   if (view === 'friends') loadSocialLists();
-  if (view === 'profile') { renderProfile(); renderProfilePosts(); }
+  if (view === 'profile') loadProfileView(profileUid || state.user.uid);
   if (view === 'messages') loadChats();
   if (view === 'notifications') renderNotifications();
 }
@@ -334,7 +356,8 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
 async function syncRoute() {
   const parts = window.location.hash.replace(/^#/, '').split('/');
   const view = ['search', 'friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
-  setView(view, { updateUrl: false, chatUid: parts[1] ? decodeURIComponent(parts[1]) : '' });
+  const identifier = parts[1] ? decodeURIComponent(parts[1]) : '';
+  setView(view, { updateUrl: false, chatUid: view === 'messages' ? identifier : '', profileUid: view === 'profile' ? identifier || state.user.uid : null });
   if (view === 'messages' && parts[1] && state.user) {
     await openChat(decodeURIComponent(parts[1]), { updateUrl: false });
   }
@@ -448,7 +471,7 @@ async function renderPost(post) {
   const commentCount = Number(post.commentCount ?? commentsSnap?.size ?? 0);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head">${avatar(author, 'small')}<div><strong>${esc(profileName(author))}</strong><span>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</span></div><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}"><div class="studyco-post-head"><button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button><button class="studyco-post-menu" type="button" aria-label="More options">•••</button></div>${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function loadPostComments(postId, article) {
@@ -480,21 +503,52 @@ async function sharePost(postId) {
   }
 }
 
-async function renderFeed(target = $('studyco-post-feed'), posts = state.posts) {
+function isPublicPost(post) {
+  const status = post.status || 'published';
+  if (status === 'hidden' || status === 'paused') return false;
+  if (status === 'scheduled') return timeMs(post.scheduledAt) <= Date.now();
+  return true;
+}
+
+async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, { includePrivate = false } = {}) {
+  if (!includePrivate) posts = posts.filter(isPublicPost);
   if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   target.innerHTML = (await Promise.all(posts.map(renderPost))).join('');
 }
 
 async function renderProfilePosts() {
-  await renderFeed($('studyco-profile-posts'), state.posts.filter((post) => post.userId === state.user.uid));
+  const uid = state.viewedProfileUid || state.user.uid;
+  await renderFeed($('studyco-profile-posts'), state.posts.filter((post) => post.userId === uid), { includePrivate: uid === state.user.uid });
+}
+
+async function loadProfileView(uid = state.user.uid) {
+  const profileUid = uid || state.user.uid;
+  const profile = profileUid === state.user.uid ? state.profile : await getProfile(profileUid);
+  if (!profile) {
+    toast('That profile could not be found.', true);
+    setView('home');
+    return;
+  }
+  state.viewedProfileUid = profileUid;
+  state.viewedProfile = profile;
+  if (profileUid !== state.user.uid) {
+    const [sent, received] = await Promise.all([
+      getDocs(query(collection(db, 'social_friend_requests'), where('requesterId', '==', profileUid), limit(100))).catch(() => null),
+      getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', profileUid), limit(100))).catch(() => null)
+    ]);
+    profile.friendCount = [...(sent?.docs || []), ...(received?.docs || [])]
+      .filter((item) => item.data().status === 'accepted').length;
+  }
+  renderProfile();
+  await renderProfilePosts();
 }
 
 function subscribeFeed() {
   state.feedUnsub?.();
   state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), limit(60)), (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
-    renderFeed(); if (state.activeView === 'profile') renderProfilePosts(); refreshNavCounts();
+    renderFeed(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
   }, (error) => toast(error.message || 'The feed could not load.', true));
 }
 
@@ -516,14 +570,18 @@ async function toggleLike(postId) {
   const existing = await getDoc(likeRef);
   if (existing.exists()) await deleteDoc(likeRef); else await setDoc(likeRef, { userId: state.user.uid, createdAt: serverTimestamp() });
   const likes = await getDocs(collection(db, 'studyco_posts', postId, 'likes'));
-  await updateDoc(doc(db, 'studyco_posts', postId), { likeCount: likes.size });
+  const post = state.posts.find((item) => item.id === postId);
+  if (post) post.likeCount = likes.size;
+  return { liked: !existing.exists(), count: likes.size };
 }
 
 async function addComment(postId, text) {
   if (!text.trim()) return;
   await addDoc(collection(db, 'studyco_posts', postId, 'comments'), { userId: state.user.uid, text: text.trim().slice(0, 500), createdAt: serverTimestamp() });
   const comments = await getDocs(collection(db, 'studyco_posts', postId, 'comments'));
-  await updateDoc(doc(db, 'studyco_posts', postId), { commentCount: comments.size });
+  const post = state.posts.find((item) => item.id === postId);
+  if (post) post.commentCount = comments.size;
+  return comments.size;
 }
 
 function renderStories() {
@@ -572,7 +630,7 @@ async function renderPeople(profiles, target) {
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
     if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
-    return `<article class="studyco-person">${avatar(profile)}<strong>${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
+    return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
   }).join('');
 }
 
@@ -1628,7 +1686,15 @@ function closeModal(id) { $(id).hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
-  document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => setView(button.dataset.studycoView)));
+  const openOwnProfile = () => {
+    if (state.user) setView('profile', { profileUid: state.user.uid });
+  };
+  document.querySelectorAll('[data-studyco-view]').forEach((button) => button.addEventListener('click', () => {
+    const view = button.dataset.studycoView;
+    if (view === 'profile') openOwnProfile();
+    else setView(view);
+  }));
+  $('studyco-mini-profile')?.addEventListener('click', openOwnProfile);
   $('studyco-open-composer').addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
   $('studyco-editor-publish-post')?.addEventListener('click', publishPost);
@@ -1712,6 +1778,7 @@ function wire() {
   $('studyco-story-form').addEventListener('submit', createStory);
   [$('studyco-edit-profile'), $('studyco-profile-edit-small')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  $('studyco-profile-back').addEventListener('click', () => setView('home'));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
   $('studyco-profile-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
   $('studyco-cover-photo').addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-cover-preview'));
@@ -1724,11 +1791,29 @@ function wire() {
     if (row) openNotification(row.dataset.notificationId);
   });
   document.addEventListener('click', async (event) => {
+    const profileLink = event.target.closest('[data-profile-uid]');
+    if (profileLink) {
+      event.preventDefault();
+      setView('profile', { profileUid: profileLink.dataset.profileUid });
+      return;
+    }
     const button = event.target.closest('[data-post-action]');
     if (!button) return;
     const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
     if (!article) return;
-    if (action === 'like') await toggleLike(button.dataset.postId);
+    if (action === 'like') {
+      button.disabled = true;
+      try {
+        const result = await toggleLike(button.dataset.postId);
+        button.classList.toggle('liked', result.liked);
+        const count = button.querySelector('.studyco-action-count');
+        if (count) count.textContent = String(result.count);
+      } catch (error) {
+        toast(error.message || 'The post could not be liked.', true);
+      } finally {
+        button.disabled = false;
+      }
+    }
     if (action === 'share') await sharePost(button.dataset.postId);
     if (action === 'comments') {
       const panel = article.querySelector('[data-comments-panel]');
@@ -1746,10 +1831,23 @@ function wire() {
   document.addEventListener('submit', async (event) => {
     if (!event.target.matches('[data-comment-post]')) return;
     event.preventDefault();
-    await addComment(event.target.dataset.commentPost, event.target.querySelector('input').value);
-    event.target.reset();
-    const article = event.target.closest('.studyco-post');
-    if (article) await loadPostComments(event.target.dataset.commentPost, article);
+    const form = event.target;
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) submit.disabled = true;
+    try {
+      const count = await addComment(form.dataset.commentPost, form.querySelector('input').value);
+      form.reset();
+      const article = form.closest('.studyco-post');
+      if (article) {
+        const commentButton = article.querySelector('[data-post-action="comments"] .studyco-action-count');
+        if (commentButton && count != null) commentButton.textContent = String(count);
+        await loadPostComments(form.dataset.commentPost, article);
+      }
+    } catch (error) {
+      toast(error.message || 'The comment could not be sent.', true);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   });
   $('studyco-people-results').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-search-people-results')?.addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
