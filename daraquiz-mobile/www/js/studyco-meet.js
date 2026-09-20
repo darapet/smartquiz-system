@@ -1806,7 +1806,7 @@ function wire() {
   $('studyco-story-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.storyImage = file || null; if (file) $('studyco-story-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`; });
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
-  [$('studyco-edit-profile'), $('studyco-profile-edit-small'), $('studyco-profile-edit-details')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  [$('studyco-edit-profile'), $('studyco-profile-edit-small')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
   $('studyco-profile-photo')?.addEventListener('change', (event) => previewFile(event.target.files[0], 'studyco-photo-preview'));
@@ -2020,6 +2020,13 @@ async function bootApp() {
   showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }
 
+document.addEventListener('click', (event) => {
+  const detailsButton = event.target.closest('#studyco-profile-edit-details');
+  if (!detailsButton) return;
+  event.preventDefault();
+  fillEditForm();
+  openModal('studyco-edit-modal');
+});
 wire();
 window.onAqsAuthChange(async (user) => {
   if (!user || user.isAnonymous) {

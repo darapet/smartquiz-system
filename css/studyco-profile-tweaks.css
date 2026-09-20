@@ -16,15 +16,16 @@
 /* Profile media controls are rendered only on the signed-in user's profile. */
 .studyco-profile-cover{position:relative;overflow:hidden}
 .studyco-profile-cover>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.studyco-profile-media-edit{position:absolute;z-index:3;display:grid;place-items:center;width:38px;height:38px;border:2px solid #fff;border-radius:50%;background:#151936cc;color:#fff;box-shadow:0 5px 15px #080a2366;cursor:pointer}
+.studyco-profile-media-edit{position:absolute;z-index:3;display:grid;place-items:center;width:46px;height:46px;border:3px solid #fff;border-radius:50%;background:#151936e8;color:#fff;box-shadow:0 5px 15px #080a2366;cursor:pointer}
 .studyco-profile-media-edit:hover{background:var(--sc-primary)}
 .studyco-profile-media-edit svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
 .studyco-profile-media-edit input{display:none}
 .studyco-profile-cover-edit{top:15px;right:16px}
-.studyco-profile-avatar{position:relative;width:106px;height:106px;flex:0 0 auto}
-.studyco-profile-avatar-edit{right:-2px;bottom:1px}
-.studyco-profile-avatar-edit svg{width:17px;height:17px}
-.studyco-profile-avatar>.studyco-avatar.large{width:106px;height:106px}
+.studyco-profile-avatar{position:relative;width:132px;height:132px;flex:0 0 auto}
+.studyco-profile-identity .studyco-profile-avatar{margin-top:-66px}
+.studyco-profile-avatar-edit{right:2px;bottom:2px}
+.studyco-profile-avatar-edit svg{width:21px;height:21px}
+.studyco-profile-avatar>.studyco-avatar.large{width:132px;height:132px;border-width:7px}
 .studyco-profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px;margin-top:15px}
 .studyco-profile-detail{min-width:0}
 .studyco-profile-detail.full{grid-column:1/-1}
@@ -34,6 +35,10 @@
 .studyco-profile-about .studyco-section-title{align-items:center}
 .studyco-profile-about .studyco-section-title .studyco-button{margin-left:auto}
 @media(max-width:560px){
+  .studyco-profile-avatar{width:116px;height:116px}
+  .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}
+  .studyco-profile-avatar>.studyco-avatar.large{width:116px;height:116px}
+  .studyco-profile-media-edit{width:44px;height:44px}
   .studyco-profile-details{grid-template-columns:1fr}
   .studyco-profile-detail.full{grid-column:auto}
 }
