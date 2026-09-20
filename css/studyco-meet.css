@@ -45,7 +45,7 @@
 .studyco-profile-stats div:last-child{border-right:0}
 .studyco-profile-stats strong{font-size:1.15rem}
 .studyco-profile-stats span{color:var(--sc-muted);font-size:.65rem}
-.studyco-profile-grid{display:grid;grid-template-columns:1.25fr .75fr;gap:16px;margin-bottom:18px}
+.studyco-profile-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;margin-bottom:18px}
 .studyco-profile-about,.studyco-profile-next{margin-bottom:0}
 .studyco-profile-about-copy{margin:15px 0;color:#4d5773;font-size:.78rem;line-height:1.65}
 .studyco-profile-meta{margin-top:14px}
