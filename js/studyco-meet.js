@@ -569,7 +569,11 @@ async function sharePost(postId) {
 }
 
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, { includePrivate = false, showAuthor = true } = {}) {
-  if (!includePrivate) posts = posts.filter((post) => isPublicPost(post) && state.postPreferences.get(post.id) !== 'not_interested');
+  if (!includePrivate) {
+    posts = posts
+      .filter((post) => isPublicPost(post) && state.postPreferences.get(post.id) !== 'not_interested')
+      .sort((a, b) => Number(state.postPreferences.get(b.id) === 'interested') - Number(state.postPreferences.get(a.id) === 'interested'));
+  }
   if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   target.innerHTML = (await Promise.all(posts.map((post) => renderPost(post, { showAuthor })))).join('');
@@ -638,8 +642,9 @@ async function setPostPreference(postId, preference) {
   state.postPreferences.set(postId, preference);
   if (preference === 'not_interested') toast('You will see fewer posts like this.');
   else toast('We will show you more posts like this.');
-  renderFeed();
-  if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid);
+  if (state.activeView === 'search') await renderSearchResults($('studyco-page-search')?.value || '');
+  else if (state.activeView === 'profile') await loadProfileView(state.viewedProfileUid || state.user.uid);
+  else await renderFeed();
 }
 
 function subscribeFeed() {
