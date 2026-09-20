@@ -69,6 +69,36 @@
   white-space:nowrap;
 }
 
+.studyco-post-preferences{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:0 20px 10px;
+  padding-top:9px;
+  border-top:1px solid #e4e6eb;
+}
+.studyco-post-preferences>span{
+  margin-right:auto;
+  color:#65676b;
+  font-size:.7rem;
+}
+.studyco-post-preferences button{
+  border:1px solid #d8dade;
+  border-radius:999px;
+  padding:6px 10px;
+  background:#fff;
+  color:#65676b;
+  font-size:.68rem;
+  font-weight:700;
+}
+.studyco-post-preferences button:hover,
+.studyco-post-preferences button.selected{
+  border-color:#1877f2;
+  background:#eaf3ff;
+  color:#1877f2;
+}
+
 @media(max-width:560px){
   .studyco-profile-avatar{width:116px;height:116px}
   .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}

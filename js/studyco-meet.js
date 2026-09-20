@@ -5,7 +5,7 @@ const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null,
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
-  dismissedSuggestions: new Set(),
+  dismissedSuggestions: new Set(), postPreferences: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
@@ -502,6 +502,12 @@ function postStatusLabel(post) {
   return '';
 }
 
+function postPreferenceControls(post) {
+  if (post.userId === state.user.uid) return '';
+  const preference = state.postPreferences.get(post.id);
+  return `<div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button></div>`;
+}
+
 async function renderPost(post, { showAuthor = true } = {}) {
   const [author, likesSnap, commentsSnap] = await Promise.all([
     getProfile(post.userId), getDocs(collection(db, 'studyco_posts', post.id, 'likes')),
@@ -521,7 +527,7 @@ async function renderPost(post, { showAuthor = true } = {}) {
   const menu = isOwner ? `<div class="studyco-post-menu-wrap"><button class="studyco-post-menu" data-post-action="menu" data-post-id="${esc(post.id)}" type="button" aria-label="Manage post">•••</button><div class="studyco-post-menu-panel" data-post-menu="${esc(post.id)}" hidden><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${post.status === 'paused' ? 'Resume post' : 'Pause post'}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${post.status === 'hidden' ? 'Show post' : 'Hide post'}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></div>` : '';
   const authorHead = showAuthor ? `<button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button>` : '';
   const postHead = authorHead || menu ? `<div class="studyco-post-head${showAuthor ? '' : ' profile-post-head'}">${authorHead}${menu}</div>` : '';
-  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}">${postHead}${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  return `<article class="studyco-card studyco-post" data-post-id="${esc(post.id)}">${postHead}${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div>${postPreferenceControls(post)}<div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function loadPostComments(postId, article) {
@@ -554,7 +560,7 @@ async function sharePost(postId) {
 }
 
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, { includePrivate = false, showAuthor = true } = {}) {
-  if (!includePrivate) posts = posts.filter(isPublicPost);
+  if (!includePrivate) posts = posts.filter((post) => isPublicPost(post) && state.postPreferences.get(post.id) !== 'not_interested');
   if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   target.innerHTML = (await Promise.all(posts.map((post) => renderPost(post, { showAuthor })))).join('');
@@ -594,6 +600,37 @@ async function loadProfileView(uid = state.user.uid) {
   renderProfile();
   const posts = state.posts.filter((post) => post.userId === profileUid && (profileUid === state.user.uid || isPublicPost(post)));
   await renderFeed($('studyco-profile-posts'), posts, { includePrivate: profileUid === state.user.uid, showAuthor: false });
+}
+
+async function loadPostPreferences() {
+  if (!state.user) return;
+  try {
+    const snapshot = await getDocs(query(
+      collection(db, 'studyco_post_preferences'),
+      where('userId', '==', state.user.uid),
+      limit(500)
+    ));
+    state.postPreferences = new Map(snapshot.docs.map((item) => [item.data().postId, item.data().preference]));
+  } catch (error) {
+    state.postPreferences = new Map();
+    toast(error.message || 'Post preferences could not load.', true);
+  }
+}
+
+async function setPostPreference(postId, preference) {
+  if (!state.user || !postId || !['interested', 'not_interested'].includes(preference)) return;
+  const preferenceRef = doc(db, 'studyco_post_preferences', `${state.user.uid}_${postId}`);
+  await setDoc(preferenceRef, {
+    userId: state.user.uid,
+    postId,
+    preference,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  state.postPreferences.set(postId, preference);
+  if (preference === 'not_interested') toast('You will see fewer posts like this.');
+  else toast('We will show you more posts like this.');
+  renderFeed();
+  if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid);
 }
 
 function subscribeFeed() {
@@ -1945,6 +1982,17 @@ function wire() {
     if (!button) return;
     const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
     if (!article) return;
+    if (['interested', 'not-interested'].includes(action)) {
+      button.disabled = true;
+      try {
+        await setPostPreference(button.dataset.postId, action === 'interested' ? 'interested' : 'not_interested');
+      } catch (error) {
+        toast(error.message || 'Your post preference could not be saved.', true);
+      } finally {
+        button.disabled = false;
+      }
+      return;
+    }
     if (['menu', 'edit', 'reschedule', 'pause', 'hide', 'retry', 'delete'].includes(action)) {
       await managePost(button.dataset.postId, action);
       return;
@@ -2162,6 +2210,7 @@ window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
 
 async function bootApp() {
   await ensureProfile(state.user);
+  await loadPostPreferences();
   try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
   showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }

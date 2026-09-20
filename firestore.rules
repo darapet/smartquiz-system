@@ -157,6 +157,23 @@ service cloud.firestore {
       }
     }
 
+    // ─── Per-viewer StudyCo post preferences ─────────────────────────
+    match /studyco_post_preferences/{preferenceId} {
+      allow read: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.postId is string
+        && request.resource.data.preference in ['interested', 'not_interested'];
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.postId == resource.data.postId
+        && request.resource.data.preference in ['interested', 'not_interested'];
+      allow delete: if isSignedIn()
+        && resource.data.userId == request.auth.uid;
+    }
+
     // ─── StudyCo Meet stories ───────────────────────────────────────
     match /studyco_stories/{storyId} {
       allow read: if true;
