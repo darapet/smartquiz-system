@@ -42,7 +42,9 @@
 .studyco-view-profile .studyco-post-head.profile-post-head{
   display:flex;
   align-items:center;
-  justify-content:flex-end;
+  justify-content:flex-end !important;
+  width:100%;
+  box-sizing:border-box;
   min-height:52px;
   padding:8px 16px 0;
 }
@@ -51,18 +53,20 @@
   z-index:20;
   display:flex;
   flex:0 0 auto;
-  margin-left:auto;
+  margin-left:auto !important;
+  margin-right:0;
 }
 .studyco-view-profile .studyco-post-menu{
   position:relative;
-  inset:auto;
+  inset:auto !important;
   width:38px;
   height:38px;
   padding:0;
 }
 .studyco-view-profile .studyco-post-menu-panel{
-  top:calc(100% + 6px);
-  right:0;
+  top:calc(100% + 6px) !important;
+  right:0 !important;
+  left:auto !important;
   z-index:50;
   min-width:190px;
   max-width:calc(100vw - 32px);
