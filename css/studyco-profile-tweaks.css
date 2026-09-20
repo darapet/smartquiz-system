@@ -34,6 +34,41 @@
 .studyco-profile-detail.full>p{margin-top:7px}
 .studyco-profile-about .studyco-section-title{align-items:center}
 .studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
+
+/* Keep the owner menu visible on posts rendered from the profile view. Profile
+   posts intentionally omit the author row, so the generic feed positioning
+   otherwise anchors the menu to a clipped/empty header area. */
+.studyco-view-profile .studyco-post{overflow:visible}
+.studyco-view-profile .studyco-post-head.profile-post-head{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  min-height:52px;
+  padding:8px 16px 0;
+}
+.studyco-view-profile .studyco-post-menu-wrap{
+  position:relative;
+  z-index:20;
+  display:flex;
+  flex:0 0 auto;
+  margin-left:auto;
+}
+.studyco-view-profile .studyco-post-menu{
+  position:relative;
+  inset:auto;
+  width:38px;
+  height:38px;
+  padding:0;
+}
+.studyco-view-profile .studyco-post-menu-panel{
+  top:calc(100% + 6px);
+  right:0;
+  z-index:50;
+  min-width:190px;
+  max-width:calc(100vw - 32px);
+  white-space:nowrap;
+}
+
 @media(max-width:560px){
   .studyco-profile-avatar{width:116px;height:116px}
   .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}
