@@ -3,13 +3,6 @@
 .studyco-post-author strong,.studyco-post-author small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .studyco-post-author strong{font-size:.8rem}
 .studyco-post-author small{margin-top:3px;color:var(--sc-muted);font-size:.67rem}
-.studyco-post-menu-wrap{position:relative;flex:0 0 auto}
-.studyco-post-menu{width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--sc-muted);font-weight:900}
-.studyco-post-menu:hover{background:var(--sc-soft);color:var(--sc-primary)}
-.studyco-post-menu-panel{position:absolute;right:0;top:39px;z-index:10;display:grid;min-width:150px;padding:6px;border:1px solid var(--sc-line);border-radius:12px;background:#fff;box-shadow:0 14px 30px #1b215522}
-.studyco-post-menu-panel button{border:0;border-radius:8px;padding:9px 10px;background:none;color:var(--sc-ink);font-size:.7rem;font-weight:800;text-align:left}
-.studyco-post-menu-panel button:hover{background:var(--sc-soft);color:var(--sc-primary-dark)}
-.studyco-post-menu-panel button[data-post-action="delete"]{color:var(--sc-red)}
 .studyco-post-status{display:inline-flex;margin-top:8px;padding:4px 8px;border-radius:999px;background:#fff8e7;color:#9b6415;font-size:.62rem;font-weight:900}
 .studyco-form-help{color:var(--sc-muted);font-size:.65rem;font-weight:500;line-height:1.45}
 .studyco-profile-posts-title{text-transform:none}

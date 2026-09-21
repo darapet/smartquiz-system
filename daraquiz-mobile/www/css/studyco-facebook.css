@@ -1570,18 +1570,6 @@
     color: #65676b;
   }
 
-  .studyco-post-menu {
-    position: absolute;
-    top: 1px;
-    right: 0;
-    padding: 4px;
-    border: 0;
-    background: transparent;
-    color: #65676b;
-    font-size: .88rem;
-    letter-spacing: .08em;
-  }
-
   .studyco-post-body {
     color: #050505;
     font-size: 1rem;

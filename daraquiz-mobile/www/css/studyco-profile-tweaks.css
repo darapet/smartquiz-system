@@ -1,16 +1,20 @@
 /* Keep profile prompts out of the profile page. */
 .studyco-profile-next{display:none!important}
 
-/* Preserve the complete uploaded image while fitting it to the post card. */
-.studyco-post-image,
+/* Keep composer previews contained without overriding Facebook feed images. */
 .studyco-post-preview img{
   display:block;
   width:100%;
   max-width:100%;
   height:auto;
-  max-height:none;
   object-fit:contain;
   object-position:center;
+}
+
+/* Keep profile posts compact while preserving the complete image. */
+.studyco-view-profile .studyco-post-image{
+  max-height:380px;
+  object-fit:contain;
 }
 
 /* Profile media controls are rendered only on the signed-in user's profile. */
@@ -34,9 +38,6 @@
 .studyco-profile-detail.full>p{margin-top:7px}
 .studyco-profile-about .studyco-section-title{align-items:center}
 .studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
-
-/* Keep profile posts compact while preserving the complete image. */
-.studyco-view-profile .studyco-post-image{max-height:380px;object-fit:contain}
 
 /* Profile post actions stay in normal document flow. There is no floating
    profile menu to clip against the card, feed, or viewport. */
@@ -99,7 +100,9 @@
   background:#eaf3ff;
   color:#1877f2;
 }
-.studyco-profile-post-management-actions button.danger{color:#c93e50}
+.studyco-profile-post-management-actions button.danger{
+  color:#c93e50;
+}
 .studyco-profile-post-management-actions button.danger:hover{
   border-color:#c93e50;
   background:#fff2f3;
@@ -118,7 +121,10 @@
   font-size:.82rem;
   letter-spacing:.08em;
 }
-.studyco-profile-post-management-viewer>summary::before{content:none;margin:0}
+.studyco-profile-post-management-viewer>summary::before{
+  content:none;
+  margin:0;
+}
 .studyco-profile-post-management-viewer[open]>summary{
   border-color:#1877f2;
   background:#eaf3ff;
@@ -132,7 +138,9 @@
   text-align:left;
   margin:8px 0 0;
 }
-.studyco-profile-post-management-viewer .studyco-post-preferences>span{margin-right:0}
+.studyco-profile-post-management-viewer .studyco-post-preferences>span{
+  margin-right:0;
+}
 .studyco-profile-post-management-viewer .studyco-post-preferences button{
   width:100%;
   text-align:left;
@@ -167,13 +175,17 @@
   color:#65676b;
   font-size:.7rem;
 }
-.studyco-post-preferences button{border-radius:999px;padding:6px 10px}
+.studyco-post-preferences button{
+  border-radius:999px;
+  padding:6px 10px;
+}
 .studyco-post-preferences button:hover,
 .studyco-post-preferences button.selected{
   border-color:#1877f2;
   background:#eaf3ff;
   color:#1877f2;
 }
+
 @media(max-width:560px){
   .studyco-view-profile .studyco-post-image{max-height:280px}
   .studyco-profile-avatar{width:116px;height:116px}

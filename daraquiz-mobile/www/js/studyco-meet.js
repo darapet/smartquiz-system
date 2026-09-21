@@ -495,6 +495,35 @@ async function renderSearchResults(value) {
   $('studyco-search-empty').hidden = Boolean(profiles.length || posts.length);
 }
 
+function isPublicPost(post) {
+  const status = post.status || 'published';
+  if (status === 'hidden' || status === 'paused') return false;
+  if (status === 'scheduled') return timeMs(post.scheduledAt) <= Date.now();
+  return true;
+}
+
+function postStatusLabel(post) {
+  const status = post.status || 'published';
+  if (status === 'scheduled') return timeMs(post.scheduledAt) > Date.now() ? `Scheduled for ${new Date(timeMs(post.scheduledAt)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : 'Published';
+  if (status === 'hidden') return 'Hidden from your circle';
+  if (status === 'paused') return 'Paused';
+  if (status === 'failed') return 'Needs retry';
+  return '';
+}
+
+function postPreferenceControls(post) {
+  if (post.userId === state.user.uid) return '';
+  const preference = state.postPreferences.get(post.id);
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
+}
+
+function profilePostManagement(post) {
+  if (post.userId !== state.user.uid) return postPreferenceControls(post);
+  const pauseLabel = post.status === 'paused' ? 'Resume post' : 'Pause post';
+  const hideLabel = post.status === 'hidden' ? 'Show post' : 'Hide post';
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary>Manage post</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
+}
+
 async function renderPost(post, { showAuthor = true } = {}) {
   const [author, likesSnap, commentsSnap] = await Promise.all([
     getProfile(post.userId), getDocs(collection(db, 'studyco_posts', post.id, 'likes')),
@@ -507,12 +536,12 @@ async function renderPost(post, { showAuthor = true } = {}) {
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
   const commentCount = Number(post.commentCount ?? commentsSnap?.size ?? 0);
+  const isOwner = post.userId === state.user.uid;
+  const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
   const authorHead = showAuthor ? `<button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button>` : '';
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
-  const isOwner = post.userId === state.user.uid;
-  const status = postStatusLabel(post);
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
   return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
@@ -547,35 +576,6 @@ async function sharePost(postId) {
   }
 }
 
-function isPublicPost(post) {
-  const status = post.status || 'published';
-  if (status === 'hidden' || status === 'paused') return false;
-  if (status === 'scheduled') return timeMs(post.scheduledAt) <= Date.now();
-  return true;
-}
-
-function postStatusLabel(post) {
-  const status = post.status || 'published';
-  if (status === 'scheduled') return timeMs(post.scheduledAt) > Date.now() ? `Scheduled for ${new Date(timeMs(post.scheduledAt)).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })}` : 'Published';
-  if (status === 'hidden') return 'Hidden from your circle';
-  if (status === 'paused') return 'Paused';
-  if (status === 'failed') return 'Needs retry';
-  return '';
-}
-
-function postPreferenceControls(post) {
-  if (post.userId === state.user.uid) return '';
-  const preference = state.postPreferences.get(post.id);
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
-}
-
-function profilePostManagement(post) {
-  if (post.userId !== state.user.uid) return postPreferenceControls(post);
-  const pauseLabel = post.status === 'paused' ? 'Resume post' : 'Pause post';
-  const hideLabel = post.status === 'hidden' ? 'Show post' : 'Hide post';
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary>Manage post</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
-}
-
 async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, { includePrivate = false, showAuthor = true } = {}) {
   if (!includePrivate) {
     posts = posts
@@ -587,9 +587,17 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
   target.innerHTML = (await Promise.all(posts.map((post) => renderPost(post, { showAuthor })))).join('');
 }
 
-async function renderProfilePosts() {
-  const uid = state.viewedProfileUid || state.user.uid;
-  await renderFeed($('studyco-profile-posts'), state.posts.filter((post) => post.userId === uid), { includePrivate: uid === state.user.uid, showAuthor: false });
+function scheduleNextFeedRefresh() {
+  clearTimeout(state.scheduleTimer);
+  const next = state.posts
+    .filter((post) => post.status === 'scheduled' && timeMs(post.scheduledAt) > Date.now())
+    .sort((a, b) => timeMs(a.scheduledAt) - timeMs(b.scheduledAt))[0];
+  if (!next) return;
+  state.scheduleTimer = setTimeout(() => {
+    renderFeed();
+    if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid);
+    scheduleNextFeedRefresh();
+  }, Math.max(1000, timeMs(next.scheduledAt) - Date.now() + 100));
 }
 
 async function loadProfileView(uid = state.user.uid) {
@@ -613,19 +621,6 @@ async function loadProfileView(uid = state.user.uid) {
   renderProfile();
   const posts = state.posts.filter((post) => post.userId === profileUid && (profileUid === state.user.uid || isPublicPost(post)));
   await renderFeed($('studyco-profile-posts'), posts, { includePrivate: profileUid === state.user.uid, showAuthor: false });
-}
-
-function scheduleNextFeedRefresh() {
-  clearTimeout(state.scheduleTimer);
-  const next = state.posts
-    .filter((post) => post.status === 'scheduled' && timeMs(post.scheduledAt) > Date.now())
-    .sort((a, b) => timeMs(a.scheduledAt) - timeMs(b.scheduledAt))[0];
-  if (!next) return;
-  state.scheduleTimer = setTimeout(() => {
-    renderFeed();
-    if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid);
-    scheduleNextFeedRefresh();
-  }, Math.max(1000, timeMs(next.scheduledAt) - Date.now() + 100));
 }
 
 async function loadPostPreferences() {
@@ -676,7 +671,7 @@ async function publishPost() {
   try {
     const imageUrl = image ? await uploadImage(image, `studyco/${state.user.uid}/posts/${Date.now()}-${image.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
     const fileUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/posts/files/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', status: 'published', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; $('studyco-post-file').value = ''; $('studyco-post-url').value = ''; $('studyco-post-url-row').hidden = true; $('studyco-post-attachment-status').hidden = true; state.postImage = null; state.postFile = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
   } catch (error) { toast(error.message || 'Your post could not be published.', true); } finally { button.disabled = false; }
 }
@@ -827,7 +822,7 @@ async function renderPeople(profiles, target) {
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
     if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
-    return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
+     return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
   }).join('');
 }
 
@@ -1893,6 +1888,7 @@ function wire() {
   }));
   $('studyco-mini-profile')?.addEventListener('click', openOwnProfile);
   $('studyco-open-composer').addEventListener('click', openPostEditor);
+  $('studyco-top-create')?.addEventListener('click', openPostEditor);
   $('studyco-close-post-editor')?.addEventListener('click', closePostEditor);
   $('studyco-editor-publish-post')?.addEventListener('click', publishPost);
   $('studyco-friend-search-action').addEventListener('click', () => openContactsSearch());
@@ -2284,8 +2280,8 @@ window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
 
 async function bootApp() {
   await ensureProfile(state.user);
-  try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
   await loadPostPreferences();
+  try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
   showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
 }
 
