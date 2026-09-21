@@ -563,15 +563,7 @@ async function actionLogout() {
 }
 
 async function actionSendOtp() {
-    /* Firebase uses email verification links, not numeric OTPs.
-       We store a 6-digit code in the user's Firestore doc as a workaround. */
-    var user = requireAuth();
-    var otp  = String(Math.floor(100000 + Math.random() * 900000));
-    var exp  = Date.now() + 10 * 60 * 1000; /* 10 minutes */
-    await updateDoc(doc(db, 'users', user.uid), { otp: otp, otp_exp: exp });
-    /* In production you'd email the code — here we just store it.
-       The UI will auto-verify since Firebase handles real email verification. */
-    return { sent: true };
+    throw new Error('Email OTP delivery is not configured in this app build. Use the current web app email flow.');
 }
 
 async function actionVerifyOtp(data) {
