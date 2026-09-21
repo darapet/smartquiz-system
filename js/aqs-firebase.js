@@ -253,7 +253,7 @@ async function callBrevoEmail(payload) {
     if (!response.ok) {
         throw new Error(
             body.error
-            || ('The email service returned HTTP ' + response.status + '.')
+            || ('The email service returned HTTP ' + response.status + ' from ' + endpoint + '.')
         );
     }
     return body;

@@ -148,7 +148,17 @@ async function handleEmail(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname === '/api/email' || url.pathname === '/api/email/') {
+    /*
+     * Keep the current route plus the legacy function-shaped routes. This
+     * prevents cached/older SmartQuiz admin pages from turning a valid Worker
+     * deployment into a misleading 404 while they refresh.
+     */
+    if (
+      url.pathname === '/api/email'
+      || url.pathname === '/api/email/'
+      || url.pathname === '/brevoEmail'
+      || url.pathname === '/brevoEmail/'
+    ) {
       return handleEmail(request, env);
     }
     return new Response('Not found', { status: 404 });
