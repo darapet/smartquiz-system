@@ -214,8 +214,9 @@ function _brevoEmailEndpoint() {
 
     /*
      * Firebase Hosting and a Cloudflare Worker can both proxy /api/email.
-     * GitHub Pages cannot run a server route, so retain the direct Firebase
-     * fallback there until the custom Cloudflare domain is being used.
+     * GitHub Pages cannot run a server route, so use the deployed Worker
+     * directly there. A custom domain can override this with the same-origin
+     * /api/email route or window.AQS_BREVO_FUNCTION_URL.
      */
     var hostname = typeof window !== 'undefined' && window.location
         ? String(window.location.hostname || '').toLowerCase()
@@ -228,7 +229,7 @@ function _brevoEmailEndpoint() {
     ) {
         return '/api/email';
     }
-    return 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
+    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
 }
 
 async function callBrevoEmail(payload) {
@@ -253,7 +254,7 @@ async function callBrevoEmail(payload) {
          * does not include the CORS headers returned by our function.
          */
         throw new Error(
-            'The email service could not be reached. The Firebase brevoEmail function '
+            'The email service could not be reached. The Cloudflare email Worker '
             + 'must be deployed before sending test emails.'
         );
     }
