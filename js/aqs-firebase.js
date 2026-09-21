@@ -76,14 +76,13 @@ var _isCapacitorNative = typeof window !== 'undefined'
     && typeof window.Capacitor !== 'undefined'
     && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
 /* Some mobile networks and corporate/ISP proxies break the Firestore
-   WebChannel transport. Long-polling is slower, but it works over ordinary
-   HTTPS and avoids the VPN-only failure mode. */
+   WebChannel transport. Keep long-polling for Capacitor only; normal
+   browsers get Firestore's faster streaming transport. */
 let db;
 try {
-    db = initializeFirestore(app, {
-        experimentalForceLongPolling: true,
-        useFetchStreams: false
-    });
+    db = initializeFirestore(app, _isCapacitorNative
+        ? { experimentalForceLongPolling: true, useFetchStreams: false }
+        : {});
 } catch (firestoreInitError) {
     /* A second initialization can happen in embedded WebViews. Keep the
        fallback so the rest of the app can still use the existing instance. */
@@ -92,7 +91,7 @@ try {
 }
 const rtdb = getDatabase(app);
 window._aqsFirebaseReady = true;
-window._aqsFirebaseTransport = 'long-polling';
+window._aqsFirebaseTransport = _isCapacitorNative ? 'long-polling' : 'web-channel';
 
 /* ── Base URL helper: works on GitHub Pages subfolders ──
    e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
