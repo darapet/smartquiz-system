@@ -34,7 +34,7 @@ async function brevoConfiguration() {
   const main = mainSnapshot.exists ? mainSnapshot.data() : {};
   const privateSettings = privateSnapshot.exists ? privateSnapshot.data() : {};
   return {
-    apiKey: String(privateSettings.brevo_api_key || main.brevo_api_key || '').trim(),
+    apiKey: String(privateSettings.brevo_api_key || '').trim(),
     fromName: String(main.brevo_from_name || 'SmartQuiz').trim(),
     fromEmail: String(main.brevo_from_email || '').trim(),
   };
@@ -52,9 +52,9 @@ async function sendBrevoMessage({ recipient, subject, htmlContent, textContent }
   const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
-      accept: 'application/json',
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
       'api-key': config.apiKey,
-      'content-type': 'application/json',
     },
     body: JSON.stringify({
       sender: { name: config.fromName, email: config.fromEmail },

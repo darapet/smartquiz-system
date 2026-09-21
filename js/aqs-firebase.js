@@ -212,12 +212,11 @@ function _brevoEmailEndpoint() {
     }
 
     /*
-     * The static app is hosted on GitHub Pages and Cloudflare Pages, neither
-     * of which automatically proxies /api/email to the separate Worker.
-     * Call the Worker directly unless a deployment explicitly overrides it
-     * with window.AQS_BREVO_FUNCTION_URL.
+     * Use the Firebase function by default so the server reads the Brevo key
+     * saved from Admin Settings. Deployments may still override this with
+     * window.AQS_BREVO_FUNCTION_URL when they provide their own email route.
      */
-    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
+    return 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
 }
 
 async function callBrevoEmail(payload) {
