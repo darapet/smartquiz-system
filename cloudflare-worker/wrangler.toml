@@ -1,0 +1,10 @@
+name = "smartquiz-brevo-email"
+main = "src/index.js"
+compatibility_date = "2026-09-21"
+
+[vars]
+FIREBASE_PROJECT_ID = "smartquiz-darapet"
+FIREBASE_WEB_API_KEY = "AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY"
+ADMIN_EMAIL = "daramolapeter98@gmail.com"
+# Replace this with the Cloudflare hostname serving the website.
+ALLOWED_ORIGINS = "https://darapet.github.io"
