@@ -213,22 +213,11 @@ function _brevoEmailEndpoint() {
     }
 
     /*
-     * Firebase Hosting and a Cloudflare Worker can both proxy /api/email.
-     * GitHub Pages cannot run a server route, so use the deployed Worker
-     * directly there. A custom domain can override this with the same-origin
-     * /api/email route or window.AQS_BREVO_FUNCTION_URL.
+     * The static app is hosted on GitHub Pages and Cloudflare Pages, neither
+     * of which automatically proxies /api/email to the separate Worker.
+     * Call the Worker directly unless a deployment explicitly overrides it
+     * with window.AQS_BREVO_FUNCTION_URL.
      */
-    var hostname = typeof window !== 'undefined' && window.location
-        ? String(window.location.hostname || '').toLowerCase()
-        : '';
-    if (
-        hostname
-        && !hostname.endsWith('.github.io')
-        && hostname !== 'localhost'
-        && hostname !== '127.0.0.1'
-    ) {
-        return '/api/email';
-    }
     return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
 }
 
