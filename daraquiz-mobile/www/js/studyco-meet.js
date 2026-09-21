@@ -1,6 +1,6 @@
 import { auth, db } from './aqs-firebase.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null,
@@ -278,6 +278,7 @@ async function ensureProfile(user) {
 }
 
 function showAuth() {
+  $('studyco-boot-screen')?.remove();
   $('studyco-auth-screen').hidden = false; $('studyco-app-screen').hidden = true;
   const returnPath = `${window.location.pathname.split('/').pop() || 'studyco-meet.html'}${window.location.search}`;
   const loginUrl = `login.html?redirect=${encodeURIComponent(returnPath)}`;
@@ -289,6 +290,7 @@ function showAuth() {
 }
 
 function showApp() {
+  $('studyco-boot-screen')?.remove();
   $('studyco-auth-screen').hidden = true; $('studyco-app-screen').hidden = false;
 }
 
@@ -519,18 +521,18 @@ function profilePostManagement(post) {
   return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary>Manage post</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
 }
 
-async function renderPost(post, { showAuthor = true } = {}) {
-  const [author, likesSnap, commentsSnap] = await Promise.all([
-    getProfile(post.userId), getDocs(collection(db, 'studyco_posts', post.id, 'likes')),
-    post.commentCount == null ? getDocs(query(collection(db, 'studyco_posts', post.id, 'comments'), limit(1))) : Promise.resolve(null)
-  ]);
-  const liked = likesSnap.docs.some((item) => item.id === state.user.uid);
+function renderPost(post, { showAuthor = true } = {}) {
+  /* Paint cards from the feed snapshot first. Like/comment details load on
+     interaction instead of blocking the whole first batch. */
+  const author = state.profiles.get(post.userId) || null;
+  const liked = false;
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
   const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async">` : '';
   const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
-  const commentCount = Number(post.commentCount ?? commentsSnap?.size ?? 0);
+  const likeCount = Number(post.likeCount) || 0;
+  const commentCount = Number(post.commentCount) || 0;
   const isOwner = post.userId === state.user.uid;
   const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
@@ -582,12 +584,12 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
   state.feedRenderTokens.set(target, renderToken);
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
   const firstBatch = posts.slice(0, 8);
-  const firstMarkup = await Promise.all(firstBatch.map((post) => renderPost(post, { showAuthor })));
+  const firstMarkup = firstBatch.map((post) => renderPost(post, { showAuthor }));
   if (state.feedRenderTokens.get(target) !== renderToken) return;
   target.innerHTML = firstMarkup.join('');
   if (posts.length <= firstBatch.length) return;
   const renderRemaining = async () => {
-    const remainingMarkup = await Promise.all(posts.slice(firstBatch.length).map((post) => renderPost(post, { showAuthor })));
+    const remainingMarkup = posts.slice(firstBatch.length).map((post) => renderPost(post, { showAuthor }));
     if (state.feedRenderTokens.get(target) !== renderToken) return;
     target.insertAdjacentHTML('beforeend', remainingMarkup.join(''));
   };
@@ -665,9 +667,16 @@ async function setPostPreference(postId, preference) {
 
 function subscribeFeed() {
   state.feedUnsub?.();
-  state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), limit(60)), (snapshot) => {
+  state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), orderBy('createdAt', 'desc'), limit(30)), (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
+    const postsAtLoad = state.posts;
     renderFeed(); scheduleNextFeedRefresh(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
+    const authorIds = [...new Set(postsAtLoad.slice(0, 8).map((post) => post.userId).filter((uid) => uid && !state.profiles.has(uid)))];
+    if (authorIds.length) {
+      Promise.all(authorIds.map((uid) => getProfile(uid).catch(() => null))).then(() => {
+        if (state.posts === postsAtLoad) renderFeed();
+      });
+    }
   }, (error) => toast(error.message || 'The feed could not load.', true));
 }
 
@@ -2287,10 +2296,20 @@ window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
 };
 
 async function bootApp() {
-  await ensureProfile(state.user);
-  await loadPostPreferences();
+  /* Show the native app shell before profile and social-list reads finish. */
+  showApp();
+  renderProfile();
+  const profileReady = ensureProfile(state.user).then((profile) => {
+    state.viewedProfile = profile;
+    renderProfile();
+    return profile;
+  });
+  const preferencesReady = loadPostPreferences().then(() => renderFeed());
   try { state.dismissedSuggestions = new Set(JSON.parse(localStorage.getItem(`studyco-dismissed-suggestions:${state.user.uid}`) || '[]')); } catch (_) {}
-  showApp(); renderProfile(); startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); await loadSocialLists(); await refreshNavCounts(); loadChats(); await syncRoute();
+  startPresence(); subscribeFeed(); subscribeStories(); subscribeNotifications(); listenForCalls(); subscribeCallHistory(); loadPeople(); loadChats();
+  await Promise.allSettled([profileReady, preferencesReady, loadSocialLists()]);
+  await syncRoute();
+  refreshNavCounts();
 }
 
 document.addEventListener('click', (event) => {
