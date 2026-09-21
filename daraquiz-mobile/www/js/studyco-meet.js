@@ -12,7 +12,7 @@ const state = {
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
-  conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0,
+  conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
   pendingIncomingCall: null, incomingPreviewPromise: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
   callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', callConnected: false, mediaRecorder: null,
@@ -51,7 +51,7 @@ const lastSeenText = (presence) => {
   if (days < 7) return `Last seen ${days}d ago`;
   return `Last seen ${new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
 };
-const avatar = (profile, size = '') => `<div class="studyco-avatar ${size}">${profile?.photoURL ? `<img src="${esc(profile.photoURL)}" alt="">` : esc(initials(profile))}</div>`;
+const avatar = (profile, size = '') => `<div class="studyco-avatar ${size}">${profile?.photoURL ? `<img src="${esc(profile.photoURL)}" alt="" loading="lazy" decoding="async">` : esc(initials(profile))}</div>`;
 const avatarWithPresence = (profile, uid, size = '') => {
   const presence = state.presence.get(uid);
   return `<span class="studyco-presence-wrap">${avatar(profile, size)}<i class="studyco-presence-dot${presenceIsOnline(presence) ? ' online' : ''}" title="${esc(lastSeenText(presence))}" aria-label="${esc(lastSeenText(presence))}"></i></span>`;
@@ -67,17 +67,11 @@ function setNavBadge(id, count) {
   badge.textContent = value > 99 ? '99+' : String(value);
   badge.hidden = value < 1;
 }
-async function refreshNavCounts() {
+function refreshNavCounts() {
   if (!state.user) return;
-  const [ownPosts, notifications] = await Promise.all([
-    getDocs(query(collection(db, 'studyco_posts'), where('userId', '==', state.user.uid), limit(1000))).catch(() => null),
-    getDocs(query(collection(db, 'studyco_notifications'), where('recipientId', '==', state.user.uid), limit(100))).catch(() => null)
-  ]);
-  setNavBadge('studyco-home-badge', ownPosts?.size ?? state.posts.filter((post) => post.userId === state.user.uid).length);
+  setNavBadge('studyco-home-badge', state.posts.filter((post) => post.userId === state.user.uid).length);
   setNavBadge('studyco-friend-badge', state.requests.length);
-  setNavBadge('studyco-notification-badge', notifications
-    ? notifications.docs.filter((item) => item.data().read !== true).length
-    : state.requests.length);
+  setNavBadge('studyco-notification-badge', state.notifications.filter((item) => item.read !== true).length);
 }
 
 async function createNotification(recipientId, type, entityId = '', conversationId = '') {
@@ -123,6 +117,7 @@ function subscribeNotifications() {
       }));
       state.notifications = notifications;
       renderNotifications();
+      refreshNavCounts();
     },
     (error) => toast(error.message || 'Notifications could not load.', true)
   );
@@ -531,7 +526,7 @@ async function renderPost(post, { showAuthor = true } = {}) {
   ]);
   const liked = likesSnap.docs.some((item) => item.id === state.user.uid);
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
-  const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment">` : '';
+  const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async">` : '';
   const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
@@ -583,8 +578,21 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
       .sort((a, b) => Number(state.postPreferences.get(b.id) === 'interested') - Number(state.postPreferences.get(a.id) === 'interested'));
   }
   if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
+  const renderToken = (state.feedRenderTokens.get(target) || 0) + 1;
+  state.feedRenderTokens.set(target, renderToken);
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
-  target.innerHTML = (await Promise.all(posts.map((post) => renderPost(post, { showAuthor })))).join('');
+  const firstBatch = posts.slice(0, 8);
+  const firstMarkup = await Promise.all(firstBatch.map((post) => renderPost(post, { showAuthor })));
+  if (state.feedRenderTokens.get(target) !== renderToken) return;
+  target.innerHTML = firstMarkup.join('');
+  if (posts.length <= firstBatch.length) return;
+  const renderRemaining = async () => {
+    const remainingMarkup = await Promise.all(posts.slice(firstBatch.length).map((post) => renderPost(post, { showAuthor })));
+    if (state.feedRenderTokens.get(target) !== renderToken) return;
+    target.insertAdjacentHTML('beforeend', remainingMarkup.join(''));
+  };
+  if ('requestIdleCallback' in window) window.requestIdleCallback(renderRemaining, { timeout: 700 });
+  else window.setTimeout(renderRemaining, 0);
 }
 
 function scheduleNextFeedRefresh() {
