@@ -45,6 +45,10 @@ async function sendBrevoMessage({ recipient, subject, htmlContent, textContent }
   if (!config.apiKey || !config.fromEmail) {
     throw new Error('Brevo is not configured. Add an API key and sender email in Admin Settings.');
   }
+  const normalizedRecipient = String(recipient || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedRecipient)) {
+    throw new Error('A valid recipient email address is required.');
+  }
   const brevoResponse = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',
     headers: {
@@ -54,21 +58,28 @@ async function sendBrevoMessage({ recipient, subject, htmlContent, textContent }
     },
     body: JSON.stringify({
       sender: { name: config.fromName, email: config.fromEmail },
-      to: [{ email: recipient }],
+      to: [{ email: normalizedRecipient }],
       subject,
       htmlContent,
       textContent,
     }),
   });
+  let responseBody = {};
+  try {
+    responseBody = await brevoResponse.json();
+  } catch (_) {}
   if (!brevoResponse.ok) {
-    let details = '';
-    try {
-      const body = await brevoResponse.json();
-      details = body.message ? ` ${body.message}` : '';
-    } catch (_) {}
+    const details = responseBody.message ? ` ${responseBody.message}` : '';
     throw new Error(`Brevo rejected the email.${details}`);
   }
-  return brevoResponse.json();
+  if (!responseBody.messageId) {
+    throw new Error('Brevo accepted the request without returning a message ID. Check the Brevo activity log.');
+  }
+  return {
+    messageId: String(responseBody.messageId),
+    recipient: normalizedRecipient,
+    sender: config.fromEmail,
+  };
 }
 
 exports.brevoEmail = onRequest(
@@ -86,25 +97,25 @@ exports.brevoEmail = onRequest(
 
       if (kind === 'test') {
         if (!isAdmin) return response.status(403).json({ error: 'Admin access required.' });
-        await sendBrevoMessage({
-          recipient: user.email,
+        const result = await sendBrevoMessage({
+          recipient: payload.recipient || user.email,
           subject: 'SmartQuiz Brevo test email',
           htmlContent: '<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Brevo is connected</h2><p>Your SmartQuiz email configuration is working correctly.</p></div>',
           textContent: 'Brevo is connected. Your SmartQuiz email configuration is working correctly.',
         });
-        return response.json({ sent: true });
+        return response.json({ sent: true, accepted: true, ...result });
       }
 
       if (kind === 'otp') {
         const code = String(payload.code || '').replace(/\D/g, '');
         if (code.length !== 6) return response.status(400).json({ error: 'A valid six-digit OTP is required.' });
-        await sendBrevoMessage({
+        const result = await sendBrevoMessage({
           recipient: user.email,
           subject: 'Your SmartQuiz verification code',
           htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz account</h2><p>Enter this code to finish registration:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
           textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
         });
-        return response.json({ sent: true });
+        return response.json({ sent: true, accepted: true, ...result });
       }
 
       return response.status(400).json({ error: 'Unknown email action.' });

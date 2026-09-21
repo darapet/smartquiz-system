@@ -810,8 +810,8 @@ async function actionVerifyOtp(data) {
 async function actionTestBrevo(data) {
     var user = requireAuth();
     if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
-    var recipient = String(data && data.recipient || '').trim();
-    return await callBrevoEmail({ kind: 'test', recipient: recipient });
+    var recipient = String((data && data.recipient) || '').trim().toLowerCase();
+    return await callBrevoEmail({ kind: 'test', recipient: recipient || user.email });
 }
 
 /* ============================================================

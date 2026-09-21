@@ -311,6 +311,11 @@ window.addEventListener('DOMContentLoaded', function() {
                 <span class="aqs-toggle-slider"></span>
             </label>
         </div>
+        <div class="aqs-field-group">
+            <label for="aqs-brevo-test-recipient">Test Recipient Email</label>
+            <input type="email" id="aqs-brevo-test-recipient" placeholder="Leave blank to use the signed-in admin email" autocomplete="email" />
+            <p class="aqs-field-hint">Use the exact inbox you want to test. Brevo acceptance does not guarantee inbox placement; check spam or Promotions if it is not visible.</p>
+        </div>
         <div class="aqs-settings-actions">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-brevo-btn">💾 Save Email Settings</button>
             <button class="aqs-btn" id="aqs-test-brevo-btn" type="button">🧪 Send Test Email</button>
@@ -1956,6 +1961,7 @@ if (brevoKeyView && brevoKeyInput) {
 btn('aqs-test-brevo-btn').addEventListener('click', function(){
     var button = this;
     var status = document.getElementById('aqs-brevo-status');
+    var recipient = (document.getElementById('aqs-brevo-test-recipient').value || '').trim();
     button.disabled = true;
     button.textContent = 'Sending test…';
     var recipient = document.getElementById('aqs-brevo-test-recipient').value.trim();
@@ -1969,8 +1975,11 @@ btn('aqs-test-brevo-btn').addEventListener('click', function(){
         button.disabled = false;
         button.textContent = '🧪 Send Test Email';
         if (status) {
+            var details = res && res.data;
             status.textContent = res && res.success
-                ? '✓ Test email sent successfully.'
+                ? (details && details.recipient && details.messageId
+                    ? '✓ Accepted by Brevo for ' + details.recipient + '. Message ID: ' + details.messageId + '. Check spam/Promotions if needed.'
+                    : '✓ Email request accepted by the email service. Check spam/Promotions if it is not visible.')
                 : ((res && res.data && res.data.message) || 'Test email failed.');
             status.style.color = res && res.success ? '#059669' : '#dc2626';
         }
