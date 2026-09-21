@@ -73,6 +73,10 @@ async function sendBrevoMessage(env, { recipient, subject, htmlContent, textCont
   if (!apiKey || !fromEmail) {
     throw new Error('Brevo is not configured on the Cloudflare Worker.');
   }
+  const normalizedRecipient = String(recipient || '').trim().toLowerCase();
+  if (!isEmail(normalizedRecipient)) {
+    throw new Error('A valid recipient email address is required.');
+  }
 
   const response = await fetch(BREVO_EMAIL_URL, {
     method: 'POST',
@@ -83,19 +87,26 @@ async function sendBrevoMessage(env, { recipient, subject, htmlContent, textCont
     },
     body: JSON.stringify({
       sender: { name: fromName, email: fromEmail },
-      to: [{ email: recipient }],
+      to: [{ email: normalizedRecipient }],
       subject,
       htmlContent,
       textContent,
     }),
   });
 
+  const body = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
     const detail = body && body.message ? ` ${body.message}` : '';
     throw new Error(`Brevo rejected the email.${detail}`);
   }
-  return response.json();
+  if (!body || !body.messageId) {
+    throw new Error('Brevo accepted the request without returning a message ID. Check the Brevo activity log.');
+  }
+  return {
+    messageId: String(body.messageId),
+    recipient: normalizedRecipient,
+    sender: fromEmail,
+  };
 }
 
 async function handleEmail(request, env) {
@@ -120,13 +131,13 @@ async function handleEmail(request, env) {
       if (!isEmail(recipient)) {
         return json(request, env, { error: 'Enter a valid test recipient email.' }, 400);
       }
-      await sendBrevoMessage(env, {
+      const result = await sendBrevoMessage(env, {
         recipient,
         subject: 'SmartQuiz Brevo test email',
         htmlContent: '<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Brevo is connected</h2><p>Your SmartQuiz email configuration is working correctly.</p></div>',
         textContent: 'Brevo is connected. Your SmartQuiz email configuration is working correctly.',
       });
-      return json(request, env, { sent: true });
+      return json(request, env, { sent: true, accepted: true, ...result });
     }
 
     if (kind === 'otp') {
@@ -137,13 +148,13 @@ async function handleEmail(request, env) {
       if (code.length !== 6) {
         return json(request, env, { error: 'A valid six-digit OTP is required.' }, 400);
       }
-      await sendBrevoMessage(env, {
+      const result = await sendBrevoMessage(env, {
         recipient: user.email,
         subject: 'Your SmartQuiz verification code',
         htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz account</h2><p>Enter this code to finish registration:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
         textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
       });
-      return json(request, env, { sent: true });
+      return json(request, env, { sent: true, accepted: true, ...result });
     }
 
     return json(request, env, { error: 'Unknown email action.' }, 400);

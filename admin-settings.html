@@ -296,11 +296,6 @@ window.addEventListener('DOMContentLoaded', function() {
                 <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
             </div>
         </div>
-        <div class="aqs-field-group">
-            <label for="aqs-brevo-test-recipient">Test Recipient Email</label>
-            <input type="email" id="aqs-brevo-test-recipient" placeholder="Leave blank to use the signed-in admin email" autocomplete="email" />
-            <p class="aqs-field-hint">Only the admin can send a test. This address is used for the test email and is not saved with the sender settings.</p>
-        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:4px 0 16px;border:1px solid #e0e7ff;border-radius:10px;background:#eef2ff;">
             <div>
                 <strong style="display:block;color:#3730a3;font-size:.9rem;">Email OTP verification</strong>
@@ -314,7 +309,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <div class="aqs-field-group">
             <label for="aqs-brevo-test-recipient">Test Recipient Email</label>
             <input type="email" id="aqs-brevo-test-recipient" placeholder="Leave blank to use the signed-in admin email" autocomplete="email" />
-            <p class="aqs-field-hint">Use the exact inbox you want to test. Brevo acceptance does not guarantee inbox placement; check spam or Promotions if it is not visible.</p>
+            <p class="aqs-field-hint">Only the admin can send a test. Brevo acceptance does not guarantee inbox placement; check spam or Promotions if it is not visible.</p>
         </div>
         <div class="aqs-settings-actions">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-brevo-btn">💾 Save Email Settings</button>
@@ -1961,7 +1956,6 @@ if (brevoKeyView && brevoKeyInput) {
 btn('aqs-test-brevo-btn').addEventListener('click', function(){
     var button = this;
     var status = document.getElementById('aqs-brevo-status');
-    var recipient = (document.getElementById('aqs-brevo-test-recipient').value || '').trim();
     button.disabled = true;
     button.textContent = 'Sending test…';
     var recipient = document.getElementById('aqs-brevo-test-recipient').value.trim();
