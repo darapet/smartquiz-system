@@ -541,7 +541,7 @@ function renderPost(post, { showAuthor = true } = {}) {
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
-  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likesSnap.size}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likeCount}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function loadPostComments(postId, article) {
@@ -595,6 +595,12 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
   };
   if ('requestIdleCallback' in window) window.requestIdleCallback(renderRemaining, { timeout: 700 });
   else window.setTimeout(renderRemaining, 0);
+}
+
+function renderFeedError(error, target = $('studyco-post-feed')) {
+  console.error('[StudyCo] Feed render failed:', error);
+  if (!target) return;
+  target.innerHTML = '<div class="studyco-card studyco-empty">We could not load your circle yet.<br><button id="studyco-retry-feed" class="studyco-button soft" type="button">Try again</button></div>';
 }
 
 function scheduleNextFeedRefresh() {
@@ -665,19 +671,32 @@ async function setPostPreference(postId, preference) {
   else await renderFeed();
 }
 
-function subscribeFeed() {
+function subscribeFeed(useFallback = false) {
   state.feedUnsub?.();
-  state.feedUnsub = onSnapshot(query(collection(db, 'studyco_posts'), orderBy('createdAt', 'desc'), limit(30)), (snapshot) => {
+  const feedQuery = useFallback
+    ? query(collection(db, 'studyco_posts'), limit(30))
+    : query(collection(db, 'studyco_posts'), orderBy('createdAt', 'desc'), limit(30));
+  state.feedUnsub = onSnapshot(feedQuery, (snapshot) => {
     state.posts = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
     const postsAtLoad = state.posts;
-    renderFeed(); scheduleNextFeedRefresh(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
+    renderFeed().catch((error) => renderFeedError(error));
+    scheduleNextFeedRefresh(); if (state.activeView === 'profile') loadProfileView(state.viewedProfileUid || state.user.uid); refreshNavCounts();
     const authorIds = [...new Set(postsAtLoad.slice(0, 8).map((post) => post.userId).filter((uid) => uid && !state.profiles.has(uid)))];
     if (authorIds.length) {
       Promise.all(authorIds.map((uid) => getProfile(uid).catch(() => null))).then(() => {
         if (state.posts === postsAtLoad) renderFeed();
       });
     }
-  }, (error) => toast(error.message || 'The feed could not load.', true));
+  }, (error) => {
+    if (!useFallback) {
+      /* A missing Firestore index or a partially migrated post can reject the
+         ordered query. Retry without orderBy and sort the small result locally. */
+      subscribeFeed(true);
+      return;
+    }
+    renderFeedError(error);
+    toast(error.message || 'The feed could not load.', true);
+  });
 }
 
 async function publishPost() {
@@ -1971,7 +1990,10 @@ function wire() {
     renderSearchResults('');
     $('studyco-page-search').focus();
   });
-  $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
+  $('studyco-refresh-feed').addEventListener('click', () => renderFeed().catch((error) => renderFeedError(error)));
+  $('studyco-post-feed')?.addEventListener('click', (event) => {
+    if (event.target.closest('#studyco-retry-feed')) subscribeFeed();
+  });
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
   $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; renderPostPreview(); renderPostAttachmentStatus(); });
