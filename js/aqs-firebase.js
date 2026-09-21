@@ -766,7 +766,10 @@ async function actionRegister(data) {
         message:      '✓ Account created! Redirecting…',
         redirect:     redirect,
         otp_required: otpRequired,
-        otp_sent:     otpSent
+        otp_sent:     otpSent,
+        otp_accepted: !!(otpResult && otpResult.accepted),
+        otp_recipient: otpResult && otpResult.recipient,
+        otp_message_id: otpResult && otpResult.messageId
     };
 }
 
@@ -791,8 +794,14 @@ async function actionSendOtp() {
     var otp = String(Math.floor(100000 + Math.random() * 900000));
     var exp = Date.now() + 10 * 60 * 1000;
     await setDoc(doc(db, 'users', user.uid), { otp: otp, otp_exp: exp, otp_verified: false }, { merge: true });
-    await callBrevoEmail({ kind: 'otp', code: otp });
-    return { sent: true, expires_in: 600 };
+    var emailResult = await callBrevoEmail({ kind: 'otp', code: otp });
+    return {
+        sent: true,
+        accepted: !!(emailResult && emailResult.accepted),
+        recipient: emailResult && emailResult.recipient,
+        messageId: emailResult && emailResult.messageId,
+        expires_in: 600
+    };
 }
 
 async function actionVerifyOtp(data) {

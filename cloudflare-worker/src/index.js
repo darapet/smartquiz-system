@@ -141,9 +141,6 @@ async function handleEmail(request, env) {
     }
 
     if (kind === 'otp') {
-      if (!user.emailVerified) {
-        return json(request, env, { error: 'Verify your email before requesting an OTP.' }, 403);
-      }
       const code = String(payload && payload.code || '').replace(/\D/g, '');
       if (code.length !== 6) {
         return json(request, env, { error: 'A valid six-digit OTP is required.' }, 400);

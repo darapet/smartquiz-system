@@ -204,10 +204,14 @@
                         var otpRequired = !!(res.data && res.data.otp_required);
                         if (otpRequired) {
                             window._aqsRegistrationRedirect = dest;
+                            var otpMessage = '✓ Account created. Check your inbox for the verification code.';
+                            if (res.data.otp_sent && res.data.otp_accepted && res.data.otp_message_id) {
+                                otpMessage = '✓ Brevo accepted the verification email. Check your inbox, spam, or Promotions.';
+                            }
                             showAlert(
                                 'aqs-register-alert',
                                 res.data.otp_sent
-                                    ? '✓ Account created. Check your inbox for the verification code.'
+                                    ? otpMessage
                                     : '✓ Account created. We could not send the code yet—use Resend when email settings are ready.',
                                 !res.data.otp_sent
                             );
@@ -262,7 +266,13 @@
                 verify.disabled = false;
                 resend.disabled = false;
                 if (res && res.success && res.data && res.data.sent) {
-                    setOtpStatus('A new code has been sent.', false);
+                    var accepted = res.data.accepted && res.data.messageId;
+                    setOtpStatus(
+                        accepted
+                            ? 'Brevo accepted the new code. Check inbox, spam, or Promotions.'
+                            : 'A new code has been accepted by the email service.',
+                        false
+                    );
                 } else {
                     setOtpStatus((res && res.data && res.data.message) || 'Could not send a code.', true);
                 }
