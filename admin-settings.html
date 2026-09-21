@@ -1970,9 +1970,12 @@ btn('aqs-test-brevo-btn').addEventListener('click', function(){
         button.textContent = '🧪 Send Test Email';
         if (status) {
             var details = res && res.data;
+            var senderLabel = details && details.sender
+                ? ' Sender: ' + details.sender + '.'
+                : '';
             status.textContent = res && res.success
                 ? (details && details.recipient && details.messageId
-                    ? '✓ Accepted by Brevo for ' + details.recipient + '. Message ID: ' + details.messageId + '. Check spam/Promotions if needed.'
+                    ? '✓ Accepted by Brevo for ' + details.recipient + '. Message ID: ' + details.messageId + '.' + senderLabel + ' Check spam/Promotions if needed.'
                     : '✓ Email request accepted by the email service. Check spam/Promotions if it is not visible.')
                 : ((res && res.data && res.data.message) || 'Test email failed.');
             status.style.color = res && res.success ? '#059669' : '#dc2626';
