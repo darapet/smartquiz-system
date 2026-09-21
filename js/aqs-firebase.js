@@ -552,7 +552,7 @@ async function handleAction(data) {
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
         case 'aqs_verify_otp':       return await actionVerifyOtp(data);
-        case 'aqs_test_brevo':       return await actionTestBrevo();
+        case 'aqs_test_brevo':       return await actionTestBrevo(data);
 
         /* ── QUIZ CRUD ── */
         case 'aqs_save_quiz':        return await actionSaveQuiz(data);
@@ -807,10 +807,11 @@ async function actionVerifyOtp(data) {
     return { verified: true };
 }
 
-async function actionTestBrevo() {
+async function actionTestBrevo(data) {
     var user = requireAuth();
     if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
-    return await callBrevoEmail({ kind: 'test' });
+    var recipient = String(data && data.recipient || '').trim();
+    return await callBrevoEmail({ kind: 'test', recipient: recipient });
 }
 
 /* ============================================================

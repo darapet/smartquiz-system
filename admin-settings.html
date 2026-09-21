@@ -281,6 +281,11 @@ window.addEventListener('DOMContentLoaded', function() {
                 <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
             </div>
         </div>
+        <div class="aqs-field-group">
+            <label for="aqs-brevo-test-recipient">Test Recipient Email</label>
+            <input type="email" id="aqs-brevo-test-recipient" placeholder="Leave blank to use the signed-in admin email" autocomplete="email" />
+            <p class="aqs-field-hint">Only the admin can send a test. This address is used for the test email and is not saved with the sender settings.</p>
+        </div>
         <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:4px 0 16px;border:1px solid #e0e7ff;border-radius:10px;background:#eef2ff;">
             <div>
                 <strong style="display:block;color:#3730a3;font-size:.9rem;">Email OTP verification</strong>
@@ -1925,11 +1930,14 @@ btn('aqs-test-brevo-btn').addEventListener('click', function(){
     var status = document.getElementById('aqs-brevo-status');
     button.disabled = true;
     button.textContent = 'Sending test…';
+    var recipient = document.getElementById('aqs-brevo-test-recipient').value.trim();
     if (status) {
-        status.textContent = 'Sending a test email to the signed-in admin address…';
+        status.textContent = recipient
+            ? 'Sending a test email to ' + recipient + '…'
+            : 'Sending a test email to the signed-in admin address…';
         status.style.color = '#4f46e5';
     }
-    window.aqsAjax({ action: 'aqs_test_brevo' }, function(res) {
+    window.aqsAjax({ action: 'aqs_test_brevo', recipient: recipient }, function(res) {
         button.disabled = false;
         button.textContent = '🧪 Send Test Email';
         if (status) {

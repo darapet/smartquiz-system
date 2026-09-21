@@ -37,6 +37,10 @@ function bearerToken(request) {
   return header.replace(/^Bearer\s+/i, '').trim();
 }
 
+function isEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
 async function verifyFirebaseUser(request, env) {
   const token = bearerToken(request);
   if (!token) throw new Error('Authentication required.');
@@ -112,8 +116,12 @@ async function handleEmail(request, env) {
       if (user.email !== adminEmail) {
         return json(request, env, { error: 'Admin access required.' }, 403);
       }
+      const recipient = String(payload && payload.recipient || user.email).trim().toLowerCase();
+      if (!isEmail(recipient)) {
+        return json(request, env, { error: 'Enter a valid test recipient email.' }, 400);
+      }
       await sendBrevoMessage(env, {
-        recipient: user.email,
+        recipient,
         subject: 'SmartQuiz Brevo test email',
         htmlContent: '<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Brevo is connected</h2><p>Your SmartQuiz email configuration is working correctly.</p></div>',
         textContent: 'Brevo is connected. Your SmartQuiz email configuration is working correctly.',
