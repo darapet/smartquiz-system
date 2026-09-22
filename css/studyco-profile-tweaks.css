@@ -195,3 +195,42 @@
   .studyco-profile-details{grid-template-columns:1fr}
   .studyco-profile-detail.full{grid-column:auto}
 }
+
+.studyco-comments-modal{
+  width:min(560px,100%);
+  max-height:min(720px,calc(100vh - 32px));
+  display:flex;
+  flex-direction:column;
+}
+.studyco-comments-modal .studyco-modal-head{flex:0 0 auto}
+.studyco-comments-list{
+  min-height:180px;
+  max-height:52vh;
+  overflow:auto;
+  padding:4px 2px 14px;
+}
+.studyco-comments-list .studyco-comment{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  padding:10px 0;
+  border-bottom:1px solid #e4e6eb;
+}
+.studyco-comments-list .studyco-comment:last-child{border-bottom:0}
+.studyco-comments-list .studyco-comment>div{min-width:0}
+.studyco-comments-list .studyco-comment strong,
+.studyco-comments-list .studyco-comment span,
+.studyco-comments-list .studyco-comment small{display:block}
+.studyco-comments-list .studyco-comment strong{font-size:.76rem;color:#050505}
+.studyco-comments-list .studyco-comment span{margin-top:3px;color:#343a40;font-size:.78rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.studyco-comments-list .studyco-comment small{margin-top:4px;color:#65676b;font-size:.64rem}
+.studyco-comments-modal .studyco-comment-form{
+  display:flex;
+  gap:8px;
+  flex:0 0 auto;
+  margin:8px 0 0;
+  padding-top:12px;
+  border-top:1px solid #e4e6eb;
+}
+.studyco-comments-modal .studyco-comment-form input{min-width:0;flex:1}
+.studyco-comments-modal .studyco-comment-form button{flex:0 0 auto}

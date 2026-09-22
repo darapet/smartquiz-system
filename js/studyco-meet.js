@@ -570,25 +570,35 @@ function renderPost(post, { showAuthor = true } = {}) {
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
-  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likeCount}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likeCount}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div></article>`;
 }
 
-async function loadPostComments(postId, article) {
-  const panel = article.querySelector('[data-comments-panel]');
-  const form = article.querySelector('[data-comment-post]');
-  if (!panel || !form) return;
+async function loadPostComments(postId) {
+  const panel = $('studyco-comments-list');
+  if (!panel) return;
   panel.innerHTML = '<div class="studyco-empty">Loading comments...</div>';
-  panel.hidden = false;
-  form.hidden = false;
   const snapshot = await getDocs(collection(db, 'studyco_posts', postId, 'comments'));
   const comments = await Promise.all(snapshot.docs
     .sort((a, b) => timeMs(a.data().createdAt) - timeMs(b.data().createdAt))
     .map(async (item) => {
       const data = item.data(); const commenter = await getProfile(data.userId);
-      return `<div class="studyco-comment">${avatar(commenter, 'small')}<div><strong>${esc(profileName(commenter))}</strong><span>${esc(data.text)}</span></div></div>`;
+      return `<div class="studyco-comment">${avatar(commenter, 'small')}<div><strong>${esc(profileName(commenter))}</strong><span>${esc(data.text)}</span><small>${esc(timeText(data.createdAt))}</small></div></div>`;
     }));
   panel.innerHTML = comments.join('') || '<div class="studyco-empty">No comments yet. Start the conversation.</div>';
-  panel.dataset.loaded = 'true';
+}
+
+async function openComments(postId) {
+  const post = state.posts.find((item) => item.id === postId);
+  const author = post ? state.profiles.get(post.userId) || await getProfile(post.userId) : null;
+  $('studyco-comments-title').textContent = author ? `Comments on ${profileName(author)}’s post` : 'Comments';
+  $('studyco-comments-form').dataset.commentPost = postId;
+  $('studyco-comments-form').reset();
+  openModal('studyco-comments-modal');
+  try {
+    await loadPostComments(postId);
+  } catch (error) {
+    $('studyco-comments-list').innerHTML = `<div class="studyco-empty">${esc(error.message || 'Comments could not load.')}</div>`;
+  }
 }
 
 async function sharePost(postId) {
@@ -2082,16 +2092,9 @@ function wire() {
     }
     if (action === 'share') await sharePost(button.dataset.postId);
     if (action === 'comments') {
-      const panel = article.querySelector('[data-comments-panel]');
-      if (panel?.dataset.loaded === 'true') {
-        panel.hidden = !panel.hidden;
-        const form = article.querySelector('[data-comment-post]');
-        if (form) form.hidden = panel.hidden;
-      } else {
-        button.disabled = true;
-        try { await loadPostComments(button.dataset.postId, article); } catch (error) { toast(error.message || 'Comments could not load.', true); }
-        button.disabled = false;
-      }
+      button.disabled = true;
+      try { await openComments(button.dataset.postId); } catch (error) { toast(error.message || 'Comments could not load.', true); }
+      button.disabled = false;
     }
   });
   document.addEventListener('submit', async (event) => {
@@ -2107,8 +2110,11 @@ function wire() {
       if (article) {
         const commentButton = article.querySelector('[data-post-action="comments"] .studyco-action-count');
         if (commentButton && count != null) commentButton.textContent = String(count);
-        await loadPostComments(form.dataset.commentPost, article);
       }
+      const post = state.posts.find((item) => item.id === form.dataset.commentPost);
+      if (post && count != null) post.commentCount = count;
+      await loadPostComments(form.dataset.commentPost);
+      if (!article) await renderFeed();
     } catch (error) {
       toast(error.message || 'The comment could not be sent.', true);
     } finally {
