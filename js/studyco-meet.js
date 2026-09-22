@@ -590,14 +590,18 @@ async function loadPostComments(postId) {
 async function openComments(postId) {
   const post = state.posts.find((item) => item.id === postId);
   const author = post ? state.profiles.get(post.userId) || await getProfile(post.userId) : null;
-  $('studyco-comments-title').textContent = author ? `Comments on ${profileName(author)}’s post` : 'Comments';
-  $('studyco-comments-form').dataset.commentPost = postId;
-  $('studyco-comments-form').reset();
+  const title = $('studyco-comments-title');
+  const form = $('studyco-comments-form');
+  const list = $('studyco-comments-list');
+  if (!form || !list) throw new Error('Comments are unavailable on this page.');
+  if (title) title.textContent = author ? `Comments on ${profileName(author)}’s post` : 'Comments';
+  form.dataset.commentPost = postId;
+  form.reset();
   openModal('studyco-comments-modal');
   try {
     await loadPostComments(postId);
   } catch (error) {
-    $('studyco-comments-list').innerHTML = `<div class="studyco-empty">${esc(error.message || 'Comments could not load.')}</div>`;
+    list.innerHTML = `<div class="studyco-empty">${esc(error.message || 'Comments could not load.')}</div>`;
   }
 }
 
@@ -1931,7 +1935,7 @@ function subscribeCallHistory() {
 }
 
 function openModal(id) { const modal = $(id); if (modal) modal.hidden = false; }
-function closeModal(id) { $(id).hidden = true; }
+function closeModal(id) { const modal = $(id); if (modal) modal.hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
@@ -2102,18 +2106,24 @@ function wire() {
     event.preventDefault();
     const form = event.target;
     const submit = form.querySelector('button[type="submit"]');
+    const input = form.querySelector('input, textarea');
+    const postId = form.dataset.commentPost;
+    if (!postId || !input) {
+      toast('The comment form is unavailable. Please try again.', true);
+      return;
+    }
     if (submit) submit.disabled = true;
     try {
-      const count = await addComment(form.dataset.commentPost, form.querySelector('input').value);
+      const count = await addComment(postId, input.value);
       form.reset();
       const article = form.closest('.studyco-post');
       if (article) {
         const commentButton = article.querySelector('[data-post-action="comments"] .studyco-action-count');
         if (commentButton && count != null) commentButton.textContent = String(count);
       }
-      const post = state.posts.find((item) => item.id === form.dataset.commentPost);
+      const post = state.posts.find((item) => item.id === postId);
       if (post && count != null) post.commentCount = count;
-      await loadPostComments(form.dataset.commentPost);
+      await loadPostComments(postId);
       if (!article) await renderFeed();
     } catch (error) {
       toast(error.message || 'The comment could not be sent.', true);
