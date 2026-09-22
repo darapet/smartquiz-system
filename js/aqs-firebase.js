@@ -369,6 +369,29 @@ async function _aqsGetCloudinaryAccounts() {
     return _aqsCloudinarySettingsPromise;
 }
 
+/* Use XHR for browser uploads. Some webviews and privacy extensions surface
+   a failed CORS/network fetch only as "Failed to fetch"; XHR lets us expose
+   Cloudinary's actual HTTP response and keeps the retry loop useful. */
+function _aqsCloudinaryUpload(url, form) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.timeout = 120000;
+        xhr.onload = function() {
+            var body = {};
+            try { body = JSON.parse(xhr.responseText || '{}'); } catch(_) {}
+            resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: body });
+        };
+        xhr.onerror = function() {
+            reject(new Error('Cloudinary network error. Check your connection or browser privacy settings.'));
+        };
+        xhr.ontimeout = function() {
+            reject(new Error('Cloudinary upload timed out. Try a smaller image.'));
+        };
+        xhr.send(form);
+    });
+}
+
 window.aqsUploadFile = async function(file, storagePath) {
     if (!file) throw new Error('Choose a file first.');
     if (file.size > 25 * 1024 * 1024) throw new Error('Choose a file below 25 MB.');
@@ -388,11 +411,11 @@ window.aqsUploadFile = async function(file, storagePath) {
         var safePath = String(storagePath || 'uploads').replace(/^\/+|\/+$/g, '').replace(/\.\./g, '');
         form.append('folder', [account.folder || 'smartquiz', safePath].filter(Boolean).join('/'));
         try {
-            var response = await fetch('https://api.cloudinary.com/v1_1/' + encodeURIComponent(account.cloudName) + '/auto/upload', {
-                method: 'POST',
-                body: form
-            });
-            var result = await response.json().catch(function() { return {}; });
+            var response = await _aqsCloudinaryUpload(
+                'https://api.cloudinary.com/v1_1/' + encodeURIComponent(account.cloudName) + '/auto/upload',
+                form
+            );
+            var result = response.body || {};
             if (!response.ok || !result.secure_url) {
                 throw new Error(result.error && result.error.message || 'Cloudinary rejected the upload (' + response.status + ').');
             }
