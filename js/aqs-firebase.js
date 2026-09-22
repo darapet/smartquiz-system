@@ -253,6 +253,15 @@ async function callBrevoEmail(payload) {
     return body;
 }
 
+async function syncBrevoEmailConfiguration(config) {
+    return await callBrevoEmail({
+        kind: 'config',
+        apiKey: String(config && config.apiKey || '').trim(),
+        fromName: String(config && config.fromName || 'SmartQuiz').trim(),
+        fromEmail: String(config && config.fromEmail || '').trim()
+    });
+}
+
 /* ── Guest / anonymous session ──────────────────────────────────────────────
    Allows unauthenticated users (no sign-up) to create quizzes and use the app.
    Signs in anonymously with Firebase so they get a real UID that satisfies
@@ -2490,6 +2499,19 @@ async function actionSaveSettings(data) {
         }
         /* Remove the legacy public copy if one exists. */
         await setDoc(doc(db, 'settings', 'main'), { brevo_api_key: deleteField() }, { merge: true });
+
+        /*
+         * The live email path is the Cloudflare Worker. Keep the value entered
+         * in Admin Settings synchronized into its encrypted KV config store;
+         * the browser never sends the key to Brevo directly.
+         */
+        if (payload.brevo_from_email) {
+            await syncBrevoEmailConfiguration({
+                apiKey: privateValue,
+                fromName: payload.brevo_from_name,
+                fromEmail: payload.brevo_from_email
+            });
+        }
     }
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {

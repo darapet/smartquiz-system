@@ -1,5 +1,6 @@
 const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
 const BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email';
+const BREVO_CONFIG_KEY = 'brevo';
 
 function allowedOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
@@ -66,9 +67,10 @@ async function verifyFirebaseUser(request, env) {
 }
 
 async function sendBrevoMessage(env, { recipient, subject, htmlContent, textContent }) {
-  const apiKey = String(env.BREVO_API_KEY || '').trim();
-  const fromEmail = String(env.BREVO_FROM_EMAIL || '').trim();
-  const fromName = String(env.BREVO_FROM_NAME || 'SmartQuiz').trim();
+  const config = await getBrevoConfig(env);
+  const apiKey = config.apiKey;
+  const fromEmail = config.fromEmail;
+  const fromName = config.fromName;
 
   if (!apiKey || !fromEmail) {
     throw new Error('Brevo is not configured on the Cloudflare Worker.');
@@ -109,6 +111,31 @@ async function sendBrevoMessage(env, { recipient, subject, htmlContent, textCont
   };
 }
 
+async function getBrevoConfig(env) {
+  let stored = {};
+  if (env.EMAIL_CONFIG) {
+    stored = await env.EMAIL_CONFIG.get(BREVO_CONFIG_KEY, 'json').catch(() => ({})) || {};
+  }
+  return {
+    apiKey: String(stored.apiKey || env.BREVO_API_KEY || '').trim(),
+    fromEmail: String(stored.fromEmail || env.BREVO_FROM_EMAIL || '').trim(),
+    fromName: String(stored.fromName || env.BREVO_FROM_NAME || 'SmartQuiz').trim(),
+  };
+}
+
+async function saveBrevoConfig(env, payload) {
+  if (!env.EMAIL_CONFIG) {
+    throw new Error('Admin-managed email storage is not configured on the Cloudflare Worker.');
+  }
+  const apiKey = String(payload && payload.apiKey || '').trim();
+  const fromEmail = String(payload && payload.fromEmail || '').trim();
+  const fromName = String(payload && payload.fromName || 'SmartQuiz').trim();
+  if (!apiKey) throw new Error('Add a Brevo API key in Admin Settings first.');
+  if (!isEmail(fromEmail)) throw new Error('Add a valid verified sender email in Admin Settings first.');
+  await env.EMAIL_CONFIG.put(BREVO_CONFIG_KEY, JSON.stringify({ apiKey, fromEmail, fromName }));
+  return { saved: true, configured: true, sender: fromEmail };
+}
+
 async function handleEmail(request, env) {
   if (request.method === 'OPTIONS') {
     return new Response('', { status: 204, headers: corsHeaders(request, env) });
@@ -122,6 +149,14 @@ async function handleEmail(request, env) {
     const payload = await request.json().catch(() => ({}));
     const kind = String(payload && payload.kind || '');
     const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+
+    if (kind === 'config') {
+      if (user.email !== adminEmail) {
+        return json(request, env, { error: 'Admin access required.' }, 403);
+      }
+      const result = await saveBrevoConfig(env, payload);
+      return json(request, env, result);
+    }
 
     if (kind === 'test') {
       if (user.email !== adminEmail) {
