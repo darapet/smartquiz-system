@@ -299,25 +299,34 @@ window.libSaveProfile=async function(uid,data){
   await _init();
   await setDoc(doc(_db,'library_profiles',uid),{...data,updatedAt:serverTimestamp()},{merge:true});
 };
-window.libUploadCoverPhoto=async function(uid,file){
-  const formData=new FormData();
-  formData.append('file',file);
-  formData.append('upload_preset',_CLD_THUMB_PRESET);
-  formData.append('public_id','library/covers/'+uid);
-  const data=await _cldXHR('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
-  if(!data.secure_url) throw new Error('No URL returned from cover upload');
-  await window.libSaveProfile(uid,{coverURL:data.secure_url});
-  return data.secure_url;
+/* Profile media must use the same admin-managed uploader as StudyCo.
+   The old hard-coded preset (`smartquiz_thumbs`) was deleted in Cloudinary,
+   which made profile uploads fail even though the app had a valid uploader
+   configured in settings/cloudinary. */
+async function _uploadLibraryProfileMedia(uid, file, folder, field, label) {
+  if (!file) throw new Error('Choose an image first.');
+  if (!file.type || !file.type.startsWith('image/')) {
+    throw new Error('Choose an image file.');
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    throw new Error('Choose an image below 8 MB.');
+  }
+  if (typeof window.aqsUploadFile !== 'function') {
+    throw new Error('File storage is not ready. Please try again.');
+  }
+
+  const url = await window.aqsUploadFile(file, `library/${folder}/${uid}`);
+  if (!url) throw new Error(`No URL returned from ${label} upload.`);
+  await window.libSaveProfile(uid, { [field]: url });
+  return url;
+}
+
+window.libUploadCoverPhoto = function(uid, file) {
+  return _uploadLibraryProfileMedia(uid, file, 'covers', 'coverURL', 'cover');
 };
-window.libUploadProfilePhoto=async function(uid,file){
-  const formData=new FormData();
-  formData.append('file',file);
-  formData.append('upload_preset',_CLD_THUMB_PRESET);
-  formData.append('public_id','library/avatars/'+uid);
-  const data=await _cldXHR('https://api.cloudinary.com/v1_1/'+_CLD_CLOUD+'/image/upload',formData);
-  if(!data.secure_url) throw new Error('No URL returned from photo upload');
-  await window.libSaveProfile(uid,{photoURL:data.secure_url});
-  return data.secure_url;
+
+window.libUploadProfilePhoto = function(uid, file) {
+  return _uploadLibraryProfileMedia(uid, file, 'avatars', 'photoURL', 'profile photo');
 };
 
 /* ── BOOKS ── */
