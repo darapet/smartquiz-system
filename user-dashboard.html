@@ -13,8 +13,8 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.1rem;}
 .aqs-page-main{padding:32px 20px;max-width:1100px;margin:0 auto;}
 .aqs-hdr-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.aqs-hdr-hamburger{display:none;flex-direction:column;gap:5px;background:none;border:1px solid #e2e8f0;border-radius:8px;padding:7px 8px;cursor:pointer;}
-.aqs-hdr-hamburger span{display:block;width:18px;height:2px;background:#374151;border-radius:2px;transition:all .2s;}
+.aqs-hdr-hamburger{display:none;align-items:center;justify-content:center;color:#374151;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:7px 8px;cursor:pointer;min-width:38px;min-height:36px;}
+.aqs-hdr-hamburger svg{display:block;width:20px;height:20px;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
 .aqs-hdr-drawer{display:none;position:fixed;top:calc(var(--aqs-cd-bar-h,0px)+60px);left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:6px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);max-height:70vh;overflow-y:auto;}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;font-size:.9rem;}
@@ -81,12 +81,15 @@ window.AQS = {
 <body>
 <header class="aqs-site-header">
     <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
-    <button class="aqs-hdr-hamburger" id="udash-hamburger" aria-label="Menu"><span></span><span></span><span></span></button>
+    <button class="aqs-hdr-hamburger" id="udash-hamburger" aria-label="Open menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
     <nav class="aqs-hdr-nav">
         <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
         <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
         <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
         <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+        <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
         <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
     
         <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
@@ -97,11 +100,12 @@ window.AQS = {
     <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
     <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
     <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
+    <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
     <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
 
     <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
 </div>
-<script>(function(){var b=document.getElementById('udash-hamburger'),d=document.getElementById('udash-drawer');if(b&&d){b.addEventListener('click',function(){d.classList.toggle('open');b.classList.toggle('open');});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');}});}}());</script>
+<script>(function(){var b=document.getElementById('udash-hamburger'),d=document.getElementById('udash-drawer');if(b&&d){b.addEventListener('click',function(){var open=d.classList.toggle('open');b.classList.toggle('open',open);b.setAttribute('aria-expanded',String(open));});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');}});}}());</script>
 
 <main class="aqs-page-main">
 

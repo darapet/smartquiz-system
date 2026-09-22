@@ -810,17 +810,18 @@ async function actionLogout() {
     return { redirect: 'login.html' };
 }
 
-async function actionSendOtp() {
+async function actionSendOtp(data) {
     var user = requireAuth();
     if (!user.email) throw new Error('Your account does not have an email address.');
     var settingsSnap = await getDoc(doc(db, 'settings', 'main'));
-    if (!settingsSnap.exists() || settingsSnap.data().otp_enabled !== true) {
+    var purpose = String(data && data.purpose || 'account_verification');
+    if (purpose !== 'password_change' && (!settingsSnap.exists() || settingsSnap.data().otp_enabled !== true)) {
         throw new Error('Email OTP is currently disabled by the administrator.');
     }
     var otp = String(Math.floor(100000 + Math.random() * 900000));
     var exp = Date.now() + 10 * 60 * 1000;
     await setDoc(doc(db, 'users', user.uid), { otp: otp, otp_exp: exp, otp_verified: false }, { merge: true });
-    var emailResult = await callBrevoEmail({ kind: 'otp', code: otp });
+    var emailResult = await callBrevoEmail({ kind: 'otp', code: otp, purpose: purpose });
     return {
         sent: true,
         accepted: !!(emailResult && emailResult.accepted),

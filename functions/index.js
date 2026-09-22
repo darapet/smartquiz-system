@@ -109,10 +109,15 @@ exports.brevoEmail = onRequest(
       if (kind === 'otp') {
         const code = String(payload.code || '').replace(/\D/g, '');
         if (code.length !== 6) return response.status(400).json({ error: 'A valid six-digit OTP is required.' });
+        const passwordChange = String(payload.purpose || '') === 'password_change';
+        const subject = passwordChange ? 'Your SmartQuiz password change code' : 'Your SmartQuiz verification code';
+        const intro = passwordChange
+          ? 'Enter this code to continue changing your SmartQuiz password:'
+          : 'Enter this code to finish verifying your SmartQuiz account:';
         const result = await sendBrevoMessage({
           recipient: user.email,
-          subject: 'Your SmartQuiz verification code',
-          htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz account</h2><p>Enter this code to finish registration:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not create this account, you can ignore this email.</p></div>`,
+          subject,
+          htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>SmartQuiz security verification</h2><p>${intro}</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not request this, you can ignore this email.</p></div>`,
           textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
         });
         return response.json({ sent: true, accepted: true, ...result });
