@@ -212,11 +212,10 @@ function _brevoEmailEndpoint() {
     }
 
     /*
-     * Use the Firebase function by default so the server reads the Brevo key
-     * saved from Admin Settings. Deployments may still override this with
-     * window.AQS_BREVO_FUNCTION_URL when they provide their own email route.
+     * Use the deployed Cloudflare Worker by default. Deployments may still
+     * override this with window.AQS_BREVO_FUNCTION_URL.
      */
-    return 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
+    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
 }
 
 async function callBrevoEmail(payload) {
@@ -240,10 +239,7 @@ async function callBrevoEmail(payload) {
          * browser-level "Failed to fetch" because the provider's 404 page
          * does not include the CORS headers returned by our function.
          */
-        throw new Error(
-            'The email service could not be reached. The Cloudflare email Worker '
-            + 'must be deployed before sending test emails.'
-        );
+        throw new Error('The email service could not be reached. Please try again.');
     }
 
     var body = {};

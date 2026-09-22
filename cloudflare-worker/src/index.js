@@ -81,9 +81,9 @@ async function sendBrevoMessage(env, { recipient, subject, htmlContent, textCont
   const response = await fetch(BREVO_EMAIL_URL, {
     method: 'POST',
     headers: {
-      accept: 'application/json',
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
       'api-key': apiKey,
-      'content-type': 'application/json',
     },
     body: JSON.stringify({
       sender: { name: fromName, email: fromEmail },
