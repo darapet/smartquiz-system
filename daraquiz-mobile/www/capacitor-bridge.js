@@ -103,7 +103,7 @@
 
   /* ══════════════════════════════════════════════════
      BOTTOM NAVIGATION BAR
-     Injected into every page for easy mobile navigation.
+     Injected into app pages that do not already provide their own navigation.
      Active tab is highlighted based on current page URL.
   ══════════════════════════════════════════════════ */
   var NAV_ITEMS = [
@@ -131,7 +131,7 @@
   function injectBottomNav() {
     var page = getCurrentPage();
     /* Hide nav on auth pages */
-    var noNavPages = ['login.html', 'register.html', 'unauthorized.html', 'take-quiz.html', 'challenge.html', 'quiz-results.html'];
+    var noNavPages = ['login.html', 'register.html', 'unauthorized.html', 'take-quiz.html', 'challenge.html', 'quiz-results.html', 'social.html', 'studyco-meet.html'];
     if (noNavPages.indexOf(page) !== -1) return;
 
     var activeId = getActiveNavId(page);
