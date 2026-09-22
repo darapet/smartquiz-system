@@ -4,6 +4,16 @@
  * the feed and call behavior.
  */
 
+/* Keep every feed attachment inside the same post-sized frame. */
+.studyco-post-image {
+  width: 100%;
+  height: clamp(220px, 56vw, 420px);
+  max-height: none;
+  object-fit: contain;
+  object-position: center;
+  background: #f0f2f5;
+}
+
 /* The Studio shortcut should feel like part of the StudyCo shell, not a
    separate blue product button. */
 .dara-studio-fab {
