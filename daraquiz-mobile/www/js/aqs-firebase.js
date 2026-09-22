@@ -195,6 +195,102 @@ function requireAuth() {
     return user;
 }
 
+/* ── Mobile web-view uploads ───────────────────────────────────────────────
+   The mobile bundle used to expose no aqsUploadFile function at all, while
+   the library profile uploader now delegates here. Keep the same public
+   Cloudinary settings and retry behavior as the web app, but use XHR so
+   Capacitor reports the real HTTP/network failure instead of "Failed to
+   fetch". */
+var _aqsCloudinaryAccounts = null;
+var _aqsCloudinarySettingsPromise = null;
+
+function _aqsCleanCloudinaryAccounts(value) {
+    if (!Array.isArray(value)) return [];
+    return value.map(function(account) {
+        return {
+            name: String(account && account.name || '').trim().slice(0, 60),
+            cloudName: String(account && account.cloudName || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
+            uploadPreset: String(account && account.uploadPreset || '').trim().replace(/[^a-zA-Z0-9_-]/g, ''),
+            folder: String(account && account.folder || 'smartquiz').trim().replace(/[^a-zA-Z0-9_./-]/g, '').replace(/^\/+|\/+$/g, ''),
+            enabled: account && account.enabled !== false
+        };
+    }).filter(function(account) {
+        return account.enabled && account.cloudName && account.uploadPreset;
+    }).slice(0, 6);
+}
+
+async function _aqsGetCloudinaryAccounts() {
+    if (_aqsCloudinaryAccounts) return _aqsCloudinaryAccounts;
+    if (!_aqsCloudinarySettingsPromise) {
+        _aqsCloudinarySettingsPromise = getDoc(doc(db, 'settings', 'cloudinary')).then(function(snap) {
+            _aqsCloudinaryAccounts = snap.exists()
+                ? _aqsCleanCloudinaryAccounts(snap.data().accounts)
+                : [];
+            return _aqsCloudinaryAccounts;
+        }).catch(function() {
+            _aqsCloudinaryAccounts = [];
+            return _aqsCloudinaryAccounts;
+        });
+    }
+    return _aqsCloudinarySettingsPromise;
+}
+
+function _aqsCloudinaryUpload(url, form) {
+    return new Promise(function(resolve, reject) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', url, true);
+        xhr.timeout = 120000;
+        xhr.onload = function() {
+            var body = {};
+            try { body = JSON.parse(xhr.responseText || '{}'); } catch(_) {}
+            resolve({ ok: xhr.status >= 200 && xhr.status < 300, status: xhr.status, body: body });
+        };
+        xhr.onerror = function() {
+            reject(new Error('Cloudinary network error. Check the mobile connection and try again.'));
+        };
+        xhr.ontimeout = function() {
+            reject(new Error('Cloudinary upload timed out. Try a smaller image.'));
+        };
+        xhr.send(form);
+    });
+}
+
+window.aqsUploadFile = async function(file, storagePath) {
+    if (!file) throw new Error('Choose a file first.');
+    if (file.size > 25 * 1024 * 1024) throw new Error('Choose a file below 25 MB.');
+    var accounts = await _aqsGetCloudinaryAccounts();
+    if (!accounts.length) {
+        throw new Error('Cloudinary storage is not configured yet. Ask an admin to add a Cloudinary cloud name and unsigned upload preset.');
+    }
+
+    var start = 0;
+    try { start = Number(localStorage.getItem('aqs_cloudinary_rotation') || 0) % accounts.length; } catch(_) {}
+    var errors = [];
+    for (var attempt = 0; attempt < accounts.length; attempt++) {
+        var account = accounts[(start + attempt) % accounts.length];
+        var form = new FormData();
+        form.append('file', file);
+        form.append('upload_preset', account.uploadPreset);
+        var safePath = String(storagePath || 'uploads').replace(/^\/+|\/+$/g, '').replace(/\.\./g, '');
+        form.append('folder', [account.folder || 'smartquiz', safePath].filter(Boolean).join('/'));
+        try {
+            var response = await _aqsCloudinaryUpload(
+                'https://api.cloudinary.com/v1_1/' + encodeURIComponent(account.cloudName) + '/auto/upload',
+                form
+            );
+            var result = response.body || {};
+            if (!response.ok || !result.secure_url) {
+                throw new Error(result.error && result.error.message || 'Cloudinary rejected the upload (' + response.status + ').');
+            }
+            try { localStorage.setItem('aqs_cloudinary_rotation', String((start + attempt + 1) % accounts.length)); } catch(_) {}
+            return result.secure_url;
+        } catch (error) {
+            errors.push((account.name || account.cloudName) + ': ' + (error.message || 'upload failed'));
+        }
+    }
+    throw new Error('All configured Cloudinary accounts rejected the upload. ' + errors.join(' | '));
+};
+
 /* ── Guest / anonymous session ──────────────────────────────────────────────
    Allows unauthenticated users (no sign-up) to create quizzes and use the app.
    Signs in anonymously with Firebase so they get a real UID that satisfies
@@ -232,11 +328,12 @@ window.aqsAjax = async function(data, successFn, failFn) {
     }
 };
 
-/* ── File upload to Firebase Storage (used by admin pages) ──────────────
-   Usage: window.aqsUploadFile(file, 'uploads/music/track.mp3')
-          .then(function(url){ ... })
-   Returns: promise resolving to the public download URL              */
-window.aqsUploadFile = async function(file, storagePath) {
+/* ── Legacy Firebase Storage upload ─────────────────────────────────────
+   Mobile profile and StudyCo uploads use the Cloudinary uploader above.
+   Keep this under a separate name for any legacy admin-only callers so it
+   cannot overwrite window.aqsUploadFile and route profile photos through
+   the old fetch-based Firebase Storage path. */
+window.aqsUploadFirebaseFile = async function(file, storagePath) {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('You must be signed in as admin to upload files.');
     var token     = await user.getIdToken();
