@@ -213,7 +213,13 @@ function _brevoEmailEndpoint() {
      * Use the deployed Cloudflare Worker by default. Deployments may still
      * override this with window.AQS_BREVO_FUNCTION_URL.
      */
-    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
+    /*
+     * Registration uses the Firebase Hosting rewrite so the public OTP flow
+     * reaches the deployed brevoEmail function without requiring a session.
+     * Signed-in admin/user email actions use the same endpoint and remain
+     * protected by the function's Firebase token check.
+     */
+    return 'https://smartquiz-darapet.web.app/api/email';
 }
 
 async function callBrevoEmail(payload) {
