@@ -3,5 +3,6 @@
 - [Remote main UI sync](remote-main-ui-sync.md) — inspect current origin markup before rebasing UI changes from a stale checkout.
 - [GitHub push checkout](github-push-checkout.md) — after secure-secret handoff, verify nested Git metadata and use a fresh remote checkout if the local origin is replaced.
 - [StudyCo WebRTC reliability](webrtc-network-reliability.md) — calls use Firestore signaling and public STUN; restrictive networks still need an authenticated TURN relay.
+- [Mobile call audio routing](mobile-call-audio-routing.md) — Android WebView speaker routing can race getUserMedia and may not expose the earpiece reliably.
 - [StudyCo chat permissions](studyco-chat-permissions.md) — do not rewrite participant arrays when opening existing conversations; allow safe missing-document checks for new chats.
 - [Registration OTP trust boundary](registration-otp-trust-boundary.md) — browser-side OTP state is only a transition aid; production verification and resend limits must run on trusted server code.
