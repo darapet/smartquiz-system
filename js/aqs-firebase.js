@@ -9,11 +9,14 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
     getAuth,
+    createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
+    deleteUser,
     signOut,
     onAuthStateChanged,
     updateProfile,
+    updatePassword,
     setPersistence,
     browserLocalPersistence,
     signInAnonymously,
@@ -213,13 +216,7 @@ function _brevoEmailEndpoint() {
      * Use the deployed Cloudflare Worker by default. Deployments may still
      * override this with window.AQS_BREVO_FUNCTION_URL.
      */
-    /*
-     * Registration uses the Firebase Hosting rewrite so the public OTP flow
-     * reaches the deployed brevoEmail function without requiring a session.
-     * Signed-in admin/user email actions use the same endpoint and remain
-     * protected by the function's Firebase token check.
-     */
-    return 'https://smartquiz-darapet.web.app/api/email';
+    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
 }
 
 async function callBrevoEmail(payload) {
@@ -730,29 +727,28 @@ async function actionRegister(data) {
     if (password.length < 8) throw new Error('Password must be at least 8 characters.');
     if (!challengeId) throw new Error('Verify your email before creating the account.');
 
-    /* The trusted registration function verifies the OTP and creates the
-       Firebase Auth user in one server-side step. No account exists while
-       the browser is still on the email or OTP screens. */
-    await callRegistrationApi({
-        kind: 'registration_create',
-        email: email,
-        password: password,
-        challengeId: challengeId
-    });
-    var cred = await _withAqsStepTimeout(
-        signInWithEmailAndPassword(auth, email, password),
-        'signing in to your new account'
+    var user = requireAuth();
+    if (String(user.email || '').trim().toLowerCase() !== email) {
+        throw new Error('Your registration session expired. Start again with this email.');
+    }
+    var profileSnap = await _withAqsStepTimeout(
+        getDoc(doc(db, 'users', user.uid)),
+        'checking your email verification'
     );
-    var user = cred.user;
-    var profile = {
-        uid: user.uid,
-        email: user.email || email,
-        role: 'student',
-        status: 'pending',
-        registration_status: 'profile_pending',
-        otp_verified: true,
-        email_verified: true
-    };
+    var profile = profileSnap.exists() ? profileSnap.data() : {};
+    if (challengeId !== user.uid || profile.registration_status !== 'profile_pending' || profile.otp_verified !== true) {
+        throw new Error('Verify your email before creating the account.');
+    }
+
+    try {
+        await _withAqsStepTimeout(updatePassword(user, password), 'saving your password');
+    } catch (error) {
+        if (error && error.code === 'auth/requires-recent-login') {
+            throw new Error('Your registration session expired. Start again with this email.');
+        }
+        throw error;
+    }
+    try { await user.getIdToken(true); } catch (_) {}
     _updateAqsGlobals(user, profile);
     return {
         message:      'Account created. Continue setting up your profile.',
@@ -904,10 +900,60 @@ async function callRegistrationApi(payload) {
 async function actionSendRegistrationOtp(data) {
     var email = String(data && data.email || '').trim().toLowerCase();
     if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
-    return await callRegistrationApi({
-        kind: 'registration_otp_send',
-        email: email
-    });
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (user && user.isAnonymous) {
+        await signOut(auth);
+        user = null;
+    }
+    if (user && String(user.email || '').trim().toLowerCase() !== email) {
+        throw new Error('Sign out of the other account before registering this email.');
+    }
+    var createdUser = false;
+    if (!user) {
+        var temporaryPassword = 'Tmp-' + crypto.randomUUID() + '-aA1!';
+        var credential;
+        try {
+            credential = await _withAqsStepTimeout(
+                createUserWithEmailAndPassword(auth, email, temporaryPassword),
+                'starting your registration'
+            );
+        } catch (error) {
+            if (error && error.code === 'auth/email-already-in-use') {
+                throw new Error('That email is already registered. Sign in instead.');
+            }
+            throw error;
+        }
+        user = credential.user;
+        window._aqsFirebaseUser = user;
+        createdUser = true;
+    }
+
+    var result;
+    try {
+        await _withAqsStepTimeout(setDoc(doc(db, 'users', user.uid), {
+            uid: user.uid,
+            email: user.email || email,
+            role: 'student',
+            status: 'pending',
+            registration_status: 'otp_pending',
+            otp_verified: false
+        }, { merge: true }), 'starting your registration');
+        result = await actionSendOtp({ purpose: 'account_verification' });
+    } catch (error) {
+        /* Do not strand a new email address if the Worker or Firestore is
+           temporarily unavailable during the first registration request. */
+        if (createdUser) {
+            try { await deleteDoc(doc(db, 'users', user.uid)); } catch (_) {}
+            try { await deleteUser(user); } catch (_) {}
+            window._aqsFirebaseUser = null;
+        }
+        throw error;
+    }
+    return {
+        ...result,
+        challengeId: user.uid,
+        expiresIn: result.expires_in || 600
+    };
 }
 
 async function actionVerifyRegistrationOtp(data) {
@@ -915,12 +961,26 @@ async function actionVerifyRegistrationOtp(data) {
     var challengeId = String(data && data.challenge_id || '').trim();
     var otp = String(data && data.otp || '').replace(/\D/g, '');
     if (!email || !challengeId || otp.length !== 6) throw new Error('Enter the six-digit verification code.');
-    return await callRegistrationApi({
-        kind: 'registration_otp_verify',
-        email: email,
-        challengeId: challengeId,
-        otp: otp
-    });
+    var user = requireAuth();
+    if (String(user.email || '').trim().toLowerCase() !== email || challengeId !== user.uid) {
+        throw new Error('This verification request is no longer valid. Start again.');
+    }
+    var profileRef = doc(db, 'users', user.uid);
+    var profileSnap = await _withAqsStepTimeout(
+        getDoc(profileRef),
+        'checking your verification code'
+    );
+    var profile = profileSnap.exists() ? profileSnap.data() : {};
+    if (!profile.otp || profile.otp !== otp) throw new Error('Incorrect code. Please try again.');
+    if (Date.now() > Number(profile.otp_exp || 0)) throw new Error('That code has expired. Request a new one.');
+    await _withAqsStepTimeout(updateDoc(profileRef, {
+        otp: null,
+        otp_exp: null,
+        otp_verified: true,
+        email_verified: true,
+        registration_status: 'profile_pending'
+    }), 'confirming your email');
+    return { verified: true, challengeId: user.uid, expiresIn: 600 };
 }
 
 async function actionVerifyOtp(data) {

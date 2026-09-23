@@ -359,6 +359,7 @@
             registrationDraft.account.challenge_id = '';
             registrationDraft.account.otp_verified = false;
             saveRegistrationDraft();
+            window._aqsIsRegistering = true;
             setBtn('aqs-register-account-submit', 'Sending code…', true);
             window.aqsAjax({ action: 'aqs_send_registration_otp', email: email }, function (res) {
                 if (res && res.success && res.data && res.data.challengeId) {
@@ -369,12 +370,15 @@
                     sessionStorage.setItem('aqs_registration_step', '2');
                     updateProgress(2);
                     setBtn('aqs-register-account-submit', 'Send verification code', false);
+                    window._aqsIsRegistering = false;
                     return;
                 }
                 setBtn('aqs-register-account-submit', 'Send verification code', false);
+                window._aqsIsRegistering = false;
                 showAlert('aqs-register-alert', responseMessage(res, 'Could not send a verification code.'), true);
             }, function (err) {
                 setBtn('aqs-register-account-submit', 'Send verification code', false);
+                window._aqsIsRegistering = false;
                 showAlert('aqs-register-alert', (err && err.message) || 'Could not send a verification code. Please try again.', true);
             });
         });
