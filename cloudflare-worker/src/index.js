@@ -1,6 +1,7 @@
 const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
 const BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email';
 const BREVO_CONFIG_KEY = 'brevo';
+const FIREBASE_REGISTRATION_FUNCTION_URL = 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
 
 function allowedOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
@@ -145,9 +146,24 @@ async function handleEmail(request, env) {
   }
 
   try {
-    const user = await verifyFirebaseUser(request, env);
     const payload = await request.json().catch(() => ({}));
     const kind = String(payload && payload.kind || '');
+    if (kind === 'registration_otp_send'
+      || kind === 'registration_otp_verify'
+      || kind === 'registration_create') {
+      const response = await fetch(
+        String(env.FIREBASE_REGISTRATION_FUNCTION_URL || FIREBASE_REGISTRATION_FUNCTION_URL),
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        },
+      );
+      const body = await response.json().catch(() => ({ error: 'Registration service returned an invalid response.' }));
+      return json(request, env, body, response.status);
+    }
+
+    const user = await verifyFirebaseUser(request, env);
     const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
 
     if (kind === 'config') {

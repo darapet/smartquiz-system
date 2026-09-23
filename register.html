@@ -25,7 +25,7 @@ window.AQS = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=20260922-registration-flow"></script>
+<script type="module" src="js/aqs-firebase.js?v=20260923-registration-otp"></script>
 </head>
 <body>
 <div class="aqs-auth-page aqs-register-page">
@@ -47,8 +47,9 @@ window.AQS = {
         <ol>
             <li class="active" data-flow-step="1"><span>1</span><small>Account</small></li>
             <li data-flow-step="2"><span>2</span><small>Verify</small></li>
-            <li data-flow-step="3"><span>3</span><small>Education</small></li>
-            <li data-flow-step="4"><span>4</span><small>Photos</small></li>
+            <li data-flow-step="3"><span>3</span><small>Password</small></li>
+            <li data-flow-step="4"><span>4</span><small>Education</small></li>
+            <li data-flow-step="5"><span>5</span><small>Photos</small></li>
         </ol>
     </div>
 
@@ -62,6 +63,29 @@ window.AQS = {
         <div class="aqs-auth-field">
             <label for="reg-email">Email address</label>
             <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
+        </div>
+        <button type="submit" class="aqs-auth-submit" id="aqs-register-account-submit">Send verification code</button>
+    </form>
+
+    <section id="aqs-register-otp-step" class="aqs-register-step" data-step="2" hidden>
+        <div class="aqs-step-intro">
+            <span class="aqs-step-number">02</span>
+            <div><h2>Check your inbox</h2><p>Enter the six-digit code sent to <strong id="aqs-register-email-copy">your email</strong>.</p></div>
+        </div>
+        <label class="aqs-otp-label" for="aqs-register-otp">Verification code</label>
+        <input id="aqs-register-otp" class="aqs-otp-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" aria-label="Email verification code">
+        <p id="aqs-otp-status" class="aqs-inline-status"></p>
+        <div class="aqs-step-actions">
+            <button type="button" class="aqs-auth-secondary" id="aqs-otp-back-btn">Back</button>
+            <button type="button" class="aqs-auth-submit" id="aqs-verify-otp-btn">Verify email</button>
+        </div>
+        <button type="button" class="aqs-text-button" id="aqs-resend-otp-btn">Resend code</button>
+    </section>
+
+    <form id="aqs-register-password-form" class="aqs-register-step" data-step="3" hidden autocomplete="off" novalidate>
+        <div class="aqs-step-intro">
+            <span class="aqs-step-number">03</span>
+            <div><h2>Create your password</h2><p>Your email is verified. Choose a password for your SmartQuiz account.</p></div>
         </div>
         <div class="aqs-auth-row-2">
             <div class="aqs-auth-field">
@@ -84,27 +108,15 @@ window.AQS = {
             <input type="checkbox" id="reg-terms">
             <span>I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</span>
         </label>
-        <button type="submit" class="aqs-auth-submit" id="aqs-register-account-submit">Continue</button>
+        <div class="aqs-step-actions">
+            <button type="button" class="aqs-auth-secondary" id="aqs-password-back-btn">Back</button>
+            <button type="submit" class="aqs-auth-submit" id="aqs-register-password-submit">Create account</button>
+        </div>
     </form>
 
-    <section id="aqs-register-otp-step" class="aqs-register-step" data-step="2" hidden>
+    <form id="aqs-register-education-form" class="aqs-register-step" data-step="4" hidden autocomplete="off" novalidate>
         <div class="aqs-step-intro">
-            <span class="aqs-step-number">02</span>
-            <div><h2>Check your inbox</h2><p>Enter the six-digit code sent to <strong id="aqs-register-email-copy">your email</strong>.</p></div>
-        </div>
-        <label class="aqs-otp-label" for="aqs-register-otp">Verification code</label>
-        <input id="aqs-register-otp" class="aqs-otp-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" aria-label="Email verification code">
-        <p id="aqs-otp-status" class="aqs-inline-status"></p>
-        <div class="aqs-step-actions">
-            <button type="button" class="aqs-auth-secondary" id="aqs-otp-back-btn">Back</button>
-            <button type="button" class="aqs-auth-submit" id="aqs-verify-otp-btn">Verify email</button>
-        </div>
-        <button type="button" class="aqs-text-button" id="aqs-resend-otp-btn">Resend code</button>
-    </section>
-
-    <form id="aqs-register-education-form" class="aqs-register-step" data-step="3" hidden autocomplete="off" novalidate>
-        <div class="aqs-step-intro">
-            <span class="aqs-step-number">03</span>
+            <span class="aqs-step-number">04</span>
             <div><h2>Tell us about your learning</h2><p>This helps SmartQuiz personalize your study experience.</p></div>
         </div>
         <div class="aqs-auth-row-2">
@@ -173,9 +185,9 @@ window.AQS = {
         </div>
     </form>
 
-    <form id="aqs-register-photos-form" class="aqs-register-step" data-step="4" hidden>
+    <form id="aqs-register-photos-form" class="aqs-register-step" data-step="5" hidden>
         <div class="aqs-step-intro">
-            <span class="aqs-step-number">04</span>
+            <span class="aqs-step-number">05</span>
             <div><h2>Add your photos</h2><p>Use a profile photo and a contact photo so your account feels like yours.</p></div>
         </div>
         <div class="aqs-photo-grid">
@@ -197,7 +209,7 @@ window.AQS = {
         </div>
     </form>
 
-    <section id="aqs-register-complete" class="aqs-register-step" data-step="5" hidden>
+    <section id="aqs-register-complete" class="aqs-register-step" data-step="6" hidden>
         <div class="aqs-complete-mark" aria-hidden="true">✓</div>
         <h2>Your profile is ready</h2>
         <p id="aqs-complete-copy">Your SmartQuiz account is ready. Taking you to your profile now.</p>
@@ -209,7 +221,7 @@ window.AQS = {
 </div>
 <script src="js/aqs-education-data.js?v=20260922"></script>
 <script src="js/aqs-notifs-bar.js"></script>
-<script src="js/aqs-auth.js"></script>
+<script src="js/aqs-auth.js?v=20260923-registration-otp"></script>
 <script src="js/aqs-session.js"></script>
 </body>
 </html>

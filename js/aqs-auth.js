@@ -231,6 +231,9 @@
 
     function updateProgress(step) {
         registrationStep = step;
+        if (step >= 1 && step <= 5) {
+            try { sessionStorage.setItem('aqs_registration_step', String(step)); } catch (_) {}
+        }
         document.querySelectorAll('.aqs-register-step').forEach(function (panel) {
             panel.hidden = Number(panel.getAttribute('data-step')) !== step;
         });
@@ -240,18 +243,19 @@
             item.classList.toggle('current', itemStep === step);
         });
         var bar = document.getElementById('aqs-flow-progress-bar');
-        if (bar) bar.style.width = Math.max(0, Math.min(100, ((step - 1) / 3) * 100)) + '%';
+        if (bar) bar.style.width = Math.max(0, Math.min(100, ((step - 1) / 4) * 100)) + '%';
         var title = document.getElementById('aqs-register-title');
         var subtitle = document.getElementById('aqs-register-subtitle');
         var copy = {
             1: ['Create your account', 'A few quick steps and you are ready to learn.'],
             2: ['Verify your email', 'This keeps your SmartQuiz account secure.'],
-            3: ['Build your learning profile', 'Tell us enough to make your study experience useful.'],
-            4: ['Add your photos', 'You can skip either photo and add it later.'],
-            5: ['Welcome to SmartQuiz', 'Your profile is complete and ready to use.']
+            3: ['Create your password', 'Your email is verified. Choose a password for your account.'],
+            4: ['Build your learning profile', 'Tell us enough to make your study experience useful.'],
+            5: ['Add your photos', 'You can skip either photo and add it later.'],
+            6: ['Welcome to SmartQuiz', 'Your profile is complete and ready to use.']
         };
-        if (title) title.textContent = copy[step][0];
-        if (subtitle) subtitle.textContent = copy[step][1];
+        if (title && copy[step]) title.textContent = copy[step][0];
+        if (subtitle && copy[step]) subtitle.textContent = copy[step][1];
         window.scrollTo(0, 0);
     }
 
@@ -259,6 +263,7 @@
         var account = registrationDraft.account || {};
         var education = registrationDraft.education || {};
         setValue('reg-email', account.email);
+        setText('aqs-register-email-copy', account.email || 'your email');
         setValue('reg-name', education.name);
         setValue('reg-age', education.age);
         setValue('reg-education-level', education.education_level);
@@ -338,41 +343,39 @@
         if (!accountForm) return;
         loadRegistrationDraft();
         restoreRegistrationForm();
-        updateProgress(Number(sessionStorage.getItem('aqs_registration_step') || 1));
+        var savedStep = Number(sessionStorage.getItem('aqs_registration_step') || 1);
+        var savedAccount = registrationDraft.account || {};
+        if (savedStep >= 2 && !savedAccount.challenge_id) savedStep = 1;
+        if (savedStep >= 3 && !savedAccount.otp_verified) savedStep = 2;
+        updateProgress(Math.max(1, Math.min(6, savedStep)));
 
         accountForm.addEventListener('submit', function (e) {
             e.preventDefault();
             hideAlert('aqs-register-alert');
             var email = ((document.getElementById('reg-email') || {}).value || '').trim().toLowerCase();
-            var password = (document.getElementById('reg-password') || {}).value || '';
-            var confirm = (document.getElementById('reg-confirm') || {}).value || '';
-            var terms = document.getElementById('reg-terms');
             if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return showAlert('aqs-register-alert', 'Enter a valid email address.', true);
-            if (password.length < 8) return showAlert('aqs-register-alert', 'Password must be at least 8 characters.', true);
-            if (password !== confirm) return showAlert('aqs-register-alert', 'Passwords do not match.', true);
-            if (terms && !terms.checked) return showAlert('aqs-register-alert', 'Please accept the Terms of Service to continue.', true);
             if (typeof window.aqsAjax !== 'function') return showAlert('aqs-register-alert', 'Firebase is still loading. Please try again in a moment.', true);
             registrationDraft.account.email = email;
+            registrationDraft.account.challenge_id = '';
+            registrationDraft.account.otp_verified = false;
             saveRegistrationDraft();
-            window._aqsIsRegistering = true;
-            setBtn('aqs-register-account-submit', 'Creating account…', true);
-            window.aqsAjax({ action: 'aqs_register', email: email, password: password }, function (res) {
-                if (res && res.success) {
+            setBtn('aqs-register-account-submit', 'Sending code…', true);
+            window.aqsAjax({ action: 'aqs_send_registration_otp', email: email }, function (res) {
+                if (res && res.success && res.data && res.data.challengeId) {
+                    registrationDraft.account.challenge_id = res.data.challengeId;
                     setText('aqs-register-email-copy', email);
-                    var sent = res.data && res.data.otp_sent;
-                    showAlert('aqs-register-alert', sent ? 'Account created. Check your inbox for the verification code.' : 'Account created, but the code could not be sent yet. Use Resend code after email settings are available.', !sent);
+                    saveRegistrationDraft();
+                    showAlert('aqs-register-alert', 'Verification code sent. Check your inbox, spam, or Promotions.', false);
                     sessionStorage.setItem('aqs_registration_step', '2');
                     updateProgress(2);
-                    setBtn('aqs-register-account-submit', 'Continue', false);
+                    setBtn('aqs-register-account-submit', 'Send verification code', false);
                     return;
                 }
-                window._aqsIsRegistering = false;
-                setBtn('aqs-register-account-submit', 'Continue', false);
-                showAlert('aqs-register-alert', responseMessage(res, 'Registration failed.'), true);
+                setBtn('aqs-register-account-submit', 'Send verification code', false);
+                showAlert('aqs-register-alert', responseMessage(res, 'Could not send a verification code.'), true);
             }, function (err) {
-                window._aqsIsRegistering = false;
-                setBtn('aqs-register-account-submit', 'Continue', false);
-                showAlert('aqs-register-alert', (err && err.message) || 'Registration failed. Please try again.', true);
+                setBtn('aqs-register-account-submit', 'Send verification code', false);
+                showAlert('aqs-register-alert', (err && err.message) || 'Could not send a verification code. Please try again.', true);
             });
         });
 
@@ -393,9 +396,17 @@
             verify.disabled = true;
             if (resend) resend.disabled = true;
             setOtpStatus('Verifying…', false);
-            window.aqsAjax({ action: 'aqs_verify_otp', otp: code }, function (res) {
+            var account = registrationDraft.account || {};
+            window.aqsAjax({
+                action: 'aqs_verify_registration_otp',
+                email: account.email,
+                challenge_id: account.challenge_id,
+                otp: code
+            }, function (res) {
                 if (res && res.success && res.data && res.data.verified) {
-                    setOtpStatus('Email verified. Continue building your profile.', false);
+                    registrationDraft.account.otp_verified = true;
+                    saveRegistrationDraft();
+                    setOtpStatus('Email verified. Continue by creating your password.', false);
                     sessionStorage.setItem('aqs_registration_step', '3');
                     updateProgress(3);
                     if (resend) resend.disabled = false;
@@ -414,10 +425,18 @@
             verify.disabled = true;
             resend.disabled = true;
             setOtpStatus('Sending a new code…', false);
-            window.aqsAjax({ action: 'aqs_send_otp' }, function (res) {
+            var email = (registrationDraft.account || {}).email || ((document.getElementById('reg-email') || {}).value || '').trim().toLowerCase();
+            window.aqsAjax({ action: 'aqs_send_registration_otp', email: email }, function (res) {
                 verify.disabled = false;
                 resend.disabled = false;
-                setOtpStatus(res && res.success ? 'A new code was sent. Check inbox, spam, or Promotions.' : responseMessage(res, 'Could not send a code.'), !res || !res.success);
+                if (res && res.success && res.data && res.data.challengeId) {
+                    registrationDraft.account.challenge_id = res.data.challengeId;
+                    registrationDraft.account.otp_verified = false;
+                    saveRegistrationDraft();
+                    setOtpStatus('A new code was sent. Check your inbox, spam, or Promotions.', false);
+                    return;
+                }
+                setOtpStatus(responseMessage(res, 'Could not send a code.'), true);
             }, function (err) {
                 verify.disabled = false;
                 resend.disabled = false;
@@ -426,6 +445,49 @@
         });
         var otpBack = document.getElementById('aqs-otp-back-btn');
         if (otpBack) otpBack.addEventListener('click', function () { updateProgress(1); });
+
+        var passwordForm = document.getElementById('aqs-register-password-form');
+        if (passwordForm) passwordForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            hideAlert('aqs-register-alert');
+            var account = registrationDraft.account || {};
+            var password = (document.getElementById('reg-password') || {}).value || '';
+            var confirm = (document.getElementById('reg-confirm') || {}).value || '';
+            var terms = document.getElementById('reg-terms');
+            if (!account.email || !account.challenge_id || !account.otp_verified) {
+                return showAlert('aqs-register-alert', 'Verify your email before creating your account.', true);
+            }
+            if (password.length < 8) return showAlert('aqs-register-alert', 'Password must be at least 8 characters.', true);
+            if (password !== confirm) return showAlert('aqs-register-alert', 'Passwords do not match.', true);
+            if (terms && !terms.checked) return showAlert('aqs-register-alert', 'Please accept the Terms of Service to continue.', true);
+            if (typeof window.aqsAjax !== 'function') return showAlert('aqs-register-alert', 'Firebase is still loading. Please try again in a moment.', true);
+            setBtn('aqs-register-password-submit', 'Creating account…', true);
+            window._aqsIsRegistering = true;
+            window.aqsAjax({
+                action: 'aqs_register',
+                email: account.email,
+                password: password,
+                challenge_id: account.challenge_id
+            }, function (res) {
+                if (res && res.success) {
+                    window._aqsIsRegistering = false;
+                    showAlert('aqs-register-alert', 'Account created. Continue setting up your profile.', false);
+                    sessionStorage.setItem('aqs_registration_step', '4');
+                    updateProgress(4);
+                    setBtn('aqs-register-password-submit', 'Create account', false);
+                    return;
+                }
+                window._aqsIsRegistering = false;
+                setBtn('aqs-register-password-submit', 'Create account', false);
+                showAlert('aqs-register-alert', responseMessage(res, 'Could not create your account.'), true);
+            }, function (err) {
+                window._aqsIsRegistering = false;
+                setBtn('aqs-register-password-submit', 'Create account', false);
+                showAlert('aqs-register-alert', (err && err.message) || 'Could not create your account. Please try again.', true);
+            });
+        });
+        var passwordBack = document.getElementById('aqs-password-back-btn');
+        if (passwordBack) passwordBack.addEventListener('click', function () { updateProgress(2); });
 
         var educationForm = document.getElementById('aqs-register-education-form');
         var educationLevel = document.getElementById('reg-education-level');
@@ -466,13 +528,13 @@
             }
             registrationDraft.education = education;
             saveRegistrationDraft();
-            sessionStorage.setItem('aqs_registration_step', '4');
-            updateProgress(4);
+            sessionStorage.setItem('aqs_registration_step', '5');
+            updateProgress(5);
         });
         var educationBack = document.getElementById('aqs-education-back-btn');
-        if (educationBack) educationBack.addEventListener('click', function () { updateProgress(2); });
+        if (educationBack) educationBack.addEventListener('click', function () { updateProgress(3); });
         var photosBack = document.getElementById('aqs-photos-back-btn');
-        if (photosBack) photosBack.addEventListener('click', function () { updateProgress(3); });
+        if (photosBack) photosBack.addEventListener('click', function () { updateProgress(4); });
         setupPhotoPicker('reg-profile-picture', 'reg-profile-preview', 'profile_picture');
         setupPhotoPicker('reg-contact-picture', 'reg-contact-preview', 'contact_picture');
         var photosForm = document.getElementById('aqs-register-photos-form');
@@ -491,7 +553,7 @@
                     sessionStorage.removeItem(DRAFT_KEY);
                     sessionStorage.removeItem('aqs_registration_step');
                     window._aqsIsRegistering = false;
-                    updateProgress(5);
+                    updateProgress(6);
                     showAlert('aqs-register-alert', 'Profile saved successfully.', false);
                     var open = document.getElementById('aqs-open-profile-btn');
                     if (open) open.onclick = function () { window.location.replace((res.data && res.data.redirect) || 'user-dashboard.html'); };

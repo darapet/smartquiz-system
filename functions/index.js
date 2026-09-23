@@ -12,6 +12,12 @@ const CREATOR_IMAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const CREATOR_IMAGE_LIMIT = 5;
 const CREATOR_IMAGE_COOLDOWN_MS = 62 * 1000;
 const DEFAULT_CREATOR_IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
+const REGISTRATION_OTP_COLLECTION = 'registration_otp_challenges';
+const REGISTRATION_OTP_TTL_MS = 10 * 60 * 1000;
+const REGISTRATION_OTP_RESEND_WAIT_MS = 60 * 1000;
+const REGISTRATION_OTP_WINDOW_MS = 60 * 60 * 1000;
+const REGISTRATION_OTP_MAX_PER_WINDOW = 5;
+const REGISTRATION_OTP_MAX_ATTEMPTS = 5;
 
 function setCors(response) {
   response.set('Access-Control-Allow-Origin', '*');
@@ -82,6 +88,207 @@ async function sendBrevoMessage({ recipient, subject, htmlContent, textContent }
   };
 }
 
+function registrationEmail(value) {
+  const email = String(value || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new Error('Enter a valid email address.');
+  }
+  if (email === 'daramolapeter98@gmail.com') {
+    throw new Error('Use the admin sign-in account instead.');
+  }
+  return email;
+}
+
+function registrationEmailId(email) {
+  return crypto.createHash('sha256').update(email).digest('hex');
+}
+
+function registrationCodeHash(challengeId, code) {
+  return crypto.createHash('sha256').update(`${challengeId}:${code}`).digest('hex');
+}
+
+function registrationError(message, status = 400) {
+  const error = new Error(message);
+  error.httpStatus = status;
+  return error;
+}
+
+async function sendRegistrationOtp(payload) {
+  const email = registrationEmail(payload.email);
+  const reference = db.collection(REGISTRATION_OTP_COLLECTION).doc(registrationEmailId(email));
+  const now = Date.now();
+  const code = String(crypto.randomInt(100000, 1000000));
+  const challengeId = crypto.randomBytes(24).toString('hex');
+  let expiresAt = now + REGISTRATION_OTP_TTL_MS;
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(reference);
+    const previous = snapshot.exists ? snapshot.data() : {};
+    const lastSentAt = Number(previous.lastSentAt || 0);
+    if (lastSentAt && now - lastSentAt < REGISTRATION_OTP_RESEND_WAIT_MS) {
+      const waitSeconds = Math.ceil((REGISTRATION_OTP_RESEND_WAIT_MS - (now - lastSentAt)) / 1000);
+      throw registrationError(`Please wait ${waitSeconds} seconds before requesting another code.`, 429);
+    }
+
+    const windowStart = Number(previous.windowStart || 0);
+    const withinWindow = windowStart && now - windowStart < REGISTRATION_OTP_WINDOW_MS;
+    const sendCount = withinWindow ? Number(previous.sendCount || 0) : 0;
+    if (sendCount >= REGISTRATION_OTP_MAX_PER_WINDOW) {
+      throw registrationError('Too many codes were requested. Please try again later.', 429);
+    }
+
+    const nextWindowStart = withinWindow ? windowStart : now;
+    transaction.set(reference, {
+      email,
+      challengeId,
+      codeHash: registrationCodeHash(challengeId, code),
+      expiresAt,
+      attempts: 0,
+      verified: false,
+      consumed: false,
+      createdAt: now,
+      lastSentAt: now,
+      windowStart: nextWindowStart,
+      sendCount: sendCount + 1,
+    });
+  });
+
+  try {
+    const result = await sendBrevoMessage({
+      recipient: email,
+      subject: 'Your SmartQuiz verification code',
+      htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz email</h2><p>Enter this code to continue creating your account:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not request this, you can ignore this email.</p></div>`,
+      textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
+    });
+    return {
+      sent: true,
+      accepted: true,
+      challengeId,
+      recipient: result.recipient,
+      messageId: result.messageId,
+      expiresIn: Math.floor(REGISTRATION_OTP_TTL_MS / 1000),
+      resendAfter: Math.floor(REGISTRATION_OTP_RESEND_WAIT_MS / 1000),
+    };
+  } catch (error) {
+    // Keep the throttle record after a provider failure. A caller can retry
+    // after the cooldown without turning this public endpoint into an email
+    // flooder.
+    throw error;
+  }
+}
+
+async function findRegistrationChallenge(email, challengeId) {
+  const normalizedEmail = registrationEmail(email);
+  const reference = db.collection(REGISTRATION_OTP_COLLECTION).doc(registrationEmailId(normalizedEmail));
+  const snapshot = await reference.get();
+  if (!snapshot.exists || snapshot.data().challengeId !== String(challengeId || '')) {
+    throw registrationError('This verification request is no longer valid. Request a new code.');
+  }
+  return { email: normalizedEmail, reference, data: snapshot.data() };
+}
+
+async function verifyRegistrationOtp(payload) {
+  const code = String(payload.otp || '').replace(/\D/g, '');
+  if (code.length !== 6) throw registrationError('Enter the six-digit verification code.');
+  const challenge = await findRegistrationChallenge(payload.email, payload.challengeId);
+  const now = Date.now();
+  let verified = false;
+  let verificationError = null;
+
+  await db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(challenge.reference);
+    if (!snapshot.exists || snapshot.data().challengeId !== challenge.data.challengeId) {
+      throw registrationError('This verification request is no longer valid. Request a new code.');
+    }
+    const current = snapshot.data();
+    if (current.consumed) throw registrationError('This verification request has already been used.');
+    if (current.verified) {
+      verificationError = null;
+      verified = true;
+      return;
+    }
+    if (now > Number(current.expiresAt || 0)) {
+      throw registrationError('That code has expired. Request a new one.');
+    }
+    const attempts = Number(current.attempts || 0);
+    if (attempts >= REGISTRATION_OTP_MAX_ATTEMPTS) {
+      throw registrationError('Too many incorrect attempts. Request a new code.', 429);
+    }
+    const expected = Buffer.from(String(current.codeHash || ''), 'hex');
+    const received = Buffer.from(registrationCodeHash(current.challengeId, code), 'hex');
+    if (expected.length !== received.length || !crypto.timingSafeEqual(expected, received)) {
+      transaction.update(challenge.reference, { attempts: attempts + 1 });
+      verificationError = attempts + 1 >= REGISTRATION_OTP_MAX_ATTEMPTS
+        ? registrationError('Too many incorrect attempts. Request a new code.', 429)
+        : registrationError('Incorrect code. Please try again.');
+      return;
+    }
+    transaction.update(challenge.reference, { verified: true, verifiedAt: now });
+    verified = true;
+  });
+
+  if (verificationError) throw verificationError;
+  return { verified, challengeId: challenge.data.challengeId, expiresIn: 600 };
+}
+
+async function createRegistrationAccount(payload) {
+  const email = registrationEmail(payload.email);
+  const password = String(payload.password || '');
+  if (password.length < 8) throw registrationError('Password must be at least 8 characters.');
+  const challenge = await findRegistrationChallenge(email, payload.challengeId);
+  const current = challenge.data;
+  if (current.consumed) {
+    const existingUser = await admin.auth().getUserByEmail(email).catch(() => null);
+    const existingProfile = existingUser
+      ? await db.doc(`users/${existingUser.uid}`).get()
+      : null;
+    const profile = existingProfile && existingProfile.exists ? existingProfile.data() : {};
+    if (existingUser
+      && profile.registration_challenge_id === current.challengeId
+      && profile.registration_status === 'profile_pending') {
+      return { created: true, existing: true, email, uid: existingUser.uid };
+    }
+    throw registrationError('This verification request has already been used.');
+  }
+  if (!current.verified || Date.now() > Number(current.expiresAt || 0)) {
+    throw registrationError('Verify your email before creating the account.');
+  }
+
+  let user;
+  try {
+    user = await admin.auth().createUser({
+      email,
+      password,
+      emailVerified: true,
+    });
+  } catch (error) {
+    if (error && error.code === 'auth/email-already-exists') {
+      throw registrationError('That email is already registered. Sign in instead.', 409);
+    }
+    throw error;
+  }
+
+  try {
+    await db.doc(`users/${user.uid}`).set({
+      uid: user.uid,
+      email,
+      role: 'student',
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      status: 'pending',
+      registration_status: 'profile_pending',
+      otp_verified: true,
+      email_verified: true,
+      registration_challenge_id: challenge.data.challengeId,
+    });
+    await challenge.reference.update({ consumed: true, consumedAt: Date.now() });
+  } catch (error) {
+    await admin.auth().deleteUser(user.uid).catch(() => {});
+    throw error;
+  }
+
+  return { created: true, email, uid: user.uid };
+}
+
 exports.brevoEmail = onRequest(
   { region: 'us-central1', timeoutSeconds: 30, memory: '256MiB' },
   async (request, response) => {
@@ -90,9 +297,19 @@ exports.brevoEmail = onRequest(
     if (request.method !== 'POST') return response.status(405).json({ error: 'Use POST for email actions.' });
 
     try {
-      const user = await verifyBearerUser(request);
       const payload = request.body && typeof request.body === 'object' ? request.body : {};
       const kind = String(payload.kind || '');
+      if (kind === 'registration_otp_send') {
+        return response.json(await sendRegistrationOtp(payload));
+      }
+      if (kind === 'registration_otp_verify') {
+        return response.json(await verifyRegistrationOtp(payload));
+      }
+      if (kind === 'registration_create') {
+        return response.json(await createRegistrationAccount(payload));
+      }
+
+      const user = await verifyBearerUser(request);
       const isAdmin = String(user.email || '').toLowerCase() === 'daramolapeter98@gmail.com';
 
       if (kind === 'test') {
@@ -126,7 +343,8 @@ exports.brevoEmail = onRequest(
       return response.status(400).json({ error: 'Unknown email action.' });
     } catch (error) {
       console.error('Brevo email error:', error);
-      const status = error && error.code === 'auth/id-token-expired' ? 401 : 502;
+      const status = Number(error && error.httpStatus)
+        || (error && error.code === 'auth/id-token-expired' ? 401 : 502);
       return response.status(status).json({ error: error.message || 'Email service is unavailable.' });
     }
   },

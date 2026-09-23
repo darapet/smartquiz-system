@@ -9,10 +9,8 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {
     getAuth,
-    createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
     sendPasswordResetEmail,
-    sendEmailVerification,
     signOut,
     onAuthStateChanged,
     updateProfile,
@@ -290,17 +288,23 @@ async function getOrCreateGuestSession() {
    ============================================================ */
 var AQS_ACTION_TIMEOUT_MS = 15000;
 
+function _aqsActionTimeoutFor(action) {
+    return /^(aqs_send_registration_otp|aqs_verify_registration_otp|aqs_register)$/.test(String(action || ''))
+        ? 30000
+        : AQS_ACTION_TIMEOUT_MS;
+}
+
 function _withAqsActionTimeout(promise, action) {
     return Promise.race([
         promise,
         new Promise(function(_, reject) {
             setTimeout(function() {
                 reject(new Error(
-                    'Firebase did not respond within 15 seconds while processing ' +
+                    'Firebase did not respond within ' + (_aqsActionTimeoutFor(action) / 1000) + ' seconds while processing ' +
                     (action || 'this request') +
                     '. Check your connection and try again.'
                 ));
-            }, AQS_ACTION_TIMEOUT_MS);
+            }, _aqsActionTimeoutFor(action));
         })
     ]);
 }
@@ -578,6 +582,8 @@ async function handleAction(data) {
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
         case 'aqs_verify_otp':       return await actionVerifyOtp(data);
+        case 'aqs_send_registration_otp': return await actionSendRegistrationOtp(data);
+        case 'aqs_verify_registration_otp': return await actionVerifyRegistrationOtp(data);
         case 'aqs_test_brevo':       return await actionTestBrevo(data);
 
         /* ── QUIZ CRUD ── */
@@ -713,58 +719,40 @@ async function actionResetPassword(data) {
 async function actionRegister(data) {
     var email    = (data.email || '').trim();
     var password = (data.password || '').trim();
+    var challengeId = String(data.challenge_id || '').trim();
     if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
     if (password.length < 8) throw new Error('Password must be at least 8 characters.');
-    if (email.toLowerCase() === 'daramolapeter98@gmail.com') throw new Error('Use the admin sign-in account instead.');
+    if (!challengeId) throw new Error('Verify your email before creating the account.');
 
-    /* Account creation is intentionally separate from profile completion.
-       A pending account cannot enter the app until OTP and onboarding finish. */
-    window._aqsIsRegistering = true;
+    /* The trusted registration function verifies the OTP and creates the
+       Firebase Auth user in one server-side step. No account exists while
+       the browser is still on the email or OTP screens. */
+    await callRegistrationApi({
+        kind: 'registration_create',
+        email: email,
+        password: password,
+        challengeId: challengeId
+    });
     var cred = await _withAqsStepTimeout(
-        createUserWithEmailAndPassword(auth, email, password),
-        'creating your email account'
+        signInWithEmailAndPassword(auth, email, password),
+        'signing in to your new account'
     );
     var user = cred.user;
-
-    /* Force token refresh so Firestore immediately recognises the new user */
-    try {
-        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing the auth token');
-    } catch(_) {}
-
-    /* Save a deliberately incomplete profile. Firestore rules should permit
-       this own-document write, but never treat it as an active account. */
     var profile = {
         uid: user.uid,
-        email: email,
+        email: user.email || email,
         role: 'student',
-        created_at: serverTimestamp(),
         status: 'pending',
-        registration_status: 'otp_pending',
-        otp_verified: false
+        registration_status: 'profile_pending',
+        otp_verified: true,
+        email_verified: true
     };
-    await _withAqsStepTimeout(
-        setDoc(doc(db, 'users', user.uid), profile),
-        'saving your pending profile'
-    );
-
-    var otpSent = false;
-    var otpResult = null;
-    try {
-        otpResult = await actionSendOtp();
-        otpSent = !!(otpResult && otpResult.sent);
-    } catch (otpError) {
-        console.warn('[AQS Register] OTP delivery failed:', otpError && otpError.message);
-    }
-
     _updateAqsGlobals(user, profile);
     return {
-        message:      'Account created. Verify your email to continue.',
+        message:      'Account created. Continue setting up your profile.',
         redirect:     'register.html?resume=1',
-        otp_required: true,
-        otp_sent:     otpSent,
-        otp_accepted: !!(otpResult && otpResult.accepted),
-        otp_recipient: otpResult && otpResult.recipient,
-        otp_message_id: otpResult && otpResult.messageId
+        account_created: true,
+        otp_verified: true
     };
 }
 
@@ -886,6 +874,47 @@ async function actionSendOtp(data) {
         messageId: emailResult && emailResult.messageId,
         expires_in: 600
     };
+}
+
+async function callRegistrationApi(payload) {
+    var response;
+    try {
+        response = await fetch(_brevoEmailEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload || {})
+        });
+    } catch (_) {
+        throw new Error('The registration service could not be reached. Please try again.');
+    }
+    var body = {};
+    try { body = await response.json(); } catch (_) {}
+    if (!response.ok) {
+        throw new Error(body.error || 'The registration service returned an error.');
+    }
+    return body;
+}
+
+async function actionSendRegistrationOtp(data) {
+    var email = String(data && data.email || '').trim().toLowerCase();
+    if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
+    return await callRegistrationApi({
+        kind: 'registration_otp_send',
+        email: email
+    });
+}
+
+async function actionVerifyRegistrationOtp(data) {
+    var email = String(data && data.email || '').trim().toLowerCase();
+    var challengeId = String(data && data.challenge_id || '').trim();
+    var otp = String(data && data.otp || '').replace(/\D/g, '');
+    if (!email || !challengeId || otp.length !== 6) throw new Error('Enter the six-digit verification code.');
+    return await callRegistrationApi({
+        kind: 'registration_otp_verify',
+        email: email,
+        challengeId: challengeId,
+        otp: otp
+    });
 }
 
 async function actionVerifyOtp(data) {
