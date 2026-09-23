@@ -571,9 +571,9 @@ async function handleAction(data) {
     var action = data.action || '';
     switch(action) {
         /* ── AUTH ── */
-        case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
         case 'aqs_register':         return await actionRegister(data);
+        case 'aqs_complete_registration': return await actionCompleteRegistration(data);
         case 'aqs_reset_password':   return await actionResetPassword(data);
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
@@ -689,12 +689,14 @@ async function actionLogin(data) {
     /* Update AQS globals */
     _updateAqsGlobals(user, profile);
 
-    var redirect = _dashboardUrl(profile.role);
+    var registrationIncomplete = profile.registration_status !== 'complete';
+    var redirect = registrationIncomplete ? 'register.html?resume=1' : _dashboardUrl(profile.role);
     return {
         logged_in:    true,
         redirect:     redirect,
-        otp_required: false,
-        otp_verified: true,
+        registration_incomplete: registrationIncomplete,
+        otp_required: registrationIncomplete,
+        otp_verified: profile.otp_verified === true,
         user_name:    profile.name || user.displayName || user.email
     };
 }
@@ -709,23 +711,14 @@ async function actionResetPassword(data) {
 }
 
 async function actionRegister(data) {
-    var name     = (data.name || '').trim();
-    var username = (data.username || '').trim();
     var email    = (data.email || '').trim();
-    var role     = (data.role || 'student').trim();
     var password = (data.password || '').trim();
-    if (email.toLowerCase() === 'daramolapeter98@gmail.com') role = 'admin';
+    if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
+    if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+    if (email.toLowerCase() === 'daramolapeter98@gmail.com') throw new Error('Use the admin sign-in account instead.');
 
-    /* Check username uniqueness via public /usernames collection
-       (avoids a permission error — users collection requires auth) */
-    var usernameSnap = await _withAqsStepTimeout(
-        getDoc(doc(db, 'usernames', username)),
-        'checking username availability'
-    );
-    if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
-
-    /* Create Firebase Auth user — this is the critical step.
-       Everything after this is best-effort; we ALWAYS redirect on auth success. */
+    /* Account creation is intentionally separate from profile completion.
+       A pending account cannot enter the app until OTP and onboarding finish. */
     window._aqsIsRegistering = true;
     var cred = await _withAqsStepTimeout(
         createUserWithEmailAndPassword(auth, email, password),
@@ -738,65 +731,124 @@ async function actionRegister(data) {
         await _withAqsStepTimeout(user.getIdToken(true), 'refreshing the auth token');
     } catch(_) {}
 
-    /* Update display name (non-fatal) */
-    try {
-        await _withAqsStepTimeout(
-            updateProfile(user, { displayName: name }),
-            'saving your display name'
-        );
-    } catch(_) {}
-
-    /* Save profile to Firestore — wrapped so a rules/network error doesn't
-       block the user from getting into the app. The write will be retried
-       automatically by Firestore's offline persistence when connectivity returns. */
+    /* Save a deliberately incomplete profile. Firestore rules should permit
+       this own-document write, but never treat it as an active account. */
     var profile = {
-        uid: user.uid, name: name, username: username, email: email,
-        role: role, created_at: serverTimestamp(), status: 'active'
+        uid: user.uid,
+        email: email,
+        role: 'student',
+        created_at: serverTimestamp(),
+        status: 'pending',
+        registration_status: 'otp_pending',
+        otp_verified: false
     };
-    try {
-        await _withAqsStepTimeout(
-            setDoc(doc(db, 'users', user.uid), profile),
-            'saving your user profile'
-        );
-        await _withAqsStepTimeout(
-            setDoc(doc(db, 'usernames', username), { uid: user.uid, email: email }),
-            'saving your username'
-        );
-    } catch(fsErr) {
-        console.warn('[AQS Register] Firestore write failed (will retry):', fsErr && fsErr.message);
-        /* Do NOT throw — Firebase Auth user was created successfully.
-           The profile doc will be written on next login. */
-    }
+    await _withAqsStepTimeout(
+        setDoc(doc(db, 'users', user.uid), profile),
+        'saving your pending profile'
+    );
 
-    var otpRequired = false;
     var otpSent = false;
+    var otpResult = null;
     try {
-        var otpSettings = await getDoc(doc(db, 'settings', 'main'));
-        otpRequired = otpSettings.exists() && otpSettings.data().otp_enabled === true;
-        if (otpRequired) {
-            var otpResult = await actionSendOtp();
-            otpSent = !!(otpResult && otpResult.sent);
-            await setDoc(doc(db, 'users', user.uid), { otp_verified: false }, { merge: true });
-        }
+        otpResult = await actionSendOtp();
+        otpSent = !!(otpResult && otpResult.sent);
     } catch (otpError) {
         console.warn('[AQS Register] OTP delivery failed:', otpError && otpError.message);
     }
 
-    /* Send Firebase's normal verification link as an additional fallback. */
-    sendEmailVerification(user).catch(function() {});
-
     _updateAqsGlobals(user, profile);
-
-    var redirect = _dashboardUrl(role);
     return {
-        message:      '✓ Account created! Redirecting…',
-        redirect:     redirect,
-        otp_required: otpRequired,
+        message:      'Account created. Verify your email to continue.',
+        redirect:     'register.html?resume=1',
+        otp_required: true,
         otp_sent:     otpSent,
         otp_accepted: !!(otpResult && otpResult.accepted),
         otp_recipient: otpResult && otpResult.recipient,
         otp_message_id: otpResult && otpResult.messageId
     };
+}
+
+async function actionCompleteRegistration(data) {
+    var user = requireAuth();
+    var existingSnap = await _withAqsStepTimeout(
+        getDoc(doc(db, 'users', user.uid)),
+        'loading your pending profile'
+    );
+    var existing = existingSnap.exists() ? existingSnap.data() : {};
+    if (existing.registration_status !== 'profile_pending' || existing.otp_verified !== true) {
+        throw new Error('Verify your email before completing your profile.');
+    }
+
+    var profile = data.profile || {};
+    var name = String(profile.name || '').trim();
+    var age = Number(profile.age);
+    var educationLevel = String(profile.education_level || '').trim();
+    var allowedEducation = ['primary', 'secondary', 'higher_institution', 'graduate', 'masters', 'phd'];
+    if (name.length < 2 || name.length > 120) throw new Error('Enter a valid full name.');
+    if (!Number.isInteger(age) || age < 5 || age > 120) throw new Error('Enter a valid age.');
+    if (allowedEducation.indexOf(educationLevel) === -1) throw new Error('Choose a valid education level.');
+
+    var completed = {
+        uid: user.uid,
+        email: user.email || existing.email || '',
+        name: name,
+        age: age,
+        education_level: educationLevel,
+        role: 'student',
+        status: 'active',
+        registration_status: 'complete',
+        otp_verified: true,
+        email_verified: true,
+        updated_at: serverTimestamp()
+    };
+    if (educationLevel === 'higher_institution') {
+        var types = ['college', 'university', 'polytechnic', 'other'];
+        var institutionType = String(profile.institution_type || '').trim();
+        var schoolCountry = String(profile.school_country || '').trim();
+        var schoolName = String(profile.school_name || '').trim();
+        var studyLevel = String(profile.study_level || '').trim();
+        if (types.indexOf(institutionType) === -1 || !schoolName || !studyLevel) {
+            throw new Error('Choose your institution type, school, and study level.');
+        }
+        if (schoolCountry !== 'nigeria' && schoolCountry !== 'other') throw new Error('Choose where your school is located.');
+        completed.institution_type = institutionType;
+        completed.school_country = schoolCountry;
+        completed.school_name = schoolName;
+        completed.study_level = studyLevel;
+    } else {
+        var grade = String(profile.grade || '').trim();
+        if (!grade) throw new Error('Choose your grade, class, or programme.');
+        completed.grade = grade;
+        completed.school_name = String(profile.school_name || '').trim();
+    }
+
+    var profilePicture = String(data.profile_picture || '');
+    var contactPicture = String(data.contact_picture || '');
+    if (profilePicture.length > 500000 || contactPicture.length > 500000) {
+        throw new Error('Each photo must be smaller. Please choose a smaller image.');
+    }
+    if (profilePicture) completed.profile_picture = profilePicture;
+    if (contactPicture) completed.contact_picture = contactPicture;
+
+    var usernameBase = name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 18) || 'student';
+    var username = usernameBase;
+    var suffix = 1;
+    while ((await getDoc(doc(db, 'usernames', username))).exists() && suffix < 1000) {
+        username = usernameBase + suffix;
+        suffix++;
+    }
+    completed.username = username;
+    await _withAqsStepTimeout(
+        setDoc(doc(db, 'users', user.uid), completed, { merge: true }),
+        'saving your completed profile'
+    );
+    await _withAqsStepTimeout(
+        setDoc(doc(db, 'usernames', username), { uid: user.uid, email: completed.email }),
+        'saving your username'
+    );
+    try { await updateProfile(user, { displayName: name, photoURL: profilePicture || null }); } catch (_) {}
+    _updateAqsGlobals(user, completed);
+    return { completed: true, redirect: _dashboardUrl('student'), username: username };
 }
 
 async function actionLogout() {
@@ -815,7 +867,12 @@ async function actionSendOtp(data) {
     if (!user.email) throw new Error('Your account does not have an email address.');
     var settingsSnap = await getDoc(doc(db, 'settings', 'main'));
     var purpose = String(data && data.purpose || 'account_verification');
-    if (purpose !== 'password_change' && (!settingsSnap.exists() || settingsSnap.data().otp_enabled !== true)) {
+    var profileSnap = await getDoc(doc(db, 'users', user.uid));
+    var profile = profileSnap.exists() ? profileSnap.data() : {};
+    var pendingRegistration = profile.registration_status === 'otp_pending';
+    if (purpose !== 'password_change'
+        && !pendingRegistration
+        && (!settingsSnap.exists() || settingsSnap.data().otp_enabled !== true)) {
         throw new Error('Email OTP is currently disabled by the administrator.');
     }
     var otp = String(Math.floor(100000 + Math.random() * 900000));
@@ -839,7 +896,14 @@ async function actionVerifyOtp(data) {
     var profile = snap.data();
     if (!profile.otp || profile.otp !== code) throw new Error('Incorrect code. Please try again.');
     if (Date.now() > (profile.otp_exp || 0)) throw new Error('Code expired. Please request a new one.');
-    await updateDoc(doc(db, 'users', user.uid), { otp: null, otp_exp: null, otp_verified: true, email_verified: true });
+    await updateDoc(doc(db, 'users', user.uid), {
+        otp: null,
+        otp_exp: null,
+        otp_verified: true,
+        email_verified: true,
+        registration_status: 'profile_pending',
+        status: 'pending'
+    });
     return { verified: true };
 }
 
@@ -848,138 +912,6 @@ async function actionTestBrevo(data) {
     if (!isConfiguredAdmin(user)) throw new Error('Admin access required.');
     var recipient = String((data && data.recipient) || '').trim().toLowerCase();
     return await callBrevoEmail({ kind: 'test', recipient: recipient || user.email });
-}
-
-/* ============================================================
-   EMAIL-ONLY (PASSWORDLESS) LOGIN
-   Uses a per-email auto-generated token stored in Firestore
-   email_tokens/{safeKey} → { token, created_at }
-   The user never sees or enters a password.
-   ============================================================ */
-async function actionEmailLogin(data) {
-    var email = (data.email || '').trim().toLowerCase();
-    if (!email || email.indexOf('@') === -1) throw new Error('Please enter a valid email address.');
-
-    /* Safe Firestore document key from email (no slashes, dots, etc.) */
-    var safeKey = btoa(email).replace(/[^A-Za-z0-9]/g, '_');
-    var lsKey   = 'aqs_et_' + safeKey;
-
-    /* 1. Check localStorage first — avoids a Firestore round-trip on repeat visits */
-    var token;
-    try { token = localStorage.getItem(lsKey); } catch(_) {}
-
-    if (!token) {
-        /* 2. Look up existing token in Firestore */
-        var tokenRef  = doc(db, 'email_tokens', safeKey);
-        var tokenSnap = await getDoc(tokenRef);
-
-        if (tokenSnap.exists()) {
-            token = tokenSnap.data().token;
-            try { localStorage.setItem(lsKey, token); } catch(_) {} /* cache it */
-        } else {
-            /* 3. New user — generate a random token and persist to both stores */
-            token = _generateEmailToken();
-            try { await setDoc(tokenRef, { email: email, token: token, created_at: serverTimestamp() }); } catch(_) {}
-            try { localStorage.setItem(lsKey, token); } catch(_) {}
-        }
-    }
-
-    /* 4. Try to sign in — if account doesn't exist yet, create it */
-    var user;
-    try {
-        var cred = await signInWithEmailAndPassword(auth, email, token);
-        user = cred.user;
-    } catch (signInErr) {
-        /* auth/invalid-credential = wrong password OR user not found (Firebase v10) */
-        if (signInErr.code === 'auth/user-not-found' || signInErr.code === 'auth/invalid-credential') {
-            try {
-                var newCred = await createUserWithEmailAndPassword(auth, email, token);
-                user = newCred.user;
-            } catch (createErr) {
-                if (createErr.code === 'auth/email-already-in-use') {
-                    /* This email has a password-based account (registered via register.html).
-                       Clear the stale token from both stores so the next email-only attempt
-                       doesn't keep trying the same wrong token.
-                       Prefix "PASSWORD_ACCOUNT:" is read by login.html to show the password field. */
-                    try { localStorage.removeItem(lsKey); } catch(_) {}
-                    try { await deleteDoc(doc(db, 'email_tokens', safeKey)); } catch(_) {}
-                    throw new Error('PASSWORD_ACCOUNT:This email is registered with a password. Please enter your password below.');
-                }
-                throw createErr;
-            }
-        } else {
-            throw signInErr;
-        }
-    }
-
-    /* 4. Token refresh */
-    try { await user.getIdToken(true); } catch(_) {}
-
-    /* 5. Build display name from email local part */
-    var displayName = email.split('@')[0].replace(/[._-]+/g, ' ').replace(/\b\w/g, function(c){ return c.toUpperCase(); });
-
-    /* 6. Ensure Firestore user profile exists */
-    var profileRef = doc(db, 'users', user.uid);
-    var profileDoc = await getDoc(profileRef);
-    var profile;
-
-    if (profileDoc.exists()) {
-        profile = profileDoc.data();
-        /* Update last login */
-        try { await updateDoc(profileRef, { last_login: serverTimestamp() }); } catch(_) {}
-    } else {
-        /* Auto-create profile */
-        var autoUsername = email.split('@')[0].replace(/[^a-z0-9]/gi, '').toLowerCase().substring(0, 20);
-        /* Ensure username uniqueness */
-        var collision = await getDoc(doc(db, 'usernames', autoUsername));
-        if (collision.exists()) autoUsername = autoUsername + Math.floor(1000 + Math.random() * 9000);
-
-        profile = {
-            uid:        user.uid,
-            name:       displayName,
-            username:   autoUsername,
-            email:      email,
-            role:       'student',
-            provider:   'email',
-            status:     'active',
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp()
-        };
-        try {
-            await setDoc(profileRef, profile);
-            await setDoc(doc(db, 'usernames', autoUsername), { uid: user.uid });
-        } catch(fsErr) {
-            console.warn('[AQS EmailLogin] Firestore profile write failed (will retry):', fsErr && fsErr.message);
-        }
-
-        /* Update Firebase Auth display name */
-        try { await updateProfile(user, { displayName: displayName }); } catch(_) {}
-    }
-
-    /* Save email to localStorage for quick re-entry */
-    try { localStorage.setItem('aqs_last_email', email); } catch(_) {}
-
-    /* Mark "just logged in" so the Capacitor auth guard gives Firebase time
-       to restore the IndexedDB session before redirecting to login. */
-    try { sessionStorage.setItem('aqs_login_ts', String(Date.now())); } catch(_) {}
-
-    _updateAqsGlobals(user, profile);
-
-    return {
-        logged_in:  true,
-        redirect:   _dashboardUrl(profile.role),
-        user_name:  profile.name || displayName
-    };
-}
-
-function _generateEmailToken() {
-    /* Alphanumeric only — avoids any encoding issues in Firebase Auth passwords */
-    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    var token = '';
-    for (var i = 0; i < 40; i++) {
-        token += chars[Math.floor(Math.random() * chars.length)];
-    }
-    return token;
 }
 
 /* ============================================================
@@ -2816,15 +2748,25 @@ function _updateAqsGlobals(user, profile) {
             /* Only redirect REAL (non-anonymous) signed-in users away from login/register.
                Anonymous users must be allowed to stay and create a real account. */
             if (user && !user.isAnonymous) {
-                _authRedirectDone = true;
-                var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
-                if (redirectUrl) { window.location.replace(redirectUrl); return; }
-                /* Look up the user's role so hosts go to the correct dashboard */
                 getDoc(doc(db, 'users', user.uid)).then(function(profileSnap) {
-                    var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
+                    var profile = profileSnap.exists() ? profileSnap.data() : {};
+                    /* Pending accounts must finish OTP and onboarding before
+                       any auth page can send them into the app. */
+                    if (profile.registration_status !== 'complete') {
+                        if (page !== 'register.html' && page !== 'register') {
+                            _authRedirectDone = true;
+                            window.location.replace('register.html?resume=1');
+                        }
+                        return;
+                    }
+                    _authRedirectDone = true;
+                    var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
+                    if (redirectUrl) { window.location.replace(redirectUrl); return; }
+                    var role = profile.role || 'student';
                     if (isConfiguredAdmin(user)) role = 'admin';
                     window.location.replace(_dashboardUrl(role));
                 }).catch(function() {
+                    _authRedirectDone = true;
                     window.location.replace('user-dashboard.html');
                 });
             }
@@ -2838,6 +2780,10 @@ function _updateAqsGlobals(user, profile) {
             if (!user) return;
             /* Check if profile exists; if not, create it from Firebase Auth data */
             getDoc(doc(db, 'users', user.uid)).then(function(snap) {
+                if (snap.exists() && snap.data().registration_status !== 'complete') {
+                    window.location.replace('register.html?resume=1');
+                    return;
+                }
                 if (!snap.exists()) {
                     var displayName = user.displayName || '';
                     var email       = user.email || '';

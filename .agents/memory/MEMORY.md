@@ -4,3 +4,4 @@
 - [GitHub push checkout](github-push-checkout.md) — after secure-secret handoff, verify nested Git metadata and use a fresh remote checkout if the local origin is replaced.
 - [StudyCo WebRTC reliability](webrtc-network-reliability.md) — calls use Firestore signaling and public STUN; restrictive networks still need an authenticated TURN relay.
 - [StudyCo chat permissions](studyco-chat-permissions.md) — do not rewrite participant arrays when opening existing conversations; allow safe missing-document checks for new chats.
+- [Registration OTP trust boundary](registration-otp-trust-boundary.md) — browser-side OTP state is only a transition aid; production verification and resend limits must run on trusted server code.

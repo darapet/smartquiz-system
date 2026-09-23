@@ -27,7 +27,30 @@ service cloud.firestore {
 
     // ─── Users ──────────────────────────────────────────────────────
     match /users/{userId} {
-      allow read, write: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow read: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
+      allow create: if isAdmin()
+        || (isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.uid == userId
+          && request.resource.data.role == 'student'
+          && request.resource.data.status == 'pending'
+          && request.resource.data.registration_status == 'otp_pending'
+          && request.resource.data.otp_verified == false);
+      allow update: if isAdmin()
+        || (isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.uid == resource.data.uid
+          && request.resource.data.role == resource.data.role
+          && (
+            (resource.data.registration_status == 'otp_pending'
+              && request.resource.data.registration_status in ['otp_pending', 'profile_pending'])
+            || (resource.data.registration_status == 'profile_pending'
+              && request.resource.data.registration_status in ['profile_pending', 'complete']
+              && request.resource.data.otp_verified == true)
+            || (resource.data.registration_status == 'complete'
+              && request.resource.data.registration_status == 'complete'
+              && request.resource.data.status == resource.data.status)
+          ));
     }
 
     // ─── Daily quotes ──────────────────────────────────────────────
