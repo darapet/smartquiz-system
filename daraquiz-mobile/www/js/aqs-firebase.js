@@ -195,6 +195,10 @@ function requireAuth() {
     return user;
 }
 
+function isConfiguredAdmin(user) {
+    return !!user && String(user.email || '').toLowerCase() === 'daramolapeter98@gmail.com';
+}
+
 function _brevoEmailEndpoint() {
     if (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL) {
         return window.AQS_BREVO_FUNCTION_URL;
@@ -345,9 +349,40 @@ async function getOrCreateGuestSession() {
    AJAX DISPATCHER
    Replaces all $.post(AQS.ajax_url, { action: '...' })
    ============================================================ */
+var AQS_ACTION_TIMEOUT_MS = 15000;
+
+function _withAqsActionTimeout(promise, action) {
+    return Promise.race([
+        promise,
+        new Promise(function(_, reject) {
+            setTimeout(function() {
+                reject(new Error(
+                    'Firebase did not respond within 15 seconds while processing ' +
+                    (action || 'this request') +
+                    '. Check your connection and try again.'
+                ));
+            }, AQS_ACTION_TIMEOUT_MS);
+        })
+    ]);
+}
+
+function _withAqsStepTimeout(promise, step) {
+    return Promise.race([
+        promise,
+        new Promise(function(_, reject) {
+            setTimeout(function() {
+                reject(new Error(
+                    'Firebase did not respond within 15 seconds during ' + step +
+                    '. This is usually a blocked or stalled Firebase connection, not a rules denial.'
+                ));
+            }, AQS_ACTION_TIMEOUT_MS);
+        })
+    ]);
+}
+
 window.aqsAjax = async function(data, successFn, failFn) {
     try {
-        var res = await handleAction(data);
+        var res = await _withAqsActionTimeout(handleAction(data), data && data.action);
         if (successFn) successFn({ success: true, data: res });
     } catch(e) {
         console.error('[AQS Firebase]', data.action, e);
@@ -504,6 +539,7 @@ async function handleAction(data) {
         case 'aqs_email_login':      return await actionEmailLogin(data);
         case 'aqs_login':            return await actionLogin(data);
         case 'aqs_register':         return await actionRegister(data);
+        case 'aqs_complete_registration': return await actionCompleteRegistration(data);
         case 'aqs_social_login':     return await actionSocialLogin(data);
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
@@ -612,181 +648,144 @@ async function actionLogin(data) {
 }
 
 async function actionRegister(data) {
-    var name     = (data.name || '').trim();
-    var username = (data.username || '').trim();
     var email    = (data.email || '').trim();
-    var role     = (data.role || 'student').trim();
     var password = (data.password || '').trim();
+    if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
+    if (password.length < 8) throw new Error('Password must be at least 8 characters.');
+    if (email.toLowerCase() === 'daramolapeter98@gmail.com') throw new Error('Use the admin sign-in account instead.');
 
-    /* Check username uniqueness via public /usernames collection
-       (avoids a permission error — users collection requires auth) */
-    var usernameSnap = await getDoc(doc(db, 'usernames', username));
-    if (usernameSnap.exists()) throw new Error('Username already taken. Please choose another.');
-
-    /* Create Firebase Auth user — this is the critical step.
-       Everything after this is best-effort; we ALWAYS redirect on auth success. */
+    /* Account creation is intentionally separate from profile completion.
+       A pending account cannot enter the app until OTP and onboarding finish. */
     window._aqsIsRegistering = true;
-    var cred = await createUserWithEmailAndPassword(auth, email, password);
+    var cred = await _withAqsStepTimeout(
+        createUserWithEmailAndPassword(auth, email, password),
+        'creating your email account'
+    );
     var user = cred.user;
 
     /* Force token refresh so Firestore immediately recognises the new user */
-    try { await user.getIdToken(true); } catch(_) {}
-
-    /* Update display name (non-fatal) */
-    try { await updateProfile(user, { displayName: name }); } catch(_) {}
-
-    /* Save profile to Firestore — wrapped so a rules/network error doesn't
-       block the user from getting into the app. The write will be retried
-       automatically by Firestore's offline persistence when connectivity returns. */
-    var profile = {
-        uid: user.uid, name: name, username: username, email: email,
-        role: role, created_at: serverTimestamp(), status: 'active'
-    };
     try {
-        await setDoc(doc(db, 'users', user.uid), profile);
-        await setDoc(doc(db, 'usernames', username), { uid: user.uid });
-    } catch(fsErr) {
-        console.warn('[AQS Register] Firestore write failed (will retry):', fsErr && fsErr.message);
-        /* Do NOT throw — Firebase Auth user was created successfully.
-           The profile doc will be written on next login. */
+        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing the auth token');
+    } catch(_) {}
+
+    /* Save a deliberately incomplete profile. Firestore rules should permit
+       this own-document write, but never treat it as an active account. */
+    var profile = {
+        uid: user.uid,
+        email: email,
+        role: 'student',
+        created_at: serverTimestamp(),
+        status: 'pending',
+        registration_status: 'otp_pending',
+        otp_verified: false
+    };
+    await _withAqsStepTimeout(
+        setDoc(doc(db, 'users', user.uid), profile),
+        'saving your pending profile'
+    );
+
+    var otpSent = false;
+    var otpResult = null;
+    try {
+        otpResult = await actionSendOtp();
+        otpSent = !!(otpResult && otpResult.sent);
+    } catch (otpError) {
+        console.warn('[AQS Register] OTP delivery failed:', otpError && otpError.message);
     }
 
-    /* Send email verification (fully non-blocking) */
-    sendEmailVerification(user).catch(function() {});
-
     _updateAqsGlobals(user, profile);
-
-    var redirect = _dashboardUrl(role);
     return {
-        message:      '✓ Account created! Redirecting…',
-        redirect:     redirect,
-        otp_required: false,
-        otp_sent:     false
+        message:      'Account created. Verify your email to continue.',
+        redirect:     'register.html?resume=1',
+        otp_required: true,
+        otp_sent:     otpSent,
+        otp_accepted: !!(otpResult && otpResult.accepted),
+        otp_recipient: otpResult && otpResult.recipient,
+        otp_message_id: otpResult && otpResult.messageId
     };
 }
 
-/* ── Google / Social Sign-In ───────────────────────────────────────────────
-   Firebase's signInWithPopup relies on a browser popup and is unreliable in
-   GitHub Pages subfolders and Capacitor WebViews. Google Identity Services
-   returns an OAuth access token directly; Firebase then exchanges that token
-   with signInWithCredential. This also avoids Firebase Hosting's
-   /__/auth/handler requirement. */
-function _loadGoogleIdentityServices() {
-    if (typeof window !== 'undefined' && window.google &&
-        window.google.accounts && window.google.accounts.oauth2) {
-        return Promise.resolve();
+async function actionCompleteRegistration(data) {
+    var user = requireAuth();
+    var existingSnap = await _withAqsStepTimeout(
+        getDoc(doc(db, 'users', user.uid)),
+        'loading your pending profile'
+    );
+    var existing = existingSnap.exists() ? existingSnap.data() : {};
+    if (existing.registration_status !== 'profile_pending' || existing.otp_verified !== true) {
+        throw new Error('Verify your email before completing your profile.');
     }
 
-    return new Promise(function(resolve, reject) {
-        var existing = document.querySelector('script[data-aqs-google-identity]');
-        var settled = false;
-        var timeoutId;
-        var pollId;
+    var profile = data.profile || {};
+    var name = String(profile.name || '').trim();
+    var age = Number(profile.age);
+    var educationLevel = String(profile.education_level || '').trim();
+    var allowedEducation = ['primary', 'secondary', 'higher_institution', 'graduate', 'masters', 'phd'];
+    if (name.length < 2 || name.length > 120) throw new Error('Enter a valid full name.');
+    if (!Number.isInteger(age) || age < 5 || age > 120) throw new Error('Enter a valid age.');
+    if (allowedEducation.indexOf(educationLevel) === -1) throw new Error('Choose a valid education level.');
 
-        function finish(error) {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timeoutId);
-            clearInterval(pollId);
-            if (error) reject(error);
-            else resolve();
+    var completed = {
+        uid: user.uid,
+        email: user.email || existing.email || '',
+        name: name,
+        age: age,
+        education_level: educationLevel,
+        role: 'student',
+        status: 'active',
+        registration_status: 'complete',
+        otp_verified: true,
+        email_verified: true,
+        updated_at: serverTimestamp()
+    };
+    if (educationLevel === 'higher_institution') {
+        var types = ['college', 'university', 'polytechnic', 'other'];
+        var institutionType = String(profile.institution_type || '').trim();
+        var schoolCountry = String(profile.school_country || '').trim();
+        var schoolName = String(profile.school_name || '').trim();
+        var studyLevel = String(profile.study_level || '').trim();
+        if (types.indexOf(institutionType) === -1 || !schoolName || !studyLevel) {
+            throw new Error('Choose your institution type, school, and study level.');
         }
-
-        function checkReady() {
-            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-                finish();
-            }
-        }
-
-        if (!existing) {
-            existing = document.createElement('script');
-            existing.src = 'https://accounts.google.com/gsi/client';
-            existing.async = true;
-            existing.defer = true;
-            existing.dataset.aqsGoogleIdentity = 'true';
-            existing.onerror = function() {
-                finish(new Error('Google Sign-In could not load. Check your internet connection and try again.'));
-            };
-            document.head.appendChild(existing);
-        }
-
-        existing.addEventListener('load', checkReady, { once: true });
-        pollId = setInterval(checkReady, 100);
-        timeoutId = setTimeout(function() {
-            finish(new Error('Google Sign-In is taking too long to load. Check your internet connection and try again.'));
-        }, 10000);
-        checkReady();
-    });
-}
-
-async function actionSocialLogin(data) {
-    var providerName = data.provider || 'google';
-    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
-
-    await _loadGoogleIdentityServices();
-
-    var result = await new Promise(function(resolve, reject) {
-        var tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
-            scope: 'email profile openid',
-            callback: async function(tokenResponse) {
-                if (tokenResponse.error) {
-                    reject(new Error(tokenResponse.error_description || tokenResponse.error));
-                    return;
-                }
-                try {
-                    var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
-                    resolve(await signInWithCredential(auth, credential));
-                } catch (error) {
-                    reject(error);
-                }
-            }
-        });
-        tokenClient.requestAccessToken({ prompt: '' });
-    });
-    var user = result.user;
-    var profileRef = doc(db, 'users', user.uid);
-    var profileDoc = await getDoc(profileRef);
-    var profile;
-
-    if (profileDoc.exists()) {
-        profile = profileDoc.data();
-        await updateDoc(profileRef, { last_login: serverTimestamp() });
+        if (schoolCountry !== 'nigeria' && schoolCountry !== 'other') throw new Error('Choose where your school is located.');
+        completed.institution_type = institutionType;
+        completed.school_country = schoolCountry;
+        completed.school_name = schoolName;
+        completed.study_level = studyLevel;
     } else {
-        var displayName = user.displayName || '';
-        var emailLocal = (user.email || '').split('@')[0];
-        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
-        var finalUsername = baseUsername;
-        var collision = await getDoc(doc(db, 'usernames', finalUsername));
-        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
-        profile = {
-            uid: user.uid,
-            name: displayName,
-            username: finalUsername,
-            email: user.email,
-            role: 'student',
-            avatar: user.photoURL || '',
-            provider: 'google',
-            status: 'active',
-            created_at: serverTimestamp(),
-            last_login: serverTimestamp()
-        };
-        await setDoc(profileRef, profile);
-        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+        var grade = String(profile.grade || '').trim();
+        if (!grade) throw new Error('Choose your grade, class, or programme.');
+        completed.grade = grade;
+        completed.school_name = String(profile.school_name || '').trim();
     }
 
-    _updateAqsGlobals(user, profile);
-    return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
-}
-async function actionLogout() {
-    await signOut(auth);
-    window._aqsFirebaseUser = null;
-    if (typeof AQS !== 'undefined') {
-        AQS.is_logged_in = false;
-        AQS.is_host = false;
-        AQS.is_admin = false;
+    var profilePicture = String(data.profile_picture || '');
+    var contactPicture = String(data.contact_picture || '');
+    if (profilePicture.length > 500000 || contactPicture.length > 500000) {
+        throw new Error('Each photo must be smaller. Please choose a smaller image.');
     }
-    return { redirect: 'login.html' };
+    if (profilePicture) completed.profile_picture = profilePicture;
+    if (contactPicture) completed.contact_picture = contactPicture;
+
+    var usernameBase = name.toLowerCase().replace(/[^a-z0-9]+/g, '').slice(0, 18) || 'student';
+    var username = usernameBase;
+    var suffix = 1;
+    while ((await getDoc(doc(db, 'usernames', username))).exists() && suffix < 1000) {
+        username = usernameBase + suffix;
+        suffix++;
+    }
+    completed.username = username;
+    await _withAqsStepTimeout(
+        setDoc(doc(db, 'users', user.uid), completed, { merge: true }),
+        'saving your completed profile'
+    );
+    await _withAqsStepTimeout(
+        setDoc(doc(db, 'usernames', username), { uid: user.uid, email: completed.email }),
+        'saving your username'
+    );
+    try { await updateProfile(user, { displayName: name, photoURL: profilePicture || null }); } catch (_) {}
+    _updateAqsGlobals(user, completed);
+    return { completed: true, redirect: _dashboardUrl('student'), username: username };
 }
 
 async function actionSendOtp(data) {
@@ -2706,7 +2705,7 @@ function _updateAqsGlobals(user, profile) {
     ];
     /* Pages that are open to everyone (guests OK). StudyCo Meet owns its
        registration/login landing flow, so it must not be redirected first. */
-    var openPages = ['index.html','studio.html','studyhub.html','ai-teacher.html','login.html','register.html','login','register','unauthorized.html',
+    var openPages = ['index.html','studio.html','login.html','register.html','login','register','unauthorized.html',
                      'take-quiz.html','challenge.html','studyco-meet.html','social.html'];
     /* Cloudflare Workers may expose these pages as clean routes (/login and
        /register) while legacy links still use .html. Both forms are auth
@@ -2764,14 +2763,25 @@ function _updateAqsGlobals(user, profile) {
             /* Only redirect REAL (non-anonymous) signed-in users away from login/register.
                Anonymous users must be allowed to stay and create a real account. */
             if (user && !user.isAnonymous) {
-                _authRedirectDone = true;
-                var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
-                if (redirectUrl) { window.location.replace(redirectUrl); return; }
-                /* Look up the user's role so hosts go to the correct dashboard */
                 getDoc(doc(db, 'users', user.uid)).then(function(profileSnap) {
-                    var role = profileSnap.exists() ? (profileSnap.data().role || 'student') : 'student';
+                    var profile = profileSnap.exists() ? profileSnap.data() : {};
+                    /* Pending accounts must finish OTP and onboarding before
+                       any auth page can send them into the app. */
+                    if (profile.registration_status !== 'complete') {
+                        if (page !== 'register.html' && page !== 'register') {
+                            _authRedirectDone = true;
+                            window.location.replace('register.html?resume=1');
+                        }
+                        return;
+                    }
+                    _authRedirectDone = true;
+                    var redirectUrl = new URLSearchParams(window.location.search).get('redirect') || '';
+                    if (redirectUrl) { window.location.replace(redirectUrl); return; }
+                    var role = profile.role || 'student';
+                    if (isConfiguredAdmin(user)) role = 'admin';
                     window.location.replace(_dashboardUrl(role));
                 }).catch(function() {
+                    _authRedirectDone = true;
                     window.location.replace('user-dashboard.html');
                 });
             }
@@ -2785,6 +2795,10 @@ function _updateAqsGlobals(user, profile) {
             if (!user) return;
             /* Check if profile exists; if not, create it from Firebase Auth data */
             getDoc(doc(db, 'users', user.uid)).then(function(snap) {
+                if (snap.exists() && snap.data().registration_status !== 'complete') {
+                    window.location.replace('register.html?resume=1');
+                    return;
+                }
                 if (!snap.exists()) {
                     var displayName = user.displayName || '';
                     var email       = user.email || '';
