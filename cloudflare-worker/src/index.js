@@ -1,7 +1,13 @@
 const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
+const FIREBASE_SIGNUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
 const BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email';
 const BREVO_CONFIG_KEY = 'brevo';
-const FIREBASE_REGISTRATION_FUNCTION_URL = 'https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail';
+const REGISTRATION_KEY_PREFIX = 'registration:';
+const REGISTRATION_TTL_SECONDS = 10 * 60;
+const REGISTRATION_RESEND_WAIT_MS = 60 * 1000;
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
+const REGISTRATION_MAX_PER_WINDOW = 5;
+const REGISTRATION_MAX_ATTEMPTS = 5;
 
 function allowedOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
@@ -41,6 +47,185 @@ function bearerToken(request) {
 
 function isEmail(value) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+}
+
+function registrationEmail(value) {
+  const email = String(value || '').trim().toLowerCase();
+  if (!isEmail(email)) throw registrationError('Enter a valid email address.');
+  if (email === 'daramolapeter98@gmail.com') {
+    throw registrationError('Use the admin sign-in account instead.');
+  }
+  return email;
+}
+
+function registrationError(message, status = 400) {
+  const error = new Error(message);
+  error.httpStatus = status;
+  return error;
+}
+
+async function digestHex(value) {
+  const bytes = new TextEncoder().encode(String(value));
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+function randomRegistrationCode() {
+  const values = new Uint32Array(1);
+  crypto.getRandomValues(values);
+  return String(100000 + (values[0] % 900000));
+}
+
+async function registrationStorageKey(email) {
+  return `${REGISTRATION_KEY_PREFIX}${await digestHex(email)}`;
+}
+
+async function readRegistrationChallenge(env, email) {
+  if (!env.EMAIL_CONFIG) {
+    throw new Error('Registration storage is not configured on the Cloudflare Worker.');
+  }
+  const key = await registrationStorageKey(email);
+  const data = await env.EMAIL_CONFIG.get(key, 'json');
+  return { key, data: data || {} };
+}
+
+async function sendRegistrationOtp(env, payload) {
+  const email = registrationEmail(payload && payload.email);
+  const { key, data: previous } = await readRegistrationChallenge(env, email);
+  const now = Date.now();
+  const lastSentAt = Number(previous.lastSentAt || 0);
+
+  if (lastSentAt && now - lastSentAt < REGISTRATION_RESEND_WAIT_MS) {
+    const waitSeconds = Math.ceil((REGISTRATION_RESEND_WAIT_MS - (now - lastSentAt)) / 1000);
+    throw registrationError(`Please wait ${waitSeconds} seconds before requesting another code.`, 429);
+  }
+
+  const windowStart = Number(previous.windowStart || 0);
+  const withinWindow = windowStart && now - windowStart < REGISTRATION_WINDOW_MS;
+  const sendCount = withinWindow ? Number(previous.sendCount || 0) : 0;
+  if (sendCount >= REGISTRATION_MAX_PER_WINDOW) {
+    throw registrationError('Too many codes were requested. Please try again later.', 429);
+  }
+
+  const challengeId = crypto.randomUUID();
+  const code = randomRegistrationCode();
+  const expiresAt = now + REGISTRATION_TTL_SECONDS * 1000;
+  const nextWindowStart = withinWindow ? windowStart : now;
+
+  await env.EMAIL_CONFIG.put(key, JSON.stringify({
+    email,
+    challengeId,
+    codeHash: await digestHex(`${challengeId}:${code}`),
+    expiresAt,
+    attempts: 0,
+    verified: false,
+    consumed: false,
+    createdAt: now,
+    lastSentAt: now,
+    windowStart: nextWindowStart,
+    sendCount: sendCount + 1,
+  }), { expirationTtl: REGISTRATION_TTL_SECONDS });
+
+  const result = await sendBrevoMessage(env, {
+    recipient: email,
+    subject: 'Your SmartQuiz verification code',
+    htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz email</h2><p>Enter this code to continue creating your account:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not request this, you can ignore this email.</p></div>`,
+    textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
+  });
+
+  return {
+    sent: true,
+    accepted: true,
+    challengeId,
+    recipient: result.recipient,
+    messageId: result.messageId,
+    expiresIn: REGISTRATION_TTL_SECONDS,
+    resendAfter: Math.floor(REGISTRATION_RESEND_WAIT_MS / 1000),
+  };
+}
+
+async function verifyRegistrationOtp(env, payload) {
+  const email = registrationEmail(payload && payload.email);
+  const challengeId = String(payload && payload.challengeId || '').trim();
+  const code = String(payload && payload.otp || '').replace(/\D/g, '');
+  if (!challengeId || code.length !== 6) {
+    throw registrationError('Enter the six-digit verification code.');
+  }
+
+  const { key, data: challenge } = await readRegistrationChallenge(env, email);
+  const now = Date.now();
+  if (!challenge.challengeId || challenge.challengeId !== challengeId || challenge.consumed) {
+    throw registrationError('This verification request is no longer valid. Request a new code.');
+  }
+  if (challenge.verified) return { verified: true, challengeId, expiresIn: REGISTRATION_TTL_SECONDS };
+  if (now > Number(challenge.expiresAt || 0)) {
+    throw registrationError('That code has expired. Request a new one.');
+  }
+
+  const attempts = Number(challenge.attempts || 0);
+  if (attempts >= REGISTRATION_MAX_ATTEMPTS) {
+    throw registrationError('Too many incorrect attempts. Request a new code.', 429);
+  }
+
+  const receivedHash = await digestHex(`${challengeId}:${code}`);
+  if (receivedHash !== challenge.codeHash) {
+    await env.EMAIL_CONFIG.put(key, JSON.stringify({
+      ...challenge,
+      attempts: attempts + 1,
+    }), { expirationTtl: Math.max(60, Math.ceil((challenge.expiresAt - now) / 1000)) });
+    if (attempts + 1 >= REGISTRATION_MAX_ATTEMPTS) {
+      throw registrationError('Too many incorrect attempts. Request a new code.', 429);
+    }
+    throw registrationError('Incorrect code. Please try again.');
+  }
+
+  await env.EMAIL_CONFIG.put(key, JSON.stringify({
+    ...challenge,
+    verified: true,
+    verifiedAt: now,
+  }), { expirationTtl: Math.max(60, Math.ceil((challenge.expiresAt - now) / 1000)) });
+  return { verified: true, challengeId, expiresIn: Math.floor((challenge.expiresAt - now) / 1000) };
+}
+
+async function createRegistrationAccount(env, payload) {
+  const email = registrationEmail(payload && payload.email);
+  const password = String(payload && payload.password || '');
+  const challengeId = String(payload && payload.challengeId || '').trim();
+  if (password.length < 8) throw registrationError('Password must be at least 8 characters.');
+  if (!challengeId) throw registrationError('Verify your email before creating the account.');
+
+  const { key, data: challenge } = await readRegistrationChallenge(env, email);
+  if (!challenge.challengeId || challenge.challengeId !== challengeId || challenge.consumed) {
+    throw registrationError('This verification request is no longer valid. Request a new code.');
+  }
+  if (!challenge.verified || Date.now() > Number(challenge.expiresAt || 0)) {
+    throw registrationError('Verify your email before creating the account.');
+  }
+
+  const apiKey = String(env.FIREBASE_WEB_API_KEY || '').trim();
+  if (!apiKey) throw new Error('Firebase authentication is not configured on the email Worker.');
+  const response = await fetch(`${FIREBASE_SIGNUP_URL}?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password, returnSecureToken: true }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const firebaseError = String(body && body.error && body.error.message || '');
+    if (firebaseError === 'EMAIL_EXISTS') {
+      throw registrationError('That email is already registered. Sign in instead.', 409);
+    }
+    throw new Error(firebaseError || 'Firebase could not create the account.');
+  }
+
+  await env.EMAIL_CONFIG.put(key, JSON.stringify({
+    ...challenge,
+    consumed: true,
+    consumedAt: Date.now(),
+  }), { expirationTtl: 60 });
+  return { created: true, email, uid: body.localId };
 }
 
 async function verifyFirebaseUser(request, env) {
@@ -148,19 +333,14 @@ async function handleEmail(request, env) {
   try {
     const payload = await request.json().catch(() => ({}));
     const kind = String(payload && payload.kind || '');
-    if (kind === 'registration_otp_send'
-      || kind === 'registration_otp_verify'
-      || kind === 'registration_create') {
-      const response = await fetch(
-        String(env.FIREBASE_REGISTRATION_FUNCTION_URL || FIREBASE_REGISTRATION_FUNCTION_URL),
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        },
-      );
-      const body = await response.json().catch(() => ({ error: 'Registration service returned an invalid response.' }));
-      return json(request, env, body, response.status);
+    if (kind === 'registration_otp_send') {
+      return json(request, env, await sendRegistrationOtp(env, payload));
+    }
+    if (kind === 'registration_otp_verify') {
+      return json(request, env, await verifyRegistrationOtp(env, payload));
+    }
+    if (kind === 'registration_create') {
+      return json(request, env, await createRegistrationAccount(env, payload));
     }
 
     const user = await verifyFirebaseUser(request, env);

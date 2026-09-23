@@ -1,8 +1,11 @@
 # SmartQuiz Brevo Cloudflare Worker
 
 This Worker replaces the Firebase `brevoEmail` Cloud Function. It keeps the
-Brevo API key in Cloudflare Worker secrets and verifies Firebase ID tokens
-before sending either an admin test email or a registration OTP.
+Brevo API key in Cloudflare Worker storage and verifies Firebase ID tokens
+before sending admin or signed-in-user emails. Registration OTP delivery and
+account creation are handled directly by this Worker, so a new user does not
+need to be authenticated and the Worker does not depend on a separate
+registration Cloud Function.
 
 ## Deploy
 
