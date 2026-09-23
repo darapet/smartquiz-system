@@ -7,6 +7,11 @@
     var TIMEOUT_MS = 20 * 60 * 1000; /* 20 minutes */
     var _timer = null;
 
+    function isRegistrationPage() {
+        var page = (window.location.pathname || '').split('/').pop() || 'index.html';
+        return page === 'register.html' || page === 'register';
+    }
+
     /* ── inactivity timer ── */
     function resetTimer() {
         clearTimeout(_timer);
@@ -90,6 +95,14 @@
 
     /* ── inject pill into the page header ── */
     function injectUserBar(user) {
+        /* Registration creates a temporary Firebase session so the legacy
+           email Worker can send the OTP. Do not present that session as a
+           completed login or expose Dashboard/Logout during onboarding. */
+        if (isRegistrationPage()) {
+            removeUserBar();
+            stopTracking();
+            return;
+        }
         /* Remove any previously injected pill first */
         var old = document.getElementById('aqs-session-pill');
         if (old) old.parentNode.removeChild(old);
@@ -256,6 +269,11 @@
     /* ── auth state listener ── */
     document.addEventListener('aqs:authchange', function (ev) {
         var user = ev.detail && ev.detail.user;
+        if (isRegistrationPage()) {
+            removeUserBar();
+            stopTracking();
+            return;
+        }
         if (user) {
             injectUserBar(user);
             wireExistingLogoutBtns();
