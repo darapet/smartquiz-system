@@ -230,8 +230,11 @@ public class MainActivity extends BridgeActivity {
             if (audioManager == null) return;
 
             callVideoActive = video;
-            callSpeakerEnabled = false;
+            callSpeakerEnabled = true;
+            callAudioActive = true;
             audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.setMicrophoneMute(false);
+            setVolumeControlStream(AudioManager.STREAM_VOICE_CALL);
             routeCallAudio(audioManager);
 
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -253,7 +256,6 @@ public class MainActivity extends BridgeActivity {
                     AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
                 );
             }
-            callAudioActive = true;
             startCallService(video);
         });
     }
@@ -268,6 +270,19 @@ public class MainActivity extends BridgeActivity {
                 if (device.getType() == desiredType) {
                     desired = device;
                     break;
+                }
+            }
+            /*
+             * Some Android devices do not report the earpiece to
+             * getAvailableCommunicationDevices(). Keep audio audible rather
+             * than routing to a missing device.
+             */
+            if (desired == null && !callSpeakerEnabled) {
+                for (AudioDeviceInfo device : audioManager.getAvailableCommunicationDevices()) {
+                    if (device.getType() == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                        desired = device;
+                        break;
+                    }
                 }
             }
             if (desired != null) {
@@ -316,6 +331,7 @@ public class MainActivity extends BridgeActivity {
             }
             audioManager.setSpeakerphoneOn(false);
             audioManager.setMode(AudioManager.MODE_NORMAL);
+            setVolumeControlStream(AudioManager.STREAM_MUSIC);
             callAudioActive = false;
             callSpeakerEnabled = false;
             callVideoActive = false;

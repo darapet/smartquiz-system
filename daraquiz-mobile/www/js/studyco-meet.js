@@ -1145,7 +1145,12 @@ function isNativeCallEnvironment() {
 }
 
 function defaultCallSpeakerRoute() {
-  return !isNativeCallEnvironment();
+  /*
+   * The Android WebView does not reliably expose the earpiece as a
+   * communication device on every handset. Speaker is the audible default;
+   * the call control can still switch to earpiece when it is available.
+   */
+  return true;
 }
 
 function setNativeCallSpeaker(enabled) {
@@ -1185,6 +1190,7 @@ function callPeer(callId, remoteUid) {
   const remoteStream = new MediaStream();
   const remoteAudio = $('studyco-call-remote-audio');
   const remoteVideo = $('studyco-call-remote-video');
+  let browserRemoteStream = null;
   const pendingCandidates = [];
   const pendingCandidateIds = new Set();
   const addedCandidateIds = new Set();
@@ -1205,7 +1211,7 @@ function callPeer(callId, remoteUid) {
     remoteAudio.playsInline = true;
     remoteAudio.setAttribute('disableRemotePlayback', '');
     remoteAudio.muted = !state.callConnected || !state.speakerOn;
-    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    remoteAudio.volume = 1;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
       playPromise
@@ -1218,7 +1224,13 @@ function callPeer(callId, remoteUid) {
     const hasAudio = remoteStream.getAudioTracks().length > 0;
     const hasVideo = remoteStream.getVideoTracks().length > 0;
     if (remoteAudio && hasAudio) {
-      remoteAudio.srcObject = remoteStream;
+      /*
+       * Android WebView can deliver a populated event stream before the
+       * synthetic stream has finished accepting addTrack(). Prefer the
+       * browser-owned stream when it exists, with the synthetic stream as a
+       * fallback for browsers that omit event.streams.
+       */
+      remoteAudio.srcObject = browserRemoteStream || remoteStream;
       playRemoteAudio();
     }
     if (remoteVideo && hasVideo) {
@@ -1245,6 +1257,7 @@ function callPeer(callId, remoteUid) {
       ...(event.streams?.[0]?.getTracks?.() || []),
       ...(event.track ? [event.track] : [])
     ];
+    if (event.streams?.[0]) browserRemoteStream = event.streams[0];
     tracks.forEach((track) => {
       track.enabled = true;
       if (!remoteStream.getTracks().some((existing) => existing.id === track.id)) remoteStream.addTrack(track);
@@ -1554,7 +1567,7 @@ function setCallConnected() {
   const remoteAudio = $('studyco-call-remote-audio');
   if (remoteAudio) {
     remoteAudio.muted = !state.speakerOn;
-    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    remoteAudio.volume = 1;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
       playPromise
@@ -1745,6 +1758,9 @@ async function startCall(uid, requestedMode = 'audio') {
     if (!navigator.mediaDevices?.getUserMedia) throw new Error('This browser does not support microphone calls.');
     setNativeCallAudio(true, state.callMode);
     state.localStream = await getCallMediaStream(state.callMode);
+    /* getUserMedia can reset the WebView audio route; apply call audio
+       settings again after capture is fully established. */
+    setNativeCallAudio(true, state.callMode);
     prepareCallAudioStream(state.localStream);
     bindLocalVideo(state.localStream);
     const callRef = doc(collection(db, 'studyco_calls'));
@@ -1810,6 +1826,8 @@ async function acceptIncomingCall() {
       return;
     }
     state.localStream = await getCallMediaStream(state.callMode);
+    /* Reapply the native route after WebView capture initialization. */
+    setNativeCallAudio(true, state.callMode);
     prepareCallAudioStream(state.localStream);
     bindLocalVideo(state.localStream);
     updateCallModeUi();
@@ -2197,7 +2215,7 @@ function wire() {
     if (!remoteAudio) return;
     state.speakerOn = true;
     remoteAudio.muted = false;
-    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    remoteAudio.volume = 1;
     remoteAudio.play()
       .then(() => showRemoteAudioUnlock(false))
       .catch(() => toast('The browser still blocked call audio. Check the site sound permission.', true));
@@ -2210,7 +2228,7 @@ function wire() {
     const remoteAudio = $('studyco-call-remote-audio');
     if (remoteAudio) {
       remoteAudio.muted = !state.speakerOn;
-      remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+      remoteAudio.volume = 1;
     }
     updateCallControls();
   });
