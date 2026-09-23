@@ -254,31 +254,6 @@ window.AQS = {
         }).catch(function(){});
     }
 
-            el.innerHTML = items.map(function(a, i){
-                var score  = a.score||0, total = a.total||0;
-                var pct    = total ? Math.round((score/total)*100) : 0;
-                var color  = pct>=70?'#10b981':pct>=50?'#f59e0b':'#ef4444';
-                var bg     = pct>=70?'#ecfdf5':pct>=50?'#fffbeb':'#fef2f2';
-                var label  = pct>=70?'Passed':pct>=50?'Average':'Needs Work';
-                var date   = a.finished_at ? a.finished_at.substring(0,16) : '—';
-                var border = i===items.length-1?'border-bottom:none':'border-bottom:1px solid #f1f5f9';
-                return '<div style="display:flex;align-items:center;gap:14px;padding:13px 0;'+border+'">'+
-                    '<div style="width:52px;height:52px;border-radius:12px;background:'+bg+';border:2px solid '+color+';display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;">'+
-                    '<span style="font-size:.95rem;font-weight:800;color:'+color+';">'+pct+'%</span>'+
-                    '</div>'+
-                    '<div style="flex:1;min-width:0;">'+
-                    '<div style="font-weight:600;font-size:.9rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+(a.quiz_title||'Quiz')+'</div>'+
-                    (a.subject?'<div style="font-size:.75rem;color:#6366f1;margin:2px 0;">'+a.subject+'</div>':'')+
-                    '<div style="font-size:.78rem;color:#94a3b8;">'+date+' &middot; '+score+'/'+total+' correct</div>'+
-                    '</div>'+
-                    '<span style="font-size:.75rem;font-weight:700;color:'+color+';background:'+bg+';padding:3px 10px;border-radius:20px;white-space:nowrap;border:1px solid '+color+'33;">'+label+'</span>'+
-                    '</div>';
-            }).join('');
-        }).catch(function(){
-            el.innerHTML = '<p style="color:#94a3b8;text-align:center;padding:20px;">Could not load activity. <a href="#" onclick="location.reload()">Retry</a></p>';
-        });
-    }
-
     function doLogout(){
         jQuery.post(AQS.ajax_url, {action:'aqs_logout'}).always(function(){
             window.location.href = 'index.html';

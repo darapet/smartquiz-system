@@ -163,13 +163,41 @@ async function uploadAttachment(file, path) {
   throw new Error('File storage is not ready. Please ask the administrator to configure it.');
 }
 
+function publicProfile(profile) {
+  if (!profile) return profile;
+  const visible = profile.profileVisibility || {};
+  const result = { ...profile };
+  if (visible.displayName === false) result.displayName = '';
+  if (visible.photoURL === false) {
+    delete result.photoURL;
+    delete result.coverURL;
+  }
+  if (visible.bio === false) result.bio = '';
+  if (visible.education === false) {
+    ['institution', 'institutionType', 'school', 'department', 'major', 'educationLevel', 'educationStatus'].forEach((field) => { delete result[field]; });
+  }
+  if (visible.location === false) {
+    delete result.location;
+    delete result.address;
+  }
+  if (visible.phone === false) delete result.phone;
+  if (visible.email === false) delete result.email;
+  if (visible.dateOfBirth === false) delete result.dateOfBirth;
+  if (visible.relationship === false) {
+    delete result.maritalStatus;
+    delete result.relationshipName;
+  }
+  return result;
+}
+
 async function getProfile(uid) {
   if (!uid) return null;
   if (state.profiles.has(uid)) return state.profiles.get(uid);
   const snap = await getDoc(doc(db, 'social_profiles', uid));
   if (!snap.exists()) return null;
   const profile = { id: snap.id, ...snap.data() };
-  state.profiles.set(uid, profile); return profile;
+  const visibleProfile = uid === state.user?.uid ? profile : publicProfile(profile);
+  state.profiles.set(uid, visibleProfile); return visibleProfile;
 }
 
 async function getPresence(uid) {
@@ -445,7 +473,7 @@ function closePostEditor() {
 async function findPeople(term = '', { broad = false } = {}) {
   const needle = term.trim().toLowerCase();
   const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
-  return snap.docs.map((item) => ({ id: item.id, ...item.data() }))
+  return snap.docs.map((item) => publicProfile({ id: item.id, ...item.data() }))
     .filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id)
       && (!needle || [profileName(profile), profile.username, ...(broad ? [profile.school, profile.department, profile.major] : [])].filter(Boolean).join(' ').toLowerCase().includes(needle)))
     .slice(0, 12);
@@ -926,7 +954,7 @@ async function loadSocialLists() {
   const sentRequestHtml = state.sentRequests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-sent-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request sent</span></div><button class="studyco-button danger" data-friend-action="cancel" data-uid="${esc(item.recipientId)}">Remove</button></div>`).join('');
   const hasRequests = Boolean(incomingRequestHtml || sentRequestHtml);
   const requestHtml = hasRequests ? `${incomingRequestHtml}${sentRequestHtml}` : '';
-  const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.dismissedSuggestions.has(item.id) && !state.friends.some((friend) => friend.uid === item.id) && !state.requests.some((request) => request.requesterId === item.id) && !state.sentRequests.some((request) => request.recipientId === item.id)).slice(0, 6);
+  const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => publicProfile({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.dismissedSuggestions.has(item.id) && !state.friends.some((friend) => friend.uid === item.id) && !state.requests.some((request) => request.requesterId === item.id) && !state.sentRequests.some((request) => request.recipientId === item.id)).slice(0, 6);
   suggestions.forEach((item) => state.profiles.set(item.id, item));
   const suggestionHtml = suggestions.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || item.username ? (item.school || `@${item.username}`) : 'StudyCo learner')}</span></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
   $('studyco-request-section').hidden = !hasRequests;

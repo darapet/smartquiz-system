@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080910">
+  <title>Account Settings — xzily AI</title>
+  <style>
+    :root{color-scheme:dark;--bg:#080910;--panel:#101321;--line:rgba(148,163,184,.16);--text:#e5e7eb;--muted:#94a3b8;--accent:#818cf8;--success:#34d399;--danger:#fb7185}
+    *{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 10% 0%,rgba(99,102,241,.16),transparent 34rem),var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--text);min-height:100vh}
+    header{height:60px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);background:rgba(8,9,16,.9);position:sticky;top:0;z-index:2}
+    header a{color:var(--muted);text-decoration:none;font-size:.82rem} header .brand{color:#e0e7ff;font-weight:800;font-size:1rem}
+    main{width:min(820px,calc(100% - 28px));margin:auto;padding:24px 0 70px} h1{font-size:1.55rem;margin:0 0 8px}.intro{color:var(--muted);font-size:.86rem;line-height:1.55;margin:0 0 20px}
+    .card{background:rgba(16,19,33,.92);border:1px solid var(--line);border-radius:16px;margin-bottom:14px;overflow:hidden}.head{padding:17px 16px;border-bottom:1px solid var(--line)}.head h2{font-size:.98rem;margin:0 0 5px}.head p,.hint{color:var(--muted);font-size:.76rem;line-height:1.5;margin:0}
+    .body{padding:4px 16px 17px}.row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:13px 0;border-bottom:1px solid rgba(148,163,184,.1)}.row:last-child{border-bottom:0}.label{font-size:.84rem;font-weight:600}.help{display:block;color:var(--muted);font-size:.72rem;font-weight:400;margin-top:3px;line-height:1.4}
+    .switch{position:relative;width:44px;height:25px;flex:0 0 auto}.switch input{position:absolute;opacity:0}.slider{position:absolute;inset:0;border-radius:999px;background:#273044;border:1px solid #3b465d}.slider:before{content:"";position:absolute;width:17px;height:17px;left:3px;top:3px;background:#cbd5e1;border-radius:50%;transition:.18s}.switch input:checked+.slider{background:#4f46e5;border-color:#818cf8}.switch input:checked+.slider:before{transform:translateX(19px);background:#fff}
+    .actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:16px}.status{min-height:19px;margin-right:auto;color:var(--muted);font-size:.76rem}.status.success{color:var(--success)}.status.error{color:var(--danger)}
+    button{font:inherit}.btn{border:1px solid var(--line);border-radius:8px;padding:9px 12px;background:#151a2b;color:var(--text);font-size:.78rem;font-weight:700;cursor:pointer}.primary{background:#4f46e5;border-color:#6366f1;color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}.step{display:none}.step.active{display:block}.field{margin:14px 0}.field label{display:block;color:#cbd5e1;font-size:.76rem;font-weight:700;margin-bottom:6px}.field input{width:100%;border:1px solid #303a52;border-radius:8px;background:#0b0e1a;color:#f8fafc;padding:10px;font:inherit;font-size:.85rem}.otp-row{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:end}.security{padding:10px 12px;border-radius:9px;background:rgba(99,102,241,.1);border:1px solid rgba(129,140,248,.2);color:#c7d2fe;font-size:.74rem;line-height:1.5;margin-top:14px}
+    @media(max-width:520px){.otp-row{grid-template-columns:1fr}.actions{align-items:stretch;flex-direction:column}.status{margin-right:0}}
+  </style>
+</head>
+<body>
+  <header><a class="brand" href="dashboard.html">⚡ xzily AI</a><a href="profile.html">← Back to profile</a></header>
+  <main>
+    <h1>Account settings</h1>
+    <p class="intro">Choose what other people can see on your StudyCo and library profiles.</p>
+    <section class="card">
+      <div class="head"><h2>Public profile visibility</h2><p>Turn a detail off to hide it from other people.</p></div>
+      <div class="body">
+        <div class="row"><div class="label">Display name<span class="help">The name shown on your profile.</span></div><label class="switch"><input type="checkbox" data-visibility="displayName"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Profile photo<span class="help">Your avatar and profile image.</span></div><label class="switch"><input type="checkbox" data-visibility="photoURL"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Bio<span class="help">Your short introduction.</span></div><label class="switch"><input type="checkbox" data-visibility="bio"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Education<span class="help">School, institution, department, and major.</span></div><label class="switch"><input type="checkbox" data-visibility="education"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Location<span class="help">Your general location.</span></div><label class="switch"><input type="checkbox" data-visibility="location"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Phone number<span class="help">Your contact number.</span></div><label class="switch"><input type="checkbox" data-visibility="phone"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Email address<span class="help">The email shown on your profile.</span></div><label class="switch"><input type="checkbox" data-visibility="email"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Date of birth<span class="help">Your date of birth.</span></div><label class="switch"><input type="checkbox" data-visibility="dateOfBirth"><span class="slider"></span></label></div>
+        <div class="row"><div class="label">Relationship details<span class="help">Marital status and partner name.</span></div><label class="switch"><input type="checkbox" data-visibility="relationship"><span class="slider"></span></label></div>
+        <div class="actions"><div id="privacy-status" class="status" role="status"></div><button class="btn primary" id="save-privacy">Save visibility</button></div>
+      </div>
+    </section>
+    <section class="card">
+      <div class="head"><h2>Change password</h2><p>Verify your email with a one-time code before choosing a new password.</p></div>
+      <div class="body">
+        <div class="step active" id="password-request"><p class="hint">We will send a six-digit code to <strong id="account-email">your email address</strong>.</p><div class="actions"><div id="otp-status" class="status" role="status"></div><button class="btn primary" id="send-otp">Send code</button></div></div>
+        <div class="step" id="password-verify"><div class="field otp-row"><div><label for="otp-code">Verification code</label><input id="otp-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456"></div><button class="btn primary" id="verify-otp">Verify code</button></div><p class="hint">The code expires in 10 minutes.</p></div>
+        <div class="step" id="password-form"><div class="field"><label for="new-password">New password</label><input id="new-password" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters"></div><div class="field"><label for="confirm-password">Confirm new password</label><input id="confirm-password" type="password" autocomplete="new-password" minlength="8" placeholder="Enter it again"></div><div class="actions"><div id="password-status" class="status" role="status"></div><button class="btn primary" id="save-password">Change password</button></div></div>
+        <div class="security">A password change is unlocked only after the code sent to your account email is verified.</div>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="js/aqs-firebase.js?v=20260922-mobile-settings"></script>
+  <script type="module">
+    import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+    import { getAuth, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    const auth=getAuth(getApp()), db=getFirestore(getApp()), defaults={displayName:true,photoURL:true,bio:true,education:true,location:false,phone:false,email:false,dateOfBirth:false,relationship:false};
+    let user=null,otpVerified=false;
+    const $=id=>document.getElementById(id);
+    const status=(id,msg,type='')=>{const el=$(id);el.textContent=msg;el.className='status '+type;};
+    const step=(id,on)=>$(id).classList.toggle('active',on);
+    const action=data=>new Promise(resolve=>{if(typeof window.aqsAjax!=='function'){resolve({success:false,data:'Security services are still loading. Please try again.'});return;}window.aqsAjax(data,resolve,error=>resolve({success:false,data:error?.message||'Request failed.'}));});
+    function apply(values){const v={...defaults,...(values||{})};document.querySelectorAll('[data-visibility]').forEach(i=>i.checked=v[i.dataset.visibility]!==false);}
+    window.onAqsAuthChange(async current=>{if(!current){location.href='login.html';return;}user=current;$('account-email').textContent=user.email||'your email address';try{const s=await Promise.all([getDoc(doc(db,'users',user.uid)),getDoc(doc(db,'library_profiles',user.uid)),getDoc(doc(db,'social_profiles',user.uid))]);apply((s[0].data()||{}).profileVisibility||(s[1].data()||{}).profileVisibility||(s[2].data()||{}).profileVisibility);}catch(e){status('privacy-status',e.message||'Settings could not be loaded.','error');}});
+    $('save-privacy').onclick=async()=>{if(!user)return;const b=$('save-privacy');b.disabled=true;status('privacy-status','Saving…');try{const next={};document.querySelectorAll('[data-visibility]').forEach(i=>next[i.dataset.visibility]=i.checked);await Promise.all([setDoc(doc(db,'users',user.uid),{profileVisibility:next,updatedAt:serverTimestamp()},{merge:true}),setDoc(doc(db,'library_profiles',user.uid),{profileVisibility:next,updatedAt:serverTimestamp()},{merge:true}),setDoc(doc(db,'social_profiles',user.uid),{profileVisibility:next,updatedAt:serverTimestamp()},{merge:true})]);status('privacy-status','Visibility saved.','success');}catch(e){status('privacy-status',e.message||'Could not save settings.','error');}finally{b.disabled=false;}};
+    $('send-otp').onclick=async()=>{const b=$('send-otp');b.disabled=true;status('otp-status','Sending code…');const r=await action({action:'aqs_send_otp',purpose:'password_change'});if(!r.success){status('otp-status',r.data||'Could not send the code.','error');b.disabled=false;return;}status('otp-status','Code sent. Check your email.','success');step('password-request',false);step('password-verify',true);$('otp-code').focus();};
+    $('verify-otp').onclick=async()=>{const code=$('otp-code').value.replace(/\D/g,'');if(code.length!==6){status('otp-status','Enter the six-digit code.','error');return;}const b=$('verify-otp');b.disabled=true;status('otp-status','Verifying…');const r=await action({action:'aqs_verify_otp',otp:code});if(!r.success){status('otp-status',r.data||'That code is not valid.','error');b.disabled=false;return;}otpVerified=true;status('otp-status','Email verified. Choose a new password.','success');step('password-verify',false);step('password-form',true);$('new-password').focus();};
+    $('save-password').onclick=async()=>{const p=$('new-password').value,c=$('confirm-password').value;if(!otpVerified){status('password-status','Verify the email code first.','error');return;}if(p.length<8){status('password-status','Use at least 8 characters.','error');return;}if(p!==c){status('password-status','The passwords do not match.','error');return;}const b=$('save-password');b.disabled=true;status('password-status','Updating password…');try{await updatePassword(auth.currentUser,p);await setDoc(doc(db,'users',user.uid),{otp_verified:false,updatedAt:serverTimestamp()},{merge:true});status('password-status','Password changed successfully.','success');otpVerified=false;}catch(e){status('password-status',e.code==='auth/requires-recent-login'?'Sign in again, then request a new code.':(e.message||'Password could not be changed.'),'error');}finally{b.disabled=false;}};
+  </script>
+</body>
+</html>

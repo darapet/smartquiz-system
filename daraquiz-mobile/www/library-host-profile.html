@@ -166,6 +166,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
   let _books = [];
   let _stats = null;
   let _profileLoaded = false;
+  const isVisible = (profile, field) => !profile?.profileVisibility || profile.profileVisibility[field] !== false;
 
   if (!hostUid) { location.href = 'library.html'; }
 
@@ -207,27 +208,27 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
       }
 
       /* Cover photo */
-      if (_profile.coverURL) {
+      if (_profile.coverURL && isVisible(_profile, 'photoURL')) {
         const cImg = document.getElementById('lhp-cover-img');
         cImg.src = _profile.coverURL; cImg.style.display = 'block';
         document.getElementById('lhp-cover').classList.add('has-photo');
       }
       /* Avatar */
       const avEl = document.getElementById('lhp-avatar');
-      if (_profile.photoURL) {
+      if (_profile.photoURL && isVisible(_profile, 'photoURL')) {
         avEl.innerHTML = `<img src="${_profile.photoURL}" alt="">`;
       } else {
-        avEl.textContent = window.libInitials(_profile.displayName || '?');
+        avEl.textContent = window.libInitials(isVisible(_profile, 'displayName') ? (_profile.displayName || '?') : '?');
       }
 
-      document.getElementById('lhp-name').textContent = _profile.displayName || 'Anonymous';
-      document.getElementById('lhp-handle').textContent = _profile.institution || '';
-      if (_profile.bio) document.getElementById('lhp-bio').textContent = _profile.bio;
+      document.getElementById('lhp-name').textContent = isVisible(_profile, 'displayName') ? (_profile.displayName || 'Anonymous') : 'Anonymous';
+      document.getElementById('lhp-handle').textContent = isVisible(_profile, 'education') ? (_profile.institution || '') : '';
+      if (isVisible(_profile, 'bio') && _profile.bio) document.getElementById('lhp-bio').textContent = _profile.bio;
 
       /* Meta tags */
       const meta = [];
-      if (_profile.institutionType) meta.push({ icon: '🎓', text: _profile.institutionType.replace(/_/g,' ') });
-      if (_profile.department) meta.push({ icon: '📘', text: _profile.department });
+      if (isVisible(_profile, 'education') && _profile.institutionType) meta.push({ icon: '🎓', text: _profile.institutionType.replace(/_/g,' ') });
+      if (isVisible(_profile, 'education') && _profile.department) meta.push({ icon: '📘', text: _profile.department });
       document.getElementById('lhp-meta-row').innerHTML = meta.map(m =>
         `<div class="lhp-meta-tag">${m.icon} ${m.text}</div>`
       ).join('');
@@ -241,21 +242,24 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
       loadCounts();
 
       /* About card — shown immediately with placeholder numbers, counts fill in later */
+      const publicName = isVisible(_profile, 'displayName') ? (_profile.displayName || '—') : 'Hidden';
+      const publicEducation = isVisible(_profile, 'education');
+      const publicBio = isVisible(_profile, 'bio');
       document.getElementById('lhp-about-card').innerHTML = `
         <div style="display:flex;flex-direction:column;gap:18px;">
           <div>
             <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Full Name</div>
-            <div style="font-size:.92rem;color:#e2e8f0;font-weight:600;">${_profile.displayName || '—'}</div>
+            <div style="font-size:.92rem;color:#e2e8f0;font-weight:600;">${publicName}</div>
           </div>
-          <div>
+          ${publicEducation ? `<div>
             <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Institution</div>
             <div style="font-size:.88rem;color:#cbd5e1;">${_profile.institution || '—'}</div>
           </div>
           <div>
             <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Department</div>
             <div style="font-size:.88rem;color:#cbd5e1;">${_profile.department || '—'}</div>
-          </div>
-          ${_profile.bio ? `<div>
+          </div>` : ''}
+          ${publicBio && _profile.bio ? `<div>
             <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Bio</div>
             <div style="font-size:.88rem;color:#cbd5e1;line-height:1.65;">${_profile.bio}</div>
           </div>` : ''}
@@ -434,14 +438,19 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
         el.innerHTML = `<div class="lib-empty"><div class="lib-empty-title">No followers yet</div></div>`;
         return;
       }
-      el.innerHTML = valid.map(p => `
+      el.innerHTML = valid.map(p => {
+        const visiblePhoto = isVisible(p, 'photoURL');
+        const visibleName = isVisible(p, 'displayName');
+        const visibleEducation = isVisible(p, 'education');
+        return `
         <div class="lhp-follower-item">
-          <div class="lhp-follower-av">${p.photoURL ? `<img src="${p.photoURL}" alt="">` : window.libInitials(p.displayName||'?')}</div>
+          <div class="lhp-follower-av">${visiblePhoto && p.photoURL ? `<img src="${p.photoURL}" alt="">` : window.libInitials(visibleName ? (p.displayName||'?') : '?')}</div>
           <div>
-            <div class="lhp-follower-name">${p.displayName || 'Anonymous'}</div>
-            <div class="lhp-follower-sub">${p.institution || ''}</div>
+            <div class="lhp-follower-name">${visibleName ? (p.displayName || 'Anonymous') : 'Anonymous'}</div>
+            <div class="lhp-follower-sub">${visibleEducation ? (p.institution || '') : ''}</div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     } catch(e) {
       _followersLoaded = false;
       el.innerHTML = `<div style="color:#ef4444;font-size:.82rem;text-align:center;padding:24px;">

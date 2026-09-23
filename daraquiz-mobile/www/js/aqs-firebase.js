@@ -195,6 +195,34 @@ function requireAuth() {
     return user;
 }
 
+function _brevoEmailEndpoint() {
+    if (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL) {
+        return window.AQS_BREVO_FUNCTION_URL;
+    }
+    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
+}
+
+async function callBrevoEmail(payload) {
+    var user = requireAuth();
+    var token = await user.getIdToken();
+    var response;
+    try {
+        response = await fetch(_brevoEmailEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+            body: JSON.stringify(payload || {})
+        });
+    } catch (_) {
+        throw new Error('The email service could not be reached. Please try again.');
+    }
+    var body = {};
+    try { body = await response.json(); } catch (_) {}
+    if (!response.ok) {
+        throw new Error(body.error || ('The email service returned HTTP ' + response.status + '.'));
+    }
+    return body;
+}
+
 /* ── Mobile web-view uploads ───────────────────────────────────────────────
    The mobile bundle used to expose no aqsUploadFile function at all, while
    the library profile uploader now delegates here. Keep the same public
@@ -761,8 +789,30 @@ async function actionLogout() {
     return { redirect: 'login.html' };
 }
 
-async function actionSendOtp() {
-    throw new Error('Email OTP delivery is not configured in this app build. Use the current web app email flow.');
+async function actionSendOtp(data) {
+    var user = requireAuth();
+    if (!user.email) throw new Error('Your account does not have an email address.');
+    var settingsSnap = await getDoc(doc(db, 'settings', 'main'));
+    var purpose = String(data && data.purpose || 'account_verification');
+    var profileSnap = await getDoc(doc(db, 'users', user.uid));
+    var profile = profileSnap.exists() ? profileSnap.data() : {};
+    var pendingRegistration = profile.registration_status === 'otp_pending';
+    if (purpose !== 'password_change'
+        && !pendingRegistration
+        && (!settingsSnap.exists() || settingsSnap.data().otp_enabled !== true)) {
+        throw new Error('Email OTP is currently disabled by the administrator.');
+    }
+    var otp = String(Math.floor(100000 + Math.random() * 900000));
+    var exp = Date.now() + 10 * 60 * 1000;
+    await setDoc(doc(db, 'users', user.uid), { otp: otp, otp_exp: exp, otp_verified: false }, { merge: true });
+    var emailResult = await callBrevoEmail({ kind: 'otp', code: otp, purpose: purpose });
+    return {
+        sent: true,
+        accepted: !!(emailResult && emailResult.accepted),
+        recipient: emailResult && emailResult.recipient,
+        messageId: emailResult && emailResult.messageId,
+        expires_in: 600
+    };
 }
 
 async function actionVerifyOtp(data) {
@@ -773,7 +823,14 @@ async function actionVerifyOtp(data) {
     var profile = snap.data();
     if (!profile.otp || profile.otp !== code) throw new Error('Incorrect code. Please try again.');
     if (Date.now() > (profile.otp_exp || 0)) throw new Error('Code expired. Please request a new one.');
-    await updateDoc(doc(db, 'users', user.uid), { otp: null, otp_exp: null, email_verified: true });
+    await updateDoc(doc(db, 'users', user.uid), {
+        otp: null,
+        otp_exp: null,
+        otp_verified: true,
+        email_verified: true,
+        registration_status: 'profile_pending',
+        status: 'pending'
+    });
     return { verified: true };
 }
 
