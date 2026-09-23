@@ -1181,6 +1181,7 @@ function showRemoteAudioUnlock(show) {
 
 function callPeer(callId, remoteUid) {
   const pc = new RTCPeerConnection({
+    sdpSemantics: 'unified-plan',
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' }
@@ -1240,6 +1241,18 @@ function callPeer(callId, remoteUid) {
       playRemoteVideo();
     }
   };
+
+  /*
+   * Arm the audio element while the call button is still the active user
+   * gesture. Android WebView can reject the first play() call if playback is
+   * started only after the remote WebRTC track arrives asynchronously.
+   * Playback stays muted until the call is connected, then setCallConnected()
+   * unmutes it.
+   */
+  if (remoteAudio) {
+    remoteAudio.srcObject = remoteStream;
+    playRemoteAudio();
+  }
 
   pc.onicecandidate = (event) => {
     if (!event.candidate) return;

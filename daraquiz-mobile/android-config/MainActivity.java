@@ -21,6 +21,8 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.Manifest;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -65,6 +67,7 @@ public class MainActivity extends BridgeActivity {
     private boolean callAudioActive = false;
     private boolean callSpeakerEnabled = false;
     private boolean callVideoActive = false;
+    private final Handler callAudioHandler = new Handler(Looper.getMainLooper());
 
     /** Pending web permission request waiting on the Android runtime dialog. */
     private PermissionRequest pendingWebRequest;
@@ -257,7 +260,34 @@ public class MainActivity extends BridgeActivity {
                 );
             }
             startCallService(video);
+            reinforceCallAudioRoute();
         });
+    }
+
+    private void reinforceCallAudioRoute() {
+        /*
+         * WebView/WebRTC can reconfigure the Android communication session
+         * immediately after getUserMedia() opens the capture device. Reapply
+         * the route and microphone state after those callbacks settle.
+         */
+        callAudioHandler.postDelayed(() -> {
+            if (!callAudioActive) return;
+            AudioManager audioManager =
+                (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager == null) return;
+            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.setMicrophoneMute(false);
+            routeCallAudio(audioManager);
+        }, 250);
+        callAudioHandler.postDelayed(() -> {
+            if (!callAudioActive) return;
+            AudioManager audioManager =
+                (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+            if (audioManager == null) return;
+            audioManager.setMode(AudioManager.MODE_IN_COMMUNICATION);
+            audioManager.setMicrophoneMute(false);
+            routeCallAudio(audioManager);
+        }, 1000);
     }
 
     private void routeCallAudio(AudioManager audioManager) {
@@ -335,6 +365,7 @@ public class MainActivity extends BridgeActivity {
             callAudioActive = false;
             callSpeakerEnabled = false;
             callVideoActive = false;
+            callAudioHandler.removeCallbacksAndMessages(null);
             stopService(new Intent(this, StudyCoCallService.class));
         });
     }
