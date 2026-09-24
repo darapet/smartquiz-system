@@ -637,12 +637,14 @@ async function actionLogin(data) {
     /* Update AQS globals */
     _updateAqsGlobals(user, profile);
 
-    var redirect = _dashboardUrl(profile.role);
+    var registrationIncomplete = _aqsIsRegistrationIncomplete(profile);
+    var redirect = registrationIncomplete ? 'register.html?resume=1' : _dashboardUrl(profile.role);
     return {
         logged_in:    true,
         redirect:     redirect,
-        otp_required: false,
-        otp_verified: true,
+        registration_incomplete: registrationIncomplete,
+        otp_required: registrationIncomplete,
+        otp_verified: profile.otp_verified === true,
         user_name:    profile.name || user.displayName || user.email
     };
 }
@@ -2674,6 +2676,14 @@ async function actionUpdateAvatar(data) {
 /* ============================================================
    HELPERS
    ============================================================ */
+function _aqsIsRegistrationIncomplete(profile) {
+    var registrationStatus = String((profile && profile.registration_status) || '').trim();
+    if (registrationStatus) return registrationStatus !== 'complete';
+    /* Older accounts may not have registration_status. Preserve pending legacy accounts,
+       but do not force active/legacy users back through registration. */
+    return !!profile && profile.status === 'pending';
+}
+
 function _dashboardUrl(role) {
     if (role === 'admin')  return 'admin-dashboard.html';
     if (role === 'host')   return 'dashboard.html';
@@ -2767,7 +2777,7 @@ function _updateAqsGlobals(user, profile) {
                     var profile = profileSnap.exists() ? profileSnap.data() : {};
                     /* Pending accounts must finish OTP and onboarding before
                        any auth page can send them into the app. */
-                    if (profile.registration_status !== 'complete') {
+                    if (_aqsIsRegistrationIncomplete(profile)) {
                         if (page !== 'register.html' && page !== 'register') {
                             _authRedirectDone = true;
                             window.location.replace('register.html?resume=1');
@@ -2795,7 +2805,7 @@ function _updateAqsGlobals(user, profile) {
             if (!user) return;
             /* Check if profile exists; if not, create it from Firebase Auth data */
             getDoc(doc(db, 'users', user.uid)).then(function(snap) {
-                if (snap.exists() && snap.data().registration_status !== 'complete') {
+                if (snap.exists() && _aqsIsRegistrationIncomplete(snap.data())) {
                     window.location.replace('register.html?resume=1');
                     return;
                 }
