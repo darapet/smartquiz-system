@@ -18,6 +18,9 @@ const REGISTRATION_OTP_RESEND_WAIT_MS = 60 * 1000;
 const REGISTRATION_OTP_WINDOW_MS = 60 * 60 * 1000;
 const REGISTRATION_OTP_MAX_PER_WINDOW = 5;
 const REGISTRATION_OTP_MAX_ATTEMPTS = 5;
+const EMAIL_PREFERENCES_COLLECTION = 'email_preferences';
+const EMAIL_UNSUBSCRIBE_TOKEN_COLLECTION = 'email_unsubscribe_tokens';
+const APP_SIGN_IN_URL = 'https://darapet.github.io/smartquiz-system/login.html';
 
 function setCors(response) {
   response.set('Access-Control-Allow-Origin', '*');
@@ -103,6 +106,114 @@ function registrationEmailId(email) {
   return crypto.createHash('sha256').update(email).digest('hex');
 }
 
+
+async function createEmailUnsubscribeUrl(email) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  await db.collection(EMAIL_UNSUBSCRIBE_TOKEN_COLLECTION).doc(tokenHash).set({
+    emailHash: registrationEmailId(email),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+  const projectId = process.env.GCLOUD_PROJECT || 'smartquiz-darapet';
+  const endpoint = 'https://us-central1-' + projectId + '.cloudfunctions.net/brevoEmail';
+  return endpoint + '?kind=unsubscribe&token=' + encodeURIComponent(token);
+}
+
+async function unsubscribeFromOptionalEmails(token, confirmChange) {
+  const value = String(token || '').trim();
+  if (!/^[0-9a-f]{64}$/i.test(value)) return false;
+  const tokenHash = crypto.createHash('sha256').update(value).digest('hex');
+  const tokenSnapshot = await db.collection(EMAIL_UNSUBSCRIBE_TOKEN_COLLECTION).doc(tokenHash).get();
+  if (!tokenSnapshot.exists) return false;
+  const emailHash = String(tokenSnapshot.data().emailHash || '');
+  if (!/^[0-9a-f]{64}$/i.test(emailHash)) return false;
+  if (!confirmChange) return true;
+  await db.collection(EMAIL_PREFERENCES_COLLECTION).doc(emailHash).set({
+    marketingUnsubscribed: true,
+    marketingUnsubscribedAt: admin.firestore.FieldValue.serverTimestamp(),
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+  return true;
+}
+function escapeEmailHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, function (character) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[character];
+  });
+}
+
+function emailBrandHeaderHtml() {
+  return '<tr><td style="padding:24px 30px;background:#171a35"><table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>'
+    + '<td style="width:40px;height:40px;background:#6862f5;border-radius:12px;color:#ffffff;text-align:center;vertical-align:middle;font-size:20px;font-weight:700">S</td>'
+    + '<td style="padding-left:12px;color:#ffffff;font-size:18px;font-weight:700;letter-spacing:.2px">SmartQuiz</td>'
+    + '</tr></table></td></tr>';
+}
+
+function emailFooterHtml(unsubscribeUrl, reason) {
+  return '<tr><td style="padding:20px 30px 26px;color:#737b8f;font-size:12px;line-height:1.7;text-align:center">'
+    + escapeEmailHtml(reason) + ' <a href="' + escapeEmailHtml(unsubscribeUrl) + '" style="color:#5954d6;text-decoration:underline">Unsubscribe from optional product updates</a>.'
+    + ' Essential account, verification, and security emails will still be sent.</td></tr>';
+}
+
+function otpEmailHtml(options) {
+  const heading = escapeEmailHtml(options.heading || 'Verify your email');
+  const intro = escapeEmailHtml(options.intro || 'Enter this code to continue.');
+  const code = escapeEmailHtml(options.code);
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+    + '<body style="margin:0;padding:0;background:#f2f4fa;color:#20243a;font-family:Arial,Helvetica,sans-serif">'
+    + '<div style="display:none;max-height:0;overflow:hidden;opacity:0">Your SmartQuiz verification code is inside. It expires in 10 minutes.</div>'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f2f4fa"><tr><td align="center" style="padding:32px 14px">'
+    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">'
+    + emailBrandHeaderHtml()
+    + '<tr><td style="padding:34px 30px 12px"><p style="margin:0 0 10px;color:#625cf0;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase">Account security</p>'
+    + '<h1 style="margin:0 0 14px;color:#20243a;font-size:26px;line-height:1.25">' + heading + '</h1>'
+    + '<p style="margin:0;color:#626a7d;font-size:15px;line-height:1.7">' + intro + '</p></td></tr>'
+    + '<tr><td style="padding:18px 30px 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr><td align="center" style="padding:22px 12px;background:#f3f2ff;border:1px solid #e3e1ff;border-radius:12px">'
+    + '<span style="display:block;color:#737b8f;font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase">Your one-time code</span>'
+    + '<span style="display:block;margin-top:9px;color:#4944c8;font-size:34px;font-weight:700;letter-spacing:9px;line-height:1.2">' + code + '</span>'
+    + '</td></tr></table></td></tr>'
+    + '<tr><td style="padding:12px 30px 28px;color:#626a7d;font-size:14px;line-height:1.7">This code expires in <strong style="color:#20243a">10 minutes</strong>. For your safety, do not share it with anyone. If you did not request this code, you can ignore this email.</td></tr>'
+    + emailFooterHtml(options.unsubscribeUrl, 'You received this email because a code was requested for your SmartQuiz account.')
+    + '</table><p style="margin:18px 0 0;color:#8990a1;font-size:11px">SmartQuiz · Learn better, together</p></td></tr></table></body></html>';
+}
+
+function welcomeEmailHtml(unsubscribeUrl) {
+  const startUrl = escapeEmailHtml(APP_SIGN_IN_URL);
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
+    + '<body style="margin:0;padding:0;background:#f2f4fa;color:#20243a;font-family:Arial,Helvetica,sans-serif">'
+    + '<div style="display:none;max-height:0;overflow:hidden;opacity:0">Your SmartQuiz account is ready. Create a quiz or start studying.</div>'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f2f4fa"><tr><td align="center" style="padding:32px 14px">'
+    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border-radius:16px;overflow:hidden">'
+    + emailBrandHeaderHtml()
+    + '<tr><td style="padding:34px 30px 18px"><p style="margin:0 0 10px;color:#625cf0;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase">Your learning workspace</p>'
+    + '<h1 style="margin:0 0 12px;color:#20243a;font-size:28px;line-height:1.25">Welcome to SmartQuiz</h1>'
+    + '<p style="margin:0;color:#626a7d;font-size:15px;line-height:1.7">Your account is ready. Here are a few ways to make your next study session more useful.</p></td></tr>'
+    + '<tr><td style="padding:4px 30px 10px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">'
+    + '<tr><td style="padding:15px 0;border-bottom:1px solid #edf0f5"><strong style="color:#20243a;font-size:15px">Create an AI quiz</strong><br><span style="color:#626a7d;font-size:13px;line-height:1.7">Choose a topic or upload a document, generate questions, then review, edit, and share your quiz.</span></td></tr>'
+    + '<tr><td style="padding:15px 0;border-bottom:1px solid #edf0f5"><strong style="color:#20243a;font-size:15px">Study with built-in tools</strong><br><span style="color:#626a7d;font-size:13px;line-height:1.7">Open Study Hub for notes, flashcards, mock exams, and a Pomodoro focus timer.</span></td></tr>'
+    + '<tr><td style="padding:15px 0"><strong style="color:#20243a;font-size:15px">Challenge friends and follow your progress</strong><br><span style="color:#626a7d;font-size:13px;line-height:1.7">Play live head-to-head quiz rounds and check your scores from My Dashboard.</span></td></tr>'
+    + '</table></td></tr>'
+    + '<tr><td align="center" style="padding:10px 30px 8px"><a href="' + startUrl + '" style="display:inline-block;padding:14px 25px;background:#5b56e8;border-radius:9px;color:#ffffff;font-size:14px;font-weight:700;text-decoration:none">Sign in and get started</a></td></tr>'
+    + '<tr><td style="padding:12px 30px 24px;color:#626a7d;font-size:13px;line-height:1.7">Start in three steps: sign in, choose <strong style="color:#20243a">Create Quiz</strong> to build your first practice set, then visit <strong style="color:#20243a">Study Hub</strong> or <strong style="color:#20243a">Challenge</strong> to keep going.</td></tr>'
+    + emailFooterHtml(unsubscribeUrl, 'You received this welcome email after creating a SmartQuiz account.')
+    + '</table><p style="margin:18px 0 0;color:#8990a1;font-size:11px">SmartQuiz · Learn better, together</p></td></tr></table></body></html>';
+}
+
+function unsubscribeConfirmationPageHtml(token) {
+  const projectId = process.env.GCLOUD_PROJECT || 'smartquiz-darapet';
+  const action = 'https://us-central1-' + projectId + '.cloudfunctions.net/brevoEmail?kind=unsubscribe';
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Unsubscribe from SmartQuiz updates</title></head>'
+    + '<body style="margin:0;padding:40px 16px;background:#f2f4fa;color:#20243a;font-family:Arial,Helvetica,sans-serif"><main style="max-width:520px;margin:8vh auto;padding:32px;background:#fff;border-radius:16px;box-shadow:0 12px 36px rgba(23,26,53,.08)"><p style="color:#625cf0;font-weight:700">SMARTQUIZ</p><h1 style="font-size:26px">Unsubscribe from optional updates?</h1><p style="color:#626a7d;line-height:1.7">Confirm below to stop optional product updates. Essential account, verification, and security emails will still be sent.</p>'
+    + '<form method="post" action="' + action + '"><input type="hidden" name="kind" value="unsubscribe"><input type="hidden" name="token" value="' + escapeEmailHtml(token) + '"><button type="submit" style="padding:13px 20px;background:#5b56e8;border:0;border-radius:8px;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Confirm unsubscribe</button></form></main></body></html>';
+}
+
+function unsubscribePageHtml(success) {
+  const title = success ? 'You are unsubscribed' : 'This link is not valid';
+  const copy = success
+    ? 'You will no longer receive optional product updates. Essential account, verification, and security emails will still be sent.'
+    : 'This unsubscribe link could not be verified. Use the link from a recent SmartQuiz email.';
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>' + title + '</title></head>'
+    + '<body style="margin:0;padding:40px 16px;background:#f2f4fa;color:#20243a;font-family:Arial,Helvetica,sans-serif"><main style="max-width:520px;margin:8vh auto;padding:32px;background:#fff;border-radius:16px;box-shadow:0 12px 36px rgba(23,26,53,.08)"><p style="color:#625cf0;font-weight:700">SMARTQUIZ</p><h1 style="font-size:26px">' + title + '</h1><p style="color:#626a7d;line-height:1.7">' + copy + '</p></main></body></html>';
+}
 function registrationCodeHash(challengeId, code) {
   return crypto.createHash('sha256').update(`${challengeId}:${code}`).digest('hex');
 }
@@ -154,11 +265,12 @@ async function sendRegistrationOtp(payload) {
   });
 
   try {
+    const unsubscribeUrl = await createEmailUnsubscribeUrl(email);
     const result = await sendBrevoMessage({
       recipient: email,
       subject: 'Your SmartQuiz verification code',
-      htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>Verify your SmartQuiz email</h2><p>Enter this code to continue creating your account:</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not request this, you can ignore this email.</p></div>`,
-      textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
+      htmlContent: otpEmailHtml({ heading: 'Verify your email', intro: 'Enter this code to continue creating your account.', code, unsubscribeUrl }),
+      textContent: 'Your SmartQuiz verification code is ' + code + '. It expires in 10 minutes. If you did not request it, ignore this email. Unsubscribe from optional product updates: ' + unsubscribeUrl,
     });
     return {
       sent: true,
@@ -231,6 +343,39 @@ async function verifyRegistrationOtp(payload) {
   return { verified, challengeId: challenge.data.challengeId, expiresIn: 600 };
 }
 
+
+async function sendWelcomeEmail(recipient) {
+  const unsubscribeUrl = await createEmailUnsubscribeUrl(recipient);
+  return sendBrevoMessage({
+    recipient,
+    subject: 'Welcome to SmartQuiz — your study tools are ready',
+    htmlContent: welcomeEmailHtml(unsubscribeUrl),
+    textContent: 'Welcome to SmartQuiz! Your account is ready. Create AI quizzes from a topic or uploaded document, explore Study Hub for notes, flashcards, mock exams, and a Pomodoro timer, or challenge friends and follow your scores in My Dashboard. Start here: ' + APP_SIGN_IN_URL + '\n\nUnsubscribe from optional product updates: ' + unsubscribeUrl + '. Essential account and security emails will still be sent.',
+  });
+}
+
+async function deliverRegistrationWelcomeEmail(email, uid) {
+  const profileRef = db.doc('users/' + uid);
+  try {
+    const profileSnapshot = await profileRef.get();
+    if (profileSnapshot.exists && profileSnapshot.data().welcome_email_sent_at) return true;
+    const result = await sendWelcomeEmail(email);
+    await profileRef.set({
+      welcome_email_status: 'sent',
+      welcome_email_sent_at: admin.firestore.FieldValue.serverTimestamp(),
+      welcome_email_message_id: result.messageId,
+    }, { merge: true });
+    return true;
+  } catch (error) {
+    console.error('SmartQuiz welcome email could not be sent:', error);
+    await profileRef.set({
+      welcome_email_status: 'failed',
+      welcome_email_last_attempt_at: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true }).catch(() => {});
+    return false;
+  }
+}
+
 async function createRegistrationAccount(payload) {
   const email = registrationEmail(payload.email);
   const password = String(payload.password || '');
@@ -246,7 +391,8 @@ async function createRegistrationAccount(payload) {
     if (existingUser
       && profile.registration_challenge_id === current.challengeId
       && profile.registration_status === 'profile_pending') {
-      return { created: true, existing: true, email, uid: existingUser.uid };
+      const welcomeEmailSent = await deliverRegistrationWelcomeEmail(email, existingUser.uid);
+      return { created: true, existing: true, email, uid: existingUser.uid, welcomeEmailSent };
     }
     throw registrationError('This verification request has already been used.');
   }
@@ -286,7 +432,8 @@ async function createRegistrationAccount(payload) {
     throw error;
   }
 
-  return { created: true, email, uid: user.uid };
+  const welcomeEmailSent = await deliverRegistrationWelcomeEmail(email, user.uid);
+  return { created: true, email, uid: user.uid, welcomeEmailSent };
 }
 
 exports.brevoEmail = onRequest(
@@ -294,11 +441,32 @@ exports.brevoEmail = onRequest(
   async (request, response) => {
     setCors(response);
     if (request.method === 'OPTIONS') return response.status(204).send('');
+    if (request.method === 'GET' && String(request.query.kind || '') === 'unsubscribe') {
+      try {
+        const validLink = await unsubscribeFromOptionalEmails(request.query.token, false);
+        response.set('Cache-Control', 'no-store');
+        response.set('Content-Type', 'text/html; charset=utf-8');
+        return validLink
+          ? response.status(200).send(unsubscribeConfirmationPageHtml(String(request.query.token || '')))
+          : response.status(404).send(unsubscribePageHtml(false));
+      } catch (error) {
+        console.error('Email unsubscribe error:', error);
+        response.set('Cache-Control', 'no-store');
+        response.set('Content-Type', 'text/html; charset=utf-8');
+        return response.status(500).send(unsubscribePageHtml(false));
+      }
+    }
     if (request.method !== 'POST') return response.status(405).json({ error: 'Use POST for email actions.' });
 
     try {
       const payload = request.body && typeof request.body === 'object' ? request.body : {};
       const kind = String(payload.kind || '');
+      if (kind === 'unsubscribe') {
+        const unsubscribed = await unsubscribeFromOptionalEmails(payload.token, true);
+        response.set('Cache-Control', 'no-store');
+        response.set('Content-Type', 'text/html; charset=utf-8');
+        return response.status(unsubscribed ? 200 : 404).send(unsubscribePageHtml(unsubscribed));
+      }
       if (kind === 'registration_otp_send') {
         return response.json(await sendRegistrationOtp(payload));
       }
@@ -331,11 +499,12 @@ exports.brevoEmail = onRequest(
         const intro = passwordChange
           ? 'Enter this code to continue changing your SmartQuiz password:'
           : 'Enter this code to finish verifying your SmartQuiz account:';
+        const unsubscribeUrl = await createEmailUnsubscribeUrl(user.email);
         const result = await sendBrevoMessage({
           recipient: user.email,
           subject,
-          htmlContent: `<div style="font-family:Arial,sans-serif;line-height:1.6"><h2>SmartQuiz security verification</h2><p>${intro}</p><p style="font-size:32px;letter-spacing:8px;font-weight:700;color:#4f46e5">${code}</p><p>This code expires in 10 minutes. If you did not request this, you can ignore this email.</p></div>`,
-          textContent: `Your SmartQuiz verification code is ${code}. It expires in 10 minutes.`,
+          htmlContent: otpEmailHtml({ heading: passwordChange ? 'Confirm your password change' : 'Verify your account', intro, code, unsubscribeUrl }),
+          textContent: 'Your SmartQuiz verification code is ' + code + '. It expires in 10 minutes. If you did not request it, ignore this email. Unsubscribe from optional product updates: ' + unsubscribeUrl,
         });
         return response.json({ sent: true, accepted: true, ...result });
       }
