@@ -254,6 +254,16 @@ async function callBrevoEmail(payload) {
     return body;
 }
 
+async function trySendWelcomeEmail() {
+    try {
+        var result = await callBrevoEmail({ kind: 'welcome' });
+        return !!(result && result.sent);
+    } catch (error) {
+        console.warn('[AQS Welcome] Welcome email delivery will be retried during profile setup:', error && error.message);
+        return false;
+    }
+}
+
 async function syncBrevoEmailConfiguration(config) {
     return await callBrevoEmail({
         kind: 'config',
@@ -749,12 +759,14 @@ async function actionRegister(data) {
         throw error;
     }
     try { await user.getIdToken(true); } catch (_) {}
+    var welcomeEmailSent = await trySendWelcomeEmail();
     _updateAqsGlobals(user, profile);
     return {
         message:      'Account created. Continue setting up your profile.',
         redirect:     'register.html?resume=1',
         account_created: true,
-        otp_verified: true
+        otp_verified: true,
+        welcome_email_sent: welcomeEmailSent
     };
 }
 
@@ -838,7 +850,13 @@ async function actionCompleteRegistration(data) {
     );
     try { await updateProfile(user, { displayName: name, photoURL: profilePicture || null }); } catch (_) {}
     _updateAqsGlobals(user, completed);
-    return { completed: true, redirect: _dashboardUrl('student'), username: username };
+    var welcomeEmailSent = await trySendWelcomeEmail();
+    return {
+        completed: true,
+        redirect: _dashboardUrl('student'),
+        username: username,
+        welcome_email_sent: welcomeEmailSent
+    };
 }
 
 async function actionLogout() {
