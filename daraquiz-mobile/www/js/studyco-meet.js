@@ -1179,6 +1179,20 @@ function showRemoteAudioUnlock(show) {
   if (button) button.hidden = !show;
 }
 
+function primeStudyCoRemoteAudio() {
+  const remoteAudio = $('studyco-call-remote-audio');
+  if (!remoteAudio) return;
+  remoteAudio.autoplay = true;
+  remoteAudio.playsInline = true;
+  remoteAudio.muted = true;
+  try {
+    remoteAudio.srcObject = new MediaStream();
+    remoteAudio.play()?.catch(() => {});
+  } catch (_) {
+    /* Playback can be retried when the remote track arrives. */
+  }
+}
+
 function callPeer(callId, remoteUid) {
   const pc = new RTCPeerConnection({
     sdpSemantics: 'unified-plan',
@@ -1760,6 +1774,7 @@ async function prepareIncomingVideoPreview(incoming) {
 }
 
 async function startCall(uid, requestedMode = 'audio') {
+  primeStudyCoRemoteAudio();
   const profile = await getProfile(uid); if (!profile) return;
   try {
     state.callMode = requestedMode === 'video' ? 'video' : 'audio';
@@ -1820,6 +1835,7 @@ async function startCall(uid, requestedMode = 'audio') {
 
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
+  primeStudyCoRemoteAudio();
   try {
     const previewPromise = state.incomingPreviewPromise;
     if (previewPromise) await previewPromise.catch(() => {});
