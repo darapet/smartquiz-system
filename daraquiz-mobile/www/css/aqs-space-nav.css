@@ -210,3 +210,76 @@ body.social-page .social-top-actions .dara-mobile-menu-button:hover {
 @media (max-width: 370px) {
   .dara-mobile-tool-grid { grid-template-columns: 1fr; }
 }
+
+/* Social hamburger menu: use the same accessible, font-independent row icons as the web copy. */
+.studyco-menu-panel {
+  min-width: 220px !important;
+  padding: 8px !important;
+}
+
+.dara-menu-heading {
+  padding: 7px 10px 6px;
+  color: #8b95a7;
+  font-size: .63rem;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.dara-menu-space {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  color: #475569;
+  text-decoration: none;
+  transition: background .16s ease, color .16s ease;
+}
+
+.dara-menu-space:hover,
+.dara-menu-space.active {
+  color: #1d4ed8;
+  background: #eff6ff;
+}
+
+.dara-menu-space > span:first-child {
+  display: grid;
+  place-items: center;
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.dara-menu-space-icon svg {
+  display: block;
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dara-menu-space > span:last-child {
+  display: grid;
+  gap: 2px;
+}
+
+.dara-menu-space strong {
+  font-size: .78rem;
+  line-height: 1.1;
+}
+
+.dara-menu-space small {
+  color: #94a3b8;
+  font-size: .64rem;
+}
+
+.dara-menu-divider {
+  height: 1px;
+  margin: 7px 4px;
+  background: #e5e7eb;
+}
