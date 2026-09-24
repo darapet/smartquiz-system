@@ -1153,8 +1153,23 @@ function showRemoteAudioUnlock(show) {
   if (button) button.hidden = !show;
 }
 
+function primeStudyCoRemoteAudio() {
+  const remoteAudio = $('studyco-call-remote-audio');
+  if (!remoteAudio) return;
+  remoteAudio.autoplay = true;
+  remoteAudio.playsInline = true;
+  remoteAudio.muted = true;
+  try {
+    remoteAudio.srcObject = new MediaStream();
+    remoteAudio.play()?.catch(() => {});
+  } catch (_) {
+    /* Playback can be retried when the remote track arrives. */
+  }
+}
+
 function callPeer(callId, remoteUid) {
   const pc = new RTCPeerConnection({
+    sdpSemantics: 'unified-plan',
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' }
@@ -1164,6 +1179,7 @@ function callPeer(callId, remoteUid) {
   const remoteStream = new MediaStream();
   const remoteAudio = $('studyco-call-remote-audio');
   const remoteVideo = $('studyco-call-remote-video');
+  let browserRemoteStream = null;
   const pendingCandidates = [];
   const pendingCandidateIds = new Set();
   const addedCandidateIds = new Set();
@@ -1184,7 +1200,7 @@ function callPeer(callId, remoteUid) {
     remoteAudio.playsInline = true;
     remoteAudio.setAttribute('disableRemotePlayback', '');
     remoteAudio.muted = !state.callConnected || !state.speakerOn;
-    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    remoteAudio.volume = 1;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
       playPromise
@@ -1197,7 +1213,8 @@ function callPeer(callId, remoteUid) {
     const hasAudio = remoteStream.getAudioTracks().length > 0;
     const hasVideo = remoteStream.getVideoTracks().length > 0;
     if (remoteAudio && hasAudio) {
-      remoteAudio.srcObject = remoteStream;
+      /* Prefer the browser-owned WebRTC stream for cross-WebView playback. */
+      remoteAudio.srcObject = browserRemoteStream || remoteStream;
       playRemoteAudio();
     }
     if (remoteVideo && hasVideo) {
@@ -1207,6 +1224,13 @@ function callPeer(callId, remoteUid) {
       playRemoteVideo();
     }
   };
+
+  /* Start muted playback before remote tracks arrive; this avoids autoplay
+     rejection when the stream is attached asynchronously after permission prompts. */
+  if (remoteAudio) {
+    remoteAudio.srcObject = remoteStream;
+    playRemoteAudio();
+  }
 
   pc.onicecandidate = (event) => {
     if (!event.candidate) return;
@@ -1224,6 +1248,7 @@ function callPeer(callId, remoteUid) {
       ...(event.streams?.[0]?.getTracks?.() || []),
       ...(event.track ? [event.track] : [])
     ];
+    if (event.streams?.[0]) browserRemoteStream = event.streams[0];
     tracks.forEach((track) => {
       track.enabled = true;
       if (!remoteStream.getTracks().some((existing) => existing.id === track.id)) remoteStream.addTrack(track);
@@ -1533,7 +1558,7 @@ function setCallConnected() {
   const remoteAudio = $('studyco-call-remote-audio');
   if (remoteAudio) {
     remoteAudio.muted = !state.speakerOn;
-    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    remoteAudio.volume = 1;
     const playPromise = remoteAudio.play();
     if (playPromise?.then) {
       playPromise
@@ -1713,6 +1738,7 @@ async function prepareIncomingVideoPreview(incoming) {
 }
 
 async function startCall(uid, requestedMode = 'audio') {
+  primeStudyCoRemoteAudio();
   const profile = await getProfile(uid); if (!profile) return;
   try {
     state.callMode = requestedMode === 'video' ? 'video' : 'audio';
@@ -1770,6 +1796,7 @@ async function startCall(uid, requestedMode = 'audio') {
 
 async function acceptIncomingCall() {
   const incoming = state.pendingIncomingCall; if (!incoming) return;
+  primeStudyCoRemoteAudio();
   try {
     const previewPromise = state.incomingPreviewPromise;
     if (previewPromise) await previewPromise.catch(() => {});
@@ -2173,7 +2200,7 @@ function wire() {
     if (!remoteAudio) return;
     state.speakerOn = true;
     remoteAudio.muted = false;
-    remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+    remoteAudio.volume = 1;
     remoteAudio.play()
       .then(() => showRemoteAudioUnlock(false))
       .catch(() => toast('The browser still blocked call audio. Check the site sound permission.', true));
@@ -2186,7 +2213,7 @@ function wire() {
     const remoteAudio = $('studyco-call-remote-audio');
     if (remoteAudio) {
       remoteAudio.muted = !state.speakerOn;
-      remoteAudio.volume = state.callSpeakerOn ? 0.78 : 0.9;
+      remoteAudio.volume = 1;
     }
     updateCallControls();
   });
