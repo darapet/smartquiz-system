@@ -294,9 +294,10 @@
 .dara-menu-space {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 0;
   width: 100%;
-  padding: 9px 10px;
+  min-height: 44px;
+  padding: 10px 12px;
   border-radius: 8px;
   color: #475569;
   text-decoration: none;
@@ -309,28 +310,10 @@
   background: #eff6ff;
 }
 
-.dara-menu-space > span:first-child {
+.dara-menu-space-copy {
   display: grid;
-  place-items: center;
-  flex: 0 0 24px;
-  width: 24px;
-  height: 24px;
-}
-
-.dara-menu-space-icon svg {
-  display: block;
-  width: 19px;
-  height: 19px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.75;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.dara-menu-space > span:last-child {
-  display: grid;
-  gap: 2px;
+  gap: 3px;
+  min-width: 0;
 }
 
 .dara-menu-space strong {
