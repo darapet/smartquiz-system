@@ -532,12 +532,14 @@
                                   'Pollinations AI may be busy or rate-limiting.<br>' +
                                   'Please <strong>wait 15–20 seconds</strong> then try again.' +
                               '</small>' +
-                              '<button class="aqs-btn aqs-btn-sm" style="margin-top:10px;cursor:pointer;" ' +
-                                  'onclick="this.closest(\'.aqs-ig-card\').querySelector(\'.aqs-ig-card-err\').innerHTML=\'<div class=\\\'aqs-ig-card-shimmer\\\'><div class=\\\'aqs-ig-card-spinner\\\'></div><span>Retrying\u2026</span></div>\'">' +
-                                  '\u21bb Retry this image' +
-                              '</button>';
+                              '<button class="aqs-btn aqs-btn-sm" style="margin-top:10px;cursor:pointer;">' +
+                                  '\u21bb Retry generation' +
+                                  '</button>';
                           cardEl.innerHTML = '';
                           cardEl.appendChild(retryBtn);
+                          retryBtn.querySelector('button').addEventListener('click', function () {
+                              generateImages();
+                          });
                       }
 
                       if (settled === count) finishGeneration(fullPrompt, successUrls);
