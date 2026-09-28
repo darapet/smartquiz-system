@@ -1,20 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="css/aqs-category-nav.css">
-    <script defer src="js/aqs-category-nav.js"></script>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
-<meta charset="UTF-8">
-<meta http-equiv="refresh" content="0;url=dashboard.html">
-<title>Redirecting...</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Design Studio — XZILY AI</title>
+  <link rel="stylesheet" href="css/aqs-category-nav.css">
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; background: #f6f7fb; color: #171827; }
+    .design-coming-soon { max-width: 760px; margin: 0 auto; padding: 10rem 1.5rem 5rem; text-align: center; }
+    .design-kicker { margin: 0 0 .75rem; color: #6366f1; font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
+    h1 { margin: 0 auto 1rem; max-width: 620px; font-size: clamp(2.2rem, 6vw, 4.5rem); line-height: 1.02; letter-spacing: -.055em; }
+    .design-copy { max-width: 560px; margin: 0 auto; color: #5f6475; font-size: 1.05rem; line-height: 1.7; }
+    .design-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+    .design-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 2.8rem; padding: .7rem 1rem; border-radius: 999px; text-decoration: none; font-weight: 750; }
+    .design-primary { background: #4f46e5; color: white; }
+    .design-secondary { background: white; color: #34364a; border: 1px solid #dfe2ec; }
+    .design-note { margin: 2.5rem auto 0; max-width: 500px; padding: 1rem 1.1rem; border: 1px solid #e3e5ef; border-radius: 1rem; background: rgba(255,255,255,.72); color: #74798a; font-size: .9rem; line-height: 1.55; }
+  </style>
 </head>
 <body>
-<script>window.location.replace('dashboard.html');</script>
+  <main class="design-coming-soon">
+    <p class="design-kicker">Dara Workspace · Design</p>
+    <h1>Design Studio is being prepared.</h1>
+    <p class="design-copy">This space is not ready yet, so we will not send you to an unrelated dashboard. Use the image tools now, or return to Workspace and choose another tool.</p>
+    <div class="design-actions">
+      <a class="design-primary" href="workspace.html">Back to Workspace</a>
+      <a class="design-secondary" href="image-gen.html">Try Image Generator</a>
+    </div>
+    <p class="design-note">Design Studio will be added here when the layout exploration and export workflow are ready.</p>
+  </main>
+  <script src="js/aqs-category-nav.js"></script>
 </body>
 </html>
