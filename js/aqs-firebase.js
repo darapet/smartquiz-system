@@ -70,20 +70,18 @@ const _aqsAuthPersistenceReady = setPersistence(auth, browserLocalPersistence)
     .catch(function(error) {
         console.warn('[AQS Firebase] Could not set browser auth persistence:', error);
     });
-/* Use experimentalForceLongPolling on Capacitor/Android — fixes Firestore
-   hanging on Android WebView's IndexedDB persistence layer. Falls back to
-   the standard getFirestore() on web where long-polling is not needed. */
+/* Use long-polling for both web and Capacitor. Some browsers, privacy
+   extensions, corporate networks, and mobile ISPs block Firestore's WebChannel
+   transport and surface writes as the unhelpful browser error "Failed to fetch". */
 var _isCapacitorNative = typeof window !== 'undefined'
     && typeof window.Capacitor !== 'undefined'
     && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform();
-/* Some mobile networks and corporate/ISP proxies break the Firestore
-   WebChannel transport. Keep long-polling for Capacitor only; normal
-   browsers get Firestore's faster streaming transport. */
 let db;
 try {
-    db = initializeFirestore(app, _isCapacitorNative
-        ? { experimentalForceLongPolling: true, useFetchStreams: false }
-        : {});
+    db = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+        useFetchStreams: false
+    });
 } catch (firestoreInitError) {
     /* A second initialization can happen in embedded WebViews. Keep the
        fallback so the rest of the app can still use the existing instance. */
@@ -92,7 +90,7 @@ try {
 }
 const rtdb = getDatabase(app);
 window._aqsFirebaseReady = true;
-window._aqsFirebaseTransport = _isCapacitorNative ? 'long-polling' : 'web-channel';
+window._aqsFirebaseTransport = 'long-polling';
 
 /* ── Base URL helper: works on GitHub Pages subfolders ──
    e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
