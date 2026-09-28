@@ -184,8 +184,8 @@ window.addEventListener('DOMContentLoaded', function() {
             setVal('aqs-hf-model', s.hf_model || 'mistralai/Mistral-7B-Instruct-v0.3');
             /* Load the dedicated AI Creator Studio image-generation pool */
             var creatorImageKeys = Array.isArray(s.creator_image_keys) ? s.creator_image_keys : [];
-            for (var cii = 1; cii <= 5; cii++) { setVal('aqs-creator-image-key-' + cii, creatorImageKeys[cii-1] || ''); }
-            window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model || 'black-forest-labs/FLUX.1-schnell';
+            for (var cii = 1; cii <= 10; cii++) { setVal('aqs-creator-image-key-' + cii, creatorImageKeys[cii-1] || ''); }
+            window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model || 'gemini-3.1-flash-image';
             setVal('aqs-creator-image-model', window._AQS_CREATOR_IMAGE_MODEL);
             /* Load ElevenLabs TTS keys */
             var elkeys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
@@ -1335,48 +1335,67 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#ecfeff,#cffafe);">
         <span class="aqs-settings-card-icon">🎨</span>
         <div>
-            <h2 class="aqs-settings-card-title">AI Creator Studio — Image Generation Keys (up to 5)</h2>
-            <p class="aqs-settings-card-desc">Dedicated Hugging Face token pool for the <strong>Creator Studio</strong> image mode. These tokens are separate from the text-AI fallback pool and rotate automatically when a token is rate-limited.</p>
+            <h2 class="aqs-settings-card-title">AI Creator Studio — Image Generation Keys (up to 10)</h2>
+            <p class="aqs-settings-card-desc">Dedicated Google Gemini image API key pool for the <strong>Creator Studio</strong> image mode. Keys stay server-side and rotate automatically when a key is rate-limited.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
         <div style="background:#ecfeff;border:1px solid #a5f3fc;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#155e75;">
-            🎨 <strong>How it works:</strong> Creator Studio tries these image tokens in round-robin order, cools down rate-limited tokens for 62 seconds, and uses the public fallback engine only when no image token succeeds. Add a token with image-generation access at <a href="https://huggingface.co/settings/tokens" target="_blank" rel="noopener">huggingface.co/settings/tokens</a>.
-        </div>
+            🎨 <strong>How it works:</strong> Creator Studio sends image requests to Google Gemini through the secure Firebase function. Keys rotate automatically when a key is rate-limited; there is no public image fallback. Add Gemini API keys from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">Google AI Studio</a>.</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
             <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Image Token 1 (Primary) <span id="aqs-creator-image-dot-1"></span></label>
-                <input type="password" id="aqs-creator-image-key-1" placeholder="hf_…" autocomplete="off" />
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 1 (Primary) <span id="aqs-creator-image-dot-1"></span></label>
+                <input type="password" id="aqs-creator-image-key-1" placeholder="AIza…" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Image Token 2 <span id="aqs-creator-image-dot-2"></span></label>
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 2 <span id="aqs-creator-image-dot-2"></span></label>
                 <input type="password" id="aqs-creator-image-key-2" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Image Token 3 <span id="aqs-creator-image-dot-3"></span></label>
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 3 <span id="aqs-creator-image-dot-3"></span></label>
                 <input type="password" id="aqs-creator-image-key-3" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Image Token 4 <span id="aqs-creator-image-dot-4"></span></label>
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 4 <span id="aqs-creator-image-dot-4"></span></label>
                 <input type="password" id="aqs-creator-image-key-4" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
-                <label style="display:flex;align-items:center;gap:6px;">Image Token 5 <span id="aqs-creator-image-dot-5"></span></label>
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 5 <span id="aqs-creator-image-dot-5"></span></label>
                 <input type="password" id="aqs-creator-image-key-5" placeholder="(optional)" autocomplete="off" />
             </div>
             <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 6 <span id="aqs-creator-image-dot-6"></span></label>
+                <input type="password" id="aqs-creator-image-key-6" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 7 <span id="aqs-creator-image-dot-7"></span></label>
+                <input type="password" id="aqs-creator-image-key-7" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 8 <span id="aqs-creator-image-dot-8"></span></label>
+                <input type="password" id="aqs-creator-image-key-8" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 9 <span id="aqs-creator-image-dot-9"></span></label>
+                <input type="password" id="aqs-creator-image-key-9" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
+                <label style="display:flex;align-items:center;gap:6px;">Gemini API Key 10 <span id="aqs-creator-image-dot-10"></span></label>
+                <input type="password" id="aqs-creator-image-key-10" placeholder="(optional)" autocomplete="off" />
+            </div>
+            <div class="aqs-field-group">
                 <label for="aqs-creator-image-model">Image Model</label>
-                <input type="text" id="aqs-creator-image-model" value="black-forest-labs/FLUX.1-schnell" placeholder="black-forest-labs/FLUX.1-schnell" autocomplete="off" />
-                <p class="aqs-field-hint">Recommended: black-forest-labs/FLUX.1-schnell.</p>
+                <input type="text" id="aqs-creator-image-model" value="gemini-3.1-flash-image" placeholder="gemini-3.1-flash-image" autocomplete="off" />
+                <p class="aqs-field-hint">Recommended: gemini-3.1-flash-image.</p>
             </div>
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-creator-image-btn" style="background:#0891b2;border-color:#0e7490;color:#fff;">🎨 Save Creator Studio Image Keys</button>
-            <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#0f766e;color:#fff;border-color:#115e59;">🧪 Test Image Tokens</button>
+            <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#0f766e;color:#fff;border-color:#115e59;">🧪 Test Gemini API Keys</button>
             <span id="aqs-creator-image-status" class="aqs-status-msg"></span>
         </div>
         <div id="aqs-creator-image-health-summary" style="margin-top:12px;padding:10px 14px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;color:#115e59;font-size:.78rem;">
-            Health has not been checked yet. Pollinations fallback is ready when no managed token succeeds.
+            Health has not been checked yet. Gemini key pool required when no managed token succeeds.
         </div>
         <div id="aqs-creator-image-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
@@ -1956,26 +1975,26 @@ btn('aqs-save-oauth-btn').addEventListener('click', function(){
         hf_keys: hfKeys,
         hf_model: hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3'
     }, 'aqs-hf-status', this, '🤗 Save HuggingFace Settings');
-    for (var ci = 1; ci <= 5; ci++) { var d = document.getElementById('aqs-hf-dot-' + ci); if (d) d.textContent = ''; }
+    for (var ci = 1; ci <= 10; ci++) { var d = document.getElementById('aqs-hf-dot-' + ci); if (d) d.textContent = ''; }
 });
 
 btn('aqs-save-creator-image-btn').addEventListener('click', function(){
     var creatorImageKeys = [];
-    for (var cii = 1; cii <= 5; cii++) {
+    for (var cii = 1; cii <= 10; cii++) {
         var ciel = document.getElementById('aqs-creator-image-key-' + cii);
         if (ciel && ciel.value.trim().length > 10) creatorImageKeys.push(ciel.value.trim());
     }
     var creatorImageModelEl = document.getElementById('aqs-creator-image-model');
     var creatorImageModel = creatorImageModelEl && creatorImageModelEl.value.trim()
         ? creatorImageModelEl.value.trim()
-        : 'black-forest-labs/FLUX.1-schnell';
+        : 'gemini-3.1-flash-image';
     if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(creatorImageKeys);
     window._AQS_CREATOR_IMAGE_MODEL = creatorImageModel;
     saveSettings('/api/settings', {
         creator_image_keys: creatorImageKeys,
         creator_image_model: creatorImageModel
     }, 'aqs-creator-image-status', this, '🎨 Save Creator Studio Image Keys');
-    for (var cdi = 1; cdi <= 5; cdi++) {
+    for (var cdi = 1; cdi <= 10; cdi++) {
         var cd = document.getElementById('aqs-creator-image-dot-' + cdi);
         if (cd) cd.textContent = '';
     }
@@ -1983,7 +2002,7 @@ btn('aqs-save-creator-image-btn').addEventListener('click', function(){
 
 async function _aqsTestCreatorImageKeys() {
     var configuredSlots = [];
-    for (var cti = 1; cti <= 5; cti++) {
+    for (var cti = 1; cti <= 10; cti++) {
         var ctel = document.getElementById('aqs-creator-image-key-' + cti);
         if (ctel && ctel.value.trim().length > 10) configuredSlots.push('Token ' + cti);
     }
@@ -2006,17 +2025,17 @@ async function _aqsTestCreatorImageKeys() {
             var lastLabel = lastCreatorHealth.total
                 ? lastCreatorHealth.healthy + '/' + lastCreatorHealth.total + ' managed token(s) healthy'
                 : 'No managed tokens configured';
-            healthSummary.innerHTML = 'Last checked ' + new Date(lastCreatorHealth.at).toLocaleString() + ' · ' + lastLabel + ' · Pollinations fallback ready.';
+            healthSummary.innerHTML = 'Last checked ' + new Date(lastCreatorHealth.at).toLocaleString() + ' · ' + lastLabel + ' · Gemini key pool required.';
         }
     } catch (e) {}
     if (!results) return;
     results.style.display = 'block';
     if (!configuredSlots.length) {
         results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, save the pool, then click Test.</span>';
-        if (healthSummary) healthSummary.innerHTML = 'No managed tokens configured · Pollinations fallback is ready.';
+        if (healthSummary) healthSummary.innerHTML = 'No managed tokens configured · Gemini key pool required.';
         return;
     }
-    var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell';
+    var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'gemini-3.1-flash-image';
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing the saved image pool through the secure server…</div>';
     try {
@@ -2031,7 +2050,7 @@ async function _aqsTestCreatorImageKeys() {
         var health = Array.isArray(data.health) ? data.health : [];
         if (!health.length) {
             results.innerHTML = '<span style="color:#fbbf24;">⚠️ The secure service is reachable, but no saved tokens were found. Save the pool first.</span>';
-            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · No managed tokens configured · Pollinations fallback ready.';
+            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · No managed tokens configured · Gemini key pool required.';
             if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'empty');
         } else {
             var healthyCount = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
@@ -2041,12 +2060,12 @@ async function _aqsTestCreatorImageKeys() {
                 return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#cbd5e1;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
             });
             results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Secure server test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
-            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Pollinations fallback ready.';
+            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Gemini key pool required.';
             if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(healthyCount, health.length, 'checked');
         }
     } catch (e) {
         results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Secure image service unavailable.') + '</span>';
-        if (healthSummary) healthSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Pollinations fallback remains ready.';
+        if (healthSummary) healthSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Gemini key pool required.';
         if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
     }
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Image Tokens'; }
@@ -2410,7 +2429,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
           { id:'groq',       label:'Main Groq',    emoji:'⚡', provider:'groq',    inputPrefix:'aqs-groq-key-',            slots:20, dotPrefix:'aqs-gk-dot-' },
           { id:'mistral',    label:'Mistral',       emoji:'🌟', provider:'mistral', inputPrefix:'aqs-mistral-key-',         slots:20, dotPrefix:'aqs-mk-dot-' },
           { id:'hf',         label:'HuggingFace',   emoji:'🤗', provider:'hf',      inputPrefix:'aqs-hf-key-',              slots:5,  dotPrefix:'aqs-hf-dot-' },
-           { id:'creator_image', label:'Creator Studio Image', emoji:'🎨', provider:'creator_image', inputPrefix:'aqs-creator-image-key-', slots:5, dotPrefix:'aqs-creator-image-dot-' },
+           { id:'creator_image', label:'Creator Studio Image', emoji:'🎨', provider:'creator_image', inputPrefix:'aqs-creator-image-key-', slots:10, dotPrefix:'aqs-creator-image-dot-' },
           { id:'geminitts',  label:'Gemini TTS',    emoji:'🎙️', provider:'gtts',   inputPrefix:'aqs-gtts-key-',            slots:5,  dotPrefix:'aqs-gtts-dot-' },
           { id:'elevenlabs', label:'ElevenLabs TTS', emoji:'🔊', provider:'el',      inputPrefix:'aqs-el-key-',              slots:5,  dotPrefix:'aqs-el-dot-' },
           { id:'library',    label:'Library',       emoji:'📚', provider:'groq',    inputPrefix:'aqs-lib-key-',             slots:10 },
@@ -2539,7 +2558,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                   +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
                    +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+(noKeyFallback ? 'ready' : n+'/'+m)+'</span></div>'
                   +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-                   +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">'+(noKeyFallback ? 'Pollinations fallback ready' : '—')+'</span>'
+                   +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">'+(noKeyFallback ? 'Gemini key pool required' : '—')+'</span>'
                   +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
                   +'</div>'
                   +'<div id="aqs-pool-detail-'+p.id+'" style="display:none;flex-direction:column;gap:4px;margin-top:2px;"></div>'
@@ -2562,7 +2581,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                    var creatorResponse = await fetch(creatorEndpoint, {
                        method: 'POST',
                        headers: {'Content-Type':'application/json'},
-                       body: JSON.stringify({testOnly:true, model:(document.getElementById('aqs-creator-image-model') || {}).value || 'black-forest-labs/FLUX.1-schnell'})
+                       body: JSON.stringify({testOnly:true, model:(document.getElementById('aqs-creator-image-model') || {}).value || 'gemini-3.1-flash-image'})
                    });
                    var creatorData = await creatorResponse.json().catch(function(){ return {}; });
                    if (!creatorResponse.ok) throw new Error(creatorData.error || 'Secure image service unavailable.');
@@ -2570,8 +2589,8 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                    var active = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
                    var total = health.length;
                    if (!total) {
-                       if (r) { r.innerHTML = '<span style="color:#059669;">✅ Pollinations fallback ready</span>'; r.style.color = '#059669'; }
-                       if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#6b7280;">No managed image tokens saved. The public fallback remains available.</span>'; }
+                       if (r) { r.innerHTML = '<span style="color:#059669;">✅ Gemini key pool required</span>'; r.style.color = '#059669'; }
+                       if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#6b7280;">No managed image tokens saved. The No public fallback is configured.</span>'; }
                    } else {
                        var creatorRows = health.map(function(entry) {
                            var healthy = entry.status === 'healthy', limited = entry.status === 'rate_limited';
@@ -2581,17 +2600,17 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                            if (dotEl) { dotEl.textContent = healthy ? '✅' : (limited ? '⚠️' : '❌'); dotEl.style.fontSize = '.9rem'; }
                            return '<div style="padding:5px 8px;background:' + (healthy ? '#052e16' : limited ? '#1c1001' : '#1c0101') + ';border:1px solid ' + (healthy ? '#166534' : limited ? '#78350f' : '#7f1d1d') + ';border-radius:6px;display:flex;align-items:center;gap:6px;"><span style="color:' + color + ';font-weight:700;font-size:.72rem;">Token ' + entry.slot + '</span><span style="color:' + color + ';margin-left:auto;font-size:.7rem;">' + label + ' · ' + (entry.latencyMs || 0) + 'ms</span></div>';
                        });
-                       if (r) { r.innerHTML = '<span style="color:' + (active === total ? '#059669' : active ? '#d97706' : '#dc2626') + ';">' + active + '/' + total + ' healthy · Pollinations fallback ready</span>'; r.style.color = active === total ? '#059669' : active ? '#d97706' : '#dc2626'; }
+                       if (r) { r.innerHTML = '<span style="color:' + (active === total ? '#059669' : active ? '#d97706' : '#dc2626') + ';">' + active + '/' + total + ' healthy · Gemini key pool required</span>'; r.style.color = active === total ? '#059669' : active ? '#d97706' : '#dc2626'; }
                        if (det) { det.style.display = 'flex'; det.innerHTML = creatorRows.join(''); }
                    }
                    var summary = document.getElementById('aqs-creator-image-health-summary');
-                   if (summary) summary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + (total ? active + '/' + total + ' managed token(s) healthy' : 'No managed tokens configured') + ' · Pollinations fallback ready.';
+                   if (summary) summary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + (total ? active + '/' + total + ' managed token(s) healthy' : 'No managed tokens configured') + ' · Gemini key pool required.';
                    if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(active, total, total ? 'checked' : 'empty');
                } catch (creatorError) {
-                   if (r) { r.innerHTML = '<span style="color:#d97706;">⚠️ Secure health check unavailable · Pollinations fallback ready</span>'; r.style.color = '#d97706'; }
+                   if (r) { r.innerHTML = '<span style="color:#d97706;">⚠️ Secure health check unavailable · Gemini key pool required</span>'; r.style.color = '#d97706'; }
                    if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#fca5a5;">' + (creatorError.message || 'Health check failed.') + '</span>'; }
                    var failedSummary = document.getElementById('aqs-creator-image-health-summary');
-                   if (failedSummary) failedSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Pollinations fallback remains ready.';
+                   if (failedSummary) failedSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Gemini key pool required.';
                    if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
                }
                return;

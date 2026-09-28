@@ -61,7 +61,7 @@ window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
 /* Creator Studio image generation is server-side. Keep only non-secret
    metadata in the browser; Hugging Face tokens stay in Firebase Admin SDK. */
 window._AQS_CREATOR_IMAGE_KEY_COUNT = window._AQS_CREATOR_IMAGE_KEY_COUNT || 0;
-window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'black-forest-labs/FLUX.1-schnell';
+window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'gemini-3.1-flash-image';
 
 /* ── Keys-ready promise ──────────────────────────────────────────────
    Resolves once the Firebase auto-loader has finished (or after a
@@ -281,29 +281,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
             localStorage.setItem('aqs_creator_image_history', JSON.stringify(history));
         } catch(e) {}
     }
-    function _creatorImageFallback(input, dimensions, reason) {
-        var fallbackSize = dimensions.width + 'x' + dimensions.height;
-        var fallbackPrompt = _creatorImagePrompt(input.prompt, input.category);
-        var fallbackUrl = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(fallbackPrompt) +
-            '?model=flux&width=' + dimensions.width + '&height=' + dimensions.height +
-            '&nologo=true&enhance=false&negative_prompt=' + encodeURIComponent('extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text') +
-            '&seed=' + Math.floor(Math.random() * 1000000000);
-        var result = {
-            id: 'creator-image-fallback-' + Date.now(),
-            mediaType: 'image',
-            url: fallbackUrl,
-            provider: 'pollinations',
-            prompt: String(input.prompt || '').trim(),
-            createdAt: new Date().toISOString(),
-            qualityNotes: ['Public fallback engine used because the secure image service was unavailable.', 'Requested frame: ' + fallbackSize + '.'].concat(reason ? [reason] : []),
-            fallbackUsed: true
-        };
-        _saveCreatorImageLocalHistory(result);
-        return result;
-    }
-
     async function _creatorImageGenerate(input) {
-        var dimensions = _creatorImageDimensions(input.aspectRatio);
         var prompt = _creatorImagePrompt(input.prompt, input.category);
         try {
             var response = await fetch(CREATOR_IMAGE_FUNCTION_URL, {
@@ -330,8 +308,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
             return body;
         } catch (error) {
             if (error && error.code === 'QUOTA_EXHAUSTED') throw error;
-            _aqsLog('warn', 'Secure Creator Studio image service failed; using Pollinations fallback: ' + (error.message || error));
-            return _creatorImageFallback(input, dimensions, 'Secure provider route unavailable; no token was sent to the browser.');
+            _aqsLog('error', 'Secure Creator Studio image service failed: ' + (error.message || error));
+            throw error;
         }
     }
     window.aqsCreatorImageGenerate = _creatorImageGenerate;

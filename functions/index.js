@@ -11,7 +11,7 @@ const db = admin.firestore();
 const CREATOR_IMAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const CREATOR_IMAGE_LIMIT = 5;
 const CREATOR_IMAGE_COOLDOWN_MS = 62 * 1000;
-const DEFAULT_CREATOR_IMAGE_MODEL = 'black-forest-labs/FLUX.1-schnell';
+const DEFAULT_CREATOR_IMAGE_MODEL = 'gemini-3.1-flash-image';
 const REGISTRATION_OTP_COLLECTION = 'registration_otp_challenges';
 const REGISTRATION_OTP_TTL_MS = 10 * 60 * 1000;
 const REGISTRATION_OTP_RESEND_WAIT_MS = 60 * 1000;
@@ -657,7 +657,7 @@ function cleanImageKeys(value) {
         .filter((key) => typeof key === 'string')
         .map((key) => key.replace(/[^\x20-\x7E]/g, '').trim())
         .filter((key) => key.length > 10)
-        .slice(0, 5)
+         .slice(0, 10)
     : [];
 }
 
@@ -731,11 +731,6 @@ function enhancedCreatorImagePrompt(prompt, category) {
     general: 'Create one coherent scene or composition. Keep the main subject, object count, setting, colors, and action exactly aligned with the brief.',
   }[category] || 'Create one coherent scene or composition.';
   return `Faithful image interpretation. Primary brief: "${brief}". ${direction} Preserve the specific nouns, relationships, colors, mood, and constraints in the brief. High detail, crisp edges, natural anatomy, intentional composition.`;
-}
-
-function pollinationsUrl(prompt, dimensions) {
-  const negativePrompt = 'extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text';
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?model=flux&width=${dimensions.width}&height=${dimensions.height}&nologo=true&enhance=false&negative_prompt=${encodeURIComponent(negativePrompt)}&seed=${Math.floor(Math.random() * 1000000000)}`;
 }
 
 function ownerKey(request, clientId) {
@@ -813,99 +808,58 @@ async function listCreatorGenerations(request, clientId) {
     .slice(0, 12);
 }
 
-async function generateWithCreatorImagePool(prompt, dimensions, keys, model) {
-  if (!keys.length) return null;
+function geminiAspectRatio(aspectRatio) {
+  if (aspectRatio === 'square') return '1:1';
+  if (aspectRatio === 'portrait') return '9:16';
+  return '16:9';
+}
 
-  const order = await imageKeyOrder(keys);
-  const endpoint = `https://api-inference.huggingface.co/models/${model.split('/').map(encodeURIComponent).join('/')}`;
+async function requestGeminiImage(key, prompt, model, aspectRatio) {
+  const endpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      contents: [{ role: 'user', parts: [{ text: prompt }] }],
+      generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: geminiAspectRatio(aspectRatio), imageSize: '1K' } },
+    }),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) { const error = new Error('Gemini returned HTTP ' + response.status + '.'); error.status = response.status; throw error; }
+  const parts = (payload.candidates || []).flatMap((candidate) => candidate.content && Array.isArray(candidate.content.parts) ? candidate.content.parts : []);
+  const imagePart = parts.find((part) => part.inlineData || part.inline_data);
+  const inlineData = imagePart && (imagePart.inlineData || imagePart.inline_data);
+  if (!inlineData || !inlineData.data) { const error = new Error('Gemini returned no image data.'); error.status = response.status; throw error; }
+  return { data: inlineData.data, mimeType: inlineData.mimeType || inlineData.mime_type || 'image/png' };
+}
 
+async function generateWithCreatorImagePool(prompt, keys, model, aspectRatio) {
+  if (!keys.length) throw new Error('No Gemini image API keys are configured.');
+  const order = await imageKeyOrder(keys); let lastError = null;
   for (const index of order) {
     const key = keys[index];
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: {
-            width: dimensions.width,
-            height: dimensions.height,
-            num_inference_steps: 4,
-            negative_prompt: 'extra subjects, unrelated objects, duplicate objects, distorted anatomy, extra fingers, bad hands, blurry, pixelated, watermark, unwanted text',
-          },
-        }),
-      });
-
-      if (response.status === 429 || response.status === 503 || response.status === 504) {
-        await coolDownImageKey(key);
-        continue;
-      }
-      if (response.status === 401 || response.status === 403 || !response.ok) continue;
-
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.startsWith('image/')) continue;
-
-      const base64 = Buffer.from(await response.arrayBuffer()).toString('base64');
-      return {
-        mediaType: 'image',
-        url: `data:${contentType.split(';')[0]};base64,${base64}`,
-        provider: 'huggingface image pool',
-        fallbackUsed: false,
-      };
-    } catch (_) {
-      /* The next configured token or public fallback gets the request. */
+      const image = await requestGeminiImage(key, prompt, model, aspectRatio);
+      return { mediaType: 'image', url: 'data:' + image.mimeType + ';base64,' + image.data, provider: 'Google Gemini image key pool', fallbackUsed: false };
+    } catch (error) {
+      lastError = error;
+      if ([429, 503, 504].includes(error.status)) await coolDownImageKey(key);
+      if ([400, 401, 403, 429, 503, 504].includes(error.status)) continue;
     }
   }
-
-  return null;
+  if (lastError && [401, 403].includes(lastError.status)) throw new Error('All configured Gemini image API keys were rejected. Check the Admin Settings key pool.');
+  throw new Error('Google Gemini image generation failed for every configured key.');
 }
 
 async function checkCreatorImagePool(keys, model) {
-  if (!keys.length) return [];
-  const endpoint = `https://api-inference.huggingface.co/models/${model.split('/').map(encodeURIComponent).join('/')}`;
-  const results = [];
-
+  if (!keys.length) return []; const results = [];
   for (let index = 0; index < keys.length; index += 1) {
     const key = keys[index];
-    try {
-      const startedAt = Date.now();
-      const providerResponse = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${key}`,
-        },
-        body: JSON.stringify({
-          inputs: 'A simple blue circle on a clean white background',
-          parameters: { width: 256, height: 256, num_inference_steps: 4 },
-        }),
-      });
-      const contentType = providerResponse.headers.get('content-type') || '';
-      const rateLimited = providerResponse.status === 429 || providerResponse.status === 503 || providerResponse.status === 504;
-      if (rateLimited) await coolDownImageKey(key);
-      results.push({
-        slot: index + 1,
-        status: providerResponse.ok && contentType.startsWith('image/')
-          ? 'healthy'
-          : rateLimited
-            ? 'rate_limited'
-            : providerResponse.status === 401 || providerResponse.status === 403
-              ? 'invalid'
-              : 'unavailable',
-        httpStatus: providerResponse.status,
-        latencyMs: Date.now() - startedAt,
-      });
-    } catch (_) {
-      results.push({ slot: index + 1, status: 'unavailable', httpStatus: 0, latencyMs: 0 });
-    }
+    try { const startedAt = Date.now(); await requestGeminiImage(key, 'Generate a simple blue circle on a clean white background.', model, 'square'); results.push({ slot: index + 1, status: 'healthy', httpStatus: 200, latencyMs: Date.now() - startedAt }); }
+    catch (error) { if ([429, 503, 504].includes(error.status)) await coolDownImageKey(key); results.push({ slot: index + 1, status: [401, 403].includes(error.status) ? 'invalid' : [429, 503, 504].includes(error.status) ? 'rate_limited' : 'unavailable', httpStatus: error.status || 0, latencyMs: 0 }); }
   }
-
   return results;
 }
-
 exports.creatorImageGenerate = onRequest(
   { region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
   async (request, response) => {
@@ -945,6 +899,10 @@ exports.creatorImageGenerate = onRequest(
       });
     }
 
+    if (!settings.keys.length) {
+      return response.status(503).json({ error: 'No Gemini image API keys are configured. Add at least one in Admin Settings.' });
+    }
+
     let quota;
     try {
       quota = await reserveCreatorImageCredit(requestIp(request));
@@ -966,13 +924,8 @@ exports.creatorImageGenerate = onRequest(
     try {
       const dimensions = dimensionsFor(payload.aspectRatio);
       const enhancedPrompt = enhancedCreatorImagePrompt(prompt, payload.category);
-      const generated = await generateWithCreatorImagePool(enhancedPrompt, dimensions, settings.keys, settings.model);
-      const result = generated || {
-        mediaType: 'image',
-        url: pollinationsUrl(enhancedPrompt, dimensions),
-        provider: 'pollinations',
-        fallbackUsed: true,
-      };
+      const generated = await generateWithCreatorImagePool(enhancedPrompt, settings.keys, settings.model, payload.aspectRatio);
+      const result = generated;
       const generationId = `creator-image-${Date.now()}-${crypto.randomUUID()}`;
       const responseResult = {
         id: generationId,
@@ -980,9 +933,7 @@ exports.creatorImageGenerate = onRequest(
         prompt,
         createdAt: new Date().toISOString(),
         qualityNotes: [
-          result.fallbackUsed
-            ? 'Public fallback engine used because no managed image token succeeded.'
-            : 'Dedicated Creator Studio image-token pool used.',
+          'Google Gemini image key pool used.',
           'Automatic quality and anatomy safeguards applied.',
         ],
         quota,
@@ -999,7 +950,7 @@ exports.creatorImageGenerate = onRequest(
       return response.json(responseResult);
     } catch (error) {
       console.error('Creator image generation error:', error);
-      return response.status(502).json({ error: 'The image providers are temporarily unavailable.' });
+      return response.status(502).json({ error: error.message || 'Google Gemini image generation is temporarily unavailable.' });
     }
   },
 );
