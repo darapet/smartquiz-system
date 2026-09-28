@@ -321,7 +321,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 '</select>' +
                 '<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#69766d;pointer-events:none;">⌄</span>' +
             '</label>' +
-            '<p data-testid="creator-image-engine-note" style="margin:8px 0 0;color:#8a958c;font-size:11px;line-height:1.5;">Free generation uses the Cloudflare Worker. If it is unavailable, Gemini is used automatically.</p>';
+            '<p data-testid="creator-image-engine-note" style="margin:8px 0 0;color:#8a958c;font-size:11px;line-height:1.5;">Free generation uses the Cloudflare Worker. If it is unavailable, Gemini and then Pollinations are used automatically.</p>';
         var selector = section.querySelector('select');
         var current = _selectedCreatorImageEngine();
         selector.value = current === 'gemini' ? 'gemini' : 'cloudflare';
@@ -414,6 +414,23 @@ window._aqsKeysReady = new Promise(function(resolve) {
             throw error;
         }
     }
+    async function _generateWithPollinations(input) {
+        var dimensions = _creatorImageDimensions(input.aspectRatio);
+        var prompt = _creatorImagePrompt(input.prompt, input.category);
+        var url = 'https://image.pollinations.ai/prompt/' + encodeURIComponent(prompt) +
+            '?width=' + dimensions.width + '&height=' + dimensions.height +
+            '&model=flux&nologo=true&private=true&enhance=true';
+        return {
+            id: 'creator-image-pollinations-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+            mediaType: 'image',
+            url: url,
+            prompt: String(input.prompt || '').trim(),
+            provider: 'pollinations',
+            fallbackUsed: true,
+            createdAt: new Date().toISOString(),
+            qualityNotes: ['Pollinations FLUX public fallback used.', 'Professional prompt wrapper applied in the browser.']
+        };
+    }
     async function _creatorImageGenerate(input) {
         var selectedEngine = window._AQS_CREATOR_IMAGE_ENGINE || _selectedCreatorImageEngine();
         if (selectedEngine === 'cloudflare') {
@@ -429,7 +446,13 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 _aqsLog('warn', 'Cloudflare image Worker URL is not configured; using Gemini fallback.');
             }
         }
-        return _generateWithGemini(input);
+        try {
+            return await _generateWithGemini(input);
+        } catch(geminiError) {
+            if (geminiError && geminiError.code === 'QUOTA_EXHAUSTED') throw geminiError;
+            _aqsLog('warn', 'Secure Gemini image service unavailable; using Pollinations fallback: ' + (geminiError.message || geminiError));
+            return _generateWithPollinations(input);
+        }
     }
     window.aqsCreatorImageGenerate = _creatorImageGenerate;
     window.aqsCreatorImageList = async function() {
