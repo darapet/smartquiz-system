@@ -82,6 +82,14 @@ function _whenFirebaseReady(fn) {
     document.addEventListener('aqs:firebase:ready', fn, { once: true });
 }
 
+function _friendlySaveError(value) {
+    var text = String(value || '').trim();
+    if (/failed to fetch|networkerror|network request failed/i.test(text)) {
+        return 'Firebase could not be reached while saving. Refresh the page and try again.';
+    }
+    return text || 'Error saving.';
+}
+
 function _showStatus(statusId, success, message) {
     var $s = document.getElementById(statusId);
     if (!$s) return;
@@ -100,7 +108,7 @@ function saveSettings(endpoint, data, statusId, btnEl, defaultBtnText) {
             function(res) {
                 btnEl.disabled = false; btnEl.textContent = defaultBtnText;
                 var ok = res && res.success;
-                _showStatus(statusId, ok, ok ? (res.data && res.data.message) || 'Saved!' : (res && res.data) || 'Error saving.');
+                _showStatus(statusId, ok, ok ? (res.data && res.data.message) || 'Saved!' : _friendlySaveError(res && res.data));
             }
         ).fail(function() {
             btnEl.disabled = false; btnEl.textContent = defaultBtnText;
@@ -212,9 +220,9 @@ window.addEventListener('DOMContentLoaded', function() {
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script>window._AQS_ADMIN_SETTINGS_MODE = true;</script>
-<script src="js/aqs-groq-key.js?v=creator-quality-2"></script>
+<script src="js/aqs-groq-key.js?v=firestore-transport-1"></script>
 <script src="js/aqs-gemini-tts.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=creator-quality-2"></script>
+<script type="module" src="js/aqs-firebase.js?v=firestore-transport-1"></script>
 </head>
 <body>
 
