@@ -28,3 +28,20 @@ If the Worker uses a `workers.dev` URL instead of a custom-domain route, set
 `window.AQS_BREVO_FUNCTION_URL` to that URL before loading the Firebase module.
 
 Never put `BREVO_API_KEY` in `wrangler.toml`, browser JavaScript, or GitHub.
+
+## Creator Studio image engine
+
+The same Worker also exposes `POST /api/image` for the free Creator Studio
+engine. It calls the native `env.AI` binding and returns the generated image as
+a raw `image/png` response. CORS is limited by `ALLOWED_ORIGINS`.
+
+The AI binding is declared in `wrangler.toml`; deploy it from this directory:
+
+```bash
+npx wrangler login
+npx wrangler deploy
+```
+
+The default model is `@cf/stabilityai/stable-diffusion-xl-base-1.0`. Change
+`CF_IMAGE_MODEL` only to one of the allowlisted models in `src/worker.js`.
+The existing `/api/email` and `/brevoEmail` routes remain unchanged.

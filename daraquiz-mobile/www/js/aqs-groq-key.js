@@ -86,6 +86,15 @@ window._aqsKeysReady = new Promise(function(resolve) {
     var CREATOR_IMAGE_CLIENT_ID_KEY = 'aqs_creator_image_client_id';
     var CREATOR_IMAGE_FUNCTION_URL = window._AQS_CREATOR_IMAGE_FUNCTION_URL ||
         'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
+    /*
+     * The Worker returns a raw PNG, so this URL is intentionally separate
+     * from the Gemini JSON function. Set it to an empty string to disable the
+     * free route and use Gemini automatically.
+     */
+    var CREATOR_IMAGE_WORKER_URL = Object.prototype.hasOwnProperty.call(window, '_AQS_CREATOR_IMAGE_WORKER_URL')
+        ? String(window._AQS_CREATOR_IMAGE_WORKER_URL || '').trim()
+        : 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image';
+    var CREATOR_IMAGE_ENGINE_KEY = 'aqs_creator_image_engine';
     var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
     var _creatorImageRateLimitedUntil = {};
 
@@ -274,7 +283,100 @@ window._aqsKeysReady = new Promise(function(resolve) {
             localStorage.setItem('aqs_creator_image_history', JSON.stringify(history));
         } catch(e) {}
     }
-    async function _creatorImageGenerate(input) {
+    function _selectedCreatorImageEngine() {
+        var selector = document.querySelector('[data-testid="select-creator-image-engine"]');
+        if (selector && selector.value) return selector.value;
+        try {
+            return localStorage.getItem(CREATOR_IMAGE_ENGINE_KEY) || 'cloudflare';
+        } catch(e) {
+            return 'cloudflare';
+        }
+    }
+    function _installCreatorImageEngineSelector() {
+        var form = document.querySelector('form[data-testid="form-generation"]');
+        if (!form || form.querySelector('[data-testid="creator-image-engine"]')) return;
+        var imageMode = form.querySelector('[data-testid="button-mode-image"]');
+        var mediumSection = imageMode && imageMode.closest('section');
+        if (!mediumSection) return;
+        var directionButton = form.querySelector('[data-testid="button-category-general"]');
+        var insertAfter = directionButton && directionButton.closest('section');
+
+        var section = document.createElement('section');
+        section.setAttribute('data-testid', 'creator-image-engine');
+        section.style.cssText = 'margin-top:24px;padding-top:24px;border-top:1px solid #e2ddd2;';
+        section.innerHTML =
+            '<div style="margin-bottom:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.08em;color:#69766d;">04 / choose an engine</div>' +
+            '<label style="display:block;position:relative;">' +
+                '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">⚙️</span>' +
+                '<select data-testid="select-creator-image-engine" aria-label="Choose image engine" style="width:100%;appearance:none;border:1px solid #d8d1c4;border-radius:10px;background:#f7f4ed;color:#39473e;padding:12px 38px 12px 42px;font:600 13px Inter,system-ui,sans-serif;outline:none;cursor:pointer;">' +
+                    '<option value="cloudflare">Free Engine (Default) · Cloudflare Workers AI</option>' +
+                    '<option value="gemini">Premium Engine · Gemini admin key pool</option>' +
+                '</select>' +
+                '<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#69766d;pointer-events:none;">⌄</span>' +
+            '</label>' +
+            '<p data-testid="creator-image-engine-note" style="margin:8px 0 0;color:#8a958c;font-size:11px;line-height:1.5;">Free generation uses the Cloudflare Worker. If it is unavailable, Gemini is used automatically.</p>';
+        var selector = section.querySelector('select');
+        var current = _selectedCreatorImageEngine();
+        selector.value = current === 'gemini' ? 'gemini' : 'cloudflare';
+        selector.addEventListener('change', function() {
+            var selected = selector.value === 'gemini' ? 'gemini' : 'cloudflare';
+            try { localStorage.setItem(CREATOR_IMAGE_ENGINE_KEY, selected); } catch(e) {}
+            window._AQS_CREATOR_IMAGE_ENGINE = selected;
+        });
+        (insertAfter || mediumSection).insertAdjacentElement('afterend', section);
+    }
+    if (typeof MutationObserver !== 'undefined') {
+        var _creatorImageEngineObserver = new MutationObserver(_installCreatorImageEngineSelector);
+        _creatorImageEngineObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    function _creatorImageWorkerUrl() {
+        return Object.prototype.hasOwnProperty.call(window, '_AQS_CREATOR_IMAGE_WORKER_URL')
+            ? String(window._AQS_CREATOR_IMAGE_WORKER_URL || '').trim()
+            : CREATOR_IMAGE_WORKER_URL;
+    }
+    async function _generateWithCloudflareWorker(input, endpoint) {
+        var response;
+        try {
+            response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: String(input.prompt || '').trim(),
+                    engine: 'cloudflare',
+                    category: input.category,
+                    aspectRatio: input.aspectRatio
+                }),
+                signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+            });
+        } catch(error) {
+            error.fallbackEligible = true;
+            throw error;
+        }
+        if (!response.ok) {
+            var details = await response.text().catch(function(){ return ''; });
+            var workerError = new Error(details || 'The free Cloudflare image engine is unavailable.');
+            workerError.workerStatus = response.status;
+            workerError.fallbackEligible = response.status >= 500 || response.status === 404;
+            throw workerError;
+        }
+        var blob = await response.blob();
+        if (!blob || !blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) {
+            var invalidImage = new Error('The free image engine returned an invalid image.');
+            invalidImage.fallbackEligible = true;
+            throw invalidImage;
+        }
+        return {
+            id: 'creator-image-cloudflare-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+            mediaType: 'image',
+            url: URL.createObjectURL(blob),
+            prompt: String(input.prompt || '').trim(),
+            provider: 'Cloudflare Workers AI · Free Engine',
+            fallbackUsed: false,
+            createdAt: new Date().toISOString(),
+            qualityNotes: ['Cloudflare Workers AI returned a raw PNG.', 'Professional prompt wrapper applied server-side.']
+        };
+    }
+    async function _generateWithGemini(input) {
         var prompt = _creatorImagePrompt(input.prompt, input.category);
         try {
             var response = await fetch(CREATOR_IMAGE_FUNCTION_URL, {
@@ -304,6 +406,23 @@ window._aqsKeysReady = new Promise(function(resolve) {
             _aqsLog('error', 'Secure Creator Studio image service failed: ' + (error.message || error));
             throw error;
         }
+    }
+    async function _creatorImageGenerate(input) {
+        var selectedEngine = window._AQS_CREATOR_IMAGE_ENGINE || _selectedCreatorImageEngine();
+        if (selectedEngine === 'cloudflare') {
+            var workerUrl = _creatorImageWorkerUrl();
+            if (workerUrl) {
+                try {
+                    return await _generateWithCloudflareWorker(input, workerUrl);
+                } catch(workerError) {
+                    if (!workerError.fallbackEligible) throw workerError;
+                    _aqsLog('warn', 'Free Cloudflare image engine unavailable; falling back to Gemini: ' + (workerError.message || workerError));
+                }
+            } else {
+                _aqsLog('warn', 'Cloudflare image Worker URL is not configured; using Gemini fallback.');
+            }
+        }
+        return _generateWithGemini(input);
     }
     window.aqsCreatorImageGenerate = _creatorImageGenerate;
     window.aqsCreatorImageList = async function() {
@@ -444,6 +563,9 @@ window._aqsKeysReady = new Promise(function(resolve) {
             /* Never load Creator Studio image tokens into a public page.
                The secure function reads them with the Admin SDK. */
             if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
+            if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) {
+                window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
+            }
 
             var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
                       + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)

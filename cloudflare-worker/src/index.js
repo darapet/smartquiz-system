@@ -1,3 +1,5 @@
+import { handleImage } from './worker.js';
+
 const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
 const FIREBASE_SIGNUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
 const BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email';
@@ -623,6 +625,14 @@ export default {
       || url.pathname === '/brevoEmail/'
     ) {
       return handleEmail(request, env);
+    }
+    if (
+      url.pathname === '/api/image'
+      || url.pathname === '/api/image/'
+      || url.pathname === '/image'
+      || url.pathname === '/image/'
+    ) {
+      return handleImage(request, env);
     }
     return new Response('Not found', { status: 404 });
   },

@@ -2474,7 +2474,7 @@ async function actionSaveSettings(data) {
         'groq_keys','groq_model',
         'mistral_keys','mistral_model',
         'hf_keys','hf_model',
-        'creator_image_keys','creator_image_model',
+        'creator_image_keys','creator_image_model','creator_image_worker_url',
         'bg_music_url',
         'splash_enabled','splash_logo_url',
         'brevo_api_key','brevo_from_name','brevo_from_email','otp_enabled',
@@ -2605,6 +2605,7 @@ async function actionSaveSettings(data) {
     }
     if (payload.hf_model) window._AQS_HF_MODEL = payload.hf_model;
     if (payload.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = payload.creator_image_model;
+    if ('creator_image_worker_url' in payload) window._AQS_CREATOR_IMAGE_WORKER_URL = String(payload.creator_image_worker_url || '').trim();
     if (Array.isArray(payload.creator_image_keys) && payload.creator_image_keys.length) {
         if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(payload.creator_image_keys);
     }

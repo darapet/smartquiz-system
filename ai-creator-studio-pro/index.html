@@ -17,6 +17,13 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- Shared SmartQuiz Firebase settings load the admin-managed image pool. -->
+    <script>
+      /*
+       * Cloudflare Workers AI free image route. Set this to an empty string
+       * when the Worker is not deployed; the bridge will use Gemini instead.
+       */
+      window._AQS_CREATOR_IMAGE_WORKER_URL = 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image';
+    </script>
     <script src="../js/aqs-groq-key.js?v=creator-quality-2"></script>
     <script type="module" src="../js/aqs-firebase.js?v=creator-quality-2"></script>
     <script type="module" crossorigin src="./assets/index-C91ylZcv-router.js"></script>

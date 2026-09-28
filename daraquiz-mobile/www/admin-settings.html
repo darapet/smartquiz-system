@@ -187,6 +187,7 @@ window.addEventListener('DOMContentLoaded', function() {
             for (var cii = 1; cii <= 10; cii++) { setVal('aqs-creator-image-key-' + cii, creatorImageKeys[cii-1] || ''); }
             window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model || 'gemini-3.1-flash-image';
             setVal('aqs-creator-image-model', window._AQS_CREATOR_IMAGE_MODEL);
+            setVal('aqs-creator-image-worker-url', s.creator_image_worker_url || 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image');
             /* Load ElevenLabs TTS keys */
             var elkeys = Array.isArray(s.elevenlabs_keys) ? s.elevenlabs_keys : [];
             for (var ei = 1; ei <= 5; ei++) { setVal('aqs-el-key-' + ei, elkeys[ei-1] || ''); }
@@ -1388,6 +1389,11 @@ window.addEventListener('DOMContentLoaded', function() {
                 <input type="text" id="aqs-creator-image-model" value="gemini-3.1-flash-image" placeholder="gemini-3.1-flash-image" autocomplete="off" />
                 <p class="aqs-field-hint">Recommended: gemini-3.1-flash-image.</p>
             </div>
+            <div class="aqs-field-group" style="grid-column:1/-1;">
+                <label for="aqs-creator-image-worker-url">Free Cloudflare Worker URL</label>
+                <input type="url" id="aqs-creator-image-worker-url" placeholder="https://your-worker.workers.dev/api/image" autocomplete="url" />
+                <p class="aqs-field-hint">Used by Creator Studio’s Free Engine. Leave blank to use Gemini automatically.</p>
+            </div>
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-creator-image-btn" style="background:#0891b2;border-color:#0e7490;color:#fff;">🎨 Save Creator Studio Image Keys</button>
@@ -1988,11 +1994,23 @@ btn('aqs-save-creator-image-btn').addEventListener('click', function(){
     var creatorImageModel = creatorImageModelEl && creatorImageModelEl.value.trim()
         ? creatorImageModelEl.value.trim()
         : 'gemini-3.1-flash-image';
+    var creatorImageWorkerUrlEl = document.getElementById('aqs-creator-image-worker-url');
+    var creatorImageWorkerUrl = creatorImageWorkerUrlEl ? creatorImageWorkerUrlEl.value.trim() : '';
+    if (creatorImageWorkerUrl && !/^https:\/\//i.test(creatorImageWorkerUrl)) {
+        var creatorImageStatus = document.getElementById('aqs-creator-image-status');
+        if (creatorImageStatus) {
+            creatorImageStatus.textContent = 'Use an HTTPS Cloudflare Worker URL or leave it blank.';
+            creatorImageStatus.style.color = '#dc2626';
+        }
+        return;
+    }
     if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(creatorImageKeys);
     window._AQS_CREATOR_IMAGE_MODEL = creatorImageModel;
+    window._AQS_CREATOR_IMAGE_WORKER_URL = creatorImageWorkerUrl;
     saveSettings('/api/settings', {
         creator_image_keys: creatorImageKeys,
-        creator_image_model: creatorImageModel
+        creator_image_model: creatorImageModel,
+        creator_image_worker_url: creatorImageWorkerUrl
     }, 'aqs-creator-image-status', this, '🎨 Save Creator Studio Image Keys');
     for (var cdi = 1; cdi <= 10; cdi++) {
         var cd = document.getElementById('aqs-creator-image-dot-' + cdi);

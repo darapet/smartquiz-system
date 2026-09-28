@@ -8,7 +8,11 @@ FIREBASE_WEB_API_KEY = "AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY"
 ADMIN_EMAIL = "daramolapeter98@gmail.com"
 # Replace this with the Cloudflare hostname serving the website.
 ALLOWED_ORIGINS = "https://darapet.github.io,https://smartquiz-system.pages.dev,https://smartquiz-system3.daramolapeter98.workers.dev"
+CF_IMAGE_MODEL = "@cf/stabilityai/stable-diffusion-xl-base-1.0"
 
 [[kv_namespaces]]
 binding = "EMAIL_CONFIG"
 id = "2add7fc63e7f4d1ca04b37b221bdcf07"
+
+[ai]
+binding = "AI"

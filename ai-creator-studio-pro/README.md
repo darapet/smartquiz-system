@@ -21,8 +21,16 @@ For the integrated SmartQuiz page, enter up to five image-generation tokens in
 **Admin Settings → AI Creator Studio — Image Generation Keys**. Image requests
 are sent to the `creatorImageGenerate` Firebase Function, which reads the
 dedicated pool server-side, rotates tokens, cools down rate-limited tokens, and
-returns Pollinations when no managed token succeeds. The public page never
-receives the Hugging Face tokens.
+returns the Gemini image result. The public page never receives the Gemini
+tokens.
+
+The Creator Studio engine selector also includes **Free Engine (Default) ·
+Cloudflare Workers AI**. It sends the prompt to
+`https://smartquiz-system3.daramolapeter98.workers.dev/api/image`, receives a
+raw PNG, and displays it in the existing result panel. Change
+`window._AQS_CREATOR_IMAGE_WORKER_URL` in `index.html` if the Worker is deployed
+at another URL. If the URL is empty or the Worker is unavailable, the bridge
+falls back to the existing Gemini function.
 
 Deploy the secure image function from the repository root before expecting
 managed Hugging Face tokens to be used:
@@ -31,8 +39,8 @@ managed Hugging Face tokens to be used:
 firebase deploy --only functions:creatorImageGenerate
 ```
 
-Until that function is deployed, the page uses its no-key Pollinations fallback
-so image mode remains testable.
+Until the Worker or Gemini function is deployed, image mode will show the
+existing service error instead of creating a separate image page.
 
 For the separate FastAPI deployment, configure `HF_API_KEYS` as a
 comma-separated server-side secret for Hugging Face image generation and photo
