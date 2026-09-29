@@ -318,23 +318,6 @@ async def hf_video(prompt: str, keys: list[str]) -> tuple[str, str] | None:
     return None
 
 
-def pollinations_image(prompt: str, dimensions: tuple[int, int]) -> str:
-    width, height = dimensions
-    encoded = quote(prompt, safe="")
-    return (
-        f"https://image.pollinations.ai/prompt/{encoded}"
-        f"?width={width}&height={height}&model=flux&nologo=true"
-    )
-
-
-def pollinations_video(prompt: str) -> str:
-    encoded = quote(prompt, safe="")
-    return (
-        f"https://pollinations.ai/p/{encoded}"
-        "?width=1024&height=576&model=flux&video=true"
-    )
-
-
 async def route_generation(
     request: GenerationInput,
     enhanced_prompt: str,
@@ -355,15 +338,13 @@ async def route_generation(
         raise RuntimeError("Hugging Face image-to-image providers are unavailable.")
 
     if request.mode == "video":
-        # Pollinations is intentionally first for video because it can return a
-        # playable URL without a long-running job queue in this small service.
-        return pollinations_video(enhanced_prompt), "Pollinations video", False
+        raise RuntimeError("Video generation provider is unavailable.")
 
     if keys:
         result = await hf_image(enhanced_prompt, dimensions, keys)
         if result:
             return result[0], result[1], False
-    return pollinations_image(enhanced_prompt, dimensions), "Pollinations FLUX", True
+    raise RuntimeError("Hugging Face image providers are unavailable. Configure HF_API_KEYS.")
 
 
 def store_generation(
