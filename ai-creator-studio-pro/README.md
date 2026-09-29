@@ -55,5 +55,6 @@ The service provides:
 - `POST /api/generate`
 
 Image generation uses Hugging Face FLUX.1-schnell when configured and
-Pollinations FLUX as a fallback. Video generation uses the Pollinations video
-URL, while Photo Editor requires a Hugging Face credential and a base image.
+returns a clear provider error when no configured image provider is available.
+Video generation also requires a configured provider, while Photo Editor requires
+a Hugging Face credential and a base image.
