@@ -4,6 +4,7 @@
   var config = window.AQS_IMAGEGEN_CONFIG || {};
   var firebaseEndpoint = String(config.firebaseEndpoint || '').trim();
   var cloudflareEndpoint = String(config.cloudflareEndpoint || '').trim();
+  var preferredEngine = String(config.preferredEngine || '').trim().toLowerCase();
   var clientKey = 'aqs_imagegen_client_id';
   var localHistoryKey = 'aqs_imagegen_local_history';
   var maxHistory = 12;
@@ -154,6 +155,7 @@
   }
 
   function chooseEngine() {
+    if (preferredEngine === 'gemini' && firebaseEndpoint) return 'gemini';
     return cloudflareEndpoint ? 'cloudflare' : 'gemini';
   }
 
@@ -201,7 +203,14 @@
           result.provider = 'Google Gemini · fallback after Cloudflare';
         }
       } else {
-        result = await fetchGemini(payload);
+        try {
+          result = await fetchGemini(payload);
+        } catch (geminiError) {
+          if (!cloudflareEndpoint) throw geminiError;
+          loadingCopy.textContent = 'Gemini is busy, switching to the Cloudflare image engine…';
+          result = await fetchCloudflare(payload);
+          result.provider = 'Cloudflare Workers AI · fallback after Gemini';
+        }
       }
       var normalized = Object.assign({}, result, { prompt: payload.prompt, category: payload.category });
       saveLocalResult(normalized);
