@@ -5,6 +5,8 @@
   var firebaseEndpoint = String(config.firebaseEndpoint || '').trim();
   var cloudflareEndpoint = String(config.cloudflareEndpoint || '').trim();
   var preferredEngine = String(config.preferredEngine || '').trim().toLowerCase();
+  var firebaseEnabled = config.firebaseEnabled !== false;
+  var remoteHistoryEnabled = config.remoteHistoryEnabled !== false;
   var clientKey = 'aqs_imagegen_client_id';
   var localHistoryKey = 'aqs_imagegen_local_history';
   var maxHistory = 12;
@@ -50,13 +52,14 @@
   function localHistory() {
     try {
       var items = JSON.parse(localStorage.getItem(localHistoryKey) || '[]');
-      return Array.isArray(items) ? items.filter(function (item) { return item && item.url; }).slice(0, maxHistory) : [];
+      return Array.isArray(items) ? items.filter(function (item) { return item && item.url && !/^blob:/i.test(String(item.url)); }).slice(0, maxHistory) : [];
     } catch (error) {
       return [];
     }
   }
 
   function saveLocalResult(result) {
+    if (!result || !result.url || /^blob:/i.test(String(result.url))) return;
     try {
       var items = [result].concat(localHistory().filter(function (item) { return item.id !== result.id; })).slice(0, maxHistory);
       localStorage.setItem(localHistoryKey, JSON.stringify(items));
@@ -125,7 +128,7 @@
   }
 
   async function fetchGemini(payload) {
-    if (!firebaseEndpoint) throw new Error('The secure Gemini image service is not configured yet.');
+    if (!firebaseEnabled || !firebaseEndpoint) throw new Error('The secure Gemini image service is not configured yet.');
     var response = await fetch(firebaseEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -199,7 +202,7 @@
         try {
           result = await fetchCloudflare(payload);
         } catch (cloudflareError) {
-          if (!firebaseEndpoint) throw cloudflareError;
+          if (!firebaseEnabled || !firebaseEndpoint) throw cloudflareError;
           loadingCopy.textContent = 'Cloudflare is busy, switching to the secure Gemini fallback…';
           result = await fetchGemini(payload);
           result.provider = 'Google Gemini · fallback after Cloudflare';
@@ -231,7 +234,7 @@
 
   async function loadHistory() {
     var local = localHistory();
-    if (!firebaseEndpoint) return local;
+    if (!firebaseEnabled || !remoteHistoryEnabled || !firebaseEndpoint) return local;
     try {
       var response = await fetch(firebaseEndpoint + '?clientId=' + encodeURIComponent(getClientId()));
       var remote = await response.json().catch(function () { return []; });
