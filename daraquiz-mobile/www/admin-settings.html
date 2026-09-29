@@ -214,9 +214,9 @@ window.addEventListener('DOMContentLoaded', function() {
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script>window._AQS_ADMIN_SETTINGS_MODE = true;</script>
-<script src="js/aqs-groq-key.js?v=firestore-transport-1"></script>
+<script src="js/aqs-groq-key.js?v=gemini-test-direct-1"></script>
 <script src="js/aqs-gemini-tts.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=firestore-transport-1"></script>
+<script type="module" src="js/aqs-firebase.js?v=gemini-test-direct-1"></script>
 </head>
 <body>
 
@@ -2063,19 +2063,46 @@ async function _aqsTestCreatorImageKeys() {
     }
     var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'gemini-3.1-flash-image';
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing the saved image pool through the secure server…</div>';
+    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing the saved Gemini key pool…</div>';
     try {
-        var endpoint = window._AQS_CREATOR_IMAGE_FUNCTION_URL || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
-        var res = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ testOnly: true, model: model })
-        });
-        var data = await res.json().catch(function(){ return {}; });
-        if (!res.ok) throw new Error(data.error || 'Secure image service unavailable.');
-        var health = Array.isArray(data.health) ? data.health : [];
+        var health = [];
+        /* The old Firebase Function route is no longer deployed. Test each
+           configured key directly from this admin-only page instead of
+           turning its 404/CORS response into the misleading "Failed to fetch". */
+        for (var hti = 0; hti < configuredSlots.length; hti++) {
+            var slotNumber = parseInt(String(configuredSlots[hti]).replace(/\D/g, ''), 10);
+            var keyInput = document.getElementById('aqs-creator-image-key-' + slotNumber);
+            var key = keyInput ? keyInput.value.trim() : '';
+            var startedAt = Date.now();
+            var httpStatus = 0;
+            var keyStatus = 'unavailable';
+            try {
+                var geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
+                var geminiResponse = await fetch(geminiEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: 'Generate a simple blue circle on a clean white background.' }] }],
+                        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1', imageSize: '1K' } }
+                    })
+                });
+                httpStatus = geminiResponse.status;
+                var geminiPayload = await geminiResponse.json().catch(function(){ return {}; });
+                var geminiParts = (geminiPayload.candidates || []).flatMap(function(candidate) {
+                    return candidate.content && Array.isArray(candidate.content.parts) ? candidate.content.parts : [];
+                });
+                var imagePart = geminiParts.find(function(part){ return part.inlineData || part.inline_data; });
+                if (geminiResponse.ok && imagePart) keyStatus = 'healthy';
+                else if (httpStatus === 401 || httpStatus === 403) keyStatus = 'invalid';
+                else if (httpStatus === 429) keyStatus = 'rate_limited';
+            } catch (directTestError) {
+                keyStatus = 'unavailable';
+            }
+            health.push({ slot: slotNumber, status: keyStatus, httpStatus: httpStatus, latencyMs: keyStatus === 'unavailable' ? 0 : Date.now() - startedAt });
+        }
+        var data = { model: model, health: health };
         if (!health.length) {
-            results.innerHTML = '<span style="color:#fbbf24;">⚠️ The secure service is reachable, but no saved tokens were found. Save the pool first.</span>';
+            results.innerHTML = '<span style="color:#fbbf24;">⚠️ No saved Gemini keys were found. Save the pool first.</span>';
             if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · No managed tokens configured · Gemini key pool required.';
             if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'empty');
         } else {
@@ -2085,16 +2112,16 @@ async function _aqsTestCreatorImageKeys() {
                 var status = entry.status === 'healthy' ? '✅ Healthy' : (entry.status === 'rate_limited' ? '⚠️ Rate limited' : (entry.status === 'invalid' ? '❌ Invalid token' : '❌ Unavailable'));
                 return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#cbd5e1;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
             });
-            results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Secure server test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
+            results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Direct Gemini key test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
             if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Gemini key pool required.';
             if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(healthyCount, health.length, 'checked');
         }
     } catch (e) {
-        results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Secure image service unavailable.') + '</span>';
+        results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Gemini key test unavailable.') + '</span>';
         if (healthSummary) healthSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Gemini key pool required.';
         if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
     }
-    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Image Tokens'; }
+    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Gemini API Keys'; }
 }
 btn('aqs-test-creator-image-btn').addEventListener('click', _aqsTestCreatorImageKeys);
 
@@ -2610,7 +2637,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                        body: JSON.stringify({testOnly:true, model:(document.getElementById('aqs-creator-image-model') || {}).value || 'gemini-3.1-flash-image'})
                    });
                    var creatorData = await creatorResponse.json().catch(function(){ return {}; });
-                   if (!creatorResponse.ok) throw new Error(creatorData.error || 'Secure image service unavailable.');
+                   if (!creatorResponse.ok) throw new Error(creatorData.error || 'Gemini key test unavailable.');
                    var health = Array.isArray(creatorData.health) ? creatorData.health : [];
                    var active = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
                    var total = health.length;
