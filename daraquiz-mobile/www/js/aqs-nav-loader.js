@@ -21,6 +21,14 @@
     document.head.appendChild(categoryScript);
   })();
 
+  /* Use the homepage navigation as the only shared bottom navigation. */
+  (function loadAqsBottomNav() {
+    var bottomNavScript = document.createElement('script');
+    bottomNavScript.src = 'js/aqs-bottom-nav.js';
+    bottomNavScript.defer = true;
+    document.head.appendChild(bottomNavScript);
+  })();
+
   var isIndex = (function () {
     var p = location.pathname;
     return p.endsWith('index.html') || p === '/' ||
