@@ -6,8 +6,28 @@ const MAX_PROMPT_LENGTH = 2000;
  * request that reaches the free engine gets the same image-quality guidance,
  * including requests made by older cached clients.
  */
-const PROFESSIONAL_IMAGE_WRAPPER =
-  'A hyper-realistic, photorealistic cinematic portrait of [USER_INPUT], shot on 85mm lens, f/1.4, sharp focus, volumetric dramatic studio lighting, highly detailed complex skin texture, 8k resolution, award-winning photography, path tracing --no blur, illustration, cartoon, low quality, watermark, drawing, digital painting, CGI, 3D render';
+const QUALITY_DIRECTION = {
+  logo: 'Create a polished, scalable brand mark with one memorable symbol, balanced geometry, clean edges, intentional negative space, and a simple presentation on a plain background. Keep it vector-like and production-ready. Do not add random lettering, mockup scenes, gradients, shadows, or extra symbols unless requested.',
+  banner: 'Create a premium website hero banner with clear visual hierarchy, one strong focal subject, refined lighting, controlled detail, and deliberate negative space for headline text. Keep the composition wide, balanced, and suitable for a professional landing page.',
+  social: 'Create a polished social-media campaign visual with a clear focal subject, strong mobile-first composition, refined color grading, clean separation from the background, and enough breathing room for a short caption. Make it feel designed, not like a random snapshot.',
+  portrait: 'Create a professional portrait or character image with a clear silhouette, natural anatomy, expressive but controlled pose, flattering light, detailed face and clothing, and a clean background. Include only the subjects requested.',
+  general: 'Create one coherent, professionally art-directed composition. Keep the requested subjects, relationships, setting, colors, mood, and action faithful to the brief. Remove clutter and unrelated objects.',
+};
+
+function enrichedPrompt(prompt, category, aspectRatio) {
+  const brief = String(prompt || '').replace(/\s+/g, ' ').trim();
+  const direction = QUALITY_DIRECTION[category] || QUALITY_DIRECTION.general;
+  const canvas = aspectRatio === 'landscape' ? 'Use a wide landscape composition.'
+    : aspectRatio === 'portrait' ? 'Use a tall portrait composition.'
+      : 'Use a balanced square composition.';
+  return [
+    direction,
+    canvas,
+    'User brief: "' + brief + '".',
+    'Prioritize accurate subject identity, intentional composition, crisp edges, believable materials, professional color harmony, and a clean final finish.',
+    'Avoid watermarks, logos not requested, random text, malformed letters, duplicate subjects, extra limbs, blur, noise, clutter, and unfinished artifacts.',
+  ].join(' ');
+}
 
 function allowedOrigin(request, env) {
   const origin = request.headers.get('Origin') || '';
@@ -122,6 +142,8 @@ export async function handleImage(request, env) {
         prompt: url.searchParams.get('prompt'),
         engine: url.searchParams.get('engine') || 'cloudflare',
         engineModel: url.searchParams.get('model') || url.searchParams.get('engineModel'),
+        category: url.searchParams.get('category') || 'general',
+        aspectRatio: url.searchParams.get('aspectRatio') || 'square',
       }
     : await request.json().catch(() => ({}));
   const prompt = String(payload && payload.prompt || '').replace(/\s+/g, ' ').trim();
@@ -138,7 +160,7 @@ export async function handleImage(request, env) {
 
   try {
     const image = await env.AI.run(modelFor(env, payload.engineModel), {
-      prompt: enrichedPrompt(prompt),
+      prompt: enrichedPrompt(prompt, payload.category, payload.aspectRatio),
     });
     return imageResponse(request, env, image);
   } catch (error) {
