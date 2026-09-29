@@ -23,3 +23,7 @@ curl -i -X OPTIONS \
 
 The response should be HTTP 204 and include Access-Control-Allow-Origin: *.
 Do not put Gemini keys in this repository or in browser JavaScript; the function reads them from the existing Admin Settings key pool.
+
+## GitHub Pages fallback
+
+The GitHub Pages client currently sets Cloudflare Workers AI as its active engine because the Firebase function must be deployed separately. Once `creatorImageGenerate` is deployed successfully, set `firebaseEnabled: true`, `remoteHistoryEnabled: true`, and `preferredEngine: 'gemini'` in `image-gen.html` to re-enable Gemini generation and server-side history.
