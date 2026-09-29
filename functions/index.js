@@ -725,11 +725,12 @@ function dimensionsFor(aspectRatio) {
 function enhancedCreatorImagePrompt(prompt, category) {
   const brief = String(prompt || '').replace(/\s+/g, ' ').trim();
   const direction = {
-    logo: 'Design a clean, scalable logo mark with one clear focal symbol and intentional negative space. Use a plain background. Do not invent a brand name or lettering unless the brief explicitly requests it.',
-    banner: 'Design a deliberate banner composition with a strong focal subject, readable visual hierarchy, and intentional open space where the brief implies it. Do not add unrelated objects or text.',
-    avatar: 'Create one centered avatar subject with a clear silhouette, readable face or emblem, and a simple uncluttered background. Do not add extra people or competing subjects.',
-    general: 'Create one coherent scene or composition. Keep the main subject, object count, setting, colors, and action exactly aligned with the brief.',
-  }[category] || 'Create one coherent scene or composition.';
+    logo: 'Design a polished, scalable brand mark with one clear focal symbol, balanced geometry, clean edges, intentional negative space, and a plain presentation background. Do not invent lettering unless the brief explicitly requests it.',
+    banner: 'Design a premium website hero banner with one strong focal subject, refined visual hierarchy, controlled detail, and deliberate negative space for headline text. Do not add unrelated objects or text.',
+    social: 'Design a polished social-media campaign visual with a clear focal subject, mobile-first composition, refined color harmony, and breathing room for a short caption. Make it feel designed rather than accidental.',
+    portrait: 'Create a professional portrait or character with a clear silhouette, natural anatomy, expressive but controlled pose, flattering light, detailed face and clothing, and a clean background. Include only the requested subjects.',
+    general: 'Create one coherent, professionally art-directed scene or composition. Keep the main subject, object count, setting, colors, mood, and action exactly aligned with the brief.',
+  }[category] || 'Create one coherent, professionally art-directed scene or composition.';
   return `Faithful image interpretation. Primary brief: "${brief}". ${direction} Preserve the specific nouns, relationships, colors, mood, and constraints in the brief. High detail, crisp edges, natural anatomy, intentional composition.`;
 }
 
