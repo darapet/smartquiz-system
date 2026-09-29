@@ -64,27 +64,34 @@ function decodeBase64(value) {
   return bytes;
 }
 
-function imageBody(image) {
-  let body = image;
-  const isBinary = (value) => value instanceof ArrayBuffer
+function isBinaryBody(value) {
+  return value instanceof ArrayBuffer
     || ArrayBuffer.isView(value)
     || (typeof ReadableStream !== 'undefined' && value instanceof ReadableStream)
     || (typeof Blob !== 'undefined' && value instanceof Blob);
-  if (body && typeof body === 'object' && !isBinary(body)) {
-    body = body.image ?? body.data ?? body.output ?? body;
+}
+
+function imageBody(image) {
+  if (typeof Response !== 'undefined' && image instanceof Response) return image.body;
+  if (isBinaryBody(image)) return image;
+  if (typeof image === 'string') {
+    try { return decodeBase64(image); } catch (_) { return null; }
   }
-  if (typeof body === 'string') return decodeBase64(body);
-  if (Array.isArray(body)) return new Uint8Array(body);
-  if (body && typeof body === 'object' && !isBinary(body)) {
-    const values = Object.values(body);
-    if (values.length && values.every((value) => Number.isInteger(value))) return new Uint8Array(values);
+  if (!image || typeof image !== 'object') return null;
+
+  const nested = image.image ?? image.data ?? image.output;
+  if (nested !== undefined && nested !== image) return imageBody(nested);
+
+  const values = Object.values(image);
+  if (values.length && values.every((value) => Number.isInteger(value) && value >= 0 && value <= 255)) {
+    return new Uint8Array(values);
   }
-  return body;
+  return null;
 }
 
 function imageResponse(request, env, image) {
   const body = imageBody(image);
-  if (!body || (typeof body === 'object' && !(body instanceof ArrayBuffer) && !ArrayBuffer.isView(body) && !(typeof ReadableStream !== 'undefined' && body instanceof ReadableStream) && !(typeof Blob !== 'undefined' && body instanceof Blob))) {
+  if (!body || !isBinaryBody(body)) {
     return json(request, env, { error: 'Cloudflare returned an invalid image payload.' }, 502);
   }
   return new Response(body, {
