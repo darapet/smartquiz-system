@@ -151,6 +151,8 @@
     if (String(config.cloudflareModel || '').trim()) query += '&model=' + encodeURIComponent(String(config.cloudflareModel).trim());
     var response = await fetch(cloudflareEndpoint + query, {
       method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
       signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
     });
     if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');

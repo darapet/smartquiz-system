@@ -23,6 +23,7 @@
              audio.pollinations.ai serves the TTS MP3 blobs; text.pollinations.ai
              is the text inference endpoint. Both are required for voice to work. -->
         <domain includeSubdomains="true">pollinations.ai</domain>
+        <domain includeSubdomains="true">workers.dev</domain>
         <domain includeSubdomains="true">audio.pollinations.ai</domain>
         <domain includeSubdomains="true">text.pollinations.ai</domain>
         <!-- Search / knowledge APIs -->

@@ -1987,6 +1987,7 @@ function wire() {
   });
   window.addEventListener('hashchange', syncRoute);
   window.addEventListener('popstate', syncRoute);
+window.addEventListener('hashchange', syncRoute);
   document.addEventListener('click', (event) => {
     const menu = $('studyco-menu-panel');
     if (!menu.hidden && !event.target.closest('.studyco-top-actions')) {

@@ -30,6 +30,13 @@
   })();
 
   /* ── Inject styles ─────────────────────────────────────────────────── */
+  (function loadAqsBottomNav() {
+    var navScript = document.createElement('script');
+    navScript.src = 'js/aqs-bottom-nav.js';
+    navScript.defer = true;
+    document.head.appendChild(navScript);
+  })();
+
   var css = [
     '#_aqsNL{position:fixed;inset:0;z-index:99998;',
       'background:linear-gradient(155deg,#0f0c1d 0%,#1a1640 55%,#0f0c1d 100%);',
