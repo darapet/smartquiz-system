@@ -1,5 +1,5 @@
 /* AI Quiz System — Image Generator v2 (Professional Edition)
-     Powered by Pollinations AI + Groq Prompt Engine
+     Powered by Gemini image generation + Groq prompt enhancement
      Developed by Omomo Excellence in corporation with Darapet Technology */
   (function () {
       'use strict';
@@ -61,260 +61,27 @@
       history = lsGet(IG_HISTORY_KEY, []);
       renderHistory();
 
-      /* ═══════════════════════════════════════════════════════════════
-         SMART PROMPT BUILDER — professional quality suffixes
-         Detects photograph vs. graphic design vs. art styles, applies
-         the right quality tokens, and never mixes conflicting modifiers.
-      ═══════════════════════════════════════════════════════════════ */
-
-      /* ── Design keyword detector — catches any graphic/print design request ── */
-      var DESIGN_RE = /\b(flyer|flier|banner|poster|obituar|memorial|tribute|funeral|invitation|invite|greeting.?card|birthday.?card|card|thumbnail|youtube|logo|certificate|brochure|menu|social.?media|instagram|facebook|twitter|tiktok|print|leaflet|handout|signage|billboard|coupon|voucher|\bad\b|advert|promotional|event.?graphic|cover.?page|announcement|pamphlet|booklet|backdrop|background.?design|infographic|timeline|chart.?design|report.?cover|album.?cover|book.?cover|magazine|newsletter|label|sticker|packaging|business.?card|id.?card|name.?card|profile.?picture|display.?picture|dp|graphic|design|template|mockup|layout|typograph|t.?shirt|hoodie|merch|apparel|jersey|uniform|mug.?design|cap.?design|bag.?design|icon.?set|ui.?design|app.?screen|website.?design|landing.?page|brand|identity)\b/i;
-
-      /* ── Art / illustration style detector ── */
-      var ART_RE = /\b(watercolor|watercolour|painting|illustration|anime|cartoon|sketch|drawing|comic|oil.?paint|acrylic|pastel|charcoal|ink|3d.?render|digital.?art|concept.?art|neon|cyberpunk|pixel.?art|mosaic|stained.?glass|graffiti|street.?art|pop.?art|abstract)\b/i;
-
-      /* ── Quality suffix for realistic photography ── */
-      var PHOTO_SUFFIX = [
-          'ultra-realistic professional photography',
-          'shot on Sony A7R V with 85mm f/1.4 prime lens',
-          'natural cinematic lighting with perfect exposure',
-          'razor-sharp focus, tack-sharp fine detail',
-          '8K RAW photo, HDR tone-mapped',
-          'award-winning studio-quality color grading',
-          'masterclass composition following rule of thirds'
-      ].join(', ');
-
-      /* ── Quality suffix for graphic design work ── */
-      var DESIGN_SUFFIX = [
-          'professional commercial graphic design',
-          'print-ready 300 DPI output',
-          'clean structured layout with clear visual hierarchy',
-          'bold impactful typographic treatment',
-          'crisp sharp legible text, perfectly readable typography, all words clear and correct',
-          'vibrant perfectly harmonised color palette',
-          'sharp vector-quality crisp edges and elements',
-          'premium high-resolution commercial finish',
-          'no photographic elements, pure graphic design'
-      ].join(', ');
-
-      /* ── HD quality suffix ── */
-      var HD_SUFFIX = 'ultra-high-definition, intricate fine details, maximum resolution, zero artifacts, pristine commercial quality';
-
-      /* ── Per design-type specialist suffix — 30+ types covered ── */
-      var DESIGN_TYPE_SUFFIX = {
-          /* ── Promotional ── */
-          flyer:        'professional A5 promotional flyer design, bold headline at top, strong visual hierarchy, vivid accent colors, clear body text zones, all text crisp and legible, print-ready, no real photography',
-          banner:       'wide-format professional banner design, bold high-contrast text, crisp sharp legible headline, all words perfectly readable, powerful imagery, strong brand presence, horizontal layout, print-quality finish',
-          poster:       'dramatic large-format A2 poster design, cinematic full-bleed background, powerful display typeface, sharp readable title text, strong visual focal point, all text clear and legible, gallery-quality',
-          billboard:    'large-format billboard design, ultra-bold minimal text, instant visual impact, high contrast, all text sharp and readable at distance, premium outdoor advertising quality',
-          signage:      'professional indoor signage design, clear bold typography, all text perfectly legible, brand-consistent colors, clean layout, excellent legibility',
-
-          /* ── Events ── */
-          invitation:   'luxury event invitation design, elegant decorative border, refined script and serif typography combination, all text crisp and readable, premium textured card feel, sophisticated color palette',
-          announcement: 'eye-catching announcement design, bold headline, clean sharp readable supporting text, celebratory color accents, all text legible and clear, professional layout',
-          'event.graphic': 'vibrant event graphic design, high energy composition, bold sharp date and title treatment, all text clearly readable, striking visual identity',
-
-          /* ── Memorial ── */
-          obituary:     'dignified obituary memorial design, soft warm muted tones, classical elegant serif typography, all text perfectly readable, gentle floral or dove motif, respectful solemn layout, tasteful ornate border',
-          memorial:     'dignified memorial tribute design, soft muted elegant tones, classical serif typography, all text crisp and legible, gentle symbolic motifs, respectful layout, tasteful ornate border',
-          tribute:      'heartfelt tribute design, warm golden and cream tones, elegant calligraphic typography, all text readable and clear, emotive composition, premium paper texture feel',
-          funeral:      'dignified funeral program design, dark muted respectful tones, formal serif typography, all text sharp and legible, understated decorative border, solemn professional layout',
-
-          /* ── Identity ── */
-          logo:          'clean professional logo design, bold geometric or lettermark concept, vector-crisp sharp edges, strong scalable brand mark, solid color background, no photography',
-          brand:         'comprehensive brand identity design concept, cohesive logo and typography system, professional color palette, clean presentation layout',
-          'business.card': 'professional business card design, elegant layout, clear name and contact hierarchy, all text crisp and perfectly readable, brand color accents, premium finish, both sides shown',
-
-          /* ── Social media ── */
-          thumbnail:    'high-impact YouTube thumbnail design, bold oversized sharp readable text overlay, all words clearly legible, vivid contrasting colors, strong emotion-driven composition, optimised for small-screen visibility',
-          instagram:    'professional Instagram post design, square format, bold visual content, strong sharp typography, all text readable, on-brand color palette, eye-catching composition',
-          facebook:     'professional Facebook post or cover design, clear sharp headline text, all words legible, engaging visual, brand colors, optimised for feed visibility',
-          tiktok:       'vertical TikTok graphic design, bold center text, all text sharp and readable, high contrast, vibrant gradient, designed for mobile screen, eye-catching',
-
-          /* ── Print & document ── */
-          certificate:  'formal official certificate design, ornate classical border, embossed seal area, authoritative serif typography, all text crisp and perfectly readable, gold accent elements, premium parchment-style background',
-          brochure:     'professional tri-fold brochure design, organised information sections, clean professional typography, all text sharp and perfectly legible, strong cover visual, balanced color use, print-ready',
-          menu:         'upscale restaurant menu design, elegant typography hierarchy, organised food categories, all text crisp and perfectly readable, premium feel, tasteful decorative accents, fine dining aesthetic',
-          newsletter:   'professional newsletter layout design, clear masthead, organised column structure, strong typographic hierarchy, all text sharp and legible, branded color accents',
-          'report.cover': 'professional corporate report cover design, bold sharp title treatment, all text readable, strong geometric or abstract background, authoritative feel, premium finish',
-          'album.cover': 'striking music album cover design, bold artistic visual concept, strong typographic identity, all text crisp, mood-appropriate color palette, square format',
-          'book.cover':  'professional book cover design, compelling visual concept, strong sharp title treatment, all text readable, back cover layout, spine, premium publishing quality',
-          magazine:     'high-end magazine cover design, bold masthead, striking cover image concept, compelling sharp headline hierarchy, all text legible, newsstand-quality',
-          label:        'professional product label design, clear brand name, elegant or bold typography, all text perfectly legible, product information layout, premium finish',
-          packaging:    'professional product packaging design, brand-consistent visuals, clear information hierarchy, all text readable, premium material feel, 3D mockup perspective',
-
-          /* ── Digital & app ── */
-          'app.screen':  'professional mobile app UI screen design, clean modern interface, clear navigation, on-brand color system, crisp icons, all text sharp and readable, pixel-perfect layout',
-          'landing.page': 'professional website landing page design, clear headline and CTA hierarchy, clean sections, professional imagery placeholders, all text legible, conversion-focused layout',
-          infographic:  'professional infographic design, clear data visualisation, icon-supported sections, logical flow, vibrant color-coded elements, all text crisp and readable, clean typography',
-
-          /* ── Apparel & merchandise ── */
-          't.shirt':    'professional t-shirt graphic design, bold centered artwork, strong typographic or illustrative element, works on light and dark fabric, print-ready vector style',
-          jersey:       'professional sports jersey design, bold team name and number, strong color blocking, athletic aesthetic, print-ready',
-          'mug.design': 'professional mug wrap design, bold graphic centered, clear readable text, vibrant colors, 360-degree printable layout',
-
-          /* ── Cards ── */
-          card:         'professional card design, clean elegant layout, crisp sharp typography, all text perfectly readable, balanced whitespace, premium finish',
-          'greeting.card': 'beautiful greeting card design, warm welcoming visual, elegant sharp typography, all text legible, inside and outside panel layout, premium card feel',
-          'birthday.card': 'vibrant celebratory birthday card design, festive color palette, joyful sharp typography, all text readable, decorative elements, premium quality',
-
-          /* ── ID & profile ── */
-          'id.card':    'professional ID or membership card design, clear photo zone, bold sharp name and ID field layout, all text perfectly legible, security pattern background, brand colors, premium laminated finish',
-          dp:           'professional social media profile picture design, circular crop-safe composition, bold initials or icon, strong brand colors, clean background'
-      };
-
-      function buildPrompt(raw, isHD) {
-          var p = raw.trim();
-          if (selectedStyle) p = p + ', ' + selectedStyle;
-
-          var isDesign = DESIGN_RE.test(raw) || DESIGN_RE.test(selectedStyle);
-          var isArt    = ART_RE.test(raw)    || ART_RE.test(selectedStyle);
-
-          /* Design takes priority over art detection */
-          if (isDesign) {
-              /* Find the most specific design-type suffix */
-              var specificSuffix = '';
-              for (var dtype in DESIGN_TYPE_SUFFIX) {
-                  var dtRx = new RegExp('\\b' + dtype.replace('.', '.?') + '\\b', 'i');
-                  if (dtRx.test(raw) || dtRx.test(selectedStyle)) {
-                      specificSuffix = DESIGN_TYPE_SUFFIX[dtype];
-                      break;
-                  }
-              }
-              p += ', ' + (specificSuffix || DESIGN_SUFFIX);
-          } else if (isArt) {
-              /* Art / illustration style — resolution quality only, no camera terms */
-              p += ', highly detailed, professional quality, vibrant rich colors, sharp crisp lines, award-winning artwork, 8K resolution';
-          } else {
-              /* Default: realistic photograph */
-              p += ', ' + PHOTO_SUFFIX;
-          }
-
-          if (isHD) p += ', ' + HD_SUFFIX;
-
-          return p;
-      }
-
-      /* ── Dynamic negative prompt — style-aware ── */
-      function buildNegative(raw) {
-          var isDesign = DESIGN_RE.test(raw) || DESIGN_RE.test(selectedStyle);
-          var isArt    = ART_RE.test(raw)    || ART_RE.test(selectedStyle);
-
-          /* Universal quality negatives — always apply */
-          var baseNeg = [
-              'blurry', 'blur', 'out of focus', 'motion blur',
-              'noise', 'grainy', 'film grain', 'jpeg artifacts',
-              'low quality', 'bad quality', 'poor quality', 'draft',
-              'distorted', 'deformed', 'warped',
-              'watermark', 'copyright text',
-              'overexposed', 'underexposed',
-              'mutated', 'disfigured', 'malformed', 'ugly',
-              'duplicate', 'tiling',
-              'poorly drawn', 'amateur', 'amateurish',
-              'cropped', 'cut off', 'incomplete',
-              'pixelated', 'low resolution', 'low res'
-          ];
-
-          if (isDesign) {
-              /* For graphic design: block photorealistic camera artifacts AND bad text rendering */
-              baseNeg = baseNeg.concat([
-                  'photograph', 'photo', 'camera', 'lens flare', 'bokeh',
-                  'depth of field', 'DSLR', 'RAW photo', 'realistic skin',
-                  'real person', 'candid shot', 'studio photo',
-                  'harsh shadows', 'overlit', 'underlit',
-                  'blurry text', 'illegible text', 'unreadable text',
-                  'distorted letters', 'warped typography', 'misspelled words',
-                  'garbled text', 'scrambled letters', 'wrong spelling',
-                  'fuzzy text', 'smeared text', 'broken letters'
-              ]);
-          } else if (!isArt) {
-              /* For photorealistic: block art/illustration styles */
-              baseNeg = baseNeg.concat([
-                  'cartoon', 'anime', 'manga', 'illustration',
-                  'painting', 'drawing', 'sketch', 'digital art',
-                  'plastic', 'artificial', 'fake', 'unrealistic skin',
-                  'flat lighting', 'harsh shadows'
-              ]);
-          }
-          /* For art styles: no extra negatives — let the AI be creative */
-
-          return encodeURIComponent(baseNeg.join(', '));
-      }
-
-      /* ── Pollinations image URL builder ── */
-      function pollinationsImgUrl(prompt, width, height, seed, model, negative) {
-          var encoded = encodeURIComponent(prompt);
-          var s = seed || Math.floor(Math.random() * 9999999);
-          var m = model || 'flux-pro';
-          return 'https://image.pollinations.ai/prompt/' + encoded +
-                 '?width=' + width + '&height=' + height +
-                 '&model=' + m + '&seed=' + s +
-                 '&nologo=true&private=true&enhance=true' +
-                 '&negative=' + (negative || '');
-      }
-
-      /* ── Parse size string ── */
+        /* Gemini is the only image provider. No public image fallback is used. */
       function parseSize(sizeStr) {
           var parts = (sizeStr || '1024x1024').split('x');
           return { w: parseInt(parts[0]) || 1024, h: parseInt(parts[1]) || 1024 };
       }
-
-      /* ═══════════════════════════════════════════════════════════════
-         IMAGE LOADING — model priority:
-           HD  quality → flux-pro → flux → turbo
-           STD quality → flux → flux-pro → turbo
-         Each model gets 55 s before timeout.
-      ═══════════════════════════════════════════════════════════════ */
-
-      function loadImageDirect(prompt, width, height, seed, model, negative) {
-          return new Promise(function (resolve, reject) {
-              var url = pollinationsImgUrl(prompt, width, height, seed, model, negative);
-              var img = new Image();
-              img.crossOrigin = 'anonymous';
-              /* 50 s timeout — Pollinations can be slow on first request */
-              var tid = setTimeout(function () {
-                  img.src = '';
-                  reject(new Error('timeout:' + model));
-              }, 50000);
-              img.onload  = function () { clearTimeout(tid); resolve({ url: url, img: img }); };
-              img.onerror = function () { clearTimeout(tid); reject(new Error('load_error:' + model)); };
-              img.src = url;
-          });
+      function _creatorAspectRatio(width, height) {
+          if (width === height) return 'square';
+          return width > height ? 'landscape' : 'portrait';
+      }
+      async function loadImageDirect(prompt, width, height) {
+          if (typeof window.aqsCreatorImageGenerate !== 'function') throw new Error('Gemini image generation is not available on this page.');
+          var generated = await window.aqsCreatorImageGenerate({ prompt: prompt, aspectRatio: _creatorAspectRatio(width, height) });
+          if (!generated || !generated.url) throw new Error('Gemini returned no image.');
+          return { url: generated.url };
+      }
+      async function raceImage(prompt, width, height) {
+          return loadImageDirect(prompt, width, height);
       }
 
-      async function raceImage(prompt, width, height, seed, isHD, negative) {
-          /* HD: best quality first; Standard: speed-first */
-          var models = isHD
-              ? ['flux-pro', 'flux', 'turbo']
-              : ['flux', 'flux-pro', 'turbo'];
-          var lastErr;
-
-          for (var i = 0; i < models.length; i++) {
-              /* Progressive backoff between models: 6 s, 12 s */
-              if (i > 0) await new Promise(function (r) { setTimeout(r, 6000 * i); });
-
-              /* Try each model up to 2 times before giving up on it */
-              for (var attempt = 0; attempt < 2; attempt++) {
-                  if (attempt > 0) {
-                      /* Wait 5 s before retrying same model (handles transient rate limits) */
-                      await new Promise(function (r) { setTimeout(r, 5000); });
-                  }
-                  try {
-                      return await loadImageDirect(prompt, width, height, seed, models[i], negative);
-                  } catch (e) {
-                      lastErr = e;
-                      console.warn('[ImageGen] Model ' + models[i] + ' attempt ' + (attempt + 1) + ' failed:', e.message);
-                      /* If it timed out, no point retrying same model — move to next */
-                      if (e.message && e.message.indexOf('timeout') !== -1) break;
-                  }
-              }
-          }
-          throw lastErr || new Error('All models failed');
-      }
-
-
       /* ═══════════════════════════════════════════════════════════════
-         AI TEXT CALL — Groq primary, Pollinations fallback
+         AI TEXT CALL — Groq prompt enhancement
       ═══════════════════════════════════════════════════════════════ */
       async function callAI(messages) {
           /* 1. Try Groq first — fastest, highest quality */
@@ -334,30 +101,11 @@
                       var text = (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '';
                       if (text.trim().length > 10) return text.trim();
                   }
-              } catch (e) { /* fall through to Pollinations */ }
+              } catch (e) { return null; }
           }
 
-          /* 2. Pollinations fallback */
-          try {
-              var ctrl2 = new AbortController();
-              var tid2  = setTimeout(function () { ctrl2.abort(); }, 20000);
-              var res2  = await fetch('https://text.pollinations.ai/openai', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  referrerPolicy: 'no-referrer',
-                  signal: ctrl2.signal,
-                  body: JSON.stringify({
-                      messages: messages, model: 'openai',
-                      max_tokens: 400, temperature: 0.85, private: true
-                  })
-              });
-              clearTimeout(tid2);
-              if (!res2.ok) return null;
-              var data2 = await res2.json();
-              var text2 = (data2.choices && data2.choices[0] &&
-                           data2.choices[0].message && data2.choices[0].message.content) || '';
-              return text2.trim() || null;
-          } catch (e) { return null; }
+          /* Prompt enhancement is optional; never use a second image provider here. */
+          return null;
       }
 
       /* ── Enhance Prompt ── */
@@ -482,7 +230,7 @@
           var successUrls = [];
           var settled     = 0;
 
-          /* Staggered launch — 4 s gap prevents Pollinations rate-limiting */
+          /* Staggered launch — 4 s gap between image requests */
           for (var idx = 0; idx < count; idx++) {
               (function (cardEl, imgIdx, seed) {
                   var delay = imgIdx * 4000;
@@ -529,7 +277,7 @@
                               '<div style="font-size:1.6rem;margin-bottom:8px;">&#9888;&#65039;</div>' +
                               '<strong>Image could not be generated</strong><br>' +
                               '<small style="display:block;margin-top:6px;line-height:1.5;">' +
-                                  'Pollinations AI may be busy or rate-limiting.<br>' +
+                                  'Gemini image generation may be busy or rate-limited.<br>' +
                                   'Please <strong>wait 15–20 seconds</strong> then try again.' +
                               '</small>' +
                               '<button class="aqs-btn aqs-btn-sm" style="margin-top:10px;cursor:pointer;">' +
