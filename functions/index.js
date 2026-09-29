@@ -861,7 +861,7 @@ async function checkCreatorImagePool(keys, model) {
   return results;
 }
 exports.creatorImageGenerate = onRequest(
-  { region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
+  { cors: true, region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
   async (request, response) => {
     setCors(response);
     if (request.method === 'OPTIONS') return response.status(204).send('');
