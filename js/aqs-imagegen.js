@@ -143,6 +143,8 @@
 
   async function fetchCloudflare(payload) {
     var query = '?prompt=' + encodeURIComponent(payload.prompt);
+    query += '&category=' + encodeURIComponent(payload.category || 'general');
+    query += '&aspectRatio=' + encodeURIComponent(payload.aspectRatio || 'square');
     if (String(config.cloudflareModel || '').trim()) query += '&model=' + encodeURIComponent(String(config.cloudflareModel).trim());
     var response = await fetch(cloudflareEndpoint + query, {
       method: 'GET',
