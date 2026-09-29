@@ -145,6 +145,10 @@
     var noNavPages = ['login.html', 'register.html', 'unauthorized.html', 'take-quiz.html', 'challenge.html', 'quiz-results.html'];
     if (noNavPages.indexOf(page) !== -1) return;
 
+    /* Keep one shared five-link bar when the page already loads it. */
+    if (document.querySelector('.aqs-bottom-nav, ._aqsbn')) return;
+    if (document.querySelector('script[src*="aqs-nav-loader.js"], script[src*="aqs-bottom-nav.js"]')) return;
+
     var activeId = getActiveNavId(page);
 
     /* Styles */
