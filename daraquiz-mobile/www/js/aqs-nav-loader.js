@@ -192,7 +192,9 @@
       links.forEach(function (link) {
         var rawHref = (link.getAttribute('href') || '').replace(/\?.*$/, '');
         var href = rawHref.replace(/^.*\//, '');
-        var creatorStudioLink = rawHref === 'ai-creator-studio-pro' ||
+        var creatorStudioLink = rawHref === 'image-gen.html' ||
+          rawHref === 'image-gen' ||
+          rawHref === 'ai-creator-studio-pro' ||
           rawHref === 'ai-creator-studio-pro/' ||
           rawHref === 'ai-creator-studio-pro/index.html';
         if (creatorStudioLink) {
@@ -242,11 +244,11 @@
       });
       if (!hasCreatorStudio) {
         var creatorStudio = document.createElement('a');
-        creatorStudio.href = 'ai-creator-studio-pro/';
+        creatorStudio.href = 'image-gen.html';
         creatorStudio.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
           (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
         creatorStudio.style.cssText = 'color:#0f766e;font-weight:700;';
-        creatorStudio.textContent = 'Creator Studio';
+        creatorStudio.textContent = 'Image Studio';
         primary.push(creatorStudio);
       }
 
@@ -305,7 +307,7 @@
     'library':        'Library',
     'library-upload': 'Library Upload',
     'library-read':   'Library',
-    'ai-creator-studio-pro': 'Creator Studio',
+    'ai-creator-studio-pro': 'Image Studio',
   };
 
   document.addEventListener('click', function (e) {
@@ -320,7 +322,7 @@
 
     var slug = href.replace(/\?.*$/, '').replace(/#.*$/, '')
                    .replace(/\.html$/, '').replace(/^.*\//, '');
-    var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1;
+    var isCreatorStudio = href.indexOf('ai-creator-studio-pro') !== -1 || href.indexOf('image-gen') !== -1;
     var label = isCreatorStudio ? PAGE_LABELS['ai-creator-studio-pro'] :
       PAGE_LABELS[slug] || (slug.charAt(0).toUpperCase() + slug.slice(1).replace(/-/g, ' '));
     show(label + '…');

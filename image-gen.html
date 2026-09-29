@@ -1,2 +1,169 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Creator Studio</title><meta http-equiv="refresh" content="0;url=ai-creator-studio-pro/"><script>location.replace("ai-creator-studio-pro/");</script></head><body><p>Opening <a href="ai-creator-studio-pro/">Creator Studio</a>…</p></body></html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Image Studio — xzily AI</title>
+  <meta name="description" content="Create polished logos, banners, social visuals, and learning assets with xzily AI.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/aqs-imagegen.css">
+</head>
+<body class="aqs-imagegen-page">
+  <header class="aqs-imagegen-header">
+    <div class="aqs-imagegen-header-inner">
+      <a class="aqs-imagegen-brand" href="index.html" aria-label="Back to xzily AI home">
+        <span class="aqs-imagegen-brand-mark">SQ</span>
+        <span><strong>xzily AI</strong><small>Image Studio</small></span>
+      </a>
+      <nav class="aqs-imagegen-nav" aria-label="Image Studio navigation">
+        <a href="studio.html">AI Studio</a>
+        <a href="workspace.html">Workspace</a>
+        <a class="aqs-imagegen-nav-cta" href="index.html">Back to learning</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="aqs-imagegen-main">
+    <section class="aqs-imagegen-intro" aria-labelledby="imagegen-title">
+      <div>
+        <p class="aqs-imagegen-eyebrow"><span class="aqs-imagegen-eyebrow-dot"></span> CREATIVE WORKSPACE</p>
+        <h1 id="imagegen-title">Turn an idea into a visual.</h1>
+        <p class="aqs-imagegen-lead">Describe what you need in plain language. xzily AI detects the right creative direction and generates a polished asset ready to download.</p>
+      </div>
+      <div class="aqs-imagegen-engine-badge" title="Your Gemini keys stay server-side in Firebase">
+        <span class="aqs-imagegen-engine-dot"></span>
+        <span><strong>Gemini image engine</strong><small>Secure admin key pool</small></span>
+      </div>
+    </section>
+
+    <section class="aqs-imagegen-workspace" aria-label="Image generation workspace">
+      <div class="aqs-imagegen-create-panel">
+        <div class="aqs-imagegen-panel-heading">
+          <div>
+            <span class="aqs-imagegen-step">01</span>
+            <h2>Describe your image</h2>
+          </div>
+          <span class="aqs-imagegen-shortcut"><kbd>⌘</kbd><kbd>Enter</kbd> to generate</span>
+        </div>
+
+        <form id="aqs-imagegen-form" novalidate>
+          <label class="aqs-imagegen-label" for="aqs-imagegen-prompt">Your prompt</label>
+          <div class="aqs-imagegen-prompt-wrap">
+            <textarea id="aqs-imagegen-prompt" name="prompt" rows="7" maxlength="2000" placeholder="Try: A clean, confident logo for a student robotics club called Orbit Lab, using indigo and mint with a simple orbit mark…" autocomplete="off" required></textarea>
+            <div class="aqs-imagegen-prompt-footer">
+              <span id="aqs-imagegen-prompt-count">0 / 2000</span>
+              <span>Be specific about the subject, mood, colors, and use.</span>
+            </div>
+          </div>
+
+          <div class="aqs-imagegen-detection-row" aria-live="polite">
+            <span class="aqs-imagegen-detection-label">Detected direction</span>
+            <span class="aqs-imagegen-detection-pill" id="aqs-imagegen-detection-pill">General creative</span>
+            <span class="aqs-imagegen-detection-confidence" id="aqs-imagegen-detection-confidence">Waiting for a prompt</span>
+          </div>
+
+          <div class="aqs-imagegen-options">
+            <div class="aqs-imagegen-option">
+              <label for="aqs-imagegen-category">Direction</label>
+              <select id="aqs-imagegen-category" name="category">
+                <option value="auto">Auto-detect from prompt</option>
+                <option value="logo">Logo / brand mark</option>
+                <option value="banner">Banner / hero graphic</option>
+                <option value="social">Social media visual</option>
+                <option value="portrait">Portrait / character</option>
+                <option value="general">General creative</option>
+              </select>
+            </div>
+            <div class="aqs-imagegen-option">
+              <label for="aqs-imagegen-ratio">Canvas</label>
+              <select id="aqs-imagegen-ratio" name="aspectRatio">
+                <option value="auto">Auto-fit</option>
+                <option value="square">Square · 1:1</option>
+                <option value="landscape">Landscape · 16:9</option>
+                <option value="portrait">Portrait · 9:16</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="aqs-imagegen-preset-heading">Start with a direction</div>
+          <div class="aqs-imagegen-presets" role="list">
+            <button class="aqs-imagegen-preset" type="button" data-prompt="A polished logo for a modern education brand called " data-category="logo">Logo concept</button>
+            <button class="aqs-imagegen-preset" type="button" data-prompt="A wide, high-impact banner for a learning platform, " data-category="banner">Website banner</button>
+            <button class="aqs-imagegen-preset" type="button" data-prompt="A scroll-stopping social media visual for an education creator, " data-category="social">Social post</button>
+            <button class="aqs-imagegen-preset" type="button" data-prompt="A friendly, polished character portrait of " data-category="portrait">Portrait</button>
+          </div>
+
+          <div class="aqs-imagegen-actions">
+            <button class="aqs-imagegen-secondary" id="aqs-imagegen-clear" type="button">Clear</button>
+            <button class="aqs-imagegen-submit" id="aqs-imagegen-submit" type="submit">
+              <span class="aqs-imagegen-submit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="m19 16 .8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8L19 16Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+              </span>
+              <span id="aqs-imagegen-submit-label">Generate image</span>
+            </button>
+          </div>
+          <p class="aqs-imagegen-error" id="aqs-imagegen-error" role="alert" hidden></p>
+        </form>
+      </div>
+
+      <div class="aqs-imagegen-result-panel">
+        <div class="aqs-imagegen-panel-heading">
+          <div>
+            <span class="aqs-imagegen-step">02</span>
+            <h2>Your result</h2>
+          </div>
+          <span class="aqs-imagegen-result-status" id="aqs-imagegen-result-status">Ready when you are</span>
+        </div>
+
+        <div class="aqs-imagegen-result-stage" id="aqs-imagegen-result-stage">
+          <div class="aqs-imagegen-empty-state" id="aqs-imagegen-empty-state">
+            <div class="aqs-imagegen-empty-orb"><span></span><span></span><span></span></div>
+            <h3>Your next visual starts here</h3>
+            <p>Write a prompt and your generated image will appear in this space.</p>
+          </div>
+          <div class="aqs-imagegen-loading-state" id="aqs-imagegen-loading-state" hidden aria-live="polite">
+            <div class="aqs-imagegen-paint-loader" aria-hidden="true">
+              <span class="aqs-paint-blob aqs-paint-blob-one"></span>
+              <span class="aqs-paint-blob aqs-paint-blob-two"></span>
+              <span class="aqs-paint-blob aqs-paint-blob-three"></span>
+              <span class="aqs-paint-brush"></span>
+            </div>
+            <h3 id="aqs-imagegen-loading-title">Painting your idea</h3>
+            <p id="aqs-imagegen-loading-copy">Finding the right composition and color balance…</p>
+            <div class="aqs-imagegen-loading-track"><span></span></div>
+          </div>
+          <div class="aqs-imagegen-result-state" id="aqs-imagegen-result-state" hidden>
+            <div class="aqs-imagegen-image-wrap">
+              <img id="aqs-imagegen-result-image" alt="Generated image">
+              <span class="aqs-imagegen-result-badge" id="aqs-imagegen-result-badge">Generated</span>
+            </div>
+            <div class="aqs-imagegen-result-meta">
+              <div><span id="aqs-imagegen-result-category">General creative</span><small id="aqs-imagegen-result-time"></small></div>
+              <a class="aqs-imagegen-download" id="aqs-imagegen-download" href="#" download="xzily-ai-image.png">
+                <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                Download PNG
+              </a>
+            </div>
+          </div>
+        </div>
+        <p class="aqs-imagegen-result-note">Generated images are saved to your personal image history when the secure service is available.</p>
+      </div>
+    </section>
+
+    <section class="aqs-imagegen-history" aria-labelledby="imagegen-history-title">
+      <div class="aqs-imagegen-history-heading">
+        <div><p class="aqs-imagegen-eyebrow">YOUR CREATIVE HISTORY</p><h2 id="imagegen-history-title">Recent generations</h2></div>
+        <button class="aqs-imagegen-secondary" id="aqs-imagegen-refresh-history" type="button">Refresh history</button>
+      </div>
+      <div class="aqs-imagegen-history-grid" id="aqs-imagegen-history-grid">
+        <div class="aqs-imagegen-history-empty" id="aqs-imagegen-history-empty">Your recent images will show here after your first generation.</div>
+      </div>
+    </section>
+  </main>
+  <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Secure generation powered by Google Gemini</span></footer>
+  <script>window.AQS_IMAGEGEN_CONFIG={firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:''};</script>
+  <script src="js/aqs-imagegen.js"></script>
+</body>
+</html>
