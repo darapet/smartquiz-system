@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b16">
+  <title>Cloudflare Image Generator — XZILY AI</title>
+  <meta name="description" content="Generate and download images with the SmartQuiz Cloudflare Workers AI endpoint.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{--bg:#080b16;--panel:#12172a;--line:rgba(174,188,255,.16);--text:#f5f7ff;--muted:#9aa5c2;--accent:#8b7dff;--mint:#43d5c4;--error:#ff9aa8}
+    *{box-sizing:border-box}body{min-height:100vh;margin:0;color:var(--text);background:radial-gradient(circle at 10% 0,rgba(107,90,255,.2),transparent 35rem),radial-gradient(circle at 90% 100%,rgba(41,192,174,.12),transparent 30rem),var(--bg);font-family:"DM Sans",system-ui,sans-serif}button,textarea,select{font:inherit}.wrap{width:min(1060px,calc(100% - 34px));margin:auto}.top{display:flex;align-items:center;justify-content:space-between;min-height:74px;border-bottom:1px solid var(--line)}.brand{display:flex;align-items:center;gap:10px;color:#fff;text-decoration:none}.mark{display:grid;place-items:center;width:38px;height:38px;border-radius:12px;background:linear-gradient(140deg,#aaa0ff,#6254e8 65%,#312a8e);font-size:12px;font-weight:700}.brand strong{display:block;font-family:"Space Grotesk";font-size:15px}.brand small{display:block;margin-top:2px;color:var(--muted);font-size:9px;letter-spacing:.15em;text-transform:uppercase}.back{color:#c4cae0;font-size:12px;text-decoration:none}.hero{padding:58px 0 30px}.eyebrow{color:var(--mint);font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase}.hero h1{max-width:700px;margin:15px 0 12px;font-family:"Space Grotesk";font-size:clamp(40px,7vw,70px);line-height:1;letter-spacing:-.07em}.hero h1 span{color:#a99fff}.hero p{max-width:600px;margin:0;color:var(--muted);font-size:15px;line-height:1.65}.grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:18px}.card{border:1px solid var(--line);border-radius:20px;background:rgba(18,23,42,.88);box-shadow:0 24px 70px rgba(0,0,0,.32)}.form{padding:23px}.form h2{margin:0;font-family:"Space Grotesk";font-size:19px}.form p{margin:6px 0 21px;color:var(--muted);font-size:12px;line-height:1.5}label{display:block;margin:0 0 8px;color:#c4cae0;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em}textarea,select{width:100%;border:1px solid var(--line);border-radius:11px;outline:none;color:var(--text);background:#090d1c}textarea{min-height:160px;padding:14px;resize:vertical;font-size:14px;line-height:1.55}textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(139,125,255,.11)}select{padding:11px 12px;font-size:12px}.examples{display:flex;flex-wrap:wrap;gap:7px;margin:12px 0 20px}.example{padding:7px 10px;border:1px solid var(--line);border-radius:999px;color:#c4cae0;background:rgba(255,255,255,.04);cursor:pointer;font-size:10px}.example:hover{border-color:var(--accent);background:rgba(139,125,255,.12)}.field{margin-bottom:18px}.field small{display:block;margin-top:5px;color:#6f7893;font-size:10px}.generate,.download{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:13px 16px;border-radius:10px;font-size:13px;font-weight:700}.generate{border:0;color:#fff;background:linear-gradient(110deg,#7767f7,#a18dff);cursor:pointer}.generate:disabled{opacity:.6;cursor:wait}.status{min-height:18px;margin:12px 0 0;color:var(--muted);font-size:11px;line-height:1.45}.status.error{color:var(--error)}.status.success{color:var(--mint)}.result{display:flex;align-items:center;justify-content:center;min-height:505px;padding:15px}.canvas{display:flex;align-items:center;justify-content:center;width:100%;min-height:475px;overflow:hidden;border:1px dashed rgba(174,188,255,.2);border-radius:14px;background:#0e1325}.empty{text-align:center;color:var(--muted);font-size:12px}.empty strong{display:block;margin-bottom:7px;color:var(--text);font-family:"Space Grotesk";font-size:16px}.spinner{display:none;width:32px;height:32px;margin:auto;border:3px solid rgba(139,125,255,.2);border-top-color:#a39aff;border-radius:50%;animation:spin .8s linear infinite}.loading .spinner{display:block}.loading .empty{display:none}@keyframes spin{to{transform:rotate(360deg)}}#output{display:none;width:100%;height:100%;text-align:center}#output.show{display:block}#output img{display:block;width:100%;max-height:425px;object-fit:contain;margin:auto}.download{width:auto;margin-top:15px;padding:9px 13px;color:#b7fff3;background:rgba(67,213,196,.1);border:1px solid rgba(67,213,196,.35);text-decoration:none;font-size:11px}.download:hover{background:rgba(67,213,196,.18)}footer{padding:28px 0;color:#69728d;text-align:center;font-size:10px}@media(max-width:760px){.grid{grid-template-columns:1fr}.result{min-height:380px}.canvas{min-height:350px}}@media(max-width:450px){.wrap{width:calc(100% - 26px)}.top{min-height:66px}.back{font-size:11px}.hero{padding-top:40px}.hero h1{font-size:45px}.form{padding:18px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <a class="brand" href="index.html"><span class="mark">AI</span><span><strong>XZILY AI</strong><small>Cloudflare image generator</small></span></a>
+      <a class="back" href="index.html">← Back home</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <span class="eyebrow">Separate Cloudflare Worker page</span>
+        <h1>Turn words into <span>images.</span></h1>
+        <p>This page uses your Cloudflare Workers AI endpoint directly. Enter a prompt, generate a PNG, and download the result.</p>
+      </section>
+
+      <section class="grid">
+        <form class="card form" id="form">
+          <h2>Describe your image</h2>
+          <p>Describe the subject, setting, lighting, mood, and visual style.</p>
+          <div class="field">
+            <label for="prompt">Prompt</label>
+            <textarea id="prompt" maxlength="2000" placeholder="A small blue bird sitting on a branch at sunrise, detailed digital art…" required></textarea>
+            <div class="examples">
+              <button class="example" type="button" data-prompt="A futuristic library inside a giant tree, warm lights, cinematic concept art">Futuristic library</button>
+              <button class="example" type="button" data-prompt="A small red fox in a lavender field at golden hour, storybook illustration">Fox in lavender</button>
+              <button class="example" type="button" data-prompt="A premium product photo of a glass bottle on black stone, dramatic studio lighting">Product photo</button>
+            </div>
+          </div>
+          <div class="field">
+            <label for="model">Model</label>
+            <select id="model">
+              <option value="@cf/black-forest-labs/flux-1-schnell">FLUX 1 Schnell · fast</option>
+              <option value="@cf/stabilityai/stable-diffusion-xl-base-1.0">Stable Diffusion XL</option>
+            </select>
+            <small>Sent to your Cloudflare Worker as the optional model parameter.</small>
+          </div>
+          <button class="generate" id="generate" type="submit">Generate image</button>
+          <div class="status" id="status" role="status" aria-live="polite">Ready when you are.</div>
+        </form>
+
+        <section class="card result" aria-label="Generated image">
+          <div class="canvas" id="canvas">
+            <div class="empty" id="empty"><span class="spinner"></span><strong>Your image will appear here</strong><span>Start with a prompt on the left.</span></div>
+            <div id="output">
+              <img id="image" alt="Generated image">
+              <a class="download" id="download" href="#" download="smartquiz-cloudflare-image.png">Download PNG</a>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+    <footer>Powered by Cloudflare Workers AI · SmartQuiz</footer>
+  </div>
+
+  <script>
+    (() => {
+      const API = "https://image-gen.daramolapeter98.workers.dev";
+      const form = document.getElementById("form");
+      const prompt = document.getElementById("prompt");
+      const model = document.getElementById("model");
+      const button = document.getElementById("generate");
+      const status = document.getElementById("status");
+      const empty = document.getElementById("empty");
+      const canvas = document.getElementById("canvas");
+      const output = document.getElementById("output");
+      const image = document.getElementById("image");
+      const download = document.getElementById("download");
+      let imageUrl = "";
+
+      function setStatus(message, tone) {
+        status.textContent = message;
+        status.className = "status" + (tone ? " " + tone : "");
+      }
+
+      function clearImage() {
+        if (imageUrl) URL.revokeObjectURL(imageUrl);
+        imageUrl = "";
+        output.classList.remove("show");
+      }
+
+      async function getImage(text) {
+        const query = new URLSearchParams({ prompt: text, model: model.value });
+        const response = await fetch(API + "/generate?" + query.toString(), {
+          headers: { Accept: "image/png" }
+        });
+        if (!response.ok) {
+          const details = (await response.text()).trim();
+          throw new Error("Worker returned " + response.status + (details ? ": " + details.slice(0, 120) : "."));
+        }
+        if (!(response.headers.get("content-type") || "").includes("image")) {
+          throw new Error("Worker did not return an image.");
+        }
+        return response.blob();
+      }
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const text = prompt.value.trim();
+        if (!text) {
+          setStatus("Enter a prompt first.", "error");
+          prompt.focus();
+          return;
+        }
+        clearImage();
+        button.disabled = true;
+        button.textContent = "Generating…";
+        canvas.classList.add("loading");
+        empty.querySelector("strong").textContent = "Creating your image…";
+        setStatus("Contacting your Cloudflare Worker…");
+        try {
+          const blob = await getImage(text);
+          imageUrl = URL.createObjectURL(blob);
+          image.src = imageUrl;
+          download.href = imageUrl;
+          output.classList.add("show");
+          setStatus("Image ready. Download the PNG below.", "success");
+        } catch (error) {
+          setStatus(error.message || "Image generation failed.", "error");
+        } finally {
+          canvas.classList.remove("loading");
+          empty.querySelector("strong").textContent = "Your image will appear here";
+          button.disabled = false;
+          button.textContent = "Generate image";
+        }
+      });
+
+      prompt.addEventListener("keydown", (event) => {
+        if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+          event.preventDefault();
+          form.requestSubmit();
+        }
+      });
+
+      document.querySelectorAll("[data-prompt]").forEach((example) => {
+        example.addEventListener("click", () => {
+          prompt.value = example.dataset.prompt;
+          prompt.focus();
+          setStatus("Prompt added. Generate when ready.");
+        });
+      });
+
+      window.addEventListener("beforeunload", clearImage);
+    })();
+  </script>
+</body>
+</html>
