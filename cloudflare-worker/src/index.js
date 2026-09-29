@@ -627,7 +627,9 @@ export default {
       return handleEmail(request, env);
     }
     if (
-      url.pathname === '/api/image'
+      url.pathname === '/generate'
+      || url.pathname === '/generate/'
+      || url.pathname === '/api/image'
       || url.pathname === '/api/image/'
       || url.pathname === '/image'
       || url.pathname === '/image/'
