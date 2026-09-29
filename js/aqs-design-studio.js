@@ -1,6 +1,6 @@
 /* AI Quiz System — Design Studio JS v2
    Developed by Omomo Excellence in corporation with Darapet Technology
-   Powered by Pollinations AI FLUX-Pro + Groq Prompt Enhancer */
+   Powered by Gemini image generation + Groq prompt enhancement */
 
 (function () {
     'use strict';
@@ -160,56 +160,27 @@
         return encodeURIComponent(baseNeg.join(', '));
     }
 
-    /* ══════════════════════════════════════════════════════════════
-       POLLINATIONS ENGINE — same as aqs-imagegen.js
-    ══════════════════════════════════════════════════════════════ */
-    function pollinationsImgUrl(prompt, width, height, seed, model, negative) {
-        var encoded = encodeURIComponent(prompt);
-        var s = seed || Math.floor(Math.random() * 9999999);
-        var m = model || 'flux-pro';
-        return 'https://image.pollinations.ai/prompt/' + encoded +
-               '?width=' + width + '&height=' + height +
-               '&model=' + m + '&seed=' + s +
-               '&nologo=true&private=true&enhance=true' +
-               '&negative=' + (negative || '');
-    }
-
+    /* Gemini is the only image provider. No public image fallback is used. */
     function parseSize(sizeStr) {
         var parts = (sizeStr || '1024x1024').split('x');
         return { w: parseInt(parts[0]) || 1024, h: parseInt(parts[1]) || 1024 };
     }
-
-    function loadImageDirect(prompt, width, height, seed, model, negative) {
-        return new Promise(function (resolve, reject) {
-            var url = pollinationsImgUrl(prompt, width, height, seed, model, negative);
-            var img = new Image();
-            img.crossOrigin = 'anonymous';
-            var tid = setTimeout(function () { img.src = ''; reject(new Error('timeout')); }, 60000);
-            img.onload  = function () { clearTimeout(tid); resolve({ url: url, img: img }); };
-            img.onerror = function () { clearTimeout(tid); reject(new Error('load error ' + model)); };
-            img.src = url;
-        });
+    function _creatorAspectRatio(width, height) {
+        if (width === height) return 'square';
+        return width > height ? 'landscape' : 'portrait';
     }
-
-    async function raceImage(prompt, width, height, seed, isHD, negative) {
-        var models = isHD
-            ? ['flux-pro', 'flux', 'turbo']
-            : ['flux', 'flux-pro', 'turbo'];
-        var lastErr;
-        for (var i = 0; i < models.length; i++) {
-            if (i > 0) await new Promise(function (r) { setTimeout(r, 2500 * i); });
-            try {
-                return await loadImageDirect(prompt, width, height, seed, models[i], negative);
-            } catch (e) {
-                lastErr = e;
-                console.warn('[DesignStudio] Model ' + models[i] + ' failed:', e.message);
-            }
-        }
-        throw lastErr || new Error('All models failed');
+    async function loadImageDirect(prompt, width, height) {
+        if (typeof window.aqsCreatorImageGenerate !== 'function') throw new Error('Gemini image generation is not available on this page.');
+        var generated = await window.aqsCreatorImageGenerate({ prompt: prompt, aspectRatio: _creatorAspectRatio(width, height) });
+        if (!generated || !generated.url) throw new Error('Gemini returned no image.');
+        return { url: generated.url };
+    }
+    async function raceImage(prompt, width, height) {
+        return loadImageDirect(prompt, width, height);
     }
 
     /* ══════════════════════════════════════════════════════════════
-       AI TEXT — Groq primary, Pollinations text fallback
+       AI TEXT — Groq prompt enhancement
     ══════════════════════════════════════════════════════════════ */
     async function callAI(messages) {
         if (typeof window.groqFetch === 'function') {
@@ -230,98 +201,8 @@
                 }
             } catch (e) { /* fall through */ }
         }
-        try {
-            var ctrl2 = new AbortController();
-            var tid2  = setTimeout(function () { ctrl2.abort(); }, 20000);
-            var res2  = await fetch('https://text.pollinations.ai/openai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                referrerPolicy: 'no-referrer',
-                signal: ctrl2.signal,
-                body: JSON.stringify({
-                    messages: messages, model: 'openai',
-                    max_tokens: 400, temperature: 0.85, private: true
-                })
-            });
-            clearTimeout(tid2);
-            if (!res2.ok) return null;
-            var data2 = await res2.json();
-            var text2 = (data2.choices && data2.choices[0] && data2.choices[0].message && data2.choices[0].message.content) || '';
-            return text2.trim() || null;
-        } catch (e) { return null; }
+        return null;
     }
-
-    /* ══════════════════════════════════════════════════════════════
-       CATEGORY PRESETS
-    ══════════════════════════════════════════════════════════════ */
-    var CAT_PRESETS = {
-        general: [
-            { label: 'Auto',          val: '' },
-            { label: 'Minimalist',    val: 'minimalist clean design, white space, simple elegant layout' },
-            { label: 'Bold Modern',   val: 'bold modern design, strong typography, high contrast, striking' },
-            { label: 'Vintage',       val: 'vintage retro aesthetic, muted colors, textured feel, classic typography' },
-            { label: 'Dark Luxury',   val: 'dark luxury design, gold accents, premium feel, deep blacks' },
-        ],
-        logo: [
-            { label: 'Auto',          val: '' },
-            { label: 'Wordmark',      val: 'wordmark logo design, clean bold typography, no people, vector style, white background' },
-            { label: 'Lettermark',    val: 'lettermark monogram logo, geometric, clean vector, professional branding, no people' },
-            { label: 'Emblem',        val: 'emblem badge logo, circular design, detailed crest, professional quality, no people' },
-            { label: 'Minimal Icon',  val: 'minimal icon logo, single color mark, flat vector, scalable, modern, no people' },
-            { label: 'Gradient',      val: 'gradient logo design, vibrant colors, modern tech brand, clean, no people' },
-        ],
-        social: [
-            { label: 'Auto',          val: '' },
-            { label: 'Instagram',     val: 'Instagram post design, square format, bold visual, on-brand colors, eye-catching' },
-            { label: 'YouTube Thumb', val: 'YouTube thumbnail design, bold oversized text, high contrast, strong emotion, vivid colors' },
-            { label: 'Facebook',      val: 'Facebook post cover design, clear headline, engaging visual, brand colors' },
-            { label: 'Story / Reel',  val: 'vertical story or reel graphic, 9:16 format, bold center text, mobile-optimized' },
-            { label: 'Twitter/X',     val: 'Twitter X banner or post graphic, clean bold design, high readability' },
-        ],
-        poster: [
-            { label: 'Auto',          val: '' },
-            { label: 'Event Flyer',   val: 'professional event flyer design, bold headline, vivid colors, clear layout, all text readable' },
-            { label: 'Movie Poster',  val: 'dramatic cinematic movie poster, full-bleed art, powerful typography, all text sharp' },
-            { label: 'Music Poster',  val: 'vibrant music event poster, energetic design, bold artist name, striking visuals' },
-            { label: 'Sale Banner',   val: 'promotional sale banner design, bold discount text, vivid colors, urgent feeling' },
-            { label: 'Memorial',      val: 'dignified memorial tribute design, soft tones, elegant serif typography, respectful layout' },
-        ],
-        '3d': [
-            { label: 'Auto',          val: '' },
-            { label: 'Product',       val: '3D product render, studio lighting, photorealistic, clean background, high detail, no people' },
-            { label: 'Abstract',      val: '3D abstract render, sculptural form, octane render, dramatic lighting, vivid, no people' },
-            { label: 'Architecture',  val: '3D architectural visualization, photorealistic render, professional CGI' },
-            { label: 'Logo 3D',       val: '3D logo render, chrome metallic or glass material, studio lighting, professional, no people' },
-        ],
-        illustration: [
-            { label: 'Auto',          val: '' },
-            { label: 'Flat Art',      val: 'professional flat design illustration, clean vector, vibrant colors, modern editorial' },
-            { label: 'Watercolor',    val: 'delicate watercolor illustration, soft brushstrokes, artistic, pastel tones' },
-            { label: 'Ink / Line',    val: 'detailed ink line art illustration, precise strokes, professional sketch quality' },
-            { label: 'Cartoon',       val: 'bold cartoon illustration style, vivid colors, clean outlines, expressive' },
-            { label: 'Concept Art',   val: 'professional concept art, detailed environment, cinematic mood, epic' },
-        ],
-        photo: [
-            { label: 'Auto',          val: '' },
-            { label: 'Portrait',      val: 'professional portrait photography, natural light, shallow depth of field, sharp detail' },
-            { label: 'Product Photo', val: 'professional product photography, studio lighting, white background, sharp, commercial' },
-            { label: 'Landscape',     val: 'stunning landscape photography, golden hour light, dramatic sky, epic scale' },
-            { label: 'Street',        val: 'urban street photography, candid, dramatic light and shadow, film aesthetic' },
-            { label: 'Fashion',       val: 'editorial fashion photography, model, dramatic lighting, magazine quality' },
-        ],
-        neon: [
-            { label: 'Auto',          val: '' },
-            { label: 'Cyberpunk',     val: 'cyberpunk aesthetic, neon lights, dark rainy city, vivid neon colors, futuristic, no random people' },
-            { label: 'Neon Sign',     val: 'glowing neon sign design, vibrant neon tubes, dark background, retro futuristic, no people' },
-            { label: 'Synthwave',     val: 'synthwave retro aesthetic, neon grid, sunset gradient, 80s futurism, no people' },
-        ],
-        ui: [
-            { label: 'Auto',          val: '' },
-            { label: 'Mobile App',    val: 'clean mobile app UI design, modern interface, clear navigation, on-brand colors, pixel-perfect' },
-            { label: 'Dashboard',     val: 'professional SaaS dashboard UI design, data visualisation, clean layout, dark or light theme' },
-            { label: 'Landing Page',  val: 'modern website landing page design, hero section, clear CTA, professional layout' },
-        ],
-    };
 
     /* ── Build preset buttons ── */
     function buildPresets(cat) {
