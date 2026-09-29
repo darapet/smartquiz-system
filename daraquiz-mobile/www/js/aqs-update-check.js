@@ -26,7 +26,7 @@ var AQS_APP_VERSION_CODE = 462;
   var VERSION_JSON_FALLBACK_URL =
     'https://github.com/darapet/smartquiz-system/raw/refs/heads/main/daraquiz-mobile/www/version.json';
 
-  var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
+  var DISMISSED_KEY = 'aqs_update_dismissed_ver_v2';
   var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
   var SNOOZE_VER_KEY = 'aqs_update_snooze_ver';    /* which versionCode was snoozed */
   var SNOOZE_WAIT   = 24 * 60 * 60 * 1000;         /* 24 hours */
@@ -165,6 +165,7 @@ var AQS_APP_VERSION_CODE = 462;
     window.aqsNativeProgress = function (pct) {
       if (pct < 0) {
         /* Error */
+        localStorage.removeItem(DISMISSED_KEY);
         btn.disabled = false;
         btn.textContent = '⬇️ Retry Download';
         btnLater.style.display = '';
@@ -174,49 +175,69 @@ var AQS_APP_VERSION_CODE = 462;
       }
       setProgress(pct);
       if (pct >= 100) {
+        permanentDismiss();
         btn.textContent = '✅ Installing…';
         setTimeout(hidePopup, 4000);
       }
     };
 
     /* Call native bridge — MainActivity registers this on the WebView */
-    window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
+    try {
+      window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
+    } catch (error) {
+      window.aqsNativeProgress(-1);
+    }
   }
 
   /* ── Download dispatcher — web fallback: open download link in browser ─── */
-    function downloadInApp(url) {
-      var btn = document.getElementById('aqs-upd-btn-now');
-      /* Native Android bridge takes priority */
-      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
-        downloadNative(url);
-        return;
-      }
-      /* Web fallback — open download link in new tab */
-      btn.textContent = '✅ Opening download…';
-      btn.disabled = true;
-      window.open(url, '_blank');
-      setTimeout(function() {
-        btn.disabled = false;
-        btn.textContent = '⬇️ Download Update';
-      }, 2000);
+  function downloadInApp(url) {
+    var btn = document.getElementById('aqs-upd-btn-now');
+    var btnLater = document.getElementById('aqs-upd-btn-later');
+    var bridgeReady = window.AqsDownloadBridge &&
+      typeof window.AqsDownloadBridge.startDownload === 'function';
+    var isNativeAndroid = window.Capacitor &&
+      typeof window.Capacitor.getPlatform === 'function' &&
+      window.Capacitor.getPlatform() === 'android';
 
-    /* Bridge not ready yet — wait up to 3 seconds then retry */
-    var waited = 0;
-    var interval = setInterval(function () {
-      waited += 200;
-      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
-        clearInterval(interval);
-        downloadNative(url);
-        return;
-      }
-      if (waited >= 3000) {
-        clearInterval(interval);
-        btn.disabled = false;
-        btn.textContent = '⬇️ Download Update';
-        btnLater.style.display = '';
-        alert('Download not ready yet. Please close and reopen the app, then try again.');
-      }
-    }, 200);
+    if (bridgeReady) {
+      downloadNative(url);
+      return;
+    }
+
+    if (isNativeAndroid) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Connecting to downloader…';
+      btnLater.style.display = 'none';
+
+      var waited = 0;
+      var interval = setInterval(function () {
+        waited += 200;
+        if (window.AqsDownloadBridge &&
+            typeof window.AqsDownloadBridge.startDownload === 'function') {
+          clearInterval(interval);
+          downloadNative(url);
+          return;
+        }
+        if (waited >= 3000) {
+          clearInterval(interval);
+          btn.disabled = false;
+          btn.textContent = '⬇️ Retry Download';
+          btnLater.style.display = '';
+          alert('The in-app downloader is unavailable. Please close and reopen the app, then try again.');
+        }
+      }, 200);
+      return;
+    }
+
+    /* Web fallback — open the download link in a browser tab. */
+    btn.textContent = '✅ Opening download…';
+    btn.disabled = true;
+    var downloadWindow = window.open(url, '_blank');
+    if (downloadWindow) permanentDismiss();
+    setTimeout(function () {
+      btn.disabled = false;
+      btn.textContent = '⬇️ Download Update';
+    }, 2000);
   }
 
   /* ── Button events ──────────────────────────────────────────────────────── */
@@ -229,7 +250,7 @@ var AQS_APP_VERSION_CODE = 462;
     hidePopup();
   }
 
-  /* Permanent dismiss — only called once download actually starts */
+  /* Permanent dismiss — only after the download completes or a web tab opens. */
   function permanentDismiss() {
     localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
     localStorage.removeItem(SNOOZE_KEY);
@@ -242,7 +263,6 @@ var AQS_APP_VERSION_CODE = 462;
       alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
       return;
     }
-    permanentDismiss();
     downloadInApp(_apkUrl);
   });
 
