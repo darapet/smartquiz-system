@@ -141,16 +141,16 @@
   }
 
   async function fetchCloudflare(payload) {
-    var response = await fetch(cloudflareEndpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: payload.prompt, engine: 'cloudflare', category: payload.category, aspectRatio: payload.aspectRatio }),
+    var query = '?prompt=' + encodeURIComponent(payload.prompt);
+    if (String(config.cloudflareModel || '').trim()) query += '&model=' + encodeURIComponent(String(config.cloudflareModel).trim());
+    var response = await fetch(cloudflareEndpoint + query, {
+      method: 'GET',
       signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
     });
-    if (!response.ok) throw new Error('The Cloudflare image engine is unavailable.');
+    if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');
     var blob = await response.blob();
     if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) throw new Error('The Cloudflare engine returned an invalid image.');
-    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), prompt: payload.prompt, provider: 'Cloudflare Workers AI', createdAt: new Date().toISOString(), mediaType: 'image' };
+    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), prompt: payload.prompt, provider: 'Cloudflare Workers AI · Flux', createdAt: new Date().toISOString(), mediaType: 'image' };
   }
 
   function chooseEngine() {

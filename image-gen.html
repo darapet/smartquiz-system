@@ -34,7 +34,7 @@
       </div>
       <div class="aqs-imagegen-engine-badge" title="Your Gemini keys stay server-side in Firebase">
         <span class="aqs-imagegen-engine-dot"></span>
-        <span><strong>Gemini image engine</strong><small>Secure admin key pool</small></span>
+        <span><strong>Cloudflare image engine</strong><small>Flux default · Gemini fallback</small></span>
       </div>
     </section>
 
@@ -162,8 +162,8 @@
       </div>
     </section>
   </main>
-  <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Secure generation powered by Google Gemini</span></footer>
-  <script>window.AQS_IMAGEGEN_CONFIG={firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:''};</script>
+  <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Cloudflare Workers AI with secure Google Gemini fallback</span></footer>
+  <script>window.AQS_IMAGEGEN_CONFIG={firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate',cloudflareModel:''};</script>
   <script src="js/aqs-imagegen.js"></script>
 </body>
 </html>
