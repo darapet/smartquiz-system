@@ -190,7 +190,19 @@
     }
     setLoading(true);
     try {
-      var result = chooseEngine() === 'cloudflare' ? await fetchCloudflare(payload) : await fetchGemini(payload);
+      var result;
+      if (chooseEngine() === 'cloudflare') {
+        try {
+          result = await fetchCloudflare(payload);
+        } catch (cloudflareError) {
+          if (!firebaseEndpoint) throw cloudflareError;
+          loadingCopy.textContent = 'Cloudflare is busy, switching to the secure Gemini fallback…';
+          result = await fetchGemini(payload);
+          result.provider = 'Google Gemini · fallback after Cloudflare';
+        }
+      } else {
+        result = await fetchGemini(payload);
+      }
       var normalized = Object.assign({}, result, { prompt: payload.prompt, category: payload.category });
       saveLocalResult(normalized);
       showResult(normalized, payload);
