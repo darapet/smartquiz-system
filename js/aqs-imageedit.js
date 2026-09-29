@@ -1,5 +1,5 @@
 /* AI Quiz System — Image Editor (img2img)
-   Powered by Pollinations AI — no backend required
+   Powered by Gemini image generation
    Developed by Omomo Excellence in corporation with Darapet Technology */
 (function () {
     'use strict';
@@ -57,24 +57,12 @@
        AI text call — used for prompt refinement + image analysis
     ───────────────────────────────────────────────────────────── */
     async function callAI(messages) {
+        if (typeof window.groqFetch !== 'function') return null;
         try {
-            var ctrl = new AbortController();
-            var tid  = setTimeout(function () { ctrl.abort(); }, 20000);
-            var res  = await fetch('https://text.pollinations.ai/openai', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                referrerPolicy: 'no-referrer',
-                signal: ctrl.signal,
-                body: JSON.stringify({
-                    messages: messages, model: 'openai-fast',
-                    max_tokens: 250, temperature: 0.7, private: true
-                })
-            });
-            clearTimeout(tid);
-            if (!res.ok) return null;
+            var res = await window.groqFetch({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 250, temperature: 0.7 });
+            if (!res || !res.ok) return null;
             var data = await res.json();
-            return ((data.choices && data.choices[0] &&
-                     data.choices[0].message && data.choices[0].message.content) || '').trim() || null;
+            return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim() || null;
         } catch (e) { return null; }
     }
 
@@ -281,46 +269,9 @@
         return p;
     }
 
-    /* ─────────────────────────────────────────────────────────────
-       img2img via Pollinations — direct + proxy race
-    ───────────────────────────────────────────────────────────── */
-    function pollinationsEditUrl(prompt, imageUrl, width, height, strength, seed) {
-        var encoded    = encodeURIComponent(prompt);
-        var encodedImg = encodeURIComponent(imageUrl);
-        var s          = seed || Math.floor(Math.random() * 9999999);
-        return 'https://image.pollinations.ai/prompt/' + encoded +
-               '?model=flux&image=' + encodedImg +
-               '&width=' + width + '&height=' + height +
-               '&seed=' + s + '&nologo=true&private=true&enhance=true' +
-               '&strength=' + strength +
-               '&negative=blurry%2Cblur%2Cout+of+focus%2Cnoise%2Cbad+quality%2Cdistorted%2Cdeformed';
-    }
-
-    function loadImgDirect(prompt, imageUrl, w, h, strength, seed) {
-        return new Promise(function (resolve, reject) {
-            var url = pollinationsEditUrl(prompt, imageUrl, w, h, strength, seed);
-            var img = new Image();
-            img.crossOrigin = 'anonymous';
-            var tid = setTimeout(function () { img.src = ''; reject(new Error('timeout')); }, 65000);
-            img.onload  = function () { clearTimeout(tid); resolve(url); };
-            img.onerror = function () { clearTimeout(tid); reject(new Error('load error')); };
-            img.src = url;
-        });
-    }
-
-    /* Retry with a different seed if first attempt fails */
-    async function raceEdit(prompt, imageUrl, w, h, strength, seed) {
-        /* Try direct first */
-        try {
-            return await loadImgDirect(prompt, imageUrl, w, h, strength, seed);
-        } catch (_) {}
-        /* Retry with fresh seed */
-        var seed2 = Math.floor(Math.random() * 9999999);
-        try {
-            return await loadImgDirect(prompt, imageUrl, w, h, strength, seed2);
-        } catch (err) {
-            throw new Error('Edit failed. Try adjusting the strength or rephrasing your prompt.');
-        }
+    /* Gemini image editing is not silently replaced by a public fallback. */
+    async function raceEdit() {
+        throw new Error('Gemini image editing is not available yet. The public fallback has been removed.');
     }
 
     /* ── Enhance / Refine Prompt ── */
@@ -382,7 +333,7 @@
             /* Step 2: show original in before panel */
             $beforeImg.src = $previewThumb.src;
 
-            /* Step 3: Pollinations img2img */
+            /* Step 3: Gemini image editing */
             var editedUrl = await raceEdit(fullPrompt, uploadedFileUrl, w, h, strength, seed);
 
             /* Step 4: display result */
