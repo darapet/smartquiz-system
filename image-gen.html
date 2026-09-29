@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Image Studio — xzily AI</title>
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
   <meta name="description" content="Create polished logos, banners, social visuals, and learning assets with xzily AI.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -34,7 +35,7 @@
       </div>
       <div class="aqs-imagegen-engine-badge" title="Your Gemini keys stay server-side in Firebase">
         <span class="aqs-imagegen-engine-dot"></span>
-        <span><strong>Cloudflare image engine</strong><small>Flux default · Gemini fallback</small></span>
+        <span><strong>Secure Gemini image engine</strong><small>Firebase keys server-side · Cloudflare fallback</small></span>
       </div>
     </section>
 
@@ -162,8 +163,8 @@
       </div>
     </section>
   </main>
-  <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Cloudflare Workers AI with secure Google Gemini fallback</span></footer>
-  <script>window.AQS_IMAGEGEN_CONFIG={firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate',cloudflareModel:''};</script>
+  <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Secure Google Gemini image engine with Cloudflare fallback</span></footer>
+  <script>window.AQS_IMAGEGEN_CONFIG={preferredEngine:'gemini',firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate',cloudflareModel:''};</script>
   <script src="js/aqs-imagegen.js"></script>
 </body>
 </html>
