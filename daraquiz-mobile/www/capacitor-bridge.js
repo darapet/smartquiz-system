@@ -9,6 +9,85 @@
   var isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
   var platform    = isCapacitor ? (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'web') : 'web';
 
+
+  /*
+   * Android WebView does not honour the HTML download attribute for
+   * cross-origin/blob image URLs. Route image downloads through the native
+   * bridge, while leaving normal browser downloads untouched.
+   */
+  function isImageDownloadLink(link) {
+    var filename = link.getAttribute('download') || '';
+    return /\.(png|jpe?g|webp|gif|bmp|heic)$/i.test(filename)
+      || link.id === 'aqs-imagegen-download'
+      || link.id === 'aqs-ie-download-btn'
+      || link.id === 'aqs-ds-lb-download'
+      || /aqs-(?:ds-dl-btn|image-download)/i.test(link.className || '');
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onloadend = function () { resolve(reader.result); };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  window.aqsNativeDownloadComplete = function (success, message) {
+    if (!success) window.alert(message || 'Could not save the image. Please try again.');
+  };
+
+  window.aqsDownloadAsset = function (url, filename, mimeType) {
+    if (!isCapacitor || platform !== 'android'
+        || !window.AqsDownloadBridge
+        || typeof window.AqsDownloadBridge.startFileDownload !== 'function') {
+      return false;
+    }
+
+    var bridge = window.AqsDownloadBridge;
+    var assetUrl = String(url || '');
+    var name = String(filename || 'smartquiz-image.png');
+    var mime = String(mimeType || 'image/png');
+
+    try {
+      if (/^(blob:|data:)/i.test(assetUrl)) {
+        fetch(assetUrl).then(function (response) {
+          if (!response.ok) throw new Error('Image could not be read.');
+          return response.blob();
+        }).then(function (blob) {
+          return blobToDataUrl(blob).then(function (dataUrl) {
+            if (typeof bridge.saveBase64File !== 'function') {
+              throw new Error('Native image saving is not available in this app version.');
+            }
+            bridge.saveBase64File(name, dataUrl, blob.type || mime);
+          });
+        }).catch(function (error) {
+          window.aqsNativeDownloadComplete(false, error.message);
+        });
+      } else {
+        bridge.startFileDownload(assetUrl, name, mime);
+      }
+      return true;
+    } catch (error) {
+      window.aqsNativeDownloadComplete(false, error.message);
+      return true;
+    }
+  };
+
+  document.addEventListener('click', function (event) {
+    if (!isCapacitor || platform !== 'android') return;
+    var target = event.target;
+    var link = target && target.closest ? target.closest('a[download]') : null;
+    if (!link || !isImageDownloadLink(link)) return;
+
+    var url = link.href || link.getAttribute('href') || '';
+    if (!url || url === '#') return;
+    if (window.aqsDownloadAsset(url, link.getAttribute('download'), 'image/png')) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+  }, true);
+
   /* Open browser-dependent experiences outside the local WebView. */
   window.aqsOpenExternalPage = function (url) {
     if (isCapacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Browser) {

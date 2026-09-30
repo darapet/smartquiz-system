@@ -2,10 +2,12 @@ package com.darapet.smart;
 
 import android.app.DownloadManager;
 import android.content.BroadcastReceiver;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.provider.Settings;
+import android.provider.MediaStore;
 import android.content.pm.PackageManager;
 import android.speech.RecognitionListener;
 import android.speech.RecognizerIntent;
@@ -23,6 +25,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.Manifest;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
@@ -38,6 +41,9 @@ import com.getcapacitor.BridgeActivity;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.util.Locale;
 import org.json.JSONObject;
 
@@ -723,6 +729,51 @@ public class MainActivity extends BridgeActivity {
         @JavascriptInterface public void openSettings() { runOnUiThread(() -> openAppSettings()); }
     }
 
+
+
+    private String safeDownloadFilename(String filename) {
+        String safe = filename == null ? "smartquiz-image.png" : filename.replaceAll("[^a-zA-Z0-9._-]", "_");
+        if (safe.length() == 0 || ".".equals(safe) || "..".equals(safe)) return "smartquiz-image.png";
+        return safe;
+    }
+
+    private void notifyJsDownload(final boolean success, final String message) {
+        if (appWebView == null) return;
+        final String js = "if(typeof window.aqsNativeDownloadComplete==='function')window.aqsNativeDownloadComplete(" +
+            success + "," + JSONObject.quote(message == null ? "" : message) + ");";
+        runOnUiThread(() -> appWebView.evaluateJavascript(js, null));
+    }
+
+    private void writeDownloadedFile(String filename, byte[] bytes, String mimeType) throws Exception {
+        String safeName = safeDownloadFilename(filename);
+        String safeMime = (mimeType == null || mimeType.trim().length() == 0) ? "image/png" : mimeType;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Downloads.DISPLAY_NAME, safeName);
+            values.put(MediaStore.Downloads.MIME_TYPE, safeMime);
+            values.put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS);
+            values.put(MediaStore.Downloads.IS_PENDING, 1);
+            Uri uri = getContentResolver().insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values);
+            if (uri == null) throw new Exception("Could not create a Downloads file.");
+            try (OutputStream output = getContentResolver().openOutputStream(uri)) {
+                if (output == null) throw new Exception("Could not open the Downloads file.");
+                output.write(bytes);
+            }
+            ContentValues ready = new ContentValues();
+            ready.put(MediaStore.Downloads.IS_PENDING, 0);
+            getContentResolver().update(uri, ready, null, null);
+            return;
+        }
+
+        File directory = getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS);
+        if (directory == null) throw new Exception("Downloads storage is unavailable.");
+        if (!directory.exists() && !directory.mkdirs()) throw new Exception("Could not create the Downloads folder.");
+        File outputFile = new File(directory, safeName);
+        try (FileOutputStream output = new FileOutputStream(outputFile)) {
+            output.write(bytes);
+        }
+    }
+
     private class AqsDownloadBridge {
         @JavascriptInterface
         public void startDownload(final String url, final String filename) {
@@ -743,6 +794,45 @@ public class MainActivity extends BridgeActivity {
                     notifyJsError();
                 }
             });
+        }
+
+        @JavascriptInterface
+        public void startFileDownload(final String url, final String filename, final String mimeType) {
+            runOnUiThread(() -> {
+                try {
+                    String safeName = safeDownloadFilename(filename);
+                    String safeMime = (mimeType == null || mimeType.trim().length() == 0) ? "application/octet-stream" : mimeType;
+                    DownloadManager.Request req = new DownloadManager.Request(Uri.parse(url));
+                    req.setTitle(safeName);
+                    req.setDescription("Saving to Downloads…");
+                    req.setNotificationVisibility(
+                        DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
+                    req.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeName);
+                    req.setMimeType(safeMime);
+                    req.addRequestHeader("Accept", safeMime + ",image/*,*/*;q=0.8");
+                    downloadManager.enqueue(req);
+                    notifyJsDownload(true, "Download started");
+                } catch (Exception e) {
+                    notifyJsDownload(false, "Could not start the download.");
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void saveBase64File(final String filename, final String base64, final String mimeType) {
+            new Thread(() -> {
+                try {
+                    String encoded = base64 == null ? "" : base64;
+                    int comma = encoded.indexOf(',');
+                    if (comma >= 0) encoded = encoded.substring(comma + 1);
+                    byte[] bytes = Base64.decode(encoded, Base64.DEFAULT);
+                    if (bytes.length == 0) throw new Exception("The image is empty.");
+                    writeDownloadedFile(filename, bytes, mimeType);
+                    notifyJsDownload(true, "Image saved to Downloads");
+                } catch (Exception e) {
+                    notifyJsDownload(false, "Could not save the image to Downloads.");
+                }
+            }).start();
         }
     }
 }
