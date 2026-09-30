@@ -6,7 +6,9 @@
 (function () {
   'use strict';
 
-  var isCapacitor = typeof window.Capacitor !== 'undefined' && window.Capacitor.isNativePlatform();
+  var isCapacitor = typeof window.Capacitor !== 'undefined'
+    && typeof window.Capacitor.isNativePlatform === 'function'
+    && window.Capacitor.isNativePlatform();
   var platform    = isCapacitor ? (window.Capacitor.getPlatform ? window.Capacitor.getPlatform() : 'web') : 'web';
 
 
@@ -33,38 +35,55 @@
     });
   }
 
+  function isAndroidDownloadContext() {
+    if (window.AqsDownloadBridge) return true;
+    try {
+      return !!(window.Capacitor
+        && typeof window.Capacitor.getPlatform === 'function'
+        && window.Capacitor.getPlatform() === 'android');
+    } catch (error) {
+      return false;
+    }
+  }
+
   window.aqsNativeDownloadComplete = function (success, message) {
+    var status = document.getElementById('aqs-imagegen-result-status');
+    if (status && document.getElementById('aqs-imagegen-download')) {
+      status.textContent = success ? (message || 'Image saved to Downloads') : (message || 'Image could not be saved');
+    }
     if (!success) window.alert(message || 'Could not save the image. Please try again.');
   };
 
   window.aqsDownloadAsset = function (url, filename, mimeType) {
-    if (!isCapacitor || platform !== 'android'
-        || !window.AqsDownloadBridge
-        || typeof window.AqsDownloadBridge.startFileDownload !== 'function') {
-      return false;
-    }
-
+    if (!window.AqsDownloadBridge) return false;
     var bridge = window.AqsDownloadBridge;
     var assetUrl = String(url || '');
     var name = String(filename || 'smartquiz-image.png');
     var mime = String(mimeType || 'image/png');
+    var status = document.getElementById('aqs-imagegen-result-status');
+    if (status && document.getElementById('aqs-imagegen-download')) {
+      status.textContent = 'Saving image to Downloads…';
+    }
 
     try {
       if (/^(blob:|data:)/i.test(assetUrl)) {
+        if (typeof bridge.saveBase64File !== 'function') {
+          throw new Error('Image saving is not available in this app version.');
+        }
         fetch(assetUrl).then(function (response) {
           if (!response.ok) throw new Error('Image could not be read.');
           return response.blob();
         }).then(function (blob) {
           return blobToDataUrl(blob).then(function (dataUrl) {
-            if (typeof bridge.saveBase64File !== 'function') {
-              throw new Error('Native image saving is not available in this app version.');
-            }
             bridge.saveBase64File(name, dataUrl, blob.type || mime);
           });
         }).catch(function (error) {
           window.aqsNativeDownloadComplete(false, error.message);
         });
       } else {
+        if (typeof bridge.startFileDownload !== 'function') {
+          throw new Error('Image downloading is not available in this app version.');
+        }
         bridge.startFileDownload(assetUrl, name, mime);
       }
       return true;
@@ -75,17 +94,22 @@
   };
 
   document.addEventListener('click', function (event) {
-    if (!isCapacitor || platform !== 'android') return;
+    if (!isAndroidDownloadContext()) return;
     var target = event.target;
     var link = target && target.closest ? target.closest('a[download]') : null;
     if (!link || !isImageDownloadLink(link)) return;
 
     var url = link.href || link.getAttribute('href') || '';
-    if (!url || url === '#') return;
-    if (window.aqsDownloadAsset(url, link.getAttribute('download'), 'image/png')) {
-      event.preventDefault();
-      event.stopPropagation();
+    event.preventDefault();
+    event.stopPropagation();
+    if (!url || url === '#') {
+      window.aqsNativeDownloadComplete(false, 'Generate an image before downloading.');
+      return;
     }
+    if (window.aqsDownloadAsset(url, link.getAttribute('download'), 'image/png')) {
+      return;
+    }
+    window.aqsNativeDownloadComplete(false, 'In-app image saving is unavailable. Please update the app and try again.');
   }, true);
 
   /* Open browser-dependent experiences outside the local WebView. */

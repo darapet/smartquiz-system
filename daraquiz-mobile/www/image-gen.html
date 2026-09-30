@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/aqs-imagegen.css">
-  <script defer src="capacitor-bridge.js"></script>
+  <script defer src="capacitor-bridge.js?v=20260930-image-download-fix"></script>
 </head>
 <body class="aqs-imagegen-page">
   <header class="aqs-imagegen-header">
@@ -116,7 +116,7 @@
             <span class="aqs-imagegen-step">02</span>
             <h2>Your result</h2>
           </div>
-          <span class="aqs-imagegen-result-status" id="aqs-imagegen-result-status">Ready when you are</span>
+          <span class="aqs-imagegen-result-status" id="aqs-imagegen-result-status" role="status" aria-live="polite">Ready when you are</span>
         </div>
 
         <div class="aqs-imagegen-result-stage" id="aqs-imagegen-result-stage">
