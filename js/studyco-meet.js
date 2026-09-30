@@ -1,11 +1,11 @@
 import { auth, db } from './aqs-firebase.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, runTransaction, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null,
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
-  dismissedSuggestions: new Set(), postPreferences: new Map(),
+  dismissedSuggestions: new Set(), postPreferences: new Map(), postEngagement: new Map(), likedPosts: new Map(), postEngagementLoads: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
@@ -307,6 +307,7 @@ async function ensureProfile(user) {
 }
 
 function showAuth() {
+  state.likedPosts.clear(); state.postEngagement.clear(); state.postEngagementLoads.clear();
   $('studyco-boot-screen')?.remove();
   $('studyco-auth-screen').hidden = false; $('studyco-app-screen').hidden = true;
   const returnPath = `${window.location.pathname.split('/').pop() || 'studyco-meet.html'}${window.location.search}`;
@@ -561,14 +562,15 @@ function renderPost(post, { showAuthor = true } = {}) {
      reads for every card. Counts are stored on the post; the full comments
      list and the current user's like are fetched only on interaction. */
   const author = state.profiles.get(post.userId) || null;
-  const liked = false;
+  const liked = state.likedPosts.get(post.id) === true;
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
   const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async">` : '';
   const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
-  const likeCount = Number(post.likeCount) || 0;
-  const commentCount = Number(post.commentCount) || 0;
+  const engagement = state.postEngagement.get(post.id);
+  const likeCount = Number(engagement?.likeCount ?? post.likeCount) || 0;
+  const commentCount = Number(engagement?.commentCount ?? post.commentCount) || 0;
   const isOwner = post.userId === state.user.uid;
   const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
@@ -637,11 +639,13 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
   const firstMarkup = firstBatch.map((post) => renderPost(post, { showAuthor }));
   if (state.feedRenderTokens.get(target) !== renderToken) return;
   target.innerHTML = firstMarkup.join('');
+  firstBatch.forEach((post) => { void hydratePostEngagement(post.id); });
   if (posts.length <= firstBatch.length) return;
   const renderRemaining = async () => {
     const remainingMarkup = posts.slice(firstBatch.length).map((post) => renderPost(post, { showAuthor }));
     if (state.feedRenderTokens.get(target) !== renderToken) return;
     target.insertAdjacentHTML('beforeend', remainingMarkup.join(''));
+    posts.slice(firstBatch.length).forEach((post) => { void hydratePostEngagement(post.id); });
   };
   if ('requestIdleCallback' in window) window.requestIdleCallback(renderRemaining, { timeout: 700 });
   else window.setTimeout(renderRemaining, 0);
@@ -826,22 +830,94 @@ async function managePost(postId, action) {
 }
 
 async function toggleLike(postId) {
-  const likeRef = doc(db, 'studyco_posts', postId, 'likes', state.user.uid);
-  const existing = await getDoc(likeRef);
-  if (existing.exists()) await deleteDoc(likeRef); else await setDoc(likeRef, { userId: state.user.uid, createdAt: serverTimestamp() });
-  const likes = await getDocs(collection(db, 'studyco_posts', postId, 'likes'));
-  const post = state.posts.find((item) => item.id === postId);
-  if (post) post.likeCount = likes.size;
-  return { liked: !existing.exists(), count: likes.size };
+  if (!state.user) throw new Error('Sign in to like this post.');
+  const userUid = state.user.uid;
+  const postRef = doc(db, 'studyco_posts', postId);
+  const likesRef = collection(db, 'studyco_posts', postId, 'likes');
+  const likeRef = doc(likesRef, userUid);
+  const result = await runTransaction(db, async (transaction) => {
+    const [postSnapshot, likesSnapshot] = await Promise.all([transaction.get(postRef), transaction.get(likesRef)]);
+    if (!postSnapshot.exists()) throw new Error('This post is no longer available.');
+    const liked = likesSnapshot.docs.some((like) => like.id === userUid);
+    const nextLiked = !liked;
+    const count = Math.max(0, likesSnapshot.size + (nextLiked ? 1 : -1));
+    if (nextLiked) transaction.set(likeRef, { userId: userUid, createdAt: serverTimestamp() });
+    else transaction.delete(likeRef);
+    transaction.update(postRef, { likeCount: count, updatedAt: serverTimestamp() });
+    return { liked: nextLiked, count };
+  });
+  applyPostEngagement(postId, { liked: result.liked, likeCount: result.count });
+  return result;
 }
 
 async function addComment(postId, text) {
-  if (!text.trim()) return;
-  await addDoc(collection(db, 'studyco_posts', postId, 'comments'), { userId: state.user.uid, text: text.trim().slice(0, 500), createdAt: serverTimestamp() });
-  const comments = await getDocs(collection(db, 'studyco_posts', postId, 'comments'));
+  if (!state.user) throw new Error('Sign in to comment.');
+  const userUid = state.user.uid;
+  const cleanText = String(text || '').trim().slice(0, 500);
+  if (!cleanText) return null;
+  const postRef = doc(db, 'studyco_posts', postId);
+  const commentsRef = collection(db, 'studyco_posts', postId, 'comments');
+  const commentRef = doc(commentsRef);
+  const comment = { userId: userUid, text: cleanText, createdAt: serverTimestamp() };
+  const count = await runTransaction(db, async (transaction) => {
+    const [postSnapshot, commentsSnapshot] = await Promise.all([transaction.get(postRef), transaction.get(commentsRef)]);
+    if (!postSnapshot.exists()) throw new Error('This post is no longer available.');
+    transaction.set(commentRef, comment);
+    const nextCount = commentsSnapshot.size + 1;
+    transaction.update(postRef, { commentCount: nextCount, updatedAt: serverTimestamp() });
+    return nextCount;
+  });
+  applyPostEngagement(postId, { commentCount: count });
+  return count;
+}
+
+function applyPostEngagement(postId, values = {}) {
   const post = state.posts.find((item) => item.id === postId);
-  if (post) post.commentCount = comments.size;
-  return comments.size;
+  const previous = state.postEngagement.get(postId) || {};
+  const engagement = {
+    likeCount: Number(values.likeCount ?? previous.likeCount ?? post?.likeCount) || 0,
+    commentCount: Number(values.commentCount ?? previous.commentCount ?? post?.commentCount) || 0,
+  };
+  if (typeof values.liked === 'boolean') state.likedPosts.set(postId, values.liked);
+  state.postEngagement.set(postId, engagement);
+  if (post) Object.assign(post, engagement);
+  document.querySelectorAll('.studyco-post').forEach((article) => {
+    if (article.dataset.postId !== postId) return;
+    const likeButton = article.querySelector('[data-post-action="like"]');
+    const likeCountNode = likeButton?.querySelector('.studyco-action-count');
+    if (likeButton) likeButton.classList.toggle('liked', state.likedPosts.get(postId) === true);
+    if (likeCountNode) likeCountNode.textContent = String(engagement.likeCount);
+    const commentCountNode = article.querySelector('[data-post-action="comments"] .studyco-action-count');
+    if (commentCountNode) commentCountNode.textContent = String(engagement.commentCount);
+  });
+}
+
+async function hydratePostEngagement(postId) {
+  if (!state.user || !postId || state.postEngagementLoads.has(postId)) return;
+  const userUid = state.user.uid;
+  const load = runTransaction(db, async (transaction) => {
+    const postRef = doc(db, 'studyco_posts', postId);
+    const likesRef = collection(db, 'studyco_posts', postId, 'likes');
+    const commentsRef = collection(db, 'studyco_posts', postId, 'comments');
+    const [postSnapshot, likesSnapshot, commentsSnapshot] = await Promise.all([
+      transaction.get(postRef), transaction.get(likesRef), transaction.get(commentsRef),
+    ]);
+    if (!postSnapshot.exists()) return null;
+    const likeCount = likesSnapshot.size;
+    const commentCount = commentsSnapshot.size;
+    const postData = postSnapshot.data();
+    if ((Number(postData.likeCount) || 0) !== likeCount || (Number(postData.commentCount) || 0) !== commentCount) {
+      transaction.update(postRef, { likeCount, commentCount, updatedAt: serverTimestamp() });
+    }
+    return { liked: likesSnapshot.docs.some((like) => like.id === userUid), likeCount, commentCount };
+  }).then((engagement) => {
+    if (engagement && state.user?.uid === userUid) applyPostEngagement(postId, engagement);
+  }).catch((error) => {
+    if (state.postEngagementLoads.get(postId) === load) state.postEngagementLoads.delete(postId);
+    console.warn('[StudyCo] Could not restore post engagement:', postId, error);
+  });
+  state.postEngagementLoads.set(postId, load);
+  return load;
 }
 
 function renderStories() {

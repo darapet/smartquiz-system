@@ -10,10 +10,11 @@
     position: sticky;
     top: 0;
     z-index: 40;
-    height: 112px;
+    height: 60px;
+    min-height: 60px;
     display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
+    flex-wrap: nowrap;
+    align-content: center;
     gap: 0;
     padding: 0 10px;
     background: #fff;
@@ -2161,4 +2162,56 @@
     border-right: 0;
     border-left: 0;
   }
+}
+
+/* Keep the collapsed composer visible directly below the section navigation. */
+#studyco-composer-slot > #studyco-composer {
+  display: block;
+  visibility: visible;
+}
+
+#studyco-composer-slot .studyco-composer-head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+#studyco-composer-slot #studyco-composer-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex: 0 0 42px;
+}
+
+#studyco-composer-slot #studyco-composer-avatar .studyco-avatar {
+  width: 42px;
+  height: 42px;
+}
+
+#studyco-composer-slot .studyco-composer-head > div:nth-child(2) {
+  min-width: 0;
+  padding-right: 54px;
+}
+
+#studyco-composer-slot .studyco-composer-head button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: #f0f2f5;
+  color: #65676b;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#studyco-composer-slot .studyco-composer-head span {
+  display: none;
 }
