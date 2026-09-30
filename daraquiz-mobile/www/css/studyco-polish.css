@@ -290,3 +290,24 @@
     font-size: .58rem;
   }
 }
+
+
+/* Keep the Facebook-style composer visible while the profile document loads. */
+#studyco-composer-slot,
+#studyco-composer {
+  display: block;
+  visibility: visible;
+}
+
+#studyco-composer-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex: 0 0 42px;
+}
+
+#studyco-composer-avatar .studyco-avatar {
+  width: 42px;
+  height: 42px;
+}
