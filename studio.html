@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="css/aqs-pwa.css">
     <link rel="stylesheet" href="css/aqs-style.css">
     <link rel="stylesheet" href="css/aqs-sidebar.css">
-    <link rel="stylesheet" href="css/aqs-studio.css">
+    <link rel="stylesheet" href="css/aqs-studio.css?v=studio-layout-1">
     <link rel="stylesheet" href="css/aqs-splash.css">
     <style>
         .aqs-full-page-body{background:linear-gradient(135deg,#0f0c29,#302b63,#24243e)!important}
@@ -210,6 +210,10 @@
 <div class="aqs-sidebar-body" id="aqs-sidebar-body">
 <div id="dts-app">
     <div id="dts-hist-topbar">
+      <div class="dts-workspace-heading">
+        <span class="dts-workspace-kicker">XZILY AI WORKSPACE</span>
+        <span class="dts-workspace-title">Studio</span>
+      </div>
       <button id="dts-hist-open-btn">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         History
@@ -224,15 +228,18 @@
                     <circle cx="18" cy="18" r="6" fill="white"/>
                 </svg>
             </div>
+            <p class="dts-welcome-eyebrow">YOUR AI LEARNING WORKSPACE</p>
             <h1 class="dts-welcome-title">xzily AI</h1>
             <p class="dts-welcome-sub">Your intelligent learning assistant. Ask anything — from quiz prep to complex math.</p>
-            <p class="dts-welcome-credit">Developed by omomo excellence in corporation with Darapet Technology</p>
+            <p class="dts-suggestions-label">START WITH A PROMPT</p>
             <div class="dts-suggestions">
                 <button class="dts-suggestion-btn" data-prompt="Help me prepare for a biology exam. What are the most important topics to study?">📚 Help me prepare for an exam</button>
                 <button class="dts-suggestion-btn" data-prompt="Explain the quadratic formula and solve: 2x² + 5x - 3 = 0. Show all steps clearly.">🧮 Solve a math problem</button>
                 <button class="dts-suggestion-btn" data-prompt="Explain Newton's three laws of motion with real-world examples.">⚛️ Explain a science concept</button>
                 <button class="dts-suggestion-btn" data-prompt="Give me 5 multiple choice practice questions on the topic of World War II.">✏️ Generate practice questions</button>
             </div>
+        
+            <p class="dts-welcome-credit">Developed by omomo excellence in corporation with Darapet Technology</p>
         </div>
         <div id="dts-typing" class="dts-typing" style="display:none;">
             <div class="dts-typing-dots"><span></span><span></span><span></span></div>
