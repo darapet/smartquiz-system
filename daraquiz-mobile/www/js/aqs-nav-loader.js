@@ -8,7 +8,7 @@
  */
 (function () {
   'use strict';
-  var IMAGE_GEN_URL = 'https://darapet.github.io/smartquiz-system/image-gen.html';
+  var IMAGE_GEN_URL = 'image-gen.html';
 
   /* Add the category menu to every mobile page that uses the shared loader. */
   (function loadDaraCategoryNav() {

@@ -1,7 +1,7 @@
 /* Category-specific navigation for Dara Edu and Workspace pages. */
 (function () {
   'use strict';
-  var IMAGE_GEN_URL = 'https://darapet.github.io/smartquiz-system/image-gen.html';
+  var IMAGE_GEN_URL = 'image-gen.html';
 
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
   var mobile = !!document.querySelector('script[src*="capacitor-bridge.js"]');

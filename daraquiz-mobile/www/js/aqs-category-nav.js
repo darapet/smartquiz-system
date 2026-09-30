@@ -1,6 +1,6 @@
 /* Category-specific navigation for mobile Dara Edu and Workspace pages. */
 (function () {
-  'use strict';  var IMAGE_GEN_URL = 'https://darapet.github.io/smartquiz-system/image-gen.html';
+  'use strict';  var IMAGE_GEN_URL = 'image-gen.html';
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
   var isSocial = file === 'social.html' || file === 'studyco-meet.html' || file === 'profile.html';
   if (isSocial || document.getElementById('dara-category-nav')) return;
