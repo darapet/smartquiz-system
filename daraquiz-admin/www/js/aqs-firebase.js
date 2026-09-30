@@ -64,16 +64,9 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 const rtdb = getDatabase(app);
 
-/* ── Base URL helper: works on GitHub Pages subfolders ──
-   e.g. https://user.github.io/repo/create-quiz.html → https://user.github.io/repo/
-   In Capacitor (mobile app) window.location is https://localhost/… — always
-   return the real public website URL so shared quiz links work. */
+/* ── Hosted quiz links always use the public GitHub Pages site. */
 function _baseUrl() {
-    if (typeof window !== 'undefined' && window.Capacitor) {
-        return 'https://darapet.github.io/smartquiz-system/';
-    }
-    var href = window.location.href.split('?')[0].split('#')[0];
-    return href.substring(0, href.lastIndexOf('/') + 1);
+    return 'https://darapet.github.io/smartquiz-system/';
 }
 
 /* ── Helpers ── */
