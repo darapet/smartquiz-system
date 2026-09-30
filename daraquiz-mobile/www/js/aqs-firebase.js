@@ -89,7 +89,7 @@ window._aqsFirebaseTransport = 'long-polling';
 
 /* ── Hosted quiz links always use the public GitHub Pages site. */
 function _baseUrl() {
-    return 'https://darapet.github.io/smartquiz-system/';
+    return 'https://smartquiz-system3.daramolapeter98.workers.dev/';
 }
 
 /* ── Helpers ── */
