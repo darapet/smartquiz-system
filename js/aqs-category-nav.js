@@ -1,6 +1,7 @@
 /* Category-specific navigation for Dara Edu and Workspace pages. */
 (function () {
   'use strict';
+  var IMAGE_GEN_URL = 'https://darapet.github.io/smartquiz-system/image-gen.html';
 
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
   var mobile = !!document.querySelector('script[src*="capacitor-bridge.js"]');
@@ -42,8 +43,7 @@
     ['Studio AI', 'studio.html'],
     ['Text to Docs', 'text-to-docs.html'],
     ['Docs AI', 'docs-gen.html'],
-    ['Images', 'image-gen.html'],
-    ['Image Editor', 'image-editor.html'],
+    ['Images', IMAGE_GEN_URL],
     ['Speech', 'tts.html'],
     ['Animate', 'ai-animate.html'],
     ['Design', 'design-studio.html']

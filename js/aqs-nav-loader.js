@@ -8,6 +8,7 @@
  */
 (function () {
   'use strict';
+  var IMAGE_GEN_URL = 'https://darapet.github.io/smartquiz-system/image-gen.html';
 
   /* Add the category menu to every page that already uses the shared loader.
      The category script is intentionally separate so Social remains the main
@@ -216,12 +217,14 @@
       links.forEach(function (link) {
         var rawHref = (link.getAttribute('href') || '').replace(/\?.*$/, '');
         var href = rawHref.replace(/^.*\//, '');
-         var creatorStudioLink = rawHref === 'image-gen.html' ||
-           rawHref === 'image-gen' ||
-           rawHref === 'ai-creator-studio-pro' ||
-           rawHref === 'ai-creator-studio-pro/' ||
-           rawHref === 'ai-creator-studio-pro/index.html';
+         var creatorStudioLink = href === 'image-gen.html' ||
+          href === 'image-editor.html' ||
+          rawHref === 'image-gen' ||
+          rawHref === 'ai-creator-studio-pro' ||
+          rawHref === 'ai-creator-studio-pro/' ||
+          rawHref === 'ai-creator-studio-pro/index.html';
         if (creatorStudioLink) {
+          link.setAttribute('href', IMAGE_GEN_URL);
           primary.push(link);
           hasCreatorStudio = true;
         } else if (href === 'quiz-setup.html' || href === 'create-quiz.html' || href === 'studio.html' || href === 'studyhub.html' ||
@@ -268,7 +271,7 @@
       });
       if (!hasCreatorStudio) {
         var creatorStudio = document.createElement('a');
-         creatorStudio.href = 'image-gen.html';
+         creatorStudio.href = IMAGE_GEN_URL;
         creatorStudio.className = nav.classList.contains('aqs-site-nav') ? 'aqs-site-nav-link' :
           (nav.classList.contains('aqs-sidebar-nav') ? 'aqs-sidebar-link' : 'aqs-btn aqs-btn-sm');
         creatorStudio.style.cssText = 'color:#0f766e;font-weight:700;';

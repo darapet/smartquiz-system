@@ -1,6 +1,6 @@
 /* Category-specific navigation for mobile Dara Edu and Workspace pages. */
 (function () {
-  'use strict';
+  'use strict';  var IMAGE_GEN_URL = 'https://darapet.github.io/smartquiz-system/image-gen.html';
   var file = (window.location.pathname || '').split('/').pop() || 'index.html';
   var isSocial = file === 'social.html' || file === 'studyco-meet.html' || file === 'profile.html';
   if (isSocial || document.getElementById('dara-category-nav')) return;
@@ -11,7 +11,7 @@
   var links = category === 'edu' ? [
     ['Dara Edu','dara-edu.html'],['Create Quiz','create-quiz.html'],['AI Teacher','ai-teacher.html'],['Study Hub','studyhub.html'],['Challenge','challenge.html'],['Puzzle','puzzle.html'],['Library','library.html']
   ] : [
-    ['Workspace','workspace.html'],['Studio AI','studio.html'],['Text to Docs','text-to-docs.html'],['Docs AI','docs-gen.html'],['Images','image-gen.html'],['Image Editor','image-editor.html'],['Speech','tts.html'],['Animate','ai-animate.html'],['Design','design-studio.html']
+    ['Workspace','workspace.html'],['Studio AI','studio.html'],['Text to Docs','text-to-docs.html'],['Docs AI','docs-gen.html'],['Images',IMAGE_GEN_URL],['Speech','tts.html'],['Animate','ai-animate.html'],['Design','design-studio.html']
   ];
   var nav = document.createElement('div');
   nav.id = 'dara-category-nav';
