@@ -82,13 +82,13 @@
 
         /* Footer floats above the news ticker */
         .dts-footer{
-          bottom:var(--aqs-ticker-bar-h,0px)!important;
+          bottom:calc(var(--aqs-ticker-bar-h,0px) + var(--aqs-bottom-nav-h,0px))!important;
           transition:bottom .2s
         }
 
         /* Messages area respects both ticker + footer height */
         #dts-main{
-          padding-bottom:calc(var(--dts-footer-h,80px) + var(--aqs-ticker-bar-h,0px))!important
+          padding-bottom:calc(var(--dts-footer-h,80px) + var(--aqs-ticker-bar-h,0px) + var(--aqs-bottom-nav-h,0px))!important
         }
 
         /* ── History top bar ── */
@@ -142,12 +142,19 @@
     var h=t&&window.getComputedStyle(t).display!=='none'?t.offsetHeight:0;
     document.documentElement.style.setProperty('--aqs-ticker-bar-h',h+'px');
   }
-  [200,600,1200,2500].forEach(function(d){setTimeout(syncTicker,d);});
+  function syncBottomNav(){
+    var nav=document.querySelector('.aqs-bottom-nav');
+    var h=nav?nav.getBoundingClientRect().height:0;
+    document.documentElement.style.setProperty('--aqs-bottom-nav-h',h+'px');
+  }
+  function syncLayout(){syncTicker();syncBottomNav();}
+  [200,600,1200,2500].forEach(function(d){setTimeout(syncLayout,d);});
   document.addEventListener('DOMContentLoaded',function(){
-    new MutationObserver(syncTicker)
+    new MutationObserver(syncLayout)
       .observe(document.body,{childList:true,subtree:false,attributes:true,attributeFilter:['style']});
-    syncTicker();
+    syncLayout();
   });
+  window.addEventListener('resize',syncBottomNav);
 })();
 </script>
   <script src="js/aqs-nav-loader.js"></script>
