@@ -280,6 +280,7 @@ async function ensureProfile(user) {
       department: legacy.department || '',
       gender: legacy.gender || legacy.sex || '',
       location: legacy.location || legacy.city || '',
+      photoURL: legacy.photoURL || legacy.photoUrl || user.photoURL || '',
       email: legacy.email || user.email || ''
     };
     Object.entries(legacyValues).forEach(([key, value]) => {
@@ -319,6 +320,12 @@ function showAuth() {
 
 function showApp() {
   $('studyco-boot-screen')?.remove();
+  const composerPrompt = $('studyco-open-composer');
+  if (composerPrompt) composerPrompt.textContent = "What's on your mind?";
+  const composerAvatar = $('studyco-composer-avatar');
+  if (composerAvatar && !composerAvatar.childElementCount) {
+    composerAvatar.innerHTML = '<div class="studyco-avatar small" aria-label="Your profile picture">SC</div>';
+  }
   $('studyco-auth-screen').hidden = true; $('studyco-app-screen').hidden = false;
 }
 
