@@ -12,31 +12,32 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/landing-page.css">
+  <link rel="stylesheet" href="css/landing-page.css?v=landing-video-fix-2">
   <script defer src="js/aqs-update-check.js"></script>
-  <script defer src="js/landing-page.js"></script>
+  <script defer src="js/landing-page.js?v=landing-video-fix-2"></script>
 </head>
 <body class="lp-page">
   <a class="lp-skip" href="#main-content">Skip to content</a>
   <header class="lp-header" id="top">
     <div class="lp-wrap lp-header-inner">
       <a class="lp-brand" href="index.html" aria-label="AI Quiz System home">
-        <span class="lp-brand-mark" aria-hidden="true">AI</span>
+        <img class="lp-brand-image" src="img/darapet-logo-brand.png" alt="" aria-hidden="true">
         <span class="lp-brand-copy">
           <strong>AI Quiz System</strong>
           <small>by DaraPet Technology</small>
         </span>
       </a>
       <nav class="lp-main-nav" id="lp-main-nav" aria-label="Main navigation">
-        <a href="#features">Features</a>
-        <a href="#studyhub">Study tools</a>
+        <a href="#library">Core Library</a>
+        <a href="#studyhub">E-Learning</a>
+        <a href="#quiz-builder">ExamSphere</a>
+        <a href="https://legacybygabriel.com.ng/#news">News</a>
+        <a href="https://legacybygabriel.com.ng/#career">Career</a>
         <a href="#community">Community</a>
-        <a href="#about">About</a>
-        <a href="#disclaimer">Disclaimer</a>
         <a class="lp-mobile-join" href="register.html">Create account&nbsp; →</a>
       </nav>
       <div class="lp-header-actions">
-        <a class="lp-button lp-button-primary lp-header-login" href="login.html">Sign in</a>
+        <a class="lp-button lp-button-primary lp-header-login" href="login.html">Login</a>
         <button class="lp-menu-toggle" type="button" aria-controls="lp-main-nav" aria-expanded="false" aria-label="Open navigation menu">☰</button>
       </div>
     </div>
@@ -44,6 +45,10 @@
 
   <main id="main-content">
     <section class="lp-hero" aria-labelledby="hero-title">
+      <video class="lp-hero-video" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="img/landing-interface.jpg" aria-hidden="true" tabindex="-1">
+        <source src="video/home-hero.mp4?v=landing-video-fix-2" type="video/mp4">
+      </video>
+      <button class="lp-video-autoplay-fallback" type="button" aria-label="Play the muted hero video" hidden><span aria-hidden="true">▶</span> Tap to play the video</button>
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
           <span class="lp-hero-kicker">An AI-powered learning workspace</span>
@@ -52,6 +57,7 @@
           <div class="lp-hero-actions">
             <a class="lp-button lp-button-primary" href="register.html">Create your account&nbsp; <span aria-hidden="true">→</span></a>
             <a class="lp-button lp-button-quiet" href="login.html">Sign in</a>
+            <a class="lp-button lp-button-quiet lp-hero-video-link" href="#video-tour" data-play-product-video>Watch product video&nbsp; →</a>
           </div>
           <div class="lp-hero-proof" aria-label="A connected learning flow">
             <div><strong>Create</strong><span>Build quizzes around your topics</span></div>
@@ -64,7 +70,7 @@
             <span>Your learning workspace</span>
             <span class="lp-live">Ready when you are</span>
           </div>
-          <img class="lp-showcase-image" src="img/landing-dashboard.jpg" alt="AI Quiz System learning dashboard with quiz and study tools">
+          <img class="lp-showcase-image" src="img/landing-interface.jpg" alt="AI Quiz System quiz and dashboard interface">
           <div class="lp-showcase-caption">
             <div>
               <strong>One place to learn, create, and review.</strong>
@@ -111,6 +117,29 @@
           <div class="lp-flow-step"><span class="lp-flow-number">01</span><span><strong>Create a quiz</strong><small>Choose a topic or learning material.</small></span></div>
           <div class="lp-flow-step"><span class="lp-flow-number">02</span><span><strong>Practice the ideas</strong><small>Work through questions at your pace.</small></span></div>
           <div class="lp-flow-step"><span class="lp-flow-number">03</span><span><strong>Decide what is next</strong><small>Return to the tools that help you learn.</small></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-video-section" id="video-tour" aria-labelledby="lp-video-title">
+      <div class="lp-wrap">
+        <div class="lp-video-section-head">
+          <span class="lp-eyebrow">See it in action</span>
+          <h2 id="lp-video-title">A closer look at your learning workspace.</h2>
+          <p>Watch the short introduction, then explore how quizzes, tutoring, and discovery fit into one place.</p>
+        </div>
+        <div class="lp-video-layout">
+          <div class="lp-video-card">
+            <video class="lp-product-video" id="product-video" controls playsinline webkit-playsinline preload="metadata" poster="img/landing-storyboard.jpg">
+              <source src="video/home-introduction.mp4?v=landing-video-fix-2" type="video/mp4">
+              Your browser does not support embedded video.
+            </video>
+            <div class="lp-video-caption"><strong>AI Quiz System introduction</strong><span>10-second product overview</span></div>
+          </div>
+          <aside class="lp-storyboard-card">
+            <img src="img/landing-storyboard.jpg" alt="Storyboard showing quiz, AI tutor, discovery, and learning scenes" loading="lazy">
+            <div><strong>More than quizzes</strong><span>Practice, get support, and keep learning with others.</span></div>
+          </aside>
         </div>
       </div>
     </section>
@@ -320,14 +349,9 @@
         </article>
 
         <article class="lp-feature" id="community" aria-labelledby="community-title">
-          <div class="lp-feature-art" aria-hidden="true">
+          <div class="lp-feature-art">
             <span class="lp-feature-art-label">StudyCo Meet</span>
-            <div class="lp-community-card">
-              <div class="lp-community-head"><strong>Your study circle</strong><span class="lp-people"><i></i><i></i><i></i></span></div>
-              <div class="lp-message"><i></i><p>What topic are you reviewing today?<small>Study group conversation</small></p></div>
-              <div class="lp-message"><i></i><p>Let’s work through the practice questions together.<small>Shared study session</small></p></div>
-              <div class="lp-note-row"><span class="lp-note-icon">◎</span><span><strong>StudyCo Meet</strong><small>Make room for focused learning.</small></span><em>Join</em></div>
-            </div>
+            <img class="lp-feature-photo" src="img/landing-study-group.jpg" alt="Two students collaborating on a quiz at a library table" loading="lazy">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Learn with others</span>
@@ -358,7 +382,7 @@
     <section class="lp-about" id="about" aria-labelledby="about-title">
       <div class="lp-wrap">
         <div class="lp-about-card">
-          <img src="img/darapet-logo.png" alt="DaraPet Technology logo" loading="lazy">
+          <img src="img/darapet-logo-brand.png" alt="DaraPet Technology logo" loading="lazy">
           <div>
             <h2 id="about-title">AI Quiz System by DaraPet Technology</h2>
             <p>A connected learning space for creating quizzes, practicing what you know, organizing study material, and learning with other people.</p>
@@ -369,8 +393,20 @@
 
     <section class="lp-disclaimer" id="disclaimer" aria-labelledby="disclaimer-title">
       <div class="lp-wrap lp-disclaimer-card">
-        <div><span class="lp-eyebrow">Educational-use disclaimer</span><h2 id="disclaimer-title">Use AI as a study aid, not your only source.</h2></div>
-        <p>AI-generated quizzes, explanations, summaries, and study materials may contain errors or omit important details. Check important information against your course materials and trusted sources, and follow your instructor’s requirements. Only upload or share material you have permission to use.</p>
+        <div class="lp-disclaimer-intro">
+          <div><span class="lp-eyebrow">Official Status</span><h2 id="disclaimer-title">Use AI as a study aid, not your only source.</h2></div>
+          <p>AI-generated quizzes, explanations, summaries, and study materials may contain errors or omit important details. Check important information against your course materials and trusted sources, and follow your instructor’s requirements. Only upload or share material you have permission to use.</p>
+        </div>
+        <div class="lp-legal-notices">
+          <article class="lp-legal-notice">
+            <h3>Intellectual Property</h3>
+            <p>Materials hosted or linked on this platform should not violate copyright and intellectual property rights. If you believe your content has been shared without proper authorization, please contact the admin team at <a href="mailto:gabriel@legacybygabriel.com.ng">gabriel@legacybygabriel.com.ng</a> for prompt review and removal within 48 hours.</p>
+          </article>
+          <article class="lp-legal-notice">
+            <h3>User Conduct</h3>
+            <p>By using LEGACY, Users acknowledge and agree to utilize the service in a responsible, lawful, and ethical manner. LEGACY strictly prohibits any form of harassment, bullying, abuse, plagiarism, copyright infringement, malicious activity, spam, illegal conduct, or any other behavior that violates applicable laws, our community standards, or the rights of others. Such actions may result in immediate account suspension, termination, or other appropriate measures without prior notice. Users are strongly encouraged to review our full Terms and Conditions and Privacy Policy for detailed information regarding acceptable use, user responsibilities, data handling practices, and dispute resolution procedures. Continued use of LEGACY constitutes your acceptance of these terms and commitment to maintaining a safe, respectful environment for all users.</p>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -398,5 +434,7 @@
       </nav>
     </div>
   </footer>
+
+
 </body>
 </html>
