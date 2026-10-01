@@ -1,41 +1,402 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learn — XZILY AI</title>
-<meta name="description" content="Your learning home for focused study, self quizzes, progress, and useful resources.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/aqs-splash.css">
-<script defer src="js/aqs-update-check.js"></script>
-<style>
-:root{--ink:#07111f;--panel:#0e1b2d;--panel2:#12233a;--line:rgba(148,163,184,.2);--text:#f8fafc;--muted:#9fb0c5;--blue:#60a5fa;--blue-dark:#2563eb;--green:#34d399;--gold:#fbbf24;--violet:#a78bfa;--max:1160px}
-*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:linear-gradient(180deg,#07111f 0%,#091525 48%,#07111f 100%);color:var(--text);font-family:Inter,system-ui,sans-serif}a{color:inherit}.wrap{width:min(var(--max),calc(100% - 36px));margin:auto}.navbar{position:sticky;top:0;z-index:20;border-bottom:1px solid rgba(148,163,184,.16);background:rgba(7,17,31,.92);backdrop-filter:blur(18px)}.nav-inner{height:72px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{display:flex;align-items:center;gap:10px;text-decoration:none}.brandmark{width:38px;height:38px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#93c5fd,#2563eb 62%,#172554);font-weight:800;font-size:13px;box-shadow:0 8px 24px rgba(37,99,235,.3)}.brand-name{font:800 15px Poppins;letter-spacing:-.04em}.brand-sub{display:block;margin-top:2px;color:#8da0b8;font-size:8px;font-weight:600;letter-spacing:.16em;text-transform:uppercase}.nav-links{display:flex;align-items:center;gap:18px}.nav-links a{color:#cbd5e1;font-size:11px;font-weight:700;text-decoration:none}.nav-links a:hover{color:#fff}.nav-links .nav-primary{padding:10px 14px;border-radius:999px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;box-shadow:0 8px 22px rgba(37,99,235,.25)}.menu{display:none;border:1px solid var(--line);border-radius:10px;background:transparent;color:#dbeafe;padding:8px 10px;font-size:18px}.mobile-nav{display:none}
-.learning-hero{padding:58px 0 34px}.eyebrow{display:inline-flex;align-items:center;gap:8px;color:#93c5fd;font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase}.eyebrow i{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 5px rgba(52,211,153,.12)}.hero-grid{display:grid;grid-template-columns:1.1fr .9fr;gap:44px;align-items:stretch}.learning-hero h1{max-width:650px;margin:18px 0 14px;font:800 clamp(38px,5vw,64px)/1.04 Poppins;letter-spacing:-.065em}.learning-hero h1 span{color:#93c5fd}.lead{max-width:590px;margin:0;color:#b7c5d7;font-size:15px;line-height:1.75}.hero-actions{display:flex;flex-wrap:wrap;gap:11px;margin-top:25px}.button{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 18px;border-radius:12px;font-size:12px;font-weight:800;text-decoration:none}.button.primary{background:linear-gradient(135deg,#3b82f6,#1d4ed8);box-shadow:0 12px 28px rgba(37,99,235,.24)}.button.secondary{border:1px solid var(--line);background:rgba(14,27,45,.7);color:#dbeafe}.today-card{height:100%;padding:24px;border:1px solid rgba(96,165,250,.3);border-radius:22px;background:radial-gradient(circle at 100% 0,rgba(59,130,246,.2),transparent 50%),linear-gradient(145deg,#122944,#0d1b2d);box-shadow:0 22px 65px rgba(0,0,0,.25)}.card-kicker{color:#93c5fd;font-size:10px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}.today-card h2{margin:13px 0 8px;font:700 22px Poppins;letter-spacing:-.04em}.today-card p{margin:0;color:#afc1d6;font-size:12px;line-height:1.6}.focus-row{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:24px;padding-top:18px;border-top:1px solid rgba(148,163,184,.17)}.focus-row strong{display:block;font-size:14px}.focus-row small{display:block;margin-top:4px;color:#91a4bb;font-size:10px}.focus-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:rgba(52,211,153,.13);color:#6ee7b7;font-size:21px}
-.section{padding:34px 0}.section-head{display:flex;align-items:end;justify-content:space-between;gap:16px;margin-bottom:17px}.section h2{margin:0;font:700 23px Poppins;letter-spacing:-.045em}.section-head p{margin:0;color:#879ab2;font-size:11px;line-height:1.5;text-align:right}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.stat{padding:17px;border:1px solid var(--line);border-radius:16px;background:rgba(14,27,45,.72)}.stat small{display:block;color:#91a4bb;font-size:10px;font-weight:700}.stat b{display:block;margin-top:8px;font:700 25px Poppins;letter-spacing:-.04em}.stat em{display:block;margin-top:3px;color:#5eead4;font-size:10px;font-style:normal;font-weight:700}.learning-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.learn-card{display:flex;min-height:190px;flex-direction:column;padding:20px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(160deg,rgba(18,35,58,.95),rgba(12,24,40,.92));text-decoration:none;transition:transform .2s,border-color .2s}.learn-card:hover{transform:translateY(-3px);border-color:rgba(96,165,250,.55)}.learn-icon{width:39px;height:39px;display:grid;place-items:center;border-radius:12px;margin-bottom:18px;font-size:18px}.icon-blue{background:rgba(59,130,246,.17);color:#93c5fd}.icon-green{background:rgba(52,211,153,.15);color:#6ee7b7}.icon-gold{background:rgba(251,191,36,.14);color:#fcd34d}.learn-card h3{margin:0 0 7px;font:700 16px Poppins;letter-spacing:-.03em}.learn-card p{margin:0;color:#9eb0c5;font-size:11px;line-height:1.6}.learn-card .card-link{margin-top:auto;padding-top:17px;color:#93c5fd;font-size:11px;font-weight:800}.create-section{margin-top:18px;padding:25px;border:1px solid rgba(167,139,250,.22);border-radius:20px;background:linear-gradient(120deg,rgba(44,34,86,.32),rgba(14,27,45,.72))}.create-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px;margin-top:18px}.create-card{padding:15px;border:1px solid rgba(148,163,184,.16);border-radius:13px;background:rgba(7,17,31,.33);text-decoration:none}.create-card strong{display:block;font-size:12px}.create-card span{display:block;margin-top:5px;color:#9eb0c5;font-size:10px;line-height:1.45}.footer{margin-top:35px;padding:28px 0 34px;border-top:1px solid rgba(148,163,184,.14);color:#7488a1;font-size:10px}.footer-row{display:flex;justify-content:space-between;gap:20px}.footer a{color:#9db0c7;text-decoration:none}
-@media(max-width:850px){.nav-links{display:none}.menu{display:block}.nav-links.show{position:absolute;top:72px;right:16px;left:16px;display:flex;flex-direction:column;align-items:stretch;gap:5px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#091525;box-shadow:0 18px 45px rgba(0,0,0,.45)}.nav-links.show a{padding:10px 11px}.hero-grid{grid-template-columns:1fr;gap:25px}.learning-hero{padding-top:40px}.today-card{max-width:620px}.learning-grid{grid-template-columns:1fr 1fr}.create-grid{grid-template-columns:1fr 1fr}}
-@media(max-width:540px){.wrap{width:min(var(--max),calc(100% - 28px))}.learning-hero h1{font-size:42px}.lead{font-size:13px}.section-head{display:block}.section-head p{margin-top:6px;text-align:left}.stats{gap:8px}.stat{padding:13px 10px}.stat b{font-size:21px}.stat small{font-size:9px}.stat em{font-size:8px}.learning-grid{grid-template-columns:1fr}.learn-card{min-height:160px}.create-grid{grid-template-columns:1fr}.footer-row{display:block}.footer-row span{display:block;margin-top:8px}}
-
-.toolkit-section{padding:34px 0 74px}.toolkit-intro{max-width:650px;margin-bottom:28px}.toolkit-intro h2{margin:0 0 9px;font:800 clamp(28px,4vw,42px)/1.1 Poppins;letter-spacing:-.04em}.toolkit-intro p{margin:0;color:var(--muted);line-height:1.7}.feature-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:44px;align-items:center;padding:32px 0;border-top:1px solid var(--line)}.feature-row.reverse .feature-art{order:2}.feature-row.reverse .feature-copy{order:1}.feature-art{min-height:270px;display:grid;place-items:center;overflow:hidden;border:1px solid rgba(148,163,184,.2);border-radius:28px;background:linear-gradient(145deg,#10233f,#0b1628);box-shadow:0 24px 70px rgba(0,0,0,.2)}.feature-art img{width:100%;height:100%;min-height:270px;object-fit:cover;opacity:.9}.feature-art-create{padding:30px;background:radial-gradient(circle at 80% 10%,rgba(129,140,248,.22),transparent 40%),#0e1b2d}.feature-art-library{padding:30px;background:radial-gradient(circle at 20% 0%,rgba(52,211,153,.18),transparent 38%),#0e1b2d}.feature-ui{width:min(86%,360px);padding:18px;border:1px solid rgba(191,219,254,.24);border-radius:18px;background:rgba(15,23,42,.84);box-shadow:0 18px 45px rgba(0,0,0,.24)}.feature-ui-top{display:flex;gap:7px;margin-bottom:18px}.feature-ui-top i{width:8px;height:8px;border-radius:50%;background:#fb7185}.feature-ui-top i:nth-child(2){background:#fbbf24}.feature-ui-top i:nth-child(3){background:#34d399}.feature-ui-line{height:10px;margin:10px 0;border-radius:6px;background:linear-gradient(90deg,rgba(147,197,253,.9),rgba(99,102,241,.22))}.feature-ui-line.short{width:58%;background:rgba(148,163,184,.25)}.feature-ui-pills{display:flex;gap:8px;margin-top:16px}.feature-ui-pills span{height:34px;flex:1;border-radius:10px;background:rgba(99,102,241,.2);border:1px solid rgba(129,140,248,.3)}.feature-copy .eyebrow{margin-bottom:12px}.feature-copy h3{margin:0 0 12px;font:800 clamp(25px,3vw,34px)/1.12 Poppins;letter-spacing:-.04em}.feature-copy p{margin:0 0 18px;color:var(--muted);line-height:1.7}.feature-list{display:grid;gap:9px;margin:0 0 21px;padding:0;list-style:none;color:#dbeafe;font-size:13px}.feature-list li:before{content:"✓";display:inline-grid;place-items:center;width:20px;height:20px;margin-right:8px;border-radius:50%;color:#07111f;background:#34d399;font-size:11px;font-weight:900}.feature-cta{display:inline-flex;align-items:center;gap:7px;color:#bfdbfe;font-size:12px;font-weight:800;text-decoration:none}.feature-cta:hover{color:#fff}@media(max-width:760px){.toolkit-section{padding-top:18px}.feature-row{grid-template-columns:1fr;gap:22px;padding:26px 0}.feature-row.reverse .feature-art,.feature-row.reverse .feature-copy{order:initial}.feature-art{min-height:220px;border-radius:22px}.feature-art img{min-height:220px}.feature-copy h3{font-size:28px}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#020617">
+  <title>AI Quiz System — Study smarter with DaraPet Technology</title>
+  <meta name="description" content="Create AI-powered quizzes, practice difficult topics, and keep your learning tools together in one focused study system.">
+  <meta property="og:title" content="AI Quiz System — Study smarter">
+  <meta property="og:description" content="Create, practice, and keep your learning moving with AI Quiz System.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/landing-page.css">
+  <script defer src="js/aqs-update-check.js"></script>
+  <script defer src="js/landing-page.js"></script>
 </head>
-<body>
-<header class="navbar"><div class="wrap nav-inner"><a class="brand" href="index.html"><span class="brandmark">SQ</span><span><span class="brand-name">AI Quiz System</span><span class="brand-sub">learning home</span></span></a></div></header>
-<main>
-<section class="learning-hero"><div class="wrap hero-grid"><div><span class="eyebrow"><i></i> Your learning home</span><h1>Learn with purpose.<br><span>Keep making progress.</span></h1><p class="lead">Pick up where you left off, practice what you know, and turn every study session into measurable progress.</p><div class="hero-actions"><a class="button primary" href="studyhub.html">Continue studying&nbsp; →</a><a class="button secondary" href="quiz-setup.html">Choose your path&nbsp; →</a></div></div><aside class="today-card" aria-label="Today's learning focus"><span class="card-kicker">Today's focus</span><h2>Build a steady study habit.</h2><p>Start with one focused session, then review the topics you find hardest.</p><div class="focus-row"><div><strong>Study Hub</strong><small>Notes · flashcards · practice</small></div><div class="focus-icon">✓</div></div></aside></div></section>
-<section class="section"><div class="wrap"><div class="section-head"><div><h2>Your progress</h2></div><p>Small sessions add up.</p></div><div class="stats"><div class="stat"><small>Study streak</small><b>07</b><em>days active</em></div><div class="stat"><small>Quizzes completed</small><b>24</b><em>keep going</em></div><div class="stat"><small>Average score</small><b>86%</b><em>+12% this week</em></div></div></div></section>
-<section class="section"><div class="wrap"><div class="section-head"><h2>Start learning</h2><p>Choose what helps you move forward.</p></div><div class="learning-grid"><a class="learn-card" href="studyhub.html"><span class="learn-icon icon-blue">▣</span><h3>Study Hub</h3><p>Organize notes, review flashcards, use a timer, and practice difficult topics.</p><span class="card-link">Open Study Hub&nbsp; →</span></a><a class="learn-card" href="self-quiz.html"><span class="learn-icon icon-green">✓</span><h3>Self Quiz</h3><p>Generate a private practice quiz from a topic or your own study material.</p><span class="card-link">Practice now&nbsp; →</span></a><a class="learn-card" href="library.html"><span class="learn-icon icon-gold">▤</span><h3>Learning Library</h3><p>Keep useful resources close and return to them when you study.</p><span class="card-link">Browse resources&nbsp; →</span></a></div></div></section>
-<section class="section"><div class="wrap"><div class="create-section"><div class="section-head"><div><h2>For teachers & hosts</h2></div><p>Host, create, and study with others.</p></div><div class="create-grid"><a class="create-card" href="quiz-setup.html"><strong>Host a Quiz</strong><span>Build a quiz for a class, team, or group.</span></a><a class="create-card" href="studio.html"><strong>AI Studio</strong><span>Turn ideas and study material into useful work.</span></a><a class="create-card" href="studyco-meet.html"><strong>StudyCo Meet</strong><span>Study with other people when you need support.</span></a></div></div></div></section>
-</main>
+<body class="lp-page">
+  <a class="lp-skip" href="#main-content">Skip to content</a>
+  <header class="lp-header" id="top">
+    <div class="lp-wrap lp-header-inner">
+      <a class="lp-brand" href="index.html" aria-label="AI Quiz System home">
+        <span class="lp-brand-mark" aria-hidden="true">AI</span>
+        <span class="lp-brand-copy">
+          <strong>AI Quiz System</strong>
+          <small>by DaraPet Technology</small>
+        </span>
+      </a>
+      <nav class="lp-main-nav" id="lp-main-nav" aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#studyhub">Study tools</a>
+        <a href="#community">Community</a>
+        <a href="#about">About</a>
+        <a href="#disclaimer">Disclaimer</a>
+        <a class="lp-mobile-join" href="register.html">Create account&nbsp; →</a>
+      </nav>
+      <div class="lp-header-actions">
+        <a class="lp-button lp-button-primary lp-header-login" href="login.html">Sign in</a>
+        <button class="lp-menu-toggle" type="button" aria-controls="lp-main-nav" aria-expanded="false" aria-label="Open navigation menu">☰</button>
+      </div>
+    </div>
+  </header>
 
-<section class="toolkit-section"><div class="wrap"><div class="toolkit-intro"><span class="eyebrow"><i></i> One home for your week</span><h2>Everything you need to learn, make, and stay connected.</h2><p>Move from a focused study session to a finished quiz, a saved resource, or a conversation with your learning circle without switching tools.</p></div><article class="feature-row"><div class="feature-art"><img src="img/landing-hero.svg" alt="Abstract learning workspace preview"></div><div class="feature-copy"><span class="eyebrow">Learn</span><h3>Make every study session easier to start.</h3><p>Study Hub keeps notes, flashcards, timers, and practice in one calm workspace built for momentum.</p><ul class="feature-list"><li>Turn notes into active practice</li><li>Review what needs attention</li><li>Keep progress visible</li></ul><a class="feature-cta" href="studyhub.html">Open Study Hub&nbsp; →</a></div></article><article class="feature-row reverse"><div class="feature-art feature-art-create"><div class="feature-ui"><div class="feature-ui-top"><i></i><i></i><i></i></div><div class="feature-ui-line"></div><div class="feature-ui-line short"></div><div class="feature-ui-pills"><span></span><span></span><span></span></div></div></div><div class="feature-copy"><span class="eyebrow">Create</span><h3>Build a quiz that feels like yours.</h3><p>Start with a topic or your own material, shape the questions, and share a polished quiz with a class, team, or study group.</p><ul class="feature-list"><li>Generate a strong first draft</li><li>Edit every question and answer</li><li>Host it when you are ready</li></ul><a class="feature-cta" href="quiz-setup.html">Create a quiz&nbsp; →</a></div></article><article class="feature-row"><div class="feature-art feature-art-library"><div class="feature-ui"><div class="feature-ui-top"><i></i><i></i><i></i></div><div class="feature-ui-line"></div><div class="feature-ui-line"></div><div class="feature-ui-line short"></div><div class="feature-ui-pills"><span></span><span></span></div></div></div><div class="feature-copy"><span class="eyebrow">Library</span><h3>Keep the resources worth returning to.</h3><p>Save study material, useful documents, and shared resources in a library that is ready when the next session begins.</p><ul class="feature-list"><li>Organize what you use often</li><li>Read and review in one place</li><li>Pick up where you left off</li></ul><a class="feature-cta" href="library.html">Browse your library&nbsp; →</a></div></article><article class="feature-row reverse"><div class="feature-art"><img src="img/landing-video.svg" alt="Abstract learning circle preview"></div><div class="feature-copy"><span class="eyebrow">Dara Social</span><h3>Learn with people who keep you moving.</h3><p>Share progress, find classmates, answer messages, and keep the conversations around learning in one focused space.</p><ul class="feature-list"><li>See what your circle is learning</li><li>Manage friends and messages</li><li>Return to the right conversation</li></ul><a class="feature-cta" href="studyco-meet.html">Open Dara Social&nbsp; →</a></div></article></div></section>
-<footer class="footer"><div class="wrap footer-row"><span>© 2026 AI Quiz System · Built for curious minds</span><span><a href="user-dashboard.html">View your dashboard</a></span></div></footer>
-<script src="js/aqs-bottom-nav.js"></script>
-<script>
-window.AQS_SPLASH={enabled:'1',once:'0',template:'8',app_name:'DaraQuiz AI',tagline:'Xzily AI Assistant · Proudly SEMS',logo_url:'img/darapet-logo.png',color_primary:'#1e88e5',color_bg:'#0d1b6e',color_text:'#ffffff',duration:'4',sound:'1',music_url:'audio/quiz-background.mp3'};
-</script>
-<script src="js/aqs-splash.js"></script>
+  <main id="main-content">
+    <section class="lp-hero" aria-labelledby="hero-title">
+      <div class="lp-wrap lp-hero-grid">
+        <div class="lp-hero-copy">
+          <span class="lp-hero-kicker">An AI-powered learning workspace</span>
+          <h1 id="hero-title">Study with purpose.<br><span>Make every session count.</span></h1>
+          <p class="lp-hero-lead">Create practice from your course material, strengthen difficult topics with AI, and keep your learning tools together in one focused system.</p>
+          <div class="lp-hero-actions">
+            <a class="lp-button lp-button-primary" href="register.html">Create your account&nbsp; <span aria-hidden="true">→</span></a>
+            <a class="lp-button lp-button-quiet" href="login.html">Sign in</a>
+          </div>
+          <div class="lp-hero-proof" aria-label="A connected learning flow">
+            <div><strong>Create</strong><span>Build quizzes around your topics</span></div>
+            <div><strong>Practice</strong><span>Review at your own pace</span></div>
+            <div><strong>Keep moving</strong><span>Choose what to work on next</span></div>
+          </div>
+        </div>
+        <aside class="lp-showcase" aria-label="AI Quiz System product preview">
+          <div class="lp-showcase-top">
+            <span>Your learning workspace</span>
+            <span class="lp-live">Ready when you are</span>
+          </div>
+          <img class="lp-showcase-image" src="img/landing-dashboard.jpg" alt="AI Quiz System learning dashboard with quiz and study tools">
+          <div class="lp-showcase-caption">
+            <div>
+              <strong>One place to learn, create, and review.</strong>
+              <small>Move from a question to a focused study session.</small>
+            </div>
+            <span class="lp-showcase-badge">AI learning tools</span>
+          </div>
+          <div class="lp-showcase-float"><b aria-hidden="true">✓</b> Your next step, all in one place</div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="lp-pillbar" aria-label="Explore the platform">
+      <div class="lp-wrap lp-pillbar-inner">
+        <a class="lp-pillbar-item" href="quiz-setup.html">
+          <span class="lp-pillbar-icon" aria-hidden="true">✦</span>
+          <span><strong>AI Quiz Builder</strong><small>Start with a topic or material</small></span>
+        </a>
+        <a class="lp-pillbar-item" href="self-quiz.html">
+          <span class="lp-pillbar-icon" aria-hidden="true">✓</span>
+          <span><strong>Practice Mode</strong><small>Check what you understand</small></span>
+        </a>
+        <a class="lp-pillbar-item" href="studyhub.html">
+          <span class="lp-pillbar-icon" aria-hidden="true">▣</span>
+          <span><strong>Study Hub</strong><small>Organize a focused session</small></span>
+        </a>
+        <a class="lp-pillbar-item" href="user-dashboard.html">
+          <span class="lp-pillbar-icon" aria-hidden="true">↗</span>
+          <span><strong>Your Dashboard</strong><small>Pick up where you left off</small></span>
+        </a>
+      </div>
+    </section>
+
+    <section class="lp-intro" aria-labelledby="flow-title">
+      <div class="lp-wrap lp-intro-grid">
+        <div class="lp-intro-copy">
+          <span class="lp-eyebrow">A clearer way to study</span>
+          <h2 id="flow-title">From your first question to your next breakthrough.</h2>
+          <p>AI Quiz System brings quiz creation, personal practice, helpful study tools, and learner connections into one place—so it is easier to begin and easier to keep going.</p>
+        </div>
+        <div class="lp-flow-card">
+          <span>Your study flow</span>
+          <h3>Make the next step simple.</h3>
+          <div class="lp-flow-step"><span class="lp-flow-number">01</span><span><strong>Create a quiz</strong><small>Choose a topic or learning material.</small></span></div>
+          <div class="lp-flow-step"><span class="lp-flow-number">02</span><span><strong>Practice the ideas</strong><small>Work through questions at your pace.</small></span></div>
+          <div class="lp-flow-step"><span class="lp-flow-number">03</span><span><strong>Decide what is next</strong><small>Return to the tools that help you learn.</small></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-section lp-features" id="features" aria-labelledby="features-title">
+      <div class="lp-wrap">
+        <div class="lp-section-heading">
+          <span class="lp-eyebrow">The learning toolkit</span>
+          <h2 id="features-title">More ways to learn.<br><span>One connected system.</span></h2>
+          <p>Explore the tools that help you create practice, review what matters, and stay connected to your learning goals.</p>
+        </div>
+
+        <article class="lp-feature" id="quiz-builder" aria-labelledby="quiz-builder-title">
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Quiz Studio preview</span>
+            <img src="img/landing-dashboard.jpg" alt="AI Quiz System quiz creation and learning dashboard preview" loading="lazy">
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Create</span>
+            <h3 id="quiz-builder-title">Turn a topic into focused practice.</h3>
+            <p>Start with a subject or your own study material, generate a quiz draft, and shape the questions before you use or share them.</p>
+            <ul class="lp-feature-list"><li>Build around the topic you are learning</li><li>Review and refine the quiz questions</li><li>Prepare a quiz for personal or group study</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="quiz-setup.html">Create a quiz&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="practice" aria-labelledby="practice-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Self Quiz preview</span>
+            <div class="lp-ui-card">
+              <div class="lp-ui-top"><strong>Practice session</strong><span>Question 01</span></div>
+              <span class="lp-ui-kicker">Topic review</span>
+              <p class="lp-ui-question">Which idea would you like to check first?</p>
+              <div class="lp-ui-option is-selected"><i class="lp-ui-radio"></i> Review a key concept</div>
+              <div class="lp-ui-option"><i class="lp-ui-radio"></i> Try a harder question</div>
+              <div class="lp-ui-option"><i class="lp-ui-radio"></i> Revisit a missed answer</div>
+              <div class="lp-progress"><span></span></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Practice</span>
+            <h3 id="practice-title">Build confidence one question at a time.</h3>
+            <p>Use self-quizzes to check your understanding, revisit difficult material, and keep practice on your own schedule.</p>
+            <ul class="lp-feature-list"><li>Practice without the pressure of a live test</li><li>Focus on a topic that needs more attention</li><li>Use each session to guide your next review</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="self-quiz.html">Start a self quiz&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="tutor" aria-labelledby="tutor-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">AI Tutor preview</span>
+            <div class="lp-ui-card">
+              <div class="lp-ui-top"><strong>Ask your AI Tutor</strong><span>Study support</span></div>
+              <div class="lp-chat-bubble">Can you explain this idea in a simpler way?</div>
+              <div class="lp-chat-answer">Let’s break it into smaller steps, then connect each step to what you already know.</div>
+              <div class="lp-note-row"><span class="lp-note-icon">✦</span><span><strong>Keep exploring</strong><small>Ask a follow-up or try a practice question.</small></span><em>Continue</em></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Get support</span>
+            <h3 id="tutor-title">Work through the ideas that feel difficult.</h3>
+            <p>Ask questions, request another explanation, and use AI study support to break complex topics into more manageable steps.</p>
+            <ul class="lp-feature-list"><li>Explore a topic with follow-up questions</li><li>Ask for explanations in a different way</li><li>Continue into practice when you are ready</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="ai-teacher.html">Open the AI Tutor&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="studyhub" aria-labelledby="studyhub-title">
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">A more focused session</span>
+            <img src="img/landing-student.jpg" alt="Student reviewing learning material on a smartphone" loading="lazy">
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Stay focused</span>
+            <h3 id="studyhub-title">Bring your study routine into one hub.</h3>
+            <p>Keep notes, flashcards, timers, and review tasks close together so you can spend more of your time learning.</p>
+            <ul class="lp-feature-list"><li>Keep notes and flashcards within reach</li><li>Set up a focused study session</li><li>Return to your work without starting over</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="studyhub.html">Open the Study Hub&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="library" aria-labelledby="library-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Learning Library</span>
+            <div class="lp-library-grid">
+              <div class="lp-library-tile"><span>▤</span><strong>Course notes</strong><small>Your saved material</small></div>
+              <div class="lp-library-tile"><span>▧</span><strong>Study guides</strong><small>Resources to revisit</small></div>
+              <div class="lp-library-tile"><span>▦</span><strong>Past questions</strong><small>Practice and review</small></div>
+              <div class="lp-library-tile"><span>＋</span><strong>More resources</strong><small>Keep learning together</small></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Keep it close</span>
+            <h3 id="library-title">Make the resources you need easier to find.</h3>
+            <p>Keep useful learning materials in one library and return to them whenever you are ready for another study session.</p>
+            <ul class="lp-feature-list"><li>Bring important study resources together</li><li>Return to material you have saved</li><li>Keep your next review within reach</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="library.html">Browse the Library&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="progress" aria-labelledby="progress-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Learner dashboard</span>
+            <div class="lp-progress-visual">
+              <strong>Your learning at a glance</strong>
+              <small>Use recent activity to decide what to review.</small>
+              <div class="lp-progress-line"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">See your progress</span>
+            <h3 id="progress-title">Know where to pick up next.</h3>
+            <p>Return to your dashboard to review recent quiz activity, find your learning tools, and choose a useful next step.</p>
+            <ul class="lp-feature-list"><li>Keep your learning activity together</li><li>Return to your recent work</li><li>Choose a clear next study task</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="user-dashboard.html">View your dashboard&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="studio" aria-labelledby="studio-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">AI Studio</span>
+            <div class="lp-studio-canvas">
+              <div class="lp-studio-preview"><span>Ideas into action</span><small>Build a learning resource</small></div>
+              <div class="lp-studio-side"><span>Choose a starting point</span><div class="lp-studio-swatch"><i></i><i></i><i></i><i></i></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Make something useful</span>
+            <h3 id="studio-title">Turn an idea into a learning resource.</h3>
+            <p>Use AI Studio to explore creation tools for learning materials, writing, and projects that support your work.</p>
+            <ul class="lp-feature-list"><li>Start from an idea or a learning goal</li><li>Explore tools in one creative workspace</li><li>Shape the result around your needs</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="studio.html">Explore AI Studio&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="image-studio" aria-labelledby="image-studio-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Image Studio</span>
+            <div class="lp-studio-canvas">
+              <div class="lp-studio-preview"><span>Visual learning</span><small>Ideas for your next project</small></div>
+              <div class="lp-studio-side"><span>Explore a visual direction</span><div class="lp-studio-swatch"><i></i><i></i><i></i><i></i></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Create visuals</span>
+            <h3 id="image-studio-title">Give your learning ideas a visual form.</h3>
+            <p>Create supporting images and visual assets for study materials, lessons, and personal projects.</p>
+            <ul class="lp-feature-list"><li>Start with a visual idea or description</li><li>Explore original images for your projects</li><li>Build materials that are easier to scan</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="image-gen.html">Create with Image Studio&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="documents" aria-labelledby="documents-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Document tools</span>
+            <div class="lp-doc-page">
+              <small>Study document</small>
+              <strong>Make your ideas easier to review.</strong>
+              <div class="lp-doc-line"></div><div class="lp-doc-line"></div><div class="lp-doc-line short"></div>
+              <div class="lp-doc-line" style="margin-top:22px"></div><div class="lp-doc-line"></div><div class="lp-doc-line short"></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Structure your ideas</span>
+            <h3 id="documents-title">Turn rough notes into a clearer document.</h3>
+            <p>Organize ideas and study material into structured documents that are easier to use, revise, and share.</p>
+            <ul class="lp-feature-list"><li>Give your notes a useful structure</li><li>Create study documents from your ideas</li><li>Keep important material ready to review</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="text-to-docs.html">Create a study document&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="audio" aria-labelledby="audio-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Listen and learn</span>
+            <div class="lp-audio-player">
+              <div class="lp-audio-title"><span class="lp-audio-play">▶</span><span><strong>Listen to your study text</strong><small>Audio review, at your pace</small></span></div>
+              <div class="lp-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Listen on the move</span>
+            <h3 id="audio-title">Give your study material an audio option.</h3>
+            <p>Listen to spoken study text when you want to review away from your screen or add another format to your routine.</p>
+            <ul class="lp-feature-list"><li>Turn text into spoken audio</li><li>Review while you walk or take a break</li><li>Choose a format that fits your day</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="tts.html">Listen to your notes&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="challenges" aria-labelledby="challenges-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">Challenge board</span>
+            <div class="lp-rank-list">
+              <div class="lp-ui-top"><strong>Practice challenge</strong><span>Take your next turn</span></div>
+              <div class="lp-rank-row"><b>01</b><strong>First place</strong><small>Quiz score</small><span>↗</span></div>
+              <div class="lp-rank-row"><b>02</b><strong>Next learner</strong><small>Quiz score</small><span>↗</span></div>
+              <div class="lp-rank-row"><b>03</b><strong>Your turn</strong><small>Keep practicing</small><span>↗</span></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Practice together</span>
+            <h3 id="challenges-title">Make revision feel more engaging.</h3>
+            <p>Try quiz challenges, put your knowledge to work, and use shared results as another way to keep practice moving.</p>
+            <ul class="lp-feature-list"><li>Take on a focused quiz challenge</li><li>Review the leaderboard after you play</li><li>Use friendly competition to stay motivated</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="challenge.html">Take a challenge&nbsp; →</a>
+            <a class="lp-text-link" href="quiz-leaderboard.html" style="display:inline-block;margin:13px 0 0 12px">View the leaderboard&nbsp; →</a>
+          </div>
+        </article>
+
+        <article class="lp-feature" id="community" aria-labelledby="community-title">
+          <div class="lp-feature-art" aria-hidden="true">
+            <span class="lp-feature-art-label">StudyCo Meet</span>
+            <div class="lp-community-card">
+              <div class="lp-community-head"><strong>Your study circle</strong><span class="lp-people"><i></i><i></i><i></i></span></div>
+              <div class="lp-message"><i></i><p>What topic are you reviewing today?<small>Study group conversation</small></p></div>
+              <div class="lp-message"><i></i><p>Let’s work through the practice questions together.<small>Shared study session</small></p></div>
+              <div class="lp-note-row"><span class="lp-note-icon">◎</span><span><strong>StudyCo Meet</strong><small>Make room for focused learning.</small></span><em>Join</em></div>
+            </div>
+          </div>
+          <div class="lp-feature-copy">
+            <span class="lp-eyebrow">Learn with others</span>
+            <h3 id="community-title">Keep your learning circle close.</h3>
+            <p>Connect around study goals, share progress, and meet with other learners when a conversation or group session helps.</p>
+            <ul class="lp-feature-list"><li>Bring study conversations together</li><li>Find support from your learning circle</li><li>Make time for a shared study session</li></ul>
+            <a class="lp-button lp-button-primary lp-feature-cta" href="studyco-meet.html">Open StudyCo Meet&nbsp; →</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="lp-audience" aria-labelledby="audience-title">
+      <div class="lp-wrap">
+        <div class="lp-section-heading">
+          <span class="lp-eyebrow">A system for different study styles</span>
+          <h2 id="audience-title">Choose the path that fits <span>your next step.</span></h2>
+          <p>Whether you are learning independently, hosting a quiz, or studying with others, start with the tool that fits the work.</p>
+        </div>
+        <div class="lp-audience-grid">
+          <article class="lp-audience-card"><span>Learn</span><h3>For independent learners</h3><p>Build your own study rhythm with self-quizzes, notes, flashcards, and AI support.</p><a class="lp-text-link" href="studyhub.html">Set up a study session&nbsp; →</a></article>
+          <article class="lp-audience-card"><span>Create</span><h3>For teachers and quiz hosts</h3><p>Prepare questions around a topic, shape your quiz, and bring a group into the practice.</p><a class="lp-text-link" href="quiz-setup.html">Start creating a quiz&nbsp; →</a></article>
+          <article class="lp-audience-card"><span>Connect</span><h3>For study groups</h3><p>Use shared study time and learning conversations to make it easier to keep going.</p><a class="lp-text-link" href="studyco-meet.html">Meet your study circle&nbsp; →</a></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-about" id="about" aria-labelledby="about-title">
+      <div class="lp-wrap">
+        <div class="lp-about-card">
+          <img src="img/darapet-logo.png" alt="DaraPet Technology logo" loading="lazy">
+          <div>
+            <h2 id="about-title">AI Quiz System by DaraPet Technology</h2>
+            <p>A connected learning space for creating quizzes, practicing what you know, organizing study material, and learning with other people.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-disclaimer" id="disclaimer" aria-labelledby="disclaimer-title">
+      <div class="lp-wrap lp-disclaimer-card">
+        <div><span class="lp-eyebrow">Educational-use disclaimer</span><h2 id="disclaimer-title">Use AI as a study aid, not your only source.</h2></div>
+        <p>AI-generated quizzes, explanations, summaries, and study materials may contain errors or omit important details. Check important information against your course materials and trusted sources, and follow your instructor’s requirements. Only upload or share material you have permission to use.</p>
+      </div>
+    </section>
+
+    <section class="lp-final-cta" aria-labelledby="final-cta-title">
+      <div class="lp-wrap">
+        <span class="lp-eyebrow">Your next study session starts here</span>
+        <h2 id="final-cta-title">Make space for better learning.</h2>
+        <p>Choose a tool, start with one topic, and build from there with AI Quiz System.</p>
+        <div class="lp-hero-actions">
+          <a class="lp-button lp-button-primary" href="register.html">Create your account&nbsp; →</a>
+          <a class="lp-button lp-button-quiet" href="login.html">Sign in</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="lp-footer">
+    <div class="lp-wrap lp-footer-inner">
+      <span><span class="lp-footer-brand">AI Quiz System</span> · © 2026 DaraPet Technology</span>
+      <nav class="lp-footer-links" aria-label="Footer navigation">
+        <a href="#features">Explore features</a>
+        <a href="#disclaimer">Educational-use disclaimer</a>
+        <a href="login.html">Sign in</a>
+        <a href="#top">Back to top ↑</a>
+      </nav>
+    </div>
+  </footer>
 </body>
 </html>
