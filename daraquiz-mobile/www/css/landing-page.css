@@ -384,3 +384,29 @@ body.lp-page a { color: inherit; }
   .lp-video-caption { align-items: flex-start; flex-direction: column; gap: 4px; }
 }
 @media (prefers-reduced-motion: reduce) { .lp-hero-video { display: none; } }
+
+
+/* Keep the video above the hero background and below readable content. */
+.lp-hero::before { z-index: 1; background: linear-gradient(90deg, rgba(2, 6, 23, .78) 0%, rgba(2, 6, 23, .57) 44%, rgba(2, 6, 23, .22) 100%), linear-gradient(0deg, rgba(2, 6, 23, .4), transparent 48%); }
+.lp-hero-video { z-index: 0; display: block; opacity: 1; }
+.lp-hero-grid { position: relative; z-index: 2; }
+.lp-video-autoplay-fallback { position: absolute; z-index: 3; left: 50%; bottom: 22px; display: inline-flex; align-items: center; gap: 9px; transform: translateX(-50%); border: 1px solid rgba(255, 255, 255, .45); border-radius: 999px; padding: 11px 16px; background: rgba(2, 6, 23, .82); color: #fff; font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; box-shadow: 0 8px 28px rgba(0, 0, 0, .28); }
+.lp-video-autoplay-fallback[hidden] { display: none; }
+.lp-video-autoplay-fallback:disabled { cursor: default; opacity: .9; }
+.lp-hero-actions { flex-wrap: wrap; }
+.lp-brand-image { width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid rgba(148, 163, 184, .45); border-radius: 50%; object-fit: cover; box-shadow: 0 4px 14px rgba(0, 0, 0, .24); }
+.lp-disclaimer-card { display: block; }
+.lp-disclaimer-intro { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); align-items: start; gap: 30px; margin-bottom: 22px; }
+.lp-disclaimer-intro h2 { margin: 8px 0 0; }
+.lp-disclaimer-intro p { margin: 0; color: var(--lp-muted); font-size: 12px; line-height: 1.8; }
+.lp-legal-notices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.lp-legal-notice { padding: 18px; border: 1px solid var(--lp-line); border-radius: 15px; background: rgba(2, 6, 23, .28); }
+.lp-legal-notice h3 { margin: 0 0 9px; color: #f8fafc; font-size: 14px; font-weight: 600; }
+.lp-legal-notice p { margin: 0; color: var(--lp-muted); font-size: 11px; line-height: 1.8; }
+.lp-legal-notice a { color: #93c5fd; text-decoration: underline; text-underline-offset: 3px; overflow-wrap: anywhere; }
+@media (max-width: 820px) {
+  .lp-disclaimer-intro, .lp-legal-notices { grid-template-columns: 1fr; }
+  .lp-disclaimer-intro { gap: 12px; }
+  .lp-legal-notice { padding: 16px; }
+  .lp-video-autoplay-fallback { bottom: 14px; font-size: 11px; }
+}
