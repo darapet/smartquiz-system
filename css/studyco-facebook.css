@@ -183,17 +183,37 @@
   }
 
   .studyco-composer-head {
-    margin-bottom: 8px;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    margin: 0;
   }
 
-  .studyco-composer-head strong {
+  .studyco-composer-head .studyco-avatar {
+    width: 42px;
+    height: 42px;
+  }
+
+  .studyco-composer-head > div:nth-child(2) {
+    min-width: 0;
+    padding-right: 54px;
+  }
+
+  .studyco-composer-head button {
     display: block;
+    width: 100%;
     padding: 10px 14px;
+    overflow: hidden;
+    border: 0;
     border-radius: 22px;
     background: #f0f2f5;
     color: #65676b;
-    font-size: .84rem;
-    font-weight: 500;
+    text-align: left;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: .9rem;
+    font-weight: 400;
   }
 
   .studyco-composer-head span {

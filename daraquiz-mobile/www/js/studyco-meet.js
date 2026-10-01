@@ -51,7 +51,17 @@ const lastSeenText = (presence) => {
   if (days < 7) return `Last seen ${days}d ago`;
   return `Last seen ${new Date(ms).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}`;
 };
-const avatar = (profile, size = '') => `<div class="studyco-avatar ${size}">${profile?.photoURL ? `<img src="${esc(profile.photoURL)}" alt="" loading="lazy" decoding="async">` : esc(initials(profile))}</div>`;
+const avatar = (profile, size = '') => {
+  const photoURL = profile?.photoURL || profile?.photoUrl || '';
+  const fallback = esc(initials(profile));
+  return `<div class="studyco-avatar ${size}">${photoURL ? `<img src="${esc(photoURL)}" alt="" data-avatar-fallback="${fallback}" loading="lazy" decoding="async">` : fallback}</div>`;
+};
+function handleAvatarImageError(event) {
+  const image = event.target;
+  if (!image?.matches?.('.studyco-avatar img')) return;
+  const avatarElement = image.closest?.('.studyco-avatar');
+  if (avatarElement) avatarElement.textContent = image.dataset.avatarFallback || 'SC';
+}
 const avatarWithPresence = (profile, uid, size = '') => {
   const presence = state.presence.get(uid);
   return `<span class="studyco-presence-wrap">${avatar(profile, size)}<i class="studyco-presence-dot${presenceIsOnline(presence) ? ' online' : ''}" title="${esc(lastSeenText(presence))}" aria-label="${esc(lastSeenText(presence))}"></i></span>`;
@@ -195,7 +205,10 @@ async function getProfile(uid) {
   if (state.profiles.has(uid)) return state.profiles.get(uid);
   const snap = await getDoc(doc(db, 'social_profiles', uid));
   if (!snap.exists()) return null;
-  const profile = { id: snap.id, ...snap.data() };
+  const data = snap.data();
+  const profile = { id: snap.id, ...data };
+  if (!profile.photoURL) profile.photoURL = profile.photoUrl || (uid === state.user?.uid ? state.user?.photoURL : '') || '';
+  delete profile.photoUrl;
   const visibleProfile = uid === state.user?.uid ? profile : publicProfile(profile);
   state.profiles.set(uid, visibleProfile); return visibleProfile;
 }
@@ -2016,6 +2029,7 @@ function closeModal(id) { const modal = $(id); if (modal) modal.hidden = true; }
 
 function wire() {
   if (state.wired) return; state.wired = true;
+  document.addEventListener('error', handleAvatarImageError, true);
   const openOwnProfile = () => {
     if (state.user) setView('profile', { profileUid: state.user.uid });
   };
