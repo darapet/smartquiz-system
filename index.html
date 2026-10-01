@@ -44,7 +44,7 @@
 
   <main id="main-content">
     <section class="lp-hero" aria-labelledby="hero-title">
-      <video class="lp-hero-video" autoplay muted loop playsinline webkit-playsinline preload="auto" poster="img/landing-interface.jpg" aria-hidden="true" tabindex="-1">
+      <video class="lp-hero-video" muted loop playsinline webkit-playsinline preload="auto" poster="img/landing-hero-workspace.jpg" aria-hidden="true" tabindex="-1" data-scroll-autoplay>
         <source src="video/home-hero.mp4?v=landing-video-fix-2" type="video/mp4">
       </video>
       <button class="lp-video-autoplay-fallback" type="button" aria-label="Play the muted hero video" hidden><span aria-hidden="true">▶</span> Tap to play the video</button>
@@ -69,7 +69,7 @@
             <span>Your learning workspace</span>
             <span class="lp-live">Ready when you are</span>
           </div>
-          <img class="lp-showcase-image" src="img/landing-interface.jpg" alt="AI Quiz System quiz and dashboard interface">
+          <img class="lp-showcase-image" src="img/landing-hero-workspace.jpg" alt="A student using a laptop for a focused study session" fetchpriority="high">
           <div class="lp-showcase-caption">
             <div>
               <strong>One place to learn, create, and review.</strong>
@@ -125,20 +125,17 @@
         <div class="lp-video-section-head">
           <span class="lp-eyebrow">See it in action</span>
           <h2 id="lp-video-title">A closer look at your learning workspace.</h2>
-          <p>Watch the short introduction, then explore how quizzes, tutoring, and discovery fit into one place.</p>
+          <p>The introduction plays automatically while it is in view and pauses when you scroll away.</p>
         </div>
         <div class="lp-video-layout">
           <div class="lp-video-card">
-            <video class="lp-product-video" id="product-video" controls playsinline webkit-playsinline preload="metadata" poster="img/landing-storyboard.jpg">
+            <video class="lp-product-video" id="product-video" controls playsinline webkit-playsinline preload="metadata" aria-label="AI Quiz System introduction video" data-scroll-autoplay data-audio-autoplay>
               <source src="video/home-introduction.mp4?v=landing-video-fix-2" type="video/mp4">
               Your browser does not support embedded video.
             </video>
+            <button class="lp-sound-prompt" type="button" data-video-sound hidden aria-label="Turn video sound on">Turn sound on</button>
             <div class="lp-video-caption"><strong>AI Quiz System introduction</strong><span>10-second product overview</span></div>
           </div>
-          <aside class="lp-storyboard-card">
-            <img src="img/landing-storyboard.jpg" alt="Storyboard showing quiz, AI tutor, discovery, and learning scenes" loading="lazy">
-            <div><strong>More than quizzes</strong><span>Practice, get support, and keep learning with others.</span></div>
-          </aside>
         </div>
       </div>
     </section>
@@ -153,8 +150,8 @@
 
         <article class="lp-feature" id="quiz-builder" aria-labelledby="quiz-builder-title">
           <div class="lp-feature-art">
-            <span class="lp-feature-art-label">Quiz Studio preview</span>
-            <img src="img/landing-dashboard.jpg" alt="AI Quiz System quiz creation and learning dashboard preview" loading="lazy">
+            <span class="lp-feature-art-label">Quiz creation</span>
+            <img src="img/landing-feature-quiz-builder.jpg" alt="An instructor preparing a multiple-choice quiz on a laptop" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Create</span>
@@ -166,17 +163,9 @@
         </article>
 
         <article class="lp-feature" id="practice" aria-labelledby="practice-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Self Quiz preview</span>
-            <div class="lp-ui-card">
-              <div class="lp-ui-top"><strong>Practice session</strong><span>Question 01</span></div>
-              <span class="lp-ui-kicker">Topic review</span>
-              <p class="lp-ui-question">Which idea would you like to check first?</p>
-              <div class="lp-ui-option is-selected"><i class="lp-ui-radio"></i> Review a key concept</div>
-              <div class="lp-ui-option"><i class="lp-ui-radio"></i> Try a harder question</div>
-              <div class="lp-ui-option"><i class="lp-ui-radio"></i> Revisit a missed answer</div>
-              <div class="lp-progress"><span></span></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Quiz practice</span>
+            <img src="img/landing-feature-practice.jpg" alt="A student answering a practice question on a tablet in a campus library" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Practice</span>
@@ -188,14 +177,9 @@
         </article>
 
         <article class="lp-feature" id="tutor" aria-labelledby="tutor-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">AI Tutor preview</span>
-            <div class="lp-ui-card">
-              <div class="lp-ui-top"><strong>Ask your AI Tutor</strong><span>Study support</span></div>
-              <div class="lp-chat-bubble">Can you explain this idea in a simpler way?</div>
-              <div class="lp-chat-answer">Let’s break it into smaller steps, then connect each step to what you already know.</div>
-              <div class="lp-note-row"><span class="lp-note-icon">✦</span><span><strong>Keep exploring</strong><small>Ask a follow-up or try a practice question.</small></span><em>Continue</em></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">AI study support</span>
+            <img src="img/landing-feature-tutor.jpg" alt="A student reading an AI study explanation on a laptop and taking notes" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Get support</span>
@@ -209,7 +193,7 @@
         <article class="lp-feature" id="studyhub" aria-labelledby="studyhub-title">
           <div class="lp-feature-art">
             <span class="lp-feature-art-label">A more focused session</span>
-            <img src="img/landing-student.jpg" alt="Student reviewing learning material on a smartphone" loading="lazy">
+            <img src="img/landing-student.jpg" alt="A student reviewing learning material on a smartphone while commuting" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Stay focused</span>
@@ -221,14 +205,9 @@
         </article>
 
         <article class="lp-feature" id="library" aria-labelledby="library-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Learning Library</span>
-            <div class="lp-library-grid">
-              <div class="lp-library-tile"><span>▤</span><strong>Course notes</strong><small>Your saved material</small></div>
-              <div class="lp-library-tile"><span>▧</span><strong>Study guides</strong><small>Resources to revisit</small></div>
-              <div class="lp-library-tile"><span>▦</span><strong>Past questions</strong><small>Practice and review</small></div>
-              <div class="lp-library-tile"><span>＋</span><strong>More resources</strong><small>Keep learning together</small></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Learning library</span>
+            <img src="img/landing-feature-library.jpg" alt="A learner organizing books, course notes, and digital study resources" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Keep it close</span>
@@ -240,13 +219,9 @@
         </article>
 
         <article class="lp-feature" id="progress" aria-labelledby="progress-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Learner dashboard</span>
-            <div class="lp-progress-visual">
-              <strong>Your learning at a glance</strong>
-              <small>Use recent activity to decide what to review.</small>
-              <div class="lp-progress-line"><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Study progress</span>
+            <img src="img/landing-feature-progress.jpg" alt="A learner reviewing study progress on a laptop after a study session" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">See your progress</span>
@@ -258,12 +233,9 @@
         </article>
 
         <article class="lp-feature" id="studio" aria-labelledby="studio-title">
-          <div class="lp-feature-art" aria-hidden="true">
+          <div class="lp-feature-art">
             <span class="lp-feature-art-label">AI Studio</span>
-            <div class="lp-studio-canvas">
-              <div class="lp-studio-preview"><span>Ideas into action</span><small>Build a learning resource</small></div>
-              <div class="lp-studio-side"><span>Choose a starting point</span><div class="lp-studio-swatch"><i></i><i></i><i></i><i></i></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div></div>
-            </div>
+            <img src="img/landing-feature-studio.jpg" alt="A student planning a learning resource with a laptop, notes, and a mind map" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Make something useful</span>
@@ -275,12 +247,9 @@
         </article>
 
         <article class="lp-feature" id="image-studio" aria-labelledby="image-studio-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Image Studio</span>
-            <div class="lp-studio-canvas">
-              <div class="lp-studio-preview"><span>Visual learning</span><small>Ideas for your next project</small></div>
-              <div class="lp-studio-side"><span>Explore a visual direction</span><div class="lp-studio-swatch"><i></i><i></i><i></i><i></i></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div><div class="lp-studio-tool"></div></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Visual learning</span>
+            <img src="img/landing-feature-image-studio.jpg" alt="A student creating a colorful educational illustration on a pen display tablet" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Create visuals</span>
@@ -292,14 +261,9 @@
         </article>
 
         <article class="lp-feature" id="documents" aria-labelledby="documents-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Document tools</span>
-            <div class="lp-doc-page">
-              <small>Study document</small>
-              <strong>Make your ideas easier to review.</strong>
-              <div class="lp-doc-line"></div><div class="lp-doc-line"></div><div class="lp-doc-line short"></div>
-              <div class="lp-doc-line" style="margin-top:22px"></div><div class="lp-doc-line"></div><div class="lp-doc-line short"></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Study documents</span>
+            <img src="img/landing-feature-documents.jpg" alt="A learner organizing handwritten class notes into a clear study document on a laptop" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Structure your ideas</span>
@@ -311,12 +275,9 @@
         </article>
 
         <article class="lp-feature" id="audio" aria-labelledby="audio-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Listen and learn</span>
-            <div class="lp-audio-player">
-              <div class="lp-audio-title"><span class="lp-audio-play">▶</span><span><strong>Listen to your study text</strong><small>Audio review, at your pace</small></span></div>
-              <div class="lp-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Audio study</span>
+            <img src="img/landing-feature-audio.jpg" alt="A student listening to study material on a smartphone outdoors" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Listen on the move</span>
@@ -328,14 +289,9 @@
         </article>
 
         <article class="lp-feature" id="challenges" aria-labelledby="challenges-title">
-          <div class="lp-feature-art" aria-hidden="true">
-            <span class="lp-feature-art-label">Challenge board</span>
-            <div class="lp-rank-list">
-              <div class="lp-ui-top"><strong>Practice challenge</strong><span>Take your next turn</span></div>
-              <div class="lp-rank-row"><b>01</b><strong>First place</strong><small>Quiz score</small><span>↗</span></div>
-              <div class="lp-rank-row"><b>02</b><strong>Next learner</strong><small>Quiz score</small><span>↗</span></div>
-              <div class="lp-rank-row"><b>03</b><strong>Your turn</strong><small>Keep practicing</small><span>↗</span></div>
-            </div>
+          <div class="lp-feature-art">
+            <span class="lp-feature-art-label">Quiz challenge</span>
+            <img src="img/landing-feature-challenges.jpg" alt="Two classmates taking a friendly quiz challenge together" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Practice together</span>
@@ -350,7 +306,7 @@
         <article class="lp-feature" id="community" aria-labelledby="community-title">
           <div class="lp-feature-art">
             <span class="lp-feature-art-label">StudyCo Meet</span>
-            <img class="lp-feature-photo" src="img/landing-study-group.jpg" alt="Two students collaborating on a quiz at a library table" loading="lazy">
+            <img class="lp-feature-photo" src="img/landing-study-group.jpg" alt="Two students collaborating on a quiz at a library table" loading="lazy" decoding="async">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Learn with others</span>
@@ -371,9 +327,18 @@
           <p>Whether you are learning independently, hosting a quiz, or studying with others, start with the tool that fits the work.</p>
         </div>
         <div class="lp-audience-grid">
-          <article class="lp-audience-card"><span>Learn</span><h3>For independent learners</h3><p>Build your own study rhythm with self-quizzes, notes, flashcards, and AI support.</p><a class="lp-text-link" href="studyhub.html">Set up a study session&nbsp; →</a></article>
-          <article class="lp-audience-card"><span>Create</span><h3>For teachers and quiz hosts</h3><p>Prepare questions around a topic, shape your quiz, and bring a group into the practice.</p><a class="lp-text-link" href="quiz-setup.html">Start creating a quiz&nbsp; →</a></article>
-          <article class="lp-audience-card"><span>Connect</span><h3>For study groups</h3><p>Use shared study time and learning conversations to make it easier to keep going.</p><a class="lp-text-link" href="studyco-meet.html">Meet your study circle&nbsp; →</a></article>
+          <article class="lp-audience-card">
+            <img class="lp-audience-image" src="img/landing-audience-independent.jpg" alt="An independent learner studying at a campus window seat" loading="lazy" decoding="async">
+            <div class="lp-audience-copy"><span>Learn</span><h3>For independent learners</h3><p>Build your own study rhythm with self-quizzes, notes, flashcards, and AI support.</p><a class="lp-text-link" href="studyhub.html">Set up a study session&nbsp; →</a></div>
+          </article>
+          <article class="lp-audience-card">
+            <img class="lp-audience-image" src="img/landing-audience-teachers.jpg" alt="A teacher preparing a classroom quiz on a laptop" loading="lazy" decoding="async">
+            <div class="lp-audience-copy"><span>Create</span><h3>For teachers and quiz hosts</h3><p>Prepare questions around a topic, shape your quiz, and bring a group into the practice.</p><a class="lp-text-link" href="quiz-setup.html">Start creating a quiz&nbsp; →</a></div>
+          </article>
+          <article class="lp-audience-card">
+            <img class="lp-audience-image" src="img/landing-audience-groups.jpg" alt="Three classmates collaborating around a laptop and shared notes" loading="lazy" decoding="async">
+            <div class="lp-audience-copy"><span>Connect</span><h3>For study groups</h3><p>Use shared study time and learning conversations to make it easier to keep going.</p><a class="lp-text-link" href="studyco-meet.html">Meet your study circle&nbsp; →</a></div>
+          </article>
         </div>
       </div>
     </section>
