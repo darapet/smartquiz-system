@@ -33,6 +33,7 @@ import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
+import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.core.app.ActivityCompat;
@@ -744,6 +745,10 @@ public class MainActivity extends BridgeActivity {
         runOnUiThread(() -> appWebView.evaluateJavascript(js, null));
     }
 
+    private void showDownloadToast(final String message) {
+        runOnUiThread(() -> Toast.makeText(MainActivity.this, message, Toast.LENGTH_SHORT).show());
+    }
+
     private void writeDownloadedFile(String filename, byte[] bytes, String mimeType) throws Exception {
         String safeName = safeDownloadFilename(filename);
         String safeMime = (mimeType == null || mimeType.trim().length() == 0) ? "image/png" : mimeType;
@@ -829,6 +834,7 @@ public class MainActivity extends BridgeActivity {
                     if (bytes.length == 0) throw new Exception("The image is empty.");
                     writeDownloadedFile(filename, bytes, mimeType);
                     notifyJsDownload(true, "Image saved to Downloads");
+                    showDownloadToast("Image saved to Downloads");
                 } catch (Exception e) {
                     notifyJsDownload(false, "Could not save the image to Downloads.");
                 }
