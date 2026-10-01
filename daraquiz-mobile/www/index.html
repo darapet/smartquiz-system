@@ -44,6 +44,9 @@
 
   <main id="main-content">
     <section class="lp-hero" aria-labelledby="hero-title">
+      <video class="lp-hero-video" autoplay muted loop playsinline preload="auto" poster="img/landing-interface.jpg" aria-hidden="true" tabindex="-1">
+        <source src="video/home-hero.mp4" type="video/mp4">
+      </video>
       <div class="lp-wrap lp-hero-grid">
         <div class="lp-hero-copy">
           <span class="lp-hero-kicker">An AI-powered learning workspace</span>
@@ -64,7 +67,7 @@
             <span>Your learning workspace</span>
             <span class="lp-live">Ready when you are</span>
           </div>
-          <img class="lp-showcase-image" src="img/landing-dashboard.jpg" alt="AI Quiz System learning dashboard with quiz and study tools">
+          <img class="lp-showcase-image" src="img/landing-interface.jpg" alt="AI Quiz System quiz and dashboard interface">
           <div class="lp-showcase-caption">
             <div>
               <strong>One place to learn, create, and review.</strong>
@@ -111,6 +114,29 @@
           <div class="lp-flow-step"><span class="lp-flow-number">01</span><span><strong>Create a quiz</strong><small>Choose a topic or learning material.</small></span></div>
           <div class="lp-flow-step"><span class="lp-flow-number">02</span><span><strong>Practice the ideas</strong><small>Work through questions at your pace.</small></span></div>
           <div class="lp-flow-step"><span class="lp-flow-number">03</span><span><strong>Decide what is next</strong><small>Return to the tools that help you learn.</small></span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="lp-video-section" aria-labelledby="lp-video-title">
+      <div class="lp-wrap">
+        <div class="lp-video-section-head">
+          <span class="lp-eyebrow">See it in action</span>
+          <h2 id="lp-video-title">A closer look at your learning workspace.</h2>
+          <p>Watch the short introduction, then explore how quizzes, tutoring, and discovery fit into one place.</p>
+        </div>
+        <div class="lp-video-layout">
+          <div class="lp-video-card">
+            <video class="lp-product-video" controls playsinline preload="metadata" poster="img/landing-storyboard.jpg">
+              <source src="video/home-introduction.mp4" type="video/mp4">
+              Your browser does not support embedded video.
+            </video>
+            <div class="lp-video-caption"><strong>AI Quiz System introduction</strong><span>10-second product overview</span></div>
+          </div>
+          <aside class="lp-storyboard-card">
+            <img src="img/landing-storyboard.jpg" alt="Storyboard showing quiz, AI tutor, discovery, and learning scenes" loading="lazy">
+            <div><strong>More than quizzes</strong><span>Practice, get support, and keep learning with others.</span></div>
+          </aside>
         </div>
       </div>
     </section>
@@ -320,14 +346,9 @@
         </article>
 
         <article class="lp-feature" id="community" aria-labelledby="community-title">
-          <div class="lp-feature-art" aria-hidden="true">
+          <div class="lp-feature-art">
             <span class="lp-feature-art-label">StudyCo Meet</span>
-            <div class="lp-community-card">
-              <div class="lp-community-head"><strong>Your study circle</strong><span class="lp-people"><i></i><i></i><i></i></span></div>
-              <div class="lp-message"><i></i><p>What topic are you reviewing today?<small>Study group conversation</small></p></div>
-              <div class="lp-message"><i></i><p>Let’s work through the practice questions together.<small>Shared study session</small></p></div>
-              <div class="lp-note-row"><span class="lp-note-icon">◎</span><span><strong>StudyCo Meet</strong><small>Make room for focused learning.</small></span><em>Join</em></div>
-            </div>
+            <img class="lp-feature-photo" src="img/landing-study-group.jpg" alt="Two students collaborating on a quiz at a library table" loading="lazy">
           </div>
           <div class="lp-feature-copy">
             <span class="lp-eyebrow">Learn with others</span>
@@ -358,7 +379,7 @@
     <section class="lp-about" id="about" aria-labelledby="about-title">
       <div class="lp-wrap">
         <div class="lp-about-card">
-          <img src="img/darapet-logo.png" alt="DaraPet Technology logo" loading="lazy">
+          <img src="img/darapet-logo-brand.png" alt="DaraPet Technology logo" loading="lazy">
           <div>
             <h2 id="about-title">AI Quiz System by DaraPet Technology</h2>
             <p>A connected learning space for creating quizzes, practicing what you know, organizing study material, and learning with other people.</p>
