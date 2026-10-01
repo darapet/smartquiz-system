@@ -851,6 +851,7 @@ async function toggleLike(postId) {
   const existing = await getDoc(likeRef);
   if (existing.exists()) await deleteDoc(likeRef); else await setDoc(likeRef, { userId: state.user.uid, createdAt: serverTimestamp() });
   const likes = await getDocs(collection(db, 'studyco_posts', postId, 'likes'));
+  await updateDoc(doc(db, 'studyco_posts', postId), { likeCount: likes.size });
   const post = state.posts.find((item) => item.id === postId);
   if (post) post.likeCount = likes.size;
   return { liked: !existing.exists(), count: likes.size };
@@ -860,6 +861,7 @@ async function addComment(postId, text) {
   if (!text.trim()) return;
   await addDoc(collection(db, 'studyco_posts', postId, 'comments'), { userId: state.user.uid, text: text.trim().slice(0, 500), createdAt: serverTimestamp() });
   const comments = await getDocs(collection(db, 'studyco_posts', postId, 'comments'));
+  await updateDoc(doc(db, 'studyco_posts', postId), { commentCount: comments.size });
   const post = state.posts.find((item) => item.id === postId);
   if (post) post.commentCount = comments.size;
   return comments.size;
