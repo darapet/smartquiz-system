@@ -2184,3 +2184,92 @@
     height: 32px;
   }
 }
+
+
+/* Click-to-expand post images, long-post controls, and the full-screen image viewer. */
+.studyco-post-read-more {
+  display: block;
+  margin: -6px 20px 14px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #1877f2;
+  font: inherit;
+  font-size: .86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.studyco-post-read-more:hover { text-decoration: underline; }
+.studyco-post-image-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+.studyco-post-image-button:focus-visible,
+.studyco-post-read-more:focus-visible {
+  outline: 3px solid #1877f2;
+  outline-offset: 3px;
+}
+#studyco-image-viewer-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: max(16px, env(safe-area-inset-top)) 16px max(16px, env(safe-area-inset-bottom));
+  background: rgba(5, 8, 16, .96);
+}
+#studyco-image-viewer-modal[hidden] { display: none; }
+#studyco-image-viewer-modal .studyco-image-viewer {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: min(100%, 1280px);
+  max-height: 100%;
+}
+#studyco-image-viewer-modal .studyco-image-viewer > img {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: calc(100vh - 128px);
+  max-height: calc(100dvh - 128px);
+  object-fit: contain;
+  border-radius: 10px;
+  background: #111;
+}
+#studyco-image-viewer-modal .studyco-image-viewer-close {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+  width: 42px;
+  height: 42px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .95);
+  color: #111827;
+}
+.studyco-image-viewer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 100%;
+}
+.studyco-image-viewer-actions .studyco-button { min-height: 44px; }
+@media (max-width: 600px) {
+  #studyco-image-viewer-modal { padding-left: 10px; padding-right: 10px; }
+  #studyco-image-viewer-modal .studyco-image-viewer > img {
+    max-height: calc(100vh - 118px);
+    max-height: calc(100dvh - 118px);
+  }
+  #studyco-image-viewer-modal .studyco-image-viewer-close { top: 4px; right: 4px; }
+}

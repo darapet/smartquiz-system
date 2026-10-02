@@ -602,14 +602,91 @@ function profilePostManagement(post) {
   return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary>Manage post</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
 }
 
+const MAX_POST_CHARACTERS = 200000;
+const POST_PREVIEW_WORD_LIMIT = 150;
+
+function postTextPreview(content) {
+  const value = String(content || '');
+  const words = value.trim().split(/\s+/, POST_PREVIEW_WORD_LIMIT + 1);
+  const hasMore = words.length > POST_PREVIEW_WORD_LIMIT;
+  return { preview: hasMore ? words.slice(0, POST_PREVIEW_WORD_LIMIT).join(' ') : value, hasMore };
+}
+
+async function openPostImageViewer(postId) {
+  const post = state.posts.find((item) => item.id === postId);
+  const viewer = $('studyco-image-viewer-modal');
+  const image = $('studyco-image-viewer-image');
+  const saveButton = $('studyco-save-post-image');
+  if (!post?.imageUrl || !viewer || !image || !saveButton || !state.user) return;
+  viewer.dataset.postId = post.id;
+  image.src = post.imageUrl;
+  image.alt = 'Expanded image from a post';
+  saveButton.disabled = true;
+  saveButton.textContent = 'Checking save status…';
+  openModal('studyco-image-viewer-modal');
+  try {
+    const saved = await getDoc(doc(db, 'users', state.user.uid, 'savedImages', post.id));
+    saveButton.dataset.saved = String(saved.exists());
+    saveButton.textContent = saved.exists() ? 'Saved to account' : 'Save to account';
+  } catch (error) {
+    saveButton.dataset.saved = 'false';
+    saveButton.textContent = 'Save to account';
+    toast(error.message || 'Saved image status could not load.', true);
+  } finally { saveButton.disabled = false; }
+}
+
+async function toggleSavedPostImage() {
+  const viewer = $('studyco-image-viewer-modal');
+  const button = $('studyco-save-post-image');
+  const post = state.posts.find((item) => item.id === viewer?.dataset.postId);
+  if (!post?.imageUrl || !state.user || !button) return;
+  const savedRef = doc(db, 'users', state.user.uid, 'savedImages', post.id);
+  const remove = button.dataset.saved === 'true';
+  button.disabled = true;
+  try {
+    if (remove) await deleteDoc(savedRef);
+    else await setDoc(savedRef, { postId: post.id, imageUrl: post.imageUrl, savedAt: serverTimestamp() });
+    button.dataset.saved = String(!remove);
+    button.textContent = remove ? 'Save to account' : 'Saved to account';
+    toast(remove ? 'Image removed from saved items.' : 'Image saved to your account.');
+  } catch (error) {
+    toast(error.message || 'The image could not be saved.', true);
+  } finally { button.disabled = false; }
+}
+
+async function downloadPostImage() {
+  const image = $('studyco-image-viewer-image');
+  const button = $('studyco-download-post-image');
+  if (!image?.src || !button) return;
+  button.disabled = true;
+  try {
+    const response = await fetch(image.src, { mode: 'cors' });
+    if (!response.ok) throw new Error('The image could not be downloaded.');
+    const blob = await response.blob();
+    const extension = (blob.type.split('/')[1] || 'jpg').split(';')[0].replace(/[^a-z0-9]/gi, '') || 'jpg';
+    const downloadUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = `studyco-image-${Date.now()}.${extension}`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(downloadUrl), 30000);
+    toast('Image download started.');
+  } catch (_) {
+    window.open(image.src, '_blank', 'noopener,noreferrer');
+    toast('The image opened in your browser. Use its Save or Download option.');
+  } finally { button.disabled = false; }
+}
 function renderPost(post, { showAuthor = true } = {}) {
   /* Do not block the first paint on one profile read plus two subcollection
      reads for every card. Counts are stored on the post; the full comments
      list and the current user's like are fetched only on interaction. */
   const author = state.profiles.get(post.userId) || null;
   const liked = false;
-  const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
-  const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async">` : '';
+  const { preview, hasMore } = postTextPreview(post.content);
+  const text = post.content ? `<div class="studyco-post-body" data-post-body>${esc(preview)}</div>${hasMore ? `<button class="studyco-post-read-more" data-post-action="read-more" data-post-id="${esc(post.id)}" type="button">Read more</button>` : ''}` : '';
+  const image = post.imageUrl ? `<button class="studyco-post-image-button" type="button" data-open-post-image data-post-id="${esc(post.id)}" aria-label="Open post image"><img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async"></button>` : '';
   const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
@@ -785,7 +862,7 @@ async function publishPost() {
   try {
     const imageUrl = image ? await uploadImage(image, `studyco/${state.user.uid}/posts/${Date.now()}-${image.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
     const fileUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/posts/files/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, 1000), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', status: 'published', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+    await addDoc(collection(db, 'studyco_posts'), { userId: state.user.uid, content: content.slice(0, MAX_POST_CHARACTERS), imageUrl, fileUrl, fileName: file?.name || '', linkUrl, bgTemplateId: content.length <= 240 ? state.selectedTemplate : '', status: 'published', likeCount: 0, commentCount: 0, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
     $('studyco-post-text').value = ''; $('studyco-post-image').value = ''; $('studyco-post-file').value = ''; $('studyco-post-url').value = ''; $('studyco-post-url-row').hidden = true; $('studyco-post-attachment-status').hidden = true; state.postImage = null; state.postFile = null; $('studyco-post-preview').hidden = true; closePostEditor(); toast('Posted to StudyCo Meet.');
   } catch (error) { toast(error.message || 'Your post could not be published.', true); } finally { button.disabled = false; }
 }
@@ -824,7 +901,7 @@ async function savePostChanges(event) {
   const scheduledDate = scheduleValue ? new Date(scheduleValue) : null;
   const isFuture = scheduledDate && !Number.isNaN(scheduledDate.getTime()) && scheduledDate.getTime() > Date.now();
   const update = {
-    content: content.slice(0, 1000),
+    content: content.slice(0, MAX_POST_CHARACTERS),
     status: isFuture ? 'scheduled' : 'published',
     scheduledAt: isFuture ? Timestamp.fromDate(scheduledDate) : null,
     updatedAt: serverTimestamp()
@@ -2131,6 +2208,8 @@ window.addEventListener('hashchange', syncRoute);
     if (event.target.id === 'studyco-inline-cover-photo') void uploadProfileMedia(event, 'coverURL', 'cover photo');
   });
   document.querySelectorAll('[data-close-modal]').forEach((button) => button.addEventListener('click', () => closeModal(button.closest('.studyco-modal-backdrop').id)));
+  $('studyco-image-viewer-modal')?.addEventListener('click', (event) => { if (event.target.id === 'studyco-image-viewer-modal') closeModal('studyco-image-viewer-modal'); });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape' && $('studyco-image-viewer-modal') && !$('studyco-image-viewer-modal').hidden) closeModal('studyco-image-viewer-modal'); });
   $('studyco-new-message')?.addEventListener('click', () => { setView('friends'); $('studyco-global-search')?.focus(); });
   $('studyco-message-search')?.addEventListener('input', () => loadChats());
   $('studyco-mark-all-notifications')?.addEventListener('click', markAllNotificationsRead);
@@ -2139,6 +2218,10 @@ window.addEventListener('hashchange', syncRoute);
     if (row) openNotification(row.dataset.notificationId);
   });
   document.addEventListener('click', async (event) => {
+    const imageTrigger = event.target.closest('[data-open-post-image]');
+    if (imageTrigger) { event.preventDefault(); void openPostImageViewer(imageTrigger.dataset.postId); return; }
+    if (event.target.closest('#studyco-save-post-image')) { void toggleSavedPostImage(); return; }
+    if (event.target.closest('#studyco-download-post-image')) { void downloadPostImage(); return; }
     const profileLink = event.target.closest('[data-profile-uid]');
     if (profileLink) {
       event.preventDefault();
@@ -2149,6 +2232,16 @@ window.addEventListener('hashchange', syncRoute);
     if (!button) return;
     const article = button.closest('.studyco-post'); const action = button.dataset.postAction;
     if (!article) return;
+    if (action === 'read-more') {
+      const post = state.posts.find((item) => item.id === article.dataset.postId);
+      const body = article.querySelector('[data-post-body]');
+      if (!post || !body) return;
+      const expanded = button.dataset.expanded === 'true';
+      body.textContent = expanded ? postTextPreview(post.content).preview : (post.content || '');
+      button.dataset.expanded = String(!expanded);
+      button.textContent = expanded ? 'Read more' : 'Show less';
+      return;
+    }
     if (action === 'close-preferences') {
       button.closest('details')?.removeAttribute('open');
       return;

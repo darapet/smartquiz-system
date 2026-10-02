@@ -52,6 +52,13 @@ service cloud.firestore {
               && request.resource.data.registration_status == 'complete'
               && request.resource.data.status == resource.data.status)
           ));
+      match /savedImages/{imageId} {
+        allow read, delete: if isSignedIn() && request.auth.uid == userId;
+        allow create, update: if isSignedIn()
+          && request.auth.uid == userId
+          && request.resource.data.postId is string
+          && request.resource.data.imageUrl is string;
+      }
     }
 
     // ─── Daily quotes ──────────────────────────────────────────────
