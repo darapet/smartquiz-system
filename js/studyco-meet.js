@@ -3,7 +3,7 @@ import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-aut
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, documentId, startAfter, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
-  viewedProfileUid: null, viewedProfile: null,
+  viewedProfileUid: null, viewedProfile: null, viewedProfilePosts: [], viewedProfileRelation: 'none', activeProfileTab: 'posts',
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(), postPreferences: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
@@ -342,11 +342,51 @@ function showApp() {
   $('studyco-auth-screen').hidden = true; $('studyco-app-screen').hidden = false;
 }
 
+function renderProfileActions(uid, isOwnProfile) {
+  const ownerActions = $('studyco-profile-owner-actions');
+  const publicActions = $('studyco-profile-public-actions');
+  if (!ownerActions || !publicActions) return;
+  ownerActions.hidden = !isOwnProfile;
+  publicActions.hidden = isOwnProfile;
+  if (isOwnProfile) { publicActions.innerHTML = ''; return; }
+  const isFriend = state.friends.some((friend) => friend.uid === uid);
+  const incoming = state.requests.some((request) => request.requesterId === uid);
+  const outgoing = state.sentRequests.some((request) => request.recipientId === uid);
+  const relation = isFriend ? 'friends' : incoming ? 'incoming' : outgoing ? 'outgoing' : (state.viewedProfileRelation || 'none');
+  const safeUid = esc(uid);
+  if (relation === 'friends') publicActions.innerHTML = '<button class="studyco-button primary" type="button" data-friend-action="message" data-uid="' + safeUid + '">Message</button>';
+  else if (relation === 'incoming') publicActions.innerHTML = '<button class="studyco-button primary" type="button" data-friend-action="accept" data-uid="' + safeUid + '">Accept request</button>';
+  else if (relation === 'outgoing') publicActions.innerHTML = '<button class="studyco-button soft" type="button" disabled>Request sent</button>';
+  else publicActions.innerHTML = '<button class="studyco-button primary" type="button" data-friend-action="request" data-uid="' + safeUid + '">Add friend</button>';
+}
+
+async function renderProfileTab(tab) {
+  const allowedTabs = ['posts', 'photos', 'about'];
+  if (!allowedTabs.includes(tab)) tab = 'posts';
+  state.activeProfileTab = tab;
+  document.querySelectorAll('#studyco-profile-tabs [data-profile-tab]').forEach((button) => {
+    const selected = button.dataset.profileTab === tab;
+    button.classList.toggle('active', selected);
+    button.setAttribute('aria-selected', String(selected));
+  });
+  document.querySelectorAll('#studyco-view-profile [data-profile-panel]').forEach((panel) => {
+    panel.hidden = panel.dataset.profilePanel !== tab;
+  });
+  if (tab === 'about') return;
+  const profileUid = state.viewedProfileUid || state.user?.uid;
+  const includePrivate = profileUid === state.user?.uid;
+  const posts = state.viewedProfilePosts || [];
+  const target = tab === 'photos' ? $('studyco-profile-photos') : $('studyco-profile-posts');
+  const visiblePosts = tab === 'photos' ? posts.filter((post) => Boolean(post.imageUrl)) : posts;
+  await renderFeed(target, visiblePosts, { includePrivate, showAuthor: false });
+}
+
 function renderProfile() {
   const p = state.viewedProfile || state.profile || {};
   const uid = state.viewedProfileUid || state.user?.uid;
   const isOwnProfile = uid === state.user?.uid;
   const profileNameText = profileName(p);
+  renderProfileActions(uid, isOwnProfile);
   const profilePostCount = state.posts.filter((post) => post.userId === uid).length;
   $('studyco-top-name').textContent = profileName(p);
   $('studyco-hello-name').textContent = `, ${profileName(p).split(' ')[0] || 'there'}`;
@@ -379,14 +419,20 @@ function renderProfile() {
   $('studyco-profile-completion').textContent = `${completion}%`;
   $('studyco-profile-progress-label').textContent = `${complete} of ${profileFields.length} details`;
   $('studyco-profile-progress-bar').style.width = `${completion}%`;
+  $('studyco-profile-progress').hidden = !isOwnProfile;
+  $('studyco-profile-completion-stat').hidden = !isOwnProfile;
   $('studyco-profile-post-count').textContent = String(profilePostCount);
   $('studyco-profile-friend-count').textContent = isOwnProfile ? String(state.friends.length) : String(p.friendCount || 0);
+  $('studyco-profile-stats').classList.toggle('is-public', !isOwnProfile);
   const cover = $('studyco-profile-cover');
   cover.innerHTML = `${p.coverURL ? `<img src="${esc(p.coverURL)}" alt="Cover banner">` : ''}<div class="studyco-profile-cover-shade"></div>${!p.coverURL ? '<span class="studyco-profile-cover-label">Your learning space</span>' : ''}${isOwnProfile ? '<label class="studyco-profile-media-edit studyco-profile-cover-edit" title="Change cover photo"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z"/><circle cx="12" cy="13" r="3.2"/></svg><input id="studyco-inline-cover-photo" type="file" accept="image/*"></label>' : ''}`;
-  $('studyco-profile-posts-heading').hidden = !isOwnProfile;
+  const coverLabel = cover.querySelector('.studyco-profile-cover-label');
+  if (coverLabel) coverLabel.textContent = isOwnProfile ? 'Your learning space' : 'StudyCo learning profile';
+  $('studyco-profile-posts-heading').hidden = false;
   $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
   $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
   $('studyco-profile-edit-small').hidden = !isOwnProfile;
+  $('studyco-profile-edit-details').hidden = !isOwnProfile;
   const profileNext = $('studyco-profile-next');
   if (profileNext) profileNext.hidden = !isOwnProfile;
 }
@@ -785,6 +831,7 @@ function scheduleNextFeedRefresh() {
 
 async function loadProfileView(uid = state.user.uid) {
   const profileUid = uid || state.user.uid;
+  if (profileUid !== state.viewedProfileUid) state.activeProfileTab = 'posts';
   const profile = profileUid === state.user.uid ? state.profile : await getProfile(profileUid);
   if (!profile) {
     toast('That profile could not be found.', true);
@@ -794,16 +841,20 @@ async function loadProfileView(uid = state.user.uid) {
   state.viewedProfileUid = profileUid;
   state.viewedProfile = profile;
   if (profileUid !== state.user.uid) {
-    const [sent, received] = await Promise.all([
+    const [sent, received, relation] = await Promise.all([
       getDocs(query(collection(db, 'social_friend_requests'), where('requesterId', '==', profileUid), limit(100))).catch(() => null),
-      getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', profileUid), limit(100))).catch(() => null)
+      getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', profileUid), limit(100))).catch(() => null),
+      relationship(profileUid).catch(() => 'none')
     ]);
+    state.viewedProfileRelation = relation;
     profile.friendCount = [...(sent?.docs || []), ...(received?.docs || [])]
       .filter((item) => item.data().status === 'accepted').length;
+  } else {
+    state.viewedProfileRelation = 'self';
   }
+  state.viewedProfilePosts = state.posts.filter((post) => post.userId === profileUid && (profileUid === state.user.uid || isPublicPost(post)));
   renderProfile();
-  const posts = state.posts.filter((post) => post.userId === profileUid && (profileUid === state.user.uid || isPublicPost(post)));
-  await renderFeed($('studyco-profile-posts'), posts, { includePrivate: profileUid === state.user.uid, showAuthor: false });
+  await renderProfileTab(state.activeProfileTab || 'posts');
 }
 
 async function loadPostPreferences() {
@@ -1049,7 +1100,9 @@ async function handleFriendAction(uid, action) {
     }
     if (action === 'unfriend' || action === 'reject' || action === 'cancel') await deleteDoc(ref);
     if (action === 'message') { setView('messages'); openChat(uid); return; }
-    await loadPeople(''); await loadSocialLists(); refreshNavCounts(); toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
+    await loadPeople(''); await loadSocialLists(); refreshNavCounts();
+    if (state.activeView === 'profile' && state.viewedProfileUid === uid) renderProfileActions(uid, uid === state.user.uid);
+    toast(action === 'request' ? 'Friend request sent.' : 'Friendships updated.');
   } catch (error) { toast(error.message || 'That action could not be completed.', true); }
 }
 
@@ -2194,7 +2247,10 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-story-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.storyImage = file || null; if (file) $('studyco-story-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`; });
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
-  [$('studyco-edit-profile'), $('studyco-profile-edit-small')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
+  $('studyco-profile-add-story')?.addEventListener('click', () => openModal('studyco-story-modal'));
+  $('studyco-profile-tabs')?.addEventListener('click', (event) => { const tab = event.target.closest('[data-profile-tab]'); if (tab) void renderProfileTab(tab.dataset.profileTab); });
+  $('studyco-profile-public-actions')?.addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) void handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
+  [$('studyco-edit-profile'), $('studyco-profile-edit-small'), $('studyco-profile-edit-details')].filter(Boolean).forEach((button) => button.addEventListener('click', () => window.openStudyCoProfileEditor()));
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
   $('studyco-edit-marital-status')?.addEventListener('change', toggleRelationshipNameField);
@@ -2482,6 +2538,7 @@ async function uploadProfileMedia(event, field, label) {
 
 async function saveProfile(event) {
   event.preventDefault();
+  if (!state.user || (state.activeView === 'profile' && state.viewedProfileUid && state.viewedProfileUid !== state.user.uid)) { toast('You can only edit your own profile.', true); return; }
   try {
     const phone = $('studyco-edit-contact').value.trim();
     const email = $('studyco-edit-email').value.trim().toLowerCase();
@@ -2517,7 +2574,7 @@ async function saveProfile(event) {
 }
 
 window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
-  if (!state.user) return;
+  if (!state.user || (state.activeView === 'profile' && state.viewedProfileUid && state.viewedProfileUid !== state.user.uid)) return;
   fillEditForm();
   openModal('studyco-edit-modal');
 };

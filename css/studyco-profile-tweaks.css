@@ -234,3 +234,69 @@
 }
 .studyco-comments-modal .studyco-comment-form input{min-width:0;flex:1}
 .studyco-comments-modal .studyco-comment-form button{flex:0 0 auto}
+
+/* Profile redesign: owner and visitor views share a clear cover, identity, stats and tabs. */
+.studyco-profile-hero{padding:0;overflow:hidden;border-radius:18px;background:#fff}
+.studyco-profile-cover{height:clamp(180px,28vw,250px);margin:0;border-radius:18px 18px 0 0;background:linear-gradient(135deg,#343b6d,#8286d8 58%,#d6a0d7)}
+.studyco-profile-cover>img{z-index:0}
+.studyco-profile-cover-shade{z-index:1;pointer-events:none;background:linear-gradient(0deg,#11162d66,transparent 62%)}
+.studyco-profile-cover-label{z-index:2;right:auto;left:20px;bottom:16px;background:#10152d66;color:#fff}
+.studyco-profile-cover-edit{top:auto;right:18px;bottom:14px;z-index:4;width:40px;height:40px;border-width:2px;background:#fff;color:#27304d}
+.studyco-profile-identity{display:flex;align-items:flex-end;gap:18px;padding:0 24px 14px}
+.studyco-profile-identity .studyco-profile-avatar{margin-top:-62px;z-index:3}
+.studyco-profile-avatar{width:124px;height:124px}
+.studyco-profile-avatar>.studyco-avatar.large{width:124px;height:124px;border:5px solid #fff;box-shadow:0 6px 20px #10152d24}
+.studyco-profile-avatar-edit{right:0;bottom:0;width:36px;height:36px;border-width:2px;background:#fff;color:#27304d}
+.studyco-profile-identity-copy{padding:8px 0 2px}
+.studyco-profile-name-row h2{font-size:clamp(1.35rem,2.5vw,1.8rem);letter-spacing:-.045em}
+.studyco-profile-identity-copy>p:last-child{max-width:620px;font-size:.84rem}
+.studyco-profile-actions{display:flex;align-items:center;gap:10px;padding:0 24px 17px}
+.studyco-profile-actions .studyco-button{min-height:42px;flex:1}
+.studyco-profile-actions .studyco-button.primary{background:#1877f2;box-shadow:none}
+.studyco-profile-actions .studyco-button.soft{border-color:#e4e6eb;background:#e4e6eb;color:#202124}
+.studyco-profile-stats{grid-template-columns:repeat(3,minmax(0,1fr));padding:14px 24px;border-top:1px solid #e4e6eb}
+.studyco-profile-stats.is-public{grid-template-columns:repeat(2,minmax(0,1fr))}
+.studyco-profile-stats>div{padding:0 14px;border-right:1px solid #e4e6eb}
+.studyco-profile-stats>div:first-child{padding-left:0}
+.studyco-profile-stats>div:last-child{border-right:0}
+.studyco-profile-stats strong{font-size:1.12rem;color:#16181c}
+.studyco-profile-stats span{font-size:.72rem;color:#65676b}
+.studyco-profile-tabs{display:flex;gap:6px;align-items:center;margin:0 0 14px;padding:5px;border:1px solid #e4e6eb;border-radius:14px;background:#fff;box-shadow:0 4px 16px #17213b08}
+.studyco-profile-tab{min-width:82px;padding:10px 16px;border:0;border-radius:10px;background:transparent;color:#65676b;font-size:.78rem;font-weight:800;cursor:pointer}
+.studyco-profile-tab:hover{background:#f0f2f5;color:#1877f2}
+.studyco-profile-tab.active{background:#eaf3ff;color:#1877f2}
+.studyco-profile-panel{margin:0 0 18px}
+.studyco-profile-panel[hidden]{display:none!important}
+.studyco-profile-posts-card{padding:18px;border:1px solid #e4e6eb;border-radius:16px;background:#fff}
+.studyco-profile-about{padding:20px;border:1px solid #e4e6eb;border-radius:16px;background:#fff}
+.studyco-profile-progress[hidden]{display:none!important}
+@media(max-width:760px){
+  .studyco-profile-cover{height:190px}
+  .studyco-profile-identity{align-items:flex-start;gap:12px;padding:0 16px 14px}
+  .studyco-profile-identity .studyco-profile-avatar{width:104px;height:104px;margin-top:-48px}
+  .studyco-profile-avatar>.studyco-avatar.large{width:104px;height:104px;border-width:4px}
+  .studyco-profile-avatar-edit{width:32px;height:32px}
+  .studyco-profile-identity-copy{padding-top:8px}
+  .studyco-profile-name-row h2{font-size:1.25rem}
+  .studyco-profile-actions{padding:0 16px 14px;gap:8px}
+  .studyco-profile-actions .studyco-button{padding:9px 10px;font-size:.72rem}
+  .studyco-profile-stats{padding:13px 16px}
+  .studyco-profile-tabs{position:sticky;top:68px;z-index:5}
+  .studyco-profile-tab{min-width:0;flex:1;padding:10px 8px}
+}
+@media(max-width:480px){
+  .studyco-profile-cover{height:164px}
+  .studyco-profile-identity{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;padding:0 14px 12px}
+  .studyco-profile-identity .studyco-profile-avatar{width:88px;height:88px;margin-top:-42px}
+  .studyco-profile-avatar>.studyco-avatar.large{width:88px;height:88px}
+  .studyco-profile-avatar-edit{width:29px;height:29px}
+  .studyco-profile-identity-copy{padding-top:5px}
+  .studyco-profile-name-row{gap:6px}
+  .studyco-profile-name-row h2{font-size:1.08rem}
+  .studyco-profile-status{font-size:.58rem}
+  .studyco-profile-identity-copy>p:last-child{font-size:.76rem}
+  .studyco-profile-actions{padding-right:14px;padding-left:14px}
+  .studyco-profile-stats{padding-right:14px;padding-left:14px}
+  .studyco-profile-tabs{top:60px}
+  .studyco-profile-posts-card,.studyco-profile-about{padding:14px}
+}
