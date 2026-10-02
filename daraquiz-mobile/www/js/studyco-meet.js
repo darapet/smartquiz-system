@@ -1220,10 +1220,7 @@ function callPeer(callId, remoteUid) {
     sdpSemantics: 'unified-plan',
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' },
-      // A second provider gives Android WebViews another candidate source
-      // on networks where Google STUN is blocked or unreliable.
-      { urls: 'stun:global.stun.twilio.com:3478?transport=udp' }
+      { urls: 'stun:stun1.l.google.com:19302' }
     ],
     iceCandidatePoolSize: 10
   });
