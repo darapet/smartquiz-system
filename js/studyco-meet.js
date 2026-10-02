@@ -696,7 +696,7 @@ function renderPost(post, { showAuthor = true } = {}) {
   const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
-  const authorHead = showAuthor ? `<button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button>` : '';
+  const authorHead = showAuthor ? `<a class="studyco-post-author" href="${viewHash('profile', post.userId)}" data-profile-uid="${esc(post.userId)}" aria-label="View ${esc(profileName(author))}'s profile">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></a>` : '';
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
@@ -2224,6 +2224,7 @@ window.addEventListener('hashchange', syncRoute);
     if (event.target.closest('#studyco-download-post-image')) { void downloadPostImage(); return; }
     const profileLink = event.target.closest('[data-profile-uid]');
     if (profileLink) {
+      if (profileLink.tagName === 'A' && (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey)) return;
       event.preventDefault();
       setView('profile', { profileUid: profileLink.dataset.profileUid });
       return;

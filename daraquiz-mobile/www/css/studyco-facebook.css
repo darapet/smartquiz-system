@@ -2273,3 +2273,7 @@
   }
   #studyco-image-viewer-modal .studyco-image-viewer-close { top: 4px; right: 4px; }
 }
+
+.studyco-post-author{text-decoration:none;cursor:pointer}
+.studyco-post-author:focus-visible{outline:3px solid var(--sc-primary);outline-offset:3px;border-radius:8px}
+.studyco-post-author:hover strong{text-decoration:underline}
