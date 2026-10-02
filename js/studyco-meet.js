@@ -1,6 +1,6 @@
 import { auth, db } from './aqs-firebase.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, documentId, startAfter, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null,
@@ -490,26 +490,55 @@ function closePostEditor() {
   document.body.classList.remove('studyco-post-editor-open');
 }
 
-async function findPeople(term = '', { broad = false } = {}) {
+async function findPeople(term = '', { broad = false, shouldContinue = () => true } = {}) {
   const needle = term.trim().toLowerCase();
-  const snap = await getDocs(query(collection(db, 'social_profiles'), limit(120)));
-  return snap.docs.map((item) => publicProfile({ id: item.id, ...item.data() }))
-    .filter((profile) => profile.id !== state.user.uid && !state.dismissedSuggestions.has(profile.id)
-      && (!needle || [profileName(profile), profile.username, ...(broad ? [profile.school, profile.department, profile.major] : [])].filter(Boolean).join(' ').toLowerCase().includes(needle)))
-    .slice(0, 12);
+  const results = [];
+  let cursor = null;
+  const pageSize = 120;
+  while (results.length < 12 && shouldContinue()) {
+    const constraints = [orderBy(documentId())];
+    if (cursor) constraints.push(startAfter(cursor));
+    constraints.push(limit(pageSize));
+    const snap = await getDocs(query(collection(db, 'social_profiles'), ...constraints));
+    if (!snap.docs.length) break;
+    cursor = snap.docs[snap.docs.length - 1];
+    const pageProfiles = snap.docs.map((item) => publicProfile({ id: item.id, ...item.data() }))
+      .filter((profile) => profile.id !== state.user.uid
+        && (Boolean(needle) || !state.dismissedSuggestions.has(profile.id))
+        && (!needle || [profileName(profile), profile.username, ...(broad ? [profile.school, profile.department, profile.major] : [])].filter(Boolean).join(' ').toLowerCase().includes(needle)));
+    results.push(...pageProfiles);
+    if (snap.docs.length < pageSize) break;
+  }
+  return results.slice(0, 12);
 }
 
-async function findPosts(term) {
+async function findPosts(term, { shouldContinue = () => true } = {}) {
   const needle = term.trim().toLowerCase();
-  const matches = await Promise.all(state.posts.map(async (post) => {
-    if (!isPublicPost(post)) return null;
-    const author = await getProfile(post.userId);
-    const searchable = `${post.content || ''} ${post.fileName || ''} ${post.linkUrl || ''} ${profileName(author)} ${author?.username || ''} ${author?.school || ''} ${author?.department || ''}`.toLowerCase();
-    return searchable.includes(needle) ? post : null;
-  }));
-  return matches.filter(Boolean);
+  const results = [];
+  let cursor = null;
+  const pageSize = 30;
+  while (results.length < 30 && shouldContinue()) {
+    const constraints = [orderBy('createdAt', 'desc')];
+    if (cursor) constraints.push(startAfter(cursor));
+    constraints.push(limit(pageSize));
+    const snap = await getDocs(query(collection(db, 'studyco_posts'), ...constraints));
+    if (!snap.docs.length) break;
+    cursor = snap.docs[snap.docs.length - 1];
+    const pageMatches = await Promise.all(snap.docs.map(async (item) => {
+      const post = { id: item.id, ...item.data() };
+      if (!isPublicPost(post) || !shouldContinue()) return null;
+      const postText = [post.content || '', post.fileName || '', post.linkUrl || ''].join(' ').toLowerCase();
+      if (postText.includes(needle)) return post;
+      const author = await getProfile(post.userId);
+      if (!shouldContinue()) return null;
+      const authorText = [profileName(author), author?.username || '', author?.school || '', author?.department || ''].join(' ').toLowerCase();
+      return authorText.includes(needle) ? post : null;
+    }));
+    results.push(...pageMatches.filter(Boolean));
+    if (snap.docs.length < pageSize) break;
+  }
+  return results.slice(0, 30);
 }
-
 async function renderSearchResults(value) {
   const term = value.trim();
   const panel = $('studyco-search-results');
@@ -530,8 +559,12 @@ async function renderSearchResults(value) {
   $('studyco-search-people-results').innerHTML = '<div class="studyco-card studyco-empty">Finding people...</div>';
   $('studyco-search-post-results').innerHTML = '<div class="studyco-card studyco-empty">Finding posts...</div>';
 
-  const [profiles, posts] = await Promise.all([findPeople(term, { broad: true }), findPosts(term)]);
-  if (requestId !== state.searchRequestId || $('studyco-page-search')?.value.trim() !== term) return;
+  const isCurrentSearch = () => requestId === state.searchRequestId && $('studyco-page-search')?.value.trim() === term;
+  const [profiles, posts] = await Promise.all([
+    findPeople(term, { broad: true, shouldContinue: isCurrentSearch }),
+    findPosts(term, { shouldContinue: isCurrentSearch })
+  ]);
+  if (!isCurrentSearch()) return;
   profiles.forEach((profile) => state.profiles.set(profile.id, profile));
   await renderPeople(profiles, $('studyco-search-people-results'));
   await renderFeed($('studyco-search-post-results'), posts);
@@ -911,8 +944,11 @@ async function renderPeople(profiles, target) {
 
 async function loadPeople(term = '') {
   const target = $('studyco-people-results'); target.innerHTML = '<div class="studyco-card studyco-empty">Finding classmates...</div>';
-  if (!term.trim()) { target.innerHTML = ''; return; }
-  const profiles = await findPeople(term);
+  const normalized = term.trim().toLowerCase();
+  if (!normalized) { target.innerHTML = ''; return; }
+  const isCurrentSearch = () => state.activeView === 'friends' && $('studyco-global-search')?.value.trim().toLowerCase() === normalized;
+  const profiles = await findPeople(term, { shouldContinue: isCurrentSearch });
+  if (!isCurrentSearch()) return;
   profiles.forEach((profile) => state.profiles.set(profile.id, profile)); await renderPeople(profiles, target);
 }
 
