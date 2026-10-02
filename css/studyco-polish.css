@@ -250,9 +250,9 @@
 }
 
 .studyco-context-nav {
-  position: sticky;
-  top: 60px;
-  z-index: 39;
+  position: relative;
+  top: auto;
+  z-index: 30;
   display: flex;
   justify-content: center;
   padding: 0 14px;
