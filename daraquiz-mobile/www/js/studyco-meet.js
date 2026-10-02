@@ -94,11 +94,11 @@ async function createNotification(recipientId, type, entityId = '', conversation
 
 function notificationCopy(notification) {
   const actor = notification.actor ? profileName(notification.actor) : 'A StudyCo learner';
-  if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: 'ï¼' };
-  if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: 'â' };
-  if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: 'â' };
-  if (notification.type === 'call_missed') return { title: actor, body: 'missed your call.', icon: 'â' };
-  return { title: actor, body: notification.message || 'shared an update with you.', icon: 'â¦' };
+  if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: '＋' };
+  if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: '✓' };
+  if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: '✉' };
+  if (notification.type === 'call_missed') return { title: actor, body: 'missed your call.', icon: '☎' };
+  return { title: actor, body: notification.message || 'shared an update with you.', icon: '✦' };
 }
 
 function renderNotifications() {
@@ -364,7 +364,7 @@ function renderProfile() {
   $('studyco-profile-education-level').textContent = p.educationLevel || 'Not added yet';
   $('studyco-profile-education-status').textContent = p.educationStatus || 'Not added yet';
   $('studyco-profile-school').textContent = p.school || 'Not added yet';
-  $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' Â· ') || 'Not added yet';
+  $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ') || 'Not added yet';
   $('studyco-profile-date-of-birth').textContent = isOwnProfile ? (p.dateOfBirth || 'Not added yet') : 'Not shared';
   $('studyco-profile-marital-status').textContent = p.maritalStatus || 'Not added yet';
   $('studyco-profile-relationship-name').textContent = isOwnProfile ? (p.relationshipName || 'Not added yet') : 'Not shared';
@@ -456,7 +456,7 @@ function renderPostAttachmentStatus() {
   const status = $('studyco-post-attachment-status');
   if (!status) return;
   const attachments = [state.postImage?.name ? `Photo: ${state.postImage.name}` : '', state.postFile?.name ? `File: ${state.postFile.name}` : ''].filter(Boolean);
-  status.textContent = attachments.join(' Â· ');
+  status.textContent = attachments.join(' · ');
   status.hidden = attachments.length === 0;
 }
 
@@ -523,7 +523,7 @@ async function renderSearchResults(value) {
 
   const requestId = ++state.searchRequestId;
   panel.hidden = false;
-  $('studyco-search-title').textContent = `Results for â${term}â`;
+  $('studyco-search-title').textContent = `Results for “${term}”`;
   $('studyco-search-empty').hidden = true;
   $('studyco-search-people-group').hidden = false;
   $('studyco-search-posts-group').hidden = false;
@@ -559,7 +559,7 @@ function postStatusLabel(post) {
 function postPreferenceControls(post) {
   if (post.userId === state.user.uid) return '';
   const preference = state.postPreferences.get(post.id);
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">â¢â¢â¢</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">Ã</button></div></details>`;
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
 }
 
 function profilePostManagement(post) {
@@ -576,7 +576,7 @@ function renderPost(post, { showAuthor = true } = {}) {
   const liked = false;
   const text = post.content ? `<div class="studyco-post-body">${esc(post.content)}</div>` : '';
   const image = post.imageUrl ? `<img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async">` : '';
-  const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">ð ${esc(post.fileName || 'Open attached file')}</a>` : '';
+  const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
   const likeCount = Number(post.likeCount) || 0;
@@ -585,11 +585,11 @@ function renderPost(post, { showAuthor = true } = {}) {
   const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
-  const authorHead = showAuthor ? `<button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} Â· ${timeText(post.createdAt)}</small></span></button>` : '';
+  const authorHead = showAuthor ? `<button class="studyco-post-author" data-profile-uid="${esc(post.userId)}" type="button">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></button>` : '';
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
-  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likeCount}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">â</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likeCount}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
 
 async function loadPostComments(postId, article) {
@@ -617,7 +617,7 @@ async function openComments(postId) {
   const form = $('studyco-comments-form');
   const list = $('studyco-comments-list');
   if (!form || !list) throw new Error('Comments are unavailable on this page.');
-  if (title) title.textContent = author ? `Comments on ${profileName(author)}âs post` : 'Comments';
+  if (title) title.textContent = author ? `Comments on ${profileName(author)}’s post` : 'Comments';
   form.dataset.commentPost = postId;
   form.reset();
   openModal('studyco-comments-modal');
@@ -926,7 +926,7 @@ async function renderPeople(profiles, target) {
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
     if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
-     return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' Â· ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
+     return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
   }).join('');
 }
 
@@ -1074,7 +1074,7 @@ function renderMessages(messages, profile) {
   target.innerHTML = messages.length ? messages.map((message) => {
     const body = esc(message.messageText || message.text || '').replace(/\n/g, '<br>');
     const attachment = message.attachmentUrl
-      ? `<a class="studyco-message-attachment" href="${esc(message.attachmentUrl)}" target="_blank" rel="noopener"><span>${message.attachmentType?.startsWith('image/') ? 'â§' : 'â§'}</span><b>${esc(message.attachmentName || 'Shared file')}</b><small>${esc(message.attachmentType || 'Attachment')}</small></a>`
+      ? `<a class="studyco-message-attachment" href="${esc(message.attachmentUrl)}" target="_blank" rel="noopener"><span>${message.attachmentType?.startsWith('image/') ? '▧' : '↧'}</span><b>${esc(message.attachmentName || 'Shared file')}</b><small>${esc(message.attachmentType || 'Attachment')}</small></a>`
       : '';
     return `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${body}${attachment}<time>${esc(timeText(message.createdAt))}</time></div></div>`;
   }).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
@@ -1099,7 +1099,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">â¹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>â</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
     updateActiveChatPresence();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
       const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
@@ -1328,7 +1328,7 @@ function callPeer(callId, remoteUid) {
 
   pc.onconnectionstatechange = () => {
     if (['failed', 'disconnected'].includes(pc.connectionState) && state.activeCallId === callId) {
-      $('studyco-call-status').textContent = 'Connection interrupted. Trying to recoverâ¦';
+      $('studyco-call-status').textContent = 'Connection interrupted. Trying to recover…';
     }
   };
 
@@ -1593,7 +1593,7 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
   $('studyco-call-name').textContent = profileName(profile);
   $('studyco-call-avatar').textContent = initials(profile);
   $('studyco-call-presence').textContent = incoming ? 'StudyCo call' : (targetOnline ? 'Online now' : 'Waiting for answer');
-  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : 'Calling â waiting for answer.';
+  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : 'Calling — waiting for answer.';
   $('studyco-call-last-seen').textContent = incoming || targetOnline ? '' : lastSeenText(presence);
   $('studyco-call-accept').hidden = !incoming;
   $('studyco-call-decline').textContent = incoming ? 'Decline' : 'End call';
@@ -1681,7 +1681,7 @@ async function translatePhrase(phrase) {
   if (!phrase || language === 'en' || state.translation.busy) return;
   state.translation.busy = true;
   const status = $('studyco-call-translation-status');
-  if (status) status.textContent = `Translating voice to ${$('studyco-call-language').selectedOptions[0].text}â¦`;
+  if (status) status.textContent = `Translating voice to ${$('studyco-call-language').selectedOptions[0].text}…`;
   try {
     const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(phrase)}&langpair=en|${encodeURIComponent(language)}`);
     const result = await response.json();
@@ -2016,7 +2016,7 @@ async function renderCallHistory() {
     const callLabel = call.callType === 'video' ? 'Video call' : 'Voice call';
     const label = missed ? 'Missed call' : call.status === 'accepted' ? callLabel : outgoing ? `${callLabel} placed` : `${callLabel} ended`;
     const action = call.recordingUrl ? `<a class="studyco-call-recording" href="${esc(call.recordingUrl)}" target="_blank" rel="noopener">Listen to recording</a>` : '';
-    return `<div class="studyco-call-history-row">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${missed ? 'Missed call' : label} Â· ${esc(timeText(call.createdAt || call.updatedAt))}</span></div><div class="studyco-call-history-meta"><i class="${missed ? 'missed' : outgoing ? 'outgoing' : 'incoming'}">${missed ? 'â' : outgoing ? 'â' : 'â'}</i>${action}</div></div>`;
+    return `<div class="studyco-call-history-row">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${missed ? 'Missed call' : label} · ${esc(timeText(call.createdAt || call.updatedAt))}</span></div><div class="studyco-call-history-meta"><i class="${missed ? 'missed' : outgoing ? 'outgoing' : 'incoming'}">${missed ? '↙' : outgoing ? '↗' : '↙'}</i>${action}</div></div>`;
   }));
   target.innerHTML = rows.join('') || '<div class="studyco-empty">Your call activity will appear here.</div>';
 }
@@ -2408,7 +2408,7 @@ async function saveProfile(event) {
     const relationshipName = $('studyco-edit-relationship-name').value.trim();
     if (!phone) { toast('Phone number is required.', true); $('studyco-edit-contact').focus(); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a valid email address.', true); $('studyco-edit-email').focus(); return; }
-    if (['Engaged', 'In a relationship'].includes(maritalStatus) && !relationshipName) { toast('Add the personâs name for this marital status.', true); $('studyco-edit-relationship-name').focus(); return; }
+    if (['Engaged', 'In a relationship'].includes(maritalStatus) && !relationshipName) { toast('Add the person’s name for this marital status.', true); $('studyco-edit-relationship-name').focus(); return; }
     const update = {
       displayName: $('studyco-edit-name').value.trim(),
       phone,
