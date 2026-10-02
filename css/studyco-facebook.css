@@ -10,10 +10,11 @@
     position: sticky;
     top: 0;
     z-index: 40;
-    height: 112px;
+    height: 60px;
+    min-height: 60px;
     display: flex;
-    flex-wrap: wrap;
-    align-content: flex-start;
+    flex-wrap: nowrap;
+    align-content: center;
     gap: 0;
     padding: 0 10px;
     background: #fff;
