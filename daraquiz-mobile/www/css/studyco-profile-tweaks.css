@@ -337,3 +337,40 @@
   .studyco-profile-field-edit{top:7px;right:7px;width:30px;height:30px}
   .studyco-profile-more-menu{min-width:195px}
 }
+
+/* Premium profile editor */
+#studyco-edit-modal.studyco-modal-backdrop{z-index:120;background:rgba(19,27,44,.48);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px)}
+#studyco-edit-modal .studyco-profile-editor-modal{width:min(860px,100%);max-height:min(92dvh,980px);border:1px solid rgba(231,235,243,.9);border-radius:25px;background:#fff;box-shadow:0 32px 100px rgba(15,23,42,.22);scrollbar-width:thin}
+#studyco-edit-modal .studyco-modal-head{position:sticky;top:0;z-index:3;align-items:center;padding:22px 28px 17px;border-bottom:1px solid #edf0f5;background:rgba(255,255,255,.96);backdrop-filter:blur(12px)}
+#studyco-edit-modal .studyco-modal-head .studyco-eyebrow{margin:0;color:#6674df;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+#studyco-edit-modal .studyco-modal-head h2{margin:5px 0 0;color:#1b2637;font-size:23px;font-weight:800;letter-spacing:-.045em}
+#studyco-edit-modal .studyco-profile-editor-subtitle{max-width:540px;margin:5px 0 0;color:#7d8899;font-size:12px;line-height:1.5;letter-spacing:0}
+#studyco-edit-modal .studyco-modal-head .studyco-icon-button{width:38px;height:38px;display:grid;place-items:center;border:1px solid #e8ebf2;border-radius:12px;background:#f8f9fc;color:#687386;font-size:23px;line-height:1;transition:background .15s ease,color .15s ease}
+#studyco-edit-modal .studyco-modal-head .studyco-icon-button:hover{background:#eff1ff;color:#5263dd}
+#studyco-edit-modal .studyco-form{padding:19px 28px 28px}
+#studyco-edit-modal .studyco-profile-editor-note{margin:0 0 15px;padding:12px 14px;border:1px solid #e9edff;border-radius:13px;background:linear-gradient(110deg,#f6f7ff,#fbfaff);color:#677287;font-size:11px;line-height:1.5}
+#studyco-edit-modal .studyco-profile-editor-note strong{color:#4656c9;font-weight:750}
+#studyco-edit-modal .studyco-upload-row{grid-template-columns:minmax(145px,.72fr) minmax(220px,1.5fr);gap:12px}
+#studyco-edit-modal .studyco-upload-box{min-height:108px;border:1px solid #e4e8f0;border-radius:16px;background:linear-gradient(145deg,#f6f7ff,#f9fbff);color:#596579;font-size:11px;font-weight:700;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+#studyco-edit-modal .studyco-upload-box:hover{border-color:#b8c0ff;box-shadow:0 8px 20px rgba(88,101,221,.10);transform:translateY(-1px)}
+#studyco-edit-modal .studyco-upload-box span{padding:8px 11px;border:1px solid #e8ebf3;border-radius:10px;background:rgba(255,255,255,.94);color:#596579;font-size:10px;font-weight:750;box-shadow:0 3px 9px rgba(19,27,44,.06)}
+#studyco-edit-modal .studyco-upload-box img{border-radius:15px}
+#studyco-edit-modal .studyco-form-grid{display:grid;grid-template-columns:1fr;gap:0;margin-top:18px}
+#studyco-edit-modal .studyco-form-section{min-width:0;padding:19px 0 18px;border-top:1px solid #edf0f5}
+#studyco-edit-modal .studyco-form-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:13px}
+#studyco-edit-modal .studyco-form-section-number{flex:0 0 auto;display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#eff1ff;color:#5663d5;font-size:10px;font-weight:800}
+#studyco-edit-modal .studyco-form-section-head h3{margin:0;color:#253247;font-size:13px;font-weight:800;letter-spacing:-.015em}
+#studyco-edit-modal .studyco-form-section-head p{margin:3px 0 0;color:#8791a0;font-size:10.5px;line-height:1.45}
+#studyco-edit-modal .studyco-form-section-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+#studyco-edit-modal .studyco-form-section-fields label{display:grid;align-content:start;gap:6px;min-width:0;color:#49566a;font-size:11px;font-weight:700}
+#studyco-edit-modal .studyco-form-section-fields input:not([type=file]),#studyco-edit-modal .studyco-form-section-fields select,#studyco-edit-modal .studyco-form-section-fields textarea{width:100%;min-height:43px;padding:10px 12px;border:1px solid #e1e6ef;border-radius:11px;background:#fbfcfe;color:#233047;font:500 12px Inter,system-ui,sans-serif;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+#studyco-edit-modal .studyco-form-section-fields textarea{min-height:86px;resize:vertical}
+#studyco-edit-modal #studyco-edit-bio{grid-column:1/-1}
+#studyco-edit-modal .studyco-form-section-fields input:focus,#studyco-edit-modal .studyco-form-section-fields select:focus,#studyco-edit-modal .studyco-form-section-fields textarea:focus{border-color:#8995ff;outline:0;background:#fff;box-shadow:0 0 0 4px rgba(101,114,242,.13)}
+#studyco-edit-modal .studyco-form-section-fields input::placeholder,#studyco-edit-modal .studyco-form-section-fields textarea::placeholder{color:#a3adbb}
+#studyco-edit-modal .studyco-modal-actions{position:sticky;bottom:0;z-index:3;margin:18px -28px -28px;padding:15px 28px max(17px,env(safe-area-inset-bottom));border-top:1px solid #edf0f5;background:rgba(255,255,255,.97);backdrop-filter:blur(12px)}
+#studyco-edit-modal .studyco-modal-actions .studyco-button{min-height:43px;padding:0 17px;border-radius:12px;font-size:12px;font-weight:750}
+#studyco-edit-modal .studyco-modal-actions .studyco-button.soft{border:1px solid #e3e8f0;background:#fff;color:#596579}
+#studyco-edit-modal .studyco-modal-actions .studyco-button.primary{border:0;background:linear-gradient(135deg,#536dfe,#7557e8);color:#fff;box-shadow:0 7px 17px rgba(91,101,229,.22)}
+#studyco-edit-modal .studyco-modal-actions .studyco-button.primary:hover{filter:brightness(1.04);transform:translateY(-1px)}
+@media(max-width:640px){#studyco-edit-modal.studyco-modal-backdrop{align-items:end;padding:0}#studyco-edit-modal .studyco-profile-editor-modal{width:100%;max-height:96dvh;border-radius:23px 23px 0 0;border-bottom:0}#studyco-edit-modal .studyco-modal-head{padding:18px 17px 14px}#studyco-edit-modal .studyco-modal-head h2{font-size:21px}#studyco-edit-modal .studyco-profile-editor-subtitle{font-size:11px}#studyco-edit-modal .studyco-form{padding:14px 17px 19px}#studyco-edit-modal .studyco-profile-editor-note{font-size:10.5px}#studyco-edit-modal .studyco-upload-row{grid-template-columns:minmax(105px,.8fr) minmax(160px,1.2fr);gap:9px}#studyco-edit-modal .studyco-upload-box{min-height:88px}#studyco-edit-modal .studyco-form-section{padding:16px 0}#studyco-edit-modal .studyco-form-section-fields{grid-template-columns:1fr;gap:11px}#studyco-edit-modal #studyco-edit-bio{grid-column:auto}#studyco-edit-modal .studyco-modal-actions{margin:14px -17px -19px;padding:12px 17px max(14px,env(safe-area-inset-bottom))}#studyco-edit-modal .studyco-modal-actions .studyco-button{flex:1}}

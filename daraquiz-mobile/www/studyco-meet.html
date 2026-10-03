@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="css/studyco-circle.css">
   <link rel="stylesheet" href="css/studyco-facebook.css?v=profile-details-20261002">
   <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
-  <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-details-20261002">
+  <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
   <link rel="stylesheet" href="css/studyco-polish.css?v=home-context-nav-flow-20261002">
 </head>
 <body class="studyco-page">
@@ -244,28 +244,11 @@
   </div>
 
   <div id="studyco-edit-modal" class="studyco-modal-backdrop" hidden>
-    <div class="studyco-modal">
-      <div class="studyco-modal-head"><div><p class="studyco-eyebrow">Profile settings</p><h2>Edit your profile</h2></div><button class="studyco-icon-button" data-close-modal type="button">×</button></div>
-      <form id="studyco-profile-form" class="studyco-form">
+    <div class="studyco-modal studyco-profile-editor-modal" role="dialog" aria-modal="true" aria-labelledby="studyco-edit-modal-title">
+      <div class="studyco-modal-head"><div><p class="studyco-eyebrow">Profile settings</p><h2 id="studyco-edit-modal-title">Edit your profile</h2><p class="studyco-profile-editor-subtitle">Help your learning circle get to know you.</p></div><button class="studyco-icon-button" data-close-modal type="button" aria-label="Close profile editor">×</button></div>
+      <form id="studyco-profile-form" class="studyco-form"><p class="studyco-profile-editor-note">Update your details here. <strong>Choose who can see each detail in Settings &amp; privacy.</strong></p>
         <div class="studyco-upload-row"><label class="studyco-upload-box" id="studyco-photo-preview"><input id="studyco-profile-photo" type="file" accept="image/*"><span data-upload-caption>Profile photo</span></label><label class="studyco-upload-box cover" id="studyco-cover-preview"><input id="studyco-cover-photo" type="file" accept="image/*"><span data-upload-caption>Cover banner</span></label></div>
-        <div class="studyco-form-grid">
-          <label>Full name<input id="studyco-edit-name" type="text" required></label>
-          <label>Phone number<input id="studyco-edit-contact" type="tel" autocomplete="tel" required></label>
-          <label>Email<input id="studyco-edit-email" type="email" autocomplete="email" required></label>
-          <label>Date of birth<input id="studyco-edit-date-of-birth" type="date" autocomplete="bday"></label>
-          <label>Bio<textarea id="studyco-edit-bio" maxlength="240"></textarea></label>
-          <label>Address<input id="studyco-edit-address" type="text" autocomplete="street-address" placeholder="House number, street, city"></label>
-          <label>Student status<input id="studyco-edit-status" type="text" placeholder="e.g. 300 level Computer Science"></label>
-          <label>Education level<select id="studyco-edit-education-level"><option value="">Select education level</option><option value="Primary">Primary</option><option value="Secondary">Secondary</option><option value="Tertiary">Tertiary</option></select></label>
-          <label>Education status<select id="studyco-edit-education-status"><option value="">Select status</option><option value="Undergraduate">Undergraduate</option><option value="Graduate">Graduate</option></select></label>
-          <label>School<input id="studyco-edit-school" type="text"></label>
-          <label>Department<input id="studyco-edit-department" type="text"></label>
-          <label>Major<input id="studyco-edit-major" type="text"></label>
-          <label>Gender<select id="studyco-edit-gender"><option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Non-binary">Non-binary</option><option value="Prefer not to say">Prefer not to say</option></select></label>
-          <label>Marital status<select id="studyco-edit-marital-status"><option value="">Select marital status</option><option value="Single">Single</option><option value="In a relationship">In a relationship</option><option value="Engaged">Engaged</option><option value="Married">Married</option><option value="Divorced">Divorced</option></select></label>
-          <label id="studyco-relationship-name-field" hidden>Partner name<input id="studyco-edit-relationship-name" type="text" autocomplete="name"></label>
-          <label>Location<input id="studyco-edit-location" type="text" placeholder="City, state or country"></label>
-        </div>
+        <div class="studyco-form-grid"><section class="studyco-form-section" aria-labelledby="studyco-profile-section-01"><div class="studyco-form-section-head"><span class="studyco-form-section-number" aria-hidden="true">01</span><div><h3 id="studyco-profile-section-01">About you</h3><p>The name and contact details your circle can use to recognize you.</p></div></div><div class="studyco-form-section-fields"><label>Full name<input id="studyco-edit-name" type="text" required></label><label>Email<input id="studyco-edit-email" type="email" autocomplete="email" required></label><label>Phone number<input id="studyco-edit-contact" type="tel" autocomplete="tel" required></label><label>Bio<textarea id="studyco-edit-bio" maxlength="240"></textarea></label></div></section><section class="studyco-form-section" aria-labelledby="studyco-profile-section-02"><div class="studyco-form-section-head"><span class="studyco-form-section-number" aria-hidden="true">02</span><div><h3 id="studyco-profile-section-02">Education</h3><p>Add context about what and where you are learning.</p></div></div><div class="studyco-form-section-fields"><label>Student status<input id="studyco-edit-status" type="text" placeholder="e.g. 300 level Computer Science"></label><label>Education level<select id="studyco-edit-education-level"><option value="">Select education level</option><option value="Primary">Primary</option><option value="Secondary">Secondary</option><option value="Tertiary">Tertiary</option></select></label><label>Education status<select id="studyco-edit-education-status"><option value="">Select status</option><option value="Undergraduate">Undergraduate</option><option value="Graduate">Graduate</option></select></label><label>School<input id="studyco-edit-school" type="text"></label><label>Department<input id="studyco-edit-department" type="text"></label><label>Major<input id="studyco-edit-major" type="text"></label></div></section><section class="studyco-form-section" aria-labelledby="studyco-profile-section-03"><div class="studyco-form-section-head"><span class="studyco-form-section-number" aria-hidden="true">03</span><div><h3 id="studyco-profile-section-03">Personal details</h3><p>Optional details. Visibility is controlled separately in settings.</p></div></div><div class="studyco-form-section-fields"><label>Date of birth<input id="studyco-edit-date-of-birth" type="date" autocomplete="bday"></label><label>Address<input id="studyco-edit-address" type="text" autocomplete="street-address" placeholder="House number, street, city"></label><label>Location<input id="studyco-edit-location" type="text" placeholder="City, state or country"></label><label>Gender<select id="studyco-edit-gender"><option value="">Select gender</option><option value="Male">Male</option><option value="Female">Female</option><option value="Non-binary">Non-binary</option><option value="Prefer not to say">Prefer not to say</option></select></label><label>Marital status<select id="studyco-edit-marital-status"><option value="">Select marital status</option><option value="Single">Single</option><option value="In a relationship">In a relationship</option><option value="Engaged">Engaged</option><option value="Married">Married</option><option value="Divorced">Divorced</option></select></label><label id="studyco-relationship-name-field" hidden>Partner name<input id="studyco-edit-relationship-name" type="text" autocomplete="name"></label></div></section></div>
         <div class="studyco-modal-actions"><button class="studyco-button soft" data-close-modal type="button">Cancel</button><button class="studyco-button primary" type="submit">Save profile</button></div>
       </form>
     </div>
