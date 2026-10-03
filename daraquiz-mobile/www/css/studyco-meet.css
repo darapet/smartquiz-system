@@ -105,3 +105,29 @@ body.aqs-bottom-nav-page{padding-bottom:96px!important}
 .studyco-message-image{display:block;max-width:100%;margin-top:8px;overflow:hidden;border-radius:10px;line-height:0}
 .studyco-message-image img{display:block;width:auto;max-width:min(100%,360px);max-height:360px;object-fit:contain;border-radius:10px}
 @media(max-width:760px){.studyco-message-image img{max-width:min(100%,300px);max-height:300px}}
+
+
+/* Per-conversation chat settings, archive filter, and private report form. */
+.studyco-chat-settings{position:relative;z-index:8;flex:0 0 auto;margin-left:4px}
+.studyco-chat-settings-toggle{display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;padding:0;border:1px solid var(--studyco-border,#e4e8ef);border-radius:12px;background:var(--studyco-surface,#fff);color:var(--studyco-text,#1f2937);font-size:1.25rem;font-weight:700;cursor:pointer}
+.studyco-chat-settings-toggle:hover,.studyco-chat-settings-toggle[aria-expanded=true]{background:var(--studyco-soft,#f3f5f9)}
+.studyco-chat-settings-menu{position:absolute;top:calc(100% + 8px);right:0;display:grid;gap:3px;width:min(240px,calc(100vw - 32px));max-height:min(70vh,360px);overflow:auto;padding:7px;border:1px solid var(--studyco-border,#e4e8ef);border-radius:14px;background:var(--studyco-surface,#fff);box-shadow:0 14px 38px rgba(15,23,42,.18)}
+.studyco-chat-settings-menu[hidden]{display:none}
+.studyco-chat-settings-menu button{width:100%;padding:10px 11px;border:0;border-radius:9px;background:transparent;color:var(--studyco-text,#1f2937);text-align:left;font:inherit;font-size:.9rem;cursor:pointer}
+.studyco-chat-settings-menu button:hover,.studyco-chat-settings-menu button:focus-visible{background:var(--studyco-soft,#f3f5f9);outline:none}
+.studyco-chat-settings-menu button[data-chat-action=block]{color:#b42318}
+.studyco-chat-blocked-notice{margin:8px 14px 0;padding:9px 12px;border:1px solid #f2c6c2;border-radius:10px;background:#fff4f2;color:#9f2319;font-size:.82rem;line-height:1.4}
+.studyco-chat-archive-filter{display:flex;align-items:center;gap:8px;width:100%;margin:0 0 8px;padding:9px 11px;border:1px solid var(--studyco-border,#e4e8ef);border-radius:10px;background:var(--studyco-surface,#fff);color:var(--studyco-text,#334155);font:inherit;font-size:.84rem;font-weight:600;text-align:left;cursor:pointer}
+.studyco-chat-archive-filter:hover{background:var(--studyco-soft,#f3f5f9)}
+.studyco-chat-list-status{display:block;margin-top:3px;color:var(--studyco-muted,#667085);font-size:.69rem;font-weight:600}
+.studyco-chat-report-dialog{width:min(440px,calc(100vw - 32px));max-height:min(86vh,720px);overflow:auto;padding:22px;border:0;border-radius:18px;background:var(--studyco-surface,#fff);color:var(--studyco-text,#1f2937);box-shadow:0 20px 60px rgba(15,23,42,.28)}
+.studyco-chat-report-dialog::backdrop{background:rgba(15,23,42,.48)}
+.studyco-chat-report-dialog form{display:grid;gap:14px}
+.studyco-chat-report-dialog h2{margin:0;font-size:1.15rem}
+.studyco-chat-report-dialog p{margin:-6px 0 2px;color:var(--studyco-muted,#667085);font-size:.88rem;line-height:1.45}
+.studyco-chat-report-dialog label{display:grid;gap:6px;font-size:.84rem;font-weight:650}
+.studyco-chat-report-dialog select,.studyco-chat-report-dialog textarea{width:100%;padding:10px 11px;border:1px solid var(--studyco-border,#e4e8ef);border-radius:9px;background:var(--studyco-surface,#fff);color:inherit;font:inherit;font-weight:400}
+.studyco-chat-report-dialog textarea{resize:vertical;min-height:92px}
+.studyco-chat-report-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:2px}
+.studyco-chat-report-actions .danger{border:0;background:#b42318;color:#fff}
+@media(max-width:760px){.studyco-chat-head{gap:7px}.studyco-chat-settings-toggle{width:34px;height:34px}.studyco-chat-call-actions{gap:4px}.studyco-chat-settings{margin-left:auto}}

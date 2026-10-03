@@ -7,12 +7,12 @@ const state = {
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(), postPreferences: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
-  feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
+  feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, chatListOwner: null, messageUnsub: null, notificationUnsub: null, chatSettingsUnsub: null, blockedUsersUnsub: null, chatSettingsOwner: null, blockedUsersOwner: null,
   notifications: [],
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
-  conversations: [], chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
+  conversations: [], chatSettings: new Map(), chatSettingsReady: false, blockedUserIds: new Set(), showArchivedChats: false, chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
   pendingIncomingCall: null, incomingPreviewPromise: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
   callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', callConnected: false, mediaRecorder: null,
@@ -77,11 +77,19 @@ function setNavBadge(id, count) {
   badge.textContent = value > 99 ? '99+' : String(value);
   badge.hidden = value < 1;
 }
+function visibleNotifications() {
+  return state.notifications.filter((item) => {
+    if (item.type !== 'message' || !item.conversationId) return true;
+    if (!state.chatSettingsReady) return false;
+    return state.chatSettings.get(item.conversationId)?.muted !== true;
+  });
+}
+
 function refreshNavCounts() {
   if (!state.user) return;
   setNavBadge('studyco-home-badge', state.posts.filter((post) => post.userId === state.user.uid).length);
   setNavBadge('studyco-friend-badge', state.requests.length);
-  setNavBadge('studyco-notification-badge', state.notifications.filter((item) => item.read !== true).length);
+  setNavBadge('studyco-notification-badge', visibleNotifications().filter((item) => item.read !== true).length);
 }
 
 async function createNotification(recipientId, type, entityId = '', conversationId = '') {
@@ -104,11 +112,12 @@ function notificationCopy(notification) {
 function renderNotifications() {
   const target = $('studyco-notification-list');
   if (!target) return;
-  const unread = state.notifications.filter((item) => item.read !== true).length;
+  const visible = visibleNotifications();
+  const unread = visible.filter((item) => item.read !== true).length;
   $('studyco-notification-count').textContent = String(unread);
   setNavBadge('studyco-notification-badge', unread);
-  target.innerHTML = state.notifications.length
-    ? state.notifications.map((notification) => {
+  target.innerHTML = visible.length
+    ? visible.map((notification) => {
       const copy = notificationCopy(notification);
       return `<button class="studyco-notification-row${notification.read === true ? '' : ' unread'}" data-notification-id="${esc(notification.id)}" type="button"><span class="studyco-notification-icon">${copy.icon}</span><span class="studyco-notification-copy"><strong>${esc(copy.title)}</strong><span>${esc(copy.body)}</span><time>${esc(timeText(notification.createdAt))}</time></span>${notification.read === true ? '' : '<i class="studyco-notification-unread" aria-label="Unread"></i>'}</button>`;
     }).join('')
@@ -1252,14 +1261,29 @@ function renderChatList() {
   });
   validChats.forEach((chat) => watchPresence(chat.uid));
   const visibleChats = validChats
-    .filter((chat) => !term || `${profileName(chat.profile)} ${chat.data.lastMessageText || ''}`.toLowerCase().includes(term))
+    .filter((chat) => {
+      const archived = state.chatSettings.get(chat.id)?.archived === true;
+      const matchesSearch = !term || (profileName(chat.profile) + ' ' + (chat.data.lastMessageText || '')).toLowerCase().includes(term);
+      return archived === state.showArchivedChats && matchesSearch;
+    })
     .sort((a, b) => timeMs(b.data.lastMessageAt || b.data.updatedAt) - timeMs(a.data.lastMessageAt || a.data.updatedAt) || profileName(a.profile).localeCompare(profileName(b.profile)));
-  const unreadChats = validChats.filter((chat) => chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true);
+  const archivedCount = validChats.filter((chat) => state.chatSettings.get(chat.id)?.archived === true).length;
+  const unreadChats = validChats.filter((chat) => state.chatSettings.get(chat.id)?.markedUnread === true || (chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true));
   $('studyco-chat-count').textContent = String(validChats.length);
   $('studyco-message-badge').hidden = unreadChats.length < 1;
   $('studyco-message-badge').textContent = unreadChats.length > 99 ? '99+' : String(unreadChats.length || '');
-  $('studyco-chat-list').innerHTML = visibleChats.map((chat) => `<button class="${chat.uid === state.activeChatUid ? 'active' : ''}${chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true ? ' unread' : ''}" data-chat-uid="${esc(chat.uid)}" type="button">${avatarWithPresence(chat.profile, chat.uid, 'small')}<div><strong>${esc(profileName(chat.profile))}</strong><span>${esc(chat.data.lastMessageText || lastSeenText(state.presence.get(chat.uid)))}</span></div><time>${esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt))}</time></button>`).join('') || '<div class="studyco-empty">Your accepted friends will appear here.</div>';
+  const filterLabel = state.showArchivedChats ? '‹ Inbox' : 'Archived (' + archivedCount + ')';
+  const filterButton = '<button class="studyco-chat-archive-filter" data-chat-archived-toggle type="button"><span aria-hidden="true">' + (state.showArchivedChats ? '‹' : '▣') + '</span>' + esc(filterLabel) + '</button>';
+  const chatButtons = visibleChats.map((chat) => {
+    const setting = state.chatSettings.get(chat.id) || {};
+    const unread = setting.markedUnread === true || (chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true);
+    const status = [setting.muted ? 'Muted' : '', state.blockedUserIds.has(chat.uid) ? 'Blocked' : ''].filter(Boolean).join(' · ');
+    return '<button class="' + (chat.uid === state.activeChatUid ? 'active ' : '') + (unread ? 'unread' : '') + '" data-chat-uid="' + esc(chat.uid) + '" type="button">' + avatarWithPresence(chat.profile, chat.uid, 'small') + '<div><strong>' + esc(profileName(chat.profile)) + '</strong><span>' + esc(chat.data.lastMessageText || lastSeenText(state.presence.get(chat.uid))) + '</span>' + (status ? '<small class="studyco-chat-list-status">' + esc(status) + '</small>' : '') + '</div><time>' + esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt)) + '</time></button>';
+  }).join('');
+  const empty = state.showArchivedChats ? 'No archived chats.' : 'Your accepted friends will appear here.';
+  $('studyco-chat-list').innerHTML = filterButton + (chatButtons || '<div class="studyco-empty">' + empty + '</div>');
 }
+
 
 function updateActiveChatPresence() {
   const status = $('studyco-chat-presence');
@@ -1276,6 +1300,7 @@ function updateActiveChatPresence() {
 
 function subscribeChats() {
   state.chatListUnsub?.();
+  state.chatListOwner = state.user.uid;
   state.chatListUnsub = onSnapshot(query(collection(db, 'social_conversations'), where('participantIds', 'array-contains', state.user.uid), limit(80)), async (snapshot) => {
     const chats = await Promise.all(snapshot.docs.map(async (item) => {
     const data = item.data(); const uid = data.participantIds.find((value) => value !== state.user.uid);
@@ -1286,12 +1311,57 @@ function subscribeChats() {
   }, (error) => toast(error.message || 'Messages could not load.', true));
 }
 
-function loadChats() {
-  if (!state.chatListUnsub) subscribeChats();
-  else renderChatList();
+function chatSettingsDocumentId(conversationId, userId = state.user.uid) {
+  return conversationId + '_' + userId;
 }
 
+function subscribeChatSettings() {
+  if (!state.user) return;
+  state.chatSettingsUnsub?.();
+  const uid = state.user.uid;
+  state.chatSettingsOwner = uid;
+  state.chatSettingsReady = false;
+  state.chatSettings = new Map();
+  state.chatSettingsUnsub = onSnapshot(query(collection(db, 'social_chat_settings'), where('userId', '==', uid), limit(500)), (snapshot) => {
+    state.chatSettings = new Map(snapshot.docs.map((item) => [item.data().conversationId, item.data()]));
+    state.chatSettingsReady = true;
+    renderChatList();
+    renderNotifications();
+    refreshNavCounts();
+    updateChatSettingsMenu();
+    updateActiveChatControls();
+  }, (error) => {
+    state.chatSettingsReady = true;
+    renderNotifications();
+    refreshNavCounts();
+    toast(error.message || 'Chat settings could not load.', true);
+  });
+}
+
+function subscribeBlockedUsers() {
+  if (!state.user) return;
+  state.blockedUsersUnsub?.();
+  const uid = state.user.uid;
+  state.blockedUsersOwner = uid;
+  state.blockedUserIds = new Set();
+  state.blockedUsersUnsub = onSnapshot(query(collection(db, 'social_user_blocks', uid, 'blocked'), limit(500)), (snapshot) => {
+    state.blockedUserIds = new Set(snapshot.docs.map((item) => item.id));
+    renderChatList();
+    updateChatSettingsMenu();
+    updateActiveChatControls();
+  }, (error) => toast(error.message || 'Blocked contacts could not load.', true));
+}
+
+function loadChats() {
+  if (!state.chatListUnsub || state.chatListOwner !== state.user.uid) subscribeChats();
+  else renderChatList();
+  if (!state.chatSettingsUnsub || state.chatSettingsOwner !== state.user.uid) subscribeChatSettings();
+  if (!state.blockedUsersUnsub || state.blockedUsersOwner !== state.user.uid) subscribeBlockedUsers();
+}
+
+
 async function markMessagesRead(messages) {
+  if (state.chatSettings.get(state.activeChatId)?.markedUnread === true) await saveChatSettings({ markedUnread: false }).catch(() => {});
   const unread = messages.filter((message) => message.senderId !== state.user.uid && message.is_read !== true);
   if (!unread.length) return;
   await Promise.all(unread.slice(-50).map((message) => updateDoc(
@@ -1322,6 +1392,164 @@ function renderMessages(messages, profile) {
   target.scrollTop = target.scrollHeight;
 }
 
+
+
+function clearUserChatState() {
+  ['chatListUnsub', 'messageUnsub', 'chatSettingsUnsub', 'blockedUsersUnsub', 'notificationUnsub'].forEach((key) => {
+    state[key]?.();
+    state[key] = null;
+  });
+  state.chatListOwner = null;
+  state.chatSettingsOwner = null;
+  state.blockedUsersOwner = null;
+  state.activeChatUid = null;
+  state.activeChatId = null;
+  state.conversations = [];
+  state.chatSettings = new Map();
+  state.chatSettingsReady = false;
+  state.blockedUserIds = new Set();
+  state.showArchivedChats = false;
+  state.notifications = [];
+}
+
+function updateChatSettingsMenu() {
+  if (!state.activeChatId) return;
+  const settings = state.chatSettings.get(state.activeChatId) || {};
+  const muteAction = $('studyco-chat-action-mute');
+  const archiveAction = $('studyco-chat-action-archive');
+  const blockAction = $('studyco-chat-action-block');
+  if (muteAction) muteAction.textContent = settings.muted ? 'Turn off mute' : 'Mute notifications';
+  if (archiveAction) archiveAction.textContent = settings.archived ? 'Unarchive conversation' : 'Archive conversation';
+  if (blockAction) blockAction.textContent = state.blockedUserIds.has(state.activeChatUid) ? 'Unblock this person' : 'Block this person';
+}
+
+function updateActiveChatControls() {
+  if (!state.activeChatUid) return;
+  const blocked = state.blockedUserIds.has(state.activeChatUid);
+  const notice = $('studyco-chat-blocked-notice');
+  if (notice) notice.hidden = !blocked;
+  ['studyco-chat-input', 'studyco-chat-file', 'studyco-chat-record', 'studyco-chat-send'].forEach((id) => {
+    const control = $(id);
+    if (control) control.disabled = blocked;
+  });
+  document.querySelectorAll('#studyco-chat-panel [data-start-call]').forEach((button) => { button.disabled = blocked; });
+  updateChatSettingsMenu();
+}
+
+function closeChatSettingsMenu() {
+  const menu = $('studyco-chat-settings-menu');
+  const toggle = document.querySelector('[data-chat-settings-toggle]');
+  if (menu) menu.hidden = true;
+  if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+async function saveChatSettings(patch) {
+  if (!state.user || !state.activeChatId) throw new Error('Open a conversation to change its settings.');
+  const conversationId = state.activeChatId;
+  const current = state.chatSettings.get(conversationId) || {};
+  const next = {
+    conversationId,
+    userId: state.user.uid,
+    muted: patch.muted ?? (current.muted === true),
+    archived: patch.archived ?? (current.archived === true),
+    markedUnread: patch.markedUnread ?? (current.markedUnread === true)
+  };
+  await setDoc(doc(db, 'social_chat_settings', chatSettingsDocumentId(conversationId)), { ...next, updatedAt: serverTimestamp() }, { merge: true });
+  state.chatSettings.set(conversationId, next);
+  renderChatList();
+  renderNotifications();
+  refreshNavCounts();
+  updateChatSettingsMenu();
+}
+
+async function toggleActiveChatBlock() {
+  if (!state.user || !state.activeChatUid) return;
+  const uid = state.activeChatUid;
+  const blocking = !state.blockedUserIds.has(uid);
+  const name = profileName(state.conversations.find((chat) => chat.uid === uid)?.profile || state.profiles.get(uid));
+  if (blocking && !window.confirm('Block ' + name + '? They will no longer be able to message or call you from this chat.')) return;
+  const blockRef = doc(db, 'social_user_blocks', state.user.uid, 'blocked', uid);
+  if (blocking) await setDoc(blockRef, { blockedUid: uid, createdAt: serverTimestamp() });
+  else await deleteDoc(blockRef);
+  const blocked = new Set(state.blockedUserIds);
+  if (blocking) blocked.add(uid); else blocked.delete(uid);
+  state.blockedUserIds = blocked;
+  renderChatList();
+  updateActiveChatControls();
+  toast(blocking ? 'This person is blocked from messaging or calling you.' : 'This person is unblocked.');
+}
+
+function openChatReportDialog() {
+  const panel = $('studyco-chat-panel');
+  if (!panel || !state.activeChatId || !state.activeChatUid) return;
+  let dialog = $('studyco-chat-report-dialog');
+  if (!dialog) {
+    panel.insertAdjacentHTML('beforeend', '<dialog id="studyco-chat-report-dialog" class="studyco-chat-report-dialog" aria-labelledby="studyco-chat-report-title"><form id="studyco-chat-report-form"><h2 id="studyco-chat-report-title">Report this conversation</h2><p>Reports are private and reviewed by StudyCo moderators.</p><label>Reason<select name="category" required><option value="spam">Spam</option><option value="harassment">Harassment or bullying</option><option value="inappropriate">Inappropriate content</option><option value="threat">Threat or safety concern</option><option value="other">Other</option></select></label><label>Details (optional)<textarea name="details" maxlength="500" rows="4" placeholder="Add context for the moderator"></textarea></label><div class="studyco-chat-report-actions"><button class="studyco-button soft" type="button" data-chat-report-cancel>Cancel</button><button class="studyco-button danger" type="submit">Submit report</button></div></form></dialog>');
+    dialog = $('studyco-chat-report-dialog');
+  }
+  if (typeof dialog.showModal === 'function') dialog.showModal();
+  else { dialog.hidden = false; dialog.setAttribute('open', ''); }
+}
+
+function closeChatReportDialog() {
+  const dialog = $('studyco-chat-report-dialog');
+  if (!dialog) return;
+  if (typeof dialog.close === 'function' && dialog.open) dialog.close();
+  else { dialog.hidden = true; dialog.removeAttribute('open'); }
+}
+
+async function submitChatReport(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const category = form.elements.category?.value || '';
+  const details = (form.elements.details?.value || '').trim().slice(0, 500);
+  const allowedCategories = ['spam', 'harassment', 'inappropriate', 'threat', 'other'];
+  if (!allowedCategories.includes(category)) { toast('Choose a report reason.', true); return; }
+  try {
+    await addDoc(collection(db, 'social_chat_reports'), {
+      reporterId: state.user.uid,
+      reportedUserId: state.activeChatUid,
+      conversationId: state.activeChatId,
+      category,
+      details,
+      status: 'open',
+      createdAt: serverTimestamp()
+    });
+    form.reset();
+    closeChatReportDialog();
+    closeChatSettingsMenu();
+    toast('Report sent to StudyCo moderators.');
+  } catch (error) { toast(error.message || 'Your report could not be submitted.', true); }
+}
+
+async function handleChatSettingsAction(action) {
+  try {
+    const settings = state.chatSettings.get(state.activeChatId) || {};
+    if (action === 'mute') {
+      const muted = !settings.muted;
+      await saveChatSettings({ muted });
+      toast(muted ? 'Notifications muted for this conversation.' : 'Notifications restored for this conversation.');
+      return;
+    }
+    if (action === 'archive') {
+      const archived = !settings.archived;
+      await saveChatSettings({ archived });
+      state.showArchivedChats = false;
+      closeChat();
+      toast(archived ? 'Conversation archived. Find it in Archived chats.' : 'Conversation restored to your inbox.');
+      return;
+    }
+    if (action === 'unread') {
+      await saveChatSettings({ markedUnread: true });
+      closeChat();
+      toast('Conversation marked unread.');
+      return;
+    }
+    if (action === 'block') { await toggleActiveChatBlock(); return; }
+    if (action === 'report') { closeChatSettingsMenu(); openChatReportDialog(); }
+  } catch (error) { toast(error.message || 'Chat settings could not be saved.', true); }
+}
+
 async function openChat(uid, { updateUrl = true } = {}) {
   try {
     const profile = await getProfile(uid);
@@ -1340,8 +1568,10 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div><span id="studyco-chat-recording-status" class="studyco-chat-recording-status" role="status" aria-live="polite" hidden></span></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">•••</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div><span id="studyco-chat-recording-status" class="studyco-chat-recording-status" role="status" aria-live="polite" hidden></span></form>`;
     updateActiveChatPresence();
+    updateChatSettingsMenu();
+    updateActiveChatControls();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
       const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
       renderMessages(messages, profile);
@@ -1369,6 +1599,7 @@ async function sendMessage(event, attachmentOverride = null, isVoiceNote = false
   const text = input?.value.trim() || ''; const file = attachmentOverride || fileInput?.files?.[0];
   if (!text && !file) return;
   if (!state.activeChatUid) { toast('Choose a friend before sending a message.', true); return; }
+  if (state.blockedUserIds.has(state.activeChatUid)) { toast('Unblock this person in chat settings before sending a message.', true); return; }
   if (button) button.disabled = true;
   try {
     if (!state.activeChatId) state.activeChatId = await ensureConversation(state.activeChatUid);
@@ -1414,6 +1645,7 @@ async function toggleChatVoiceRecording() {
     return;
   }
   if (!state.activeChatUid || !$('studyco-chat-form')) { toast('Open a conversation before recording a voice note.', true); return; }
+  if (state.blockedUserIds.has(state.activeChatUid)) { toast('Unblock this person in chat settings before sending a voice note.', true); return; }
   if ($('studyco-chat-file')?.files?.length) { toast('Send or remove the attached file before recording a voice note.', true); return; }
   if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
     toast('Voice recording is not supported on this device.', true);
@@ -2104,6 +2336,7 @@ async function prepareIncomingVideoPreview(incoming) {
 }
 
 async function startCall(uid, requestedMode = 'audio') {
+  if (state.blockedUserIds.has(uid)) { toast('Unblock this person in chat settings before calling.', true); return; }
   primeStudyCoRemoteAudio();
   const profile = await getProfile(uid); if (!profile) return;
   try {
@@ -2555,18 +2788,25 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-suggestion-list').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-right-requests').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
   $('studyco-right-suggestions').addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
-  $('studyco-chat-list').addEventListener('click', (event) => { const button = event.target.closest('[data-chat-uid]'); if (button) void openChat(button.dataset.chatUid); });
-  $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); });
+  $('studyco-chat-list').addEventListener('click', (event) => { const archiveToggle = event.target.closest('[data-chat-archived-toggle]'); if (archiveToggle) { state.showArchivedChats = !state.showArchivedChats; renderChatList(); return; } const button = event.target.closest('[data-chat-uid]'); if (button) void openChat(button.dataset.chatUid); });
+  $('studyco-chat-panel').addEventListener('submit', (event) => { if (event.target.id === 'studyco-chat-form') sendMessage(event); else if (event.target.id === 'studyco-chat-report-form') void submitChatReport(event); });
   $('studyco-chat-panel').addEventListener('change', (event) => {
     if (event.target.id === 'studyco-chat-file') $('studyco-chat-file-name').textContent = event.target.files[0]?.name || '';
   });
   $('studyco-chat-panel').addEventListener('click', (event) => {
+    const settingsToggle = event.target.closest('[data-chat-settings-toggle]');
+    if (settingsToggle) { const menu = $('studyco-chat-settings-menu'); const opening = !!menu && menu.hidden; if (menu) menu.hidden = !opening; settingsToggle.setAttribute('aria-expanded', String(opening)); if (opening) menu.querySelector('[role=menuitem]')?.focus(); return; }
+    const settingsAction = event.target.closest('[data-chat-action]');
+    if (settingsAction) { closeChatSettingsMenu(); void handleChatSettingsAction(settingsAction.dataset.chatAction); return; }
+    if (event.target.closest('[data-chat-report-cancel]')) { event.preventDefault(); closeChatReportDialog(); return; }
+    if (!event.target.closest('.studyco-chat-settings')) closeChatSettingsMenu();
     if (event.target.closest('[data-chat-record]')) { event.preventDefault(); void toggleChatVoiceRecording(); return; }
     const callButton = event.target.closest('[data-start-call]');
     if (callButton) { void startCall(callButton.dataset.startCall, callButton.dataset.callKind || 'audio'); return; }
     if (event.target.closest('[data-call-history]')) { renderCallHistory(); openModal('studyco-call-history-modal'); }
   });
   $('studyco-chat-panel').addEventListener('click', (event) => { if (event.target.closest('[data-chat-back]')) closeChat(); });
+  document.addEventListener('click', (event) => { if (!event.target.closest('.studyco-chat-settings')) closeChatSettingsMenu(); });
   $('studyco-call-accept').addEventListener('click', acceptIncomingCall); $('studyco-call-decline').addEventListener('click', declineCall);
   $('studyco-call-minimize').addEventListener('click', () => setCallMinimized(true));
   $('studyco-call-restore').addEventListener('click', () => setCallMinimized(false));
@@ -2785,8 +3025,10 @@ window.onAqsAuthChange(async (user) => {
   if (!user || user.isAnonymous) {
     if (state.user) setPresence(false);
     stopPresenceHeartbeat(); stopPresenceWatchers();
+    clearUserChatState();
     state.user = null; showAuth(); return;
   }
+  if (state.user && state.user.uid !== user.uid) clearUserChatState();
   state.user = user;
   try { await bootApp(); } catch (error) { toast(error.message || 'StudyCo Meet could not load.', true); }
 });

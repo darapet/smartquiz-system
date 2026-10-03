@@ -10,6 +10,37 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isChatParticipant(conversationId, userId) {
+      let conversationPath = /databases/$(database)/documents/social_conversations/$(conversationId);
+      return exists(conversationPath)
+        && userId in get(conversationPath).data.participantIds;
+    }
+
+    function isUserBlockedEitherWay(userA, userB) {
+      return exists(/databases/$(database)/documents/social_user_blocks/$(userA)/blocked/$(userB))
+        || exists(/databases/$(database)/documents/social_user_blocks/$(userB)/blocked/$(userA));
+    }
+
+    function isChatMutedFor(conversationId, userId) {
+      let settingPath = /databases/$(database)/documents/social_chat_settings/$(conversationId + '_' + userId);
+      return exists(settingPath)
+        && get(settingPath).data.userId == userId
+        && get(settingPath).data.muted == true;
+    }
+
+    function validChatSettings(settingId, settings) {
+      return settings.keys().hasOnly(['conversationId', 'userId', 'muted', 'archived', 'markedUnread', 'updatedAt'])
+        && settings.keys().hasAll(['conversationId', 'userId', 'muted', 'archived', 'markedUnread', 'updatedAt'])
+        && settings.conversationId is string
+        && settings.userId == request.auth.uid
+        && settingId == settings.conversationId + '_' + settings.userId
+        && settings.muted is bool
+        && settings.archived is bool
+        && settings.markedUnread is bool
+        && settings.updatedAt is timestamp
+        && isChatParticipant(settings.conversationId, request.auth.uid);
+    }
+
     // ─── Quizzes ────────────────────────────────────────────────────
     match /quizzes/{quizId} {
       allow read: if true;
@@ -163,7 +194,13 @@ service cloud.firestore {
           && resource.data.recipientId == request.auth.uid;
       allow create: if isSignedIn()
           && request.resource.data.actorId == request.auth.uid
-          && request.resource.data.recipientId != request.auth.uid;
+          && request.resource.data.recipientId != request.auth.uid
+          && (request.resource.data.type != 'message'
+            || (request.resource.data.conversationId is string
+              && isChatParticipant(request.resource.data.conversationId, request.resource.data.actorId)
+              && isChatParticipant(request.resource.data.conversationId, request.resource.data.recipientId)
+              && !isUserBlockedEitherWay(request.resource.data.actorId, request.resource.data.recipientId)
+              && !isChatMutedFor(request.resource.data.conversationId, request.resource.data.recipientId)));
       allow update: if isSignedIn()
           && resource.data.recipientId == request.auth.uid
           && request.resource.data.recipientId == request.auth.uid;
@@ -189,6 +226,8 @@ service cloud.firestore {
           && request.auth.uid in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds
           && request.resource.data.senderId == request.auth.uid
           && request.resource.data.receiverId in get(/databases/$(database)/documents/social_conversations/$(conversationId)).data.participantIds
+          && request.resource.data.receiverId != request.auth.uid
+          && !isUserBlockedEitherWay(request.auth.uid, request.resource.data.receiverId)
           && request.resource.data.messageText is string
           && request.resource.data.messageText.size() > 0
           && request.resource.data.messageText.size() <= 2000;
@@ -204,6 +243,50 @@ service cloud.firestore {
         allow delete: if isSignedIn()
           && request.auth.uid == resource.data.senderId;
       }
+    }
+
+
+    // Each user's chat controls are private to that account.
+    match /social_chat_settings/{settingId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && validChatSettings(settingId, request.resource.data);
+      allow update: if isSignedIn()
+        && resource.data.userId == request.auth.uid
+        && validChatSettings(settingId, request.resource.data);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // A user can inspect and remove only their own block records.
+    match /social_user_blocks/{ownerUid}/blocked/{targetUid} {
+      allow get, list: if isSignedIn() && request.auth.uid == ownerUid;
+      allow create: if isSignedIn()
+        && request.auth.uid == ownerUid
+        && targetUid != ownerUid
+        && request.resource.data.keys().hasOnly(['blockedUid', 'createdAt'])
+        && request.resource.data.keys().hasAll(['blockedUid', 'createdAt'])
+        && request.resource.data.blockedUid == targetUid
+        && request.resource.data.createdAt is timestamp;
+      allow update: if false;
+      allow delete: if isSignedIn() && request.auth.uid == ownerUid;
+    }
+
+    // Reports are private to moderators; reporters can only submit them.
+    match /social_chat_reports/{reportId} {
+      allow get, list: if isAdmin();
+      allow create: if isSignedIn()
+        && request.resource.data.keys().hasOnly(['reporterId', 'reportedUserId', 'conversationId', 'category', 'details', 'status', 'createdAt'])
+        && request.resource.data.keys().hasAll(['reporterId', 'reportedUserId', 'conversationId', 'category', 'details', 'status', 'createdAt'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.reportedUserId != request.auth.uid
+        && request.resource.data.conversationId is string
+        && isChatParticipant(request.resource.data.conversationId, request.auth.uid)
+        && isChatParticipant(request.resource.data.conversationId, request.resource.data.reportedUserId)
+        && request.resource.data.category in ['spam', 'harassment', 'inappropriate', 'threat', 'other']
+        && request.resource.data.details is string
+        && request.resource.data.details.size() <= 500
+        && request.resource.data.status == 'open'
+        && request.resource.data.createdAt is timestamp;
+      allow update, delete: if isAdmin();
     }
 
     // ─── StudyCo Meet posts ─────────────────────────────────────────
@@ -279,7 +362,10 @@ service cloud.firestore {
           && (resource.data.callerId == request.auth.uid
               || resource.data.receiverId == request.auth.uid);
       allow create: if isSignedIn()
-          && request.resource.data.callerId == request.auth.uid;
+          && request.resource.data.callerId == request.auth.uid
+          && request.resource.data.receiverId is string
+          && request.resource.data.receiverId != request.auth.uid
+          && !isUserBlockedEitherWay(request.auth.uid, request.resource.data.receiverId);
       allow update: if isSignedIn()
           && (resource.data.callerId == request.auth.uid
               || resource.data.receiverId == request.auth.uid);
