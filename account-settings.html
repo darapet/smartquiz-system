@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#080910">
-  <title>Account Settings — xzily AI</title>
+  <title>Settings &amp; privacy — StudyCo</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{color-scheme:dark;--bg:#080910;--panel:#101321;--panel-2:#151a2b;--line:rgba(148,163,184,.16);--text:#e5e7eb;--muted:#94a3b8;--accent:#818cf8;--success:#34d399;--danger:#fb7185}
@@ -53,19 +53,88 @@
     .otp-row{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:end}
     .security-note{padding:12px 14px;border-radius:10px;background:rgba(99,102,241,.1);border:1px solid rgba(129,140,248,.2);color:#c7d2fe;font-size:.78rem;line-height:1.55;margin-top:16px}
     @media(max-width:560px){.settings-header{padding:0 15px}.back{font-size:.76rem}.card-head,.card-body{padding-left:16px;padding-right:16px}.visibility-row{gap:12px}.otp-row{grid-template-columns:1fr}.actions{align-items:stretch;flex-direction:column}.status{margin-right:0}}
-  </style>
+  
+    :root{color-scheme:light;--bg:#f0f2f5;--panel:#fff;--panel-2:#f7f8fa;--line:#e4e6eb;--text:#1c1e21;--muted:#65676b;--accent:#1877f2;--success:#198754;--danger:#dc3545}
+    body.settings-page{min-height:100vh;background:#f0f2f5;color:#1c1e21;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    body.settings-page [hidden]{display:none!important}
+    body.settings-page .settings-header{position:sticky;top:0;z-index:10;display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 clamp(16px,4vw,52px);background:#fff;border-bottom:1px solid #e4e6eb;box-shadow:0 2px 8px #10182808}
+    body.settings-page .settings-header a{color:#1c1e21;text-decoration:none}
+    body.settings-page .settings-header .brand{display:flex;align-items:center;gap:9px;font-size:17px;font-weight:800}
+    body.settings-page .settings-header .brand-mark{display:grid;place-items:center;width:32px;height:32px;border-radius:10px;background:#eaf3ff;color:#1877f2}
+    body.settings-page .settings-header .back{padding:9px 12px;border-radius:10px;background:#f0f2f5;font-size:13px;font-weight:700}
+    body.settings-page main{width:min(100% - 32px,1020px);max-width:1020px;margin:0 auto;padding:32px 0 60px}
+    body.settings-page main>h1{margin:0;color:#1c1e21;font-size:clamp(26px,4vw,34px);letter-spacing:-.04em}
+    body.settings-page .intro{max-width:720px;margin:9px 0 20px;color:#65676b;font-size:14px;line-height:1.55}
+    body.settings-page .settings-search{display:flex;align-items:center;gap:10px;max-width:600px;margin:18px 0 22px;padding:0 14px;border:1px solid #e4e6eb;border-radius:12px;background:#fff;color:#65676b}
+    body.settings-page .settings-search-icon{font-size:24px;line-height:1}
+    body.settings-page .settings-search input{width:100%;min-height:46px;border:0;outline:0;background:transparent;color:#1c1e21;font:inherit}
+    body.settings-page .settings-groups{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:22px}
+    body.settings-page .settings-group,.settings-page .card{border:1px solid #e4e6eb;border-radius:16px;background:#fff;box-shadow:0 2px 8px #1c1e2108}
+    body.settings-page .settings-group{padding:17px}
+    body.settings-page .settings-group-heading{margin-bottom:10px}
+    body.settings-page .settings-group-heading h2,.settings-page .settings-form-heading h2{margin:0;color:#1c1e21;font-size:16px;font-weight:800}
+    body.settings-page .settings-group-heading p,.settings-page .settings-form-heading p{margin:5px 0 0;color:#65676b;font-size:12px;line-height:1.45}
+    body.settings-page .settings-item{display:grid;grid-template-columns:38px minmax(0,1fr) 16px;align-items:center;gap:11px;min-height:68px;padding:10px 7px;border-top:1px solid #f0f2f5;color:#1c1e21;text-decoration:none}
+    body.settings-page .settings-item:hover{border-radius:10px;background:#f7f8fa}
+    body.settings-page .settings-item>span:nth-child(2){display:grid;gap:3px}
+    body.settings-page .settings-item strong{font-size:13px;font-weight:750}
+    body.settings-page .settings-item small{color:#65676b;font-size:11px;line-height:1.35}
+    body.settings-page .settings-item>b{color:#8a8d91;font-size:22px;font-weight:500}
+    body.settings-page .settings-icon{display:grid;place-items:center;width:36px;height:36px;border-radius:50%;background:#f0f2f5;color:#58677c}
+    body.settings-page .settings-icon svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+    body.settings-page .settings-no-results{padding:18px;border:1px dashed #ccd0d5;border-radius:12px;color:#65676b;text-align:center}
+    body.settings-page .settings-form-heading{margin:26px 0 12px}
+    body.settings-page .settings-form-heading h2{font-size:20px}
+    body.settings-page .card{margin:12px 0;overflow:hidden;color:#1c1e21}
+    body.settings-page .card-head,body.settings-page .head{padding:18px 20px;border-bottom:1px solid #e4e6eb;background:#fff}
+    body.settings-page .card-head h2,body.settings-page .head h2{margin:0;color:#1c1e21;font-size:16px;font-weight:800}
+    body.settings-page .card-head p,body.settings-page .head p{margin:5px 0 0;color:#65676b;font-size:12px;line-height:1.45}
+    body.settings-page .card-body,body.settings-page .body{padding:4px 20px 18px;background:#fff}
+    body.settings-page .visibility-row,body.settings-page .row{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:63px;padding:12px 0;border-bottom:1px solid #f0f2f5}
+    body.settings-page .visibility-label,body.settings-page .label{color:#1c1e21;font-size:13px;font-weight:700}
+    body.settings-page .visibility-help,body.settings-page .help{display:block;margin-top:4px;color:#65676b;font-size:11px;font-weight:400;line-height:1.4}
+    body.settings-page .switch{flex:0 0 auto}
+    body.settings-page .actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px}
+    body.settings-page .btn{min-height:40px;border-radius:10px;font-weight:750}
+    body.settings-page .btn-primary,body.settings-page .btn.primary{background:#1877f2;border-color:#1877f2;color:#fff}
+    body.settings-page input:not([type=checkbox]):not([type=search]),body.settings-page select,body.settings-page textarea{border-color:#ccd0d5;border-radius:9px;background:#fff;color:#1c1e21}
+    body.settings-page .status{font-size:12px}
+    body.settings-page .security-note,body.settings-page .security{margin-top:16px;padding:12px 14px;border-radius:10px;background:#f0f2f5;color:#65676b;font-size:11px;line-height:1.5}
+    @media(max-width:760px){body.settings-page main{width:min(100% - 24px,680px);padding-top:23px}.settings-page .settings-groups{grid-template-columns:1fr;gap:10px}.settings-page .settings-group{padding:14px}.settings-page .card-head,.settings-page .head{padding:16px}.settings-page .card-body,.settings-page .body{padding-right:16px;padding-left:16px}}
+
+</style>
 </head>
-<body>
+<body class="settings-page">
   <header class="settings-header">
     <a class="brand" href="dashboard.html"><span class="brand-mark">⚡</span>xzily AI</a>
     <a class="back" href="profile.html">← Back to profile</a>
   </header>
 
   <main>
-    <h1>Account settings</h1>
-    <p class="intro">Control which profile details appear on your public profile. Changes apply to your library and StudyCo profile views.</p>
+    <h1>Settings &amp; privacy</h1>
+    <p class="intro">Manage your StudyCo profile, privacy, and account preferences.</p>
+    <label class="settings-search" for="settings-search"><span class="settings-search-icon" aria-hidden="true">⌕</span><span class="visually-hidden">Search settings</span><input id="settings-search" type="search" placeholder="Search settings" autocomplete="off"></label>
+    <div class="settings-groups">
+      <section class="settings-group" data-settings-group>
+        <div class="settings-group-heading"><h2>Account</h2><p>Your information and sign-in security.</p></div>
+        <a class="settings-item" href="studyco-meet.html#profile" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.6 2.7-5.5 6.5-5.5s6 1.9 6.5 5.5"/></svg></span><span><strong>Personal information</strong><small>View and edit your StudyCo profile details.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="#password-security" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="10" width="14" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3"/></svg></span><span><strong>Password and security</strong><small>Secure your account and change your password.</small></span><b aria-hidden="true">›</b></a>
+      </section>
+      <section class="settings-group" data-settings-group>
+        <div class="settings-group-heading"><h2>Preferences</h2><p>Choose how StudyCo works for you.</p></div>
+        <a class="settings-item" href="studyco-meet.html#home" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8M8 13h8M8 17h5"/></svg></span><span><strong>News Feed</strong><small>Return to your study circle and posts.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="studyco-meet.html#notifications" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg></span><span><strong>Notifications</strong><small>See friend requests and recent activity.</small></span><b aria-hidden="true">›</b></a>
+      </section>
+      <section class="settings-group" data-settings-group>
+        <div class="settings-group-heading"><h2>Audience and visibility</h2><p>Control who can see your profile information.</p></div>
+        <a class="settings-item" href="studyco-meet.html#profile" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.6 2.7-5.5 6.5-5.5s6 1.9 6.5 5.5"/></svg></span><span><strong>Profile details</strong><small>Open your profile and edit each detail.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="#profile-visibility" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span><span><strong>Profile visibility</strong><small>Choose which details other people can see.</small></span><b aria-hidden="true">›</b></a>
+      </section>
+    </div>
+    <p id="settings-no-results" class="settings-no-results" hidden>No settings match that search.</p>
+    <div class="settings-form-heading"><h2>Account settings</h2><p>Update the settings you selected above.</p></div>
 
-    <section class="card">
+    <section id="profile-visibility" class="card" data-settings-content>
       <div class="card-head">
         <h2>Public profile visibility</h2>
         <p>Turn a detail off to hide it from other people. Your own account view remains unchanged.</p>
@@ -84,7 +153,7 @@
       </div>
     </section>
 
-    <section class="card">
+    <section id="password-security" class="card" data-settings-content>
       <div class="card-head">
         <h2>Change password</h2>
         <p>Verify your email with a one-time code before choosing a new password.</p>
@@ -240,5 +309,29 @@
       } finally { $('save-password').disabled = false; }
     });
   </script>
+<script>
+  (() => {
+    const search = document.getElementById('settings-search');
+    if (!search) return;
+    search.addEventListener('input', () => {
+      const term = search.value.trim().toLowerCase();
+      let matches = 0;
+      document.querySelectorAll('[data-settings-item]').forEach((item) => {
+        const visible = !term || item.textContent.toLowerCase().includes(term);
+        item.hidden = !visible;
+        if (visible) matches++;
+      });
+      document.querySelectorAll('[data-settings-group]').forEach((group) => {
+        group.hidden = term && ![...group.querySelectorAll('[data-settings-item]')].some((item) => !item.hidden);
+      });
+      document.querySelectorAll('[data-settings-content]').forEach((card) => {
+        const visible = !term || card.textContent.toLowerCase().includes(term);
+        card.hidden = !visible;
+        if (visible) matches++;
+      });
+      document.getElementById('settings-no-results').hidden = !term || matches > 0;
+    });
+  })();
+</script>
 </body>
 </html>
