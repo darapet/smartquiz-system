@@ -12,7 +12,7 @@ const state = {
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
-  conversations: [], chatSettings: new Map(), chatSettingsReady: false, blockedUserIds: new Set(), showArchivedChats: false, chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
+  conversations: [], chatSettings: new Map(), chatSettingsReady: false, blockedUserIds: new Set(), showArchivedChats: false, chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, chatRecordingElapsedMs: 0, chatRecordingStarting: false, chatRecordingAttemptId: 0, chatRecordingSession: null, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
   pendingIncomingCall: null, incomingPreviewPromise: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
   callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', callConnected: false, mediaRecorder: null,
@@ -1373,28 +1373,435 @@ async function markMessagesRead(messages) {
   }).catch(() => {});
 }
 
+function formatVoiceDuration(value) {
+  const total = Math.max(0, Math.floor(Number(value) || 0));
+  return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+}
+
+function voiceWaveformMarkup(seed, count = 42) {
+  const text = String(seed || 'voice');
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619) >>> 0;
+  return Array.from({ length: count }, () => {
+    hash = (Math.imul(hash, 1664525) + 1013904223) >>> 0;
+    return '<i style="height:' + (20 + (hash % 78)) + '%"></i>';
+  }).join('');
+}
+
+function voicePlayerMarkup(message, src) {
+  const duration = Math.max(0, Math.floor(Number(message.attachmentDuration || message.duration) || 0));
+  const filename = String(message.attachmentName || ('voice-message-' + (message.id || 'audio') + '.webm')).replace(/[^a-z0-9._-]/gi, '-');
+  return '<div class="studyco-voice-note" data-voice-message-id="' + esc(message.id || '') + '">' +
+    '<button class="studyco-voice-note-play" type="button" data-chat-voice-play aria-label="Play voice message" title="Play voice message">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>' +
+    '</button>' +
+    '<div class="studyco-voice-note-track">' +
+      '<div class="studyco-voice-note-wave" role="img" aria-label="Voice message waveform">' + voiceWaveformMarkup((message.id || '') + src) + '</div>' +
+      '<span class="studyco-voice-note-time" data-chat-voice-time>' + (duration ? formatVoiceDuration(duration) : 'Voice message') + '</span>' +
+    '</div>' +
+    '<button class="studyco-voice-note-download" type="button" data-chat-voice-download="' + src + '" data-filename="' + esc(filename) + '" aria-label="Download voice message" title="Download voice message">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v3h14v-3"></path></svg>' +
+    '</button>' +
+    '<audio class="studyco-voice-note-audio" src="' + src + '" preload="none" data-duration="' + duration + '" aria-label="Voice message audio"></audio>' +
+  '</div>';
+}
+
+function updateVoicePlayer(audio) {
+  const player = audio?.closest('.studyco-voice-note');
+  if (!player) return;
+  const playing = !audio.paused && !audio.ended;
+  const button = player.querySelector('[data-chat-voice-play]');
+  if (button) {
+    button.setAttribute('aria-label', playing ? 'Pause voice message' : 'Play voice message');
+    button.title = playing ? 'Pause voice message' : 'Play voice message';
+    button.innerHTML = playing
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h3v14H8zm5 0h3v14h-3z"></path></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
+  }
+  const total = Number.isFinite(audio.duration) ? audio.duration : Number(audio.dataset.duration || 0);
+  const ratio = total > 0 ? Math.min(1, audio.currentTime / total) : 0;
+  const bars = player.querySelectorAll('.studyco-voice-note-wave i');
+  bars.forEach((bar, index) => bar.classList.toggle('played', index < Math.round(ratio * bars.length)));
+  const time = player.querySelector('[data-chat-voice-time]');
+  if (time) time.textContent = total > 0
+    ? (audio.currentTime > 0 ? formatVoiceDuration(audio.currentTime) + ' / ' : '') + formatVoiceDuration(total)
+    : 'Voice message';
+  player.classList.toggle('is-playing', playing);
+}
+
 function renderMessages(messages, profile) {
   const target = document.querySelector('.studyco-chat-messages'); if (!target) return;
   target.innerHTML = messages.length ? messages.map((message) => {
-    const body = esc(message.messageText || message.text || '').replace(/\n/g, '<br>');
+    const rawBody = String(message.messageText || message.text || '');
+    const body = esc(rawBody).replace(/\n/g, '<br>');
     const attachmentType = String(message.attachmentType || '').toLowerCase();
     const attachmentUrl = esc(message.attachmentUrl || '');
+    const isVoiceMessage = !!attachmentUrl && attachmentType.startsWith('audio/');
     let attachment = '';
-    if (attachmentUrl && attachmentType.startsWith('audio/')) {
-      attachment = '<audio class="studyco-message-audio" controls preload="metadata" src="' + attachmentUrl + '" aria-label="Voice message"></audio>';
+    if (isVoiceMessage) {
+      attachment = voicePlayerMarkup(message, attachmentUrl);
     } else if (attachmentUrl && attachmentType.startsWith('image/')) {
       attachment = '<a class="studyco-message-image" href="' + attachmentUrl + '" target="_blank" rel="noopener"><img src="' + attachmentUrl + '" alt="' + esc(message.attachmentName || 'Shared image') + '" loading="lazy" decoding="async"></a>';
     } else if (attachmentUrl) {
       attachment = '<a class="studyco-message-attachment" href="' + attachmentUrl + '" target="_blank" rel="noopener"><span>↧</span><b>' + esc(message.attachmentName || 'Shared file') + '</b><small>' + esc(message.attachmentType || 'Attachment') + '</small></a>';
     }
-    return '<div class="studyco-message ' + (message.senderId === state.user.uid ? 'mine' : '') + '">' + (message.senderId === state.user.uid ? '' : avatar(profile, 'small')) + '<div class="bubble">' + body + attachment + '<time>' + esc(timeText(message.createdAt)) + '</time></div></div>';
+    const visibleBody = isVoiceMessage && /^voice message$/i.test(rawBody.trim()) ? '' : body;
+    const bubbleClass = isVoiceMessage ? 'bubble audio-bubble' : 'bubble';
+    return '<div class="studyco-message ' + (message.senderId === state.user.uid ? 'mine' : '') + '">' + (message.senderId === state.user.uid ? '' : avatar(profile, 'small')) + '<div class="' + bubbleClass + '">' + visibleBody + attachment + '<time>' + esc(timeText(message.createdAt)) + '</time></div></div>';
   }).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
+  target.querySelectorAll('.studyco-voice-note-audio').forEach((audio) => {
+    ['timeupdate', 'loadedmetadata', 'durationchange', 'play', 'pause', 'ended'].forEach((eventName) => audio.addEventListener(eventName, () => updateVoicePlayer(audio)));
+    updateVoicePlayer(audio);
+  });
   target.scrollTop = target.scrollHeight;
 }
 
+function stopChatRecordingPreview(session = state.chatRecordingSession) {
+  if (!session?.previewAudio) return;
+  session.previewAudio.pause();
+  session.previewAudio.currentTime = 0;
+  session.previewAudio.onended = null;
+  session.previewAudio = null;
+  if (session.previewUrl) URL.revokeObjectURL(session.previewUrl);
+  session.previewUrl = '';
+  updateChatRecordingUI();
+}
 
+function stopChatRecordingVisualization(session) {
+  if (!session) return;
+  if (session.waveFrame) cancelAnimationFrame(session.waveFrame);
+  session.waveFrame = 0;
+  try { session.waveSource?.disconnect(); } catch (error) {}
+  try { session.analyser?.disconnect(); } catch (error) {}
+  if (session.audioContext && session.audioContext.state !== 'closed') {
+    session.audioContext.close().catch(() => {});
+  }
+  if (state.chatRecordingSession === session || !state.chatRecordingSession) document.querySelector('.studyco-chat-record-wave')?.classList.remove('is-live', 'is-fallback');
+  session.audioContext = null;
+  session.analyser = null;
+}
+
+function startChatRecordingVisualization(stream, session) {
+  const AudioContextType = window.AudioContext || window.webkitAudioContext;
+  const wave = document.querySelector('.studyco-chat-record-wave');
+  if (!wave) return;
+  wave.classList.remove('is-fallback');
+  wave.classList.add('is-live');
+  if (!AudioContextType) { wave.classList.add('is-fallback'); return; }
+  try {
+    const context = new AudioContextType();
+    const analyser = context.createAnalyser();
+    analyser.fftSize = 128;
+    const source = context.createMediaStreamSource(stream);
+    source.connect(analyser);
+    session.audioContext = context;
+    session.analyser = analyser;
+    session.waveSource = source;
+    const values = new Uint8Array(analyser.frequencyBinCount);
+    const draw = () => {
+      if (state.chatRecordingSession !== session || session.cancelled || !session.analyser) return;
+      const currentWave = document.querySelector('.studyco-chat-record-wave');
+      if (!currentWave) return;
+      analyser.getByteFrequencyData(values);
+      const bars = currentWave.querySelectorAll('i');
+      bars.forEach((bar, index) => {
+        const valueIndex = Math.min(values.length - 1, Math.floor((index / Math.max(1, bars.length)) * values.length));
+        const strength = values[valueIndex] / 255;
+        bar.style.height = Math.max(12, Math.round(14 + strength * 86)) + '%';
+      });
+      session.waveFrame = requestAnimationFrame(draw);
+    };
+    if (context.state === 'suspended') context.resume().catch(() => {});
+    session.waveFrame = requestAnimationFrame(draw);
+  } catch (error) {
+    wave.classList.add('is-fallback');
+  }
+}
+
+function currentChatRecordingDuration(session) {
+  if (!session) return 0;
+  const liveElapsed = session.recorder.state === 'recording' ? Date.now() - session.startedAt : 0;
+  return Math.max(0, session.elapsedMs + liveElapsed);
+}
+
+function updateChatRecordingUI() {
+  const form = $('studyco-chat-form');
+  const button = $('studyco-chat-record');
+  const controls = form?.querySelector('.studyco-chat-recording-controls');
+  const session = state.chatRecordingSession;
+  const waitingForMic = state.chatRecordingStarting;
+  const recordingMode = !!session || waitingForMic;
+  form?.classList.toggle('is-recording', recordingMode);
+  if (controls) controls.hidden = !recordingMode;
+  if (button) {
+    button.classList.toggle('is-recording', !!session && session.recorder.state === 'recording');
+    button.setAttribute('aria-label', recordingMode ? 'Recording voice message' : 'Record a voice note');
+    button.title = recordingMode ? 'Recording voice message' : 'Record a voice note';
+  }
+  const status = form?.querySelector('[data-chat-recording-status]');
+  const elapsedNode = form?.querySelector('[data-chat-recording-time]');
+  const pauseButton = form?.querySelector('[data-chat-record-pause]');
+  const replayButton = form?.querySelector('[data-chat-record-preview]');
+  const sendButton = form?.querySelector('[data-chat-record-send]');
+  const paused = !!session && session.recorder.state === 'paused';
+  if (status) status.textContent = waitingForMic ? 'Connecting to microphone…' : session?.sendRequested ? 'Preparing voice message…' : paused ? 'Recording paused' : recordingMode ? 'Recording voice message' : '';
+  if (elapsedNode) elapsedNode.textContent = formatVoiceDuration(Math.floor(currentChatRecordingDuration(session) / 1000));
+  if (pauseButton) {
+    pauseButton.disabled = !session || session.sendRequested || session.recorder.state === 'inactive';
+    pauseButton.setAttribute('aria-label', paused ? 'Resume recording' : 'Pause recording');
+    pauseButton.title = paused ? 'Resume recording' : 'Pause recording';
+    pauseButton.innerHTML = paused
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg>';
+  }
+  if (replayButton) {
+    replayButton.disabled = !session || session.recorder.state !== 'paused' || !session.chunks.length || session.sendRequested;
+    const previewPlaying = !!session?.previewAudio && !session.previewAudio.paused;
+    replayButton.setAttribute('aria-label', previewPlaying ? 'Pause voice preview' : 'Replay voice preview');
+    replayButton.title = previewPlaying ? 'Pause voice preview' : 'Replay voice preview';
+    replayButton.innerHTML = previewPlaying
+      ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg>'
+      : '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg>';
+  }
+  if (sendButton) {
+    sendButton.disabled = !session || session.sendRequested;
+    sendButton.textContent = session?.sendRequested ? 'Sending…' : 'Send';
+  }
+}
+
+async function sendMessage(event, attachmentOverride = null, isVoiceNote = false, voiceDuration = 0, voiceChatUid = null, voiceChatId = null) {
+  event?.preventDefault();
+  const input = $('studyco-chat-input'); const fileInput = $('studyco-chat-file');
+  const button = $('studyco-chat-send') || event?.target?.querySelector('button[type="submit"]');
+  const text = input?.value.trim() || ''; const file = attachmentOverride || fileInput?.files?.[0];
+  if (!text && !file) return;
+  const chatUid = voiceChatUid || state.activeChatUid;
+  if (!chatUid) { toast('Choose a friend before sending a message.', true); return; }
+  if (state.blockedUserIds.has(chatUid)) { toast('Unblock this person in chat settings before sending a message.', true); return; }
+  if (button) button.disabled = true;
+  try {
+    const conversationId = voiceChatId || (state.activeChatUid === chatUid ? state.activeChatId : null) || await ensureConversation(chatUid);
+    if (state.activeChatUid === chatUid) state.activeChatId = conversationId;
+    const attachmentUrl = file ? await uploadAttachment(file, 'studyco/' + state.user.uid + '/messages/' + Date.now() + '-' + file.name.replace(/[^a-z0-9._-]/gi, '')) : '';
+    const messageText = text.slice(0, 2000) || (isVoiceNote ? 'Voice message' : (file ? 'Shared ' + file.name : ''));
+    await addDoc(collection(db, 'social_conversations', conversationId, 'messages'), { senderId: state.user.uid, receiverId: chatUid, messageText, attachmentUrl, attachmentName: file?.name || '', attachmentType: file?.type || '', attachmentKind: isVoiceNote ? 'voice' : '', attachmentSize: file?.size || 0, attachmentDuration: isVoiceNote ? Math.max(0, Math.floor(Number(voiceDuration) || 0)) : 0, createdAt: serverTimestamp(), is_read: false });
+    await updateDoc(doc(db, 'social_conversations', conversationId), { lastMessageText: messageText.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, ['lastReadBy.' + state.user.uid]: true, updatedAt: serverTimestamp() });
+    await createNotification(chatUid, 'message', conversationId, conversationId).catch(() => {});
+    if (!isVoiceNote) {
+      if (input) input.value = '';
+      if (fileInput) fileInput.value = '';
+      if ($('studyco-chat-file-name')) $('studyco-chat-file-name').textContent = '';
+    }
+  } catch (error) {
+    toast(error.message || 'Your message could not be sent.', true);
+  } finally {
+    if (button) button.disabled = false;
+  }
+}
+
+function beginSendingChatRecording(session) {
+  if (!session || session.cancelled || session.sendRequested) return;
+  if (session.recorder.state === 'recording') {
+    session.elapsedMs += Date.now() - session.startedAt;
+    session.startedAt = 0;
+  }
+  session.sendRequested = true;
+  stopChatRecordingPreview(session);
+  updateChatRecordingUI();
+  if (session.recorder.state !== 'inactive') session.recorder.stop();
+}
+
+function toggleChatRecordingPause() {
+  const session = state.chatRecordingSession;
+  if (!session || session.sendRequested) return;
+  try {
+    if (session.recorder.state === 'recording') {
+      session.recorder.pause();
+      session.elapsedMs += Date.now() - session.startedAt;
+      session.startedAt = 0;
+    } else if (session.recorder.state === 'paused') {
+      session.startedAt = Date.now();
+      session.recorder.resume();
+    }
+    updateChatRecordingUI();
+  } catch (error) { toast(error.message || 'Recording could not be paused.', true); }
+}
+
+function replayChatRecordingPreview() {
+  const session = state.chatRecordingSession;
+  if (!session || session.recorder.state !== 'paused' || session.sendRequested || !session.chunks.length) return;
+  if (session.previewAudio && !session.previewAudio.paused) {
+    session.previewAudio.pause();
+    session.previewAudio.currentTime = 0;
+    updateChatRecordingUI();
+    return;
+  }
+  stopChatRecordingPreview(session);
+  const type = session.recorder.mimeType || session.chunks.find((chunk) => chunk.type)?.type || 'audio/webm';
+  const blob = new Blob(session.chunks, { type });
+  if (!blob.size) { toast('There is no recorded audio to preview yet.', true); return; }
+  session.previewUrl = URL.createObjectURL(blob);
+  session.previewAudio = new Audio(session.previewUrl);
+  session.previewAudio.onended = () => stopChatRecordingPreview(session);
+  session.previewAudio.play().then(updateChatRecordingUI).catch((error) => {
+    stopChatRecordingPreview(session);
+    toast(error.message || 'The voice preview could not play.', true);
+  });
+  updateChatRecordingUI();
+}
+
+function discardChatVoiceRecording() {
+  const session = state.chatRecordingSession;
+  if (!session) {
+    if (state.chatRecordingStarting) {
+      state.chatRecordingAttemptId += 1;
+      state.chatRecordingStarting = false;
+      updateChatRecordingUI();
+    }
+    return;
+  }
+  session.cancelled = true;
+  stopChatRecordingPreview(session);
+  stopChatRecordingVisualization(session);
+  if (state.chatRecordingSession === session) {
+    window.clearInterval(state.chatRecordingTimer);
+    state.chatRecordingTimer = null;
+    state.chatRecordingSession = null;
+    state.chatRecorder = null;
+    state.chatRecordingStream = null;
+    state.chatRecordedChunks = [];
+  }
+  if (session.recorder.state !== 'inactive') session.recorder.stop();
+  else session.stream.getTracks().forEach((track) => track.stop());
+  updateChatRecordingUI();
+}
+
+function downloadVoiceMessage(button) {
+  const source = button?.dataset.chatVoiceDownload || '';
+  if (!source) return;
+  const filename = button.dataset.filename || 'voice-message.webm';
+  button.disabled = true;
+  fetch(source).then((response) => {
+    if (!response.ok) throw new Error('Download failed (' + response.status + ').');
+    return response.blob();
+  }).then((blob) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = filename;
+    link.rel = 'noopener';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60000);
+    button.classList.add('is-downloaded');
+    button.setAttribute('aria-label', 'Voice message downloaded');
+    button.title = 'Voice message downloaded';
+  }).catch((error) => {
+    const fallback = document.createElement('a');
+    fallback.href = source;
+    fallback.download = filename;
+    fallback.target = '_blank';
+    fallback.rel = 'noopener';
+    document.body.appendChild(fallback);
+    fallback.click();
+    fallback.remove();
+    toast(error.message || 'The audio could not be downloaded directly. Opening the file instead.', true);
+  }).finally(() => { button.disabled = false; });
+}
+
+async function toggleChatVoiceRecording() {
+  if (state.chatRecordingSession || state.chatRecordingStarting) return;
+  if (!state.activeChatUid || !$('studyco-chat-form')) { toast('Open a conversation before recording a voice note.', true); return; }
+  if (state.blockedUserIds.has(state.activeChatUid)) { toast('Unblock this person in chat settings before sending a voice note.', true); return; }
+  if ($('studyco-chat-file')?.files?.length) { toast('Send or remove the attached file before recording a voice note.', true); return; }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    toast('Voice recording is not supported on this device.', true);
+    return;
+  }
+  const attemptId = (state.chatRecordingAttemptId || 0) + 1;
+  const chatUid = state.activeChatUid;
+  const chatId = state.activeChatId;
+  state.chatRecordingAttemptId = attemptId;
+  state.chatRecordingStarting = true;
+  updateChatRecordingUI();
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    if (state.chatRecordingAttemptId !== attemptId || state.activeChatUid !== chatUid || !$('studyco-chat-form')) {
+      stream.getTracks().forEach((track) => track.stop());
+      return;
+    }
+    const Recorder = window.MediaRecorder;
+    const supportedTypes = ['audio/webm;codecs=opus', 'audio/mp4;codecs=mp4a.40.2', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    const mimeType = supportedTypes.find((type) => !Recorder.isTypeSupported || Recorder.isTypeSupported(type));
+    const recorder = mimeType ? new Recorder(stream, { mimeType }) : new Recorder(stream);
+    const session = { recorder, stream, chunks: [], startedAt: Date.now(), elapsedMs: 0, cancelled: false, sendRequested: false, chatUid, chatId, previewAudio: null, previewUrl: '', audioContext: null, analyser: null, waveSource: null, waveFrame: 0 };
+    state.chatRecordingSession = session;
+    state.chatRecorder = recorder;
+    state.chatRecordingStream = stream;
+    state.chatRecordedChunks = session.chunks;
+    state.chatRecordingStartedAt = session.startedAt;
+    state.chatRecordingStarting = false;
+    recorder.ondataavailable = (event) => {
+      if (event.data?.size) session.chunks.push(event.data);
+      if (state.chatRecordingSession === session && session.recorder.state === 'paused') updateChatRecordingUI();
+    };
+    recorder.onpause = () => updateChatRecordingUI();
+    recorder.onresume = () => updateChatRecordingUI();
+    recorder.onstop = () => {
+      const wasCurrentSession = state.chatRecordingSession === session;
+      if (wasCurrentSession) {
+        window.clearInterval(state.chatRecordingTimer);
+        state.chatRecordingTimer = null;
+      }
+      stopChatRecordingPreview(session);
+      stopChatRecordingVisualization(session);
+      session.stream.getTracks().forEach((track) => track.stop());
+      const chunks = session.chunks.slice();
+      if (wasCurrentSession) {
+        state.chatRecordingSession = null;
+        state.chatRecorder = null;
+        state.chatRecordingStream = null;
+        state.chatRecordedChunks = [];
+        state.chatRecordingStartedAt = 0;
+        state.chatRecordingElapsedMs = 0;
+        state.chatRecordingStarting = false;
+        updateChatRecordingUI();
+      }
+      if (session.cancelled || !session.sendRequested) return;
+      const type = recorder.mimeType || chunks.find((chunk) => chunk.type)?.type || 'audio/webm';
+      const blob = new Blob(chunks, { type });
+      if (!blob.size) { toast('No audio was captured. Try recording again.', true); return; }
+      const extension = type.includes('mp4') ? 'm4a' : (type.includes('ogg') ? 'ogg' : 'webm');
+      const file = new File([blob], 'voice-note-' + Date.now() + '.' + extension, { type });
+      const duration = Math.ceil(currentChatRecordingDuration(session) / 1000);
+      void sendMessage(null, file, true, duration, session.chatUid, session.chatId);
+    };
+    recorder.start(250);
+    startChatRecordingVisualization(stream, session);
+    updateChatRecordingUI();
+    state.chatRecordingTimer = window.setInterval(() => {
+      updateChatRecordingUI();
+      if (currentChatRecordingDuration(session) >= 180000 && session.recorder.state === 'recording' && !session.sendRequested) {
+        toast('Voice notes are limited to 3 minutes. Sending this recording now.');
+        beginSendingChatRecording(session);
+      }
+    }, 500);
+  } catch (error) {
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    if (state.chatRecordingAttemptId === attemptId) {
+      state.chatRecordingStarting = false;
+      state.chatRecorder = null;
+      state.chatRecordingStream = null;
+      updateChatRecordingUI();
+    }
+    toast(error.message || 'Voice recording could not start.', true);
+  }
+}
 
 function clearUserChatState() {
+  if (state.chatRecordingSession || state.chatRecordingStarting) discardChatVoiceRecording();
   ['chatListUnsub', 'messageUnsub', 'chatSettingsUnsub', 'blockedUsersUnsub', 'notificationUnsub'].forEach((key) => {
     state[key]?.();
     state[key] = null;
@@ -1551,6 +1958,7 @@ async function handleChatSettingsAction(action) {
 }
 
 async function openChat(uid, { updateUrl = true } = {}) {
+  if ((state.chatRecordingSession || state.chatRecordingStarting) && uid !== state.activeChatUid) discardChatVoiceRecording();
   try {
     const profile = await getProfile(uid);
     if (!profile) { toast('That friend profile could not be found.', true); return; }
@@ -1568,7 +1976,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">•••</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div><span id="studyco-chat-recording-status" class="studyco-chat-recording-status" role="status" aria-live="polite" hidden></span></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">•••</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div>` + '<div class="studyco-chat-recording-controls" hidden aria-live="polite">' + '<button class="studyco-chat-record-action delete" type="button" data-chat-record-delete aria-label="Delete recording" title="Delete recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"></path></svg></button>' + '<div class="studyco-chat-recording-main"><div class="studyco-chat-recording-label"><span data-chat-recording-status>Recording voice message</span><time data-chat-recording-time>0:00</time></div><div class="studyco-chat-record-wave" role="img" aria-label="Live recording waveform">' + voiceWaveformMarkup('recording', 24) + '</div></div><div class="studyco-chat-recording-transport"><button class="studyco-chat-record-action" type="button" data-chat-record-pause aria-label="Pause recording" title="Pause recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg></button><button class="studyco-chat-record-action replay" type="button" data-chat-record-preview aria-label="Replay voice preview" title="Replay voice preview" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button></div>' + '<button class="studyco-chat-record-send" type="button" data-chat-record-send>Send</button></div>' + `</form>`;
     updateActiveChatPresence();
     updateChatSettingsMenu();
     updateActiveChatControls();
@@ -1584,118 +1992,13 @@ async function openChat(uid, { updateUrl = true } = {}) {
 }
 
 function closeChat() {
+  if (state.chatRecordingSession || state.chatRecordingStarting) discardChatVoiceRecording();
   state.activeChatUid = null;
   state.activeChatId = null;
   state.messageUnsub?.();
   state.messageUnsub = null;
   setView('messages', { chatUid: '' });
   renderChatList();
-}
-
-async function sendMessage(event, attachmentOverride = null, isVoiceNote = false) {
-  event?.preventDefault();
-  const input = $('studyco-chat-input'); const fileInput = $('studyco-chat-file');
-  const button = $('studyco-chat-send') || event?.target?.querySelector('button[type="submit"]');
-  const text = input?.value.trim() || ''; const file = attachmentOverride || fileInput?.files?.[0];
-  if (!text && !file) return;
-  if (!state.activeChatUid) { toast('Choose a friend before sending a message.', true); return; }
-  if (state.blockedUserIds.has(state.activeChatUid)) { toast('Unblock this person in chat settings before sending a message.', true); return; }
-  if (button) button.disabled = true;
-  try {
-    if (!state.activeChatId) state.activeChatId = await ensureConversation(state.activeChatUid);
-    const attachmentUrl = file ? await uploadAttachment(file, 'studyco/' + state.user.uid + '/messages/' + Date.now() + '-' + file.name.replace(/[^a-z0-9._-]/gi, '')) : '';
-    const messageText = text.slice(0, 2000) || (isVoiceNote ? 'Voice message' : (file ? 'Shared ' + file.name : ''));
-    await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText, attachmentUrl, attachmentName: file?.name || '', attachmentType: file?.type || '', attachmentKind: isVoiceNote ? 'voice' : '', attachmentSize: file?.size || 0, createdAt: serverTimestamp(), is_read: false });
-    await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: messageText.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, ['lastReadBy.' + state.user.uid]: true, updatedAt: serverTimestamp() });
-    await createNotification(state.activeChatUid, 'message', state.activeChatId, state.activeChatId).catch(() => {});
-    if (!isVoiceNote) {
-      if (input) input.value = '';
-      if (fileInput) fileInput.value = '';
-      if ($('studyco-chat-file-name')) $('studyco-chat-file-name').textContent = '';
-    }
-  } catch (error) {
-    toast(error.message || 'Your message could not be sent.', true);
-  } finally {
-    if (button) button.disabled = false;
-  }
-}
-
-function updateChatRecordingUI() {
-  const button = $('studyco-chat-record');
-  const status = $('studyco-chat-recording-status');
-  if (!button || !status) return;
-  const isRecording = state.chatRecorder?.state === 'recording';
-  button.classList.toggle('is-recording', isRecording);
-  button.setAttribute('aria-label', isRecording ? 'Stop and send voice note' : 'Record a voice note');
-  button.title = isRecording ? 'Stop and send voice note' : 'Record a voice note';
-  button.innerHTML = isRecording
-    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>'
-    : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg>';
-  status.hidden = !isRecording;
-  if (isRecording) {
-    const elapsed = Math.floor((Date.now() - state.chatRecordingStartedAt) / 1000);
-    const time = String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
-    status.textContent = 'Recording voice note · ' + time + ' · tap the red button to send';
-  } else status.textContent = '';
-}
-
-async function toggleChatVoiceRecording() {
-  if (state.chatRecorder?.state === 'recording') {
-    state.chatRecorder.stop();
-    return;
-  }
-  if (!state.activeChatUid || !$('studyco-chat-form')) { toast('Open a conversation before recording a voice note.', true); return; }
-  if (state.blockedUserIds.has(state.activeChatUid)) { toast('Unblock this person in chat settings before sending a voice note.', true); return; }
-  if ($('studyco-chat-file')?.files?.length) { toast('Send or remove the attached file before recording a voice note.', true); return; }
-  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
-    toast('Voice recording is not supported on this device.', true);
-    return;
-  }
-  let stream = null;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const Recorder = window.MediaRecorder;
-    const supportedTypes = ['audio/webm;codecs=opus', 'audio/mp4;codecs=mp4a.40.2', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
-    const mimeType = supportedTypes.find((type) => !Recorder.isTypeSupported || Recorder.isTypeSupported(type));
-    const recorder = mimeType ? new Recorder(stream, { mimeType }) : new Recorder(stream);
-    state.chatRecorder = recorder;
-    state.chatRecordingStream = stream;
-    state.chatRecordedChunks = [];
-    state.chatRecordingStartedAt = Date.now();
-    recorder.ondataavailable = (event) => { if (event.data?.size) state.chatRecordedChunks.push(event.data); };
-    recorder.onstop = () => {
-      window.clearInterval(state.chatRecordingTimer);
-      state.chatRecordingTimer = null;
-      const chunks = state.chatRecordedChunks.slice();
-      state.chatRecordedChunks = [];
-      const activeStream = state.chatRecordingStream;
-      state.chatRecordingStream = null;
-      state.chatRecorder = null;
-      if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
-      updateChatRecordingUI();
-      const type = recorder.mimeType || chunks.find((chunk) => chunk.type)?.type || 'audio/webm';
-      const blob = new Blob(chunks, { type });
-      if (!blob.size) { toast('No audio was captured. Try recording again.', true); return; }
-      const extension = type.includes('mp4') ? 'm4a' : (type.includes('ogg') ? 'ogg' : 'webm');
-      const file = new File([blob], 'voice-note-' + Date.now() + '.' + extension, { type });
-      void sendMessage(null, file, true);
-    };
-    recorder.start(250);
-    updateChatRecordingUI();
-    state.chatRecordingTimer = window.setInterval(() => {
-      updateChatRecordingUI();
-      if (Date.now() - state.chatRecordingStartedAt >= 180000 && state.chatRecorder?.state === 'recording') {
-        toast('Voice notes are limited to 3 minutes. Sending this recording now.');
-        state.chatRecorder.stop();
-      }
-    }, 1000);
-  } catch (error) {
-    if (stream) stream.getTracks().forEach((track) => track.stop());
-    state.chatRecorder = null;
-    state.chatRecordingStream = null;
-    updateChatRecordingUI();
-    toast(error.message || 'Voice recording could not start.', true);
-  }
 }
 
 function getCallAudioConstraints() {
@@ -2800,6 +3103,23 @@ window.addEventListener('hashchange', syncRoute);
     if (settingsAction) { closeChatSettingsMenu(); void handleChatSettingsAction(settingsAction.dataset.chatAction); return; }
     if (event.target.closest('[data-chat-report-cancel]')) { event.preventDefault(); closeChatReportDialog(); return; }
     if (!event.target.closest('.studyco-chat-settings')) closeChatSettingsMenu();
+    if (event.target.closest('[data-chat-record-delete]')) { event.preventDefault(); discardChatVoiceRecording(); return; }
+    if (event.target.closest('[data-chat-record-pause]')) { event.preventDefault(); toggleChatRecordingPause(); return; }
+    if (event.target.closest('[data-chat-record-preview]')) { event.preventDefault(); replayChatRecordingPreview(); return; }
+    if (event.target.closest('[data-chat-record-send]')) { event.preventDefault(); beginSendingChatRecording(state.chatRecordingSession); return; }
+    const voicePlayButton = event.target.closest('[data-chat-voice-play]');
+    if (voicePlayButton) {
+      const currentAudio = voicePlayButton.closest('.studyco-voice-note')?.querySelector('.studyco-voice-note-audio');
+      if (currentAudio) {
+        if (currentAudio.paused) {
+          document.querySelectorAll('.studyco-voice-note-audio').forEach((audio) => { if (audio !== currentAudio) audio.pause(); });
+          currentAudio.play().catch((error) => toast(error.message || 'This voice message could not play.', true));
+        } else currentAudio.pause();
+      }
+      return;
+    }
+    const voiceDownloadButton = event.target.closest('[data-chat-voice-download]');
+    if (voiceDownloadButton) { event.preventDefault(); void downloadVoiceMessage(voiceDownloadButton); return; }
     if (event.target.closest('[data-chat-record]')) { event.preventDefault(); void toggleChatVoiceRecording(); return; }
     const callButton = event.target.closest('[data-start-call]');
     if (callButton) { void startCall(callButton.dataset.startCall, callButton.dataset.callKind || 'audio'); return; }
