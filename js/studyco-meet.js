@@ -12,7 +12,7 @@ const state = {
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
-  conversations: [], activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
+  conversations: [], chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
   pendingIncomingCall: null, incomingPreviewPromise: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
   callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', callConnected: false, mediaRecorder: null,
@@ -1307,10 +1307,15 @@ function renderMessages(messages, profile) {
   const target = document.querySelector('.studyco-chat-messages'); if (!target) return;
   target.innerHTML = messages.length ? messages.map((message) => {
     const body = esc(message.messageText || message.text || '').replace(/\n/g, '<br>');
-    const attachment = message.attachmentUrl
-      ? `<a class="studyco-message-attachment" href="${esc(message.attachmentUrl)}" target="_blank" rel="noopener"><span>${message.attachmentType?.startsWith('image/') ? '▧' : '↧'}</span><b>${esc(message.attachmentName || 'Shared file')}</b><small>${esc(message.attachmentType || 'Attachment')}</small></a>`
-      : '';
-    return `<div class="studyco-message ${message.senderId === state.user.uid ? 'mine' : ''}">${message.senderId === state.user.uid ? '' : avatar(profile, 'small')}<div class="bubble">${body}${attachment}<time>${esc(timeText(message.createdAt))}</time></div></div>`;
+    const attachmentType = String(message.attachmentType || '').toLowerCase();
+    const attachmentUrl = esc(message.attachmentUrl || '');
+    let attachment = '';
+    if (attachmentUrl && attachmentType.startsWith('audio/')) {
+      attachment = '<audio class="studyco-message-audio" controls preload="metadata" src="' + attachmentUrl + '" aria-label="Voice message"></audio>';
+    } else if (attachmentUrl) {
+      attachment = '<a class="studyco-message-attachment" href="' + attachmentUrl + '" target="_blank" rel="noopener"><span>' + (attachmentType.startsWith('image/') ? '▧' : '↧') + '</span><b>' + esc(message.attachmentName || 'Shared file') + '</b><small>' + esc(message.attachmentType || 'Attachment') + '</small></a>';
+    }
+    return '<div class="studyco-message ' + (message.senderId === state.user.uid ? 'mine' : '') + '">' + (message.senderId === state.user.uid ? '' : avatar(profile, 'small')) + '<div class="bubble">' + body + attachment + '<time>' + esc(timeText(message.createdAt)) + '</time></div></div>';
   }).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
   target.scrollTop = target.scrollHeight;
 }
@@ -1333,7 +1338,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button class="studyco-button primary" type="submit">Send</button></div></form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div></div><div class="studyco-chat-messages"></div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div><span id="studyco-chat-recording-status" class="studyco-chat-recording-status" role="status" aria-live="polite" hidden></span></form>`;
     updateActiveChatPresence();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
       const messages = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).sort((a, b) => timeMs(a.createdAt) - timeMs(b.createdAt));
@@ -1355,25 +1360,107 @@ function closeChat() {
   renderChatList();
 }
 
-async function sendMessage(event) {
-  event.preventDefault();
+async function sendMessage(event, attachmentOverride = null, isVoiceNote = false) {
+  event?.preventDefault();
   const input = $('studyco-chat-input'); const fileInput = $('studyco-chat-file');
-  const button = event.target.querySelector('button[type="submit"]'); const text = input.value.trim(); const file = fileInput?.files?.[0];
+  const button = $('studyco-chat-send') || event?.target?.querySelector('button[type="submit"]');
+  const text = input?.value.trim() || ''; const file = attachmentOverride || fileInput?.files?.[0];
   if (!text && !file) return;
   if (!state.activeChatUid) { toast('Choose a friend before sending a message.', true); return; }
-  button.disabled = true;
+  if (button) button.disabled = true;
   try {
     if (!state.activeChatId) state.activeChatId = await ensureConversation(state.activeChatUid);
-    const attachmentUrl = file ? await uploadAttachment(file, `studyco/${state.user.uid}/messages/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    const messageText = text.slice(0, 2000) || `Shared ${file?.name || 'a file'}`;
-    await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText, attachmentUrl, attachmentName: file?.name || '', attachmentType: file?.type || '', attachmentSize: file?.size || 0, createdAt: serverTimestamp(), is_read: false });
-    await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: messageText.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, [`lastReadBy.${state.user.uid}`]: true, updatedAt: serverTimestamp() });
+    const attachmentUrl = file ? await uploadAttachment(file, 'studyco/' + state.user.uid + '/messages/' + Date.now() + '-' + file.name.replace(/[^a-z0-9._-]/gi, '')) : '';
+    const messageText = text.slice(0, 2000) || (isVoiceNote ? 'Voice message' : (file ? 'Shared ' + file.name : ''));
+    await addDoc(collection(db, 'social_conversations', state.activeChatId, 'messages'), { senderId: state.user.uid, receiverId: state.activeChatUid, messageText, attachmentUrl, attachmentName: file?.name || '', attachmentType: file?.type || '', attachmentKind: isVoiceNote ? 'voice' : '', attachmentSize: file?.size || 0, createdAt: serverTimestamp(), is_read: false });
+    await updateDoc(doc(db, 'social_conversations', state.activeChatId), { lastMessageText: messageText.slice(0, 120), lastMessageAt: serverTimestamp(), lastSenderId: state.user.uid, ['lastReadBy.' + state.user.uid]: true, updatedAt: serverTimestamp() });
     await createNotification(state.activeChatUid, 'message', state.activeChatId, state.activeChatId).catch(() => {});
-    input.value = ''; if (fileInput) fileInput.value = ''; if ($('studyco-chat-file-name')) $('studyco-chat-file-name').textContent = '';
+    if (!isVoiceNote) {
+      if (input) input.value = '';
+      if (fileInput) fileInput.value = '';
+      if ($('studyco-chat-file-name')) $('studyco-chat-file-name').textContent = '';
+    }
   } catch (error) {
     toast(error.message || 'Your message could not be sent.', true);
   } finally {
-    button.disabled = false;
+    if (button) button.disabled = false;
+  }
+}
+
+function updateChatRecordingUI() {
+  const button = $('studyco-chat-record');
+  const status = $('studyco-chat-recording-status');
+  if (!button || !status) return;
+  const isRecording = state.chatRecorder?.state === 'recording';
+  button.classList.toggle('is-recording', isRecording);
+  button.setAttribute('aria-label', isRecording ? 'Stop and send voice note' : 'Record a voice note');
+  button.title = isRecording ? 'Stop and send voice note' : 'Record a voice note';
+  button.innerHTML = isRecording
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg>';
+  status.hidden = !isRecording;
+  if (isRecording) {
+    const elapsed = Math.floor((Date.now() - state.chatRecordingStartedAt) / 1000);
+    const time = String(Math.floor(elapsed / 60)).padStart(2, '0') + ':' + String(elapsed % 60).padStart(2, '0');
+    status.textContent = 'Recording voice note · ' + time + ' · tap the red button to send';
+  } else status.textContent = '';
+}
+
+async function toggleChatVoiceRecording() {
+  if (state.chatRecorder?.state === 'recording') {
+    state.chatRecorder.stop();
+    return;
+  }
+  if (!state.activeChatUid || !$('studyco-chat-form')) { toast('Open a conversation before recording a voice note.', true); return; }
+  if ($('studyco-chat-file')?.files?.length) { toast('Send or remove the attached file before recording a voice note.', true); return; }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    toast('Voice recording is not supported on this device.', true);
+    return;
+  }
+  let stream = null;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const Recorder = window.MediaRecorder;
+    const supportedTypes = ['audio/webm;codecs=opus', 'audio/mp4;codecs=mp4a.40.2', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+    const mimeType = supportedTypes.find((type) => !Recorder.isTypeSupported || Recorder.isTypeSupported(type));
+    const recorder = mimeType ? new Recorder(stream, { mimeType }) : new Recorder(stream);
+    state.chatRecorder = recorder;
+    state.chatRecordingStream = stream;
+    state.chatRecordedChunks = [];
+    state.chatRecordingStartedAt = Date.now();
+    recorder.ondataavailable = (event) => { if (event.data?.size) state.chatRecordedChunks.push(event.data); };
+    recorder.onstop = () => {
+      window.clearInterval(state.chatRecordingTimer);
+      state.chatRecordingTimer = null;
+      const chunks = state.chatRecordedChunks.slice();
+      state.chatRecordedChunks = [];
+      const activeStream = state.chatRecordingStream;
+      state.chatRecordingStream = null;
+      state.chatRecorder = null;
+      if (activeStream) activeStream.getTracks().forEach((track) => track.stop());
+      updateChatRecordingUI();
+      const type = recorder.mimeType || chunks.find((chunk) => chunk.type)?.type || 'audio/webm';
+      const blob = new Blob(chunks, { type });
+      if (!blob.size) { toast('No audio was captured. Try recording again.', true); return; }
+      const extension = type.includes('mp4') ? 'm4a' : (type.includes('ogg') ? 'ogg' : 'webm');
+      const file = new File([blob], 'voice-note-' + Date.now() + '.' + extension, { type });
+      void sendMessage(null, file, true);
+    };
+    recorder.start(250);
+    updateChatRecordingUI();
+    state.chatRecordingTimer = window.setInterval(() => {
+      updateChatRecordingUI();
+      if (Date.now() - state.chatRecordingStartedAt >= 180000 && state.chatRecorder?.state === 'recording') {
+        toast('Voice notes are limited to 3 minutes. Sending this recording now.');
+        state.chatRecorder.stop();
+      }
+    }, 1000);
+  } catch (error) {
+    if (stream) stream.getTracks().forEach((track) => track.stop());
+    state.chatRecorder = null;
+    state.chatRecordingStream = null;
+    updateChatRecordingUI();
+    toast(error.message || 'Voice recording could not start.', true);
   }
 }
 
@@ -2472,6 +2559,7 @@ window.addEventListener('hashchange', syncRoute);
     if (event.target.id === 'studyco-chat-file') $('studyco-chat-file-name').textContent = event.target.files[0]?.name || '';
   });
   $('studyco-chat-panel').addEventListener('click', (event) => {
+    if (event.target.closest('[data-chat-record]')) { event.preventDefault(); void toggleChatVoiceRecording(); return; }
     const callButton = event.target.closest('[data-start-call]');
     if (callButton) { void startCall(callButton.dataset.startCall, callButton.dataset.callKind || 'audio'); return; }
     if (event.target.closest('[data-call-history]')) { renderCallHistory(); openModal('studyco-call-history-modal'); }
