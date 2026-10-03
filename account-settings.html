@@ -104,6 +104,15 @@
 
 
     body.settings-page .story-audience-setting{display:grid;gap:8px;padding:14px 0;color:#1c1e21;font-size:13px;font-weight:700}body.settings-page .story-audience-setting select{width:min(100%,420px);min-height:44px;padding:0 12px;font:inherit;font-weight:500}body.settings-page .story-audience-setting small{max-width:620px;color:#65676b;font-size:11px;font-weight:400;line-height:1.5}
+
+    body.settings-page .story-archive-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:15px}
+    body.settings-page .story-archive-item{overflow:hidden;border:1px solid #e4e6eb;border-radius:12px;background:#fff}
+    body.settings-page .story-archive-item img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#f0f2f5}
+    body.settings-page .story-archive-copy{display:grid;gap:6px;padding:12px}
+    body.settings-page .story-archive-copy p{margin:0;color:#1c1e21;font-size:12px;line-height:1.45;overflow-wrap:anywhere}
+    body.settings-page .story-archive-copy small{color:#65676b;font-size:10px}
+    body.settings-page .story-archive-empty{grid-column:1/-1;padding:16px;border:1px dashed #ccd0d5;border-radius:10px;color:#65676b;font-size:12px;text-align:center}
+    @media(max-width:760px){body.settings-page .story-archive-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 </style>
 </head>
 <body class="settings-page">
@@ -132,6 +141,7 @@
         <a class="settings-item" href="studyco-meet.html#profile" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.6 2.7-5.5 6.5-5.5s6 1.9 6.5 5.5"/></svg></span><span><strong>Profile details</strong><small>Open your profile and edit each detail.</small></span><b aria-hidden="true">›</b></a>
         <a class="settings-item" href="#profile-visibility" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span><span><strong>Profile visibility</strong><small>Choose which details other people can see.</small></span><b aria-hidden="true">›</b></a>
         <a class="settings-item" href="#story-privacy" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span><span><strong>Story privacy</strong><small>Choose the default audience for new stories.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="#story-archive" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M8 3v4M16 3v4M4 10h16M8 14h3M8 17h7"/></svg></span><span><strong>Story archive</strong><small>Review your expired stories.</small></span><b aria-hidden="true">›</b></a>
       </section>
     </div>
     <p id="settings-no-results" class="settings-no-results" hidden>No settings match that search.</p>
@@ -159,6 +169,10 @@
     <section id="story-privacy" class="card" data-settings-content>
       <div class="card-head head"><h2>Story privacy</h2><p>Choose who can see stories you create from now on. Existing stories keep their current visibility.</p></div>
       <div class="card-body body"><label class="story-audience-setting" for="story-default-audience"><strong>Default audience for new stories</strong><select id="story-default-audience"><option value="public">Everyone</option><option value="only_me">Only me</option></select><small>Only you can view stories set to Only me. This applies to stories created after you save.</small></label><div class="actions"><div id="story-privacy-status" class="status" role="status"></div><button class="btn btn-primary primary" id="save-story-privacy" type="button">Save story settings</button></div></div>
+    </section>
+    <section id="story-archive" class="card" data-settings-content>
+      <div class="card-head head"><h2>Story archive</h2><p>Review stories you shared after they leave the 24-hour feed. This list is read-only.</p></div>
+      <div class="card-body body"><div class="actions"><div id="story-archive-status" class="status" role="status">Your archived stories will appear here.</div><button class="btn btn-primary primary" id="load-story-archive" type="button">Load archive</button></div><div id="story-archive-list" class="story-archive-list" aria-live="polite"></div></div>
     </section>
     <section id="password-security" class="card" data-settings-content>
       <div class="card-head">
@@ -188,7 +202,7 @@
   <script type="module">
     import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
     import { getAuth, updatePassword } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
-    import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+    import { getFirestore, collection, doc, getDoc, getDocs, query, where, limit, setDoc, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 
     const app = getApp();
     const auth = getAuth(app);
@@ -235,6 +249,70 @@
       const storyPrivacy = socialData.storyPrivacy || {}; $('story-default-audience').value = storyPrivacy.defaultAudience === 'only_me' ? 'only_me' : 'public';
       $('account-email').textContent = user.email || 'your email address';
     }
+
+    function archiveMillis(value) {
+      if (value && typeof value.toMillis === 'function') return value.toMillis();
+      if (value && typeof value.seconds === 'number') return value.seconds * 1000;
+      return Date.parse(value) || 0;
+    }
+
+    async function loadStoryArchive() {
+      if (!user) return;
+      const button = $('load-story-archive');
+      button.disabled = true;
+      setStatus('story-archive-status', 'Loading your archive…');
+      const list = $('story-archive-list');
+      list.replaceChildren();
+      try {
+        const results = await Promise.allSettled([
+          getDocs(query(collection(db, 'studyco_stories'), where('userId', '==', user.uid), limit(100))),
+          getDocs(query(collection(db, 'studyco_private_stories'), where('userId', '==', user.uid), limit(100)))
+        ]);
+        if (results[0].status === 'rejected') throw results[0].reason;
+        const publicStories = results[0].value.docs.map((item) => ({ id: item.id, ...item.data(), isPrivate: false }));
+        const privateStories = results[1].status === 'fulfilled'
+          ? results[1].value.docs.map((item) => ({ id: item.id, ...item.data(), isPrivate: true }))
+          : [];
+        const archived = [...publicStories, ...privateStories]
+          .filter((story) => archiveMillis(story.expiresAt) > 0 && archiveMillis(story.expiresAt) <= Date.now())
+          .sort((a, b) => archiveMillis(b.createdAt) - archiveMillis(a.createdAt));
+        if (!archived.length) {
+          const empty = document.createElement('p');
+          empty.className = 'story-archive-empty';
+          empty.textContent = 'No expired stories yet.';
+          list.append(empty);
+        }
+        archived.forEach((story) => {
+          const card = document.createElement('article');
+          card.className = 'story-archive-item';
+          if (story.imageUrl) {
+            const image = document.createElement('img');
+            image.src = story.imageUrl;
+            image.alt = 'Archived story image';
+            image.addEventListener('error', () => image.remove(), { once: true });
+            card.append(image);
+          }
+          const copy = document.createElement('div');
+          copy.className = 'story-archive-copy';
+          const caption = document.createElement('p');
+          caption.textContent = story.content || 'Photo story';
+          const date = document.createElement('small');
+          const created = archiveMillis(story.createdAt);
+          date.textContent = created ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(created)) : 'Date unavailable';
+          if (story.isPrivate || story.audience === 'only_me') date.textContent += ' · Only you';
+          copy.append(caption, date);
+          card.append(copy);
+          list.append(card);
+        });
+        setStatus('story-archive-status', results[1].status === 'rejected'
+          ? 'Public archive loaded. Private stories are unavailable until the updated Firebase rules are deployed.'
+          : archived.length ? `Showing ${archived.length} archived stories.` : 'Your archive is up to date.');
+      } catch (error) {
+        setStatus('story-archive-status', error.message || 'Your archive could not be loaded.', 'error');
+      } finally { button.disabled = false; }
+    }
+
+    $('load-story-archive').addEventListener('click', loadStoryArchive);
 
     window.onAqsAuthChange(async (currentUser) => {
       if (!currentUser) { location.href = 'login.html'; return; }
