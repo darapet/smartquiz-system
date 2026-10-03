@@ -5,8 +5,16 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // StudyCo Meet media is always stored under the owning user's uid.
-    // Keep uploads image-only and bounded even though the UI validates too.
+    // Private StudyCo story media is readable only by its owner.
+    match /studyco-private/{uid}/stories/{allPaths=**} {
+      allow read: if signedIn() && request.auth.uid == uid;
+      allow write: if signedIn()
+          && request.auth.uid == uid
+          && request.resource.size < 8 * 1024 * 1024
+          && request.resource.contentType.matches('image/.*');
+    }
+
+    // StudyCo Meet public media remains readable by everyone.
     match /studyco/{uid}/{allPaths=**} {
       allow read: if true;
       allow write: if signedIn()

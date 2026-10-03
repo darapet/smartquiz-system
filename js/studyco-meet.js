@@ -7,7 +7,7 @@ const state = {
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(), postPreferences: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
-  feedUnsub: null, scheduleTimer: null, storyUnsub: null, requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
+  feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, messageUnsub: null, notificationUnsub: null,
   notifications: [],
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
@@ -177,6 +177,7 @@ function publicProfile(profile) {
   if (!profile) return profile;
   const visible = profile.profileVisibility || {};
   const result = { ...profile };
+  delete result.storyPrivacy;
   if (visible.displayName === false) result.displayName = '';
   if (visible.photoURL === false) {
     delete result.photoURL;
@@ -1092,10 +1093,24 @@ function renderStories() {
 
 function subscribeStories() {
   state.storyUnsub?.();
+  state.privateStoryUnsub?.();
+  state.publicStories = [];
+  state.privateStories = [];
+  const refreshStories = async () => {
+    state.stories = [...state.publicStories, ...state.privateStories]
+      .filter((story) => timeMs(story.expiresAt) > Date.now())
+      .sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
+    await Promise.all([...new Set(state.stories.map((story) => story.userId))].map((uid) => getProfile(uid)));
+    renderStories();
+  };
   state.storyUnsub = onSnapshot(query(collection(db, 'studyco_stories'), limit(100)), async (snapshot) => {
-    state.stories = snapshot.docs.map((item) => ({ id: item.id, ...item.data() })).filter((story) => timeMs(story.expiresAt) > Date.now()).sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
-    await Promise.all(state.stories.map((story) => getProfile(story.userId))); renderStories();
+    state.publicStories = snapshot.docs.map((item) => ({ id: item.id, ...item.data(), isPrivate: false }));
+    await refreshStories();
   }, (error) => toast(error.message || 'Stories could not load.', true));
+  state.privateStoryUnsub = onSnapshot(query(collection(db, 'studyco_private_stories'), where('userId', '==', state.user.uid), limit(100)), async (snapshot) => {
+    state.privateStories = snapshot.docs.map((item) => ({ id: item.id, ...item.data(), isPrivate: true }));
+    await refreshStories();
+  }, (error) => toast(error.message || 'Private stories could not load.', true));
 }
 
 async function createStory(event) {
@@ -1103,15 +1118,24 @@ async function createStory(event) {
   const text = $('studyco-story-text').value.trim(); const file = state.storyImage;
   if (!text && !file) { toast('Add a caption or an image to create a story.', true); return; }
   try {
-    const imageUrl = file ? await uploadImage(file, `studyco/${state.user.uid}/stories/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    await addDoc(collection(db, 'studyco_stories'), { userId: state.user.uid, content: text.slice(0, 240), imageUrl, bgColor: state.storyColor, expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)), createdAt: serverTimestamp() });
-    $('studyco-story-form').reset(); state.storyImage = null; $('studyco-story-preview').style.backgroundImage = ''; closeModal('studyco-story-modal'); toast('Story shared for 24 hours.');
+    let defaultAudience = 'public';
+    try {
+      const settingsSnapshot = await getDoc(doc(db, 'social_profiles', state.user.uid));
+      if (settingsSnapshot.exists() && settingsSnapshot.data().storyPrivacy?.defaultAudience === 'only_me') defaultAudience = 'only_me';
+    } catch (_) { /* Keep the existing public-story behavior if settings are unavailable. */ }
+    const storageRoot = defaultAudience === 'only_me' ? 'studyco-private' : 'studyco';
+    const imageUrl = file ? await uploadImage(file, `${storageRoot}/${state.user.uid}/stories/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
+    const storyData = { userId: state.user.uid, content: text.slice(0, 240), imageUrl, bgColor: state.storyColor, audience: defaultAudience, expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)), createdAt: serverTimestamp() };
+    const storyCollection = defaultAudience === 'only_me' ? 'studyco_private_stories' : 'studyco_stories';
+    await addDoc(collection(db, storyCollection), storyData);
+    $('studyco-story-form').reset(); state.storyImage = null; $('studyco-story-preview').style.backgroundImage = ''; closeModal('studyco-story-modal'); toast(defaultAudience === 'only_me' ? 'Private story saved. Only you can see it.' : 'Story shared for 24 hours.');
   } catch (error) { toast(error.message || 'Story could not be shared.', true); }
 }
 
 function showStory(story) {
   const author = state.profiles.get(story.userId) || {};
-  $('studyco-story-viewer-content').innerHTML = `${story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="">` : ''}<div class="story-caption">${esc(story.content || '')}<small><br>${esc(profileName(author))}</small></div>`;
+  const audienceLabel = story.isPrivate || story.audience === 'only_me' ? 'Only you' : 'Everyone';
+  $('studyco-story-viewer-content').innerHTML = `${story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="">` : ''}<div class="story-caption">${esc(story.content || '')}<small><br>${esc(profileName(author))}<br>${audienceLabel}</small></div>`;
   $('studyco-story-viewer').hidden = false;
 }
 

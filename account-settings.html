@@ -102,6 +102,8 @@
     body.settings-page .security-note,body.settings-page .security{margin-top:16px;padding:12px 14px;border-radius:10px;background:#f0f2f5;color:#65676b;font-size:11px;line-height:1.5}
     @media(max-width:760px){body.settings-page main{width:min(100% - 24px,680px);padding-top:23px}.settings-page .settings-groups{grid-template-columns:1fr;gap:10px}.settings-page .settings-group{padding:14px}.settings-page .card-head,.settings-page .head{padding:16px}.settings-page .card-body,.settings-page .body{padding-right:16px;padding-left:16px}}
 
+
+    body.settings-page .story-audience-setting{display:grid;gap:8px;padding:14px 0;color:#1c1e21;font-size:13px;font-weight:700}body.settings-page .story-audience-setting select{width:min(100%,420px);min-height:44px;padding:0 12px;font:inherit;font-weight:500}body.settings-page .story-audience-setting small{max-width:620px;color:#65676b;font-size:11px;font-weight:400;line-height:1.5}
 </style>
 </head>
 <body class="settings-page">
@@ -129,6 +131,7 @@
         <div class="settings-group-heading"><h2>Audience and visibility</h2><p>Control who can see your profile information.</p></div>
         <a class="settings-item" href="studyco-meet.html#profile" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 20c.5-3.6 2.7-5.5 6.5-5.5s6 1.9 6.5 5.5"/></svg></span><span><strong>Profile details</strong><small>Open your profile and edit each detail.</small></span><b aria-hidden="true">›</b></a>
         <a class="settings-item" href="#profile-visibility" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span><span><strong>Profile visibility</strong><small>Choose which details other people can see.</small></span><b aria-hidden="true">›</b></a>
+        <a class="settings-item" href="#story-privacy" data-settings-item><span class="settings-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 12s3.4-6 9.5-6 9.5 6 9.5 6-3.4 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg></span><span><strong>Story privacy</strong><small>Choose the default audience for new stories.</small></span><b aria-hidden="true">›</b></a>
       </section>
     </div>
     <p id="settings-no-results" class="settings-no-results" hidden>No settings match that search.</p>
@@ -153,6 +156,10 @@
       </div>
     </section>
 
+    <section id="story-privacy" class="card" data-settings-content>
+      <div class="card-head head"><h2>Story privacy</h2><p>Choose who can see stories you create from now on. Existing stories keep their current visibility.</p></div>
+      <div class="card-body body"><label class="story-audience-setting" for="story-default-audience"><strong>Default audience for new stories</strong><select id="story-default-audience"><option value="public">Everyone</option><option value="only_me">Only me</option></select><small>Only you can view stories set to Only me. This applies to stories created after you save.</small></label><div class="actions"><div id="story-privacy-status" class="status" role="status"></div><button class="btn btn-primary primary" id="save-story-privacy" type="button">Save story settings</button></div></div>
+    </section>
     <section id="password-security" class="card" data-settings-content>
       <div class="card-head">
         <h2>Change password</h2>
@@ -225,6 +232,7 @@
       const libraryData = librarySnap.exists() ? librarySnap.data() : {};
       const socialData = socialSnap.exists() ? socialSnap.data() : {};
       applyVisibility(userData.profileVisibility || libraryData.profileVisibility || socialData.profileVisibility);
+      const storyPrivacy = socialData.storyPrivacy || {}; $('story-default-audience').value = storyPrivacy.defaultAudience === 'only_me' ? 'only_me' : 'public';
       $('account-email').textContent = user.email || 'your email address';
     }
 
@@ -250,6 +258,19 @@
         applyVisibility(next);
         setStatus('privacy-status', 'Visibility settings saved.', 'success');
       } catch (error) { setStatus('privacy-status', error.message || 'Could not save visibility settings.', 'error'); }
+      finally { button.disabled = false; }
+    });
+
+    $('save-story-privacy').addEventListener('click', async () => {
+      if (!user) return;
+      const button = $('save-story-privacy');
+      button.disabled = true;
+      setStatus('story-privacy-status', 'Saving…');
+      try {
+        const defaultAudience = $('story-default-audience').value === 'only_me' ? 'only_me' : 'public';
+        await setDoc(doc(db, 'social_profiles', user.uid), { storyPrivacy: { defaultAudience }, updatedAt: serverTimestamp() }, { merge: true });
+        setStatus('story-privacy-status', 'Saved. New stories will use this audience.', 'success');
+      } catch (error) { setStatus('story-privacy-status', error.message || 'Story settings could not be saved.', 'error'); }
       finally { button.disabled = false; }
     });
 
