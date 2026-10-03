@@ -1312,8 +1312,10 @@ function renderMessages(messages, profile) {
     let attachment = '';
     if (attachmentUrl && attachmentType.startsWith('audio/')) {
       attachment = '<audio class="studyco-message-audio" controls preload="metadata" src="' + attachmentUrl + '" aria-label="Voice message"></audio>';
+    } else if (attachmentUrl && attachmentType.startsWith('image/')) {
+      attachment = '<a class="studyco-message-image" href="' + attachmentUrl + '" target="_blank" rel="noopener"><img src="' + attachmentUrl + '" alt="' + esc(message.attachmentName || 'Shared image') + '" loading="lazy" decoding="async"></a>';
     } else if (attachmentUrl) {
-      attachment = '<a class="studyco-message-attachment" href="' + attachmentUrl + '" target="_blank" rel="noopener"><span>' + (attachmentType.startsWith('image/') ? '▧' : '↧') + '</span><b>' + esc(message.attachmentName || 'Shared file') + '</b><small>' + esc(message.attachmentType || 'Attachment') + '</small></a>';
+      attachment = '<a class="studyco-message-attachment" href="' + attachmentUrl + '" target="_blank" rel="noopener"><span>↧</span><b>' + esc(message.attachmentName || 'Shared file') + '</b><small>' + esc(message.attachmentType || 'Attachment') + '</small></a>';
     }
     return '<div class="studyco-message ' + (message.senderId === state.user.uid ? 'mine' : '') + '">' + (message.senderId === state.user.uid ? '' : avatar(profile, 'small')) + '<div class="bubble">' + body + attachment + '<time>' + esc(timeText(message.createdAt)) + '</time></div></div>';
   }).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
