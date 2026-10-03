@@ -190,3 +190,13 @@ body.aqs-bottom-nav-page{padding-bottom:96px!important}
   .studyco-chat-record-action{flex-basis:30px;width:30px;height:30px}
   .studyco-chat-record-send{min-width:52px;font-size:.68rem}
 }
+
+
+/* Message delivery/read receipts in outgoing chat bubbles. */
+.studyco-message-meta{display:flex;align-items:center;justify-content:flex-end;gap:5px;min-height:10px;margin-top:3px}
+.studyco-message-meta time{display:block;margin:0;font-size:.57rem;opacity:.6}
+.studyco-message-receipt{display:inline-flex;align-items:center;justify-content:center;min-width:14px;height:12px;line-height:0;vertical-align:middle;color:rgba(255,255,255,.78)}
+.studyco-message-receipt svg{display:block;width:14px;height:12px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.studyco-message-receipt.is-online svg,.studyco-message-receipt.is-read svg{width:19px}
+.studyco-message-receipt.is-online{color:#fff}
+.studyco-message-receipt.is-read{color:#ff6f86}

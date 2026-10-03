@@ -12,7 +12,7 @@ const state = {
   incomingCallUnsub: null, callUnsub: null, candidateUnsub: null, callHistoryUnsubs: [],
   callHistory: [], incomingCallTimers: new Map(), incomingCallIds: new Set(),
   presence: new Map(), presenceUnsubs: new Map(), presenceHeartbeat: null,
-  conversations: [], chatSettings: new Map(), chatSettingsReady: false, blockedUserIds: new Set(), showArchivedChats: false, chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, chatRecordingElapsedMs: 0, chatRecordingStarting: false, chatRecordingAttemptId: 0, chatRecordingSession: null, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
+  conversations: [], chatSettings: new Map(), chatSettingsReady: false, blockedUserIds: new Set(), showArchivedChats: false, chatRecorder: null, chatRecordingStream: null, chatRecordedChunks: [], chatRecordingTimer: null, chatRecordingStartedAt: 0, chatRecordingElapsedMs: 0, chatRecordingStarting: false, chatRecordingAttemptId: 0, chatRecordingSession: null, chatReceiptRefreshTimer: null, activeChatUid: null, activeChatId: null, activeCallId: null, searchTimer: null, searchRequestId: 0, feedRenderTokens: new WeakMap(),
   pendingIncomingCall: null, incomingPreviewPromise: null, rtc: null, localStream: null, callTimeout: null, callProfile: null, callIncoming: false, callMinimized: false,
   ringToneTimer: null, audioContext: null, presenceWired: false, callStartedAt: 0,
   callElapsedTimer: null, muted: false, speakerOn: true, callSpeakerOn: true, callMode: 'audio', callConnected: false, mediaRecorder: null,
@@ -1306,10 +1306,45 @@ function renderChatList() {
 }
 
 
+const CHAT_RECEIPT_SINGLE_MARK = '<svg viewBox="0 0 14 12" aria-hidden="true"><path d="m2 6 3 3 7-7"></path></svg>';
+const CHAT_RECEIPT_DOUBLE_MARK = '<svg viewBox="0 0 22 12" aria-hidden="true"><path d="m1 6 3 3 7-7"></path><path d="m7 6 3 3 10-8"></path></svg>';
+
+function messageReceiptStatus(isRead, recipientOnline) {
+  return isRead ? 'read' : (recipientOnline ? 'online' : 'sent');
+}
+
+function messageReceiptLabel(status) {
+  return status === 'read' ? 'Read' : (status === 'online' ? 'Recipient online' : 'Sent');
+}
+
+function messageReceiptIcon(status) {
+  return status === 'sent' ? CHAT_RECEIPT_SINGLE_MARK : CHAT_RECEIPT_DOUBLE_MARK;
+}
+
+function messageReceiptMarkup(message) {
+  if (message.senderId !== state.user?.uid) return '';
+  const isRead = message.is_read === true;
+  const status = messageReceiptStatus(isRead, presenceIsOnline(state.presence.get(state.activeChatUid)));
+  const label = messageReceiptLabel(status);
+  return '<span class="studyco-message-receipt is-' + status + '" data-message-receipt data-read="' + (isRead ? 'true' : 'false') + '" role="img" aria-label="' + esc(label) + '" title="' + esc(label) + '">' + messageReceiptIcon(status) + '</span>';
+}
+
+function updateChatReceiptIndicators(recipientOnline = presenceIsOnline(state.presence.get(state.activeChatUid))) {
+  document.querySelectorAll('#studyco-chat-panel [data-message-receipt]').forEach((receipt) => {
+    const status = messageReceiptStatus(receipt.dataset.read === 'true', recipientOnline);
+    const label = messageReceiptLabel(status);
+    receipt.className = 'studyco-message-receipt is-' + status;
+    receipt.innerHTML = messageReceiptIcon(status);
+    receipt.setAttribute('aria-label', label);
+    receipt.title = label;
+  });
+}
+
 function updateActiveChatPresence() {
+  const presence = state.activeChatUid ? state.presence.get(state.activeChatUid) : null;
+  updateChatReceiptIndicators(presenceIsOnline(presence));
   const status = $('studyco-chat-presence');
   if (!status || !state.activeChatUid) return;
-  const presence = state.presence.get(state.activeChatUid);
   status.textContent = lastSeenText(presence);
   status.classList.toggle('online', presenceIsOnline(presence));
   const dot = $('studyco-chat-presence-dot');
@@ -1468,13 +1503,14 @@ function renderMessages(messages, profile) {
     }
     const visibleBody = isVoiceMessage && /^voice message$/i.test(rawBody.trim()) ? '' : body;
     const bubbleClass = isVoiceMessage ? 'bubble audio-bubble' : 'bubble';
-    return '<div class="studyco-message ' + (message.senderId === state.user.uid ? 'mine' : '') + '">' + (message.senderId === state.user.uid ? '' : avatar(profile, 'small')) + '<div class="' + bubbleClass + '">' + visibleBody + attachment + '<time>' + esc(timeText(message.createdAt)) + '</time></div></div>';
+    return '<div class="studyco-message ' + (message.senderId === state.user.uid ? 'mine' : '') + '">' + (message.senderId === state.user.uid ? '' : avatar(profile, 'small')) + '<div class="' + bubbleClass + '">' + visibleBody + attachment + '<div class="studyco-message-meta"><time>' + esc(timeText(message.createdAt)) + '</time>' + messageReceiptMarkup(message) + '</div></div></div>';
   }).join('') : '<div class="studyco-chat-empty">Say hello to your study friend.</div>';
   target.querySelectorAll('.studyco-voice-note-audio').forEach((audio) => {
     ['timeupdate', 'loadedmetadata', 'durationchange', 'play', 'pause', 'ended'].forEach((eventName) => audio.addEventListener(eventName, () => updateVoicePlayer(audio)));
     updateVoicePlayer(audio);
   });
   target.scrollTop = target.scrollHeight;
+  updateChatReceiptIndicators();
 }
 
 function stopChatRecordingPreview(session = state.chatRecordingSession) {
@@ -1822,6 +1858,8 @@ async function toggleChatVoiceRecording() {
 }
 
 function clearUserChatState() {
+  window.clearInterval(state.chatReceiptRefreshTimer);
+  state.chatReceiptRefreshTimer = null;
   if (state.chatRecordingSession || state.chatRecordingStarting) discardChatVoiceRecording();
   ['chatListUnsub', 'messageUnsub', 'chatSettingsUnsub', 'blockedUsersUnsub', 'notificationUnsub'].forEach((key) => {
     state[key]?.();
@@ -1999,6 +2037,10 @@ async function openChat(uid, { updateUrl = true } = {}) {
     setView('messages', { updateUrl, chatUid: uid });
     $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">•••</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div>` + '<div class="studyco-chat-recording-controls" hidden aria-live="polite">' + '<button class="studyco-chat-record-action delete" type="button" data-chat-record-delete aria-label="Delete recording" title="Delete recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"></path></svg></button>' + '<div class="studyco-chat-recording-main"><div class="studyco-chat-recording-label"><span data-chat-recording-status>Recording voice message</span><time data-chat-recording-time>0:00</time></div><div class="studyco-chat-record-wave" role="img" aria-label="Live recording waveform">' + voiceWaveformMarkup('recording', 24) + '</div></div><div class="studyco-chat-recording-transport"><button class="studyco-chat-record-action" type="button" data-chat-record-pause aria-label="Pause recording" title="Pause recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg></button><button class="studyco-chat-record-action replay" type="button" data-chat-record-preview aria-label="Replay voice preview" title="Replay voice preview" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button></div>' + '<button class="studyco-chat-record-send" type="button" data-chat-record-send>Send</button></div>' + `</form>`;
     updateActiveChatPresence();
+    window.clearInterval(state.chatReceiptRefreshTimer);
+    state.chatReceiptRefreshTimer = window.setInterval(() => {
+      if (state.activeChatUid === uid) updateActiveChatPresence();
+    }, 15000);
     updateChatSettingsMenu();
     updateActiveChatControls();
     state.messageUnsub?.(); state.messageUnsub = onSnapshot(query(collection(db, 'social_conversations', state.activeChatId, 'messages'), limit(150)), async (snapshot) => {
@@ -2013,6 +2055,8 @@ async function openChat(uid, { updateUrl = true } = {}) {
 }
 
 function closeChat() {
+  window.clearInterval(state.chatReceiptRefreshTimer);
+  state.chatReceiptRefreshTimer = null;
   if (state.chatRecordingSession || state.chatRecordingStarting) discardChatVoiceRecording();
   state.activeChatUid = null;
   state.activeChatId = null;
