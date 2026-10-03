@@ -2277,3 +2277,56 @@
 .studyco-post-author{text-decoration:none;cursor:pointer}
 .studyco-post-author:focus-visible{outline:3px solid var(--sc-primary);outline-offset:3px;border-radius:8px}
 .studyco-post-author:hover strong{text-decoration:underline}
+
+
+/* Keep the collapsed composer visible directly below the section navigation. */
+#studyco-composer-slot > #studyco-composer {
+  display: block;
+  visibility: visible;
+}
+
+#studyco-composer-slot .studyco-composer-head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+#studyco-composer-slot #studyco-composer-avatar {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  flex: 0 0 42px;
+}
+
+#studyco-composer-slot #studyco-composer-avatar .studyco-avatar {
+  width: 42px;
+  height: 42px;
+}
+
+#studyco-composer-slot .studyco-composer-head > div:nth-child(2) {
+  min-width: 0;
+  padding-right: 54px;
+}
+
+#studyco-composer-slot .studyco-composer-head button {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  overflow: hidden;
+  border: 0;
+  border-radius: 22px;
+  background: #f0f2f5;
+  color: #65676b;
+  font: inherit;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+#studyco-composer-slot .studyco-composer-head span {
+  display: none;
+}
