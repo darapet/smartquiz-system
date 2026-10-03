@@ -21,14 +21,14 @@
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
   <link rel="modulepreload" href="js/aqs-firebase.js?v=perf-1">
-  <link rel="modulepreload" href="js/studyco-meet.js?v=profile-redesign-20261002">
+  <link rel="modulepreload" href="js/studyco-meet.js?v=profile-details-20261002">
   <link rel="stylesheet" href="css/aqs-style.css">
   <link rel="stylesheet" href="css/aqs-space-nav.css">
   <link rel="stylesheet" href="css/studyco-meet.css?v=profile-width-2">
   <link rel="stylesheet" href="css/studyco-circle.css">
-  <link rel="stylesheet" href="css/studyco-facebook.css?v=profile-redesign-20261002">
+  <link rel="stylesheet" href="css/studyco-facebook.css?v=profile-details-20261002">
   <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
-  <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-redesign-20261002">
+  <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-details-20261002">
   <link rel="stylesheet" href="css/studyco-polish.css?v=home-context-nav-flow-20261002">
 </head>
 <body class="studyco-page">
@@ -174,7 +174,14 @@
               </div>
               <div id="studyco-profile-owner-actions" class="studyco-profile-actions" hidden>
                 <button id="studyco-profile-add-story" class="studyco-button soft" type="button"><span aria-hidden="true">＋</span> Add to story</button>
-                <button id="studyco-profile-edit-small" class="studyco-button primary" type="button">Edit profile</button>
+                <div class="studyco-profile-more-wrap">
+                  <button class="studyco-button soft studyco-profile-more-toggle" type="button" data-profile-more-toggle aria-expanded="false" aria-haspopup="menu">More <span aria-hidden="true">⋯</span></button>
+                  <div class="studyco-profile-more-menu" data-profile-more-menu role="menu" hidden>
+                    <button type="button" role="menuitem" data-profile-more-action="edit-details">Edit profile details</button>
+                    <button type="button" role="menuitem" data-profile-more-action="change-photo">Change profile picture</button>
+                    <button type="button" role="menuitem" data-profile-more-action="change-cover">Change cover photo</button>
+                  </div>
+                </div>
               </div>
               <div id="studyco-profile-public-actions" class="studyco-profile-actions" hidden></div>
               <div id="studyco-profile-stats" class="studyco-profile-stats">
@@ -184,10 +191,34 @@
               </div>
             </section>
 
+            <section id="studyco-profile-about-panel" class="studyco-profile-details-section" role="region" aria-label="Full profile details">
+              <section class="studyco-profile-about studyco-card">
+                <div class="studyco-section-title"><div><p class="studyco-eyebrow">StudyCo profile</p><h2>Profile details</h2></div></div>
+                <div class="studyco-profile-details">
+                  <div class="studyco-profile-detail"><span>Full name</span><p id="studyco-profile-detail-name">Your name</p></div>
+                  <div class="studyco-profile-detail full"><span>Short bio</span><p id="studyco-profile-about-copy">Add a short bio so classmates know what you are learning and how they can connect with you.</p></div>
+                  <div class="studyco-profile-detail"><span>Student status</span><p id="studyco-profile-status-detail">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Education level</span><p id="studyco-profile-education-level">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Education status</span><p id="studyco-profile-education-status">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>School</span><p id="studyco-profile-school">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Department</span><p id="studyco-profile-department">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Major</span><p id="studyco-profile-major">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Gender</span><p id="studyco-profile-gender">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Date of birth</span><p id="studyco-profile-date-of-birth">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Marital status</span><p id="studyco-profile-marital-status">Not added yet</p></div>
+                  <div class="studyco-profile-detail" id="studyco-profile-relationship-name-detail"><span>Partner name</span><p id="studyco-profile-relationship-name">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Address</span><p id="studyco-profile-address">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Location</span><p id="studyco-profile-location">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Phone</span><p id="studyco-profile-phone">Not added yet</p></div>
+                  <div class="studyco-profile-detail"><span>Email</span><p id="studyco-profile-email">Not added yet</p></div>
+                </div>
+                <div id="studyco-profile-progress" class="studyco-profile-progress"><div><strong>Profile progress</strong><span id="studyco-profile-progress-label">0 of 16 details</span></div><div class="studyco-profile-progress-track"><span id="studyco-profile-progress-bar"></span></div></div>
+              </section>
+            </section>
+
             <nav id="studyco-profile-tabs" class="studyco-profile-tabs" role="tablist" aria-label="Profile sections">
               <button id="studyco-profile-tab-posts" class="studyco-profile-tab active" type="button" role="tab" aria-selected="true" aria-controls="studyco-profile-posts-panel" data-profile-tab="posts">Posts</button>
               <button id="studyco-profile-tab-photos" class="studyco-profile-tab" type="button" role="tab" aria-selected="false" aria-controls="studyco-profile-photos-panel" data-profile-tab="photos">Photos</button>
-              <button id="studyco-profile-tab-about" class="studyco-profile-tab" type="button" role="tab" aria-selected="false" aria-controls="studyco-profile-about-panel" data-profile-tab="about">About</button>
             </nav>
 
             <section id="studyco-profile-posts-panel" class="studyco-profile-panel" data-profile-panel="posts" role="tabpanel" aria-labelledby="studyco-profile-tab-posts">
@@ -199,31 +230,6 @@
 
             <section id="studyco-profile-photos-panel" class="studyco-profile-panel" data-profile-panel="photos" role="tabpanel" aria-labelledby="studyco-profile-tab-photos" hidden>
               <div class="studyco-card studyco-profile-posts-card"><div class="studyco-section-title"><div><h2>Photos</h2><p>Images shared in this profile’s posts.</p></div></div><div id="studyco-profile-photos" class="studyco-feed"></div></div>
-            </section>
-
-            <section id="studyco-profile-about-panel" class="studyco-profile-panel" data-profile-panel="about" role="tabpanel" aria-labelledby="studyco-profile-tab-about" hidden>
-              <div class="studyco-profile-grid">
-                <section class="studyco-profile-about studyco-card">
-                  <div class="studyco-section-title"><div><p class="studyco-eyebrow">Profile details</p><h2>About</h2></div><button id="studyco-profile-edit-details" class="studyco-button soft" type="button">Edit details</button></div>
-                  <div class="studyco-profile-details">
-                    <div class="studyco-profile-detail full"><span>Short bio</span><p id="studyco-profile-about-copy">Add a short bio so classmates know what you are learning and how they can connect with you.</p></div>
-                    <div class="studyco-profile-detail"><span>Student status</span><p id="studyco-profile-status-detail">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Education level</span><p id="studyco-profile-education-level">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Education status</span><p id="studyco-profile-education-status">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>School</span><p id="studyco-profile-school">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Department / major</span><p id="studyco-profile-major">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Gender</span><p id="studyco-profile-gender">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Date of birth</span><p id="studyco-profile-date-of-birth">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Marital status</span><p id="studyco-profile-marital-status">Not added yet</p></div>
-                    <div class="studyco-profile-detail" id="studyco-profile-relationship-name-detail"><span>Partner name</span><p id="studyco-profile-relationship-name">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Address</span><p id="studyco-profile-address">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Location</span><p id="studyco-profile-location">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Phone</span><p id="studyco-profile-phone">Not added yet</p></div>
-                    <div class="studyco-profile-detail"><span>Email</span><p id="studyco-profile-email">Not added yet</p></div>
-                  </div>
-                  <div id="studyco-profile-progress" class="studyco-profile-progress"><div><strong>Profile progress</strong><span id="studyco-profile-progress-label">0 of 16 details</span></div><div class="studyco-profile-progress-track"><span id="studyco-profile-progress-bar"></span></div></div>
-                </section>
-              </div>
             </section>
           </section>
 
@@ -355,6 +361,6 @@
   <a class="dara-studio-fab" href="studio.html" aria-label="Open Studio AI"><span class="dara-studio-fab-spark">â¦</span><span>Studio AI</span></a>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>
   <script src="js/aqs-bottom-nav.js"></script>
-  <script type="module" src="js/studyco-meet.js?v=profile-redesign-20261002"></script>
+  <script type="module" src="js/studyco-meet.js?v=profile-details-20261002"></script>
 </body>
 </html>

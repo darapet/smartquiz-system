@@ -353,15 +353,18 @@ function renderProfileActions(uid, isOwnProfile) {
   const incoming = state.requests.some((request) => request.requesterId === uid);
   const outgoing = state.sentRequests.some((request) => request.recipientId === uid);
   const relation = isFriend ? 'friends' : incoming ? 'incoming' : outgoing ? 'outgoing' : (state.viewedProfileRelation || 'none');
-  const safeUid = esc(uid);
-  if (relation === 'friends') publicActions.innerHTML = '<button class="studyco-button primary" type="button" data-friend-action="message" data-uid="' + safeUid + '">Message</button>';
-  else if (relation === 'incoming') publicActions.innerHTML = '<button class="studyco-button primary" type="button" data-friend-action="accept" data-uid="' + safeUid + '">Accept request</button>';
-  else if (relation === 'outgoing') publicActions.innerHTML = '<button class="studyco-button soft" type="button" disabled>Request sent</button>';
-  else publicActions.innerHTML = '<button class="studyco-button primary" type="button" data-friend-action="request" data-uid="' + safeUid + '">Add friend</button>';
+  const safeUid = esc(uid || '');
+  let action = '';
+  if (relation === 'friends') action = '<button class="studyco-button primary" type="button" data-friend-action="message" data-uid="' + safeUid + '">Message</button>';
+  else if (relation === 'incoming') action = '<button class="studyco-button primary" type="button" data-friend-action="accept" data-uid="' + safeUid + '">Accept request</button>';
+  else if (relation === 'outgoing') action = '<button class="studyco-button soft" type="button" disabled>Request sent</button>';
+  else action = '<button class="studyco-button primary" type="button" data-friend-action="request" data-uid="' + safeUid + '">Add friend</button>';
+  const more = '<div class="studyco-profile-more-wrap"><button class="studyco-button soft studyco-profile-more-toggle" type="button" data-profile-more-toggle aria-expanded="false" aria-haspopup="menu">More <span aria-hidden="true">⋯</span></button><div class="studyco-profile-more-menu" data-profile-more-menu role="menu" hidden><button type="button" role="menuitem" data-profile-more-action="view-details">View full profile</button></div></div>';
+  publicActions.innerHTML = action + more;
 }
 
 async function renderProfileTab(tab) {
-  const allowedTabs = ['posts', 'photos', 'about'];
+  const allowedTabs = ['posts', 'photos'];
   if (!allowedTabs.includes(tab)) tab = 'posts';
   state.activeProfileTab = tab;
   document.querySelectorAll('#studyco-profile-tabs [data-profile-tab]').forEach((button) => {
@@ -372,13 +375,74 @@ async function renderProfileTab(tab) {
   document.querySelectorAll('#studyco-view-profile [data-profile-panel]').forEach((panel) => {
     panel.hidden = panel.dataset.profilePanel !== tab;
   });
-  if (tab === 'about') return;
   const profileUid = state.viewedProfileUid || state.user?.uid;
   const includePrivate = profileUid === state.user?.uid;
   const posts = state.viewedProfilePosts || [];
   const target = tab === 'photos' ? $('studyco-profile-photos') : $('studyco-profile-posts');
   const visiblePosts = tab === 'photos' ? posts.filter((post) => Boolean(post.imageUrl)) : posts;
   await renderFeed(target, visiblePosts, { includePrivate, showAuthor: false });
+}
+
+function renderProfileDetailEditButtons(isOwnProfile) {
+  const fields = [
+    ['studyco-profile-detail-name', 'studyco-edit-name', 'full name'],
+    ['studyco-profile-about-copy', 'studyco-edit-bio', 'short bio'],
+    ['studyco-profile-status-detail', 'studyco-edit-status', 'student status'],
+    ['studyco-profile-education-level', 'studyco-edit-education-level', 'education level'],
+    ['studyco-profile-education-status', 'studyco-edit-education-status', 'education status'],
+    ['studyco-profile-school', 'studyco-edit-school', 'school'],
+    ['studyco-profile-department', 'studyco-edit-department', 'department'],
+    ['studyco-profile-major', 'studyco-edit-major', 'major'],
+    ['studyco-profile-gender', 'studyco-edit-gender', 'gender'],
+    ['studyco-profile-date-of-birth', 'studyco-edit-date-of-birth', 'date of birth'],
+    ['studyco-profile-marital-status', 'studyco-edit-marital-status', 'marital status'],
+    ['studyco-profile-relationship-name', 'studyco-edit-relationship-name', 'partner name'],
+    ['studyco-profile-address', 'studyco-edit-address', 'address'],
+    ['studyco-profile-location', 'studyco-edit-location', 'location'],
+    ['studyco-profile-phone', 'studyco-edit-contact', 'phone number'],
+    ['studyco-profile-email', 'studyco-edit-email', 'email']
+  ];
+  fields.forEach(([valueId, inputId, label]) => {
+    const value = $(valueId);
+    const row = value?.closest('.studyco-profile-detail');
+    if (!row) return;
+    let button = row.querySelector('.studyco-profile-field-edit');
+    if (!button) {
+      button = document.createElement('button');
+      button.className = 'studyco-profile-field-edit';
+      button.type = 'button';
+      button.dataset.editInput = inputId;
+      button.setAttribute('aria-label', 'Edit ' + label);
+      button.title = 'Edit ' + label;
+      button.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.7 6.3 3 3M4 20l4.3-.9L19.2 8.2a2.1 2.1 0 0 0-3-3L5.3 16.1 4 20Z"/></svg>';
+      row.appendChild(button);
+    }
+    button.hidden = !isOwnProfile;
+  });
+}
+
+function handleProfileMoreClick(event) {
+  const toggle = event.target.closest('[data-profile-more-toggle]');
+  if (toggle) {
+    event.preventDefault();
+    const menu = toggle.parentElement.querySelector('[data-profile-more-menu]');
+    if (!menu) return;
+    menu.hidden = !menu.hidden;
+    toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    return;
+  }
+  const actionButton = event.target.closest('[data-profile-more-action]');
+  if (!actionButton) return;
+  event.preventDefault();
+  const action = actionButton.dataset.profileMoreAction;
+  const menu = actionButton.closest('[data-profile-more-menu]');
+  if (menu) menu.hidden = true;
+  const parentToggle = actionButton.closest('.studyco-profile-more-wrap')?.querySelector('[data-profile-more-toggle]');
+  parentToggle?.setAttribute('aria-expanded', 'false');
+  if (action === 'edit-details') { window.openStudyCoProfileEditor(); return; }
+  if (action === 'change-photo' && state.viewedProfileUid === state.user?.uid) { $('studyco-inline-profile-photo')?.click(); return; }
+  if (action === 'change-cover' && state.viewedProfileUid === state.user?.uid) { $('studyco-inline-cover-photo')?.click(); return; }
+  if (action === 'view-details') $('studyco-profile-about-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function renderProfile() {
@@ -404,7 +468,9 @@ function renderProfile() {
   $('studyco-profile-education-level').textContent = p.educationLevel || 'Not added yet';
   $('studyco-profile-education-status').textContent = p.educationStatus || 'Not added yet';
   $('studyco-profile-school').textContent = p.school || 'Not added yet';
-  $('studyco-profile-major').textContent = [p.department, p.major].filter(Boolean).join(' · ') || 'Not added yet';
+  $('studyco-profile-department').textContent = p.department || 'Not added yet';
+  $('studyco-profile-major').textContent = p.major || 'Not added yet';
+  $('studyco-profile-detail-name').textContent = profileName(p);
   $('studyco-profile-date-of-birth').textContent = isOwnProfile ? (p.dateOfBirth || 'Not added yet') : 'Not shared';
   $('studyco-profile-marital-status').textContent = p.maritalStatus || 'Not added yet';
   $('studyco-profile-relationship-name').textContent = isOwnProfile ? (p.relationshipName || 'Not added yet') : 'Not shared';
@@ -413,6 +479,7 @@ function renderProfile() {
   $('studyco-profile-location').textContent = p.location || 'Not added yet';
   $('studyco-profile-phone').textContent = isOwnProfile ? (p.phone || 'Not added yet') : 'Not shared';
   $('studyco-profile-email').textContent = isOwnProfile ? (p.email || 'Not added yet') : 'Not shared';
+  renderProfileDetailEditButtons(isOwnProfile);
   const profileFields = [p.displayName, p.bio, p.photoURL, p.coverURL, p.studentStatus, p.educationLevel, p.educationStatus, p.school, p.department || p.major, p.gender, p.dateOfBirth, p.maritalStatus, p.address, p.location, p.phone, p.email];
   const complete = profileFields.filter(Boolean).length;
   const completion = Math.round((complete / profileFields.length) * 100);
@@ -431,8 +498,6 @@ function renderProfile() {
   $('studyco-profile-posts-heading').hidden = false;
   $('studyco-profile-posts-title').textContent = isOwnProfile ? 'Your posts' : `Posts by ${profileNameText}`;
   $('studyco-profile-posts-copy').textContent = isOwnProfile ? 'Updates you have shared with StudyCo.' : `Updates shared by ${profileNameText}.`;
-  $('studyco-profile-edit-small').hidden = !isOwnProfile;
-  $('studyco-profile-edit-details').hidden = !isOwnProfile;
   const profileNext = $('studyco-profile-next');
   if (profileNext) profileNext.hidden = !isOwnProfile;
 }
@@ -2249,8 +2314,11 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-story-form').addEventListener('submit', createStory);
   $('studyco-profile-add-story')?.addEventListener('click', () => openModal('studyco-story-modal'));
   $('studyco-profile-tabs')?.addEventListener('click', (event) => { const tab = event.target.closest('[data-profile-tab]'); if (tab) void renderProfileTab(tab.dataset.profileTab); });
-  $('studyco-profile-public-actions')?.addEventListener('click', (event) => { const button = event.target.closest('[data-friend-action]'); if (button) void handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
-  [$('studyco-edit-profile'), $('studyco-profile-edit-small'), $('studyco-profile-edit-details')].filter(Boolean).forEach((button) => button.addEventListener('click', () => window.openStudyCoProfileEditor()));
+  $('studyco-profile-public-actions')?.addEventListener('click', (event) => { handleProfileMoreClick(event); const button = event.target.closest('[data-friend-action]'); if (button) void handleFriendAction(button.dataset.uid, button.dataset.friendAction); });
+  $('studyco-profile-owner-actions')?.addEventListener('click', handleProfileMoreClick);
+  $('studyco-profile-about-panel')?.addEventListener('click', (event) => { const button = event.target.closest('.studyco-profile-field-edit'); if (button) window.openStudyCoProfileEditor(button.dataset.editInput); });
+  document.addEventListener('click', (event) => { if (event.target.closest('.studyco-profile-more-wrap')) return; document.querySelectorAll('[data-profile-more-menu]').forEach((menu) => { menu.hidden = true; }); document.querySelectorAll('[data-profile-more-toggle]').forEach((button) => button.setAttribute('aria-expanded', 'false')); });
+  $('studyco-edit-profile')?.addEventListener('click', () => window.openStudyCoProfileEditor());
   [$('studyco-profile-complete-action'), $('studyco-profile-next-action')].filter(Boolean).forEach((button) => button.addEventListener('click', () => { fillEditForm(); openModal('studyco-edit-modal'); }));
   $('studyco-profile-form').addEventListener('submit', saveProfile);
   $('studyco-edit-marital-status')?.addEventListener('change', toggleRelationshipNameField);
@@ -2573,10 +2641,11 @@ async function saveProfile(event) {
   } catch (error) { toast(error.message || 'Profile could not be updated.', true); }
 }
 
-window.openStudyCoProfileEditor = function openStudyCoProfileEditor() {
+window.openStudyCoProfileEditor = function openStudyCoProfileEditor(focusInputId) {
   if (!state.user || (state.activeView === 'profile' && state.viewedProfileUid && state.viewedProfileUid !== state.user.uid)) return;
   fillEditForm();
   openModal('studyco-edit-modal');
+  if (focusInputId) setTimeout(() => $(focusInputId)?.focus(), 0);
 };
 
 async function bootApp() {
@@ -2597,13 +2666,6 @@ async function bootApp() {
   refreshNavCounts();
 }
 
-document.addEventListener('click', (event) => {
-  const detailsButton = event.target.closest('#studyco-profile-edit-details');
-  if (!detailsButton) return;
-  event.preventDefault();
-  fillEditForm();
-  openModal('studyco-edit-modal');
-});
 wire();
 window.onAqsAuthChange(async (user) => {
   if (!user || user.isAnonymous) {

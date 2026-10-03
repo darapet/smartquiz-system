@@ -300,3 +300,40 @@
   .studyco-profile-tabs{top:60px}
   .studyco-profile-posts-card,.studyco-profile-about{padding:14px}
 }
+
+
+/* Full profile details and owner-only inline edit affordances. */
+.studyco-profile-hero{position:relative;z-index:3;overflow:visible}
+.studyco-profile-cover{overflow:hidden}
+.studyco-profile-details-section{position:relative;z-index:1;margin:14px 0 18px;scroll-margin-top:76px}
+.studyco-profile-details-section .studyco-profile-about{padding:20px;border:1px solid #e4e6eb;border-radius:16px;background:#fff}
+.studyco-profile-details-section .studyco-section-title{margin-bottom:10px}
+.studyco-profile-details-section .studyco-section-title h2{font-size:1.12rem;letter-spacing:-.025em}
+.studyco-profile-details{gap:10px 12px}
+.studyco-profile-detail{position:relative;min-height:66px;padding:12px 48px 12px 12px;border:1px solid #e4e6eb;border-radius:12px;background:#fbfcff}
+.studyco-profile-detail.full{grid-column:1/-1}
+.studyco-profile-detail>span{font-size:.64rem;color:#6c7383}
+.studyco-profile-detail>p{margin-top:6px;color:#252a36;font-size:.82rem;line-height:1.5}
+.studyco-profile-detail.full>p{margin-top:7px}
+.studyco-profile-field-edit{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #dce2ee;border-radius:9px;background:#fff;color:#58647a;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.studyco-profile-field-edit:hover{border-color:#b9d6ff;background:#edf5ff;color:#1877f2}
+.studyco-profile-field-edit svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.studyco-profile-field-edit[hidden]{display:none!important}
+.studyco-profile-more-wrap{position:relative;z-index:5;flex:0 0 auto}
+.studyco-profile-actions .studyco-profile-more-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:78px;flex:0 0 auto}
+.studyco-profile-more-toggle span{font-size:1.1rem;line-height:1}
+.studyco-profile-more-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:30;display:grid;min-width:220px;gap:3px;padding:7px;border:1px solid #e1e5ef;border-radius:13px;background:#fff;box-shadow:0 14px 36px #18233b24}
+.studyco-profile-more-menu[hidden]{display:none!important}
+.studyco-profile-more-menu button{width:100%;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:#222b3a;text-align:left;font-size:.78rem;font-weight:700;cursor:pointer}
+.studyco-profile-more-menu button:hover{background:#f1f5fb;color:#1877f2}
+@media(max-width:760px){
+  .studyco-profile-details-section{margin:12px 0 16px}
+  .studyco-profile-details-section .studyco-profile-about{padding:16px}
+  .studyco-profile-detail{min-height:60px}
+}
+@media(max-width:480px){
+  .studyco-profile-details-section .studyco-profile-about{padding:14px}
+  .studyco-profile-detail{padding:11px 44px 11px 10px}
+  .studyco-profile-field-edit{top:7px;right:7px;width:30px;height:30px}
+  .studyco-profile-more-menu{min-width:195px}
+}
