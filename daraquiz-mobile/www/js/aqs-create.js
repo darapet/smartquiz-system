@@ -124,6 +124,11 @@
     var quizFormat    = 'single';  /* 'single' | 'multi' */
     var customFormFields = []; /* [{label, type, required}] */
     var sections      = [];        /* [{name,source,file,topicText,difficulty,numQ,questions,generating}] */
+    var QUIZ_MAX_QUESTIONS = 1000;
+    var QUIZ_BATCH_SIZE = 20;
+    var QUIZ_BATCH_CONCURRENCY = 4;
+    var quizAIActive = 0;
+    var quizAIWaiters = [];
 
     /* ── Helpers ─────────────────────────────────────────────── */
     function escHtml(str) {
@@ -507,93 +512,146 @@
     }
 
     /* ── Build AI prompt + parse response ───────────────────── */
-    async function generateQuestionsWithAI(textContent, numQ, subject) {
+    function screenQuestionsByScope(questions) {
+        var accepted = [], rejected = 0;
+        (questions || []).forEach(function(q) {
+            if (!q || typeof q.question !== 'string' || !Array.isArray(q.options) || q.options.length < 2) return;
+            if (q.scope_match === false || q.subject_match === false || q.topic_match === false || q.is_relevant === false) {
+                rejected++;
+                return;
+            }
+            accepted.push(q);
+        });
+        return { questions: accepted, rejected: rejected };
+    }
 
-        /* 1️⃣  Local backend — only tried when AQS_LOCAL is explicitly set */
+    async function generateQuestionsWithAIChunk(textContent, numQ, subject, batchInfo) {
         if (AQS_LOCAL) {
             try {
-                var mode  = $('#aqs-mode').val() || 'exam';
+                var mode = $('#aqs-mode').val() || 'exam';
                 var topic = textContent.startsWith('__TOPIC__:')
                     ? textContent.replace('__TOPIC__:', '').trim()
                     : textContent.substring(0, 2000);
                 setStatus('Connecting to local AI backend…');
                 var localQs = await callLocalQuizBackend(subject, topic, mode, numQ);
-                renderQuizResult(localQs);
-                setStatus('Questions received from local backend ✓');
-                return localQs;
+                var localScreened = screenQuestionsByScope(localQs);
+                if (!localScreened.questions.length) throw new Error('Local AI returned no in-scope questions.');
+                return { questions: localScreened.questions.slice(0, numQ), rejected: localScreened.rejected };
             } catch (localErr) {
                 setStatus('Local backend unavailable — using cloud AI…');
             }
         }
 
-        /* 2️⃣  Fall back to existing cloud AI path */
         var difficulty = $('#aqs-difficulty').val() || 'medium';
+        var requestedTopic = textContent.startsWith('__TOPIC__:')
+            ? textContent.replace('__TOPIC__:', '').trim()
+            : 'the supplied study document';
+        var batchRule = batchInfo
+            ? '\nThis is batch ' + (batchInfo.index + 1) + ' of ' + batchInfo.total + ' (question positions ' + (batchInfo.start + 1) + '–' + (batchInfo.start + numQ) + '). Cover varied facts and skills; do not repeat or rephrase earlier questions.'
+            : '';
+        var scopeRule = '\nSTRICT SCOPE CHECK: Selected subject = ' + JSON.stringify(subject) + '. Requested topic/source = ' + JSON.stringify(requestedTopic) + '. Each question must genuinely fit both the selected subject and the requested topic/source. Before returning, check every item and include "subject_match": true and "topic_match": true in it. Omit any question that does not pass both checks. If no questions fit, return {"questions":[],"scope_error":"No questions matched the selected subject and topic."}.';
         var mathRule = '- For any math use LaTeX: inline → $expression$, display → $$expression$$. Example: "Solve $x^2-5x+6=0$". Never use plain Unicode math symbols.\n';
-        var schema   = '{"questions":[{"question":"...","options":["A","B","C","D"],"correct_answer_index":0,"explanation":"..."}]}';
+        var schema = '{"questions":[{"question":"...","options":["A","B","C","D"],"correct_answer_index":0,"explanation":"...","subject_match":true,"topic_match":true}]}';
         var prompt;
 
         if (textContent.startsWith('__TOPIC__:')) {
-            var topic = textContent.replace('__TOPIC__:', '').trim();
-            prompt = 'Generate exactly ' + numQ + ' multiple-choice questions.\nTopic: ' + topic +
-                '\nSubject: ' + subject + '\nDifficulty: ' + difficulty +
+            prompt = 'Generate exactly ' + numQ + ' multiple-choice questions.\nTopic: ' + requestedTopic +
+                '\nSubject: ' + subject + '\nDifficulty: ' + difficulty + batchRule + scopeRule +
                 '\n\nRules:\n- Exactly 4 options per question, one correct answer\n- Include a brief explanation\n' +
                 mathRule + 'Output RAW JSON ONLY, no markdown:\n' + schema;
         } else {
             var excerpt = textContent.substring(0, 6000);
-            prompt = 'Create ' + numQ + ' multiple-choice questions from the text below.\nSubject: ' + subject +
-                '\n\nContent:\n' + excerpt +
+            prompt = 'Create exactly ' + numQ + ' multiple-choice questions from the text below.\nSubject: ' + subject +
+                '\n\nContent:\n' + excerpt + batchRule + scopeRule +
                 '\n\nRules:\n- Exactly 4 options per question, one correct answer\n- Include a brief explanation\n' +
                 mathRule + 'Output RAW JSON ONLY, no markdown:\n' + schema;
         }
 
-        /* Generation order:
-           1. Groq direct from browser (fast, best quality — only if key is configured)
-           2. Pollinations direct from browser (free, NO API key needed — always works)
-           3. Server proxy as last resort (slow if server is sleeping on free tier)       */
-        var rawText = null;
-
-        /* 1. Groq direct (skipped automatically if no key configured) */
-        rawText = await callGroqDirect(prompt);
-        /* Do not hide an invalid Groq credential behind the unreliable
-           Pollinations fallback. Show the actionable key error instead. */
+        var rawText = await callGroqDirect(prompt);
         if (!rawText && (window.__aqsLastAIStatus === 401 || window.__aqsLastAIStatus === 403))
             throw new Error(aiFailureMessage());
-
-        /* 2. Pollinations direct — free, no key, works immediately from browser */
         if (!rawText) {
             setStatus('Generating questions via AI (free)…');
             try { rawText = await callAIDirect(prompt); } catch(_) { rawText = null; }
         }
-
-        /* 3. Server proxy last resort */
         if (!rawText) {
-            try { rawText = await callAI(prompt); } catch(_aiErr) { rawText = null; }
+            try { rawText = await callAI(prompt); } catch(_) { rawText = null; }
         }
-
         if (!rawText) throw new Error(aiFailureMessage());
 
-        /* Bulletproof JSON extraction */
-        var cleaned = rawText.replace(/```json[\r\n]*/gi, '').replace(/```[\r\n]*/g, '').trim();
+        var cleaned = rawText.replace(/\x60{3}json[\r\n]*/gi, '').replace(/\x60{3}[\r\n]*/g, '').trim();
         var ib = cleaned.indexOf('{'), ia = cleaned.indexOf('[');
         if (ib !== -1 && (ia === -1 || ib < ia)) cleaned = cleaned.substring(ib);
         else if (ia !== -1) cleaned = cleaned.substring(ia);
-
         var parsed = null;
-        var om = cleaned.match(/\{[\s\S]*\}/);
-        if (om) { try { parsed = JSON.parse(om[0]); } catch(_) {} }
+        var objectMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (objectMatch) { try { parsed = JSON.parse(objectMatch[0]); } catch(_) {} }
         if (!parsed || !parsed.questions) {
-            var am = cleaned.match(/\[[\s\S]*\]/);
-            if (am) { try { var a = JSON.parse(am[0]); if (Array.isArray(a)) parsed = { questions: a }; } catch(_) {} }
+            var arrayMatch = cleaned.match(/\[[\s\S]*\]/);
+            if (arrayMatch) { try { var arrayValue = JSON.parse(arrayMatch[0]); if (Array.isArray(arrayValue)) parsed = { questions: arrayValue }; } catch(_) {} }
         }
-        if (!parsed || !parsed.questions) {
-            try { var d = JSON.parse(cleaned); parsed = Array.isArray(d) ? { questions: d } : d; } catch(_) {}
-        }
-        if (!parsed || !Array.isArray(parsed.questions) || !parsed.questions.length)
+        if (!parsed || !Array.isArray(parsed.questions))
             throw new Error('AI returned an unexpected format. Please try again.');
+        if (parsed.scope_error && !parsed.questions.length) throw new Error(parsed.scope_error);
+        var screened = screenQuestionsByScope(parsed.questions);
+        screened.questions = screened.questions.slice(0, numQ);
+        return screened;
+    }
 
-        return parsed.questions.filter(function(q) {
-            return q && typeof q.question === 'string' && Array.isArray(q.options) && q.options.length >= 2;
+    async function withQuizAIConcurrency(task) {
+        if (quizAIActive >= QUIZ_BATCH_CONCURRENCY) {
+            await new Promise(function(resolve) { quizAIWaiters.push(resolve); });
+        }
+        quizAIActive++;
+        try { return await task(); }
+        finally {
+            quizAIActive--;
+            if (quizAIWaiters.length) quizAIWaiters.shift()();
+        }
+    }
+
+    async function generateQuestionsWithAI(textContent, numQ, subject) {
+        var requested = parseInt(numQ, 10);
+        if (!Number.isFinite(requested) || requested < 1 || requested > QUIZ_MAX_QUESTIONS)
+            throw new Error('Choose between 1 and 1,000 questions.');
+        var batches = [];
+        for (var start = 0, index = 0; start < requested; start += QUIZ_BATCH_SIZE, index++) {
+            batches.push({ index: index, start: start, count: Math.min(QUIZ_BATCH_SIZE, requested - start) });
+        }
+        var results = new Array(batches.length), completed = 0;
+        var jobs = batches.map(function(batch) {
+            return withQuizAIConcurrency(async function() {
+                var result = await generateQuestionsWithAIChunk(textContent, batch.count, subject, {
+                    index: batch.index, start: batch.start, total: batches.length
+                });
+                results[batch.index] = result;
+                completed += result.questions.length;
+                setStatus('Generated ' + completed + ' of ' + requested + ' questions…');
+                return result;
+            });
         });
+        var settled = await Promise.allSettled(jobs);
+        var failedBatches = settled.filter(function(result) { return result.status === 'rejected'; }).length;
+        var questions = [], rejected = 0;
+        results.forEach(function(result) {
+            if (!result) return;
+            questions = questions.concat(result.questions);
+            rejected += result.rejected || 0;
+        });
+        var summary = { questions: questions, requested: requested, rejected: rejected, failedBatches: failedBatches };
+        window.__AQS_LAST_GENERATION_SUMMARY = {
+            requested: requested, generated: questions.length, rejected: rejected, failedBatches: failedBatches
+        };
+        if (!questions.length) {
+            var firstFailure = settled.find(function(result) { return result.status === 'rejected'; });
+            var message = rejected
+                ? 'The AI marked all generated questions as outside the selected subject/topic, so none were added.'
+                : (firstFailure && firstFailure.reason && firstFailure.reason.message) || 'The AI could not generate any questions. Please try again.';
+            var error = new Error(message);
+            error.generationStats = window.__AQS_LAST_GENERATION_SUMMARY;
+            throw error;
+        }
+        return summary;
     }
 
     /* ── Math normaliser — applied AFTER full AI response received ── */
@@ -717,8 +775,9 @@
     $('#aqs-extract-btn').on('click', async function() {
         var title   = $('#aqs-title').val().trim();
         var subject = $('#aqs-subject').val().trim();
-        var numQ    = parseInt($('#aqs-num-questions').val()) || 10;
+        var numQ    = parseInt($('#aqs-num-questions').val(), 10) || 10;
         if (!title || !subject) { alert('Please fill in the Quiz Title and Subject first.'); return; }
+        if (numQ < 1 || numQ > QUIZ_MAX_QUESTIONS) { alert('Choose between 1 and 1,000 questions.'); return; }
 
         var textContent = '';
         showProgress(true);
@@ -736,12 +795,17 @@
 
         setStatus('Contacting AI...');
         try {
-            var rawQs     = await generateQuestionsWithAI(textContent, numQ, subject);
-            var questions = normalizeQuestionsMath(rawQs);
+            var generatedSet = await generateQuestionsWithAI(textContent, numQ, subject);
+            var questions = normalizeQuestionsMath(generatedSet.questions);
             extractedQuestions = questions;
             renderQuestions(questions);
             $('#step-questions, #step-custom-form, #step-publish').show();
             showProgress(false);
+            var notices = [];
+            if (generatedSet.rejected) notices.push(generatedSet.rejected + ' question(s) flagged as outside the selected subject/topic were excluded.');
+            if (generatedSet.failedBatches) notices.push(generatedSet.failedBatches + ' batch(es) failed; the quiz contains ' + questions.length + ' of ' + numQ + ' requested questions.');
+            if (questions.length < numQ && !generatedSet.failedBatches && !generatedSet.rejected) notices.push('Generated ' + questions.length + ' of ' + numQ + ' requested questions.');
+            if (notices.length) alert(notices.join('\n'));
             $('html,body').animate({ scrollTop: $('#step-questions').offset().top - 20 }, 500);
         } catch(e) {
             showProgress(false);
@@ -899,6 +963,10 @@
        MULTI-TOPIC — section management
     ══════════════════════════════════════════════════════════ */
 
+    function multiQuestionTotal() {
+        return sections.reduce(function(total, section) { return total + (parseInt(section.numQ, 10) || 0); }, 0);
+    }
+
     function initSections(count) {
         sections = [];
         for (var i = 0; i < count; i++) {
@@ -912,6 +980,8 @@
     function renderSectionCards() {
         var html = '';
         sections.forEach(function(sec, i) {
+            var otherQuestionCount = sections.reduce(function(total, other, index) { return total + (index === i ? 0 : (parseInt(other.numQ, 10) || 0)); }, 0);
+            var maxAllowed = Math.max(1, Math.min(QUIZ_MAX_QUESTIONS, QUIZ_MAX_QUESTIONS - otherQuestionCount));
             var badge = sec.questions.length
                 ? '<span style="margin-left:8px;background:#dcfce7;color:#166534;border-radius:12px;padding:2px 10px;font-size:.78rem;font-weight:600;">&#10003; ' + sec.questions.length + ' questions</span>'
                 : '';
@@ -925,11 +995,12 @@
                     ? '<span class="aqs-spinner" style="display:inline-block;width:13px;height:13px;border-width:2px;vertical-align:middle;margin-right:6px;"></span>Generating...'
                     : '&#9889; Generate Questions') +
                 '</button>';
-            var qPreview = sec.questions.length
+            var qPreview = (sec.questions.length
                 ? '<div style="margin-top:10px;background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:8px 12px;font-size:.83rem;color:#166534;"><strong>' + sec.questions.length + ' question(s) ready</strong> &mdash; ' +
                   sec.questions.slice(0, 2).map(function(q) { return '&ldquo;' + escHtml((q.question || '').substring(0, 55)) + ((q.question || '').length > 55 ? '&hellip;' : '') + '&rdquo;'; }).join(', ') +
-                  '</div>'
-                : '';
+                  '</div>' : '') +
+                (sec.offTopicRejected ? '<div role="status" style="margin-top:8px;color:#9a3412;font-size:.82rem;">Excluded ' + sec.offTopicRejected + ' AI-flagged question(s) outside this subject/topic.</div>' : '') +
+                (sec.failedBatches ? '<div role="status" style="margin-top:8px;color:#9a3412;font-size:.82rem;">' + sec.failedBatches + ' question batch(es) could not be generated.</div>' : '');
             html += '<div class="aqs-section-card" data-sec="' + i + '" style="border:1px solid #e5e7eb;border-radius:10px;margin-bottom:14px;">' +
                 '<div style="background:#f8fafc;border-bottom:1px solid #e5e7eb;border-radius:10px 10px 0 0;padding:12px 16px;display:flex;align-items:center;gap:10px;">' +
                     '<span class="aqs-step-num" style="width:24px;height:24px;font-size:.78rem;flex-shrink:0;">' + (i + 1) + '</span>' +
@@ -955,7 +1026,7 @@
                             '<option value="hard"'   + (sec.difficulty === 'hard'   ? ' selected' : '') + '>Hard</option>' +
                         '</select></div>' +
                         '<div class="aqs-field"><label>Questions</label>' +
-                        '<input type="number" class="aqs-sec-num-q" data-idx="' + i + '" value="' + sec.numQ + '" min="1" max="20" style="width:80px;" /></div>' +
+                        '<input type="number" class="aqs-sec-num-q" data-idx="' + i + '" value="' + sec.numQ + '" min="1" max="' + maxAllowed + '" style="width:80px;" /></div>' +
                     '</div>' +
                     '<div style="margin-top:12px;">' + genBtn + '</div>' +
                     '<div class="aqs-sec-progress-wrap" data-idx="' + i + '" style="display:' + (sec.generating ? 'flex' : 'none') + ';align-items:center;gap:8px;margin-top:10px;">' +
@@ -1022,7 +1093,7 @@
 
     async function generateSection(i) {
         var sec  = sections[i];
-        var subj = ($('#aqs-title').val().trim() || 'Quiz') + ' \u2014 ' + sec.name;
+        var subj = $('#aqs-subject').val().trim() || $('#aqs-title').val().trim() || sec.name;
         var textContent;
         if (sec.source === 'upload') {
             if (!sec.file) throw new Error('No file selected for "' + sec.name + '"');
@@ -1036,8 +1107,15 @@
             textContent = '__TOPIC__:' + topic;
         }
         setSecStatus(i, 'Contacting AI\u2026');
-        var rawQs = await generateQuestionsWithAI(textContent, sec.numQ, subj);
-        sections[i].questions = normalizeQuestionsMath(rawQs);
+        try {
+            var rawQs = await generateQuestionsWithAI(textContent, sec.numQ, subj);
+            sections[i].questions = normalizeQuestionsMath(rawQs.questions);
+            sections[i].offTopicRejected = rawQs.rejected || 0;
+            sections[i].failedBatches = rawQs.failedBatches || 0;
+        } catch(e) {
+            if (e.generationStats) { sections[i].offTopicRejected = e.generationStats.rejected || 0; sections[i].failedBatches = e.generationStats.failedBatches || 0; }
+            throw e;
+        }
     }
 
     function setSecStatus(i, msg) {
@@ -1096,13 +1174,16 @@
     /* ── Section toolbar buttons ────────────────────────────── */
     $(document).on('click', '#aqs-add-section-btn', function() {
         if (sections.length >= 8) { alert('Maximum 8 topics.'); return; }
+        var remainingQuestions = QUIZ_MAX_QUESTIONS - multiQuestionTotal();
+        if (remainingQuestions < 1) { alert('A hosted quiz can contain at most 1,000 questions across all topics.'); return; }
         sections.push({ name: 'Topic ' + (sections.length + 1), source: 'topic', file: null,
-            topicText: '', difficulty: 'medium', numQ: 5, questions: [], generating: false });
+            topicText: '', difficulty: 'medium', numQ: Math.min(5, remainingQuestions), questions: [], generating: false });
         renderSectionCards();
     });
 
     $(document).on('click', '#aqs-generate-all-btn', async function() {
         if (!$('#aqs-title').val().trim()) { alert('Please fill in the Quiz Title first.'); return; }
+        if (multiQuestionTotal() > QUIZ_MAX_QUESTIONS) { alert('A hosted quiz can contain at most 1,000 questions across all topics. Reduce the section amounts and try again.'); return; }
         var eligible = sections.map(function(s, i) { return { s: s, i: i }; }).filter(function(x) { return !x.s.questions.length; });
         if (!eligible.length) { checkAllSectionsReady(true); return; }
 
@@ -1124,7 +1205,13 @@
         $btn.prop('disabled', false).html('&#9889; Generate All Topics');
         renderSectionCards();
         var failed = results.filter(function(r) { return r.status === 'rejected'; });
-        if (failed.length) alert(failed.length + ' topic(s) failed to generate. Check topics and try individually.');
+        var offTopicCount = eligible.reduce(function(total, x) { return total + (sections[x.i].offTopicRejected || 0); }, 0);
+        var failedBatchCount = eligible.reduce(function(total, x) { return total + (sections[x.i].failedBatches || 0); }, 0);
+        var notices = [];
+        if (failed.length) notices.push(failed.length + ' topic(s) failed to generate. Check topics and try individually.');
+        if (offTopicCount) notices.push(offTopicCount + ' question(s) flagged as outside their subject/topic were excluded.');
+        if (failedBatchCount) notices.push(failedBatchCount + ' question batch(es) failed.');
+        if (notices.length) alert(notices.join('\n'));
         checkAllSectionsReady();
     });
 
@@ -1132,6 +1219,7 @@
     $(document).on('click', '.aqs-sec-generate-btn', async function() {
         var i = +$(this).data('idx');
         if (!$('#aqs-title').val().trim()) { alert('Please fill in the Quiz Title first.'); return; }
+        if (multiQuestionTotal() > QUIZ_MAX_QUESTIONS) { alert('A hosted quiz can contain at most 1,000 questions across all topics. Reduce the section amounts and try again.'); return; }
         sections[i].generating = true;
         renderSectionCards();
         try {
@@ -1141,6 +1229,7 @@
             checkAllSectionsReady();
         } catch(e) {
             sections[i].generating = false;
+            if (e.generationStats) { sections[i].offTopicRejected = e.generationStats.rejected || 0; sections[i].failedBatches = e.generationStats.failedBatches || 0; }
             renderSectionCards();
             alert('Error for "' + sections[i].name + '": ' + e.message);
         }
@@ -1167,7 +1256,14 @@
     $(document).on('input',  '.aqs-section-name-input', function() { sections[+$(this).data('idx')].name       = $(this).val(); });
     $(document).on('input',  '.aqs-sec-topic-input',    function() { sections[+$(this).data('idx')].topicText  = $(this).val(); });
     $(document).on('change', '.aqs-sec-difficulty',     function() { sections[+$(this).data('idx')].difficulty = $(this).val(); });
-    $(document).on('change', '.aqs-sec-num-q',          function() { sections[+$(this).data('idx')].numQ = parseInt($(this).val()) || 5; });
+    $(document).on('change', '.aqs-sec-num-q', function() {
+        var index = +$(this).data('idx');
+        var otherTotal = sections.reduce(function(total, section, sectionIndex) { return total + (sectionIndex === index ? 0 : (parseInt(section.numQ, 10) || 0)); }, 0);
+        var maxAllowed = Math.max(1, Math.min(QUIZ_MAX_QUESTIONS, QUIZ_MAX_QUESTIONS - otherTotal));
+        sections[index].numQ = Math.max(1, Math.min(maxAllowed, parseInt($(this).val(), 10) || 5));
+        $(this).val(sections[index].numQ);
+        renderSectionCards();
+    });
 
     /* ── Section file handling ──────────────────────────────── */
     $(document).on('click', '.aqs-sec-browse-btn', function() {

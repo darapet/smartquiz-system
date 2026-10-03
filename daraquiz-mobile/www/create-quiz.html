@@ -113,8 +113,8 @@
                 </div>
                 <div class="aqs-field-row">
                     <div class="aqs-field">
-                        <label>Questions Per Section</label>
-                        <input type="number" id="aqs-num-questions" value="10" min="1" max="50" />
+                        <label>Questions (maximum 1,000)</label>
+                        <input type="number" id="aqs-num-questions" value="10" min="1" max="1000" />
                     </div>
                     <div class="aqs-field">
                         <label>Time Limit (minutes)</label>
@@ -230,7 +230,7 @@
         <div class="aqs-card aqs-full-width" id="step-multi-sections" style="display:none;">
             <div class="aqs-card-header"><span class="aqs-step-num">4</span> Topic Sections</div>
             <div class="aqs-card-body">
-                <p class="aqs-hint" style="margin-bottom:14px;">Add a section for each topic. Name it, choose a source and how many questions to generate, then hit &ldquo;Generate All Topics.&rdquo;</p>
+                <p class="aqs-hint" style="margin-bottom:14px;">Add a section for each topic. Name it, choose a source and how many questions to generate, then hit &ldquo;Generate All Topics.&rdquo; A hosted quiz can contain up to 1,000 questions total.</p>
                 <div id="aqs-sections-container"></div>
                 <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
                     <button class="aqs-btn" id="aqs-add-section-btn">+ Add Topic</button>
