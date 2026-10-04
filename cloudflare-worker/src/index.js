@@ -525,6 +525,264 @@ async function saveBrevoConfig(env, payload) {
   return { saved: true, configured: true, sender: fromEmail };
 }
 
+
+function base64UrlEncodeBytes(bytes) {
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function base64UrlEncodeText(value) {
+  return base64UrlEncodeBytes(new TextEncoder().encode(String(value)));
+}
+
+function pemToBase64(pem) {
+  return String(pem)
+    .replace(/-----BEGIN PRIVATE KEY-----/g, '')
+    .replace(/-----END PRIVATE KEY-----/g, '')
+    .replace(/\s+/g, '');
+}
+
+async function createGoogleAccessToken(env) {
+  if (!env.FIREBASE_SERVICE_ACCOUNT) {
+    throw new Error('Firebase service account is not configured on the Cloudflare Worker.');
+  }
+
+  let account;
+  try {
+    account = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
+  } catch (_) {
+    throw new Error('The Firebase service account secret is invalid JSON.');
+  }
+
+  const clientEmail = String(account.client_email || '').trim();
+  const privateKeyPem = String(account.private_key || '').trim();
+
+  if (!clientEmail || !privateKeyPem) {
+    throw new Error('The Firebase service account is missing client_email or private_key.');
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  const header = base64UrlEncodeText(JSON.stringify({
+    alg: 'RS256',
+    typ: 'JWT',
+  }));
+
+  const claim = base64UrlEncodeText(JSON.stringify({
+    iss: clientEmail,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  }));
+
+  const unsignedToken = `${header}.${claim}`;
+
+  const binaryKey = Uint8Array.from(
+    atob(pemToBase64(privateKeyPem)),
+    character => character.charCodeAt(0),
+  );
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'pkcs8',
+    binaryKey.buffer,
+    {
+      name: 'RSASSA-PKCS1-v1_5',
+      hash: 'SHA-256',
+    },
+    false,
+    ['sign'],
+  );
+
+  const signature = await crypto.subtle.sign(
+    'RSASSA-PKCS1-v1_5',
+    cryptoKey,
+    new TextEncoder().encode(unsignedToken),
+  );
+
+  const assertion = `${unsignedToken}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+      assertion,
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok || !body.access_token) {
+    throw new Error(
+      `Google authentication failed.${body.error_description ? ` ${body.error_description}` : ''}`,
+    );
+  }
+
+  return String(body.access_token);
+}
+
+async function firebaseAdminDeleteAuthUser(env, uid) {
+  const accessToken = await createGoogleAccessToken(env);
+  const projectId = String(env.FIREBASE_PROJECT_ID || '').trim();
+
+  if (!projectId) {
+    throw new Error('Firebase project ID is not configured on the Cloudflare Worker.');
+  }
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/accounts:delete`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        localId: uid,
+      }),
+    },
+  );
+
+  const body = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    const detail =
+      body && body.error && body.error.message
+        ? ` ${body.error.message}`
+        : '';
+
+    if (
+      body &&
+      body.error &&
+      String(body.error.message || '').includes('USER_NOT_FOUND')
+    ) {
+      return { deleted: false, alreadyMissing: true };
+    }
+
+    throw new Error(`Firebase Authentication deletion failed.${detail}`);
+  }
+
+  return { deleted: true };
+}
+
+async function firestoreDeleteDocument(env, documentPath, accessToken) {
+  const projectId = String(env.FIREBASE_PROJECT_ID || '').trim();
+
+  const response = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${documentPath}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (response.ok || response.status === 404) {
+    return true;
+  }
+
+  const body = await response.json().catch(() => ({}));
+  const detail =
+    body && body.error && body.error.message
+      ? ` ${body.error.message}`
+      : '';
+
+  throw new Error(`Firestore deletion failed.${detail}`);
+}
+
+async function firestoreGetDocument(env, documentPath, accessToken) {
+  const projectId = String(env.FIREBASE_PROJECT_ID || '').trim();
+
+  const response = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/databases/(default)/documents/${documentPath}`,
+    {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    },
+  );
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const detail =
+      body && body.error && body.error.message
+        ? ` ${body.error.message}`
+        : '';
+    throw new Error(`Firestore read failed.${detail}`);
+  }
+
+  return response.json();
+}
+
+async function deleteAdminUserData(env, uid, actorUid) {
+  const cleanUid = String(uid || '').trim();
+
+  if (!cleanUid || cleanUid.length > 128) {
+    throw new Error('A valid user ID is required.');
+  }
+
+  if (cleanUid === String(actorUid || '').trim()) {
+    throw new Error('The administrator account cannot be deleted from this panel.');
+  }
+
+  const accessToken = await createGoogleAccessToken(env);
+
+  const userDoc = await firestoreGetDocument(
+    env,
+    `users/${encodeURIComponent(cleanUid)}`,
+    accessToken,
+  );
+
+  const socialDoc = await firestoreGetDocument(
+    env,
+    `social_profiles/${encodeURIComponent(cleanUid)}`,
+    accessToken,
+  );
+
+  const userFields = userDoc && userDoc.fields ? userDoc.fields : {};
+  const socialFields = socialDoc && socialDoc.fields ? socialDoc.fields : {};
+
+  const targetEmail =
+    (userFields.email && userFields.email.stringValue) ||
+    (socialFields.email && socialFields.email.stringValue) ||
+    '';
+
+  const adminEmail = String(
+    env.ADMIN_EMAIL || 'daramolapeter98@gmail.com',
+  ).trim().toLowerCase();
+
+  if (String(targetEmail).trim().toLowerCase() === adminEmail) {
+    throw new Error('The administrator account cannot be deleted from this panel.');
+  }
+
+  const deletionResults = await Promise.all([
+    firestoreDeleteDocument(env, `users/${encodeURIComponent(cleanUid)}`, accessToken),
+    firestoreDeleteDocument(env, `social_profiles/${encodeURIComponent(cleanUid)}`, accessToken),
+    firestoreDeleteDocument(env, `studyco_presence/${encodeURIComponent(cleanUid)}`, accessToken),
+    firestoreDeleteDocument(env, `social_user_blocks/${encodeURIComponent(cleanUid)}`, accessToken),
+  ]);
+
+  const authResult = await firebaseAdminDeleteAuthUser(env, cleanUid);
+
+  return {
+    deleted: true,
+    deletedAuthenticationAccount: !!authResult.deleted,
+    alreadyMissingAuthenticationAccount: !!authResult.alreadyMissing,
+    deletedUserDocuments: deletionResults.filter(Boolean).length,
+    uid: cleanUid,
+  };
+}
+
 async function handleEmail(request, env) {
   if (request.method === 'OPTIONS') {
     return new Response('', { status: 204, headers: corsHeaders(request, env) });
@@ -551,6 +809,22 @@ async function handleEmail(request, env) {
 
     const user = await verifyFirebaseUser(request, env);
     const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+
+    if (kind === 'admin_delete_user') {
+      if (user.email !== adminEmail) {
+        return json(request, env, { error: 'Admin access required.' }, 403);
+      }
+
+      const uid = String(payload && payload.uid || '').trim();
+
+      if (!uid || uid.length > 128) {
+        return json(request, env, { error: 'A valid user ID is required.' }, 400);
+      }
+
+      const result = await deleteAdminUserData(env, uid, user.uid);
+
+      return json(request, env, result);
+    }
 
     if (kind === 'welcome') {
       return json(request, env, await sendWelcomeEmail(env, user));

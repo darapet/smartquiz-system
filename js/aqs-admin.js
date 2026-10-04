@@ -579,7 +579,7 @@ window.adminDeleteUser = async function(uid, name, source) {
     if (!uid || !auth.currentUser) { alert('Sign in with the admin account to delete users.'); return; }
     if (!confirm('Permanently delete "' + (name || uid) + '" from Firebase, including its shared sign-in, profiles, authored quizzes and related attempts, and sent messages? Messages from other participants stay. Sign-in will stop working in both apps.')) return;
     try {
-        var response = await fetch('https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail', {
+        var response = await fetch('https://darapet-technologyimafe.daramolapeter98.workers.dev/api/email', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + await auth.currentUser.getIdToken() },
             body: JSON.stringify({ kind: 'admin_delete_user', uid: uid, source: source === 'social' ? 'social' : 'smartq' })
