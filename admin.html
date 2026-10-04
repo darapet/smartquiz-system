@@ -298,10 +298,18 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
 
             <!-- USERS SECTION -->
             <div class="adm-section" id="section-users">
-                <div class="adm-section-header">
-                    <span class="adm-section-title">All Users</span>
-                    <input type="text" class="adm-search" id="adm-user-search" placeholder="Search users…">
+                <div class="adm-section-header" style="gap:12px;flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span class="adm-section-title" id="adm-users-title">SmartQ Users</span>
+                        <label class="sr-only" for="adm-user-app">Choose user group</label>
+                        <select class="adm-date-sel" id="adm-user-app" aria-label="Choose user group">
+                            <option value="smartquiz">SmartQ users</option>
+                            <option value="social">Dara Social</option>
+                        </select>
+                    </div>
+                    <input type="text" class="adm-search" id="adm-user-search" placeholder="Search members…">
                 </div>
+                <p style="margin:-4px 0 14px;color:#94a3b8;font-size:.8rem;line-height:1.5;">Deleting a member removes their Firebase sign-in and both app profiles; they lose access to both products. SmartQ quizzes, results, and moderation records are retained.</p>
                 <div class="adm-table-wrap">
                     <div id="users-list"><div class="adm-loading">Loading…</div></div>
                 </div>

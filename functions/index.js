@@ -861,6 +861,222 @@ async function checkCreatorImagePool(keys, model) {
   }
   return results;
 }
+
+
+const ACCOUNT_ADMIN_EMAIL = 'daramolapeter98@gmail.com';
+const ACCOUNT_STORAGE_BUCKET = 'smartquiz-darapet.firebasestorage.app';
+
+function accountDateIso(value) {
+  if (!value) return '';
+  if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString();
+}
+
+async function listFirebaseAuthUsers() {
+  const users = [];
+  let pageToken;
+  do {
+    const page = await admin.auth().listUsers(1000, pageToken);
+    users.push(...page.users);
+    pageToken = page.pageToken;
+  } while (pageToken);
+  return users;
+}
+
+async function listAdminAccounts(appName, currentAdmin) {
+  const collectionName = appName === 'social' ? 'social_profiles' : 'users';
+  const [authUsers, profileSnapshot] = await Promise.all([
+    listFirebaseAuthUsers(),
+    db.collection(collectionName).get(),
+  ]);
+  const authByUid = new Map(authUsers.map((user) => [user.uid, user]));
+  const profileByUid = new Map(profileSnapshot.docs.map((snapshot) => [snapshot.id, snapshot.data() || {}]));
+  const ids = appName === 'social'
+    ? [...profileByUid.keys()]
+    : [...new Set([...authByUid.keys(), ...profileByUid.keys()])];
+  const rows = ids.map((uid) => {
+    const authUser = authByUid.get(uid) || null;
+    const profile = profileByUid.get(uid) || {};
+    const combinedName = [profile.firstName, profile.lastName].filter(Boolean).join(' ').trim();
+    const email = String((authUser && authUser.email) || profile.email || '').trim();
+    return {
+      uid,
+      name: String(profile.displayName || combinedName || profile.name || (authUser && authUser.displayName) || email || uid),
+      username: String(profile.username || ''),
+      email,
+      role: String(profile.role || ''),
+      status: String(profile.status || ''),
+      createdAt: accountDateIso(profile.created_at || profile.createdAt || (authUser && authUser.metadata.creationTime)),
+      lastSignInAt: accountDateIso(authUser && authUser.metadata.lastSignInTime),
+      authExists: Boolean(authUser),
+      authDisabled: Boolean(authUser && authUser.disabled),
+      isCurrentUser: uid === currentAdmin.uid,
+      isProtected: uid === currentAdmin.uid || email.toLowerCase() === ACCOUNT_ADMIN_EMAIL,
+    };
+  });
+  rows.sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0));
+  return rows;
+}
+
+async function deleteAdminQuerySnapshot(snapshot) {
+  let deleted = 0;
+  for (let offset = 0; offset < snapshot.docs.length; offset += 450) {
+    const batch = db.batch();
+    snapshot.docs.slice(offset, offset + 450).forEach((document) => batch.delete(document.ref));
+    await batch.commit();
+    deleted += Math.min(450, snapshot.docs.length - offset);
+  }
+  return deleted;
+}
+
+async function deleteAdminDocsByField(collectionName, fieldName, uid, recursive = false) {
+  const snapshot = await db.collection(collectionName).where(fieldName, '==', uid).get();
+  if (recursive) {
+    for (const document of snapshot.docs) await db.recursiveDelete(document.ref);
+    return snapshot.size;
+  }
+  return deleteAdminQuerySnapshot(snapshot);
+}
+
+async function deleteUserConversationContent(uid) {
+  const conversations = await db.collection('social_conversations')
+    .where('participantIds', 'array-contains', uid).get();
+  for (const conversation of conversations.docs) {
+    const messages = await conversation.ref.collection('messages').where('senderId', '==', uid).get();
+    await deleteAdminQuerySnapshot(messages);
+    const data = conversation.data() || {};
+    const lastReadBy = Object.assign({}, data.lastReadBy || {});
+    delete lastReadBy[uid];
+    const patch = {
+      participantIds: admin.firestore.FieldValue.arrayRemove(uid),
+      lastReadBy,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (data.lastSenderId === uid) {
+      patch.lastMessageText = '';
+      patch.lastMessageAt = admin.firestore.FieldValue.delete();
+      patch.lastSenderId = admin.firestore.FieldValue.delete();
+    }
+    await conversation.ref.update(patch);
+  }
+}
+
+async function deleteUserSocialInteractions(collectionName, uid, countField) {
+  const snapshot = await db.collectionGroup(collectionName).where('userId', '==', uid).get();
+  const postRefs = new Map();
+  snapshot.docs.forEach((document) => {
+    const parent = document.ref.parent.parent;
+    if (parent) postRefs.set(parent.path, parent);
+  });
+  await deleteAdminQuerySnapshot(snapshot);
+  for (const postRef of postRefs.values()) {
+    const post = await postRef.get();
+    if (!post.exists) continue;
+    const remaining = await postRef.collection(collectionName).get();
+    await postRef.update({ [countField]: remaining.size, updatedAt: admin.firestore.FieldValue.serverTimestamp() });
+  }
+}
+
+async function deleteUserStorageFiles(uid) {
+  const bucket = require('firebase-admin/storage').getStorage().bucket(ACCOUNT_STORAGE_BUCKET);
+  let deleted = 0;
+  for (const prefix of ['social/' + uid + '/', 'studyco/' + uid + '/', 'studyco-private/' + uid + '/']) {
+    const [files] = await bucket.getFiles({ prefix });
+    for (let offset = 0; offset < files.length; offset += 50) {
+      const batch = files.slice(offset, offset + 50);
+      await Promise.all(batch.map((file) => file.delete({ ignoreNotFound: true })));
+      deleted += batch.length;
+    }
+  }
+  return deleted;
+}
+
+async function deleteFirebaseAccount(uid, targetAuthUser) {
+  const summary = { storageFilesDeleted: 0 };
+  await deleteUserConversationContent(uid);
+  await deleteAdminDocsByField('social_friend_requests', 'requesterId', uid);
+  await deleteAdminDocsByField('social_friend_requests', 'recipientId', uid);
+  await deleteAdminDocsByField('studyco_notifications', 'actorId', uid);
+  await deleteAdminDocsByField('studyco_notifications', 'recipientId', uid);
+  await deleteAdminDocsByField('social_chat_settings', 'userId', uid);
+  await deleteAdminDocsByField('social_user_blocks', 'uid', uid);
+  const blockedRefs = await db.collectionGroup('blocked').where('blockedUid', '==', uid).get();
+  await deleteAdminQuerySnapshot(blockedRefs);
+  await db.recursiveDelete(db.doc('social_user_blocks/' + uid));
+  await deleteAdminDocsByField('studyco_posts', 'userId', uid, true);
+  await deleteUserSocialInteractions('likes', uid, 'likeCount');
+  await deleteUserSocialInteractions('comments', uid, 'commentCount');
+  await deleteAdminDocsByField('studyco_post_preferences', 'userId', uid);
+  await deleteAdminDocsByField('studyco_stories', 'userId', uid, true);
+  await deleteAdminDocsByField('studyco_private_stories', 'userId', uid, true);
+  await deleteAdminDocsByField('studyco_calls', 'callerId', uid, true);
+  await deleteAdminDocsByField('studyco_calls', 'receiverId', uid, true);
+  await deleteAdminDocsByField('usernames', 'uid', uid);
+  await deleteAdminDocsByField('ratings', 'uid', uid);
+  await db.recursiveDelete(db.doc('studyco_presence/' + uid));
+  await db.recursiveDelete(db.doc('social_profiles/' + uid));
+  await db.recursiveDelete(db.doc('users/' + uid));
+  summary.storageFilesDeleted = await deleteUserStorageFiles(uid);
+  let authenticationAccountDeleted = false;
+  if (targetAuthUser) {
+    await admin.auth().deleteUser(uid);
+    authenticationAccountDeleted = true;
+  }
+  return { ...summary, authenticationAccountDeleted };
+}
+
+exports.adminUsers = onRequest(
+  { cors: true, region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
+  async (request, response) => {
+    setCors(response);
+    if (request.method === 'OPTIONS') return response.status(204).send('');
+    let currentAdmin;
+    try {
+      currentAdmin = await verifyBearerUser(request);
+    } catch (error) {
+      return response.status(401).json({ error: 'Sign in with the admin account to manage members.' });
+    }
+    if (String(currentAdmin.email || '').toLowerCase() !== ACCOUNT_ADMIN_EMAIL) {
+      return response.status(403).json({ error: 'Admin access required.' });
+    }
+    if (request.method === 'GET') {
+      const appName = String(request.query.app || 'smartquiz');
+      if (!['smartquiz', 'social'].includes(appName)) return response.status(400).json({ error: 'Choose SmartQ or Dara Social.' });
+      try {
+        return response.json({ users: await listAdminAccounts(appName, currentAdmin) });
+      } catch (error) {
+        console.error('Admin Firebase user list failed:', error);
+        return response.status(500).json({ error: 'Firebase members could not be loaded.' });
+      }
+    }
+    if (request.method !== 'POST') return response.status(405).json({ error: 'Use GET to list members or POST to delete an account.' });
+    const payload = request.body && typeof request.body === 'object' ? request.body : {};
+    const uid = String(payload.uid || '').trim();
+    const appName = String(payload.app || '');
+    if (payload.action !== 'delete' || !['smartquiz', 'social'].includes(appName) || !uid || uid.length > 128 || uid.includes('/')) {
+      return response.status(400).json({ error: 'A valid app and account ID are required.' });
+    }
+    if (uid === currentAdmin.uid) return response.status(403).json({ error: 'The active admin account cannot be deleted here.' });
+    try {
+      let targetAuthUser = null;
+      try {
+        targetAuthUser = await admin.auth().getUser(uid);
+      } catch (error) {
+        if (error.code !== 'auth/user-not-found') throw error;
+      }
+      if (targetAuthUser && String(targetAuthUser.email || '').toLowerCase() === ACCOUNT_ADMIN_EMAIL) {
+        return response.status(403).json({ error: 'The admin account is protected from deletion.' });
+      }
+      const result = await deleteFirebaseAccount(uid, targetAuthUser);
+      return response.json({ deleted: true, app: appName, ...result });
+    } catch (error) {
+      console.error('Admin Firebase account deletion failed:', { uid, message: error.message });
+      return response.status(500).json({ error: 'Account cleanup did not finish. The Firebase sign-in was not deleted; retry after checking the Firebase Function logs.' });
+    }
+  }
+);
+
 exports.creatorImageGenerate = onRequest(
   { cors: true, region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
   async (request, response) => {

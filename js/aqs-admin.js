@@ -524,62 +524,128 @@ window.adminDeleteQuiz = async function(quizId, title, skipConfirm) {
 /* ─────────────────────────────────────────────
    USERS
 ───────────────────────────────────────────── */
+/* ─────────────────────────────────────────────
+   USERS — Firebase Authentication + app profiles
+───────────────────────────────────────────── */
+var _adminUsersApp = 'smartquiz';
+var _adminUsersCache = [];
+
+async function adminUsersRequest(method, appName, payload) {
+    var currentUser = auth.currentUser;
+    if (!currentUser) throw new Error('Admin session expired. Sign in again.');
+    var token = await currentUser.getIdToken();
+    var url = 'https://us-central1-smartquiz-darapet.cloudfunctions.net/adminUsers';
+    var options = { method: method, headers: { Authorization: 'Bearer ' + token } };
+    if (method === 'GET') {
+        url += '?app=' + encodeURIComponent(appName);
+    } else {
+        options.headers['Content-Type'] = 'application/json';
+        options.body = JSON.stringify(payload || {});
+    }
+    var response = await fetch(url, options);
+    var result = await response.json().catch(function() { return {}; });
+    if (!response.ok) throw new Error(result.error || 'Firebase user management request failed.');
+    return result;
+}
+
+function renderAdminUsers() {
+    var container = document.getElementById('users-list');
+    if (!container) return;
+    var search = String(document.getElementById('adm-user-search')?.value || '').trim().toLowerCase();
+    var users = _adminUsersCache.filter(function(user) {
+        return !search || [user.name, user.username, user.email, user.uid].join(' ').toLowerCase().includes(search);
+    });
+    if (!users.length) {
+        container.innerHTML = '<div class="adm-empty">' + (search ? 'No matching members.' : (_adminUsersApp === 'social' ? 'No Dara Social members found.' : 'No SmartQ users found.')) + '</div>';
+        return;
+    }
+    var html = '<table class="adm-table"><thead><tr><th>Name</th><th>Username</th><th>Email</th><th>Firebase sign-in</th><th>Joined</th><th>Action</th></tr></thead><tbody>';
+    users.forEach(function(user) {
+        var joined = user.createdAt ? new Date(user.createdAt).toLocaleDateString() : '—';
+        var authLabel = user.authExists ? (user.authDisabled ? 'Disabled' : 'Active') : 'Profile only';
+        var authClass = user.authExists ? (user.authDisabled ? 'adm-badge-red' : 'adm-badge-green') : 'adm-badge-gray';
+        var action = user.isProtected
+            ? '<span class="adm-badge adm-badge-purple">Protected</span>'
+            : '<button type="button" class="adm-btn adm-btn-sm adm-btn-danger" data-admin-user-delete data-uid="' + esc(user.uid) + '" data-name="' + esc(user.name || user.email || user.uid) + '" data-app="' + esc(_adminUsersApp) + '" data-has-auth="' + (user.authExists ? 'true' : 'false') + '">Delete</button>';
+        html += '<tr>' +
+            '<td><strong>' + esc(user.name || '—') + '</strong></td>' +
+            '<td>' + esc(user.username || '—') + '</td>' +
+            '<td>' + esc(user.email || '—') + '</td>' +
+            '<td><span class="adm-badge ' + authClass + '">' + esc(authLabel) + '</span></td>' +
+            '<td style="white-space:nowrap;">' + esc(joined) + '</td>' +
+            '<td>' + action + '</td>' +
+            '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
 async function loadUsers() {
     var container = document.getElementById('users-list');
-    container.innerHTML = '<div class="adm-loading">Loading users…</div>';
+    if (!container) return;
+    var selector = document.getElementById('adm-user-app');
+    _adminUsersApp = selector && selector.value === 'social' ? 'social' : 'smartquiz';
+    var title = document.getElementById('adm-users-title');
+    if (title) title.textContent = _adminUsersApp === 'social' ? 'Dara Social Members' : 'SmartQ Users';
+    var sectionTitle = document.getElementById('adm-section-title');
+    if (sectionTitle && document.getElementById('section-users')?.style.display !== 'none') {
+        sectionTitle.textContent = _adminUsersApp === 'social' ? 'Dara Social Members' : 'SmartQ Users';
+    }
+    container.innerHTML = '<div class="adm-loading">Loading ' + (_adminUsersApp === 'social' ? 'Dara Social members' : 'SmartQ users') + '…</div>';
     try {
-        var snap = await getDocs(query(collection(db, 'users'), orderBy('created_at', 'desc')));
-        if (snap.empty) { container.innerHTML = '<div class="adm-empty">No users yet.</div>'; return; }
-        var html = '<div class="adm-bulk-toolbar"><label><input type="checkbox" onchange="adminToggleBulk(\'users\',this.checked)"> Select all</label><span data-bulk-count="users">Select items</span><button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminBulkCollection(\'users\',\'users\',loadUsers,\'users\')">🗑 Delete selected</button></div>' +
-            '<table class="adm-table" data-bulk-scope="users"><thead><tr><th><span class="sr-only">Select</span></th><th>Name</th><th>Username</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>';
-        snap.docs.forEach(function(d) {
-            var u = d.data();
-            var roleCls   = u.role === 'admin' ? 'adm-badge-purple' : (u.role === 'host' ? 'adm-badge-blue' : 'adm-badge-gray');
-            var statusCls = u.status === 'active' ? 'adm-badge-green' : 'adm-badge-red';
-            html += '<tr>' +
-                '<td><input type="checkbox" data-bulk-id="' + d.id + '" aria-label="Select ' + esc(u.name || u.email || 'user') + '" onchange="updateBulkCount(\'users\')"></td>' +
-                '<td><strong>' + esc(u.name || '—') + '</strong></td>' +
-                '<td>' + esc(u.username || '—') + '</td>' +
-                '<td>' + esc(u.email || '—') + '</td>' +
-                '<td><span class="adm-badge ' + roleCls + '">' + esc(u.role || 'student') + '</span></td>' +
-                '<td><span class="adm-badge ' + statusCls + '">' + esc(u.status || 'active') + '</span></td>' +
-                '<td style="display:flex;gap:6px;flex-wrap:wrap;">' +
-                    '<select class="adm-select-sm" onchange="adminSetRole(\'' + d.id + '\',this.value)">' +
-                        '<option value="">Change role…</option>' +
-                        '<option value="student">Student</option>' +
-                        '<option value="teacher">Teacher</option>' +
-                        '<option value="host">Host</option>' +
-                        '<option value="admin">Admin</option>' +
-                    '</select>' +
-                    '<button class="adm-btn adm-btn-sm adm-btn-' + (u.status === 'active' ? 'warn' : 'success') + '" ' +
-                        'onclick="adminToggleUser(\'' + d.id + '\',\'' + (u.status || 'active') + '\')">' +
-                        (u.status === 'active' ? 'Suspend' : 'Activate') +
-                    '</button>' +
-                    '<button class="adm-btn adm-btn-sm adm-btn-danger" onclick="adminDeleteUser(\'' + d.id + '\',\'' + esc(u.name || u.email) + '\')">Delete</button>' +
-                '</td>' +
-            '</tr>';
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
-    } catch(e) {
-        container.innerHTML = '<div class="adm-error">Error: ' + esc(e.message) + '</div>';
+        var result = await adminUsersRequest('GET', _adminUsersApp);
+        _adminUsersCache = Array.isArray(result.users) ? result.users : [];
+        renderAdminUsers();
+    } catch (error) {
+        container.innerHTML = '<div class="adm-error">Could not load Firebase members: ' + esc(error.message || error) + '</div>';
     }
 }
 
-window.adminSetRole = async function(uid, role) {
-    if (!role) return;
-    if (!confirm('Change this user\'s role to "' + role + '"?')) return;
-    try { await updateDoc(doc(db, 'users', uid), { role: role }); loadUsers(); } catch(e) { alert('Error: ' + e.message); }
-};
+function bindAdminUserControls() {
+    var selector = document.getElementById('adm-user-app');
+    var search = document.getElementById('adm-user-search');
+    var container = document.getElementById('users-list');
+    if (selector && !selector.dataset.adminBound) {
+        selector.dataset.adminBound = 'true';
+        selector.addEventListener('change', loadUsers);
+    }
+    if (search && !search.dataset.adminBound) {
+        search.dataset.adminBound = 'true';
+        search.addEventListener('input', renderAdminUsers);
+    }
+    if (container && !container.dataset.adminBound) {
+        container.dataset.adminBound = 'true';
+        container.addEventListener('click', function(event) {
+            var button = event.target.closest('[data-admin-user-delete]');
+            if (!button) return;
+            window.adminDeleteUser(button.dataset.uid, button.dataset.name, button.dataset.app, button.dataset.hasAuth === 'true');
+        });
+    }
+}
+bindAdminUserControls();
 
-window.adminToggleUser = async function(uid, currentStatus) {
-    var newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-    try { await updateDoc(doc(db, 'users', uid), { status: newStatus }); loadUsers(); } catch(e) { alert('Error: ' + e.message); }
-};
-
-window.adminDeleteUser = async function(uid, name) {
-    if (!confirm('Delete user "' + name + '"? This cannot be undone.')) return;
-    try { await deleteDoc(doc(db, 'users', uid)); loadUsers(); loadDashboardStats(); } catch(e) { alert('Error: ' + e.message); }
+window.adminDeleteUser = async function(uid, name, appName, hasAuth) {
+    var authWarning = hasAuth
+        ? 'Their shared Firebase sign-in will be deleted, removing access to both SmartQ and Dara Social. '
+        : 'No Firebase sign-in was found; remaining profile data will be removed. ';
+    var warning = 'Permanently delete ' + (name || 'this member') + '?\n\n' + authWarning +
+        'Their app profiles, Dara Social posts/comments/likes, relationships, messages they sent, and user-owned media will be removed. SmartQ quizzes, quiz results, and moderation records are retained. This cannot be undone.';
+    if (!window.confirm(warning)) return;
+    var button = Array.from(document.querySelectorAll('[data-admin-user-delete]')).find(function(item) { return item.dataset.uid === String(uid); });
+    if (button) { button.disabled = true; button.textContent = 'Deleting…'; }
+    try {
+        var result = await adminUsersRequest('POST', appName, { action: 'delete', app: appName, uid: uid });
+        if (result.authenticationAccountDeleted === false) {
+            window.alert('No Firebase Authentication account remained. The leftover Firebase profiles and social data were removed.');
+        } else {
+            window.alert('Account deleted from Firebase Authentication and app profile/social data.');
+        }
+        await loadUsers();
+        await loadDashboardStats();
+    } catch (error) {
+        window.alert('Account deletion failed: ' + (error.message || error));
+        if (button) { button.disabled = false; button.textContent = 'Delete'; }
+    }
 };
 
 /* ─────────────────────────────────────────────
