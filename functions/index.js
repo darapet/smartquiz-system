@@ -34,6 +34,53 @@ async function verifyBearerUser(request) {
   return admin.auth().verifyIdToken(token);
 }
 
+async function deleteMatchingUserDocuments(collectionRef, fieldName, uid) {
+  let removed = 0;
+  while (true) {
+    const snapshot = await collectionRef.where(fieldName, '==', uid).limit(400).get();
+    if (snapshot.empty) break;
+    const batch = db.batch();
+    snapshot.docs.forEach((document) => batch.delete(document.ref));
+    await batch.commit();
+    removed += snapshot.size;
+    if (snapshot.size < 400) break;
+  }
+  return removed;
+}
+
+async function deleteAccountForAdmin(uid, actorUid) {
+  const userRef = db.doc('users/' + uid);
+  const socialProfileRef = db.doc('social_profiles/' + uid);
+  const [userSnapshot, socialSnapshot] = await Promise.all([userRef.get(), socialProfileRef.get()]);
+  const userProfile = userSnapshot.exists ? userSnapshot.data() : {};
+  const socialProfile = socialSnapshot.exists ? socialSnapshot.data() : {};
+  let authRecord = null;
+  try { authRecord = await admin.auth().getUser(uid); }
+  catch (error) { if (error.code !== 'auth/user-not-found') throw error; }
+  const targetEmails = [authRecord && authRecord.email, userProfile.email, socialProfile.email].filter(Boolean);
+  if (uid === actorUid || targetEmails.some((email) => String(email).toLowerCase() === 'daramolapeter98@gmail.com')) {
+    const error = new Error('The administrator account cannot be deleted from this panel.');
+    error.httpStatus = 400;
+    throw error;
+  }
+  const usernames = new Set([userProfile.username, socialProfile.usernameLower, socialProfile.username].filter(Boolean).map((value) => String(value).trim().toLowerCase()));
+  for (const username of usernames) {
+    if (!/^[a-z0-9._-]{1,64}$/.test(username)) continue;
+    const usernameRef = db.doc('usernames/' + username);
+    const usernameSnapshot = await usernameRef.get();
+    if (usernameSnapshot.exists && String((usernameSnapshot.data() || {}).uid || '') === uid) await usernameRef.delete();
+  }
+  await Promise.all([db.recursiveDelete(userRef), db.recursiveDelete(socialProfileRef)]);
+  await Promise.all([
+    deleteMatchingUserDocuments(db.collection('social_friend_requests'), 'requesterId', uid),
+    deleteMatchingUserDocuments(db.collection('social_friend_requests'), 'recipientId', uid),
+  ]);
+  await admin.storage().bucket().deleteFiles({ prefix: 'social/' + uid + '/' });
+  if (authRecord) await admin.auth().deleteUser(uid);
+  return { deleted: true, deletedAuthenticationAccount: !!authRecord, uid: uid };
+}
+
+
 async function brevoConfiguration() {
   const [mainSnapshot, privateSnapshot] = await Promise.all([
     db.doc('settings/main').get(),
@@ -530,6 +577,13 @@ exports.brevoEmail = onRequest(
 
       const user = await verifyBearerUser(request);
       const isAdmin = String(user.email || '').toLowerCase() === 'daramolapeter98@gmail.com';
+      if (kind === 'admin_delete_user') {
+        if (!isAdmin) return response.status(403).json({ error: 'Admin access required.' });
+        const uid = String(payload.uid || '').trim();
+        if (!uid || uid.length > 128) return response.status(400).json({ error: 'A valid user ID is required.' });
+        const result = await deleteAccountForAdmin(uid, user.uid);
+        return response.json(result);
+      }
 
       if (kind === 'welcome') {
         return response.json(await sendWelcomeEmail(user));
