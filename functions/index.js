@@ -34,10 +34,10 @@ async function verifyBearerUser(request) {
   return admin.auth().verifyIdToken(token);
 }
 
-async function deleteMatchingUserDocuments(collectionRef, fieldName, uid) {
+async function deleteMatchingDocuments(collectionRef, fieldName, value) {
   let removed = 0;
   while (true) {
-    const snapshot = await collectionRef.where(fieldName, '==', uid).limit(400).get();
+    const snapshot = await collectionRef.where(fieldName, '==', value).limit(400).get();
     if (snapshot.empty) break;
     const batch = db.batch();
     snapshot.docs.forEach((document) => batch.delete(document.ref));
@@ -46,6 +46,48 @@ async function deleteMatchingUserDocuments(collectionRef, fieldName, uid) {
     if (snapshot.size < 400) break;
   }
   return removed;
+}
+
+async function deleteSocialMessagesForUser(uid) {
+  const conversations = await db.collection('social_conversations')
+    .where('participantIds', 'array-contains', uid)
+    .get();
+  let removedMessages = 0;
+
+  for (const conversation of conversations.docs) {
+    const messages = conversation.ref.collection('messages');
+    const removedHere = await deleteMatchingDocuments(messages, 'senderId', uid);
+    removedMessages += removedHere;
+    if (!removedHere) continue;
+
+    const [latestSnapshot] = await Promise.all([
+      messages.orderBy('createdAt', 'desc').limit(1).get(),
+    ]);
+    const conversationData = conversation.data() || {};
+    const readState = conversationData.lastReadBy;
+    const lastReadBy = readState && typeof readState === 'object' && !Array.isArray(readState)
+      ? { ...readState }
+      : {};
+    delete lastReadBy[uid];
+
+    const update = {
+      lastReadBy,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    };
+    if (latestSnapshot.empty) {
+      update.lastMessageText = '';
+      update.lastMessageAt = admin.firestore.FieldValue.delete();
+      update.lastSenderId = admin.firestore.FieldValue.delete();
+    } else {
+      const latestMessage = latestSnapshot.docs[0].data();
+      update.lastMessageText = String(latestMessage.messageText || '').slice(0, 120);
+      update.lastMessageAt = latestMessage.createdAt || admin.firestore.FieldValue.serverTimestamp();
+      update.lastSenderId = String(latestMessage.senderId || '');
+    }
+    await conversation.ref.update(update);
+  }
+
+  return removedMessages;
 }
 
 async function deleteAccountForAdmin(uid, actorUid) {
@@ -63,23 +105,80 @@ async function deleteAccountForAdmin(uid, actorUid) {
     error.httpStatus = 400;
     throw error;
   }
-  const usernames = new Set([userProfile.username, socialProfile.usernameLower, socialProfile.username].filter(Boolean).map((value) => String(value).trim().toLowerCase()));
+
+  const usernames = new Set([userProfile.username, socialProfile.usernameLower, socialProfile.username]
+    .filter(Boolean)
+    .map((value) => String(value).trim().toLowerCase()));
   for (const username of usernames) {
     if (!/^[a-z0-9._-]{1,64}$/.test(username)) continue;
     const usernameRef = db.doc('usernames/' + username);
     const usernameSnapshot = await usernameRef.get();
-    if (usernameSnapshot.exists && String((usernameSnapshot.data() || {}).uid || '') === uid) await usernameRef.delete();
+    if (usernameSnapshot.exists && String((usernameSnapshot.data() || {}).uid || '') === uid) {
+      await usernameRef.delete();
+    }
   }
-  await Promise.all([db.recursiveDelete(userRef), db.recursiveDelete(socialProfileRef)]);
-  await Promise.all([
-    deleteMatchingUserDocuments(db.collection('social_friend_requests'), 'requesterId', uid),
-    deleteMatchingUserDocuments(db.collection('social_friend_requests'), 'recipientId', uid),
-  ]);
-  await admin.storage().bucket().deleteFiles({ prefix: 'social/' + uid + '/' });
-  if (authRecord) await admin.auth().deleteUser(uid);
-  return { deleted: true, deletedAuthenticationAccount: !!authRecord, uid: uid };
-}
 
+  // Remove the sign-in first so the account cannot keep creating data mid-cleanup.
+  if (authRecord) await admin.auth().deleteUser(uid);
+
+  let deletedQuizzes = 0;
+  let deletedQuizAttempts = 0;
+  const quizCollection = db.collection('quizzes');
+  while (true) {
+    const quizzes = await quizCollection.where('host_uid', '==', uid).limit(100).get();
+    if (quizzes.empty) break;
+    for (const quiz of quizzes.docs) {
+      deletedQuizAttempts += await deleteMatchingDocuments(db.collection('attempts'), 'quiz_id', quiz.id);
+      await db.recursiveDelete(quiz.ref);
+      deletedQuizzes += 1;
+    }
+  }
+
+  const attemptEmails = new Set();
+  targetEmails.forEach((email) => {
+    const value = String(email || '').trim();
+    if (value) {
+      attemptEmails.add(value);
+      attemptEmails.add(value.toLowerCase());
+    }
+  });
+  let deletedEmailAttempts = 0;
+  for (const email of attemptEmails) {
+    deletedEmailAttempts += await deleteMatchingDocuments(db.collection('attempts'), 'taker_email', email);
+  }
+
+  const [deletedArchives, deletedChatMessages] = await Promise.all([
+    deleteMatchingDocuments(db.collection('deleted_quizzes'), 'deleted_by', uid),
+    deleteSocialMessagesForUser(uid),
+  ]);
+
+  await Promise.all([
+    db.recursiveDelete(userRef),
+    db.recursiveDelete(socialProfileRef),
+    db.recursiveDelete(db.doc('studyco_presence/' + uid)),
+    db.recursiveDelete(db.doc('social_user_blocks/' + uid)),
+    deleteMatchingDocuments(db.collection('social_friend_requests'), 'requesterId', uid),
+    deleteMatchingDocuments(db.collection('social_friend_requests'), 'recipientId', uid),
+    deleteMatchingDocuments(db.collection('studyco_notifications'), 'recipientId', uid),
+    deleteMatchingDocuments(db.collection('studyco_notifications'), 'actorId', uid),
+    deleteMatchingDocuments(db.collection('social_chat_settings'), 'userId', uid),
+    deleteMatchingDocuments(db.collection('studyco_post_preferences'), 'userId', uid),
+    deleteMatchingDocuments(db.collectionGroup('blocked'), 'blockedUid', uid),
+    admin.storage().bucket().deleteFiles({ prefix: 'social/' + uid + '/' }),
+    admin.storage().bucket().deleteFiles({ prefix: 'studyco/' + uid + '/messages/' }),
+  ]);
+
+  return {
+    deleted: true,
+    deletedAuthenticationAccount: !!authRecord,
+    deletedQuizzes,
+    deletedQuizAttempts,
+    deletedEmailAttempts,
+    deletedQuizArchives: deletedArchives,
+    deletedChatMessages,
+    uid,
+  };
+}
 
 async function brevoConfiguration() {
   const [mainSnapshot, privateSnapshot] = await Promise.all([
@@ -553,7 +652,7 @@ async function createRegistrationAccount(payload) {
 }
 
 exports.brevoEmail = onRequest(
-  { region: 'us-central1', timeoutSeconds: 30, memory: '256MiB' },
+  { region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' },
   async (request, response) => {
     setCors(response);
     if (request.method === 'OPTIONS') return response.status(204).send('');
