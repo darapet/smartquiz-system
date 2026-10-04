@@ -577,7 +577,7 @@ async function loadUsers() {
 
 window.adminDeleteUser = async function(uid, name, source) {
     if (!uid || !auth.currentUser) { alert('Sign in with the admin account to delete users.'); return; }
-    if (!confirm('Permanently delete "' + (name || uid) + '" from Firebase Authentication and its SmartQ/Dara Social profile data? The shared sign-in will stop working in both apps.')) return;
+    if (!confirm('Permanently delete "' + (name || uid) + '" from Firebase, including its shared sign-in, profiles, authored quizzes and related attempts, and sent messages? Messages from other participants stay. Sign-in will stop working in both apps.')) return;
     try {
         var response = await fetch('https://us-central1-smartquiz-darapet.cloudfunctions.net/brevoEmail', {
             method: 'POST',
@@ -588,7 +588,7 @@ window.adminDeleteUser = async function(uid, name, source) {
         if (!response.ok) throw new Error(result.error || 'The account could not be deleted.');
         await loadUsers();
         await loadDashboardStats();
-        alert('The account was removed from Firebase Authentication and its profile records.');
+        alert('Deleted Firebase account, profiles, authored quizzes, related attempts, and sent chat messages. Messages from other participants were retained.');
     } catch(e) { alert('Delete failed: ' + (e.message || e)); }
 };
 
