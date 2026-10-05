@@ -539,6 +539,7 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
   }
   const messagesShell = document.querySelector('.studyco-messages-shell');
   if (messagesShell) messagesShell.classList.toggle('chat-open', view === 'messages' && Boolean(chatUid));
+  scheduleChatViewportSync();
   const layout = document.querySelector('.studyco-layout');
   if (layout) layout.classList.toggle('profile-view', view === 'profile');
   document.querySelectorAll('[data-studyco-view]').forEach((button) => button.classList.toggle('active', button.dataset.studycoView === view));
@@ -551,6 +552,30 @@ function setView(view, { updateUrl = true, chatUid = view === 'messages' ? null 
   if (view === 'notifications') renderNotifications();
 }
 
+function syncChatViewport() {
+  const shell = document.querySelector('.studyco-messages-shell.chat-open');
+  if (!shell || !document.querySelector('#studyco-view-messages.active')) {
+    document.body.classList.remove('studyco-chat-keyboard-open');
+    document.querySelector('.studyco-messages-shell')?.style.removeProperty('--studyco-chat-panel-height');
+    return;
+  }
+  const viewport = window.visualViewport;
+  const keyboardInset = viewport ? Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop) : 0;
+  const touchInputFocused = document.activeElement?.id === 'studyco-chat-input' && window.matchMedia?.('(pointer: coarse)')?.matches;
+  const keyboardOpen = keyboardInset > 120 || touchInputFocused;
+  document.body.classList.toggle('studyco-chat-keyboard-open', keyboardOpen);
+  const bottomNav = document.querySelector('.aqs-bottom-nav');
+  const navHeight = !keyboardOpen && bottomNav ? bottomNav.getBoundingClientRect().height : 0;
+  const viewportBottom = viewport ? viewport.offsetTop + viewport.height : window.innerHeight;
+  const shellTop = Math.max(0, shell.getBoundingClientRect().top);
+  const panelHeight = Math.max(160, viewportBottom - shellTop - navHeight);
+  shell.style.setProperty('--studyco-chat-panel-height', panelHeight + 'px');
+}
+
+function scheduleChatViewportSync() {
+  if (window.requestAnimationFrame) window.requestAnimationFrame(syncChatViewport);
+  else window.setTimeout(syncChatViewport, 0);
+}
 async function syncRoute() {
   const pathProfileUid = profileUidFromPath();
   if (pathProfileUid) {
@@ -1236,7 +1261,7 @@ async function loadSocialLists() {
   state.requests = await Promise.all(requests.map(async (item) => ({ ...item, profile: await getProfile(item.requesterId) })));
   state.sentRequests = await Promise.all(sentRequests.map(async (item) => ({ ...item, profile: await getProfile(item.recipientId) })));
   state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
-  const incomingRequestHtml = state.requests.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('');
+  const incomingRequestHtml = state.requests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-incoming-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Wants to be your friend</span></div><time class="studyco-friend-request-time">${esc(timeText(item.createdAt))}</time><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Delete</button></div>`).join('');
   const sentRequestHtml = state.sentRequests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-sent-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request sent</span></div><button class="studyco-button danger" data-friend-action="cancel" data-uid="${esc(item.recipientId)}">Remove</button></div>`).join('');
   const hasRequests = Boolean(incomingRequestHtml || sentRequestHtml);
   const requestHtml = hasRequests ? `${incomingRequestHtml}${sentRequestHtml}` : '';
@@ -2036,6 +2061,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
     $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to friends">‹</button>${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft" data-start-call="${esc(uid)}" data-call-kind="audio" type="button">Voice</button><button class="studyco-button primary" data-start-call="${esc(uid)}" data-call-kind="video" type="button">Video</button><button class="studyco-button light" data-call-history type="button" aria-label="Open recent call activity">History</button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">•••</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" maxlength="2000" placeholder="Write a message..."></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><span>↗</span><b>File</b></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit">Send</button></div>` + '<div class="studyco-chat-recording-controls" hidden aria-live="polite">' + '<button class="studyco-chat-record-action delete" type="button" data-chat-record-delete aria-label="Delete recording" title="Delete recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"></path></svg></button>' + '<div class="studyco-chat-recording-main"><div class="studyco-chat-recording-label"><span data-chat-recording-status>Recording voice message</span><time data-chat-recording-time>0:00</time></div><div class="studyco-chat-record-wave" role="img" aria-label="Live recording waveform">' + voiceWaveformMarkup('recording', 24) + '</div></div><div class="studyco-chat-recording-transport"><button class="studyco-chat-record-action" type="button" data-chat-record-pause aria-label="Pause recording" title="Pause recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg></button><button class="studyco-chat-record-action replay" type="button" data-chat-record-preview aria-label="Replay voice preview" title="Replay voice preview" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button></div>' + '<button class="studyco-chat-record-send" type="button" data-chat-record-send>Send</button></div>' + `</form>`;
+    scheduleChatViewportSync();
     updateActiveChatPresence();
     window.clearInterval(state.chatReceiptRefreshTimer);
     state.chatReceiptRefreshTimer = window.setInterval(() => {
@@ -2956,6 +2982,12 @@ function closeModal(id) { const modal = $(id); if (modal) modal.hidden = true; }
 function wire() {
   if (state.wired) return; state.wired = true;
   document.addEventListener('error', handleAvatarImageError, true);
+  window.addEventListener('resize', scheduleChatViewportSync, { passive: true });
+  window.addEventListener('scroll', scheduleChatViewportSync, { passive: true });
+  window.visualViewport?.addEventListener('resize', scheduleChatViewportSync, { passive: true });
+  window.visualViewport?.addEventListener('scroll', scheduleChatViewportSync, { passive: true });
+  document.addEventListener('focusin', (event) => { if (event.target?.id === 'studyco-chat-input') scheduleChatViewportSync(); });
+  document.addEventListener('focusout', (event) => { if (event.target?.id === 'studyco-chat-input') scheduleChatViewportSync(); });
   const openOwnProfile = () => {
     if (state.user) setView('profile', { profileUid: state.user.uid });
   };

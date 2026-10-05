@@ -23,9 +23,30 @@
   <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
   <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
   <link rel="stylesheet" href="css/studyco-polish.css?v=home-context-nav-flow-20261002">
+<style>
+    /* Paint a useful first frame before Firebase and the module bundle finish. */
+    #studyco-boot-screen{min-height:100vh;box-sizing:border-box;padding:26px 16px;background:#f5f7ff;color:#25294b;display:grid;place-items:center;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .studyco-boot-card{width:min(100%,460px);padding:28px;border:1px solid #e1e5ff;border-radius:24px;background:#fff;box-shadow:0 18px 50px #20265c12}
+    .studyco-boot-brand{display:flex;align-items:center;gap:10px;font-weight:900;letter-spacing:-.04em}
+    .studyco-boot-mark{width:38px;height:38px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(135deg,#8c8cff,#4c4cc4);color:#fff;font-size:.72rem;box-shadow:0 8px 20px #6262de33}
+    .studyco-boot-line{height:12px;margin-top:24px;border-radius:99px;background:linear-gradient(90deg,#eef0ff 20%,#dfe3ff 50%,#eef0ff 80%);background-size:220% 100%;animation:studycoBootShimmer 1.2s ease-in-out infinite}
+    .studyco-boot-line.short{width:62%;margin-top:12px}
+    .studyco-boot-post{height:92px;margin-top:24px;border:1px solid #edf0ff;border-radius:16px;background:linear-gradient(90deg,#fafbff 20%,#f0f2ff 50%,#fafbff 80%);background-size:220% 100%;animation:studycoBootShimmer 1.2s ease-in-out infinite}
+    .studyco-boot-status{margin:18px 0 0;color:#727899;font-size:.78rem;text-align:center}
+    @keyframes studycoBootShimmer{0%{background-position:200% 0}100%{background-position:-20% 0}}
+  </style>
 </head>
 <body class="studyco-page">
-  <script src="js/aqs-video-splash.js"></script>
+<div id="studyco-boot-screen" role="status" aria-live="polite">
+    <div class="studyco-boot-card">
+      <div class="studyco-boot-brand"><span class="studyco-boot-mark">SQ</span><span>Dara Social</span></div>
+      <div class="studyco-boot-line"></div>
+      <div class="studyco-boot-line short"></div>
+      <div class="studyco-boot-post"></div>
+      <p class="studyco-boot-status">Loading your learning circleâ¦</p>
+    </div>
+  </div>
+
   <div id="studyco-auth-screen" class="studyco-auth-screen" hidden>
     <div class="studyco-auth-card studyco-auth-redirect">
       <span class="studyco-mark">SQ</span>
@@ -130,7 +151,7 @@
         <section id="studyco-view-friends" class="studyco-view">
           <div class="studyco-mobile-friends-header">
             <button class="studyco-mobile-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button>
-            <h1>Friends</h1>
+            <h1>Requests</h1>
             <button id="studyco-friend-search-action" class="studyco-mobile-search" type="button" aria-label="Search friends"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
           </div>
           <div id="studyco-people-results" class="studyco-people-grid"></div>
@@ -225,7 +246,7 @@
         </section>
 
         <section id="studyco-view-messages" class="studyco-view">
-          <div class="studyco-page-heading studyco-message-page-heading"><button class="studyco-message-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button><div><p class="studyco-eyebrow">Stay in the loop</p><h1>Messages</h1><p>Keep the good questions going.</p></div><div class="studyco-message-heading-actions"><button class="studyco-icon-button" type="button" aria-label="Search messages">⌕</button><button id="studyco-new-message" class="studyco-button primary" type="button">New message</button></div></div>
+          <div class="studyco-page-heading studyco-message-page-heading"><button class="studyco-message-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button><div><p class="studyco-eyebrow">Stay in the loop</p><h1 class="studyco-visually-hidden">Messages</h1><p>Keep the good questions going.</p></div><div class="studyco-message-heading-actions"><button class="studyco-icon-button" type="button" aria-label="Search messages">⌕</button><button id="studyco-new-message" class="studyco-button primary" type="button">New message</button></div></div>
           <div class="studyco-messages-shell">
             <section class="studyco-conversations-panel" aria-label="Recent conversations">
               <div class="studyco-conversations-head"><div><span class="studyco-eyebrow">Inbox</span><h2>Recent chats</h2></div><span id="studyco-chat-count" class="studyco-count">0</span></div>
