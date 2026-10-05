@@ -1193,10 +1193,7 @@ function storyVideoPosterUrl(videoUrl) {
 
 function renderStoryMedia(story) {
   const videoUrl = storyVideoUrl(story);
-  if (videoUrl) {
-    const posterUrl = storyVideoPosterUrl(videoUrl);
-    return posterUrl ? `<img class="studyco-story-media-poster" src="${esc(posterUrl)}" alt="" loading="lazy" decoding="async"><small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>` : '<small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>';
-  }
+  if (videoUrl) return `<video class="studyco-story-media-video" src="${esc(videoUrl)}" muted playsinline loop autoplay preload="metadata"></video><small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>`;
   const imageUrl = storyImageUrl(story);
   return imageUrl ? `<img src="${esc(imageUrl)}" alt="" loading="lazy" decoding="async">` : '';
 }
@@ -1205,7 +1202,7 @@ function renderStories() {
   const active = state.stories.filter((story) => timeMs(story.expiresAt) > Date.now());
   $('studyco-story-list').innerHTML = `<button class="studyco-story add" id="studyco-story-add-card" type="button"><span>Add a story</span></button>${active.map((story) => {
     const caption = storyCaption(story);
-    return `<button class="studyco-story" data-story-id="${esc(story.id)}" style="background:${esc(story.bgColor || '#5b5bd6')}">${renderStoryMedia(story)}${caption ? `<span class="studyco-story-card-caption">${esc(caption)}</span>` : ''}<span>${esc(initials(state.profiles.get(story.userId)))}</span><strong>${esc(profileName(state.profiles.get(story.userId)))}<br><small>${esc(timeText(story.createdAt))}</small></strong></button>`;
+    return `<div class="studyco-story" role="group" style="background:${esc(story.bgColor || '#5b5bd6')}">${renderStoryMedia(story)}${caption ? `<span class="studyco-story-card-caption">${esc(caption)}</span>` : ''}<span>${esc(initials(state.profiles.get(story.userId)))}</span><strong>${esc(profileName(state.profiles.get(story.userId)))}<br><small>${esc(timeText(story.createdAt))}</small></strong></div>`;
   }).join('')}`;
 }
 
@@ -3495,7 +3492,7 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-make-call').addEventListener('click', () => { closePostEditor(); setView('friends'); toast('Choose a friend to start a call.'); });
   $('studyco-publish-post').addEventListener('click', publishPost);
   $('studyco-create-story').addEventListener('click', () => openModal('studyco-story-modal'));
-  $('studyco-story-list').addEventListener('click', (event) => { const card = event.target.closest('[data-story-id]'); if (card) showStory(state.stories.find((story) => story.id === card.dataset.storyId)); else if (event.target.closest('#studyco-story-add-card')) openModal('studyco-story-modal'); });
+  $('studyco-story-list').addEventListener('click', (event) => { if (event.target.closest('#studyco-story-add-card')) openModal('studyco-story-modal'); });
   $('studyco-story-previous').addEventListener('click', () => stepStory(-1));
   $('studyco-story-next').addEventListener('click', () => stepStory(1));
   $('studyco-story-close').addEventListener('click', () => closeStoryViewer());

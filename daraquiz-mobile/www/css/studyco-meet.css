@@ -256,3 +256,7 @@ body.studyco-story-open { overflow: hidden; }
 
 /* A Cloudinary poster keeps the story viewer useful if a video range stream resets. */
 #studyco-story-viewer .studyco-story-video-fallback { position: absolute; z-index: 1; top: 16px; left: 50%; max-width: calc(100% - 32px); padding: 6px 10px; transform: translateX(-50%); border-radius: 999px; background: #111b; color: #fff; font-size: .75rem; text-align: center; pointer-events: none; }
+
+
+/* Story tiles display media but no longer open the full-screen viewer. */
+.studyco-story:not(.add) { cursor: default; }
