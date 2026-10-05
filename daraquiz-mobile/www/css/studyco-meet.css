@@ -244,3 +244,11 @@ body.studyco-story-open { overflow: hidden; }
 #studyco-story-viewer .studyco-story-viewer-content { width: 100%; height: 100%; box-sizing: border-box; padding: 0; text-align: left; font-size: inherit; font-weight: 400; line-height: normal; }
 #studyco-story-viewer .studyco-story-viewer-content.is-end-card { padding: 28px; }
 #studyco-story-viewer .studyco-story-viewer-image { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+
+
+/* Keep story captions visible over media in both the feed cards and viewer. */
+.studyco-story-card-caption { position: absolute; z-index: 2; right: 8px; bottom: 42px; left: 8px; display: -webkit-box; overflow: hidden; color: #fff; font-size: .65rem; font-weight: 800; line-height: 1.25; text-shadow: 0 1px 8px #000d; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; pointer-events: none; }
+#studyco-story-viewer .studyco-story-viewer-content { isolation: isolate; background: transparent; }
+#studyco-story-viewer .studyco-story-viewer-content > .studyco-story-viewer-video,
+#studyco-story-viewer .studyco-story-viewer-content > .studyco-story-viewer-image { position: absolute; z-index: 0; inset: 0; display: block; visibility: visible; opacity: 1; width: 100%; height: 100%; object-fit: contain; }
+#studyco-story-viewer .studyco-story-viewer-content > .studyco-story-message { position: absolute; z-index: 2; display: block; visibility: visible; }
