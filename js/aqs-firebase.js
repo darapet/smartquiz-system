@@ -31,6 +31,7 @@ import {
     getDoc,
     getDocs,
     updateDoc,
+    writeBatch,
     deleteDoc,
     query,
     where,
@@ -761,6 +762,52 @@ async function actionRegister(data) {
     };
 }
 
+function _aqsBuildSocialProfile(user, profile) {
+    var source = profile || {};
+    var publicProfile = { uid: user.uid, updatedAt: serverTimestamp() };
+    var displayName = source.displayName || source.name || user.displayName || '';
+    if (displayName) publicProfile.displayName = String(displayName).trim();
+    if (source.username) publicProfile.username = source.username;
+    var school = source.school || source.institution || source.school_name;
+    if (school) publicProfile.school = school;
+    if (source.department) publicProfile.department = source.department;
+    if (source.major) publicProfile.major = source.major;
+    if (source.bio) publicProfile.bio = source.bio;
+    var educationLevel = source.educationLevel || source.education_level;
+    if (educationLevel) publicProfile.educationLevel = educationLevel;
+    var institutionType = source.institutionType || source.institution_type;
+    if (institutionType) publicProfile.institutionType = institutionType;
+    var educationStatus = source.educationStatus || source.education_status;
+    if (educationStatus) publicProfile.educationStatus = educationStatus;
+    var photoURL = source.photoURL || source.photoUrl || source.profile_picture || source.avatar || user.photoURL;
+    if (photoURL) publicProfile.photoURL = photoURL;
+    if (source.profileVisibility && typeof source.profileVisibility === 'object' && !Array.isArray(source.profileVisibility)) {
+        publicProfile.profileVisibility = source.profileVisibility;
+    }
+    return publicProfile;
+}
+
+async function _ensureAqsSocialProfile(user, profile) {
+    if (!user || user.isAnonymous || _aqsIsRegistrationIncomplete(profile)) return;
+    var socialProfileRef = doc(db, 'social_profiles', user.uid);
+    var existingSocialProfile = await getDoc(socialProfileRef);
+    if (existingSocialProfile.exists()) return;
+    var socialProfile = _aqsBuildSocialProfile(user, profile);
+    socialProfile.createdAt = serverTimestamp();
+    await setDoc(socialProfileRef, socialProfile, { merge: true });
+}
+
+onAuthStateChanged(auth, function(user) {
+    if (!user || user.isAnonymous) return;
+    (async function() {
+        var userProfileSnap = await getDoc(doc(db, 'users', user.uid));
+        if (!userProfileSnap.exists()) return;
+        await _ensureAqsSocialProfile(user, userProfileSnap.data());
+    })().catch(function(error) {
+        console.warn('[AQS] Could not bootstrap social profile:', error && error.message || error);
+    });
+});
+
 async function actionCompleteRegistration(data) {
     var user = requireAuth();
     var existingSnap = await _withAqsStepTimeout(
@@ -831,14 +878,12 @@ async function actionCompleteRegistration(data) {
         suffix++;
     }
     completed.username = username;
-    await _withAqsStepTimeout(
-        setDoc(doc(db, 'users', user.uid), completed, { merge: true }),
-        'saving your completed profile'
-    );
-    await _withAqsStepTimeout(
-        setDoc(doc(db, 'usernames', username), { uid: user.uid, email: completed.email }),
-        'saving your username'
-    );
+    var socialProfile = _aqsBuildSocialProfile(user, completed);
+    var registrationBatch = writeBatch(db);
+    registrationBatch.set(doc(db, 'users', user.uid), completed, { merge: true });
+    registrationBatch.set(doc(db, 'usernames', username), { uid: user.uid, email: completed.email });
+    registrationBatch.set(doc(db, 'social_profiles', user.uid), socialProfile, { merge: true });
+    await _withAqsStepTimeout(registrationBatch.commit(), 'saving your completed profile');
     try { await updateProfile(user, { displayName: name, photoURL: profilePicture || null }); } catch (_) {}
     _updateAqsGlobals(user, completed);
     var welcomeEmailSent = await trySendWelcomeEmail();
@@ -2754,8 +2799,17 @@ async function actionUpdateAvatar(data) {
     var avatarData = data.avatar || '';
     if (!avatarData) throw new Error('No avatar data provided.');
     if (avatarData.length > 400000) throw new Error('Image is too large. Please choose a smaller photo.');
-    /* Use setDoc with merge so it works even if the user doc does not exist yet */
-    await setDoc(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() }, { merge: true });
+    var userProfileSnap = await getDoc(doc(db, 'users', user.uid));
+    var userProfile = userProfileSnap.exists() ? userProfileSnap.data() : {};
+    var socialProfileRef = doc(db, 'social_profiles', user.uid);
+    var socialProfileSnap = await getDoc(socialProfileRef);
+    var socialProfile = socialProfileSnap.exists()
+        ? { uid: user.uid, photoURL: avatarData, updatedAt: serverTimestamp() }
+        : _aqsBuildSocialProfile(user, Object.assign({}, userProfile, { photoURL: avatarData }));
+    var avatarBatch = writeBatch(db);
+    avatarBatch.set(doc(db, 'users', user.uid), { avatar: avatarData, updated_at: serverTimestamp() }, { merge: true });
+    avatarBatch.set(socialProfileRef, socialProfile, { merge: true });
+    await avatarBatch.commit();
     return { avatar: avatarData };
 }
 
@@ -2909,7 +2963,12 @@ function _updateAqsGlobals(user, profile) {
                         status:     'active',
                         created_at: serverTimestamp()
                     };
-                    setDoc(doc(db, 'users', user.uid), profile).catch(function() {});
+                    var profileBatch = writeBatch(db);
+                    profileBatch.set(doc(db, 'users', user.uid), profile);
+                    profileBatch.set(doc(db, 'social_profiles', user.uid), _aqsBuildSocialProfile(user, profile), { merge: true });
+                    profileBatch.commit().catch(function(error) {
+                        console.warn('[AQS] Could not create user/social profiles:', error && error.message || error);
+                    });
                 }
             }).catch(function() {});
         });

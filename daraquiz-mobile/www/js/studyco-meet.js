@@ -297,14 +297,15 @@ async function ensureProfile(user) {
   if (existing) {
     const backfill = {};
     const legacyValues = {
-      displayName: legacy.name || legacy.displayName || '',
+      displayName: legacy.name || legacy.displayName || user.displayName || '',
       username: legacy.username || '',
       phone: legacy.phone || legacy.phoneNumber || '',
-      school: legacy.institution || legacy.school || '',
+      school: legacy.institution || legacy.school || legacy.school_name || '',
       department: legacy.department || '',
+      major: legacy.major || '',
       gender: legacy.gender || legacy.sex || '',
       location: legacy.location || legacy.city || '',
-      photoURL: legacy.photoURL || legacy.photoUrl || user.photoURL || '',
+      photoURL: legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || user.photoURL || '',
       email: legacy.email || user.email || ''
     };
     Object.entries(legacyValues).forEach(([key, value]) => {
@@ -318,12 +319,12 @@ async function ensureProfile(user) {
     return state.profile;
   }
   const fallback = {
-    uid: user.uid, displayName: user.displayName || legacy.name || user.email?.split('@')[0] || 'StudyCo learner',
+    uid: user.uid, displayName: user.displayName || legacy.name || legacy.displayName || user.email?.split('@')[0] || 'StudyCo learner',
     username: legacy.username || (user.email || 'learner').split('@')[0].replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'learner',
     email: user.email || '', loginIdentifier: user.email || '', phone: legacy.phone || legacy.phoneNumber || '', bio: '', studentStatus: '',
-    school: legacy.institution || legacy.school || '', department: legacy.department || '', major: '',
+    school: legacy.institution || legacy.school || legacy.school_name || '', department: legacy.department || '', major: legacy.major || '',
     gender: legacy.gender || legacy.sex || '', location: legacy.location || legacy.city || '',
-    photoURL: user.photoURL || '', coverURL: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    photoURL: user.photoURL || legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || '', coverURL: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   };
   await setDoc(doc(db, 'social_profiles', user.uid), fallback, { merge: true });
   state.profile = { ...fallback, id: user.uid }; state.profiles.set(user.uid, state.profile);
@@ -1249,48 +1250,92 @@ async function handleFriendAction(uid, action) {
 }
 
 async function loadSocialLists() {
-  const [sent, received] = await Promise.all([
-    getDocs(query(collection(db, 'social_friend_requests'), where('requesterId', '==', state.user.uid), limit(100))),
-    getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', state.user.uid), limit(100)))
-  ]);
-  const requests = received.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status === 'pending');
-  const sentRequests = sent.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status === 'pending');
-  const friendIds = [...sent.docs, ...received.docs].map((item) => item.data()).filter((item) => item.status === 'accepted').map((item) => item.requesterId === state.user.uid ? item.recipientId : item.requesterId);
-  state.requests = await Promise.all(requests.map(async (item) => ({ ...item, profile: await getProfile(item.requesterId) })));
-  state.sentRequests = await Promise.all(sentRequests.map(async (item) => ({ ...item, profile: await getProfile(item.recipientId) })));
-  state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
-  const orderedIncomingRequests = [...state.requests].sort((a, b) => {
-    const difference = timeMs(a.createdAt) - timeMs(b.createdAt);
-    return state.friendRequestSort === 'oldest' ? difference : -difference;
-  });
-  const incomingRequestHtml = orderedIncomingRequests.map((item) => {
-    const requestContext = [item.profile?.school, item.profile?.department || item.profile?.major]
-      .filter(Boolean)
-      .join(' · ') || 'Sent you a friend request';
-    return '<article class="studyco-list-row studyco-friend-row studyco-incoming-request" data-request-time="' + timeMs(item.createdAt) + '">' +
-      avatar(item.profile, 'small') + '<div><strong>' + esc(profileName(item.profile)) + '</strong><span>' + esc(requestContext) + '</span></div>' +
-      '<time class="studyco-friend-request-time">' + esc(timeText(item.createdAt)) + '</time>' +
-      '<button class="studyco-button success" data-friend-action="accept" data-uid="' + esc(item.requesterId) + '">Confirm</button>' +
-      '<button class="studyco-button danger" data-friend-action="reject" data-uid="' + esc(item.requesterId) + '">Delete</button></article>';
-  }).join('');
-  const sentRequestHtml = state.sentRequests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-sent-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request sent</span></div><button class="studyco-button danger" data-friend-action="cancel" data-uid="${esc(item.recipientId)}">Remove</button></div>`).join('');
-  const hasRequests = Boolean(incomingRequestHtml || sentRequestHtml);
-  const friendsHeading = $('studyco-friends-heading');
-  if (friendsHeading) friendsHeading.textContent = hasRequests ? 'Requests' : 'Suggestions';
-  const sentRequestHeading = state.sentRequests.length ? '<div class="studyco-sent-request-heading">Sent requests</div>' : '';
-  const requestHtml = hasRequests ? incomingRequestHtml + sentRequestHeading + sentRequestHtml : '';
-  const suggestions = (await getDocs(query(collection(db, 'social_profiles'), limit(20)))).docs.map((item) => publicProfile({ id: item.id, ...item.data() })).filter((item) => item.id !== state.user.uid && !state.dismissedSuggestions.has(item.id) && !state.friends.some((friend) => friend.uid === item.id) && !state.requests.some((request) => request.requesterId === item.id) && !state.sentRequests.some((request) => request.recipientId === item.id)).slice(0, 6);
-  suggestions.forEach((item) => state.profiles.set(item.id, item));
-  const suggestionHtml = suggestions.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || item.username ? (item.school || `@${item.username}`) : 'StudyCo learner')}</span></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
-  $('studyco-request-section').hidden = !hasRequests;
-  $('studyco-right-request-section').hidden = state.requests.length === 0;
-  $('studyco-request-list').innerHTML = requestHtml; $('studyco-request-count').textContent = String(state.requests.length);
-  $('studyco-suggestion-list').innerHTML = suggestionHtml;
-  setNavBadge('studyco-friend-badge', state.requests.length);
-  $('studyco-right-requests').innerHTML = state.requests.slice(0, 3).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('') || '<div class="studyco-empty">No new requests.</div>';
-  $('studyco-right-suggestions').innerHTML = suggestions.slice(0, 4).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
-  if (state.activeView === 'profile') renderProfile();
-  if (state.activeView === 'messages') renderChatList();
+  const uid = state.user?.uid;
+  if (!uid) return;
+  const suggestionList = $('studyco-suggestion-list');
+  const rightSuggestionList = $('studyco-right-suggestions');
+  const rejectedByFilter = { invalid: 0, self: 0, dismissed: 0, friends: 0, incomingRequests: 0, sentRequests: 0 };
+  let profilesReturned = 0;
+  let pagesRead = 0;
+  let suggestions = [];
+  let suggestionHtml = '';
+  try {
+    const [sent, received] = await Promise.all([
+      getDocs(query(collection(db, 'social_friend_requests'), where('requesterId', '==', state.user.uid), limit(100))),
+      getDocs(query(collection(db, 'social_friend_requests'), where('recipientId', '==', state.user.uid), limit(100)))
+    ]);
+    const requests = received.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status === 'pending');
+    const sentRequests = sent.docs.map((item) => ({ id: item.id, ...item.data() })).filter((item) => item.status === 'pending');
+    const friendIds = [...sent.docs, ...received.docs].map((item) => item.data()).filter((item) => item.status === 'accepted').map((item) => item.requesterId === state.user.uid ? item.recipientId : item.requesterId);
+    state.requests = await Promise.all(requests.map(async (item) => ({ ...item, profile: await getProfile(item.requesterId) })));
+    state.sentRequests = await Promise.all(sentRequests.map(async (item) => ({ ...item, profile: await getProfile(item.recipientId) })));
+    state.friends = (await Promise.all([...new Set(friendIds)].map(async (uid) => ({ uid, profile: await getProfile(uid) })))).filter((item) => item.profile);
+    const orderedIncomingRequests = [...state.requests].sort((a, b) => {
+      const difference = timeMs(a.createdAt) - timeMs(b.createdAt);
+      return state.friendRequestSort === 'oldest' ? difference : -difference;
+    });
+    const incomingRequestHtml = orderedIncomingRequests.map((item) => {
+      const requestContext = [item.profile?.school, item.profile?.department || item.profile?.major]
+        .filter(Boolean)
+        .join(' · ') || 'Sent you a friend request';
+      return '<article class="studyco-list-row studyco-friend-row studyco-incoming-request" data-request-time="' + timeMs(item.createdAt) + '">' +
+        avatar(item.profile, 'small') + '<div><strong>' + esc(profileName(item.profile)) + '</strong><span>' + esc(requestContext) + '</span></div>' +
+        '<time class="studyco-friend-request-time">' + esc(timeText(item.createdAt)) + '</time>' +
+        '<button class="studyco-button success" data-friend-action="accept" data-uid="' + esc(item.requesterId) + '">Confirm</button>' +
+        '<button class="studyco-button danger" data-friend-action="reject" data-uid="' + esc(item.requesterId) + '">Delete</button></article>';
+    }).join('');
+    const sentRequestHtml = state.sentRequests.map((item) => `<div class="studyco-list-row studyco-friend-row studyco-sent-request">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request sent</span></div><button class="studyco-button danger" data-friend-action="cancel" data-uid="${esc(item.recipientId)}">Remove</button></div>`).join('');
+    const hasRequests = Boolean(incomingRequestHtml || sentRequestHtml);
+    const friendsHeading = $('studyco-friends-heading');
+    if (friendsHeading) friendsHeading.textContent = hasRequests ? 'Requests' : 'Suggestions';
+    const sentRequestHeading = state.sentRequests.length ? '<div class="studyco-sent-request-heading">Sent requests</div>' : '';
+    const requestHtml = hasRequests ? incomingRequestHtml + sentRequestHeading + sentRequestHtml : '';
+    suggestions = [];
+    let cursor = null;
+    const pageSize = 20;
+    for (let page = 0; page < 5 && suggestions.length < 6; page += 1) {
+      const constraints = [orderBy(documentId())];
+      if (cursor) constraints.push(startAfter(cursor));
+      constraints.push(limit(pageSize));
+      const snapshot = await getDocs(query(collection(db, 'social_profiles'), ...constraints));
+      pagesRead += 1;
+      profilesReturned += snapshot.docs.length;
+      if (!snapshot.docs.length) break;
+      cursor = snapshot.docs[snapshot.docs.length - 1];
+      for (const item of snapshot.docs) {
+        const profile = publicProfile({ id: item.id, ...item.data() });
+        if (!profile?.id) { rejectedByFilter.invalid += 1; continue; }
+        if (profile.id === uid) { rejectedByFilter.self += 1; continue; }
+        if (state.dismissedSuggestions.has(profile.id)) { rejectedByFilter.dismissed += 1; continue; }
+        if (state.friends.some((friend) => friend.uid === profile.id)) { rejectedByFilter.friends += 1; continue; }
+        if (state.requests.some((request) => request.requesterId === profile.id)) { rejectedByFilter.incomingRequests += 1; continue; }
+        if (state.sentRequests.some((request) => request.recipientId === profile.id)) { rejectedByFilter.sentRequests += 1; continue; }
+        suggestions.push(profile);
+        if (suggestions.length >= 6) break;
+      }
+      if (snapshot.docs.length < pageSize) break;
+    }
+    suggestions.forEach((item) => state.profiles.set(item.id, item));
+    suggestionHtml = suggestions.map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong><span>${esc(item.school || item.username ? (item.school || `@${item.username}`) : 'StudyCo learner')}</span></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
+    $('studyco-request-section').hidden = !hasRequests;
+    $('studyco-right-request-section').hidden = state.requests.length === 0;
+    $('studyco-request-list').innerHTML = requestHtml; $('studyco-request-count').textContent = String(state.requests.length);
+    if (suggestionList) suggestionList.innerHTML = suggestionHtml;
+    else console.error('[StudyCo social] #studyco-suggestion-list is missing', { uid });
+    setNavBadge('studyco-friend-badge', state.requests.length);
+    $('studyco-right-requests').innerHTML = state.requests.slice(0, 3).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item.profile, 'small')}<div><strong>${esc(profileName(item.profile))}</strong><span>Friend request</span></div><button class="studyco-button success" data-friend-action="accept" data-uid="${esc(item.requesterId)}">Confirm</button><button class="studyco-button danger" data-friend-action="reject" data-uid="${esc(item.requesterId)}">Remove</button></div>`).join('') || '<div class="studyco-empty">No new requests.</div>';
+    if (rightSuggestionList) $('studyco-right-suggestions').innerHTML = suggestions.slice(0, 4).map((item) => `<div class="studyco-list-row studyco-friend-row">${avatar(item, 'small')}<div><strong>${esc(profileName(item))}</strong></div><button class="studyco-button primary" data-friend-action="request" data-uid="${esc(item.id)}">Add friend</button><button class="studyco-button danger" data-friend-action="dismiss" data-uid="${esc(item.id)}">Remove</button></div>`).join('') || '<div class="studyco-empty">Suggestions will appear here.</div>';
+    else console.warn('[StudyCo social] #studyco-right-suggestions is missing', { uid });
+    console.debug('[StudyCo social] Suggestion scan', { uid, profilesReturned, pagesRead, rejectedByFilter, finalSuggestionCount: suggestions.length, suggestionHtmlGenerated: Boolean(suggestionHtml), suggestionListExists: Boolean(suggestionList), rightSuggestionListExists: Boolean(rightSuggestionList) });
+    if (state.activeView === 'profile') renderProfile();
+    if (state.activeView === 'messages') renderChatList();
+  } catch (error) {
+    console.debug('[StudyCo social] Suggestion scan', { uid, profilesReturned, pagesRead, rejectedByFilter, finalSuggestionCount: suggestions.length, suggestionHtmlGenerated: Boolean(suggestionHtml), suggestionListExists: Boolean(suggestionList), rightSuggestionListExists: Boolean(rightSuggestionList) });
+    console.error('[StudyCo social] Failed to load social lists', { uid, code: error?.code || '', message: error?.message || String(error) });
+    const errorHtml = '<div class="studyco-empty">Suggestions could not be loaded. Please try again.</div>';
+    if (suggestionList) suggestionList.innerHTML = errorHtml;
+    if (rightSuggestionList) rightSuggestionList.innerHTML = errorHtml;
+  }
 }
 
 async function ensureConversation(uid) {
