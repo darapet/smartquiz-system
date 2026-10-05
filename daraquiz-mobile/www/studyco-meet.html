@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
   <link rel="modulepreload" href="js/aqs-firebase.js?v=20260922-mobile-upload-2">
-  <link rel="modulepreload" href="js/studyco-meet.js?v=dara-feed-card-v2">
+  <link rel="modulepreload" href="js/studyco-meet.js?v=social-home-nav-20261005">
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="css/studyco-facebook.css?v=dara-feed-card-v2">
   <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
   <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
-  <link rel="stylesheet" href="css/studyco-polish.css?v=home-context-nav-flow-20261002">
+  <link rel="stylesheet" href="css/studyco-polish.css?v=social-home-nav-20261005">
 <style>
     /* Paint a useful first frame before Firebase and the module bundle finish. */
     #studyco-boot-screen{min-height:100vh;box-sizing:border-box;padding:26px 16px;background:#f5f7ff;color:#25294b;display:grid;place-items:center;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
@@ -152,7 +152,7 @@
         <section id="studyco-view-friends" class="studyco-view">
           <div class="studyco-mobile-friends-header">
             <button class="studyco-mobile-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button>
-            <h1>Requests</h1>
+            <h1 id="studyco-friends-heading">Suggestions</h1>
             <button id="studyco-friend-search-action" class="studyco-mobile-search" type="button" aria-label="Search friends"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
           </div>
           <div id="studyco-people-results" class="studyco-people-grid"></div>
@@ -172,6 +172,7 @@
         </section>
 
           <section id="studyco-view-profile" class="studyco-view">
+            <header class="studyco-profile-page-header"><button class="studyco-mobile-back" data-studyco-view="home" type="button" aria-label="Back to home">‹</button><h1>Profile</h1><span aria-hidden="true"></span></header>
             <section class="studyco-profile-hero studyco-card">
               <div class="studyco-profile-cover" id="studyco-profile-cover"><div class="studyco-profile-cover-shade"></div><span class="studyco-profile-cover-label">Your learning space</span></div>
               <div class="studyco-profile-identity">
@@ -357,6 +358,6 @@
    </div>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>
   <script src="js/aqs-bottom-nav.js"></script>
-   <script type="module" src="js/studyco-meet.js?v=dara-feed-card-v2"></script>
+   <script type="module" src="js/studyco-meet.js?v=social-home-nav-20261005"></script>
 </body>
 </html>
