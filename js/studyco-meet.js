@@ -1,12 +1,15 @@
 import { auth, db } from './aqs-firebase.js';
 import { signOut } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import { collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy, documentId, startAfter, limit, onSnapshot, serverTimestamp, Timestamp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+const MAX_STORY_VIDEO_SIZE = 5 * 1024 * 1024;
+const MAX_STORY_VIDEO_SECONDS = 40;
+
 const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null, viewedProfilePosts: [], viewedProfileRelation: 'none', activeProfileTab: 'posts',
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(), postPreferences: new Map(),
-  storyColor: '#5b5bd6', storyIndex: 0, storyViewerOpen: false, storyPreviousHash: '#home', pendingStoryId: '', postImage: null, postFile: null, storyImage: null, wired: false,
+  storyColor: '#5b5bd6', storyIndex: 0, storyViewerOpen: false, storyPreviousHash: '#home', pendingStoryId: '', postImage: null, postFile: null, storyFile: null, storyPreviewUrl: '', storyVideoDuration: 0, storySelectionToken: 0, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, chatListOwner: null, messageUnsub: null, notificationUnsub: null, chatSettingsUnsub: null, blockedUsersUnsub: null, chatSettingsOwner: null, blockedUsersOwner: null,
   notifications: [],
   friendRequestSort: 'newest',
@@ -172,6 +175,15 @@ async function uploadImage(file, path) {
   if (!file) return '';
   if (!file.type.startsWith('image/')) throw new Error('StudyCo Meet accepts images only. Video uploads are disabled.');
   if (file.size > 25 * 1024 * 1024) throw new Error('Choose an image below 25 MB.');
+  if (typeof window.aqsUploadFile === 'function') return window.aqsUploadFile(file, path);
+  throw new Error('Cloudinary storage is not ready. Please ask the administrator to configure it.');
+}
+
+async function uploadStoryMedia(file, path, mediaType) {
+  if (mediaType === 'image') return uploadImage(file, path);
+  if (mediaType !== 'video') return '';
+  if (!file.type.startsWith('video/')) throw new Error('Choose a valid video for your story.');
+  if (file.size > MAX_STORY_VIDEO_SIZE) throw new Error('Videos must be 5 MB or smaller.');
   if (typeof window.aqsUploadFile === 'function') return window.aqsUploadFile(file, path);
   throw new Error('Cloudinary storage is not ready. Please ask the administrator to configure it.');
 }
@@ -1172,22 +1184,136 @@ function subscribeStories() {
   }, (error) => toast(error.message || 'Private stories could not load.', true));
 }
 
+function clearStoryMediaPreview() {
+  if (state.storyPreviewUrl) {
+    URL.revokeObjectURL(state.storyPreviewUrl);
+    state.storyPreviewUrl = '';
+  }
+  const imagePreview = $('studyco-story-preview');
+  if (imagePreview) imagePreview.style.backgroundImage = '';
+  const videoPreview = $('studyco-story-video-preview');
+  if (videoPreview) {
+    videoPreview.pause();
+    videoPreview.removeAttribute('src');
+    videoPreview.load();
+    videoPreview.hidden = true;
+  }
+}
+
+function readStoryVideoDuration(file) {
+  return new Promise((resolve, reject) => {
+    const probe = document.createElement('video');
+    const objectUrl = URL.createObjectURL(file);
+    let settled = false;
+    let timeoutId = 0;
+    const finish = (error, duration) => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+      probe.onloadedmetadata = null;
+      probe.onerror = null;
+      probe.removeAttribute('src');
+      probe.load();
+      URL.revokeObjectURL(objectUrl);
+      if (error) reject(error);
+      else resolve(duration);
+    };
+    timeoutId = window.setTimeout(() => finish(new Error('Could not read this video duration. Choose a playable video.')), 10000);
+    probe.preload = 'metadata';
+    probe.onloadedmetadata = () => {
+      const duration = Number(probe.duration);
+      if (!Number.isFinite(duration) || duration <= 0) {
+        finish(new Error('Could not read this video duration. Choose a playable video.'));
+        return;
+      }
+      finish(null, duration);
+    };
+    probe.onerror = () => finish(new Error('This video format could not be read. Choose a playable video.'));
+    probe.src = objectUrl;
+    probe.load();
+  });
+}
+
+async function validateStoryMedia(file) {
+  if (!file) return { mediaType: 'text', duration: 0 };
+  if (file.type.startsWith('image/')) return { mediaType: 'image', duration: 0 };
+  if (!file.type.startsWith('video/')) throw new Error('Choose an image or video for your story.');
+  if (file.size > MAX_STORY_VIDEO_SIZE) throw new Error('Videos must be 5 MB or smaller.');
+  const duration = file === state.storyFile && state.storyVideoDuration > 0
+    ? state.storyVideoDuration
+    : await readStoryVideoDuration(file);
+  if (duration > MAX_STORY_VIDEO_SECONDS) throw new Error('Videos must be 40 seconds or shorter.');
+  return { mediaType: 'video', duration };
+}
+
+async function handleStoryMediaSelection(event) {
+  const input = event.target;
+  const file = input.files?.[0] || null;
+  state.storySelectionToken += 1;
+  const selectionToken = state.storySelectionToken;
+  state.storyFile = file;
+  state.storyVideoDuration = 0;
+  clearStoryMediaPreview();
+  if (!file) return;
+
+  const isImage = file.type.startsWith('image/');
+  const isVideo = file.type.startsWith('video/');
+  if (!isImage && !isVideo) {
+    state.storyFile = null;
+    input.value = '';
+    toast('Choose an image or video for your story.', true);
+    return;
+  }
+  if (isVideo && file.size > MAX_STORY_VIDEO_SIZE) {
+    state.storyFile = null;
+    input.value = '';
+    toast('Videos must be 5 MB or smaller.', true);
+    return;
+  }
+
+  const previewUrl = URL.createObjectURL(file);
+  state.storyPreviewUrl = previewUrl;
+  if (isImage) {
+    $('studyco-story-preview').style.backgroundImage = 'url("' + previewUrl + '")';
+    return;
+  }
+
+  const videoPreview = $('studyco-story-video-preview');
+  videoPreview.src = previewUrl;
+  videoPreview.hidden = false;
+  videoPreview.load();
+  try {
+    const duration = await readStoryVideoDuration(file);
+    if (selectionToken !== state.storySelectionToken) return;
+    if (duration > MAX_STORY_VIDEO_SECONDS) throw new Error('Videos must be 40 seconds or shorter.');
+    state.storyVideoDuration = duration;
+  } catch (error) {
+    if (selectionToken !== state.storySelectionToken) return;
+    state.storyFile = null;
+    state.storyVideoDuration = 0;
+    input.value = '';
+    clearStoryMediaPreview();
+    toast(error.message || 'This video could not be checked.', true);
+  }
+}
+
 async function createStory(event) {
   event.preventDefault();
-  const text = $('studyco-story-text').value.trim(); const file = state.storyImage;
-  if (!text && !file) { toast('Add a caption or an image to create a story.', true); return; }
+  const text = $('studyco-story-text').value.trim(); const file = state.storyFile;
+  if (!text && !file) { toast('Add a caption or an image/video to create a story.', true); return; }
   try {
+    const media = file ? await validateStoryMedia(file) : { mediaType: 'text', duration: 0 };
     let defaultAudience = 'public';
     try {
       const settingsSnapshot = await getDoc(doc(db, 'social_profiles', state.user.uid));
       if (settingsSnapshot.exists() && settingsSnapshot.data().storyPrivacy?.defaultAudience === 'only_me') defaultAudience = 'only_me';
     } catch (_) { /* Keep the existing public-story behavior if settings are unavailable. */ }
     const storageRoot = defaultAudience === 'only_me' ? 'studyco-private' : 'studyco';
-    const imageUrl = file ? await uploadImage(file, `${storageRoot}/${state.user.uid}/stories/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`) : '';
-    const storyData = { userId: state.user.uid, content: text.slice(0, 240), imageUrl, bgColor: state.storyColor, audience: defaultAudience, expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)), createdAt: serverTimestamp() };
+    const mediaUrl = file ? await uploadStoryMedia(file, `${storageRoot}/${state.user.uid}/stories/${Date.now()}-${file.name.replace(/[^a-z0-9._-]/gi, '')}`, media.mediaType) : '';
+    const storyData = { userId: state.user.uid, content: text.slice(0, 240), imageUrl: media.mediaType === 'image' ? mediaUrl : '', videoUrl: media.mediaType === 'video' ? mediaUrl : '', mediaType: media.mediaType, bgColor: state.storyColor, audience: defaultAudience, expiresAt: Timestamp.fromDate(new Date(Date.now() + 86400000)), createdAt: serverTimestamp() };
     const storyCollection = defaultAudience === 'only_me' ? 'studyco_private_stories' : 'studyco_stories';
     await addDoc(collection(db, storyCollection), storyData);
-    $('studyco-story-form').reset(); state.storyImage = null; $('studyco-story-preview').style.backgroundImage = ''; closeModal('studyco-story-modal'); toast(defaultAudience === 'only_me' ? 'Private story saved. Only you can see it.' : 'Story shared for 24 hours.');
+    $('studyco-story-form').reset(); state.storyFile = null; state.storyVideoDuration = 0; state.storySelectionToken += 1; clearStoryMediaPreview(); closeModal('studyco-story-modal'); toast(defaultAudience === 'only_me' ? 'Private story saved. Only you can see it.' : 'Story shared for 24 hours.');
   } catch (error) { toast(error.message || 'Story could not be shared.', true); }
 }
 
@@ -1241,9 +1367,15 @@ function renderStoryViewer() {
     const segment = document.createElement('span');
     segment.className = 'studyco-story-progress-segment';
     if (isComplete || index < state.storyIndex) segment.classList.add('is-complete');
-    else if (index === state.storyIndex) segment.classList.add('is-current');
+    else if (index === state.storyIndex) {
+      segment.classList.add('is-current');
+      if (item.videoUrl || item.mediaType === 'video') segment.classList.add('is-playing');
+    }
     progress.appendChild(segment);
   });
+
+  const previousVideo = content.querySelector('video');
+  if (previousVideo) previousVideo.pause();
 
   avatar.replaceChildren();
   const photoUrl = profile.photoURL || profile.avatarURL || profile.imageURL || '';
@@ -1283,7 +1415,29 @@ function renderStoryViewer() {
     card.append(heading, message, create, hint);
     content.appendChild(card);
   } else {
-    if (story.imageUrl) {
+    const videoUrl = story.videoUrl || (story.mediaType === 'video' ? story.imageUrl : '');
+    const isVideoStory = !!videoUrl || story.mediaType === 'video';
+    if (videoUrl) {
+      const video = document.createElement('video');
+      video.className = 'studyco-story-viewer-video';
+      video.src = videoUrl;
+      video.autoplay = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'auto';
+      video.addEventListener('timeupdate', () => {
+        const segment = progress.children[state.storyIndex];
+        if (segment && video.duration > 0) segment.style.setProperty('--story-progress', Math.min(100, video.currentTime / video.duration * 100) + '%');
+      });
+      video.addEventListener('ended', () => {
+        if (state.storyViewerOpen && activeStories()[state.storyIndex]?.id === story.id) stepStory(1);
+      }, { once: true });
+      content.appendChild(video);
+      try {
+        const playback = video.play();
+        if (playback?.catch) playback.catch(() => {});
+      } catch (_) { /* Some embedded browsers reject autoplay; story navigation remains available. */ }
+    } else if (story.imageUrl) {
       const image = document.createElement('img');
       image.className = 'studyco-story-viewer-image';
       image.src = story.imageUrl;
@@ -1292,7 +1446,7 @@ function renderStoryViewer() {
     }
     if (story.content) {
       const caption = document.createElement('div');
-      caption.className = 'studyco-story-message' + (story.imageUrl ? '' : ' is-text-only');
+      caption.className = 'studyco-story-message' + (story.imageUrl || isVideoStory ? '' : ' is-text-only');
       caption.textContent = story.content;
       content.appendChild(caption);
     }
@@ -3245,7 +3399,7 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-story-next').addEventListener('click', () => stepStory(1));
   $('studyco-story-close').addEventListener('click', () => closeStoryViewer());
   document.addEventListener('keydown', (event) => { if (!state.storyViewerOpen) return; if (event.key === 'Escape') closeStoryViewer(); else if (event.key === 'ArrowRight') stepStory(1); else if (event.key === 'ArrowLeft') stepStory(-1); });
-  $('studyco-story-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.storyImage = file || null; if (file) $('studyco-story-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`; });
+  $('studyco-story-image').addEventListener('change', handleStoryMediaSelection);
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
   $('studyco-profile-add-story')?.addEventListener('click', () => openModal('studyco-story-modal'));
