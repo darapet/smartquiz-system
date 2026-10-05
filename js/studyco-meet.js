@@ -3399,7 +3399,7 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-story-next').addEventListener('click', () => stepStory(1));
   $('studyco-story-close').addEventListener('click', () => closeStoryViewer());
   document.addEventListener('keydown', (event) => { if (!state.storyViewerOpen) return; if (event.key === 'Escape') closeStoryViewer(); else if (event.key === 'ArrowRight') stepStory(1); else if (event.key === 'ArrowLeft') stepStory(-1); });
-  $('studyco-story-image').addEventListener('change', handleStoryMediaSelection);
+  $('studyco-story-image').addEventListener('change', handleStoryMediaSelection); $('studyco-story-video').addEventListener('change', handleStoryMediaSelection);
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
   $('studyco-profile-add-story')?.addEventListener('click', () => openModal('studyco-story-modal'));
