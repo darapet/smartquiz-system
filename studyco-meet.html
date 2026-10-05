@@ -21,7 +21,7 @@
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
   <link rel="modulepreload" href="js/aqs-firebase.js?v=perf-1">
-  <link rel="modulepreload" href="js/studyco-meet.js?v=dara-feed-tabs-v1">
+  <link rel="modulepreload" href="js/studyco-meet.js?v=friend-message-polish-v1">
   <link rel="stylesheet" href="css/aqs-style.css">
   <link rel="stylesheet" href="css/aqs-space-nav.css">
   <link rel="stylesheet" href="css/studyco-meet.css?v=message-read-receipts-20261003">
@@ -30,6 +30,7 @@
   <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
   <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
   <link rel="stylesheet" href="css/studyco-polish.css?v=home-context-nav-flow-20261002">
+  <link rel="stylesheet" href="css/dara-social-requests-messages.css?v=friend-message-polish-v1">
 </head>
 <body class="studyco-page">
   <div id="studyco-boot-screen" role="status" aria-live="polite">
@@ -155,9 +156,12 @@
           </div>
           <div id="studyco-people-results" class="studyco-people-grid"></div>
            <div class="studyco-friends-stack">
-             <section id="studyco-request-section" class="studyco-card" hidden>
-               <div class="studyco-section-title"><div><h2>Friend requests</h2></div><span id="studyco-request-count" class="studyco-count">0</span></div>
-               <div id="studyco-request-list" class="studyco-list"></div>
+             <section id="studyco-request-section" class="studyco-card studyco-request-card" hidden>
+               <div class="studyco-request-heading">
+                 <h2>Friend Requests <span id="studyco-request-count" class="studyco-request-count">0</span></h2>
+                 <button id="studyco-request-sort" class="studyco-request-sort" type="button" aria-label="Sort friend requests, newest first" title="Newest requests first">Sort</button>
+               </div>
+               <div id="studyco-request-list" class="studyco-list studyco-request-list" aria-live="polite"></div>
              </section>
              <section class="studyco-card">
                <div class="studyco-section-title"><div><h2>Suggestion</h2></div></div>
@@ -245,15 +249,19 @@
         </section>
 
         <section id="studyco-view-messages" class="studyco-view">
-          <div class="studyco-page-heading studyco-message-page-heading"><button class="studyco-message-back" data-studyco-view="home" type="button" aria-label="Back to home">â¹</button><div><p class="studyco-eyebrow">Stay in the loop</p><h1 class="studyco-visually-hidden">Messages</h1><p>Keep the good questions going.</p></div><div class="studyco-message-heading-actions"><button class="studyco-icon-button" type="button" aria-label="Search messages">â</button><button id="studyco-new-message" class="studyco-button primary" type="button">New message</button></div></div>
+          <div class="studyco-page-heading studyco-message-page-heading">
+            <button class="studyco-message-back" data-studyco-view="home" type="button" aria-label="Back to home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg></button>
+            <div class="studyco-message-heading-copy"><h1>Messages</h1></div>
+            <div class="studyco-message-heading-actions"><button id="studyco-new-message" class="studyco-button primary" type="button" aria-label="New message" title="New message">New message</button></div>
+          </div>
           <div class="studyco-messages-shell">
             <section class="studyco-conversations-panel" aria-label="Recent conversations">
-              <div class="studyco-conversations-head"><div><span class="studyco-eyebrow">Inbox</span><h2>Recent chats</h2></div><span id="studyco-chat-count" class="studyco-count">0</span></div>
-              <label class="studyco-message-search"><span aria-hidden="true">â</span><input id="studyco-message-search" type="search" placeholder="Search conversations" aria-label="Search conversations"></label>
+              <div class="studyco-conversations-head"><div><h2>Chats</h2></div><span id="studyco-chat-count" class="studyco-count">0</span></div>
+              <label class="studyco-message-search"><span aria-hidden="true">â</span><input id="studyco-message-search" type="search" placeholder="Search chats" aria-label="Search chats"></label>
               <div id="studyco-chat-list" class="studyco-chat-list"></div>
             </section>
            <section id="studyco-chat-panel" class="studyco-chat-panel studyco-chat-panel-full" aria-label="Conversation">
-              <div class="studyco-chat-empty"><strong>Select a friend</strong><span>Your conversation will appear here.</span></div>
+              <div class="studyco-chat-empty"><strong>Choose a conversation</strong></div>
             </section>
           </div>
         </section>
@@ -349,6 +357,6 @@
   <a class="dara-studio-fab" href="studio.html" aria-label="Open Studio AI"><span class="dara-studio-fab-spark">â¦</span><span>Studio AI</span></a>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>
   <script src="js/aqs-bottom-nav.js"></script>
-  <script type="module" src="js/studyco-meet.js?v=dara-feed-tabs-v1"></script>
+  <script type="module" src="js/studyco-meet.js?v=friend-message-polish-v1"></script>
 </body>
 </html>
