@@ -200,3 +200,46 @@ body.aqs-bottom-nav-page{padding-bottom:96px!important}
 .studyco-message-receipt.is-online svg,.studyco-message-receipt.is-read svg{width:19px}
 .studyco-message-receipt.is-online{color:#fff}
 .studyco-message-receipt.is-read{color:#ff6f86}
+
+
+/* Full-screen, tap-through story page shared by web and Capacitor. */
+#studyco-story-viewer.studyco-story-page { z-index: 300; inset: 0; padding: 0; background: #050506; backdrop-filter: none; }
+#studyco-story-viewer.studyco-story-page[hidden] { display: none; }
+#studyco-story-viewer .studyco-story-viewer { position: relative; width: min(520px, 100vw); height: 100vh; height: 100dvh; max-height: 960px; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border-radius: 14px; color: #fff; background: #111; box-shadow: 0 18px 70px #0008; }
+.studyco-story-progress { display: flex; gap: 4px; height: 3px; flex: 0 0 3px; margin: calc(env(safe-area-inset-top, 0px) + 10px) 12px 8px; }
+.studyco-story-progress-segment { position: relative; flex: 1; min-width: 0; overflow: hidden; border-radius: 999px; background: #ffffff59; }
+.studyco-story-progress-segment.is-complete::after, .studyco-story-progress-segment.is-current::after { position: absolute; inset: 0; content: ""; background: #fff; }
+.studyco-story-viewer-header { position: relative; z-index: 5; display: flex; align-items: center; gap: 10px; min-height: 58px; padding: 5px 12px 11px; color: #fff; }
+.studyco-story-viewer-avatar { width: 38px; height: 38px; flex: 0 0 38px; display: grid; place-items: center; overflow: hidden; border: 2px solid #ffffffa8; border-radius: 50%; background: #555; color: #fff; font-size: .75rem; font-weight: 800; }
+.studyco-story-viewer-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.studyco-story-viewer-meta { min-width: 0; flex: 1; }
+.studyco-story-viewer-meta strong, .studyco-story-viewer-meta small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.studyco-story-viewer-meta strong { font-size: .88rem; font-weight: 750; }
+.studyco-story-viewer-meta small { margin-top: 2px; color: #ffffffb8; font-size: .7rem; }
+.studyco-story-close { width: 40px; height: 40px; display: grid; place-items: center; border: 1px solid #ffffff4d; border-radius: 50%; background: #0005; color: #fff; font-size: 1.55rem; line-height: 1; cursor: pointer; }
+.studyco-story-viewer-stage { position: relative; min-height: 0; flex: 1; overflow: hidden; background: #5b5bd6; }
+.studyco-story-viewer-content { position: absolute; z-index: 1; inset: 0; overflow: hidden; pointer-events: none; }
+.studyco-story-viewer-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.studyco-story-message { position: absolute; z-index: 2; right: 18px; bottom: 26px; left: 18px; padding: 14px 16px; color: #fff; font-size: clamp(1rem, 4vw, 1.35rem); font-weight: 750; line-height: 1.35; text-align: center; text-shadow: 0 2px 14px #000b; }
+.studyco-story-message.is-text-only { inset: 0; display: grid; place-items: center; padding: 34px; background: transparent; font-size: clamp(1.6rem, 8vw, 2.5rem); }
+.studyco-story-nav { position: absolute; z-index: 3; top: 0; bottom: 0; width: 50%; border: 0; background: transparent; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.studyco-story-nav.previous { left: 0; }
+.studyco-story-nav.next { right: 0; }
+.studyco-story-nav:focus-visible { outline: 2px solid #fff; outline-offset: -5px; }
+.studyco-story-viewer-content.is-end-card { display: grid; place-items: center; padding: 28px; background: radial-gradient(circle at 50% 35%, #30365c 0, #111827 62%, #08090d 100%); }
+.studyco-story-end-card { width: min(340px, 100%); display: grid; justify-items: center; gap: 12px; text-align: center; pointer-events: none; }
+.studyco-story-end-card h2 { margin: 0; color: #fff; font-size: clamp(1.5rem, 6vw, 2rem); letter-spacing: -.04em; }
+.studyco-story-end-card p { margin: 0; color: #ffffffc9; font-size: .95rem; line-height: 1.5; }
+.studyco-story-create-own { min-height: 46px; margin-top: 8px; padding: 0 22px; border: 0; border-radius: 999px; background: #fff; color: #111827; font: inherit; font-size: .9rem; font-weight: 800; cursor: pointer; pointer-events: auto; }
+.studyco-story-end-card small { color: #ffffffa3; font-size: .72rem; }
+body.studyco-story-open { overflow: hidden; }
+@media (max-width: 600px) {
+  #studyco-story-viewer .studyco-story-viewer { width: 100vw; height: 100vh; height: 100dvh; max-height: none; border-radius: 0; }
+  .studyco-story-progress { margin-right: 10px; margin-left: 10px; }
+  .studyco-story-viewer-header { padding-right: 10px; padding-left: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { .studyco-story-viewer *, .studyco-story-viewer *::before, .studyco-story-viewer *::after { scroll-behavior: auto !important; transition: none !important; } }
+
+#studyco-story-viewer .studyco-story-viewer-content { width: 100%; height: 100%; box-sizing: border-box; padding: 0; text-align: left; font-size: inherit; font-weight: 400; line-height: normal; }
+#studyco-story-viewer .studyco-story-viewer-content.is-end-card { padding: 28px; }
+#studyco-story-viewer .studyco-story-viewer-image { position: absolute; z-index: 0; inset: 0; width: 100%; height: 100%; object-fit: contain; }
