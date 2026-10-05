@@ -1147,9 +1147,15 @@ async function addComment(postId, text) {
   return comments.size;
 }
 
+function renderStoryMedia(story) {
+  const videoUrl = story.videoUrl || (story.mediaType === 'video' ? story.imageUrl : '');
+  if (videoUrl) return `<video class="studyco-story-media-video" src="${esc(videoUrl)}" muted playsinline loop autoplay preload="metadata"></video><small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>`;
+  return story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="" loading="lazy" decoding="async">` : '';
+}
+
 function renderStories() {
   const active = state.stories.filter((story) => timeMs(story.expiresAt) > Date.now());
-  $('studyco-story-list').innerHTML = `<button class="studyco-story add" id="studyco-story-add-card" type="button"><span>Add a story</span></button>${active.map((story) => `<button class="studyco-story" data-story-id="${esc(story.id)}" style="background:${esc(story.bgColor || '#5b5bd6')}">${story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="">` : ''}<span>${esc(initials(state.profiles.get(story.userId)))}</span><strong>${esc(profileName(state.profiles.get(story.userId)))}<br><small>${esc(timeText(story.createdAt))}</small></strong></button>`).join('')}`;
+  $('studyco-story-list').innerHTML = `<button class="studyco-story add" id="studyco-story-add-card" type="button"><span>Add a story</span></button>${active.map((story) => `<button class="studyco-story" data-story-id="${esc(story.id)}" style="background:${esc(story.bgColor || '#5b5bd6')}">${renderStoryMedia(story)}<span>${esc(initials(state.profiles.get(story.userId)))}</span><strong>${esc(profileName(state.profiles.get(story.userId)))}<br><small>${esc(timeText(story.createdAt))}</small></strong></button>`).join('')}`;
 }
 
 function subscribeStories() {
@@ -1189,8 +1195,10 @@ function clearStoryMediaPreview() {
     URL.revokeObjectURL(state.storyPreviewUrl);
     state.storyPreviewUrl = '';
   }
-  const imagePreview = $('studyco-story-preview');
-  if (imagePreview) imagePreview.style.backgroundImage = '';
+  const imagePreview = $('studyco-story-image-preview');
+  if (imagePreview) { imagePreview.removeAttribute('src'); imagePreview.hidden = true; }
+  const imagePreviewContainer = $('studyco-story-preview');
+  if (imagePreviewContainer) imagePreviewContainer.hidden = true;
   const videoPreview = $('studyco-story-video-preview');
   if (videoPreview) {
     videoPreview.pause();
@@ -1274,7 +1282,11 @@ async function handleStoryMediaSelection(event) {
   const previewUrl = URL.createObjectURL(file);
   state.storyPreviewUrl = previewUrl;
   if (isImage) {
-    $('studyco-story-preview').style.backgroundImage = 'url("' + previewUrl + '")';
+    const imagePreview = $('studyco-story-image-preview');
+    const imagePreviewContainer = $('studyco-story-preview');
+    imagePreview.src = previewUrl;
+    imagePreview.hidden = false;
+    imagePreviewContainer.hidden = false;
     return;
   }
 
