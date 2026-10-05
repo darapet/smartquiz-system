@@ -252,3 +252,7 @@ body.studyco-story-open { overflow: hidden; }
 #studyco-story-viewer .studyco-story-viewer-content > .studyco-story-viewer-video,
 #studyco-story-viewer .studyco-story-viewer-content > .studyco-story-viewer-image { position: absolute; z-index: 0; inset: 0; display: block; visibility: visible; opacity: 1; width: 100%; height: 100%; object-fit: contain; }
 #studyco-story-viewer .studyco-story-viewer-content > .studyco-story-message { position: absolute; z-index: 2; display: block; visibility: visible; }
+
+
+/* A Cloudinary poster keeps the story viewer useful if a video range stream resets. */
+#studyco-story-viewer .studyco-story-video-fallback { position: absolute; z-index: 1; top: 16px; left: 50%; max-width: calc(100% - 32px); padding: 6px 10px; transform: translateX(-50%); border-radius: 999px; background: #111b; color: #fff; font-size: .75rem; text-align: center; pointer-events: none; }

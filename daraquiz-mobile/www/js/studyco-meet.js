@@ -1176,9 +1176,27 @@ function storyImageUrl(story) {
   return story?.imageUrl || (story?.mediaType === 'image' ? story?.mediaUrl || '' : '');
 }
 
+function storyVideoPosterUrl(videoUrl) {
+  try {
+    const url = new URL(videoUrl);
+    const uploadMarker = '/video/upload/';
+    if (url.hostname !== 'res.cloudinary.com' || !url.pathname.includes(uploadMarker)) return '';
+    const fileName = url.pathname.slice(url.pathname.lastIndexOf('/') + 1);
+    if (!/\.(?:mp4|mov|m4v|webm|ogv|mkv)$/i.test(fileName)) return '';
+    url.pathname = url.pathname.replace(uploadMarker, uploadMarker + 'so_0/');
+    url.pathname = url.pathname.replace(/\.(?:mp4|mov|m4v|webm|ogv|mkv)$/i, '.jpg');
+    return url.toString();
+  } catch (_) {
+    return '';
+  }
+}
+
 function renderStoryMedia(story) {
   const videoUrl = storyVideoUrl(story);
-  if (videoUrl) return `<video class="studyco-story-media-video" src="${esc(videoUrl)}" muted playsinline loop autoplay preload="metadata"></video><small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>`;
+  if (videoUrl) {
+    const posterUrl = storyVideoPosterUrl(videoUrl);
+    return posterUrl ? `<img class="studyco-story-media-poster" src="${esc(posterUrl)}" alt="" loading="lazy" decoding="async"><small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>` : '<small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>';
+  }
   const imageUrl = storyImageUrl(story);
   return imageUrl ? `<img src="${esc(imageUrl)}" alt="" loading="lazy" decoding="async">` : '';
 }
@@ -1468,10 +1486,24 @@ function renderStoryViewer() {
       const video = document.createElement('video');
       video.className = 'studyco-story-viewer-video';
       video.src = videoUrl;
+      const posterUrl = storyVideoPosterUrl(videoUrl);
+      if (posterUrl) video.poster = posterUrl;
       video.autoplay = true;
       video.muted = true;
       video.playsInline = true;
-      video.preload = 'auto';
+      video.preload = 'metadata';
+      video.addEventListener('error', () => {
+        if (!posterUrl || !video.isConnected) return;
+        const fallbackImage = document.createElement('img');
+        fallbackImage.className = 'studyco-story-viewer-image';
+        fallbackImage.src = posterUrl;
+        fallbackImage.alt = '';
+        video.replaceWith(fallbackImage);
+        const fallbackMessage = document.createElement('div');
+        fallbackMessage.className = 'studyco-story-video-fallback';
+        fallbackMessage.textContent = 'Video stream unavailable — showing preview';
+        content.appendChild(fallbackMessage);
+      });
       video.addEventListener('timeupdate', () => {
         const segment = progress.children[state.storyIndex];
         if (segment && video.duration > 0) segment.style.setProperty('--story-progress', Math.min(100, video.currentTime / video.duration * 100) + '%');
