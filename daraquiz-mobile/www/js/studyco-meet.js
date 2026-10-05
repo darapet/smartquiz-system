@@ -1163,15 +1163,32 @@ async function addComment(postId, text) {
   return comments.size;
 }
 
+function storyCaption(story) {
+  const value = story?.content ?? story?.caption ?? story?.text ?? '';
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function storyVideoUrl(story) {
+  return story?.videoUrl || (story?.mediaType === 'video' ? (story?.imageUrl || story?.mediaUrl || '') : '');
+}
+
+function storyImageUrl(story) {
+  return story?.imageUrl || (story?.mediaType === 'image' ? story?.mediaUrl || '' : '');
+}
+
 function renderStoryMedia(story) {
-  const videoUrl = story.videoUrl || (story.mediaType === 'video' ? story.imageUrl : '');
+  const videoUrl = storyVideoUrl(story);
   if (videoUrl) return `<video class="studyco-story-media-video" src="${esc(videoUrl)}" muted playsinline loop autoplay preload="metadata"></video><small class="studyco-story-media-badge" aria-hidden="true">VIDEO</small>`;
-  return story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="" loading="lazy" decoding="async">` : '';
+  const imageUrl = storyImageUrl(story);
+  return imageUrl ? `<img src="${esc(imageUrl)}" alt="" loading="lazy" decoding="async">` : '';
 }
 
 function renderStories() {
   const active = state.stories.filter((story) => timeMs(story.expiresAt) > Date.now());
-  $('studyco-story-list').innerHTML = `<button class="studyco-story add" id="studyco-story-add-card" type="button"><span>Add a story</span></button>${active.map((story) => `<button class="studyco-story" data-story-id="${esc(story.id)}" style="background:${esc(story.bgColor || '#5b5bd6')}">${renderStoryMedia(story)}<span>${esc(initials(state.profiles.get(story.userId)))}</span><strong>${esc(profileName(state.profiles.get(story.userId)))}<br><small>${esc(timeText(story.createdAt))}</small></strong></button>`).join('')}`;
+  $('studyco-story-list').innerHTML = `<button class="studyco-story add" id="studyco-story-add-card" type="button"><span>Add a story</span></button>${active.map((story) => {
+    const caption = storyCaption(story);
+    return `<button class="studyco-story" data-story-id="${esc(story.id)}" style="background:${esc(story.bgColor || '#5b5bd6')}">${renderStoryMedia(story)}${caption ? `<span class="studyco-story-card-caption">${esc(caption)}</span>` : ''}<span>${esc(initials(state.profiles.get(story.userId)))}</span><strong>${esc(profileName(state.profiles.get(story.userId)))}<br><small>${esc(timeText(story.createdAt))}</small></strong></button>`;
+  }).join('')}`;
 }
 
 function subscribeStories() {
@@ -1443,8 +1460,10 @@ function renderStoryViewer() {
     card.append(heading, message, create, hint);
     content.appendChild(card);
   } else {
-    const videoUrl = story.videoUrl || (story.mediaType === 'video' ? story.imageUrl : '');
-    const isVideoStory = !!videoUrl || story.mediaType === 'video';
+    const videoUrl = storyVideoUrl(story);
+    const imageUrl = storyImageUrl(story);
+    const captionText = storyCaption(story);
+    const isVideoStory = Boolean(videoUrl);
     if (videoUrl) {
       const video = document.createElement('video');
       video.className = 'studyco-story-viewer-video';
@@ -1465,17 +1484,17 @@ function renderStoryViewer() {
         const playback = video.play();
         if (playback?.catch) playback.catch(() => {});
       } catch (_) { /* Some embedded browsers reject autoplay; story navigation remains available. */ }
-    } else if (story.imageUrl) {
+    } else if (imageUrl) {
       const image = document.createElement('img');
       image.className = 'studyco-story-viewer-image';
-      image.src = story.imageUrl;
+      image.src = imageUrl;
       image.alt = '';
       content.appendChild(image);
     }
-    if (story.content) {
+    if (captionText) {
       const caption = document.createElement('div');
       caption.className = 'studyco-story-message' + (story.imageUrl || isVideoStory ? '' : ' is-text-only');
-      caption.textContent = story.content;
+      caption.textContent = captionText;
       content.appendChild(caption);
     }
   }
