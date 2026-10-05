@@ -5,7 +5,7 @@ const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null, viewedProfilePosts: [], viewedProfileRelation: 'none', activeProfileTab: 'posts',
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
-  dismissedSuggestions: new Set(), postPreferences: new Map(),
+  dismissedSuggestions: new Set(), postPreferences: new Map(), feedFilter: 'all',
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, chatListOwner: null, messageUnsub: null, notificationUnsub: null, chatSettingsUnsub: null, blockedUsersUnsub: null, chatSettingsOwner: null, blockedUsersOwner: null,
   notifications: [],
@@ -898,7 +898,23 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
       .filter((post) => isPublicPost(post) && state.postPreferences.get(post.id) !== 'not_interested')
       .sort((a, b) => Number(state.postPreferences.get(b.id) === 'interested') - Number(state.postPreferences.get(a.id) === 'interested'));
   }
-  if (!posts.length) { target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>'; return; }
+  if (target?.id === 'studyco-post-feed') {
+    if (state.feedFilter === 'favorites') {
+      posts = posts.filter((post) => state.postPreferences.get(post.id) === 'interested');
+    } else if (state.feedFilter === 'friends') {
+      const friendIds = new Set(state.friends.map((friend) => friend.uid));
+      posts = posts.filter((post) => friendIds.has(post.userId));
+    }
+  }
+  if (!posts.length) {
+    const emptyMessage = target?.id === 'studyco-post-feed' && state.feedFilter === 'favorites'
+      ? 'No favorites yet. Mark a post as Interested to find it here.'
+      : target?.id === 'studyco-post-feed' && state.feedFilter === 'friends'
+        ? 'No posts from friends yet.'
+        : 'No post yet.';
+    target.innerHTML = '<div class="studyco-card studyco-empty">' + emptyMessage + '</div>';
+    return;
+  }
   const renderToken = (state.feedRenderTokens.get(target) || 0) + 1;
   state.feedRenderTokens.set(target, renderToken);
   target.innerHTML = '<div class="studyco-card studyco-empty">Loading your circle...</div>';
@@ -3023,6 +3039,15 @@ window.addEventListener('hashchange', syncRoute);
     $('studyco-page-search').focus();
   });
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed());
+  $('studyco-feed-filters')?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-feed-filter]');
+    if (!button) return;
+    state.feedFilter = button.dataset.feedFilter || 'all';
+    $('studyco-feed-filters').querySelectorAll('[data-feed-filter]').forEach((item) => {
+      item.setAttribute('aria-pressed', String(item === button));
+    });
+    renderFeed().catch((error) => toast(error.message || 'Feed could not be loaded.', true));
+  });
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
   $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; renderPostPreview(); renderPostAttachmentStatus(); });
