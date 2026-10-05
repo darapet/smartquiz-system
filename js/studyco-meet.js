@@ -6,7 +6,7 @@ const state = {
   viewedProfileUid: null, viewedProfile: null, viewedProfilePosts: [], viewedProfileRelation: 'none', activeProfileTab: 'posts',
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
   dismissedSuggestions: new Set(), postPreferences: new Map(),
-  storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
+  storyColor: '#5b5bd6', storyIndex: 0, storyViewerOpen: false, storyPreviousHash: '#home', pendingStoryId: '', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, chatListOwner: null, messageUnsub: null, notificationUnsub: null, chatSettingsUnsub: null, blockedUsersUnsub: null, chatSettingsOwner: null, blockedUsersOwner: null,
   notifications: [],
   friendRequestSort: 'newest',
@@ -103,11 +103,11 @@ async function createNotification(recipientId, type, entityId = '', conversation
 
 function notificationCopy(notification) {
   const actor = notification.actor ? profileName(notification.actor) : 'A StudyCo learner';
-  if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: '＋' };
-  if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: '✓' };
-  if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: '✉' };
-  if (notification.type === 'call_missed') return { title: actor, body: 'missed your call.', icon: '☎' };
-  return { title: actor, body: notification.message || 'shared an update with you.', icon: '✦' };
+  if (notification.type === 'friend_request') return { title: actor, body: 'sent you a friend request.', icon: 'ï¼' };
+  if (notification.type === 'friend_accepted') return { title: actor, body: 'accepted your friend request.', icon: 'â' };
+  if (notification.type === 'message') return { title: actor, body: 'sent you a new message.', icon: 'â' };
+  if (notification.type === 'call_missed') return { title: actor, body: 'missed your call.', icon: 'â' };
+  return { title: actor, body: notification.message || 'shared an update with you.', icon: 'â¦' };
 }
 
 function renderNotifications() {
@@ -371,7 +371,7 @@ function renderProfileActions(uid, isOwnProfile) {
   else if (relation === 'incoming') action = '<button class="studyco-button primary" type="button" data-friend-action="accept" data-uid="' + safeUid + '">Accept request</button>';
   else if (relation === 'outgoing') action = '<button class="studyco-button soft" type="button" disabled>Request sent</button>';
   else action = '<button class="studyco-button primary" type="button" data-friend-action="request" data-uid="' + safeUid + '">Add friend</button>';
-  const more = '<div class="studyco-profile-more-wrap"><button class="studyco-button soft studyco-profile-more-toggle" type="button" data-profile-more-toggle aria-expanded="false" aria-haspopup="menu">More <span aria-hidden="true">⋯</span></button><div class="studyco-profile-more-menu" data-profile-more-menu role="menu" hidden><button type="button" role="menuitem" data-profile-more-action="view-details">View full profile</button></div></div>';
+  const more = '<div class="studyco-profile-more-wrap"><button class="studyco-button soft studyco-profile-more-toggle" type="button" data-profile-more-toggle aria-expanded="false" aria-haspopup="menu">More <span aria-hidden="true">â¯</span></button><div class="studyco-profile-more-menu" data-profile-more-menu role="menu" hidden><button type="button" role="menuitem" data-profile-more-action="view-details">View full profile</button></div></div>';
   publicActions.innerHTML = action + more;
 }
 
@@ -582,10 +582,22 @@ function scheduleChatViewportSync() {
 async function syncRoute() {
   const pathProfileUid = profileUidFromPath();
   if (pathProfileUid) {
+    if (state.storyViewerOpen) closeStoryViewer({ restoreRoute: false });
     setView('profile', { updateUrl: false, profileUid: pathProfileUid });
     return;
   }
   const parts = window.location.hash.replace(/^#/, '').split('/');
+  if (parts[0] === 'story' && parts[1]) {
+    setView('home', { updateUrl: false });
+    let storyId = '';
+    try { storyId = decodeURIComponent(parts[1]); } catch (_) { storyId = parts[1]; }
+    const story = activeStories().find((item) => item.id === storyId);
+    if (story) showStory(story, { updateUrl: false });
+    else state.pendingStoryId = storyId;
+    return;
+  }
+  if (state.storyViewerOpen) closeStoryViewer({ restoreRoute: false });
+  state.pendingStoryId = '';
   const view = ['search', 'friends', 'messages', 'notifications', 'profile'].includes(parts[0]) ? parts[0] : 'home';
   const identifier = parts[1] ? decodeURIComponent(parts[1]) : '';
   setView(view, { updateUrl: false, chatUid: view === 'messages' ? identifier : '', profileUid: view === 'profile' ? identifier || state.user.uid : null });
@@ -593,7 +605,6 @@ async function syncRoute() {
     await openChat(decodeURIComponent(parts[1]), { updateUrl: false });
   }
 }
-
 function renderPostPreview() {
   const preview = $('studyco-post-preview'); const text = $('studyco-post-text').value.trim();
   const hasContent = Boolean(text || state.postImage);
@@ -605,7 +616,7 @@ function renderPostAttachmentStatus() {
   const status = $('studyco-post-attachment-status');
   if (!status) return;
   const attachments = [state.postImage?.name ? `Photo: ${state.postImage.name}` : '', state.postFile?.name ? `File: ${state.postFile.name}` : ''].filter(Boolean);
-  status.textContent = attachments.join(' · ');
+  status.textContent = attachments.join(' Â· ');
   status.hidden = attachments.length === 0;
 }
 
@@ -701,7 +712,7 @@ async function renderSearchResults(value) {
 
   const requestId = ++state.searchRequestId;
   panel.hidden = false;
-  $('studyco-search-title').textContent = `Results for “${term}”`;
+  $('studyco-search-title').textContent = `Results for â${term}â`;
   $('studyco-search-empty').hidden = true;
   $('studyco-search-people-group').hidden = false;
   $('studyco-search-posts-group').hidden = false;
@@ -741,14 +752,14 @@ function postStatusLabel(post) {
 function postPreferenceControls(post) {
   if (post.userId === state.user.uid) return '';
   const preference = state.postPreferences.get(post.id);
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="More post options" title="More options">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="More post options" title="More options">â¢â¢â¢</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">Ã</button></div></details>`;
 }
 
 function profilePostManagement(post) {
   if (post.userId !== state.user.uid) return postPreferenceControls(post);
   const pauseLabel = post.status === 'paused' ? 'Resume post' : 'Pause post';
   const hideLabel = post.status === 'hidden' ? 'Show post' : 'Hide post';
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary aria-label="More post options" title="More options">•••</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary aria-label="More post options" title="More options">â¢â¢â¢</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
 }
 
 const MAX_POST_CHARACTERS = 200000;
@@ -771,7 +782,7 @@ async function openPostImageViewer(postId) {
   image.src = post.imageUrl;
   image.alt = 'Expanded image from a post';
   saveButton.disabled = true;
-  saveButton.textContent = 'Checking save status…';
+  saveButton.textContent = 'Checking save statusâ¦';
   openModal('studyco-image-viewer-modal');
   try {
     const saved = await getDoc(doc(db, 'users', state.user.uid, 'savedImages', post.id));
@@ -834,7 +845,7 @@ function renderPost(post, { showAuthor = true } = {}) {
   const { preview, hasMore } = postTextPreview(post.content);
   const text = post.content ? `<div class="studyco-post-body" data-post-body>${esc(preview)}</div>${hasMore ? `<button class="studyco-post-read-more" data-post-action="read-more" data-post-id="${esc(post.id)}" type="button">Read more</button>` : ''}` : '';
   const image = post.imageUrl ? `<button class="studyco-post-image-button" type="button" data-open-post-image data-post-id="${esc(post.id)}" aria-label="Open post image"><img class="studyco-post-image" src="${esc(post.imageUrl)}" alt="Post attachment" loading="lazy" decoding="async"></button>` : '';
-  const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">📎 ${esc(post.fileName || 'Open attached file')}</a>` : '';
+  const file = post.fileUrl ? `<a class="studyco-post-file" href="${esc(post.fileUrl)}" target="_blank" rel="noopener">ð ${esc(post.fileName || 'Open attached file')}</a>` : '';
   const linkUrl = normalizeUrl(post.linkUrl);
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
   const likeCount = Number(post.likeCount) || 0;
@@ -842,13 +853,13 @@ function renderPost(post, { showAuthor = true } = {}) {
   const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
-  const authorMeta = [author?.school || author?.username, timeText(post.createdAt)].filter(Boolean).join(' · ');
+  const authorMeta = [author?.school || author?.username, timeText(post.createdAt)].filter(Boolean).join(' Â· ');
   const authorHead = showAuthor ? `<a class="studyco-post-author" href="${viewHash('profile', post.userId)}" data-profile-uid="${esc(post.userId)}" aria-label="View ${esc(profileName(author))}'s profile">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(authorMeta)}</small></span></a>` : '';
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
-  const engagement = `<div class="studyco-post-engagement" aria-label="Post reactions and comments"${likeCount || commentCount ? '' : ' hidden'}><div class="studyco-post-reaction-summary"${likeCount ? '' : ' hidden'}><span class="studyco-post-reaction-icon" aria-hidden="true">👍</span><span class="studyco-post-reaction-count">${likeCount}</span></div><button class="studyco-post-comment-summary" data-post-action="comments" data-post-id="${esc(post.id)}" type="button"${commentCount ? '' : ' hidden'}><span class="studyco-post-comment-count">${commentCount}</span> <span class="studyco-post-comment-label">${commentCount === 1 ? 'Comment' : 'Comments'}</span></button></div>`;
-  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}${engagement}<div class="studyco-post-actions"><button type="button" class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span></button><button type="button" data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span></button><button type="button" data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div></article>`;
+  const engagement = `<div class="studyco-post-engagement" aria-label="Post reactions and comments"${likeCount || commentCount ? '' : ' hidden'}><div class="studyco-post-reaction-summary"${likeCount ? '' : ' hidden'}><span class="studyco-post-reaction-icon" aria-hidden="true">ð</span><span class="studyco-post-reaction-count">${likeCount}</span></div><button class="studyco-post-comment-summary" data-post-action="comments" data-post-id="${esc(post.id)}" type="button"${commentCount ? '' : ' hidden'}><span class="studyco-post-comment-count">${commentCount}</span> <span class="studyco-post-comment-label">${commentCount === 1 ? 'Comment' : 'Comments'}</span></button></div>`;
+  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}${engagement}<div class="studyco-post-actions"><button type="button" class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span></button><button type="button" data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span></button><button type="button" data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">â</span><span>Share</span></button></div></article>`;
 }
 async function loadPostComments(postId) {
   const panel = $('studyco-comments-list');
@@ -871,7 +882,7 @@ async function openComments(postId) {
   const form = $('studyco-comments-form');
   const list = $('studyco-comments-list');
   if (!form || !list) throw new Error('Comments are unavailable on this page.');
-  if (title) title.textContent = author ? `Comments on ${profileName(author)}’s post` : 'Comments';
+  if (title) title.textContent = author ? `Comments on ${profileName(author)}âs post` : 'Comments';
   form.dataset.commentPost = postId;
   form.reset();
   openModal('studyco-comments-modal');
@@ -1140,6 +1151,16 @@ function subscribeStories() {
       .sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
     await Promise.all([...new Set(state.stories.map((story) => story.userId))].map((uid) => getProfile(uid)));
     renderStories();
+    const routeParts = window.location.hash.replace(/^#/, '').split('/');
+    if (routeParts[0] === 'story' && routeParts[1]) {
+      let routeStoryId = '';
+      try { routeStoryId = decodeURIComponent(routeParts[1]); } catch (_) { routeStoryId = routeParts[1]; }
+      const routeStory = state.stories.find((item) => item.id === routeStoryId);
+      if (state.storyViewerOpen) {
+        if (routeStory && state.storyIndex < state.stories.length) state.storyIndex = state.stories.findIndex((item) => item.id === routeStoryId);
+        renderStoryViewer();
+      } else if (routeStory) showStory(routeStory, { updateUrl: false });
+    }
   };
   state.storyUnsub = onSnapshot(query(collection(db, 'studyco_stories'), limit(100)), async (snapshot) => {
     state.publicStories = snapshot.docs.map((item) => ({ id: item.id, ...item.data(), isPrivate: false }));
@@ -1170,13 +1191,135 @@ async function createStory(event) {
   } catch (error) { toast(error.message || 'Story could not be shared.', true); }
 }
 
-function showStory(story) {
-  const author = state.profiles.get(story.userId) || {};
-  const audienceLabel = story.isPrivate || story.audience === 'only_me' ? 'Only you' : 'Everyone';
-  $('studyco-story-viewer-content').innerHTML = `${story.imageUrl ? `<img src="${esc(story.imageUrl)}" alt="">` : ''}<div class="story-caption">${esc(story.content || '')}<small><br>${esc(profileName(author))}<br>${audienceLabel}</small></div>`;
-  $('studyco-story-viewer').hidden = false;
+function activeStories() {
+  return state.stories
+    .filter((story) => timeMs(story.expiresAt) > Date.now())
+    .sort((a, b) => timeMs(b.createdAt) - timeMs(a.createdAt));
 }
 
+function updateStoryRoute(story) {
+  if (!story) return;
+  const nextHash = '#story/' + encodeURIComponent(story.id);
+  if (window.location.hash !== nextHash) {
+    window.history.replaceState({ studycoView: 'story', storyId: story.id }, '', nextHash);
+  }
+}
+
+function showStory(story, { updateUrl = true } = {}) {
+  if (!story) return;
+  const stories = activeStories();
+  const index = stories.findIndex((item) => item.id === story.id);
+  if (index < 0) return;
+  if (!state.storyViewerOpen && updateUrl) {
+    const currentHash = window.location.hash;
+    state.storyPreviousHash = currentHash && !currentHash.startsWith('#story/') ? currentHash : '#home';
+    window.history.pushState({ studycoView: 'story', storyId: story.id }, '', '#story/' + encodeURIComponent(story.id));
+  }
+  state.storyIndex = index;
+  state.storyViewerOpen = true;
+  state.pendingStoryId = '';
+  document.body.classList.add('studyco-story-open');
+  $('studyco-story-viewer').hidden = false;
+  renderStoryViewer();
+}
+
+function renderStoryViewer() {
+  const stories = activeStories();
+  const isComplete = state.storyIndex >= stories.length;
+  const story = isComplete ? null : stories[state.storyIndex];
+  const profile = story ? (state.profiles.get(story.userId) || {}) : (state.profile || {});
+  const progress = $('studyco-story-progress');
+  const avatar = $('studyco-story-viewer-avatar');
+  const author = $('studyco-story-viewer-author');
+  const detail = $('studyco-story-viewer-detail');
+  const stage = $('studyco-story-viewer-stage');
+  const content = $('studyco-story-viewer-content');
+  if (!progress || !avatar || !author || !detail || !stage || !content) return;
+
+  progress.replaceChildren();
+  stories.forEach((item, index) => {
+    const segment = document.createElement('span');
+    segment.className = 'studyco-story-progress-segment';
+    if (isComplete || index < state.storyIndex) segment.classList.add('is-complete');
+    else if (index === state.storyIndex) segment.classList.add('is-current');
+    progress.appendChild(segment);
+  });
+
+  avatar.replaceChildren();
+  const photoUrl = profile.photoURL || profile.avatarURL || profile.imageURL || '';
+  if (photoUrl) {
+    const image = document.createElement('img');
+    image.src = photoUrl;
+    image.alt = '';
+    avatar.appendChild(image);
+  } else {
+    avatar.textContent = initials(profile);
+  }
+  author.textContent = isComplete ? 'You’re all caught up' : profileName(profile);
+  detail.textContent = isComplete ? 'Your friends’ stories are finished' : timeText(story.createdAt);
+  stage.style.backgroundColor = story ? (story.bgColor || '#5b5bd6') : '#111827';
+  content.replaceChildren();
+  content.classList.toggle('is-end-card', isComplete);
+
+  if (isComplete) {
+    const card = document.createElement('div');
+    card.className = 'studyco-story-end-card';
+    const heading = document.createElement('h2');
+    heading.textContent = 'Your turn, ' + profileName(profile);
+    const message = document.createElement('p');
+    message.textContent = 'Share a moment with your friends.';
+    const create = document.createElement('button');
+    create.type = 'button';
+    create.id = 'studyco-story-create-own';
+    create.className = 'studyco-story-create-own';
+    create.textContent = 'Create your story';
+    create.addEventListener('click', (event) => {
+      event.stopPropagation();
+      closeStoryViewer();
+      openModal('studyco-story-modal');
+    });
+    const hint = document.createElement('small');
+    hint.textContent = 'Tap the screen to replay stories';
+    card.append(heading, message, create, hint);
+    content.appendChild(card);
+  } else {
+    if (story.imageUrl) {
+      const image = document.createElement('img');
+      image.className = 'studyco-story-viewer-image';
+      image.src = story.imageUrl;
+      image.alt = '';
+      content.appendChild(image);
+    }
+    if (story.content) {
+      const caption = document.createElement('div');
+      caption.className = 'studyco-story-message' + (story.imageUrl ? '' : ' is-text-only');
+      caption.textContent = story.content;
+      content.appendChild(caption);
+    }
+  }
+  updateStoryRoute(story);
+}
+
+function stepStory(direction) {
+  if (!state.storyViewerOpen) return;
+  const count = activeStories().length;
+  if (direction > 0) state.storyIndex = state.storyIndex >= count ? 0 : state.storyIndex + 1;
+  else state.storyIndex = Math.max(0, state.storyIndex - 1);
+  renderStoryViewer();
+}
+
+function closeStoryViewer({ restoreRoute = true } = {}) {
+  const viewer = $('studyco-story-viewer');
+  if (!viewer || (!state.storyViewerOpen && viewer.hidden)) return;
+  state.storyViewerOpen = false;
+  viewer.hidden = true;
+  document.body.classList.remove('studyco-story-open');
+  if (restoreRoute && window.location.hash.startsWith('#story/')) {
+    const previousHash = state.storyPreviousHash || '#home';
+    window.history.replaceState({ studycoView: 'home' }, '', previousHash);
+    void syncRoute();
+  }
+}
 async function relationship(uid) {
   const snap = await getDoc(doc(db, 'social_friend_requests', pairId(state.user.uid, uid)));
   if (!snap.exists()) return 'none'; const data = snap.data();
@@ -1193,7 +1336,7 @@ async function renderPeople(profiles, target) {
     if (relation === 'outgoing') action = '<button class="studyco-button soft" disabled>Requested</button>';
     if (relation === 'incoming') action = `<button class="studyco-button success" data-friend-action="accept" data-uid="${esc(profile.id)}">Accept</button>`;
     if (relation === 'friends') action = `<button class="studyco-button soft" data-friend-action="message" data-uid="${esc(profile.id)}">Message</button><button class="studyco-button danger" data-friend-action="unfriend" data-uid="${esc(profile.id)}">Unfriend</button>`;
-     return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' · ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
+     return `<article class="studyco-person">${avatar(profile)}<strong data-profile-uid="${esc(profile.id)}">${esc(profileName(profile))}</strong><span>${esc([profile.school, profile.department || profile.major, profile.location].filter(Boolean).join(' Â· ') || (profile.username ? `@${profile.username}` : 'StudyCo learner'))}</span><div class="studyco-person-actions">${action}</div></article>`;
   }).join('');
 }
 
@@ -1261,7 +1404,7 @@ async function loadSocialLists() {
     const incomingRequestHtml = orderedIncomingRequests.map((item) => {
       const requestContext = [item.profile?.school, item.profile?.department || item.profile?.major]
         .filter(Boolean)
-        .join(' · ') || 'Sent you a friend request';
+        .join(' Â· ') || 'Sent you a friend request';
       return '<article class="studyco-list-row studyco-friend-row studyco-incoming-request" data-request-time="' + timeMs(item.createdAt) + '">' +
         avatar(item.profile, 'small') + '<div><strong>' + esc(profileName(item.profile)) + '</strong><span>' + esc(requestContext) + '</span></div>' +
         '<time class="studyco-friend-request-time">' + esc(timeText(item.createdAt)) + '</time>' +
@@ -1361,12 +1504,12 @@ function renderChatList() {
   $('studyco-chat-count').textContent = String(validChats.length);
   $('studyco-message-badge').hidden = unreadChats.length < 1;
   $('studyco-message-badge').textContent = unreadChats.length > 99 ? '99+' : String(unreadChats.length || '');
-  const filterLabel = state.showArchivedChats ? '‹ Inbox' : 'Archived (' + archivedCount + ')';
-  const filterButton = '<button class="studyco-chat-archive-filter" data-chat-archived-toggle type="button"><span aria-hidden="true">' + (state.showArchivedChats ? '‹' : '▣') + '</span>' + esc(filterLabel) + '</button>';
+  const filterLabel = state.showArchivedChats ? 'â¹ Inbox' : 'Archived (' + archivedCount + ')';
+  const filterButton = '<button class="studyco-chat-archive-filter" data-chat-archived-toggle type="button"><span aria-hidden="true">' + (state.showArchivedChats ? 'â¹' : 'â£') + '</span>' + esc(filterLabel) + '</button>';
   const chatButtons = visibleChats.map((chat) => {
     const setting = state.chatSettings.get(chat.id) || {};
     const unread = setting.markedUnread === true || (chat.data.lastSenderId && chat.data.lastSenderId !== state.user.uid && chat.data.lastReadBy?.[state.user.uid] !== true);
-    const status = [setting.muted ? 'Muted' : '', state.blockedUserIds.has(chat.uid) ? 'Blocked' : ''].filter(Boolean).join(' · ');
+    const status = [setting.muted ? 'Muted' : '', state.blockedUserIds.has(chat.uid) ? 'Blocked' : ''].filter(Boolean).join(' Â· ');
     return '<button class="' + (chat.uid === state.activeChatUid ? 'active ' : '') + (unread ? 'unread' : '') + '" data-chat-uid="' + esc(chat.uid) + '" type="button">' + avatarWithPresence(chat.profile, chat.uid, 'small') + '<div><strong>' + esc(profileName(chat.profile)) + '</strong><span>' + esc(chat.data.lastMessageText || lastSeenText(state.presence.get(chat.uid))) + '</span>' + (status ? '<small class="studyco-chat-list-status">' + esc(status) + '</small>' : '') + '</div><time>' + esc(timeText(chat.data.lastMessageAt || chat.data.updatedAt)) + '</time></button>';
   }).join('');
   const empty = state.showArchivedChats ? 'No archived chats.' : 'Your accepted friends will appear here.';
@@ -1567,7 +1710,7 @@ function renderMessages(messages, profile) {
     } else if (attachmentUrl && attachmentType.startsWith('image/')) {
       attachment = '<a class="studyco-message-image" href="' + attachmentUrl + '" target="_blank" rel="noopener"><img src="' + attachmentUrl + '" alt="' + esc(message.attachmentName || 'Shared image') + '" loading="lazy" decoding="async"></a>';
     } else if (attachmentUrl) {
-      attachment = '<a class="studyco-message-attachment" href="' + attachmentUrl + '" target="_blank" rel="noopener"><span>↧</span><b>' + esc(message.attachmentName || 'Shared file') + '</b><small>' + esc(message.attachmentType || 'Attachment') + '</small></a>';
+      attachment = '<a class="studyco-message-attachment" href="' + attachmentUrl + '" target="_blank" rel="noopener"><span>â§</span><b>' + esc(message.attachmentName || 'Shared file') + '</b><small>' + esc(message.attachmentType || 'Attachment') + '</small></a>';
     }
     const visibleBody = isVoiceMessage && /^voice message$/i.test(rawBody.trim()) ? '' : body;
     const bubbleClass = isVoiceMessage ? 'bubble audio-bubble' : 'bubble';
@@ -1669,7 +1812,7 @@ function updateChatRecordingUI() {
   const replayButton = form?.querySelector('[data-chat-record-preview]');
   const sendButton = form?.querySelector('[data-chat-record-send]');
   const paused = !!session && session.recorder.state === 'paused';
-  if (status) status.textContent = waitingForMic ? 'Connecting to microphone…' : session?.sendRequested ? 'Preparing voice message…' : paused ? 'Recording paused' : recordingMode ? 'Recording voice message' : '';
+  if (status) status.textContent = waitingForMic ? 'Connecting to microphoneâ¦' : session?.sendRequested ? 'Preparing voice messageâ¦' : paused ? 'Recording paused' : recordingMode ? 'Recording voice message' : '';
   if (elapsedNode) elapsedNode.textContent = formatVoiceDuration(Math.floor(currentChatRecordingDuration(session) / 1000));
   if (pauseButton) {
     pauseButton.disabled = !session || session.sendRequested || session.recorder.state === 'inactive';
@@ -1690,7 +1833,7 @@ function updateChatRecordingUI() {
   }
   if (sendButton) {
     sendButton.disabled = !session || session.sendRequested;
-    sendButton.textContent = session?.sendRequested ? 'Sending…' : 'Send';
+    sendButton.textContent = session?.sendRequested ? 'Sendingâ¦' : 'Send';
   }
 }
 
@@ -2103,7 +2246,7 @@ async function openChat(uid, { updateUrl = true } = {}) {
     }
     watchPresence(uid);
     setView('messages', { updateUrl, chatUid: uid });
-    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to messages">‹</button>${avatarWithPresence(profile, uid, 'small')}<div class="studyco-chat-identity"><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft studyco-chat-icon-action" data-start-call="${esc(uid)}" data-call-kind="audio" type="button" aria-label="Start voice call" title="Voice call"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4m-4 0h8"/></svg></button><button class="studyco-button primary studyco-chat-icon-action" data-start-call="${esc(uid)}" data-call-kind="video" type="button" aria-label="Start video call" title="Video call"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></button><button class="studyco-button light studyco-chat-icon-action" data-call-history type="button" aria-label="Open recent call activity" title="Call history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">•••</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" class="studyco-message-input" maxlength="2000" rows="1" placeholder="Message..." aria-label="Message"></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg><span class="studyco-visually-hidden">Attach a file</span></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit" aria-label="Send message" title="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 21 3l-8.5 18-1.8-7.7L3 11.5Zm7.7 1.8L21 3"/></svg></button></div>` + '<div class="studyco-chat-recording-controls" hidden aria-live="polite">' + '<button class="studyco-chat-record-action delete" type="button" data-chat-record-delete aria-label="Delete recording" title="Delete recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"></path></svg></button>' + '<div class="studyco-chat-recording-main"><div class="studyco-chat-recording-label"><span data-chat-recording-status>Recording voice message</span><time data-chat-recording-time>0:00</time></div><div class="studyco-chat-record-wave" role="img" aria-label="Live recording waveform">' + voiceWaveformMarkup('recording', 24) + '</div></div><div class="studyco-chat-recording-transport"><button class="studyco-chat-record-action" type="button" data-chat-record-pause aria-label="Pause recording" title="Pause recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg></button><button class="studyco-chat-record-action replay" type="button" data-chat-record-preview aria-label="Replay voice preview" title="Replay voice preview" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button></div>' + '<button class="studyco-chat-record-send" type="button" data-chat-record-send>Send</button></div>' + `</form>`;
+    $('studyco-chat-panel').innerHTML = `<div class="studyco-chat-head"><button class="studyco-chat-back" data-chat-back type="button" aria-label="Back to messages">â¹</button>${avatarWithPresence(profile, uid, 'small')}<div class="studyco-chat-identity"><strong>${esc(profileName(profile))}</strong><span id="studyco-chat-presence" class="studyco-chat-presence-text"></span></div><span id="studyco-chat-presence-dot" class="studyco-presence-dot" aria-hidden="true"></span><div class="studyco-chat-call-actions"><button class="studyco-button soft studyco-chat-icon-action" data-start-call="${esc(uid)}" data-call-kind="audio" type="button" aria-label="Start voice call" title="Voice call"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4m-4 0h8"/></svg></button><button class="studyco-button primary studyco-chat-icon-action" data-start-call="${esc(uid)}" data-call-kind="video" type="button" aria-label="Start video call" title="Video call"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3z"/></svg></button><button class="studyco-button light studyco-chat-icon-action" data-call-history type="button" aria-label="Open recent call activity" title="Call history"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></button></div><div class="studyco-chat-settings"><button class="studyco-chat-settings-toggle" type="button" data-chat-settings-toggle aria-haspopup="menu" aria-expanded="false" aria-label="Chat settings">â¢â¢â¢</button><div class="studyco-chat-settings-menu" id="studyco-chat-settings-menu" role="menu" hidden><button type="button" role="menuitem" id="studyco-chat-action-mute" data-chat-action="mute">Mute notifications</button><button type="button" role="menuitem" id="studyco-chat-action-archive" data-chat-action="archive">Archive conversation</button><button type="button" role="menuitem" id="studyco-chat-action-unread" data-chat-action="unread">Mark as unread</button><button type="button" role="menuitem" id="studyco-chat-action-block" data-chat-action="block">Block this person</button><button type="button" role="menuitem" data-chat-action="report">Report conversation</button></div></div></div><div class="studyco-chat-messages"></div><div id="studyco-chat-blocked-notice" class="studyco-chat-blocked-notice" hidden>You blocked this person. Unblock them in chat settings to send messages or call.</div><form class="studyco-chat-compose" id="studyco-chat-form"><textarea id="studyco-chat-input" class="studyco-message-input" maxlength="2000" rows="1" placeholder="Message..." aria-label="Message"></textarea><div class="studyco-chat-compose-actions"><label class="studyco-attachment-button" title="Attach a file"><input id="studyco-chat-file" type="file" accept="image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.txt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M5 14v5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"/></svg><span class="studyco-visually-hidden">Attach a file</span></label><span id="studyco-chat-file-name" class="studyco-chat-file-name"></span><button id="studyco-chat-record" class="studyco-chat-record-button" data-chat-record type="button" aria-label="Record a voice note" title="Record a voice note"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"></path></svg></button><button id="studyco-chat-send" class="studyco-button primary" type="submit" aria-label="Send message" title="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 21 3l-8.5 18-1.8-7.7L3 11.5Zm7.7 1.8L21 3"/></svg></button></div>` + '<div class="studyco-chat-recording-controls" hidden aria-live="polite">' + '<button class="studyco-chat-record-action delete" type="button" data-chat-record-delete aria-label="Delete recording" title="Delete recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m3 0-.8 13H6.8L6 7m3 3v7m6-7v7"></path></svg></button>' + '<div class="studyco-chat-recording-main"><div class="studyco-chat-recording-label"><span data-chat-recording-status>Recording voice message</span><time data-chat-recording-time>0:00</time></div><div class="studyco-chat-record-wave" role="img" aria-label="Live recording waveform">' + voiceWaveformMarkup('recording', 24) + '</div></div><div class="studyco-chat-recording-transport"><button class="studyco-chat-record-action" type="button" data-chat-record-pause aria-label="Pause recording" title="Pause recording"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zm6 0h4v14h-4z"></path></svg></button><button class="studyco-chat-record-action replay" type="button" data-chat-record-preview aria-label="Replay voice preview" title="Replay voice preview" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></button></div>' + '<button class="studyco-chat-record-send" type="button" data-chat-record-send>Send</button></div>' + `</form>`;
     scheduleChatViewportSync();
     updateActiveChatPresence();
     window.clearInterval(state.chatReceiptRefreshTimer);
@@ -2302,7 +2445,7 @@ function callPeer(callId, remoteUid) {
 
   pc.onconnectionstatechange = () => {
     if (['failed', 'disconnected'].includes(pc.connectionState) && state.activeCallId === callId) {
-      $('studyco-call-status').textContent = 'Connection interrupted. Trying to recover…';
+      $('studyco-call-status').textContent = 'Connection interrupted. Trying to recoverâ¦';
     }
   };
 
@@ -2565,7 +2708,7 @@ function openCallModal(profile, incoming = false, targetOnline = true, presence 
   $('studyco-call-name').textContent = profileName(profile);
   $('studyco-call-avatar').textContent = initials(profile);
   $('studyco-call-presence').textContent = incoming ? 'StudyCo call' : (targetOnline ? 'Online now' : 'Waiting for answer');
-  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : 'Calling — waiting for answer.';
+  $('studyco-call-status').textContent = incoming ? 'Your study friend is calling.' : 'Calling â waiting for answer.';
   $('studyco-call-last-seen').textContent = incoming || targetOnline ? '' : lastSeenText(presence);
   $('studyco-call-accept').hidden = !incoming;
   $('studyco-call-decline').textContent = incoming ? 'Decline' : 'End call';
@@ -2653,7 +2796,7 @@ async function translatePhrase(phrase) {
   if (!phrase || language === 'en' || state.translation.busy) return;
   state.translation.busy = true;
   const status = $('studyco-call-translation-status');
-  if (status) status.textContent = `Translating voice to ${$('studyco-call-language').selectedOptions[0].text}…`;
+  if (status) status.textContent = `Translating voice to ${$('studyco-call-language').selectedOptions[0].text}â¦`;
   try {
     const response = await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(phrase)}&langpair=en|${encodeURIComponent(language)}`);
     const result = await response.json();
@@ -2984,7 +3127,7 @@ async function renderCallHistory() {
     const callLabel = call.callType === 'video' ? 'Video call' : 'Voice call';
     const label = missed ? 'Missed call' : call.status === 'accepted' ? callLabel : outgoing ? `${callLabel} placed` : `${callLabel} ended`;
     const action = call.recordingUrl ? `<a class="studyco-call-recording" href="${esc(call.recordingUrl)}" target="_blank" rel="noopener">Listen to recording</a>` : '';
-    return `<div class="studyco-call-history-row">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${missed ? 'Missed call' : label} · ${esc(timeText(call.createdAt || call.updatedAt))}</span></div><div class="studyco-call-history-meta"><i class="${missed ? 'missed' : outgoing ? 'outgoing' : 'incoming'}">${missed ? '↙' : outgoing ? '↗' : '↙'}</i>${action}</div></div>`;
+    return `<div class="studyco-call-history-row">${avatarWithPresence(profile, uid, 'small')}<div><strong>${esc(profileName(profile))}</strong><span>${missed ? 'Missed call' : label} Â· ${esc(timeText(call.createdAt || call.updatedAt))}</span></div><div class="studyco-call-history-meta"><i class="${missed ? 'missed' : outgoing ? 'outgoing' : 'incoming'}">${missed ? 'â' : outgoing ? 'â' : 'â'}</i>${action}</div></div>`;
   }));
   target.innerHTML = rows.join('') || '<div class="studyco-empty">Your call activity will appear here.</div>';
 }
@@ -3098,6 +3241,10 @@ window.addEventListener('hashchange', syncRoute);
   $('studyco-publish-post').addEventListener('click', publishPost);
   $('studyco-create-story').addEventListener('click', () => openModal('studyco-story-modal'));
   $('studyco-story-list').addEventListener('click', (event) => { const card = event.target.closest('[data-story-id]'); if (card) showStory(state.stories.find((story) => story.id === card.dataset.storyId)); else if (event.target.closest('#studyco-story-add-card')) openModal('studyco-story-modal'); });
+  $('studyco-story-previous').addEventListener('click', () => stepStory(-1));
+  $('studyco-story-next').addEventListener('click', () => stepStory(1));
+  $('studyco-story-close').addEventListener('click', () => closeStoryViewer());
+  document.addEventListener('keydown', (event) => { if (!state.storyViewerOpen) return; if (event.key === 'Escape') closeStoryViewer(); else if (event.key === 'ArrowRight') stepStory(1); else if (event.key === 'ArrowLeft') stepStory(-1); });
   $('studyco-story-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.storyImage = file || null; if (file) $('studyco-story-preview').style.backgroundImage = `url(${URL.createObjectURL(file)})`; });
   document.querySelectorAll('[data-story-color]').forEach((button) => button.addEventListener('click', () => { state.storyColor = button.dataset.storyColor; document.querySelectorAll('[data-story-color]').forEach((item) => item.classList.toggle('selected', item === button)); }));
   $('studyco-story-form').addEventListener('submit', createStory);
@@ -3459,7 +3606,7 @@ async function saveProfile(event) {
     const relationshipName = $('studyco-edit-relationship-name').value.trim();
     if (!phone) { toast('Phone number is required.', true); $('studyco-edit-contact').focus(); return; }
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { toast('Enter a valid email address.', true); $('studyco-edit-email').focus(); return; }
-    if (['Engaged', 'In a relationship'].includes(maritalStatus) && !relationshipName) { toast('Add the person’s name for this marital status.', true); $('studyco-edit-relationship-name').focus(); return; }
+    if (['Engaged', 'In a relationship'].includes(maritalStatus) && !relationshipName) { toast('Add the personâs name for this marital status.', true); $('studyco-edit-relationship-name').focus(); return; }
     const update = {
       displayName: $('studyco-edit-name').value.trim(),
       phone,
