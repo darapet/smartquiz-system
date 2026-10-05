@@ -11,12 +11,12 @@
   <link rel="preconnect" href="https://firestore.googleapis.com">
   <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
   <link rel="modulepreload" href="js/aqs-firebase.js?v=mobile-perf-2">
-  <link rel="modulepreload" href="js/studyco-meet.js?v=dara-feed-tabs-v1">
+  <link rel="modulepreload" href="js/studyco-meet.js?v=dara-feed-card-v2">
   <link rel="stylesheet" href="css/aqs-style.css">
   <link rel="stylesheet" href="css/aqs-space-nav.css">
   <link rel="stylesheet" href="css/studyco-meet.css?v=message-read-receipts-20261003">
   <link rel="stylesheet" href="css/studyco-circle.css">
-  <link rel="stylesheet" href="css/studyco-facebook.css?v=dara-feed-tabs-v1">
+  <link rel="stylesheet" href="css/studyco-facebook.css?v=dara-feed-card-v2">
   <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
   <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
   <link rel="stylesheet" href="css/studyco-polish.css?v=home-context-nav-flow-20261002">
@@ -127,12 +127,7 @@
             <div class="studyco-section-title"><div><h2>Stories</h2><p>Quick updates from your study circle.</p></div><button class="studyco-link-button" id="studyco-create-story" type="button">Add story</button></div>
             <div id="studyco-story-list" class="studyco-story-row"></div>
           </section>
-          <div class="studyco-feed-title"><div><p class="studyco-eyebrow">Your circle</p><h2>Feeds</h2></div><button id="studyco-refresh-feed" class="studyco-icon-button" type="button" aria-label="Refresh feed">â»</button></div>
-          <nav id="studyco-feed-filters" class="studyco-feed-filters" aria-label="Filter feed posts">
-            <button type="button" data-feed-filter="all" aria-pressed="true">All</button>
-            <button type="button" data-feed-filter="favorites" aria-pressed="false">Favorites</button>
-            <button type="button" data-feed-filter="friends" aria-pressed="false">Friends</button>
-          </nav>
+          <div class="studyco-feed-title"><div><h2>Feeds</h2></div><button id="studyco-refresh-feed" class="studyco-icon-button" type="button" aria-label="Refresh feed">â»</button></div>
           <div id="studyco-post-feed" class="studyco-feed"></div>
         </section>
 
@@ -279,6 +274,6 @@
    </div>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>
   <script src="js/aqs-bottom-nav.js"></script>
-  <script type="module" src="js/studyco-meet.js?v=dara-feed-tabs-v1"></script>
+  <script type="module" src="js/studyco-meet.js?v=dara-feed-card-v2"></script>
 </body>
 </html>

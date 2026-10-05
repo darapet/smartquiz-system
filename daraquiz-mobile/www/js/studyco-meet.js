@@ -5,7 +5,7 @@ const state = {
   user: null, profile: null, profiles: new Map(), posts: [], stories: [],
   viewedProfileUid: null, viewedProfile: null, viewedProfilePosts: [], viewedProfileRelation: 'none', activeProfileTab: 'posts',
   friends: [], requests: [], sentRequests: [], activeView: 'home', selectedTemplate: 'indigo',
-  dismissedSuggestions: new Set(), postPreferences: new Map(), feedFilter: 'all',
+  dismissedSuggestions: new Set(), postPreferences: new Map(),
   storyColor: '#5b5bd6', postImage: null, postFile: null, storyImage: null, wired: false,
   feedUnsub: null, scheduleTimer: null, storyUnsub: null, privateStoryUnsub: null, publicStories: [], privateStories: [], requestUnsub: null, chatListUnsub: null, chatListOwner: null, messageUnsub: null, notificationUnsub: null, chatSettingsUnsub: null, blockedUsersUnsub: null, chatSettingsOwner: null, blockedUsersOwner: null,
   notifications: [],
@@ -739,14 +739,14 @@ function postStatusLabel(post) {
 function postPreferenceControls(post) {
   if (post.userId === state.user.uid) return '';
   const preference = state.postPreferences.get(post.id);
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="Open post preferences">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-viewer"><summary aria-label="More post options" title="More options">•••</summary><div class="studyco-post-preferences" role="group" aria-label="Post preferences"><span>See more like this?</span><button class="${preference === 'interested' ? 'selected' : ''}" data-post-action="interested" data-post-id="${esc(post.id)}" type="button">Interested</button><button class="${preference === 'not_interested' ? 'selected' : ''}" data-post-action="not-interested" data-post-id="${esc(post.id)}" type="button">Not interested</button><button class="close" data-post-action="close-preferences" data-post-id="${esc(post.id)}" type="button" aria-label="Close post preferences">×</button></div></details>`;
 }
 
 function profilePostManagement(post) {
   if (post.userId !== state.user.uid) return postPreferenceControls(post);
   const pauseLabel = post.status === 'paused' ? 'Resume post' : 'Pause post';
   const hideLabel = post.status === 'hidden' ? 'Show post' : 'Hide post';
-  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary>Manage post</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
+  return `<details class="studyco-profile-post-management studyco-profile-post-management-owner"><summary aria-label="More post options" title="More options">•••</summary><div class="studyco-profile-post-management-actions"><button data-post-action="edit" data-post-id="${esc(post.id)}" type="button">Edit post</button><button data-post-action="reschedule" data-post-id="${esc(post.id)}" type="button">Reschedule</button><button data-post-action="pause" data-post-id="${esc(post.id)}" type="button">${pauseLabel}</button><button data-post-action="hide" data-post-id="${esc(post.id)}" type="button">${hideLabel}</button><button data-post-action="retry" data-post-id="${esc(post.id)}" type="button">Retry / publish</button><button class="danger" data-post-action="delete" data-post-id="${esc(post.id)}" type="button">Delete post</button></div></details>`;
 }
 
 const MAX_POST_CHARACTERS = 200000;
@@ -826,8 +826,7 @@ async function downloadPostImage() {
   } finally { button.disabled = false; }
 }
 function renderPost(post, { showAuthor = true } = {}) {
-  /* Paint cards from the feed snapshot first. Like/comment details load on
-     interaction instead of blocking the whole first batch. */
+  /* Render the Facebook-style feed card without adding author or comment reads to the initial paint. */
   const author = state.profiles.get(post.userId) || null;
   const liked = false;
   const { preview, hasMore } = postTextPreview(post.content);
@@ -838,17 +837,17 @@ function renderPost(post, { showAuthor = true } = {}) {
   const link = linkUrl ? `<a class="studyco-post-link" href="${esc(linkUrl)}" target="_blank" rel="noopener">${esc(linkUrl)}</a>` : '';
   const likeCount = Number(post.likeCount) || 0;
   const commentCount = Number(post.commentCount) || 0;
-  const isOwner = post.userId === state.user.uid;
   const status = postStatusLabel(post);
   const likeIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10v10H4V10h3Zm3 10h6.7c.9 0 1.7-.6 2-1.4l1.8-5.5A1.7 1.7 0 0 0 18.9 11H15l.5-3.1c.2-1.1-.5-2.2-1.6-2.5L13 5l-3 5v10Z"/></svg>';
   const commentIcon = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11.5a7.5 7.5 0 0 1-7.5 7.5H8l-4 2v-4.2a7.5 7.5 0 1 1 16-5.3Z"/></svg>';
-  const authorHead = showAuthor ? `<a class="studyco-post-author" href="${viewHash('profile', post.userId)}" data-profile-uid="${esc(post.userId)}" aria-label="View ${esc(profileName(author))}'s profile">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(author?.school || author?.username || 'StudyCo learner')} · ${timeText(post.createdAt)}</small></span></a>` : '';
+  const authorMeta = [author?.school || author?.username, timeText(post.createdAt)].filter(Boolean).join(' · ');
+  const authorHead = showAuthor ? `<a class="studyco-post-author" href="${viewHash('profile', post.userId)}" data-profile-uid="${esc(post.userId)}" aria-label="View ${esc(profileName(author))}'s profile">${avatar(author, 'small')}<span><strong>${esc(profileName(author))}</strong><small>${esc(authorMeta)}</small></span></a>` : '';
   const postHead = authorHead ? `<div class="studyco-post-head">${authorHead}</div>` : '';
   const profilePostClass = showAuthor ? '' : ' studyco-profile-post';
   const postManagement = profilePostManagement(post);
-  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}<div class="studyco-post-actions"><button class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span><span class="studyco-action-count">${likeCount}</span></button><button data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span><span class="studyco-action-count">${commentCount}</span></button><button data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
+  const engagement = `<div class="studyco-post-engagement" aria-label="Post reactions and comments"${likeCount || commentCount ? '' : ' hidden'}><div class="studyco-post-reaction-summary"${likeCount ? '' : ' hidden'}><span class="studyco-post-reaction-icon" aria-hidden="true">👍</span><span class="studyco-post-reaction-count">${likeCount}</span></div><button class="studyco-post-comment-summary" data-post-action="comments" data-post-id="${esc(post.id)}" type="button"${commentCount ? '' : ' hidden'}><span class="studyco-post-comment-count">${commentCount}</span> <span class="studyco-post-comment-label">${commentCount === 1 ? 'Comment' : 'Comments'}</span></button></div>`;
+  return `<article class="studyco-card studyco-post${profilePostClass}" data-post-id="${esc(post.id)}">${postHead}<div class="studyco-post-management-slot">${postManagement}</div>${status ? `<span class="studyco-post-status">${esc(status)}</span>` : ''}${text}${image}${file}${link}${engagement}<div class="studyco-post-actions"><button type="button" class="${liked ? 'liked' : ''}" data-post-action="like" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${likeIcon}</span><span>Like</span></button><button type="button" data-post-action="comments" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">${commentIcon}</span><span>Comment</span></button><button type="button" data-post-action="share" data-post-id="${esc(post.id)}"><span class="studyco-action-icon">↗</span><span>Share</span></button></div><div class="studyco-comments" data-comments-panel hidden></div><form class="studyco-comment-form" data-comment-post="${esc(post.id)}" hidden><input type="text" maxlength="500" placeholder="Write a comment..."><button type="submit">Send</button></form></article>`;
 }
-
 async function loadPostComments(postId, article) {
   const panel = article?.querySelector('[data-comments-panel]') || $('studyco-comments-list');
   const form = article?.querySelector('[data-comment-post]');
@@ -902,21 +901,8 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
       .filter((post) => isPublicPost(post) && state.postPreferences.get(post.id) !== 'not_interested')
       .sort((a, b) => Number(state.postPreferences.get(b.id) === 'interested') - Number(state.postPreferences.get(a.id) === 'interested'));
   }
-  if (target?.id === 'studyco-post-feed') {
-    if (state.feedFilter === 'favorites') {
-      posts = posts.filter((post) => state.postPreferences.get(post.id) === 'interested');
-    } else if (state.feedFilter === 'friends') {
-      const friendIds = new Set(state.friends.map((friend) => friend.uid));
-      posts = posts.filter((post) => friendIds.has(post.userId));
-    }
-  }
   if (!posts.length) {
-    const emptyMessage = target?.id === 'studyco-post-feed' && state.feedFilter === 'favorites'
-      ? 'No favorites yet. Mark a post as Interested to find it here.'
-      : target?.id === 'studyco-post-feed' && state.feedFilter === 'friends'
-        ? 'No posts from friends yet.'
-        : 'No post yet.';
-    target.innerHTML = '<div class="studyco-card studyco-empty">' + emptyMessage + '</div>';
+    target.innerHTML = '<div class="studyco-card studyco-empty">No post yet.</div>';
     return;
   }
   const renderToken = (state.feedRenderTokens.get(target) || 0) + 1;
@@ -934,12 +920,6 @@ async function renderFeed(target = $('studyco-post-feed'), posts = state.posts, 
   };
   if ('requestIdleCallback' in window) window.requestIdleCallback(renderRemaining, { timeout: 700 });
   else window.setTimeout(renderRemaining, 0);
-}
-
-function renderFeedError(error, target = $('studyco-post-feed')) {
-  console.error('[StudyCo] Feed render failed:', error);
-  if (!target) return;
-  target.innerHTML = '<div class="studyco-card studyco-empty">We could not load your circle yet.<br><button id="studyco-retry-feed" class="studyco-button soft" type="button">Try again</button></div>';
 }
 
 function scheduleNextFeedRefresh() {
@@ -3097,18 +3077,6 @@ window.addEventListener('hashchange', syncRoute);
     $('studyco-page-search').focus();
   });
   $('studyco-refresh-feed').addEventListener('click', () => renderFeed().catch((error) => renderFeedError(error)));
-  $('studyco-feed-filters')?.addEventListener('click', (event) => {
-    const button = event.target.closest('[data-feed-filter]');
-    if (!button) return;
-    state.feedFilter = button.dataset.feedFilter || 'all';
-    $('studyco-feed-filters').querySelectorAll('[data-feed-filter]').forEach((item) => {
-      item.setAttribute('aria-pressed', String(item === button));
-    });
-    renderFeed().catch((error) => toast(error.message || 'Feed could not be loaded.', true));
-  });
-  $('studyco-post-feed')?.addEventListener('click', (event) => {
-    if (event.target.closest('#studyco-retry-feed')) subscribeFeed();
-  });
   $('studyco-post-text').addEventListener('input', renderPostPreview);
   document.querySelectorAll('[data-template]').forEach((button) => button.addEventListener('click', () => { state.selectedTemplate = button.dataset.template; document.querySelectorAll('[data-template]').forEach((item) => item.classList.toggle('selected', item === button)); renderPostPreview(); }));
   $('studyco-post-image').addEventListener('change', (event) => { const file = event.target.files[0]; if (file && !file.type.startsWith('image/')) { toast('Only image attachments are allowed.', true); event.target.value = ''; return; } state.postImage = file || null; renderPostPreview(); renderPostAttachmentStatus(); });
@@ -3202,8 +3170,13 @@ window.addEventListener('hashchange', syncRoute);
       try {
         const result = await toggleLike(button.dataset.postId);
         button.classList.toggle('liked', result.liked);
-        const count = button.querySelector('.studyco-action-count');
-        if (count) count.textContent = String(result.count);
+        const reactionSummary = article.querySelector('.studyco-post-reaction-summary');
+        const reactionCount = article.querySelector('.studyco-post-reaction-count');
+        if (reactionCount) reactionCount.textContent = String(result.count);
+        if (reactionSummary) reactionSummary.hidden = result.count === 0;
+        const commentSummary = article.querySelector('.studyco-post-comment-summary');
+        const engagement = article.querySelector('.studyco-post-engagement');
+        if (engagement) engagement.hidden = result.count === 0 && (!commentSummary || commentSummary.hidden);
       } catch (error) {
         toast(error.message || 'The post could not be liked.', true);
       } finally {
@@ -3233,9 +3206,15 @@ window.addEventListener('hashchange', syncRoute);
       const count = await addComment(postId, input.value);
       form.reset();
       const article = form.closest('.studyco-post');
-      if (article) {
-        const commentButton = article.querySelector('[data-post-action="comments"] .studyco-action-count');
-        if (commentButton && count != null) commentButton.textContent = String(count);
+      if (article && count != null) {
+        const commentSummary = article.querySelector('.studyco-post-comment-summary');
+        const commentCount = article.querySelector('.studyco-post-comment-count');
+        const commentLabel = article.querySelector('.studyco-post-comment-label');
+        const engagement = article.querySelector('.studyco-post-engagement');
+        if (commentCount) commentCount.textContent = String(count);
+        if (commentLabel) commentLabel.textContent = count === 1 ? 'Comment' : 'Comments';
+        if (commentSummary) commentSummary.hidden = false;
+        if (engagement) engagement.hidden = false;
       }
       const post = state.posts.find((item) => item.id === postId);
       if (post && count != null) post.commentCount = count;

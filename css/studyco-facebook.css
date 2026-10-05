@@ -2385,55 +2385,6 @@
   letter-spacing: -.02em;
 }
 
-.studyco-feed-filters {
-  display: flex;
-  align-items: stretch;
-  gap: 2px;
-  width: 100%;
-  margin: 0 0 8px;
-  padding: 0 8px;
-  overflow-x: auto;
-  border-bottom: 1px solid #e4e6eb;
-  background: #fff;
-  scrollbar-width: none;
-}
-
-.studyco-feed-filters::-webkit-scrollbar {
-  display: none;
-}
-
-.studyco-feed-filters button {
-  flex: 1 0 auto;
-  min-width: 76px;
-  min-height: 44px;
-  padding: 0 12px;
-  border: 0;
-  border-bottom: 3px solid transparent;
-  border-radius: 5px 5px 0 0;
-  background: transparent;
-  color: #65676b;
-  font-family: inherit;
-  font-size: .88rem;
-  font-weight: 600;
-  line-height: 1.2;
-  cursor: pointer;
-}
-
-.studyco-feed-filters button:hover {
-  background: #f2f4f7;
-}
-
-.studyco-feed-filters button[aria-pressed="true"] {
-  border-bottom-color: #1877f2;
-  color: #1877f2;
-  font-weight: 750;
-}
-
-.studyco-feed-filters button:focus-visible {
-  outline: 3px solid rgba(24, 119, 242, .3);
-  outline-offset: -3px;
-}
-
 .studyco-feed {
   gap: 8px;
 }
@@ -2470,12 +2421,263 @@
     padding: 12px 12px 7px;
   }
 
-  .studyco-feed-filters {
-    gap: 0;
-    padding: 0 6px;
+}
+
+
+/* Facebook-style feed post cards and engagement summary. */
+.studyco-feed .studyco-post {
+  position: relative;
+  margin: 0 0 8px;
+  padding: 0;
+  overflow: visible;
+  border: 1px solid #e4e6eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .06);
+}
+
+.studyco-feed .studyco-post-head {
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px 54px 8px 12px;
+}
+
+.studyco-feed .studyco-post-author {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  color: #050505;
+  text-decoration: none;
+}
+
+.studyco-feed .studyco-post-author .studyco-avatar {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+
+.studyco-feed .studyco-post-author > span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.studyco-feed .studyco-post-author strong {
+  color: #050505;
+  font-size: .88rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.studyco-feed .studyco-post-author small {
+  overflow: hidden;
+  color: #65676b;
+  font-size: .72rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studyco-feed .studyco-post-management-slot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 3;
+}
+
+.studyco-feed .studyco-post-management-slot details {
+  position: relative;
+}
+
+.studyco-feed .studyco-post-management-slot summary {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border-radius: 50%;
+  color: #606770;
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  line-height: 1;
+  list-style: none;
+  cursor: pointer;
+}
+
+.studyco-feed .studyco-post-management-slot summary::-webkit-details-marker {
+  display: none;
+}
+
+.studyco-feed .studyco-post-management-slot summary:hover,
+.studyco-feed .studyco-post-management-slot details[open] > summary {
+  background: #f0f2f5;
+}
+
+.studyco-feed .studyco-post-management-slot details[open] > .studyco-profile-post-management-actions,
+.studyco-feed .studyco-post-management-slot details[open] > .studyco-post-preferences {
+  position: absolute;
+  top: calc(100% + 7px);
+  right: 0;
+  z-index: 4;
+  display: grid;
+  min-width: 208px;
+  gap: 2px;
+  padding: 6px;
+  border: 1px solid #e4e6eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .16);
+}
+
+.studyco-feed .studyco-post-management-slot .studyco-profile-post-management-actions button,
+.studyco-feed .studyco-post-management-slot .studyco-post-preferences button {
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #1c1e21;
+  font: inherit;
+  font-size: .82rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.studyco-feed .studyco-post-management-slot .studyco-profile-post-management-actions button:hover,
+.studyco-feed .studyco-post-management-slot .studyco-post-preferences button:hover {
+  background: #f0f2f5;
+}
+
+.studyco-feed .studyco-post-management-slot .studyco-post-preferences > span {
+  padding: 8px 10px 4px;
+  color: #65676b;
+  font-size: .76rem;
+}
+
+.studyco-feed .studyco-post-status {
+  display: block;
+  margin: 0 14px 8px;
+}
+
+.studyco-feed .studyco-post-body {
+  padding: 4px 14px 12px;
+  color: #1c1e21;
+  font-size: .9rem;
+  line-height: 1.38;
+}
+
+.studyco-feed .studyco-post-image-button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: #f0f2f5;
+}
+
+.studyco-feed .studyco-post-image {
+  display: block;
+  width: 100%;
+  max-height: 560px;
+  margin: 0;
+  object-fit: cover;
+  background: #f0f2f5;
+}
+
+.studyco-feed .studyco-post-engagement {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  color: #65676b;
+  font-size: .78rem;
+}
+
+.studyco-feed .studyco-post-engagement[hidden],
+.studyco-feed .studyco-post-reaction-summary[hidden],
+.studyco-feed .studyco-post-comment-summary[hidden] {
+  display: none !important;
+}
+
+.studyco-feed .studyco-post-reaction-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #65676b;
+}
+
+.studyco-feed .studyco-post-reaction-icon {
+  display: inline-grid;
+  width: 19px;
+  height: 19px;
+  place-items: center;
+  border-radius: 50%;
+  background: #1877f2;
+  color: #fff;
+  font-size: .72rem;
+  line-height: 1;
+}
+
+.studyco-feed .studyco-post-comment-summary {
+  margin-left: auto;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+  color: #65676b;
+  font: inherit;
+  cursor: pointer;
+}
+
+.studyco-feed .studyco-post-comment-summary:hover {
+  text-decoration: underline;
+}
+
+.studyco-feed .studyco-post-actions {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  margin: 0 10px;
+  padding: 5px 0;
+  border-top: 1px solid #e4e6eb;
+}
+
+.studyco-feed .studyco-post-actions button {
+  min-height: 40px;
+  padding: 8px 6px;
+  color: #65676b;
+  font-size: .8rem;
+  font-weight: 650;
+}
+
+@media (max-width: 760px) {
+  .studyco-feed .studyco-post {
+    margin-bottom: 8px;
+    border-radius: 6px;
   }
 
-  .studyco-feed-filters button {
-    min-height: 46px;
+  .studyco-feed .studyco-post-head {
+    min-height: 60px;
+    padding: 9px 50px 7px 12px;
+  }
+
+  .studyco-feed .studyco-post-management-slot {
+    top: 8px;
+    right: 8px;
+  }
+
+  .studyco-feed .studyco-post-body {
+    padding: 4px 12px 10px;
+    font-size: .86rem;
+  }
+
+  .studyco-feed .studyco-post-engagement {
+    min-height: 36px;
+    padding: 0 12px;
   }
 }
