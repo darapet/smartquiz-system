@@ -197,7 +197,7 @@ function _brevoEmailEndpoint() {
     if (typeof window !== 'undefined' && window.AQS_BREVO_FUNCTION_URL) {
         return window.AQS_BREVO_FUNCTION_URL;
     }
-    return 'https://smartquiz-brevo-email.daramolapeter98.workers.dev/api/email';
+    return 'https://darapet-technologyimafe.daramolapeter98.workers.dev/api/email';
 }
 
 async function callBrevoEmail(payload) {
