@@ -475,6 +475,11 @@
             }, function (res) {
                 if (res && res.success) {
                     window._aqsIsRegistering = false;
+                    if (res.data && res.data.existing_account) {
+                        showAlert('aqs-register-alert', 'This email already has an account. Opening it now.', false);
+                        window.location.replace(res.data.redirect || 'user-dashboard.html');
+                        return;
+                    }
                     showAlert('aqs-register-alert', 'Account created. Continue setting up your profile.', false);
                     sessionStorage.setItem('aqs_registration_step', '4');
                     updateProgress(4);
