@@ -72,10 +72,6 @@ function modelFor(env, requestedModel) {
   return allowed.has(model) ? model : DEFAULT_IMAGE_MODEL;
 }
 
-function enrichedPrompt(prompt) {
-  return PROFESSIONAL_IMAGE_WRAPPER.replace('[USER_INPUT]', prompt);
-}
-
 function decodeBase64(value) {
   const normalized = String(value || '').replace(/^data:[^,]+,/, '').replace(/\s/g, '');
   const binary = atob(normalized);

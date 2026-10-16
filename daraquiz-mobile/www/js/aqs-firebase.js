@@ -355,17 +355,23 @@ async function getOrCreateGuestSession() {
    ============================================================ */
 var AQS_ACTION_TIMEOUT_MS = 15000;
 
+function _aqsActionTimeoutFor(action) {
+    return /^(aqs_send_registration_otp|aqs_verify_registration_otp|aqs_register)$/.test(String(action || ''))
+        ? 30000
+        : AQS_ACTION_TIMEOUT_MS;
+}
+
 function _withAqsActionTimeout(promise, action) {
     return Promise.race([
         promise,
         new Promise(function(_, reject) {
             setTimeout(function() {
                 reject(new Error(
-                    'Firebase did not respond within 15 seconds while processing ' +
+                    'Firebase did not respond within ' + (_aqsActionTimeoutFor(action) / 1000) + ' seconds while processing ' +
                     (action || 'this request') +
                     '. Check your connection and try again.'
                 ));
-            }, AQS_ACTION_TIMEOUT_MS);
+            }, _aqsActionTimeoutFor(action));
         })
     ]);
 }
@@ -548,6 +554,8 @@ async function handleAction(data) {
         case 'aqs_logout':           return await actionLogout(data);
         case 'aqs_send_otp':         return await actionSendOtp(data);
         case 'aqs_verify_otp':       return await actionVerifyOtp(data);
+        case 'aqs_send_registration_otp': return await actionSendRegistrationOtp(data);
+        case 'aqs_verify_registration_otp': return await actionVerifyRegistrationOtp(data);
 
         /* ── QUIZ CRUD ── */
         case 'aqs_save_quiz':        return await actionSaveQuiz(data);
@@ -654,61 +662,82 @@ async function actionLogin(data) {
 }
 
 async function actionRegister(data) {
-    var email    = (data.email || '').trim();
+    var email    = String(data.email || '').trim().toLowerCase();
     var password = (data.password || '').trim();
+    var challengeId = String(data.challenge_id || '').trim();
     if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
     if (password.length < 8) throw new Error('Password must be at least 8 characters.');
-    if (email.toLowerCase() === 'daramolapeter98@gmail.com') throw new Error('Use the admin sign-in account instead.');
+    if (!challengeId) throw new Error('Verify your email before creating the account.');
 
-    /* Account creation is intentionally separate from profile completion.
-       A pending account cannot enter the app until OTP and onboarding finish. */
-    window._aqsIsRegistering = true;
-    var cred = await _withAqsStepTimeout(
-        createUserWithEmailAndPassword(auth, email, password),
-        'creating your email account'
-    );
-    var user = cred.user;
-
-    /* Force token refresh so Firestore immediately recognises the new user */
-    try {
-        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing the auth token');
-    } catch(_) {}
-
-    /* Save a deliberately incomplete profile. Firestore rules should permit
-       this own-document write, but never treat it as an active account. */
-    var profile = {
-        uid: user.uid,
-        email: email,
-        role: 'student',
-        created_at: serverTimestamp(),
-        status: 'pending',
-        registration_status: 'otp_pending',
-        otp_verified: false
-    };
-    await _withAqsStepTimeout(
-        setDoc(doc(db, 'users', user.uid), profile),
-        'saving your pending profile'
-    );
-
-    var otpSent = false;
-    var otpResult = null;
-    try {
-        otpResult = await actionSendOtp();
-        otpSent = !!(otpResult && otpResult.sent);
-    } catch (otpError) {
-        console.warn('[AQS Register] OTP delivery failed:', otpError && otpError.message);
+    var currentUser = auth.currentUser || window._aqsFirebaseUser;
+    if (currentUser && !currentUser.isAnonymous
+        && String(currentUser.email || '').trim().toLowerCase() !== email) {
+        throw new Error('Sign out of the other account before registering this email.');
+    }
+    if (currentUser && currentUser.isAnonymous) {
+        await signOut(auth);
+        window._aqsFirebaseUser = null;
     }
 
-    _updateAqsGlobals(user, profile);
-    return {
-        message:      'Account created. Verify your email to continue.',
-        redirect:     'register.html?resume=1',
-        otp_required: true,
-        otp_sent:     otpSent,
-        otp_accepted: !!(otpResult && otpResult.accepted),
-        otp_recipient: otpResult && otpResult.recipient,
-        otp_message_id: otpResult && otpResult.messageId
-    };
+    window._aqsIsRegistering = true;
+    try {
+        var registration = await callRegistrationApi({
+            kind: 'registration_create',
+            email: email,
+            password: password,
+            challengeId: challengeId
+        });
+        var credential = await _withAqsStepTimeout(
+            signInWithEmailAndPassword(auth, email, password),
+            'signing in to your verified account'
+        );
+        var user = credential.user;
+        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing your verified account');
+
+        var profileRef = doc(db, 'users', user.uid);
+        var profileSnap = await _withAqsStepTimeout(getDoc(profileRef), 'checking your account profile');
+        var existing = profileSnap.exists() ? profileSnap.data() : {};
+        if (profileSnap.exists()
+            && (existing.registration_status === 'complete'
+                || (existing.status === 'active' && existing.registration_status !== 'otp_pending'))) {
+            _updateAqsGlobals(user, existing);
+            return {
+                existing_account: true,
+                redirect: _dashboardUrl(existing.role || 'student'),
+                user_name: existing.name || user.displayName || user.email
+            };
+        }
+
+        var profile = {
+            uid: user.uid,
+            email: email,
+            role: 'student',
+            status: 'pending',
+            registration_status: 'profile_pending',
+            otp_verified: true,
+            email_verified: true
+        };
+        if (!profileSnap.exists()) profile.created_at = serverTimestamp();
+        await _withAqsStepTimeout(
+            setDoc(profileRef, profile, { merge: true }),
+            'saving your verified profile'
+        );
+        _updateAqsGlobals(user, profile);
+
+        var welcomeEmailSent = registration.welcomeEmailSent === true;
+        if (!welcomeEmailSent && registration.reusedExisting !== true) {
+            welcomeEmailSent = await trySendWelcomeEmail();
+        }
+        return {
+            message: 'Account created. Continue setting up your profile.',
+            redirect: 'register.html?resume=1',
+            account_created: true,
+            otp_verified: true,
+            welcome_email_sent: welcomeEmailSent
+        };
+    } finally {
+        window._aqsIsRegistering = false;
+    }
 }
 
 function _aqsBuildSocialProfile(user, profile) {
@@ -842,6 +871,56 @@ async function actionCompleteRegistration(data) {
         username: username,
         welcome_email_sent: welcomeEmailSent
     };
+}
+
+async function callRegistrationApi(payload) {
+    var response;
+    try {
+        response = await fetch(_brevoEmailEndpoint(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload || {})
+        });
+    } catch (_) {
+        throw new Error('The registration service could not be reached. Please try again.');
+    }
+    var body = {};
+    try { body = await response.json(); } catch (_) {}
+    if (!response.ok) {
+        throw new Error(body.error || 'The registration service returned an error.');
+    }
+    return body;
+}
+
+async function actionSendRegistrationOtp(data) {
+    var email = String(data && data.email || '').trim().toLowerCase();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new Error('Enter a valid email address.');
+
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (user && user.isAnonymous) {
+        await signOut(auth);
+        window._aqsFirebaseUser = null;
+        user = null;
+    }
+    if (user && String(user.email || '').trim().toLowerCase() !== email) {
+        throw new Error('Sign out of the other account before registering this email.');
+    }
+    return await callRegistrationApi({ kind: 'registration_otp_send', email: email });
+}
+
+async function actionVerifyRegistrationOtp(data) {
+    var email = String(data && data.email || '').trim().toLowerCase();
+    var challengeId = String(data && data.challenge_id || '').trim();
+    var otp = String(data && data.otp || '').replace(/\D/g, '');
+    if (!email || !challengeId || otp.length !== 6) {
+        throw new Error('Enter the six-digit verification code.');
+    }
+    return await callRegistrationApi({
+        kind: 'registration_otp_verify',
+        email: email,
+        challengeId: challengeId,
+        otp: otp
+    });
 }
 
 async function actionSendOtp(data) {

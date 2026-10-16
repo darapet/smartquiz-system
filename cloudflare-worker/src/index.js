@@ -212,7 +212,19 @@ async function createRegistrationAccount(env, payload) {
   if (!challengeId) throw registrationError('Verify your email before creating the account.');
 
   const { key, data: challenge } = await readRegistrationChallenge(env, email);
-  if (!challenge.challengeId || challenge.challengeId !== challengeId || challenge.consumed) {
+  if (!challenge.challengeId || challenge.challengeId !== challengeId) {
+    throw registrationError('This verification request is no longer valid. Request a new code.');
+  }
+  if (challenge.consumed) {
+    if (challenge.firebaseUid) {
+      return {
+        created: true,
+        email,
+        uid: challenge.firebaseUid,
+        reusedExisting: challenge.reusedExisting === true,
+        alreadyCreated: true,
+      };
+    }
     throw registrationError('This verification request is no longer valid. Request a new code.');
   }
   if (!challenge.verified || Date.now() > Number(challenge.expiresAt || 0)) {
@@ -227,31 +239,59 @@ async function createRegistrationAccount(env, payload) {
     body: JSON.stringify({ email, password, returnSecureToken: true }),
   });
   const body = await response.json().catch(() => ({}));
+  let uid = '';
+  let reusedExisting = false;
   if (!response.ok) {
     const firebaseError = String(body && body.error && body.error.message || '');
     if (firebaseError === 'EMAIL_EXISTS') {
-      throw registrationError('That email is already registered. Sign in instead.', 409);
+      const existingUser = await firebaseAdminFindUserByEmail(env, email);
+      if (!existingUser || existingUser.disabled || !existingUser.localId) {
+        throw registrationError('That email is already registered. Sign in instead.', 409);
+      }
+      uid = String(existingUser.localId);
+      reusedExisting = true;
+    } else {
+      throw new Error(firebaseError || 'Firebase could not create the account.');
     }
-    throw new Error(firebaseError || 'Firebase could not create the account.');
+  } else {
+    uid = String(body.localId || '');
+  }
+
+  if (!uid) throw new Error('Firebase did not return an account ID.');
+  try {
+    await firebaseAdminSetEmailVerified(env, uid);
+  } catch (_) {
+    if (!reusedExisting) {
+      try {
+        await firebaseAdminDeleteAuthUser(env, uid);
+      } catch (cleanupError) {
+        console.warn('SmartQuiz could not clean up an unverified registration account:', cleanupError.message);
+      }
+    }
+    throw new Error('Firebase could not confirm the verified email. Please try again.');
   }
 
   await env.EMAIL_CONFIG.put(key, JSON.stringify({
     ...challenge,
     consumed: true,
+    firebaseUid: uid,
+    reusedExisting,
     consumedAt: Date.now(),
-  }), { expirationTtl: 60 });
+  }), { expirationTtl: REGISTRATION_TTL_SECONDS });
   let welcomeEmailSent = false;
-  try {
-    const welcome = await sendWelcomeEmail(env, {
-      uid: body.localId,
-      email,
-      name: body.displayName || email.split('@')[0],
-    });
-    welcomeEmailSent = welcome.sent === true;
-  } catch (error) {
-    console.warn('SmartQuiz welcome email could not be sent:', error.message);
+  if (!reusedExisting) {
+    try {
+      const welcome = await sendWelcomeEmail(env, {
+        uid,
+        email,
+        name: body.displayName || email.split('@')[0],
+      });
+      welcomeEmailSent = welcome.sent === true;
+    } catch (error) {
+      console.warn('SmartQuiz welcome email could not be sent:', error.message);
+    }
   }
-  return { created: true, email, uid: body.localId, welcomeEmailSent };
+  return { created: true, email, uid, reusedExisting, welcomeEmailSent };
 }
 
 async function verifyFirebaseUser(request, env) {
@@ -669,6 +709,46 @@ async function firebaseAdminDeleteAuthUser(env, uid) {
   }
 
   return { deleted: true };
+}
+
+async function firebaseAdminIdentityRequest(env, action, payload) {
+  const accessToken = await createGoogleAccessToken(env);
+  const projectId = String(env.FIREBASE_PROJECT_ID || '').trim();
+  if (!projectId) {
+    throw new Error('Firebase project ID is not configured on the Cloudflare Worker.');
+  }
+
+  const response = await fetch(
+    `https://identitytoolkit.googleapis.com/v1/projects/${encodeURIComponent(projectId)}/${action}`,
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload || {}),
+    },
+  );
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(`Firebase Authentication ${action} failed.`);
+  }
+  return body;
+}
+
+async function firebaseAdminFindUserByEmail(env, email) {
+  const result = await firebaseAdminIdentityRequest(env, 'accounts:lookup', {
+    email: [String(email || '').trim().toLowerCase()],
+  });
+  const users = Array.isArray(result.users) ? result.users : [];
+  return users.find(user => String(user.email || '').trim().toLowerCase() === String(email || '').trim().toLowerCase()) || null;
+}
+
+async function firebaseAdminSetEmailVerified(env, uid) {
+  await firebaseAdminIdentityRequest(env, 'accounts:update', {
+    localId: String(uid || ''),
+    emailVerified: true,
+  });
 }
 
 async function firestoreDeleteDocument(env, documentPath, accessToken) {
