@@ -118,11 +118,14 @@ async function main() {
     console.error('ERROR: logo-source.png not found. Place it in the project root.');
     process.exit(1);
   }
+  const iconsOnly = process.argv.includes('--icons-only');
   try {
     await generateAndroidIcons();
-    await generateAndroidSplash();
+    if (!iconsOnly) await generateAndroidSplash();
     await generateIosIcons();
-    console.log('\n✅ All icons generated in resources/');
+    console.log(iconsOnly
+      ? '\n✅ Android and iOS launcher icons generated in resources/'
+      : '\n✅ All icons and splash screens generated in resources/');
     console.log('Next: run  npx cap sync  to apply them to native projects.');
   } catch (err) {
     console.error('Error generating icons:', err.message);
