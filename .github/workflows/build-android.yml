@@ -73,6 +73,14 @@ jobs:
         if: steps.skip_check.outputs.skip != 'true'
         run: npm install
 
+      - name: Install sharp for launcher icon generation
+        if: steps.skip_check.outputs.skip != 'true'
+        run: npm install --no-save sharp
+
+      - name: Generate launcher icons from Darapet logo
+        if: steps.skip_check.outputs.skip != 'true'
+        run: node generate-icons.js --icons-only
+
       # ── Compute version BEFORE cap sync so the APK bakes in the right code ──
       - name: Compute version numbers
         if: steps.skip_check.outputs.skip != 'true'
@@ -183,9 +191,13 @@ jobs:
             src="resources/android/icon/mipmap-${density}"
             dst="android/app/src/main/res/mipmap-${density}"
             mkdir -p "$dst"
-            cp "${src}/ic_launcher.png"            "$dst/" 2>/dev/null || true
-            cp "${src}/ic_launcher_round.png"      "$dst/" 2>/dev/null || true
-            cp "${src}/ic_launcher_foreground.png" "$dst/" 2>/dev/null || true
+            for icon in ic_launcher.png ic_launcher_round.png ic_launcher_foreground.png; do
+              if [ ! -s "${src}/${icon}" ]; then
+                echo "ERROR: generated launcher icon is missing: ${src}/${icon}"
+                exit 1
+              fi
+              cp "${src}/${icon}" "$dst/"
+            done
           done
           mkdir -p android/app/src/main/res/drawable
           cp resources/android/splash/drawable/splash.png android/app/src/main/res/drawable/ 2>/dev/null || true

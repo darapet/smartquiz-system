@@ -2,9 +2,6 @@ name: Generate App Icons
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'logo-source.png'
 
 jobs:
   generate-icons:
@@ -24,7 +21,7 @@ jobs:
         run: npm install sharp
 
       - name: Generate icons from logo
-        run: node generate-icons.js
+        run: node generate-icons.js --icons-only
 
       - name: Commit generated icons
         uses: stefanzweifel/git-auto-commit-action@v5
