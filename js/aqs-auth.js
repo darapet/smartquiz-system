@@ -413,6 +413,7 @@
                     setOtpStatus('Email verified. Continue by creating your password.', false);
                     sessionStorage.setItem('aqs_registration_step', '3');
                     updateProgress(3);
+                    verify.disabled = false;
                     if (resend) resend.disabled = false;
                     return;
                 }
