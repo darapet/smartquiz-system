@@ -136,19 +136,39 @@ async function sendRegistrationOtp(env, payload) {
     sendCount: sendCount + 1,
   }), { expirationTtl: REGISTRATION_TTL_SECONDS });
 
-  const unsubscribeUrl = await emailUnsubscribeUrl(env, email);
-  const content = otpEmailContent({
-    code,
-    intro: 'Enter this code to continue creating your SmartQuiz account:',
-    unsubscribeUrl,
-  });
-  const result = await sendBrevoMessage(env, {
-    recipient: email,
-    subject: 'Your SmartQuiz verification code',
-    htmlContent: content.html,
-    textContent: content.text,
-    headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` },
-  });
+  let result;
+  try {
+    const unsubscribeUrl = await emailUnsubscribeUrl(env, email);
+    const content = otpEmailContent({
+      code,
+      intro: 'Enter this code to continue creating your SmartQuiz account:',
+      unsubscribeUrl,
+    });
+    result = await sendBrevoMessage(env, {
+      recipient: email,
+      subject: 'Your SmartQuiz verification code',
+      htmlContent: content.html,
+      textContent: content.text,
+      headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` },
+    });
+  } catch (error) {
+    try {
+      const { data: current } = await readRegistrationChallenge(env, email);
+      if (current.challengeId === challengeId) {
+        if (Object.keys(previous).length) {
+          const remainingTtl = previous.expiresAt
+            ? Math.max(60, Math.ceil((previous.expiresAt - Date.now()) / 1000))
+            : REGISTRATION_TTL_SECONDS;
+          await env.EMAIL_CONFIG.put(key, JSON.stringify(previous), { expirationTtl: remainingTtl });
+        } else {
+          await env.EMAIL_CONFIG.delete(key);
+        }
+      }
+    } catch (rollbackError) {
+      console.warn('Could not roll back a failed registration email challenge:', rollbackError.message);
+    }
+    throw error;
+  }
 
   return {
     sent: true,
@@ -174,10 +194,10 @@ async function verifyRegistrationOtp(env, payload) {
   if (!challenge.challengeId || challenge.challengeId !== challengeId || challenge.consumed) {
     throw registrationError('This verification request is no longer valid. Request a new code.');
   }
-  if (challenge.verified) return { verified: true, challengeId, expiresIn: REGISTRATION_TTL_SECONDS };
   if (now > Number(challenge.expiresAt || 0)) {
     throw registrationError('That code has expired. Request a new one.');
   }
+  if (challenge.verified) return { verified: true, challengeId, expiresIn: REGISTRATION_TTL_SECONDS };
 
   const attempts = Number(challenge.attempts || 0);
   if (attempts >= REGISTRATION_MAX_ATTEMPTS) {
