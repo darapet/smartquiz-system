@@ -214,28 +214,13 @@ jobs:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         run: |
-          B64_FILE="../.daraquiz-keystore.b64"
           KS_FILE="android/app/daraquiz-release.keystore"
-          echo "NEW_KEYSTORE=false" >> $GITHUB_ENV
-          if [ -n "$KEYSTORE_B64" ]; then
-            echo "Using keystore from repository secret"
-            echo "$KEYSTORE_B64" | tr -d '\n' | base64 -d > "$KS_FILE"
-          elif [ -f "$B64_FILE" ]; then
-            echo "Using keystore file from repo (add KEYSTORE_B64 secret to make this private)"
-            base64 -d "$B64_FILE" > "$KS_FILE"
-          else
-            echo "Generating new keystore (first run only)..."
-            keytool -genkeypair \
-              -alias daraquiz \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -keystore "$KS_FILE" \
-              -storepass "${KEYSTORE_PASSWORD:-DaraQuiz_Release2024}" \
-              -keypass "${KEYSTORE_PASSWORD:-DaraQuiz_Release2024}" \
-              -dname "CN=DaraQuiz AI,OU=Mobile,O=Darapet Technology,L=Lagos,S=Lagos,C=NG" \
-              -noprompt
-            echo "::warning::A brand new keystore was generated. Save it as the KEYSTORE_B64 secret."
+          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Set KEYSTORE_B64 and KEYSTORE_PASSWORD to the original DaraQuiz signing key. Refusing to generate a different release key."
+            exit 1
           fi
-
+          echo "$KEYSTORE_B64" | tr -d '\n' | base64 -d > "$KS_FILE"
+          echo "$KEYSTORE_PASSWORD" > android/app/keystore-password.txt
       - name: Make Gradlew executable
         if: steps.skip_check.outputs.skip != 'true'
         run: chmod +x android/gradlew
