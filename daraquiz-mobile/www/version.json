@@ -1,6 +1,6 @@
 {
-  "version": "1.541",
-  "versionCode": 519,
+  "version": "1.542",
+  "versionCode": 520,
   "releaseDate": "2026-10-29",
-  "notes": "Scheduled Dara Social posts, new homepage features, and PWA cache refresh."
+  "notes": "Dara Social scheduled automation and PWA cache refresh."
 }
