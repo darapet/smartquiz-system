@@ -11,6 +11,8 @@ import {
     getAuth,
     createUserWithEmailAndPassword,
     signInWithEmailAndPassword,
+    GoogleAuthProvider,
+    signInWithPopup,
     sendPasswordResetEmail,
     deleteUser,
     signOut,
@@ -581,6 +583,7 @@ async function handleAction(data) {
     switch(action) {
         /* ── AUTH ── */
         case 'aqs_login':            return await actionLogin(data);
+        case 'aqs_google_signin':    return await actionGoogleSignIn();
         case 'aqs_register':         return await actionRegister(data);
         case 'aqs_complete_registration': return await actionCompleteRegistration(data);
         case 'aqs_reset_password':   return await actionResetPassword(data);
@@ -660,6 +663,58 @@ async function handleAction(data) {
 /* ============================================================
    AUTH ACTIONS
    ============================================================ */
+async function actionGoogleSignIn() {
+    var provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    window._aqsIsLoggingIn = true;
+    try {
+        var credential = await _withAqsStepTimeout(signInWithPopup(auth, provider), 'signing in with Google');
+        var user = credential.user;
+        var profileRef = doc(db, 'users', user.uid);
+        var profileSnap = await _withAqsStepTimeout(getDoc(profileRef), 'loading your Google account profile');
+        var profile = profileSnap.exists() ? profileSnap.data() : {
+            uid: user.uid,
+            email: user.email || '',
+            name: user.displayName || '',
+            username: (user.email || '').split('@')[0],
+            role: 'student',
+            status: 'active',
+            registration_status: 'complete',
+            otp_verified: true,
+            email_verified: !!user.emailVerified,
+            created_at: serverTimestamp()
+        };
+        if (!profileSnap.exists()) {
+            await _withAqsStepTimeout(setDoc(profileRef, profile, { merge: true }), 'creating your Google account profile');
+        }
+        if (isConfiguredAdmin(user)) {
+            profile.role = 'admin';
+            setDoc(profileRef, { role: 'admin' }, { merge: true }).catch(function() {});
+        }
+        _updateAqsGlobals(user, profile);
+        try { await _ensureAqsSocialProfile(user, profile); } catch (socialError) {
+            console.warn('[AQS] Google sign-in social profile bootstrap failed:', socialError && socialError.message || socialError);
+        }
+        var registrationIncomplete = _aqsIsRegistrationIncomplete(profile);
+        return {
+            logged_in: true,
+            redirect: registrationIncomplete ? 'register.html?resume=1' : _dashboardUrl(profile.role),
+            registration_incomplete: registrationIncomplete,
+            user_name: profile.name || user.displayName || user.email
+        };
+    } catch (error) {
+        var code = error && error.code || '';
+        if (code === 'auth/operation-not-allowed') {
+            throw new Error('Google sign-in is not enabled for this Firebase project. Enable Google in Firebase Console > Authentication > Sign-in method.');
+        }
+        if (code === 'auth/popup-blocked') throw new Error('Your browser blocked the Google sign-in popup. Allow popups and try again.');
+        if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') throw new Error('Google sign-in was cancelled. You can try again.');
+        throw error;
+    } finally {
+        window._aqsIsLoggingIn = false;
+    }
+}
+
 async function actionLogin(data) {
     var identifier = (data.username || '').trim();
     var password   = (data.password || '').trim();

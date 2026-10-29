@@ -72,6 +72,37 @@
         });
     }
 
+    function setupGoogleSignIn(buttonId, alertId) {
+        var button = document.getElementById(buttonId);
+        if (!button) return;
+        button.addEventListener('click', function () {
+            hideAlert(alertId);
+            if (typeof window.aqsAjax !== 'function') {
+                showAlert(alertId, 'Firebase is still loading. Please try again in a moment.', true);
+                return;
+            }
+            button.disabled = true;
+            button.textContent = 'Connecting to Google…';
+            window._aqsIsLoggingIn = true;
+            window.aqsAjax({ action: 'aqs_google_signin' }, function (res) {
+                if (res && res.success && res.data && res.data.redirect) {
+                    showAlert(alertId, 'Signed in with Google. Redirecting…', false);
+                    window.setTimeout(function () { window.location.replace(res.data.redirect); }, 250);
+                    return;
+                }
+                window._aqsIsLoggingIn = false;
+                button.disabled = false;
+                button.textContent = 'Continue with Google';
+                showAlert(alertId, responseMessage(res, 'Google sign-in failed. Please try again.'), true);
+            }, function (err) {
+                window._aqsIsLoggingIn = false;
+                button.disabled = false;
+                button.textContent = 'Continue with Google';
+                showAlert(alertId, (err && err.message) || 'Google sign-in failed. Please try again.', true);
+            });
+        });
+    }
+
     function setupLoginForm() {
         var form = document.getElementById('aqs-login-form');
         if (!form) return;
@@ -242,6 +273,8 @@
             item.classList.toggle('active', itemStep <= step);
             item.classList.toggle('current', itemStep === step);
         });
+        var googleButton = document.getElementById('aqs-register-google');
+        if (googleButton) googleButton.hidden = step !== 1;
         var bar = document.getElementById('aqs-flow-progress-bar');
         if (bar) bar.style.width = Math.max(0, Math.min(100, ((step - 1) / 4) * 100)) + '%';
         var title = document.getElementById('aqs-register-title');
@@ -619,6 +652,8 @@
         setupPasswordStrength();
         setupPasswordReset();
         setupLoginForm();
+        setupGoogleSignIn('aqs-login-google', 'aqs-login-alert');
+        setupGoogleSignIn('aqs-register-google', 'aqs-register-alert');
         setupRegistrationFlow();
         setupLogoutBtns();
         setupDashboardInfo();

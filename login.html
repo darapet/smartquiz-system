@@ -29,7 +29,7 @@ window.AQS = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=20260922-password-login"></script>
+<script type="module" src="js/aqs-firebase.js?v=20261029-google-auth-1"></script>
 </head>
 <body>
 <div class="aqs-auth-page">
@@ -45,8 +45,9 @@ window.AQS = {
         <p class="aqs-auth-subtitle">Sign in to your xzily AI account with your password.</p>
     </div>
 
-    <div id="aqs-login-alert" class="aqs-auth-alert"></div>
-    <div class="aqs-auth-divider"><span>Sign in with email</span></div>
+    <div id="aqs-login-alert" class="aqs-auth-alert" role="alert"></div>
+    <button type="button" id="aqs-login-google" class="aqs-social-btn google" style="width:100%;margin-bottom:18px;">Continue with Google</button>
+    <div class="aqs-auth-divider"><span>or sign in with email</span></div>
 
     <form id="aqs-login-form" autocomplete="off" novalidate>
         <div class="aqs-auth-field">
