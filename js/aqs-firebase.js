@@ -2471,7 +2471,12 @@ async function actionGetSettings() {
             var currentUser = auth.currentUser || window._aqsFirebaseUser;
             if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
                 var privateSnap = await getDoc(doc(db, 'settings', 'private'));
-                if (privateSnap.exists()) settings.brevo_api_key = privateSnap.data().brevo_api_key || '';
+                if (privateSnap.exists()) {
+                    settings.brevo_api_key = privateSnap.data().brevo_api_key || '';
+                    ['google_client_secret','github_client_secret','microsoft_client_secret','yahoo_client_secret'].forEach(function (k) {
+                        settings[k] = privateSnap.data()[k] || '';
+                    });
+                }
             }
             return { settings: settings };
         }
@@ -2494,10 +2499,8 @@ async function actionSaveSettings(data) {
         'brevo_api_key','brevo_from_name','brevo_from_email','otp_enabled',
         'countdown_enabled','countdown_label','countdown_date','countdown_hour','countdown_minute',
         'ticker_text',
-        'google_client_id','google_client_secret',
-        'github_client_id','github_client_secret',
-        'microsoft_client_id','microsoft_client_secret',
-        'yahoo_client_id','yahoo_client_secret',
+        'google_client_id','github_client_id',
+        'microsoft_client_id','yahoo_client_id',
         'quoteGroqKeys',
         'lib_groq_keys',
         'quiz_groq_keys',
@@ -2510,7 +2513,7 @@ async function actionSaveSettings(data) {
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key') privatePayload[k] = data[k];
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret')) privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
@@ -2573,6 +2576,12 @@ async function actionSaveSettings(data) {
         }
     });
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
+    var privateKeys = Object.keys(privatePayload).filter(function (k) { return k !== 'brevo_api_key'; });
+    if (privateKeys.length) {
+        var privateMerge = {};
+        privateKeys.forEach(function (k) { privateMerge[k] = String(privatePayload[k] || '').trim(); });
+        await setDoc(doc(db, 'settings', 'private'), privateMerge, { merge: true });
+    }
     if ('brevo_api_key' in privatePayload) {
         var privateValue = String(privatePayload.brevo_api_key || '').trim();
         if (privateValue) {
