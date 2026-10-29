@@ -1,4 +1,4 @@
-name = "darapet-technologyimafe"
+name = "smartquiz-system3"
 main = "src/index.js"
 compatibility_date = "2026-09-21"
 
@@ -17,8 +17,5 @@ id = "2add7fc63e7f4d1ca04b37b221bdcf07"
 
 [ai]
 binding = "AI"
-[triggers]
-crons = ["*/30 * * * *", "0 */5 * * *"]
-
 [triggers]
 crons = ["*/30 * * * *", "0 */5 * * *"]
