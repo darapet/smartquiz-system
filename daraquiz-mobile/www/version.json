@@ -1,8 +1,6 @@
 {
-  "version": "1.540",
-  "versionCode": 518,
-  "releaseDate": "2026-10-17",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.540/daraquiz-v1.540.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.540/daraquiz-v1.540.apk"
+  "version": "1.541",
+  "versionCode": 519,
+  "releaseDate": "2026-10-29",
+  "notes": "Scheduled Dara Social posts, new homepage features, and PWA cache refresh."
 }
