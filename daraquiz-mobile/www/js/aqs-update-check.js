@@ -22,7 +22,7 @@ var AQS_APP_VERSION_CODE = 518;
   'use strict';
 
   var VERSION_JSON_URL =
-    'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json';
+    'https://smartquiz-system3.daramolapeter98.workers.dev/daraquiz-mobile/www/version.json';
   var VERSION_JSON_FALLBACK_URL =
     'https://github.com/darapet/smartquiz-system/raw/refs/heads/main/daraquiz-mobile/www/version.json';
 
@@ -259,11 +259,8 @@ var AQS_APP_VERSION_CODE = 518;
   document.getElementById('aqs-upd-close').addEventListener('click', snoozeUpdate);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
-    if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
-      alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
-      return;
-    }
-    downloadInApp(_apkUrl);
+    var targetUrl = _apkUrl || 'https://github.com/darapet/smartquiz-system/releases/latest';
+    downloadInApp(targetUrl);
   });
 
   document.getElementById('aqs-upd-btn-later').addEventListener('click', snoozeUpdate);
