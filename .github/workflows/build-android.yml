@@ -221,8 +221,8 @@ jobs:
           fi
           echo "$KEYSTORE_B64" | tr -d '\n' | base64 -d > "$KS_FILE"
           echo "$KEYSTORE_PASSWORD" > android/app/keystore-password.txt
-          echo "android/app/daraquiz-release.keystore" >> .git/info/exclude
-          echo "android/app/keystore-password.txt" >> .git/info/exclude
+          git config --global --add safe.directory "$GITHUB_WORKSPACE" || true
+          printf "/android/app/daraquiz-release.keystore\n/android/app/keystore-password.txt\n" >> "$GITHUB_WORKSPACE/.git/info/exclude"
       - name: Make Gradlew executable
         if: steps.skip_check.outputs.skip != 'true'
         run: chmod +x android/gradlew
