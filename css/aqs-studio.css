@@ -885,3 +885,6 @@ html {
     }
 }
 /* AQS-STUDIO-MOB-v9-END */
+
+/* AI answers use the full available conversation width */
+.dts-message.dts-ai .dts-msg-content{width:100%;max-width:none;flex:1 1 100%;min-width:0}.dts-message.dts-ai .dts-msg-bubble{width:100%;max-width:none;box-sizing:border-box}

@@ -81,6 +81,7 @@ body{background:#080d1c;color:#e5e7eb;}
 .udash-quick-icon{width:38px;height:38px;margin:0;display:grid;place-items:center;border-radius:12px;background:#1e3344;font-size:1.35rem;}
 .udash-quick-name{margin:0;color:#f1f5f9;font-size:.82rem;line-height:1.25;}
 .udash-quick-desc{display:none;}
+.udash-welcome-quote{margin:0 0 20px;padding:22px 24px;border:1px solid #22505b;border-radius:18px;background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);box-shadow:0 14px 34px rgba(0,0,0,.2);color:#f8fafc}.udash-welcome-quote .uq-eyebrow{color:#99f6e4;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.udash-welcome-quote blockquote{margin:10px 0 8px;font:italic 1.08rem/1.6 Georgia,serif}.udash-welcome-quote cite{color:#a5b4fc;font-size:.82rem;font-style:normal}.aqs-user-avatar-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.65)}.udash-profile-tools{display:flex;align-items:center;gap:10px}.udash-notif{width:40px;height:40px;display:grid;place-items:center;border:1px solid #456070;border-radius:12px;background:#102b3a;color:#e2e8f0;text-decoration:none;font-size:1.2rem}.udash-auth-id{font-size:.7rem;color:#b6c5d4;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .udash-account-card{background:#111b30;border-color:#25344c;}
 .udash-account-title,.udash-table td:last-child{color:#e2e8f0;}
 .udash-table td{border-color:#263449;}
@@ -141,14 +142,18 @@ window.AQS = {
       <div>
         <div class="aqs-user-name" id="aqs-user-display-name">Loading…</div>
         <div class="aqs-user-role-badge" id="aqs-user-role-badge">Member</div>
+        <div class="udash-auth-id" id="udash-auth-id"></div>
       </div>
     </div>
-    <div class="aqs-user-topbar-actions">
+    <div class="udash-profile-tools"><a class="udash-notif" href="notifications.html" aria-label="Notifications" title="Notifications">♧</a><div class="aqs-user-topbar-actions">
       <a href="quiz-setup.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
       <a href="studio.html"      class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;">⬡ xzily Ai</a>
       <button class="aqs-btn aqs-btn-sm" id="aqs-user-logout-btn" style="color:#dc2626;border-color:#fecaca;">Log Out</button>
-    </div>
+      <a class="aqs-btn aqs-btn-sm" id="udash-join-btn" href="login.html" hidden>Join / Sign in</a>
+    </div></div>
   </div>
+
+  <section class="udash-welcome-quote" aria-label="Daily welcome quote"><div class="uq-eyebrow">A thought for today</div><blockquote id="udash-welcome-quote-text">Small steps every day lead to remarkable results.</blockquote><cite id="udash-welcome-quote-author">SmartQuiz daily inspiration</cite></section>
 
   <!-- Stats Row -->
   <div class="udash-stats">
@@ -192,8 +197,8 @@ window.AQS = {
     <a href="puzzle.html" class="udash-quick-card" aria-label="Puzzle Battle">
       <div class="udash-quick-icon">🧩</div><div class="udash-quick-name">Puzzle Battle</div><div class="udash-quick-desc">Play puzzle modes with friends</div>
     </a>
-    <a href="studyco-meet.html" class="udash-quick-card" aria-label="Dara Social">
-      <div class="udash-quick-icon">💬</div><div class="udash-quick-name">Dara Social</div><div class="udash-quick-desc">Learn together with your circle</div>
+    <a href="studyco-meet.html" class="udash-quick-card" aria-label="chat with your friend">
+      <div class="udash-quick-icon">💬</div><div class="udash-quick-name">chat with your friend</div><div class="udash-quick-desc">Learn together with your circle</div>
     </a>
     <a href="docs-gen.html" class="udash-quick-card" aria-label="Docs Gen">
       <div class="udash-quick-icon">📄</div><div class="udash-quick-name">Docs Gen</div><div class="udash-quick-desc">Create documents with AI</div>
@@ -254,6 +259,8 @@ window.AQS = {
         }
     }
 
+    function showEntryQuote(){try{var d=new Date(),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');var qs=JSON.parse(localStorage.getItem('aqs_dq_'+key)||'null');if(!Array.isArray(qs)||!qs.length)return;var idx=Math.max(0,(parseInt(localStorage.getItem('aqs_visit_qi')||'1',10)-1)%qs.length),q=qs[idx];if(q&&q.text){document.getElementById('udash-welcome-quote-text').textContent=q.text;document.getElementById('udash-welcome-quote-author').textContent=q.author||'SmartQuiz';}}catch(e){}}
+    showEntryQuote();
     function loadProfile(){
         jQuery.post(AQS.ajax_url, {action:'aqs_get_my_profile'}).then(function(res){
             var d = unwrap(res);
@@ -271,6 +278,7 @@ window.AQS = {
                 document.getElementById('aqs-user-role-badge').textContent   = d.role;
             }
             if(d.username) document.getElementById('aqs-account-username').textContent = '@'+d.username;
+            var user=window._aqsFirebaseUser; if(user){ var id=document.getElementById('udash-auth-id'); if(id) id.textContent='ID: '+user.uid; if(user.photoURL){var av=document.getElementById('aqs-user-avatar-initial'),img=document.createElement('img');img.src=user.photoURL;img.alt='Profile picture';img.className='aqs-user-avatar-photo';av.replaceWith(img);img.id='aqs-user-avatar-initial';}}
         }).catch(function(e){ console.warn('[udash] profile error', e); });
     }
 
@@ -296,7 +304,8 @@ window.AQS = {
 
     waitReady(function(user){
         if(!user){
-            document.getElementById('aqs-user-display-name').textContent = 'Please log in';
+            document.getElementById('aqs-user-display-name').textContent = 'Welcome';
+            document.getElementById('udash-join-btn').hidden = false; document.getElementById('aqs-user-logout-btn').hidden=true; document.getElementById('aqs-user-logout-btn2').hidden=true;
             document.getElementById('aqs-user-avatar-initial').textContent = '?';
             document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your activity.</p>';
             return;

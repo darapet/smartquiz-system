@@ -727,14 +727,10 @@
             '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
         messages.appendChild(wrap);
         var bubble = wrap.querySelector('.dts-msg-bubble');
-        var tokens = content.split(/(?=\s)/);
-        if (tokens.length < 4) tokens = content.split('');
-        var idx=0, acc='', CHUNK=6, DELAY=10;
+        var idx=0, acc='', DELAY=12;
         function tick() {
-            if (idx < tokens.length) {
-                var end=Math.min(idx+CHUNK,tokens.length);
-                for (var i=idx;i<end;i++) acc+=tokens[i];
-                idx=end;
+            if (idx < content.length) {
+                acc += content.charAt(idx++);
                 try {
                     bubble.innerHTML = typeof marked!=='undefined'
                         ? marked.parse(acc,{breaks:true,gfm:true})
