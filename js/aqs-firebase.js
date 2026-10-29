@@ -2521,6 +2521,7 @@ async function actionGetSettings() {
             if (!window._AQS_ADMIN_SETTINGS_MODE) {
                 settings = Object.assign({}, settings);
                 delete settings.creator_image_keys;
+                delete settings.darasocial_post_slot;
             }
             delete settings.brevo_api_key;
             var currentUser = auth.currentUser || window._aqsFirebaseUser;
@@ -2531,6 +2532,15 @@ async function actionGetSettings() {
                     ['google_client_secret','github_client_secret','microsoft_client_secret','yahoo_client_secret'].forEach(function (k) {
                         settings[k] = privateSnap.data()[k] || '';
                     });
+                    settings.darasocial_post_slot = privateSnap.data().darasocial_post_slot || [];
+                    settings.darasocial_course_enabled = privateSnap.data().darasocial_course_enabled !== false;
+                    settings.darasocial_course_interval_minutes = privateSnap.data().darasocial_course_interval_minutes || 30;
+                    settings.darasocial_course_last_post_at = privateSnap.data().darasocial_course_last_post_at || '';
+                    settings.darasocial_news_enabled = privateSnap.data().darasocial_news_enabled !== false;
+                    settings.darasocial_news_interval_hours = privateSnap.data().darasocial_news_interval_hours || 5;
+                    settings.darasocial_news_last_post_at = privateSnap.data().darasocial_news_last_post_at || '';
+                    settings.darasocial_course_index = privateSnap.data().darasocial_course_index || 0;
+                    settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
                 }
             }
             return { settings: settings };
@@ -2565,12 +2575,13 @@ async function actionSaveSettings(data) {
         'studyhub_groq_keys',
         'textdocs_groq_keys',
         'puzzle_groq_keys',
-        'quizstudio_groq_keys',
+        'quizstudio_groq_keys','darasocial_post_slot',
+        'darasocial_course_enabled','darasocial_course_interval_minutes','darasocial_course_last_post_at','darasocial_news_enabled','darasocial_news_interval_hours','darasocial_news_last_post_at','darasocial_course_index','darasocial_news_index',
         'gemini_tts_keys'
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key' || k.endsWith('_client_secret')) privatePayload[k] = data[k];
+        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_')) privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
@@ -2624,7 +2635,7 @@ async function actionSaveSettings(data) {
     }
     /* Trim and validate feature-specific Groq keys (up to 10 each) */
     ['quiz_groq_keys','challenge_groq_keys','studyhub_groq_keys',
-     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys'].forEach(function(field) {
+     'textdocs_groq_keys','puzzle_groq_keys','quizstudio_groq_keys','darasocial_post_slot'].forEach(function(field) {
         if (Array.isArray(payload[field])) {
             payload[field] = payload[field]
                 .map(function(k){ return typeof k === 'string' ? k.trim() : ''; })
@@ -2636,7 +2647,13 @@ async function actionSaveSettings(data) {
     var privateKeys = Object.keys(privatePayload).filter(function (k) { return k !== 'brevo_api_key'; });
     if (privateKeys.length) {
         var privateMerge = {};
-        privateKeys.forEach(function (k) { privateMerge[k] = String(privatePayload[k] || '').trim(); });
+        privateKeys.forEach(function (k) {
+            var v = privatePayload[k];
+            if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
+            else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
+            else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
+            else privateMerge[k] = String(v || '').trim();
+        });
         await setDoc(doc(db, 'settings', 'private'), privateMerge, { merge: true });
     }
     if ('brevo_api_key' in privatePayload) {

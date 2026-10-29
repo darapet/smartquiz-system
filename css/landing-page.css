@@ -422,3 +422,10 @@ body.lp-page a { color: inherit; }
   .lp-legal-notice { padding: 16px; }
   .lp-video-autoplay-fallback { bottom: 14px; font-size: 11px; }
 }
+
+/* Uniform dark feature tiles for the full product toolkit. */
+.lp-feature-tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(140px,1fr)); gap:14px; margin:30px 0 18px; }
+.lp-feature-tile { min-height:132px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:13px; padding:18px 12px; border:1px solid var(--lp-line); border-radius:18px; background:linear-gradient(155deg,rgba(21,34,56,.96),rgba(15,23,42,.96)); color:var(--lp-text)!important; text-align:center; text-decoration:none; font-size:12px; font-weight:600; transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease; }
+.lp-feature-tile:hover,.lp-feature-tile:focus-visible { transform:translateY(-3px); border-color:rgba(96,165,250,.72); box-shadow:0 12px 28px rgba(2,6,23,.35),0 0 20px rgba(59,130,246,.12); outline:none; }
+.lp-feature-icon { display:grid; width:54px; height:54px; place-items:center; border:1px solid rgba(96,165,250,.24); border-radius:16px; background:rgba(59,130,246,.13); font-size:25px; }
+@media(max-width:540px){.lp-feature-tiles{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.lp-feature-tile{min-height:108px;padding:12px 7px;font-size:10px}.lp-feature-icon{width:46px;height:46px;font-size:22px}}

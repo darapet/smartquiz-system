@@ -147,6 +147,16 @@ window.addEventListener('DOMContentLoaded', function() {
             hcMKeys.forEach(function(k){ if (mkeys.indexOf(k) === -1) mkeys.push(k); });
             for (var mi = 1; mi <= 20; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
             if (typeof window.setMistralKeys === 'function') window.setMistralKeys(mkeys.filter(function(k){ return k && k.length > 20; }));
+            /* Dara Social automation settings and private key pool */
+            setChk('aqs-dsocial-course-enabled', s.darasocial_course_enabled !== false);
+            setVal('aqs-dsocial-course-interval', s.darasocial_course_interval_minutes || 30);
+            setVal('aqs-dsocial-course-last', s.darasocial_course_last_post_at || 'Never');
+            setChk('aqs-dsocial-news-enabled', s.darasocial_news_enabled !== false);
+            setVal('aqs-dsocial-news-interval', s.darasocial_news_interval_hours || 5);
+            setVal('aqs-dsocial-news-last', s.darasocial_news_last_post_at || 'Never');
+            var dpk = Array.isArray(s.darasocial_post_slot) ? s.darasocial_post_slot : [];
+            for (var dpi=1; dpi<=10; dpi++) setVal('aqs-dsocial-post-key-'+dpi, dpk[dpi-1] || '');
+            if (typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys('darasocial_post_slot', dpk);
             /* Load Library AI keys */
             var lkeys = Array.isArray(s.lib_groq_keys) ? s.lib_groq_keys : [];
             for (var li = 1; li <= 10; li++) { setVal('aqs-lib-key-' + li, lkeys[li-1] || ''); }
@@ -520,6 +530,33 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+
+<!-- Dara Social scheduled automations -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#dbeafe,#c4b5fd)"><span class="aqs-settings-card-icon">🌍</span><div><h2 class="aqs-settings-card-title">Dara Social Automations</h2><p class="aqs-settings-card-desc">Scheduled university-course learning posts and Nigerian news/sports updates.</p></div></div>
+  <div class="aqs-settings-card-body">
+    <label><input type="checkbox" id="aqs-dsocial-course-enabled" checked> Course auto-poster</label>
+    <label style="margin-left:18px">Every <input id="aqs-dsocial-course-interval" type="number" min="30" max="1440" value="30" style="width:80px"> minutes</label>
+    <p>Last course post: <span id="aqs-dsocial-course-last">Never</span></p>
+    <label><input type="checkbox" id="aqs-dsocial-news-enabled" checked> News and sports fetcher</label>
+    <label style="margin-left:18px">Every <input id="aqs-dsocial-news-interval" type="number" min="1" max="72" value="5" style="width:80px"> hours</label>
+    <p>Last news/sports post: <span id="aqs-dsocial-news-last">Never</span></p>
+    <h3>Dara Social poster key pool (10 slots)</h3><p>Dedicated Groq keys; falls back to the main Groq/Mistral pool.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      <label>Post key 1<input type="password" id="aqs-dsocial-post-key-1" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 2<input type="password" id="aqs-dsocial-post-key-2" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 3<input type="password" id="aqs-dsocial-post-key-3" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 4<input type="password" id="aqs-dsocial-post-key-4" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 5<input type="password" id="aqs-dsocial-post-key-5" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 6<input type="password" id="aqs-dsocial-post-key-6" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 7<input type="password" id="aqs-dsocial-post-key-7" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 8<input type="password" id="aqs-dsocial-post-key-8" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 9<input type="password" id="aqs-dsocial-post-key-9" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 10<input type="password" id="aqs-dsocial-post-key-10" placeholder="Optional Groq API key" autocomplete="off"></label>
+    </div>
+    <div class="aqs-settings-actions"><button class="aqs-btn aqs-btn-primary" id="aqs-save-dsocial-automation">Save Dara Social automations</button><span id="aqs-dsocial-automation-status" class="aqs-status-msg"></span></div>
+  </div>
+</div>
 
 <!-- Quiz Creation AI Keys — Dedicated Pool -->
 <div class="aqs-settings-card">
@@ -1580,6 +1617,17 @@ btn('aqs-save-groq-btn').addEventListener('click', function(){
     for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
+
+btn('aqs-save-dsocial-automation').addEventListener('click', function(){
+    var keys=[]; for(var i=1;i<=10;i++){var e=document.getElementById('aqs-dsocial-post-key-'+i);if(e&&e.value.trim().length>20)keys.push(e.value.trim());}
+    var data={darasocial_post_slot:keys,
+      darasocial_course_enabled:document.getElementById('aqs-dsocial-course-enabled').checked,
+      darasocial_course_interval_minutes:Math.max(30,Number(document.getElementById('aqs-dsocial-course-interval').value)||30),
+      darasocial_news_enabled:document.getElementById('aqs-dsocial-news-enabled').checked,
+      darasocial_news_interval_hours:Math.max(1,Number(document.getElementById('aqs-dsocial-news-interval').value)||5)};
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('darasocial_post_slot',keys);
+    saveSettings('/api/settings',data,'aqs-dsocial-automation-status',this,'Save Dara Social automations');
+});
 
 btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
     var libKeys = [];

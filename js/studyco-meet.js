@@ -303,43 +303,30 @@ function stopPresenceHeartbeat() {
 }
 
 async function ensureProfile(user) {
+  /* One canonical profile document feeds Dara Social and the shared app profile. */
+  const profileRef = doc(db, 'social_profiles', user.uid);
+  const canonicalRef = doc(db, 'users', user.uid);
   const existing = await getProfile(user.uid);
   let legacy = {};
-  try { const snap = await getDoc(doc(db, 'users', user.uid)); if (snap.exists()) legacy = snap.data(); } catch (_) {}
-  if (existing) {
-    const backfill = {};
-    const legacyValues = {
-      displayName: legacy.name || legacy.displayName || user.displayName || '',
-      username: legacy.username || '',
-      phone: legacy.phone || legacy.phoneNumber || '',
-      school: legacy.institution || legacy.school || legacy.school_name || '',
-      department: legacy.department || '',
-      major: legacy.major || '',
-      gender: legacy.gender || legacy.sex || '',
-      location: legacy.location || legacy.city || '',
-      photoURL: legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || user.photoURL || '',
-      email: legacy.email || user.email || ''
-    };
-    Object.entries(legacyValues).forEach(([key, value]) => {
-      if (!existing[key] && value) backfill[key] = value;
-    });
-    if (Object.keys(backfill).length) {
-      await setDoc(doc(db, 'social_profiles', user.uid), backfill, { merge: true });
-    }
-    state.profile = { ...existing, ...backfill };
-    state.profiles.set(user.uid, state.profile);
-    return state.profile;
-  }
-  const fallback = {
-    uid: user.uid, displayName: user.displayName || legacy.name || legacy.displayName || user.email?.split('@')[0] || 'StudyCo learner',
-    username: legacy.username || (user.email || 'learner').split('@')[0].replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'learner',
-    email: user.email || '', loginIdentifier: user.email || '', phone: legacy.phone || legacy.phoneNumber || '', bio: '', studentStatus: '',
-    school: legacy.institution || legacy.school || legacy.school_name || '', department: legacy.department || '', major: legacy.major || '',
-    gender: legacy.gender || legacy.sex || '', location: legacy.location || legacy.city || '',
-    photoURL: user.photoURL || legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || '', coverURL: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+  try { const snap = await getDoc(canonicalRef); if (snap.exists()) legacy = snap.data(); } catch (_) {}
+  const profile = existing || {};
+  const values = {
+    uid: user.uid,
+    displayName: profile.displayName || legacy.displayName || legacy.name || user.displayName || user.email?.split('@')[0] || 'StudyCo learner',
+    username: profile.username || legacy.username || (user.email || 'learner').split('@')[0].replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'learner',
+    email: user.email || profile.email || legacy.email || '', loginIdentifier: user.email || profile.loginIdentifier || '',
+    phone: profile.phone || legacy.phone || legacy.phoneNumber || '', bio: profile.bio || legacy.bio || '',
+    studentStatus: profile.studentStatus || legacy.studentStatus || '',
+    school: profile.school || legacy.institution || legacy.school || legacy.school_name || '',
+    department: profile.department || legacy.department || '', major: profile.major || legacy.major || '',
+    gender: profile.gender || legacy.gender || legacy.sex || '', location: profile.location || legacy.location || legacy.city || '',
+    photoURL: profile.photoURL || legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || user.photoURL || '',
+    coverURL: profile.coverURL || legacy.coverURL || '', profileVisibility: profile.profileVisibility || legacy.profileVisibility || {},
+    createdAt: profile.createdAt || legacy.createdAt || serverTimestamp(), updatedAt: serverTimestamp()
   };
-  await setDoc(doc(db, 'social_profiles', user.uid), fallback, { merge: true });
-  state.profile = { ...fallback, id: user.uid }; state.profiles.set(user.uid, state.profile);
+  await setDoc(profileRef, values, { merge: true });
+  await setDoc(canonicalRef, values, { merge: true });
+  state.profile = { ...values, id: user.uid }; state.profiles.set(user.uid, state.profile);
   return state.profile;
 }
 
@@ -3797,6 +3784,7 @@ async function uploadProfileMedia(event, field, label) {
     const url = await uploadImage(file, `studyco/${state.user.uid}/${field === 'photoURL' ? 'profile' : 'cover'}-${Date.now()}`);
     const update = { [field]: url, updatedAt: serverTimestamp() };
     await setDoc(doc(db, 'social_profiles', state.user.uid), update, { merge: true });
+    await setDoc(doc(db, 'users', state.user.uid), update, { merge: true });
     state.profile = { ...state.profile, ...update, [field]: url };
     state.profiles.set(state.user.uid, state.profile);
     state.viewedProfile = state.profile;
@@ -3843,7 +3831,8 @@ async function saveProfile(event) {
     const photo = $('studyco-profile-photo')?.files?.[0]; const cover = $('studyco-cover-photo')?.files?.[0];
     if (photo) update.photoURL = await uploadImage(photo, `studyco/${state.user.uid}/profile-${Date.now()}`);
     if (cover) update.coverURL = await uploadImage(cover, `studyco/${state.user.uid}/cover-${Date.now()}`);
-    await setDoc(doc(db, 'social_profiles', state.user.uid), update, { merge: true }); state.profile = { ...state.profile, ...update }; state.profiles.set(state.user.uid, state.profile); state.viewedProfile = state.profile; renderProfile(); closeModal('studyco-edit-modal'); toast('Profile updated.');
+    await setDoc(doc(db, 'social_profiles', state.user.uid), update, { merge: true });
+    await setDoc(doc(db, 'users', state.user.uid), update, { merge: true }); state.profile = { ...state.profile, ...update }; state.profiles.set(state.user.uid, state.profile); state.viewedProfile = state.profile; renderProfile(); closeModal('studyco-edit-modal'); toast('Profile updated.');
   } catch (error) { toast(error.message || 'Profile could not be updated.', true); }
 }
 

@@ -4,6 +4,7 @@ compatibility_date = "2026-09-21"
 
 [vars]
 FIREBASE_PROJECT_ID = "smartquiz-darapet"
+FIREBASE_STORAGE_BUCKET = "smartquiz-darapet.firebasestorage.app"
 FIREBASE_WEB_API_KEY = "AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY"
 ADMIN_EMAIL = "daramolapeter98@gmail.com"
 # Replace this with the Cloudflare hostname serving the website.
@@ -16,3 +17,8 @@ id = "2add7fc63e7f4d1ca04b37b221bdcf07"
 
 [ai]
 binding = "AI"
+[triggers]
+crons = ["*/30 * * * *", "0 */5 * * *"]
+
+[triggers]
+crons = ["*/30 * * * *", "0 */5 * * *"]

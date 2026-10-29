@@ -984,7 +984,42 @@ async function handleEmail(request, env) {
   }
 }
 
+
+const SOCIAL_COURSES = [
+ ['Agricultural Science','Explain crop rotation, soil fertility, and how legumes enrich soil through nitrogen fixation. Give a Nigerian farming example.'],
+ ['Meteorology and Climate Science','Teach how cumulus, stratus, and cirrus clouds form, and what weather they may signal.'],
+ ['Computer Science','Explain binary search and why its complexity is O(log n).'], ['Medicine','Explain how vaccines train immune memory.'],
+ ['Civil Engineering','Explain concrete compression strength and steel tensile strength.'], ['Economics','Explain inflation and purchasing power.'],
+ ['Law','Explain the difference between constitution, statute, and regulation in Nigeria.'], ['Physics','Explain energy conservation using a pendulum.'],
+ ['Biochemistry','Explain enzyme specificity and the effect of temperature and pH.'], ['Electrical Engineering','Explain Ohm’s law with a simple circuit.'],
+];
+const SOCIAL_NEWS_SOURCES = [
+ ['NELFUND','https://nelf.gov.ng/'],['NASS','https://nass.gov.ng/'],['Punch Nigeria','https://punchng.com/'],['Guardian Nigeria','https://guardian.ng/'],
+ ['BBC Sport Football','https://www.bbc.com/sport/football'],['ESPN Football','https://www.espn.com/soccer/'],['WWE','https://www.wwe.com/news'],['Olympics','https://olympics.com/en/news']
+];
+function fsValue(v){if(v===null||v===undefined)return{nullValue:null};if(typeof v==='boolean')return{booleanValue:v};if(typeof v==='number')return{integerValue:String(v)};if(Array.isArray(v))return{arrayValue:{values:v.map(fsValue)}};if(typeof v==='object')return{mapValue:{fields:Object.fromEntries(Object.entries(v).map(([k,x])=>[k,fsValue(x)]))}};return{stringValue:String(v)}}
+function fsDecode(v){if(!v)return null;if('stringValue'in v)return v.stringValue;if('integerValue'in v)return Number(v.integerValue);if('booleanValue'in v)return v.booleanValue;if('arrayValue'in v)return(v.arrayValue.values||[]).map(fsDecode);if('mapValue'in v)return Object.fromEntries(Object.entries(v.mapValue.fields||{}).map(([k,x])=>[k,fsDecode(x)]));return null}
+function fsFields(x){return Object.fromEntries(Object.entries(x).map(([k,v])=>[k,fsValue(v)]))}
+async function socialPatch(env,path,fields,token){const project=String(env.FIREBASE_PROJECT_ID||'').trim(),base=`https://firestore.googleapis.com/v1/projects/${encodeURIComponent(project)}/databases/(default)/documents/${path}`,mask=Object.keys(fields).map(k=>`updateMask.fieldPaths=${encodeURIComponent(k)}`).join('&');const r=await fetch(`${base}?${mask}`,{method:'PATCH',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({fields:fsFields(fields)})});if(!r.ok)throw new Error(`Firestore automation settings write failed (${r.status}).`);return r.json()}
+async function socialCreate(env,collection,fields,token){const project=String(env.FIREBASE_PROJECT_ID||'').trim(),r=await fetch(`https://firestore.googleapis.com/v1/projects/${encodeURIComponent(project)}/databases/(default)/documents/${collection}`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({fields:fsFields(fields)})});if(!r.ok)throw new Error(`Dara Social post write failed (${r.status}).`);return r.json()}
+async function socialText(prompt,keys){for(const key of keys.filter(k=>typeof k==='string'&&k.length>20)){try{const r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({model:'openai/gpt-oss-20b',messages:[{role:'system',content:'Write accurate, valuable educational content in 100-150 words. Never invent current news.'},{role:'user',content:prompt}],temperature:.4,max_tokens:380})});if(r.ok){const t=(await r.json()).choices?.[0]?.message?.content?.trim();if(t)return t}}catch(_){}}return''}
+async function socialImage(env,prompt,token){try{const bucket=String(env.FIREBASE_STORAGE_BUCKET||'').trim();if(!bucket||!env.AI)return'';const out=await env.AI.run(env.CF_IMAGE_MODEL||'@cf/black-forest-labs/flux-1-schnell',{prompt:`Educational social media illustration, square composition, clear subject, no text: ${prompt}`});if(!out?.image)return'';const bytes=new Uint8Array(out.image),objectName=`darasocial/automated/${Date.now()}-${crypto.randomUUID()}.png`,downloadToken=crypto.randomUUID(),boundary=`sq-${crypto.randomUUID()}`,metadata={name:objectName,contentType:'image/png',metadata:{firebaseStorageDownloadTokens:downloadToken}},body=new Blob([`--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n--${boundary}\r\nContent-Type: image/png\r\n\r\n`,bytes,`\r\n--${boundary}--`]);const response=await fetch(`https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(bucket)}/o?uploadType=multipart`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'Content-Type':`multipart/related; boundary=${boundary}`},body});if(!response.ok)return'';return`https://firebasestorage.googleapis.com/v0/b/${encodeURIComponent(bucket)}/o/${encodeURIComponent(objectName)}?alt=media&token=${downloadToken}`}catch(_){return''}}
+async function runSocialAutomation(env,cron){const token=await createGoogleAccessToken(env),[pd,md]=await Promise.all([firestoreGetDocument(env,'settings/private',token),firestoreGetDocument(env,'settings/main',token)]),priv=Object.fromEntries(Object.entries(pd?.fields||{}).map(([k,v])=>[k,fsDecode(v)])),main=Object.fromEntries(Object.entries(md?.fields||{}).map(([k,v])=>[k,fsDecode(v)])),now=Date.now();const courseDue=cron==='*/30 * * * *'&&priv.darasocial_course_enabled!==false&&now-(Date.parse(priv.darasocial_course_last_post_at)||0)>=Math.max(30,Number(priv.darasocial_course_interval_minutes)||30)*60000,newsDue=cron==='0 */5 * * *'&&priv.darasocial_news_enabled!==false&&now-(Date.parse(priv.darasocial_news_last_post_at)||0)>=Math.max(1,Number(priv.darasocial_news_interval_hours)||5)*3600000;if(!courseDue&&!newsDue)return;const keys=[...(Array.isArray(priv.darasocial_post_slot)?priv.darasocial_post_slot:[]),...(Array.isArray(main.groq_keys)?main.groq_keys:[]),...(Array.isArray(main.mistral_keys)?main.mistral_keys:[])];
+ if(courseDue){const ix=(Number(priv.darasocial_course_index)||0)%SOCIAL_COURSES.length,[course,brief]=SOCIAL_COURSES[ix],content=await socialText(`Course: ${course}. Explain: ${brief} Include broad, useful, correct learning content.`,keys);if(content){const imageUrl=await socialImage(env,`${course}: ${brief}`,token),stamp=new Date().toISOString();await socialCreate(env,'studyco_posts',{userId:'system_darasocial',content:`📘 ${course}
+
+${content}
+
+#DaraSocial #LearnEveryDay`,imageUrl,bgTemplateId:'',fileUrl:'',fileName:'',linkUrl:'',status:'published',likeCount:0,commentCount:0,createdAt:stamp,updatedAt:stamp,automated:true,automationType:'course'},token);await socialPatch(env,'settings/private',{darasocial_course_last_post_at:stamp,darasocial_course_index:(ix+1)%SOCIAL_COURSES.length},token)}}
+ if(newsDue){const ix=(Number(priv.darasocial_news_index)||0)%SOCIAL_NEWS_SOURCES.length,[source,url]=SOCIAL_NEWS_SOURCES[ix];let excerpt='';try{const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 SmartQuizEducationBot/1.0'}});if(r.ok)excerpt=(await r.text()).replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi,' ').replace(/<[^>]+>/g,' ').replace(/&nbsp;|&#160;/g,' ').replace(/\s+/g,' ').slice(0,8000)}catch(_){}const content=await socialText(`Source ${source}: ${url}. Page text: ${excerpt||'No current page excerpt available.'}. Write a cautious news/sports explainer. Only state facts present in the excerpt. If no story is clear, say this is background, not breaking news.`,keys);if(content){const stamp=new Date().toISOString();await socialCreate(env,'studyco_posts',{userId:'system_darasocial',content:`📰 ${source}
+
+${content}
+
+Source: ${url}
+#DaraSocial #Nigeria`,imageUrl:'',bgTemplateId:'',fileUrl:'',fileName:'',linkUrl:url,status:'published',likeCount:0,commentCount:0,createdAt:stamp,updatedAt:stamp,automated:true,automationType:'news'},token);await socialPatch(env,'settings/private',{darasocial_news_last_post_at:stamp,darasocial_news_index:(ix+1)%SOCIAL_NEWS_SOURCES.length},token)}}
+}
+
 export default {
+  async scheduled(controller, env, ctx) { ctx.waitUntil(runSocialAutomation(env, controller.cron || '*/30 * * * *')); },
   async fetch(request, env) {
     const url = new URL(request.url);
     /*

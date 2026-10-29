@@ -787,7 +787,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
        available so a missing or exhausted dedicated slot does not stop it. */
     var _poolOpts = { quiz: { noFallback: false } };
-    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
+    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio', 'darasocial_post_slot'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
 
@@ -806,4 +806,5 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
     window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
     window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
+    window.darasocialPostGroqFetch = function(b, o) { return _pools.darasocial_post_slot.fetch(b, o); };
 })();
