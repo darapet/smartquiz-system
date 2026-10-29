@@ -549,7 +549,6 @@ window._aqsKeysReady = new Promise(function(resolve) {
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
     var _settingsLoadStarted = false;
-    var _settingsLoadTimeout = null;
 
     function _resolveAIKeysReady() {
         if (typeof window._aqsKeysReadyResolve === 'function') {
@@ -618,14 +617,31 @@ window._aqsKeysReady = new Promise(function(resolve) {
     }
 
     function _startAISettingsLoadAfterAuth() {
-        if (typeof window.onAqsAuthChange !== 'function') return _loadAIKeysFromFirebase();
-        window.onAqsAuthChange(function(user) {
-            if (user) _loadAIKeysFromFirebase();
-            else {
-                _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
+        if (typeof window.onAqsAuthChange === 'function') {
+            window.onAqsAuthChange(function(user) {
+                if (user) _loadAIKeysFromFirebase();
+                else {
+                    _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
+                    _resolveAIKeysReady();
+                }
+            });
+            return;
+        }
+        /* Firebase bootstrap can finish before its auth helper is installed.
+           Wait briefly for that helper, then allow the loader to report the
+           concrete request failure rather than silently waiting forever. */
+        var attempts = 0;
+        var waitTimer = setInterval(function() {
+            attempts += 1;
+            if (typeof window.onAqsAuthChange === 'function') {
+                clearInterval(waitTimer);
+                _startAISettingsLoadAfterAuth();
+            } else if (attempts >= 40) {
+                clearInterval(waitTimer);
+                _logAISettingsFailure('Firebase auth state helper is unavailable');
                 _resolveAIKeysReady();
             }
-        });
+        }, 100);
     }
 
     if (window._aqsFirebaseReady) _startAISettingsLoadAfterAuth();

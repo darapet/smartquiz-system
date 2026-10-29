@@ -238,6 +238,13 @@ window._aqsKeysReady = new Promise(function(resolve) {
         return _providerFetch(HF_URL, _getHFKeys(), HF_IDX_KEY, bodyObj, extraOpts,
             window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
     }
+    function _fallbackOpts(extraOpts) {
+        var opts = Object.assign({}, extraOpts || {});
+        /* A caller timeout may stop one stalled provider, but must not cancel
+           the next provider in the fallback chain. */
+        if (opts.signal && opts.signal.aborted) delete opts.signal;
+        return opts;
+    }
 
     function _creatorImageDimensions(aspectRatio) {
         if (aspectRatio === 'square') return { width: 1024, height: 1024 };
@@ -314,7 +321,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 '</select>' +
                 '<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#69766d;pointer-events:none;">⌄</span>' +
             '</label>' +
-            '<p data-testid="creator-image-engine-note" style="margin:8px 0 0;color:#8a958c;font-size:11px;line-height:1.5;">Free generation uses the Cloudflare Worker. If it is unavailable, Gemini is used automatically.</p>';
+            '<p data-testid="creator-image-engine-note" style="margin:8px 0 0;color:#8a958c;font-size:11px;line-height:1.5;">Free generation uses the Cloudflare Worker when configured; otherwise Gemini is used.</p>';
         var selector = section.querySelector('select');
         var current = _selectedCreatorImageEngine();
         selector.value = current === 'gemini' ? 'gemini' : 'cloudflare';
@@ -422,7 +429,13 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 _aqsLog('warn', 'Cloudflare image Worker URL is not configured; using Gemini fallback.');
             }
         }
-        return _generateWithGemini(input);
+        try {
+            return await _generateWithGemini(input);
+        } catch(geminiError) {
+            if (geminiError && geminiError.code === 'QUOTA_EXHAUSTED') throw geminiError;
+            _aqsLog('error', 'Gemini image generation failed; no image fallback is enabled: ' + (geminiError.message || geminiError));
+            throw geminiError;
+        }
     }
     window.aqsCreatorImageGenerate = _creatorImageGenerate;
     window.aqsCreatorImageList = async function() {
@@ -454,22 +467,28 @@ window._aqsKeysReady = new Promise(function(resolve) {
             await window._aqsKeysReady;
         }
 
-        /* 1. Try Groq (fastest, free tier) */
+        var lastResponse = null;
+
+        /* 1. Try Groq (fastest, free tier). A provider can return an error
+           response object, so only a successful response ends the chain. */
         var res = await _groqFetch(bodyObj, extraOpts);
-        if (res) return res;
+        if (res && res.ok) return res;
+        if (res) lastResponse = res;
 
         /* 2. Fall back to Mistral */
         if (_getMistralKeys().length) {
             _aqsLog('warn', 'All Groq keys busy — falling back to Mistral');
-            res = await _mistralFetch(bodyObj, extraOpts);
-            if (res) return res;
+            res = await _mistralFetch(bodyObj, _fallbackOpts(extraOpts));
+            if (res && res.ok) return res;
+            if (res) lastResponse = res;
         }
 
         /* 3. Fall back to HuggingFace (Study Hub + Studio also benefit) */
         if (_getHFKeys().length) {
             _aqsLog('warn', 'All Mistral keys busy — falling back to HuggingFace');
-            res = await _hfFetch(bodyObj, extraOpts);
-            if (res) return res;
+            res = await _hfFetch(bodyObj, _fallbackOpts(extraOpts));
+            if (res && res.ok) return res;
+            if (res) lastResponse = res;
         }
 
         /* 4. Nothing left */
@@ -477,6 +496,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
         if (!gc && !mc && !hc) {
             _aqsShowUserError('config'); throw new Error('AI features not configured.');
         }
+        if (lastResponse) return lastResponse;
         throw new Error('All AI keys are busy or rate-limited. Please wait a moment and try again.');
     };
 
@@ -528,78 +548,104 @@ window._aqsKeysReady = new Promise(function(resolve) {
    safely wait for keys before declaring "not configured".
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
+    var _settingsLoadStarted = false;
+
+    function _resolveAIKeysReady() {
+        if (typeof window._aqsKeysReadyResolve === 'function') {
+            window._aqsKeysReadyResolve();
+            window._aqsKeysReadyResolve = null;
+        }
+    }
+
+    function _logAISettingsFailure(cause) {
+        if (typeof window._aqsLog === 'function') {
+            window._aqsLog('error', 'AI settings load failed: ' + cause);
+        }
+    }
+
     function _loadAIKeysFromFirebase() {
+        if (_settingsLoadStarted) return;
+        _settingsLoadStarted = true;
         if (typeof window.aqsAjax !== 'function') {
-            /* aqsAjax not available — resolve immediately so groqFetch
-               doesn't wait forever on pages without aqs-firebase.js */
-            if (typeof window._aqsKeysReadyResolve === 'function') {
-                window._aqsKeysReadyResolve();
-                window._aqsKeysReadyResolve = null;
-            }
+            _logAISettingsFailure('aqsAjax is unavailable');
+            _resolveAIKeysReady();
             return;
         }
-        window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
-            var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
+        var settled = false;
+        function fail(cause) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            _logAISettingsFailure(cause);
+            _resolveAIKeysReady();
+        }
+        var timer = setTimeout(function() {
+            fail('aqs_get_settings timed out after 20000 ms');
+        }, 20000);
+        try {
+            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+                if (settled) return;
+                if (!res || !res.success || !res.data || !res.data.settings) {
+                    fail('aqs_get_settings failed: ' + (res && res.data ? (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)) : 'empty response'));
+                    return;
+                }
+                settled = true;
+                clearTimeout(timer);
+                var s = res.data.settings;
+                if (Array.isArray(s.groq_keys) && s.groq_keys.length) window.setGroqKeys(s.groq_keys);
+                var retired = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
+                window._AQS_GROQ_MODEL = s.groq_model && retired.indexOf(s.groq_model) === -1 ? s.groq_model : 'openai/gpt-oss-20b';
+                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) window.setMistralKeys(s.mistral_keys);
+                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+                if (Array.isArray(s.hf_keys) && s.hf_keys.length) window.setHFKeys(s.hf_keys);
+                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+                if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
+                if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
+                var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+                if (total && typeof window._aqsLog === 'function') window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+                var pools = {quiz:'quiz_groq_keys',challenge:'challenge_groq_keys',studyhub:'studyhub_groq_keys',textdocs:'textdocs_groq_keys',puzzle:'puzzle_groq_keys',quizstudio:'quizstudio_groq_keys'};
+                Object.keys(pools).forEach(function(id) {
+                    if (Array.isArray(s[pools[id]]) && typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(id, s[pools[id]]);
+                });
+                _resolveAIKeysReady();
+            }, function(error) {
+                fail('aqs_get_settings rejected: ' + (error && error.message ? error.message : String(error || 'unknown Firebase error')));
+            });
+        } catch(error) {
+            fail('aqs_get_settings threw: ' + (error && error.message ? error.message : String(error)));
+        }
+    }
 
-            /* Groq */
-            if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-                window.setGroqKeys(s.groq_keys);
-            }
-            var _savedGroqModel = s.groq_model;
-            var _retiredGroqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
-            window._AQS_GROQ_MODEL = _savedGroqModel && _retiredGroqModels.indexOf(_savedGroqModel) === -1 ? _savedGroqModel : 'openai/gpt-oss-20b';
-
-            /* Mistral */
-            if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
-                window.setMistralKeys(s.mistral_keys);
-            }
-            if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
-
-            /* HuggingFace */
-            if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
-                window.setHFKeys(s.hf_keys);
-            }
-            if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
-            /* Never load Creator Studio image tokens into a public page.
-               The secure function reads them with the Admin SDK. */
-            if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
-            if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) {
-                window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
-            }
-
-            var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
-                      + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
-                      + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
-            if (total > 0 && typeof window._aqsLog === 'function') {
-                window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
-            }
-
-            /* Load feature-specific pools */
-            var _fp = {
-                quiz: 'quiz_groq_keys', challenge: 'challenge_groq_keys',
-                studyhub: 'studyhub_groq_keys', textdocs: 'textdocs_groq_keys',
-                puzzle: 'puzzle_groq_keys', quizstudio: 'quizstudio_groq_keys'
-            };
-            Object.keys(_fp).forEach(function(id) {
-                var field = _fp[id];
-                if (Array.isArray(s[field]) && s[field].length && typeof window.setFeatureGroqKeys === 'function') {
-                    window.setFeatureGroqKeys(id, s[field]);
+    function _startAISettingsLoadAfterAuth() {
+        if (typeof window.onAqsAuthChange === 'function') {
+            window.onAqsAuthChange(function(user) {
+                if (user) _loadAIKeysFromFirebase();
+                else {
+                    _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
+                    _resolveAIKeysReady();
                 }
             });
-
-            /* Signal that keys are now available */
-            if (typeof window._aqsKeysReadyResolve === 'function') {
-                window._aqsKeysReadyResolve();
-                window._aqsKeysReadyResolve = null;
+            return;
+        }
+        /* Firebase bootstrap can finish before its auth helper is installed.
+           Wait briefly for that helper, then allow the loader to report the
+           concrete request failure rather than silently waiting forever. */
+        var attempts = 0;
+        var waitTimer = setInterval(function() {
+            attempts += 1;
+            if (typeof window.onAqsAuthChange === 'function') {
+                clearInterval(waitTimer);
+                _startAISettingsLoadAfterAuth();
+            } else if (attempts >= 40) {
+                clearInterval(waitTimer);
+                _logAISettingsFailure('Firebase auth state helper is unavailable');
+                _resolveAIKeysReady();
             }
-        });
+        }, 100);
     }
 
-    if (window._aqsFirebaseReady) {
-        _loadAIKeysFromFirebase();
-    } else {
-        document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
-    }
+    if (window._aqsFirebaseReady) _startAISettingsLoadAfterAuth();
+    else document.addEventListener('aqs:firebase:ready', _startAISettingsLoadAfterAuth, { once: true });
 })();
 
 
@@ -613,6 +659,33 @@ window._aqsKeysReady = new Promise(function(resolve) {
 (function () {
     var RL_MS = 62000;
     var _pools = {};
+    /* Capture the shared chain before Self Quiz wraps window.groqFetch.
+       This prevents a feature-pool fallback from recursively calling itself. */
+    var _sharedGroqFetch = window.groqFetch;
+
+    function _responseHasQuizContent(res) {
+        if (!res || !res.ok) return false;
+        if (typeof res.clone !== 'function') return true;
+        return res.clone().json().then(function(body) {
+            var content = body && body.choices && body.choices[0] &&
+                body.choices[0].message && body.choices[0].message.content;
+            return typeof content === 'string' && content.trim().length > 20;
+        }).catch(function() { return false; });
+    }
+
+    function _fallbackOptions(extraOpts) {
+        var opts = Object.assign({}, extraOpts || {});
+        if (opts.signal && opts.signal.aborted) delete opts.signal;
+        return opts;
+    }
+
+    function _sharedKeyCount() {
+        var count = 0;
+        ['_aqsGroqKeyCount', '_aqsMistralKeyCount', '_aqsHFKeyCount'].forEach(function(name) {
+            if (typeof window[name] === 'function') count += window[name]();
+        });
+        return count;
+    }
 
     function _createPool(id, opts) {
         opts = opts || {};
@@ -648,7 +721,16 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 try { localStorage.setItem(IDX, '0'); } catch(e) {}
             },
             keyCount: function() { return slots.length; },
-            fetch: async function(bodyObj) {
+            fetch: async function(bodyObj, extraOpts) {
+                /* Firebase settings load asynchronously. Wait once before
+                   concluding that the dedicated slots are empty. */
+                if (!slots.length && !_sharedKeyCount() && window._aqsKeysReady) {
+                    await window._aqsKeysReady;
+                }
+                var request = Object.assign({
+                    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
+                }, bodyObj || {});
+                var lastResponse = null;
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
                 if (slots.length) {
                     var start = _idx();
@@ -656,42 +738,55 @@ window._aqsKeysReady = new Promise(function(resolve) {
                         var at = (start + i) % slots.length, key = slots[at];
                         if (_isDead(key) || _isRL(key)) { _setIdx(at + 1); continue; }
                         try {
-                            var res = await fetch(URL_, {
+                            var res = await fetch(URL_, Object.assign({}, _fallbackOptions(extraOpts), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                                body: JSON.stringify(bodyObj)
-                            });
+                                body: JSON.stringify(request)
+                            }));
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
                             if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(at + 1); continue; }
-                            if (res.status === 400) {
-                                var _t4 = await res.clone().text().catch(function(){ return ''; });
-                                if (_looksInvalidKey(_t4)) { _markDead(key, 'invalid_api_key'); _setIdx(at + 1); continue; }
-                            }
                             if (res.status >= 500) { _setIdx(at + 1); continue; }
-                            if (id === 'quiz' && !res.ok && typeof window._mistralFetchDirect === 'function') {
-                                var mistralRes = await window._mistralFetchDirect(bodyObj);
-                                if (mistralRes) return mistralRes;
+                            if (!res.ok) {
+                                lastResponse = res;
+                                _setIdx(at + 1);
+                                continue;
+                            }
+                            if (id === 'quiz' && !(await _responseHasQuizContent(res))) {
+                                lastResponse = res;
+                                _setIdx(at + 1);
+                                continue;
                             }
                             _setIdx(at + 1);
                             return res;
                         } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
-                /* Groq slots are empty or rate-limited: use Mistral for quizzes. */
+                /* Dedicated quiz Groq slots are empty or exhausted: use the
+                   shared Mistral pool before trying the shared AI chain. */
                 if (id === 'quiz' && typeof window._mistralFetchDirect === 'function') {
-                    var fallbackRes = await window._mistralFetchDirect(bodyObj);
-                    if (fallbackRes) return fallbackRes;
+                    var fallbackRes = await window._mistralFetchDirect(request, _fallbackOptions(extraOpts));
+                    if (fallbackRes && await _responseHasQuizContent(fallbackRes)) return fallbackRes;
+                    if (fallbackRes) lastResponse = fallbackRes;
                 }
-                /* Own keys exhausted or empty */
-                if (!opts.noFallback && typeof window.groqFetch === 'function') return window.groqFetch(bodyObj);
-                throw new Error('No quiz AI keys configured — add Groq keys in Admin Settings → Quiz AI Keys.');
+                /* Shared Groq → Mistral → HuggingFace chain. Use the
+                   captured function so Self Quiz cannot recurse here. */
+                if (!opts.noFallback && typeof _sharedGroqFetch === 'function') {
+                    var sharedRes = await _sharedGroqFetch(request, _fallbackOptions(extraOpts));
+                    if (sharedRes && sharedRes.ok) {
+                        if (id !== 'quiz' || await _responseHasQuizContent(sharedRes)) return sharedRes;
+                    }
+                    if (sharedRes) lastResponse = sharedRes;
+                }
+                if (lastResponse) return lastResponse;
+                throw new Error('No quiz AI keys configured — add Groq or Mistral keys in Admin Settings.');
             }
         };
     }
 
-    /* Initialise all feature pools — quiz uses noFallback so it never silently uses the main pool */
-    var _poolOpts = { quiz: { noFallback: true } };
+    /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
+       available so a missing or exhausted dedicated slot does not stop it. */
+    var _poolOpts = { quiz: { noFallback: false } };
     ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
@@ -705,10 +800,10 @@ window._aqsKeysReady = new Promise(function(resolve) {
     };
 
     /* Named fetch shortcuts (used by each feature JS file) */
-    window.quizGroqFetch       = function(b) { return _pools.quiz.fetch(b); };
-    window.challengeGroqFetch  = function(b) { return _pools.challenge.fetch(b); };
-    window.studyhubGroqFetch   = function(b) { return _pools.studyhub.fetch(b); };
-    window.textdocsGroqFetch   = function(b) { return _pools.textdocs.fetch(b); };
-    window.puzzleGroqFetch     = function(b) { return _pools.puzzle.fetch(b); };
-    window.quizstudioGroqFetch = function(b) { return _pools.quizstudio.fetch(b); };
+    window.quizGroqFetch       = function(b, o) { return _pools.quiz.fetch(b, o); };
+    window.challengeGroqFetch  = function(b, o) { return _pools.challenge.fetch(b, o); };
+    window.studyhubGroqFetch   = function(b, o) { return _pools.studyhub.fetch(b, o); };
+    window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
+    window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
+    window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
 })();
