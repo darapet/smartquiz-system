@@ -62,6 +62,31 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
   .udash-stats{grid-template-columns:1fr 1fr 1fr;}
   .udash-quick-grid{grid-template-columns:1fr 1fr;}
 }
+/* Dark home screen with compact feature tiles. */
+body{background:#080d1c;color:#e5e7eb;}
+.aqs-site-header,.aqs-hdr-drawer{background:#0f172a;border-color:#1e293b;}
+.aqs-site-logo{color:#a5b4fc;}
+.aqs-hdr-hamburger{background:#111b30;color:#e2e8f0;border-color:#334155;}
+.aqs-hdr-drawer .aqs-btn{background:#111b30;color:#e2e8f0;border-color:#334155;}
+.aqs-user-topbar{background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);border:1px solid #22505b;box-shadow:0 16px 40px rgba(0,0,0,.22);}
+.aqs-user-name{color:#f8fafc;}
+.aqs-user-role-badge{background:rgba(255,255,255,.12);color:#c4f1e8;}
+.udash-stats{grid-template-columns:1fr;margin-bottom:22px;}
+.udash-stat-card{display:flex;align-items:center;justify-content:space-between;text-align:left;padding:18px 22px;background:#111b30;border:1px solid #25344c;border-radius:16px;}
+.udash-stat-num{color:#67e8d0;font-size:1.55rem;}
+.udash-stat-label{margin:0;color:#cbd5e1;font-size:.9rem;}
+.udash-quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 28px;}
+.udash-quick-card{min-height:92px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:12px 8px;background:#111b30;border:1px solid #27364d;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.12);}
+.udash-quick-card:hover{background:#17243b;border-color:#43b9ae;transform:translateY(-2px);box-shadow:0 12px 26px rgba(20,184,166,.13);}
+.udash-quick-icon{width:38px;height:38px;margin:0;display:grid;place-items:center;border-radius:12px;background:#1e3344;font-size:1.35rem;}
+.udash-quick-name{margin:0;color:#f1f5f9;font-size:.82rem;line-height:1.25;}
+.udash-quick-desc{display:none;}
+.udash-account-card{background:#111b30;border-color:#25344c;}
+.udash-account-title,.udash-table td:last-child{color:#e2e8f0;}
+.udash-table td{border-color:#263449;}
+.udash-table td:first-child{color:#94a3b8;}
+@media(max-width:760px){.udash-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;}}
+@media(max-width:480px){.udash-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.udash-quick-card{min-height:88px;}}
 </style>
 <script>
 window.AQS = {
@@ -143,35 +168,41 @@ window.AQS = {
 
   <!-- Quick Links -->
   <div class="udash-quick-grid">
-    <a href="quiz-setup.html" class="udash-quick-card">
-      <div class="udash-quick-icon">✏️</div>
-      <div class="udash-quick-name">Create Quiz</div>
-      <div class="udash-quick-desc">Build and share a new quiz</div>
+    <a href="quiz-setup.html" class="udash-quick-card" aria-label="Create Quiz">
+      <div class="udash-quick-icon">🧠</div><div class="udash-quick-name">Create Quiz</div><div class="udash-quick-desc">Build and share a new quiz</div>
     </a>
-    <a href="puzzle.html" class="udash-quick-card">
-      <div class="udash-quick-icon">🧩</div>
-      <div class="udash-quick-name">Puzzle Battle</div>
-      <div class="udash-quick-desc">Play 4 puzzle modes, up to 10 players</div>
+    <a href="studyhub.html" class="udash-quick-card" aria-label="Study Hub">
+      <div class="udash-quick-icon">📖</div><div class="udash-quick-name">Study Hub</div><div class="udash-quick-desc">Study any subject with AI help</div>
     </a>
-    <a href="challenge.html" class="udash-quick-card">
-      <div class="udash-quick-icon">⚔️</div>
-      <div class="udash-quick-name">Challenge Mode</div>
-      <div class="udash-quick-desc">Host or join a live quiz battle</div>
+    <a href="ai-teacher.html" class="udash-quick-card" aria-label="AI Teacher">
+      <div class="udash-quick-icon">🎓</div><div class="udash-quick-name">AI Teacher</div><div class="udash-quick-desc">Get guided subject help</div>
     </a>
-    <a href="studio.html" class="udash-quick-card">
-      <div class="udash-quick-icon">⬡</div>
-      <div class="udash-quick-name">AI Studio</div>
-      <div class="udash-quick-desc">Chat with XZILY AI, web search</div>
+    <a href="library.html" class="udash-quick-card" aria-label="Library">
+      <div class="udash-quick-icon">📚</div><div class="udash-quick-name">Library</div><div class="udash-quick-desc">Browse learning resources</div>
     </a>
-    <a href="studyhub.html" class="udash-quick-card">
-      <div class="udash-quick-icon">📚</div>
-      <div class="udash-quick-name">Study AI</div>
-      <div class="udash-quick-desc">Study any subject with AI help</div>
+    <a href="image-gen.html" class="udash-quick-card" aria-label="Image Studio">
+      <div class="udash-quick-icon">🖼️</div><div class="udash-quick-name">Image Studio</div><div class="udash-quick-desc">Generate AI images</div>
     </a>
-    <a href="image-gen.html" class="udash-quick-card">
-      <div class="udash-quick-icon">🖼️</div>
-      <div class="udash-quick-name">Image Creator</div>
-      <div class="udash-quick-desc">Generate AI images with FLUX</div>
+    <a href="studio.html" class="udash-quick-card" aria-label="Studio AI">
+      <div class="udash-quick-icon">✨</div><div class="udash-quick-name">Studio AI</div><div class="udash-quick-desc">Chat with AI and search the web</div>
+    </a>
+    <a href="challenge.html" class="udash-quick-card" aria-label="Challenge">
+      <div class="udash-quick-icon">⚔️</div><div class="udash-quick-name">Challenge</div><div class="udash-quick-desc">Host or join a quiz battle</div>
+    </a>
+    <a href="puzzle.html" class="udash-quick-card" aria-label="Puzzle Battle">
+      <div class="udash-quick-icon">🧩</div><div class="udash-quick-name">Puzzle Battle</div><div class="udash-quick-desc">Play puzzle modes with friends</div>
+    </a>
+    <a href="studyco-meet.html" class="udash-quick-card" aria-label="Dara Social">
+      <div class="udash-quick-icon">💬</div><div class="udash-quick-name">Dara Social</div><div class="udash-quick-desc">Learn together with your circle</div>
+    </a>
+    <a href="docs-gen.html" class="udash-quick-card" aria-label="Docs Gen">
+      <div class="udash-quick-icon">📄</div><div class="udash-quick-name">Docs Gen</div><div class="udash-quick-desc">Create documents with AI</div>
+    </a>
+    <a href="ai-animate.html" class="udash-quick-card" aria-label="AI Animate">
+      <div class="udash-quick-icon">🎞️</div><div class="udash-quick-name">AI Animate</div><div class="udash-quick-desc">Create AI animations</div>
+    </a>
+    <a href="tts.html" class="udash-quick-card" aria-label="Text to Speech">
+      <div class="udash-quick-icon">🎙️</div><div class="udash-quick-name">Text to Speech</div><div class="udash-quick-desc">Turn text into spoken audio</div>
     </a>
   </div>
 
