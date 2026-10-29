@@ -548,78 +548,88 @@ window._aqsKeysReady = new Promise(function(resolve) {
    safely wait for keys before declaring "not configured".
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
+    var _settingsLoadStarted = false;
+    var _settingsLoadTimeout = null;
+
+    function _resolveAIKeysReady() {
+        if (typeof window._aqsKeysReadyResolve === 'function') {
+            window._aqsKeysReadyResolve();
+            window._aqsKeysReadyResolve = null;
+        }
+    }
+
+    function _logAISettingsFailure(cause) {
+        if (typeof window._aqsLog === 'function') {
+            window._aqsLog('error', 'AI settings load failed: ' + cause);
+        }
+    }
+
     function _loadAIKeysFromFirebase() {
+        if (_settingsLoadStarted) return;
+        _settingsLoadStarted = true;
         if (typeof window.aqsAjax !== 'function') {
-            /* aqsAjax not available — resolve immediately so groqFetch
-               doesn't wait forever on pages without aqs-firebase.js */
-            if (typeof window._aqsKeysReadyResolve === 'function') {
-                window._aqsKeysReadyResolve();
-                window._aqsKeysReadyResolve = null;
-            }
+            _logAISettingsFailure('aqsAjax is unavailable');
+            _resolveAIKeysReady();
             return;
         }
-        window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
-            var s = (res && res.success && res.data && res.data.settings) ? res.data.settings : {};
-
-            /* Groq */
-            if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-                window.setGroqKeys(s.groq_keys);
-            }
-            var _savedGroqModel = s.groq_model;
-            var _retiredGroqModels = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
-            window._AQS_GROQ_MODEL = _savedGroqModel && _retiredGroqModels.indexOf(_savedGroqModel) === -1 ? _savedGroqModel : 'openai/gpt-oss-20b';
-
-            /* Mistral */
-            if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
-                window.setMistralKeys(s.mistral_keys);
-            }
-            if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
-
-            /* HuggingFace */
-            if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
-                window.setHFKeys(s.hf_keys);
-            }
-            if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
-            /* Never load Creator Studio image tokens into a public page.
-               The secure function reads them with the Admin SDK. */
-            if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
-            if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) {
-                window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
-            }
-
-            var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0)
-                      + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0)
-                      + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
-            if (total > 0 && typeof window._aqsLog === 'function') {
-                window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
-            }
-
-            /* Load feature-specific pools */
-            var _fp = {
-                quiz: 'quiz_groq_keys', challenge: 'challenge_groq_keys',
-                studyhub: 'studyhub_groq_keys', textdocs: 'textdocs_groq_keys',
-                puzzle: 'puzzle_groq_keys', quizstudio: 'quizstudio_groq_keys'
-            };
-            Object.keys(_fp).forEach(function(id) {
-                var field = _fp[id];
-                if (Array.isArray(s[field]) && typeof window.setFeatureGroqKeys === 'function') {
-                    window.setFeatureGroqKeys(id, s[field]);
+        var settled = false;
+        function fail(cause) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            _logAISettingsFailure(cause);
+            _resolveAIKeysReady();
+        }
+        var timer = setTimeout(function() {
+            fail('aqs_get_settings timed out after 20000 ms');
+        }, 20000);
+        try {
+            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+                if (settled) return;
+                if (!res || !res.success || !res.data || !res.data.settings) {
+                    fail('aqs_get_settings failed: ' + (res && res.data ? (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)) : 'empty response'));
+                    return;
                 }
+                settled = true;
+                clearTimeout(timer);
+                var s = res.data.settings;
+                if (Array.isArray(s.groq_keys) && s.groq_keys.length) window.setGroqKeys(s.groq_keys);
+                var retired = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
+                window._AQS_GROQ_MODEL = s.groq_model && retired.indexOf(s.groq_model) === -1 ? s.groq_model : 'openai/gpt-oss-20b';
+                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) window.setMistralKeys(s.mistral_keys);
+                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+                if (Array.isArray(s.hf_keys) && s.hf_keys.length) window.setHFKeys(s.hf_keys);
+                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+                if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
+                if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
+                var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+                if (total && typeof window._aqsLog === 'function') window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+                var pools = {quiz:'quiz_groq_keys',challenge:'challenge_groq_keys',studyhub:'studyhub_groq_keys',textdocs:'textdocs_groq_keys',puzzle:'puzzle_groq_keys',quizstudio:'quizstudio_groq_keys'};
+                Object.keys(pools).forEach(function(id) {
+                    if (Array.isArray(s[pools[id]]) && typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(id, s[pools[id]]);
+                });
+                _resolveAIKeysReady();
+            }, function(error) {
+                fail('aqs_get_settings rejected: ' + (error && error.message ? error.message : String(error || 'unknown Firebase error')));
             });
+        } catch(error) {
+            fail('aqs_get_settings threw: ' + (error && error.message ? error.message : String(error)));
+        }
+    }
 
-            /* Signal that keys are now available */
-            if (typeof window._aqsKeysReadyResolve === 'function') {
-                window._aqsKeysReadyResolve();
-                window._aqsKeysReadyResolve = null;
+    function _startAISettingsLoadAfterAuth() {
+        if (typeof window.onAqsAuthChange !== 'function') return _loadAIKeysFromFirebase();
+        window.onAqsAuthChange(function(user) {
+            if (user) _loadAIKeysFromFirebase();
+            else {
+                _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
+                _resolveAIKeysReady();
             }
         });
     }
 
-    if (window._aqsFirebaseReady) {
-        _loadAIKeysFromFirebase();
-    } else {
-        document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
-    }
+    if (window._aqsFirebaseReady) _startAISettingsLoadAfterAuth();
+    else document.addEventListener('aqs:firebase:ready', _startAISettingsLoadAfterAuth, { once: true });
 })();
 
 
