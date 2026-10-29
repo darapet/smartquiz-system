@@ -382,7 +382,9 @@ service cloud.firestore {
 
     // ─── Settings ───────────────────────────────────────────────────
     match /settings/{settingId} {
-      allow read: if settingId != 'private';
+      /* API key pools live in settings/main; reading them requires a
+         signed-in account so anonymous visitors cannot scrape keys. */
+      allow read: if isSignedIn() && settingId != 'private';
       allow write: if isAdmin();
     }
 
