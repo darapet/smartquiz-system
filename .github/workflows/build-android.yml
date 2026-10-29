@@ -221,6 +221,8 @@ jobs:
           fi
           echo "$KEYSTORE_B64" | tr -d '\n' | base64 -d > "$KS_FILE"
           echo "$KEYSTORE_PASSWORD" > android/app/keystore-password.txt
+          echo "android/app/daraquiz-release.keystore" >> .git/info/exclude
+          echo "android/app/keystore-password.txt" >> .git/info/exclude
       - name: Make Gradlew executable
         if: steps.skip_check.outputs.skip != 'true'
         run: chmod +x android/gradlew
@@ -297,6 +299,7 @@ jobs:
           git add www/version.json www/js/aqs-update-check.js
           git diff --cached --quiet && exit 0
           git commit -m "chore: release v${{ steps.ver.outputs.new_ver }} (build ${{ steps.ver.outputs.new_code }}) [skip ci]"
+          git add -u
           git pull --rebase -Xtheirs origin main
           git push
 
