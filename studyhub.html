@@ -1381,6 +1381,7 @@ function aitGetKeys(){
 async function aitMistral(messages, maxTokens=1200){
   const keys = aitGetKeys();
   if(!keys.length){ shToast('⚠️ No Mistral API keys found'); return null; }
+  const max429Retries = 3;
   for(let attempt=0; attempt<keys.length; attempt++){
     const key = keys[_mkeyIdx % keys.length];
     _mkeyIdx++;
@@ -1390,6 +1391,13 @@ async function aitMistral(messages, maxTokens=1200){
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
         body:JSON.stringify({model:'mistral-small-latest',messages,max_tokens:maxTokens,temperature:0.75})
       });
+      if(res.status===429){
+        const retryAfter = Number(res.headers.get('Retry-After'));
+        const delay = Number.isFinite(retryAfter) && retryAfter>0 ? Math.min(retryAfter*1000,15000) : Math.min(1000*Math.pow(2,Math.min(attempt,max429Retries-1)),8000);
+        console.warn('Mistral rate limited; backing off before rotating key');
+        if(attempt<keys.length-1) await new Promise(resolve=>setTimeout(resolve,delay));
+        continue;
+      }
       if(!res.ok){ console.warn('Mistral key failed:',res.status); continue; }
       const d = await res.json();
       return d.choices?.[0]?.message?.content || '';
