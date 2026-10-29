@@ -79,7 +79,13 @@ jobs:
 
       - name: Generate launcher icons from Darapet logo
         if: steps.skip_check.outputs.skip != 'true'
-        run: node generate-icons.js --icons-only
+        run: |
+          # Older commits may contain an invalid placeholder logo-source.png.
+          # Use the checked-in production logo as the safe build-time fallback.
+          if ! node -e "require('sharp')('logo-source.png').metadata().then(() => process.exit(0)).catch(() => process.exit(1))"; then
+            cp www/img/darapet-logo.png logo-source.png
+          fi
+          node generate-icons.js --icons-only
 
       # ── Compute version BEFORE cap sync so the APK bakes in the right code ──
       - name: Compute version numbers
