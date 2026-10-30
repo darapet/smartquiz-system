@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content">
     <title>Studio — XZILY AI</title>
     <meta name="description" content="xzily AI — Your intelligent learning assistant.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -202,6 +202,29 @@
 })();
 </script>
 <script>window.AQS_IMGGEN_ENDPOINT='https://darapet-technologyimafe.daramolapeter98.workers.dev/generate';</script>
+<style>
+/* v1.575: composer grows with typing, tap image to save */
+#dts-input{min-height:44px;max-height:160px;overflow-y:auto}
+.dts-msg-content img{cursor:pointer}
+</style>
+<script>
+(function(){
+  var ta=document.getElementById('dts-input'),wrap=document.getElementById('dts-input-wrap');
+  if(ta&&wrap){
+    wrap.addEventListener('click',function(e){if(e.target===wrap)ta.focus();});
+    ta.addEventListener('input',function(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,160)+'px';});
+  }
+  document.addEventListener('click',function(e){
+    var img=e.target.closest&&e.target.closest('.dts-msg-content img');
+    if(!img)return;
+    var src=img.src;if(!src)return;
+    var a=document.createElement('a');a.href=src;a.download='daraquiz-image.png';
+    if(window.AqsDownloadBridge&&window.AqsDownloadBridge.startDownload&&src.indexOf('http')===0){
+      window.AqsDownloadBridge.startDownload(src,'daraquiz-image.png');
+    }else{document.body.appendChild(a);a.click();a.remove();}
+  });
+})();
+</script>
 </head>
 <body class="dts-body aqs-full-page-body" data-aqs-page="studio" data-aqs-page-group="studio AI">
 

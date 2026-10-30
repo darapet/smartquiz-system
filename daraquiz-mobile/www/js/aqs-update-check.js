@@ -15,7 +15,7 @@
  */
 
 /* ══ CI patches this automatically — do NOT edit by hand ══════════════════ */
-var AQS_APP_VERSION_CODE = 546;
+var AQS_APP_VERSION_CODE = 519;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -23,10 +23,8 @@ var AQS_APP_VERSION_CODE = 546;
 
   var VERSION_JSON_URL =
     'https://smartquiz-system3.daramolapeter98.workers.dev/daraquiz-mobile/www/version.json';
-  var VERSION_JSON_FALLBACK_URL =
-    'https://github.com/darapet/smartquiz-system/raw/refs/heads/main/daraquiz-mobile/www/version.json';
 
-  var DISMISSED_KEY = 'aqs_update_dismissed_ver_v2';
+  var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
   var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
   var SNOOZE_VER_KEY = 'aqs_update_snooze_ver';    /* which versionCode was snoozed */
   var SNOOZE_WAIT   = 24 * 60 * 60 * 1000;         /* 24 hours */
@@ -165,7 +163,6 @@ var AQS_APP_VERSION_CODE = 546;
     window.aqsNativeProgress = function (pct) {
       if (pct < 0) {
         /* Error */
-        localStorage.removeItem(DISMISSED_KEY);
         btn.disabled = false;
         btn.textContent = '⬇️ Retry Download';
         btnLater.style.display = '';
@@ -175,69 +172,49 @@ var AQS_APP_VERSION_CODE = 546;
       }
       setProgress(pct);
       if (pct >= 100) {
-        permanentDismiss();
         btn.textContent = '✅ Installing…';
         setTimeout(hidePopup, 4000);
       }
     };
 
     /* Call native bridge — MainActivity registers this on the WebView */
-    try {
-      window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
-    } catch (error) {
-      window.aqsNativeProgress(-1);
-    }
+    window.AqsDownloadBridge.startDownload(url, 'daraquiz-update.apk');
   }
 
   /* ── Download dispatcher — web fallback: open download link in browser ─── */
-  function downloadInApp(url) {
-    var btn = document.getElementById('aqs-upd-btn-now');
-    var btnLater = document.getElementById('aqs-upd-btn-later');
-    var bridgeReady = window.AqsDownloadBridge &&
-      typeof window.AqsDownloadBridge.startDownload === 'function';
-    var isNativeAndroid = window.Capacitor &&
-      typeof window.Capacitor.getPlatform === 'function' &&
-      window.Capacitor.getPlatform() === 'android';
-
-    if (bridgeReady) {
-      downloadNative(url);
-      return;
-    }
-
-    if (isNativeAndroid) {
+    function downloadInApp(url) {
+      var btn = document.getElementById('aqs-upd-btn-now');
+      /* Native Android bridge takes priority */
+      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
+        downloadNative(url);
+        return;
+      }
+      /* Web fallback — open download link in new tab */
+      btn.textContent = '✅ Opening download…';
       btn.disabled = true;
-      btn.textContent = '⏳ Connecting to downloader…';
-      btnLater.style.display = 'none';
+      window.open(url, '_blank');
+      setTimeout(function() {
+        btn.disabled = false;
+        btn.textContent = '⬇️ Download Update';
+      }, 2000);
 
-      var waited = 0;
-      var interval = setInterval(function () {
-        waited += 200;
-        if (window.AqsDownloadBridge &&
-            typeof window.AqsDownloadBridge.startDownload === 'function') {
-          clearInterval(interval);
-          downloadNative(url);
-          return;
-        }
-        if (waited >= 3000) {
-          clearInterval(interval);
-          btn.disabled = false;
-          btn.textContent = '⬇️ Retry Download';
-          btnLater.style.display = '';
-          alert('The in-app downloader is unavailable. Please close and reopen the app, then try again.');
-        }
-      }, 200);
-      return;
-    }
-
-    /* Web fallback — open the download link in a browser tab. */
-    btn.textContent = '✅ Opening download…';
-    btn.disabled = true;
-    var downloadWindow = window.open(url, '_blank');
-    if (downloadWindow) permanentDismiss();
-    setTimeout(function () {
-      btn.disabled = false;
-      btn.textContent = '⬇️ Download Update';
-    }, 2000);
+    /* Bridge not ready yet — wait up to 3 seconds then retry */
+    var waited = 0;
+    var interval = setInterval(function () {
+      waited += 200;
+      if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
+        clearInterval(interval);
+        downloadNative(url);
+        return;
+      }
+      if (waited >= 3000) {
+        clearInterval(interval);
+        btn.disabled = false;
+        btn.textContent = '⬇️ Download Update';
+        btnLater.style.display = '';
+        alert('Download not ready yet. Please close and reopen the app, then try again.');
+      }
+    }, 200);
   }
 
   /* ── Button events ──────────────────────────────────────────────────────── */
@@ -250,7 +227,7 @@ var AQS_APP_VERSION_CODE = 546;
     hidePopup();
   }
 
-  /* Permanent dismiss — only after the download completes or a web tab opens. */
+  /* Permanent dismiss — only called once download actually starts */
   function permanentDismiss() {
     localStorage.setItem(DISMISSED_KEY, String(_remoteCode));
     localStorage.removeItem(SNOOZE_KEY);
@@ -259,8 +236,12 @@ var AQS_APP_VERSION_CODE = 546;
   document.getElementById('aqs-upd-close').addEventListener('click', snoozeUpdate);
 
   document.getElementById('aqs-upd-btn-now').addEventListener('click', function () {
-    var targetUrl = _apkUrl || 'https://github.com/darapet/smartquiz-system/releases/latest';
-    downloadInApp(targetUrl);
+    if (!_apkUrl || _apkUrl.indexOf('releases/latest') !== -1) {
+      alert('⚠️ Download link not ready yet. Please try again in a few minutes.');
+      return;
+    }
+    permanentDismiss();
+    downloadInApp(_apkUrl);
   });
 
   document.getElementById('aqs-upd-btn-later').addEventListener('click', snoozeUpdate);
@@ -268,25 +249,12 @@ var AQS_APP_VERSION_CODE = 546;
   /* ── Main check ─────────────────────────────────────────────────────────── */
   var _remoteCode = 0;
 
-  function fetchVersionJson() {
-    var cacheBust = '?_=' + Date.now();
-    return fetch(VERSION_JSON_URL + cacheBust, { cache: 'no-store' })
+  function runCheck() {
+    fetch(VERSION_JSON_URL + '?_=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
-      .catch(function (firstErr) {
-        console.warn('[AQS-UPD] Primary version source failed:', firstErr.message || firstErr);
-        return fetch(VERSION_JSON_FALLBACK_URL + cacheBust, { cache: 'no-store' })
-          .then(function (r) {
-            if (!r.ok) throw new Error('HTTP ' + r.status);
-            return r.json();
-          });
-      });
-  }
-
-  function runCheck(attempt) {
-    fetchVersionJson()
       .then(function (data) {
         _remoteCode = parseInt(data.versionCode, 10) || 0;
         console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', _remoteCode);
@@ -297,7 +265,7 @@ var AQS_APP_VERSION_CODE = 546;
         /* Permanently dismissed only if user downloaded AND is actually on that version.
            If they dismissed but still have an older build, treat as snoozed instead. */
         var dismissedVer = parseInt(localStorage.getItem(DISMISSED_KEY) || '0', 10);
-        if (dismissedVer >= _remoteCode) {
+        if (dismissedVer >= _remoteCode && AQS_APP_VERSION_CODE >= dismissedVer) {
           console.log('[AQS-UPD] Already installed v' + _remoteCode);
           return;
         }
@@ -314,16 +282,20 @@ var AQS_APP_VERSION_CODE = 546;
         }
 
         _apkUrl = data.apkUrl || data.downloadUrl || '';
+        /* guard: never allow localhost or relative URLs (stale/corrupt data) */
+        if (!_apkUrl || /localhost|127\.0\.0\.1|^\//.test(_apkUrl)) {
+          _apkUrl = 'https://github.com/darapet/smartquiz-system/releases/latest/download/daraquiz-v' + (data.version || 'latest') + '.apk';
+        }
+        if (!/github\.com\//.test(_apkUrl)) {
+          _apkUrl = 'https://github.com/darapet/smartquiz-system/releases/latest';
+        }
         showPopup(data);
       })
       .catch(function (err) {
         console.warn('[AQS-UPD] Check failed:', err.message || err);
-        if ((attempt || 0) < 2) {
-          setTimeout(function () { runCheck((attempt || 0) + 1); }, 3000);
-        }
       });
   }
 
-  setTimeout(function () { runCheck(0); }, 4000);
+  setTimeout(runCheck, 4000);
 
 })();
