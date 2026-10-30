@@ -1,8 +1,8 @@
 {
-  "version": "1.575",
-  "versionCode": 558,
+  "version": "1.576",
+  "versionCode": 559,
   "releaseDate": "2026-10-30",
-  "notes": "Tap image to save, composer grows with typing, keyboard no longer covers input, updater URL guard.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.575/daraquiz-v1.575.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.575/daraquiz-v1.575.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.576/daraquiz-v1.576.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.576/daraquiz-v1.576.apk"
 }
