@@ -1,8 +1,8 @@
 {
-  "version": "1.577",
-  "versionCode": 561,
+  "version": "1.578",
+  "versionCode": 562,
   "releaseDate": "2026-10-30",
-  "notes": "Image requests in studio chat now generate images directly in-chat.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.577/daraquiz-v1.577.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.577/daraquiz-v1.577.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.578/daraquiz-v1.578.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.578/daraquiz-v1.578.apk"
 }
