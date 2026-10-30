@@ -1,8 +1,8 @@
 {
-  "version": "1.553",
-  "versionCode": 531,
+  "version": "1.554",
+  "versionCode": 532,
   "releaseDate": "2026-10-30",
-  "notes": "Front page redesigned to match your reference: quote banner, feature tiles, bottom nav.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.553/daraquiz-v1.553.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.553/daraquiz-v1.553.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.554/daraquiz-v1.554.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.554/daraquiz-v1.554.apk"
 }
