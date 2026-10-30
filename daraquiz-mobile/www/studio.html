@@ -87,10 +87,13 @@
         #dts-hist-open-btn:active{transform:translateY(0);filter:brightness(.96)}
 
         /* ── Drawer overlay + panel ── */
-        #dts-history-overlay{display:none;position:fixed;inset:0;background:rgba(255,255,255,.96);z-index:3000;backdrop-filter:blur(4px)}
-        #dts-history-overlay.open{display:block!important}
-        #dts-history-drawer{display:none;position:fixed;top:0;left:0;height:100dvh;width:300px;max-width:88vw;background:linear-gradient(135deg,#faf3ea,#ffffff);border-right:1px solid rgba(232,145,45,.2);z-index:3001;flex-direction:column;box-shadow:10px 0 50px rgba(28,43,58,.18)}
-        #dts-history-drawer.open{display:flex!important}
+        .dts-sidebar-history{display:flex;flex:1;min-height:120px;flex-direction:column;border-top:1px solid #eee2d3;margin-top:10px;padding:10px 8px 12px;background:#fff}
+        .dts-sidebar-history-head{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 7px 9px;color:#12304a;font-size:.82rem;font-weight:700;flex-shrink:0}
+        .dts-sidebar-new-chat{border:0;border-radius:8px;padding:6px 8px;background:#e8912d;color:#fff;font-weight:700;cursor:pointer;white-space:nowrap}
+        #dts-history-list.dts-drawer-list{flex:1;min-height:70px;overflow-y:auto;padding:4px 3px 12px}
+        .dts-drawer-item{color:#12304a!important}
+        .dts-drawer-item.active{background:rgba(232,145,45,.2)!important;border-color:rgba(232,145,45,.45)!important}
+        @media(max-width:768px){.dts-sidebar-history{min-height:180px}.aqs-sidebar{width:min(340px,88vw);max-width:88vw;background:#fff;box-shadow:12px 0 40px rgba(18,48,74,.28)}.aqs-sidebar-overlay{background:rgba(18,48,74,.5);backdrop-filter:blur(2px)}}
         .dts-drawer-head{display:flex;align-items:center;justify-content:space-between;padding:18px 16px 14px;border-bottom:1px solid rgba(232,145,45,.15);flex-shrink:0;background:rgba(232,145,45,.06)}
         .dts-drawer-title{display:flex;align-items:center;gap:9px;color:#1c2b3a;font-size:1rem;font-weight:700}
         .dts-drawer-close{background:rgba(250,243,234,.9);border:1px solid rgba(28,43,58,.09);color:#1c2b3a;cursor:pointer;padding:7px;border-radius:9px;display:flex;align-items:center;justify-content:center;transition:color .15s,background .15s,border-color .15s}
@@ -215,14 +218,48 @@
     ta.addEventListener('input',function(){ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,160)+'px';});
   }
   document.addEventListener('click',function(e){
-    var img=e.target.closest&&e.target.closest('.dts-msg-content img');
-    if(!img)return;
-    var src=img.src;if(!src)return;
-    var a=document.createElement('a');a.href=src;a.download='daraquiz-image.png';
-    if(window.AqsDownloadBridge&&window.AqsDownloadBridge.startDownload&&src.indexOf('http')===0){
-      window.AqsDownloadBridge.startDownload(src,'daraquiz-image.png');
-    }else{document.body.appendChild(a);a.click();a.remove();}
+    var img=e.target.closest&&e.target.closest('.dts-imagegen-result');
+    if(img) window.AqsImagePreview && window.AqsImagePreview.open(img.src,img.alt||'Generated image');
   });
+})();
+</script>
+<style>
+/* Studio chat polish: flat assistant text, clear user bubble and precise gutters. */
+.dts-message { padding-left:24px; padding-right:24px; }
+.dts-ai .dts-msg-bubble { background:transparent !important; padding-left:0; padding-right:0; border-radius:0; }
+.dts-typing { align-items:center; gap:8px; }
+.dts-typing-dots { display:inline-flex; align-items:center; justify-content:center; gap:5px; background:transparent; padding:0; border-radius:0; height:18px; }
+.dts-typing-dots span { width:6px; height:6px; animation:dts-inline-pulse 1.15s infinite ease-in-out; }
+.dts-typing-dots span:nth-child(2) { animation-delay:.16s; }
+.dts-typing-dots span:nth-child(3) { animation-delay:.32s; }
+@keyframes dts-inline-pulse { 0%,80%,100% { opacity:.3; transform:scale(.8); } 40% { opacity:1; transform:scale(1); } }
+.dts-imagegen-placeholder { width:160px; height:160px; max-width:55vw; border-radius:18px; background:linear-gradient(135deg,#ff9a3d,#f15bb5,#7b61ff,#36cfc9); background-size:300% 300%; animation:dts-imagegen-gradient 2.4s ease infinite; box-shadow:0 8px 28px rgba(110,80,180,.2); }
+.dts-imagegen-placeholder::after { content:''; display:block; width:100%; height:100%; border-radius:inherit; background:linear-gradient(120deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%); background-size:220% 100%; animation:dts-imagegen-shimmer 1.5s linear infinite; }
+.dts-imagegen-result { display:block; max-width:min(100%,420px); max-height:520px; border-radius:14px; object-fit:contain; }
+@keyframes dts-imagegen-gradient { 0%,100% { background-position:0% 50%; } 50% { background-position:100% 50%; } }
+@keyframes dts-imagegen-shimmer { from { background-position:200% 0; } to { background-position:-20% 0; } }
+.dts-imagegen-error { color:#9a3412; font-size:.9rem; }
+@media(max-width:768px) {
+  .dts-message.dts-ai .dts-msg-bubble { width:auto; max-width:100%; background:transparent !important; }
+  .dts-message.dts-user .dts-msg-bubble { background:var(--dts-user-bubble) !important; padding:12px 16px; border-radius:16px; border-bottom-right-radius:4px; }
+  .dts-message { padding:8px 10px !important; }
+  .dts-typing { padding:8px 10px !important; }
+  .dts-footer { z-index:10000 !important; }
+  #dts-footer { transition:bottom .16s ease; }
+}
+</style>
+<script>
+(function(){
+  var vv=window.visualViewport, footer=document.getElementById('dts-footer');
+  if(!vv||!footer)return;
+  function syncComposerToViewport(){
+    var keyboardOffset=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);
+    footer.style.bottom='calc('+keyboardOffset+'px + var(--aqs-bottom-nav-h, 66px) + env(safe-area-inset-bottom, 0px) + var(--aqs-ticker-bar-h, 0px))';
+  }
+  vv.addEventListener('resize',syncComposerToViewport);
+  vv.addEventListener('scroll',syncComposerToViewport);
+  window.addEventListener('resize',syncComposerToViewport);
+  syncComposerToViewport();
 })();
 </script>
 </head>
@@ -289,15 +326,13 @@
         </div>
     </div>
 </nav>
+<div class="dts-sidebar-history" id="dts-sidebar-history">
+  <div class="dts-sidebar-history-head"><span>Chat history</span><button type="button" id="dts-new-chat" class="dts-sidebar-new-chat">＋ New chat</button></div>
+  <div class="dts-drawer-list" id="dts-history-list"><div class="dts-drawer-empty" id="dts-history-empty">No conversations yet</div></div>
+</div>
 
 <div class="aqs-sidebar-body" id="aqs-sidebar-body">
 <div id="dts-app">
-    <div id="dts-hist-topbar">
-      <button id="dts-hist-open-btn">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        History
-      </button>
-    </div>
     <main id="dts-main" class="dts-main">
         <div id="dts-messages" class="dts-messages"></div>
         <div id="dts-welcome" class="dts-welcome">
@@ -318,7 +353,8 @@
             </div>
         </div>
         <div id="dts-typing" class="dts-typing" style="display:none;">
-            <div class="dts-typing-dots"><span></span><span></span><span></span></div>
+            <div class="dts-typing-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+            <span class="dts-typing-label">XZILY AI is thinking…</span>
         </div>
     </main>
 </div>
@@ -347,37 +383,8 @@
     <p class="dts-disclaimer">xzily AI may make mistakes. Verify important information.</p>
 </footer>
 <script>
-(function(){
-  var input=document.getElementById('dts-input'),send=document.getElementById('dts-send'),msgs=document.querySelector('.dts-chat,.dts-messages,.dts-conversation,.dts-msg-list')||document.body;
-  var IMG_RE=/(generate|create|make|draw|design).{0,30}(image|picture|logo|art|photo|drawing)|(^image of)/i;
-  if(!input||!send)return;
-  window.dtsGenerateInline = genInline;
-  async function genInline(prompt){
-    var b=document.createElement('div');b.className='dts-msg ai';b.innerHTML='<div class="dts-msg-content"><div class="dts-gen-square" style="width:120px;height:120px;border-radius:14px;background:linear-gradient(135deg,#fcd9a8,#f4a548,#c2660c);background-size:200% 200%;animation:dtsSq 1.6s ease infinite"></div></div>';
-    var st=document.createElement('style');st.textContent='@keyframes dtsSq{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}';
-    document.head.appendChild(st);msgs.appendChild(b);b.scrollIntoView({behavior:'smooth'});
-    try{
-      var ep=window.AQS_IMGGEN_ENDPOINT;
-      var r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt})});
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      var ct=(r.headers.get('content-type')||'');
-      var url='';
-      if(ct.indexOf('image')>-1){
-        var blob=await r.blob();
-        url=URL.createObjectURL(blob);
-      }else{
-        var j=await r.json();
-        url=j.imageUrl||j.image_url||j.url||(j.data&&j.data[0]&&(j.data[0].url||j.data[0].b64_json&&('data:image/png;base64,'+j.data[0].b64_json)))||'';
-      }
-      if(url){b.querySelector('.dts-msg-content').innerHTML='<img src="'+url+'" alt="generated" style="max-width:100%;border-radius:14px">';}
-      else{b.querySelector('.dts-msg-content').innerHTML='<span style="color:#8496aa">Image generation no work this time — try again.</span>';}
-    }catch(e){b.querySelector('.dts-msg-content').innerHTML='<span style="color:#8496aa">Image generation error — check connection.</span>';}
-  }
-  send.addEventListener('click',function(){
-    var t=input.value.trim();
-    if(t&&IMG_RE.test(t)&&t.length<300){setTimeout(function(){genInline(t.replace(/^(generate|create|make|draw|design)\s*(me\s*)?(an?\s*)?(image|picture|photo|drawing)?\s*(of|for)?\s*/i,'')||t);},100);}
-  },true);
-})();
+/* Image generation is routed only by aqs-studio.js: click or Enter -> doSend -> sendMessage.
+   No page-level listener submits a second request. */
 </script>
 <script>
 (function(){
@@ -433,6 +440,8 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
+<script>window.AQS_IMAGEGEN_CONFIG={preferredEngine:'cloudflare',firebaseEnabled:false,remoteHistoryEnabled:false,firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate',cloudflareModel:''};</script>
+<script src="js/aqs-imagegen.js"></script>
 <script src="js/aqs-studio.js"></script>
 <script>
 (function(){
@@ -457,27 +466,37 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="js/aqs-session.js"></script>
 
 
-<!-- HISTORY DRAWER -->
-<div id="dts-history-overlay"></div>
-<div id="dts-history-drawer">
-  <div class="dts-drawer-head">
-    <div class="dts-drawer-title">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e8912d" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-      Chat History
-    </div>
-    <button class="dts-drawer-close" id="dts-history-close" title="Close">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-    </button>
-  </div>
-  <button class="dts-drawer-new" id="dts-new-chat">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    New Chat
-  </button>
-  <div class="dts-drawer-list" id="dts-history-list">
-    <div class="dts-drawer-empty" id="dts-history-empty">No conversations yet</div>
-  </div>
-</div>
 
+
+
+
+<style>
+#aqs-image-preview{position:fixed;inset:0;z-index:5000;background:rgba(10,18,28,.94);display:none;align-items:center;justify-content:center;padding:20px}
+#aqs-image-preview.open{display:flex}
+#aqs-image-preview .aqs-ip-panel{width:min(96vw,1100px);height:min(94dvh,900px);background:#faf3ea;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.45)}
+#aqs-image-preview .aqs-ip-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;color:#12304a;font-weight:700}
+#aqs-image-preview .aqs-ip-stage{flex:1;min-height:0;display:grid;place-items:center;padding:8px;background:#faf3ea}
+#aqs-image-preview img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px}
+#aqs-image-preview .aqs-ip-actions{display:flex;justify-content:center;gap:10px;padding:12px;flex-wrap:wrap;background:#fff}
+#aqs-image-preview button{border:0;border-radius:10px;padding:10px 15px;background:#e8912d;color:#fff;font:700 .9rem Inter,sans-serif;cursor:pointer}
+#aqs-image-preview .aqs-ip-close{background:#fff;color:#12304a;border:1px solid #e5d9c6}
+</style>
+<div id="aqs-image-preview" aria-hidden="true"><div class="aqs-ip-panel" role="dialog" aria-modal="true" aria-label="Image preview"><div class="aqs-ip-head"><span class="aqs-ip-title">Image preview</span><button type="button" class="aqs-ip-close" aria-label="Close preview">✕</button></div><div class="aqs-ip-stage"><img alt="Generated image preview"></div><div class="aqs-ip-actions"><button type="button" class="aqs-ip-save">⬇️ Save / Download</button><button type="button" class="aqs-ip-share">🔗 Share</button></div></div></div>
+<script>
+(function(){
+ var modal=document.getElementById('aqs-image-preview'),pic=modal&&modal.querySelector('img'),title=modal&&modal.querySelector('.aqs-ip-title');
+ if(!modal)return;
+ var current='';
+ function close(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true');}
+ window.AqsImagePreview={open:function(src,label){current=src;pic.src=src;pic.alt=label||'Generated image';title.textContent=label||'Image preview';modal.classList.add('open');modal.setAttribute('aria-hidden','false');}};
+ modal.querySelector('.aqs-ip-close').addEventListener('click',close);
+ modal.addEventListener('click',function(e){if(e.target===modal)close();});
+ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('open'))close();});
+ modal.querySelector('.aqs-ip-save').addEventListener('click',function(){if(!current)return;if(window.AqsDownloadBridge&&typeof window.AqsDownloadBridge.startDownload==='function'&&/^https?:/.test(current)){window.AqsDownloadBridge.startDownload(current,'xzily-ai-image.png');return;}var a=document.createElement('a');a.href=current;a.download='xzily-ai-image.png';document.body.appendChild(a);a.click();a.remove();});
+ modal.querySelector('.aqs-ip-share').addEventListener('click',async function(){if(!current)return;try{if(navigator.share){var r=await fetch(current);var blob=await r.blob();var file=new File([blob],'xzily-ai-image.png',{type:blob.type||'image/png'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Generated image'});return;}await navigator.share({title:'Generated image',url:current});return;}}catch(e){if(e&&e.name==='AbortError')return;}try{await navigator.clipboard.writeText(current);this.textContent='✓ Link copied';setTimeout(()=>{this.textContent='🔗 Share';},1500);}catch(e){window.prompt('Copy image link:',current);}});
+ var sx=0;modal.addEventListener('touchstart',function(e){sx=e.changedTouches[0].clientX;},{passive:true});modal.addEventListener('touchend',function(e){if(e.changedTouches[0].clientX-sx>110)close();},{passive:true});
+})();
+</script>
 
 </body>
 <script src="js/median-bridge.js"></script>

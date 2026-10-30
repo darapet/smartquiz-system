@@ -432,7 +432,7 @@
         if (show) {
             /* Update status text if provided */
             if (statusText) {
-                var span = el.querySelector('span');
+                var span = el.querySelector('.dts-typing-label');
                 if (span) span.textContent = statusText;
             }
             if (msgs) msgs.appendChild(el);
@@ -595,7 +595,7 @@
                 }
             });
 
-            item.addEventListener('click', function () { loadSessionById(sess.id); closeHistoryDrawer(); });
+            item.addEventListener('click', function () { loadSessionById(sess.id); closeSidebarDrawer(); });
             list.insertBefore(item, empty || null);
         });
     }
@@ -777,16 +777,6 @@
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
 
-        /* IMAGE INTENT: route to in-chat generation instead of text AI */
-        var IMG_INTENT = /(generate|create|make|draw|design|produce)[^.?!]{0,40}(image|picture|photo|logo|drawing|art\b)|^\s*image of /i;
-        if (text && !attachedFileText && !attachedImageData && IMG_INTENT.test(text)) {
-            isSending = false; setSendState(false);
-            var inp0 = document.getElementById('dts-input');
-            if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
-            if (typeof window.dtsGenerateInline === 'function') { window.dtsGenerateInline(text); }
-            return;
-        }
-
         isSending = true;
         setSendState(true);
 
@@ -803,6 +793,55 @@
         }
 
         clearFileAttachment();
+
+        /* --- Image generation request path --- */
+        var inputEl = document.getElementById('dts-input');
+        var sendBtn = document.getElementById('dts-send');
+        var imagePromptMatch = text.match(/(?:\\b(?:generate|create|make|draw|paint|design)\\b.{0,50}\\bimage\\b|\\bimage\\b.{0,35}\\b(?:of|showing|with)\\b)(.*)$/i);
+        var looksLikeImageRequest = /\\b(?:generate|create|make|draw|paint|design)\\b.{0,50}\\bimage\\b/i.test(text) || /\\bimage\\b.{0,35}\\b(?:of|showing|with)\\b/i.test(text);
+        if (!snapImageData && looksLikeImageRequest && typeof window.AqsImageGen !== 'undefined' && typeof window.AqsImageGen.generate === 'function') {
+            var imagePrompt = ((imagePromptMatch && imagePromptMatch[1]) || text).trim();
+            imagePrompt = imagePrompt.replace(/^[\\s:,.!?-]+|[\\s?.!]+$/g, '').trim();
+            if (!imagePrompt || imagePrompt.length < 3) imagePrompt = text.trim();
+            var generationMessage = 'Generating an image for: ' + imagePrompt;
+            chatHistory.push({ role: 'user', content: userContent });
+            showTyping(false);
+            isSending = false;
+            setSendState(false);
+            if (inputEl) { inputEl.value = ''; inputEl.style.height = 'auto'; }
+            if (sendBtn) sendBtn.disabled = true;
+            var messagesEl = document.getElementById('dts-messages');
+            var welcomeEl = document.getElementById('dts-welcome');
+            if (welcomeEl) welcomeEl.style.display = 'none';
+            appendMessage('user', userContent);
+            var placeholderWrap = document.createElement('div');
+            placeholderWrap.className = 'dts-message dts-ai dts-imagegen-message';
+            placeholderWrap.innerHTML = '<div class="dts-msg-avatar">✶</div><div class="dts-msg-content"><div class="dts-msg-bubble"><div class="dts-imagegen-placeholder" role="status" aria-label="Generating image"></div></div></div>';
+            if (messagesEl) { messagesEl.appendChild(placeholderWrap); scrollToBottom(); }
+            showTyping(false);
+            window.AqsImageGen.generate(imagePrompt).then(function(result) {
+                var bubble = placeholderWrap.querySelector('.dts-msg-bubble');
+                if (!bubble) return;
+                var image = document.createElement('img');
+                image.className = 'dts-imagegen-result';
+                image.alt = imagePrompt;
+                image.src = result.url;
+                bubble.replaceChildren(image);
+                var imageTranscript = 'Generated image for: ' + imagePrompt;
+                chatHistory.push({ role: 'assistant', content: imageTranscript });
+                saveSession(); renderHistoryList(); scrollToBottom();
+            }).catch(function(error) {
+                var bubble = placeholderWrap.querySelector('.dts-msg-bubble');
+                if (bubble) {
+                    bubble.innerHTML = '<div class="dts-imagegen-error"></div>';
+                    bubble.querySelector('.dts-imagegen-error').textContent = 'Image generation failed: ' + (error && error.message ? error.message : 'Please try again.');
+                }
+                chatHistory.push({ role: 'assistant', content: 'Image generation failed for: ' + imagePrompt });
+                saveSession(); renderHistoryList();
+            }).finally(function() { isSending = false; setSendState(false); });
+            return;
+        }
+        /* --- End image generation path --- */
 
         /* --- Image vision path --- */
         if (snapImageData) {
@@ -1622,27 +1661,40 @@
     /* ═══════════════════════════════════════════════════════════
        HISTORY DRAWER
     ═══════════════════════════════════════════════════════════ */
-    function openHistoryDrawer() {
-        var drawer  = document.getElementById('dts-history-drawer');
-        var overlay = document.getElementById('dts-history-overlay');
-        renderHistoryList();
-        if (drawer)  { drawer.classList.add('open');  }
-        if (overlay) { overlay.classList.add('open'); }
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeHistoryDrawer() {
-        var drawer  = document.getElementById('dts-history-drawer');
-        var overlay = document.getElementById('dts-history-overlay');
-        if (drawer)  drawer.classList.remove('open');
+    function closeSidebarDrawer() {
+        var sidebar = document.getElementById('aqs-sidebar');
+        var overlay = document.getElementById('aqs-sidebar-overlay');
+        if (sidebar) sidebar.classList.remove('open');
         if (overlay) overlay.classList.remove('open');
         document.body.style.overflow = '';
+    }
+
+    function initSidebarHistory() {
+        var toggle=document.getElementById('aqs-sidebar-toggle');
+        var sidebar=document.getElementById('aqs-sidebar');
+        var overlay=document.getElementById('aqs-sidebar-overlay');
+        var startX=0;
+        if(toggle&&sidebar&&overlay){
+            toggle.addEventListener('click',function(){renderHistoryList();});
+            overlay.addEventListener('click',closeSidebarDrawer);
+            sidebar.addEventListener('touchstart',function(e){startX=e.changedTouches[0].clientX;},{passive:true});
+            sidebar.addEventListener('touchend',function(e){if(startX-e.changedTouches[0].clientX>80)closeSidebarDrawer();},{passive:true});
+            document.addEventListener('keydown',function(e){if(e.key==='Escape')closeSidebarDrawer();});
+        }
+        var newChat=document.getElementById('dts-new-chat');
+        if(newChat)newChat.addEventListener('click',function(){closeSidebarDrawer();});
     }
 
     document.addEventListener('DOMContentLoaded', function () {
 
         newSession();
         renderHistoryList();
+
+        /* Tap anywhere on the composer background to focus the message input. */
+        var composer = document.getElementById('dts-input-wrap');
+        if (composer && inputEl) composer.addEventListener('click', function (event) {
+            if (event.target === composer || event.target.classList.contains('dts-msg-content')) inputEl.focus();
+        });
 
         /* ── Auto-resize textarea ── */
         var inputEl = document.getElementById('dts-input');
@@ -1685,42 +1737,8 @@
         });
 
 
-        /* ── History hamburger button ── */
-        var historyBtn = document.getElementById('dts-hist-open-btn') ||
-                        document.getElementById('dts-history-btn');
-        if (historyBtn) {
-            historyBtn.addEventListener('click', function () { openHistoryDrawer(); });
-        }
+        initSidebarHistory();
 
-        /* ── History drawer close button ── */
-        var historyClose = document.getElementById('dts-history-close');
-        if (historyClose) {
-            historyClose.addEventListener('click', function () { closeHistoryDrawer(); });
-        }
-
-        /* ── History overlay backdrop click ── */
-        var historyOverlay = document.getElementById('dts-history-overlay');
-        if (historyOverlay) {
-            historyOverlay.addEventListener('click', function () { closeHistoryDrawer(); });
-        }
-
-        /* ── New chat button ── */
-        var newChatBtn = document.getElementById('dts-new-chat');
-        if (newChatBtn) {
-            newChatBtn.addEventListener('click', function () { startNewChat(); });
-        }
-
-        /* ── History panel toggle ── */
-        var historyToggle = document.getElementById('dts-history-toggle');
-        var historyPanel  = document.getElementById('dts-history-panel');
-        var historyCaret  = document.getElementById('dts-history-caret');
-        if (historyToggle && historyPanel) {
-            historyToggle.addEventListener('click', function () {
-                var open = historyPanel.style.display !== 'none' && historyPanel.style.display !== '';
-                historyPanel.style.display = open ? 'none' : '';
-                if (historyCaret) historyCaret.textContent = open ? '\u25B8' : '\u25BE';
-            });
-        }
 
         /* ── File input ── */
         var fileInput = document.getElementById('dts-file-input');
