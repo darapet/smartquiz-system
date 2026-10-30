@@ -1,0 +1,21 @@
+/* UNIVERSAL CREAM THEME (v1.561) - homepage look on every page */
+html{background:#faf3ea}
+body{background:#faf3ea !important;color:#1c2b3a !important}
+.card,.panel,.aqs-card,.box,.aqs-panel,.stat-card,.quick-card,.dashboard-card,.aqs-stat-card,.aqs-quick-card,.profile-card,.settings-card,.quiz-card,.aqs-quiz-card,.modal,.aqs-modal{background:#fff !important;color:#1c2b3a !important;border:1px solid #eee2d3 !important;box-shadow:0 4px 16px rgba(0,0,0,.05) !important}
+h1,h2,h3,h4{color:#12304a !important}
+p,span,td,li,label,small{color:#33475e}
+a{color:#3d7ab5}
+input,textarea,select{background:#fff !important;color:#1c2b3a !important;border:1px solid #e5d9c6 !important}
+input:focus,textarea:focus,select:focus{border-color:#e8912d !important;box-shadow:0 0 0 3px rgba(232,145,45,.14) !important}
+button,.btn,.aqs-btn,.ait-btn{background:#fff;color:#22374d;border:1px solid #eee2d3}
+.btn-primary,.aqs-btn-primary,.aqs-btn-sm.aqs-btn-primary,.ait-btn.primary,button.primary{background:linear-gradient(135deg,#e8912d,#d97706) !important;color:#fff !important;border-color:transparent !important}
+table,th,td{border-color:#f3e8d8 !important}
+th{color:#12304a !important}
+.aqs-site-header,header,nav,.topbar,.aqs-topbar{background:rgba(250,243,234,.96) !important;color:#1c2b3a !important;border-bottom:1px solid #eee2d3 !important}
+.aqs-user-topbar{background:linear-gradient(120deg,#0e3a52,#10485e 55%,#155a70) !important;border:1px solid #22505b !important;border-radius:20px;color:#f6fbfd !important;margin:0 4px}
+.aqs-user-topbar .aqs-user-name{color:#f6fbfd !important}
+.aqs-user-topbar .aqs-btn{background:#fff !important;color:#22374d !important}
+.aqs-user-topbar .aqs-btn.aqs-btn-primary{background:linear-gradient(135deg,#e8912d,#d97706) !important;color:#fff !important}
+.aqs-user-topbar .aqs-user-role-badge{background:rgba(255,255,255,.15) !important;color:#c4f1e8 !important}
+.aqs-hdr-drawer{background:#fff !important}
+*{scrollbar-color:#e8d5b8 #faf3ea}
