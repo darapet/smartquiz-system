@@ -171,7 +171,7 @@
   <script src="js/aqs-imagegen.js?v=20260929-fallback-fix"></script>
 
 <!-- v1.569 chat-style image generation -->
-<div id="aqs-ig-chat" class="aqs-ig-chat" style="display:none">
+<div id="aqs-ig-chat" class="aqs-ig-chat">
   <div id="aqs-ig-msgs" class="aqs-ig-msgs"></div>
   <div class="aqs-ig-composer">
     <textarea id="aqs-ig-chat-input" rows="1" placeholder="Describe the image you want…" maxlength="2000"></textarea>
@@ -198,7 +198,7 @@
   if(!msgs||!input||!send)return;
   // hide the old form UI, keep the pipeline form hidden but functional
   var old=document.querySelector('.aqs-imagegen-panel, form#imagegen-form, main .aqs-imagegen-wrap, .aqs-imagegen');
-  if(old){old.style.display='none';}
+  if(old){old.style.display='none';} document.querySelectorAll('.aqs-imagegen-panel,.aqs-imagegen-prompt-wrap,.aqs-imagegen-history,aqs-imagegen-lead').forEach(function(el){el.style.display='none';}); var hd=document.querySelector('.aqs-imagegen-header,.aqs-imagegen-heading'); if(hd){hd.style.display='none';}
   function add(cls,html){var d=document.createElement('div');d.className='aqs-ig-msg '+cls;d.innerHTML=html;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
   async function run(){
     var p=input.value.trim();if(!p)return;
