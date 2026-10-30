@@ -3,13 +3,6 @@
 <head>
     <link rel="stylesheet" href="css/aqs-category-nav.css">
     <script defer src="js/aqs-category-nav.js"></script>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#080910">
@@ -41,9 +34,11 @@ body.lhp-is-owner .lib-card-cover-btn{display:block;}
 .lib-card-delete-btn:hover{background:rgba(185,28,28,.95);}
 body.lhp-is-owner .lib-card-delete-btn{display:block;}
 </style>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body>
+<body data-aqs-page="library-host-profile" data-aqs-page-group="library">
+<header class="aqs-phase2-page-header" aria-label="Host Profile"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Host Profile</span></header>
+
 <div class="lib-page-bg"></div>
 
 <header class="lib-hdr">
@@ -155,8 +150,10 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
 <div class="lib-toast" id="lib-toast"></div>
 <input type="file" id="lhp-book-cover-input" accept="image/*" style="display:none">
 
-<script type="module" src="js/aqs-firebase.js?v=20260922-mobile-upload-1"></script>
+<script type="module" src="js/aqs-firebase.js?v=20260922-profile-upload-2"></script>
 <script type="module" src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-gemini-tts.js"></script>
+<script src="js/aqs-voice.js"></script>
 <script type="module" src="js/aqs-library.js?v=20260922-profile-upload"></script>
 <script type="module">
   const params = new URLSearchParams(location.search);
@@ -439,19 +436,14 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
         el.innerHTML = `<div class="lib-empty"><div class="lib-empty-title">No followers yet</div></div>`;
         return;
       }
-      el.innerHTML = valid.map(p => {
-        const visiblePhoto = isVisible(p, 'photoURL');
-        const visibleName = isVisible(p, 'displayName');
-        const visibleEducation = isVisible(p, 'education');
-        return `
+      el.innerHTML = valid.map(p => `
         <div class="lhp-follower-item">
-          <div class="lhp-follower-av">${visiblePhoto && p.photoURL ? `<img src="${p.photoURL}" alt="">` : window.libInitials(visibleName ? (p.displayName||'?') : '?')}</div>
+          <div class="lhp-follower-av">${isVisible(p, 'photoURL') && p.photoURL ? `<img src="${p.photoURL}" alt="">` : window.libInitials(isVisible(p, 'displayName') ? (p.displayName||'?') : '?')}</div>
           <div>
-            <div class="lhp-follower-name">${visibleName ? (p.displayName || 'Anonymous') : 'Anonymous'}</div>
-            <div class="lhp-follower-sub">${visibleEducation ? (p.institution || '') : ''}</div>
+            <div class="lhp-follower-name">${isVisible(p, 'displayName') ? (p.displayName || 'Anonymous') : 'Anonymous'}</div>
+            <div class="lhp-follower-sub">${isVisible(p, 'education') ? (p.institution || '') : ''}</div>
           </div>
-        </div>`;
-      }).join('');
+        </div>`).join('');
     } catch(e) {
       _followersLoaded = false;
       el.innerHTML = `<div style="color:#ef4444;font-size:.82rem;text-align:center;padding:24px;">

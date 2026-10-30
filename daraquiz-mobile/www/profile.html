@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#080910">
@@ -15,7 +8,6 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-style.css">
 <link rel="stylesheet" href="css/aqs-library.css">
-<link rel="stylesheet" href="css/aqs-space-nav.css">
 <style>
 /* Profile page specific styles */
 .prf-header{position:sticky;top:0;z-index:9500;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:rgba(8,9,16,.88);border-bottom:1px solid rgba(255,255,255,.08);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
@@ -94,9 +86,11 @@
 .prf-field-box-title{font-size:.95rem;font-weight:800;margin-bottom:16px;}
 .prf-field-box-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
 </style>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body style="background:#080910;min-height:100vh;">
+<body style="background:#080910;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
+<header class="aqs-phase2-page-header" aria-label="My Profile"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">My Profile</span></header>
+
 
 <!-- HEADER -->
 <header class="prf-header">
@@ -208,6 +202,13 @@
       <div class="prf-card-title">⚠️ Account</div>
     </div>
     <div class="prf-card-body">
+      <div class="prf-danger-row" style="margin-bottom:14px;">
+        <div>
+          <div class="prf-danger-label">Privacy &amp; Security</div>
+          <div class="prf-danger-sub">Choose what visitors can see and change your password</div>
+        </div>
+        <a class="prf-edit-btn" href="account-settings.html">Open Settings</a>
+      </div>
       <div class="prf-danger-row">
         <div>
           <div class="prf-danger-label">Sign Out</div>
@@ -234,7 +235,7 @@
 
 <div class="lib-toast" id="lib-toast"></div>
 
-<script type="module" src="js/aqs-firebase.js?v=20260922-mobile-upload-1"></script>
+<script type="module" src="js/aqs-firebase.js?v=20260922-profile-upload-2"></script>
 <script type="module" src="js/aqs-library.js?v=20260922-profile-upload"></script>
 <script type="module">
   import { getApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
@@ -354,7 +355,5 @@
     location.href='login.html';
   };
 </script>
-<script src="js/aqs-space-nav.js"></script>
-<script src="js/aqs-bottom-nav.js"></script>
 </body>
 </html>

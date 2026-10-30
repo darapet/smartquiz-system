@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Quiz — XZILY AI</title>
@@ -24,9 +17,11 @@
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
   <script src="js/aqs-nav-loader.js"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body class="aqs-full-page-body">
+<body class="aqs-full-page-body" data-aqs-page="create-quiz" data-aqs-page-group="quiz flows">
+<header class="aqs-phase2-page-header" aria-label="Create Quiz"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Create Quiz</span></header>
+
 
 <!-- ══ TOP HEADER ══ -->
 <header class="aqs-site-header">
@@ -51,6 +46,7 @@
             
             <a href="docs-gen.html" class="aqs-site-nav-link" style="color:#0369a1;">📄 Docs AI</a>
             <a href="text-to-docs.html" class="aqs-site-nav-link" style="color:#0891b2;">&#9997;&#65039; Text&#8594;Docs</a>
+            <a href="studyhub.html" class="aqs-site-nav-link" style="color:#059669;">📚 AI Study</a>
             <a href="studyhub.html" class="aqs-site-nav-link" style="color:#6366f1;font-weight:700;">📚 Study Hub</a>
             <a href="tts.html" class="aqs-site-nav-link" style="color:#9333ea;">🔊 Text to Speech</a>
             <a href="challenge.html" class="aqs-site-nav-link" style="color:#e11d48;font-weight:700;">⚔️ Challenge</a>
@@ -373,6 +369,8 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <!-- REMOVED aqs-main.js: it conflicts with aqs-create.js (duplicate renderMath/collectQuestions handlers corrupt saved quizzes and break math rendering) -->
 <script src="js/aqs-file-parser.js"></script>
 <script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-gemini-tts.js"></script>
+<script src="js/aqs-voice.js"></script>
 <script src="js/aqs-create.js"></script>
 
 <script src="js/aqs-notifs-bar.js"></script>

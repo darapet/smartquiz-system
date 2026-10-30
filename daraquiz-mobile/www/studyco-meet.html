@@ -1,29 +1,11 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <script defer src="capacitor-bridge.js"></script>
-  <script defer src="js/aqs-update-check.js"></script>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#10152f">
   <title>Dara Social — Learn together</title>
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://firestore.googleapis.com">
-  <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
-  <link rel="modulepreload" href="js/aqs-firebase.js?v=20260922-mobile-upload-2">
-  <link rel="modulepreload" href="js/studyco-meet.js?v=story-feed-nonclick-v5-20261005">
-  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://firestore.googleapis.com">
-  <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
-  <link rel="stylesheet" href="css/aqs-style.css">
-  <link rel="stylesheet" href="css/aqs-space-nav.css">
-  <link rel="stylesheet" href="css/studyco-meet.css?v=story-feed-nonclick-v5-20261005">
-  <link rel="stylesheet" href="css/studyco-circle.css">
-  <link rel="stylesheet" href="css/studyco-facebook.css?v=dara-feed-card-v2">
-  <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
-  <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
-  <link rel="stylesheet" href="css/studyco-polish.css?v=social-home-nav-20261005">
-<style>
+  <style>
     /* Paint a useful first frame before Firebase and the module bundle finish. */
     #studyco-boot-screen{min-height:100vh;box-sizing:border-box;padding:26px 16px;background:#f5f7ff;color:#25294b;display:grid;place-items:center;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
     .studyco-boot-card{width:min(100%,460px);padding:28px;border:1px solid #e1e5ff;border-radius:24px;background:#fff;box-shadow:0 18px 50px #20265c12}
@@ -35,11 +17,26 @@
     .studyco-boot-status{margin:18px 0 0;color:#727899;font-size:.78rem;text-align:center}
     @keyframes studycoBootShimmer{0%{background-position:200% 0}100%{background-position:-20% 0}}
   </style>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://firestore.googleapis.com">
+  <link rel="preconnect" href="https://identitytoolkit.googleapis.com">
+  <link rel="modulepreload" href="js/aqs-firebase.js?v=perf-1">
+  <link rel="modulepreload" href="js/studyco-meet.js?v=story-feed-nonclick-v5-20261005">
+  <link rel="stylesheet" href="css/aqs-style.css">
+  <link rel="stylesheet" href="css/aqs-space-nav.css">
+  <link rel="stylesheet" href="css/studyco-meet.css?v=story-feed-nonclick-v5-20261005">
+  <link rel="stylesheet" href="css/studyco-circle.css">
+  <link rel="stylesheet" href="css/studyco-facebook.css?v=dara-feed-card-v2">
+  <link rel="stylesheet" href="css/studyco-call-overrides.css?v=full-video-controls-2">
+  <link rel="stylesheet" href="css/studyco-profile-tweaks.css?v=profile-settings-premium-20261003">
+  <link rel="stylesheet" href="css/studyco-polish.css?v=social-home-nav-20261005">
   <link rel="stylesheet" href="css/dara-social-requests-messages.css?v=friend-message-polish-v1">
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body class="studyco-page">
-<div id="studyco-boot-screen" role="status" aria-live="polite">
+<body class="studyco-page" data-aqs-page="studyco-meet" data-aqs-page-group="dara social">
+<header class="aqs-phase2-page-header" aria-label="Dara Social — Learn together"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Dara Social — Learn together</span></header>
+
+  <div id="studyco-boot-screen" role="status" aria-live="polite">
     <div class="studyco-boot-card">
       <div class="studyco-boot-brand"><span class="studyco-boot-mark">SQ</span><span>Dara Social</span></div>
       <div class="studyco-boot-line"></div>
@@ -48,7 +45,6 @@
       <p class="studyco-boot-status">Loading your learning circle…</p>
     </div>
   </div>
-
   <div id="studyco-auth-screen" class="studyco-auth-screen" hidden>
     <div class="studyco-auth-card studyco-auth-redirect">
       <span class="studyco-mark">SQ</span>
@@ -69,7 +65,7 @@
         <a class="studyco-circle-action studyco-save-action" href="library.html" aria-label="Open saved learning content" title="Saved learning content"><svg viewBox="0 0 24 24"><path d="M6 4.5A2.5 2.5 0 0 1 8.5 2h7A2.5 2.5 0 0 1 18 4.5V21l-6-3.5L6 21z"/></svg></a>
         <button id="studyco-header-search" class="studyco-circle-action studyco-search-action" type="button" aria-label="Open search page"><svg viewBox="0 0 24 24"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
         <span id="studyco-top-name" hidden></span><button class="studyco-top-avatar" id="studyco-top-avatar" type="button" data-studyco-view="profile" aria-label="Open your profile"></button>
-        <button id="studyco-menu-button" class="studyco-circle-action" type="button" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+        <button id="studyco-menu-button" class="studyco-circle-action" type="button" aria-label="Open menu" aria-expanded="false"><span class="studyco-menu-glyph" aria-hidden="true"><i></i><i></i><i></i></span></button>
         <div id="studyco-menu-panel" class="studyco-menu-panel" hidden>
           <div class="dara-menu-heading">Dara spaces</div>
           <a class="dara-menu-space active" href="studyco-meet.html"><span class="dara-menu-space-copy"><strong>Social</strong><small>Learn together</small></span></a>
@@ -357,8 +353,9 @@
        </div>
      </div>
    </div>
+  <a class="dara-studio-fab" href="studio.html" aria-label="Open Studio AI"><span class="dara-studio-fab-spark">✦</span><span>Studio AI</span></a>
   <div id="studyco-toast" class="studyco-toast" role="status"></div>
   <script src="js/aqs-bottom-nav.js"></script>
-   <script type="module" src="js/studyco-meet.js?v=story-feed-nonclick-v5-20261005"></script>
+  <script type="module" src="js/studyco-meet.js?v=story-feed-nonclick-v5-20261005"></script>
 </body>
 </html>

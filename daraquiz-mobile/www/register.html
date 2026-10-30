@@ -25,10 +25,12 @@ window.AQS = {
 };
 </script>
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=20261015-registration-otp"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+<script type="module" src="js/aqs-firebase.js?v=20261029-google-auth-1"></script>
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body>
+<body data-aqs-page="register" data-aqs-page-group="auth">
+<header class="aqs-phase2-page-header" aria-label="Create Account"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Create Account</span></header>
+
 <div class="aqs-auth-page aqs-register-page">
 <div class="aqs-auth-card aqs-register-card">
     <div class="aqs-auth-brand">
@@ -55,6 +57,8 @@ window.AQS = {
     </div>
 
     <div id="aqs-register-alert" class="aqs-auth-alert" role="alert"></div>
+    <button type="button" id="aqs-register-google" class="aqs-social-btn google" style="width:100%;margin-bottom:18px;">Continue with Google</button>
+    <div class="aqs-auth-divider"><span>or sign up with email</span></div>
 
     <form id="aqs-register-account-form" class="aqs-register-step" data-step="1" autocomplete="off" novalidate>
         <div class="aqs-step-intro">
@@ -223,6 +227,6 @@ window.AQS = {
 <script src="js/aqs-education-data.js?v=20260922"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-auth.js?v=20261015-registration-otp"></script>
-<script src="js/aqs-session.js"></script>
+<script src="js/aqs-session.js?v=20260923-registration-session-2"></script>
 </body>
 </html>

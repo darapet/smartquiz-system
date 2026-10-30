@@ -1,12 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <script>window._AQS_ADMIN_MODE = true;</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -123,6 +117,16 @@ function saveSettings(endpoint, data, statusId, btnEl, defaultBtnText) {
     });
 }
 
+function _refreshBrevoKeyView() {
+    var input = document.getElementById('aqs-brevo-key');
+    var status = document.getElementById('aqs-brevo-key-status');
+    if (!status) return;
+    var key = input ? String(input.value || '').trim() : '';
+    status.textContent = key
+        ? 'Loaded key: ••••••••' + key.slice(-4) + ' (' + key.length + ' characters)'
+        : 'No Brevo API key is loaded.';
+}
+
 window.addEventListener('DOMContentLoaded', function() {
     _whenFirebaseReady(function() {
         jQuery.post(window.AQS.ajax_url, { action: 'aqs_get_settings', nonce: '' }, function(res) {
@@ -143,6 +147,16 @@ window.addEventListener('DOMContentLoaded', function() {
             hcMKeys.forEach(function(k){ if (mkeys.indexOf(k) === -1) mkeys.push(k); });
             for (var mi = 1; mi <= 20; mi++) { setVal('aqs-mistral-key-' + mi, mkeys[mi-1] || ''); }
             if (typeof window.setMistralKeys === 'function') window.setMistralKeys(mkeys.filter(function(k){ return k && k.length > 20; }));
+            /* Dara Social automation settings and private key pool */
+            setChk('aqs-dsocial-course-enabled', s.darasocial_course_enabled !== false);
+            setVal('aqs-dsocial-course-interval', s.darasocial_course_interval_minutes || 30);
+            setVal('aqs-dsocial-course-last', s.darasocial_course_last_post_at || 'Never');
+            setChk('aqs-dsocial-news-enabled', s.darasocial_news_enabled !== false);
+            setVal('aqs-dsocial-news-interval', s.darasocial_news_interval_hours || 5);
+            setVal('aqs-dsocial-news-last', s.darasocial_news_last_post_at || 'Never');
+            var dpk = Array.isArray(s.darasocial_post_slot) ? s.darasocial_post_slot : [];
+            for (var dpi=1; dpi<=10; dpi++) setVal('aqs-dsocial-post-key-'+dpi, dpk[dpi-1] || '');
+            if (typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys('darasocial_post_slot', dpk);
             /* Load Library AI keys */
             var lkeys = Array.isArray(s.lib_groq_keys) ? s.lib_groq_keys : [];
             for (var li = 1; li <= 10; li++) { setVal('aqs-lib-key-' + li, lkeys[li-1] || ''); }
@@ -166,8 +180,10 @@ window.addEventListener('DOMContentLoaded', function() {
             var cpEl = document.getElementById('aqs-splash-color');
             if (cpEl) cpEl.addEventListener('input', function(){ var h=document.getElementById('aqs-splash-color-hex'); if(h) h.value=this.value; });
             setVal('aqs-brevo-key', s.brevo_api_key);
+            _refreshBrevoKeyView();
             setVal('aqs-brevo-from-name', s.brevo_from_name);
             setVal('aqs-brevo-from-email', s.brevo_from_email);
+            setChk('aqs-otp-enabled', s.otp_enabled);
             setChk('aqs-cd-enabled', s.countdown_enabled);
             setVal('aqs-cd-label', s.countdown_label);
             setVal('aqs-cd-date', s.countdown_date);
@@ -217,9 +233,11 @@ window.addEventListener('DOMContentLoaded', function() {
 <script src="js/aqs-groq-key.js?v=gemini-test-direct-1"></script>
 <script src="js/aqs-gemini-tts.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=gemini-test-direct-1"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body>
+<body data-aqs-page="admin-settings" data-aqs-page-group="admin">
+<header class="aqs-phase2-page-header" aria-label="Settings — Admin"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Settings — Admin</span></header>
+
 
 <aside class="aqs-admin-sidebar">
     <div class="aqs-admin-sidebar-brand"><a href="index.html">⚡ xzily AI</a></div>
@@ -271,6 +289,57 @@ window.addEventListener('DOMContentLoaded', function() {
     <h1>⚙️ Plugin Settings</h1>
 </div>
 
+<!-- Email / Brevo — placed first so it is immediately visible -->
+<div class="aqs-settings-card" id="brevo-email-settings">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+        <span class="aqs-settings-card-icon">📧</span>
+        <div>
+            <h2 class="aqs-settings-card-title">Email (Brevo / SendinBlue)</h2>
+            <p class="aqs-settings-card-desc">Configure the email sender and registration OTP verification.</p>
+        </div>
+    </div>
+    <div class="aqs-settings-card-body">
+        <div class="aqs-field-group">
+            <label for="aqs-brevo-key">Brevo API Key</label>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <input type="password" id="aqs-brevo-key" placeholder="xkeysib-…" autocomplete="off" style="flex:1;min-width:0;width:auto;" />
+                <button class="aqs-btn" id="aqs-view-brevo-key" type="button" style="white-space:nowrap;">👁 Show</button>
+            </div>
+            <p id="aqs-brevo-key-status" class="aqs-field-hint">No Brevo API key is loaded.</p>
+            <p class="aqs-field-hint">Get your API key at <a href="https://app.brevo.com" target="_blank" rel="noopener">app.brevo.com</a> → API Keys. The status above shows only the last four characters.</p>
+        </div>
+        <div class="aqs-settings-2col">
+            <div class="aqs-field-group">
+                <label for="aqs-brevo-from-name">Sender Name</label>
+                <input type="text" id="aqs-brevo-from-name" placeholder="xzily AI Quiz System" />
+            </div>
+            <div class="aqs-field-group">
+                <label for="aqs-brevo-from-email">Sender Email</label>
+                <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:4px 0 16px;border:1px solid #e0e7ff;border-radius:10px;background:#eef2ff;">
+            <div>
+                <strong style="display:block;color:#3730a3;font-size:.9rem;">Email OTP verification</strong>
+                <span style="display:block;color:#6366f1;font-size:.78rem;margin-top:3px;">Require a one-time code after registration. Codes expire after 10 minutes.</span>
+            </div>
+            <label class="aqs-toggle-switch" title="Enable email OTP">
+                <input type="checkbox" id="aqs-otp-enabled" />
+                <span class="aqs-toggle-slider"></span>
+            </label>
+        </div>
+        <div class="aqs-field-group">
+            <label for="aqs-brevo-test-recipient">Test Recipient Email</label>
+            <input type="email" id="aqs-brevo-test-recipient" placeholder="Leave blank to use the signed-in admin email" autocomplete="email" />
+            <p class="aqs-field-hint">Only the admin can send a test. Brevo accepts any valid-looking recipient; it does not confirm that the address exists or belongs to your Brevo account. Acceptance is not delivery—check Brevo activity, spam, or Promotions.</p>
+        </div>
+        <div class="aqs-settings-actions">
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-brevo-btn">💾 Save Email Settings</button>
+            <button class="aqs-btn" id="aqs-test-brevo-btn" type="button">🧪 Send Test Email</button>
+            <span id="aqs-brevo-status" class="aqs-status-msg"></span>
+        </div>
+    </div>
+</div>
 
 <!-- AI Key Pool Status Dashboard -->
 <div class="aqs-settings-card">
@@ -464,6 +533,33 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
+
+<!-- Dara Social scheduled automations -->
+<div class="aqs-settings-card">
+  <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#dbeafe,#c4b5fd)"><span class="aqs-settings-card-icon">🌍</span><div><h2 class="aqs-settings-card-title">Dara Social Automations</h2><p class="aqs-settings-card-desc">Scheduled university-course learning posts and Nigerian news/sports updates.</p></div></div>
+  <div class="aqs-settings-card-body">
+    <label><input type="checkbox" id="aqs-dsocial-course-enabled" checked> Course auto-poster</label>
+    <label style="margin-left:18px">Every <input id="aqs-dsocial-course-interval" type="number" min="30" max="1440" value="30" style="width:80px"> minutes</label>
+    <p>Last course post: <span id="aqs-dsocial-course-last">Never</span></p>
+    <label><input type="checkbox" id="aqs-dsocial-news-enabled" checked> News and sports fetcher</label>
+    <label style="margin-left:18px">Every <input id="aqs-dsocial-news-interval" type="number" min="1" max="72" value="5" style="width:80px"> hours</label>
+    <p>Last news/sports post: <span id="aqs-dsocial-news-last">Never</span></p>
+    <h3>Dara Social poster key pool (10 slots)</h3><p>Dedicated Groq keys; falls back to the main Groq/Mistral pool.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      <label>Post key 1<input type="password" id="aqs-dsocial-post-key-1" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 2<input type="password" id="aqs-dsocial-post-key-2" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 3<input type="password" id="aqs-dsocial-post-key-3" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 4<input type="password" id="aqs-dsocial-post-key-4" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 5<input type="password" id="aqs-dsocial-post-key-5" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 6<input type="password" id="aqs-dsocial-post-key-6" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 7<input type="password" id="aqs-dsocial-post-key-7" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 8<input type="password" id="aqs-dsocial-post-key-8" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 9<input type="password" id="aqs-dsocial-post-key-9" placeholder="Optional Groq API key" autocomplete="off"></label>
+      <label>Post key 10<input type="password" id="aqs-dsocial-post-key-10" placeholder="Optional Groq API key" autocomplete="off"></label>
+    </div>
+    <div class="aqs-settings-actions"><button class="aqs-btn aqs-btn-primary" id="aqs-save-dsocial-automation">Save Dara Social automations</button><span id="aqs-dsocial-automation-status" class="aqs-status-msg"></span></div>
+  </div>
+</div>
 
 <!-- Quiz Creation AI Keys — Dedicated Pool -->
 <div class="aqs-settings-card">
@@ -1081,38 +1177,6 @@ window.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 
-<!-- Email / Brevo -->
-<div class="aqs-settings-card">
-    <div class="aqs-settings-card-header">
-        <span class="aqs-settings-card-icon">📧</span>
-        <div>
-            <h2 class="aqs-settings-card-title">Email (Brevo / SendinBlue)</h2>
-            <p class="aqs-settings-card-desc">Used to send quiz result emails, welcome emails, and notifications to participants.</p>
-        </div>
-    </div>
-    <div class="aqs-settings-card-body">
-        <div class="aqs-field-group">
-            <label for="aqs-brevo-key">Brevo API Key</label>
-            <input type="password" id="aqs-brevo-key" placeholder="xkeysib-…" autocomplete="off" />
-            <p class="aqs-field-hint">Get your API key at <a href="https://app.brevo.com" target="_blank">app.brevo.com</a> → API Keys</p>
-        </div>
-        <div class="aqs-settings-2col">
-            <div class="aqs-field-group">
-                <label for="aqs-brevo-from-name">Sender Name</label>
-                <input type="text" id="aqs-brevo-from-name" placeholder="xzily AI Quiz System" />
-            </div>
-            <div class="aqs-field-group">
-                <label for="aqs-brevo-from-email">Sender Email</label>
-                <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
-            </div>
-        </div>
-        <div class="aqs-settings-actions">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-brevo-btn">💾 Save Email Settings</button>
-            <span id="aqs-brevo-status" class="aqs-status-msg"></span>
-        </div>
-    </div>
-</div>
-
 <!-- Countdown Timer -->
 <div class="aqs-settings-card">
     <div class="aqs-settings-card-header">
@@ -1187,7 +1251,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <span class="aqs-settings-card-icon">🔐</span>
         <div>
             <h2 class="aqs-settings-card-title">OAuth / Social Login</h2>
-            <p class="aqs-settings-card-desc">Enable Google, GitHub, Microsoft, and Yahoo login buttons on the sign-in and register pages.</p>
+            <p class="aqs-settings-card-desc">Social sign-in is disabled. Accounts use the secure email-and-password registration flow.</p>
         </div>
     </div>
     <div class="aqs-settings-card-body">
@@ -1517,7 +1581,7 @@ window.addEventListener('DOMContentLoaded', function() {
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:16px;">
             <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Home / Landing Page</div><a href="index.html">index.html</a></div>
             <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Quiz Dashboard</div><a href="dashboard.html">dashboard.html</a></div>
-            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Create Quiz</div><a href="create-quiz.html">create-quiz.html</a></div>
+            <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Create Quiz</div><a href="quiz-setup.html">quiz-setup.html</a></div>
             <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Take Quiz</div><a href="take-quiz.html">take-quiz.html</a></div>
             <div class="aqs-page-tile"><div class="aqs-tile-label">✅ Challenge Mode</div><a href="challenge.html">challenge.html</a></div>
             <div class="aqs-page-tile"><div class="aqs-tile-label">✅ AI Studio Chat</div><a href="studio.html">studio.html</a></div>
@@ -1556,6 +1620,17 @@ btn('aqs-save-groq-btn').addEventListener('click', function(){
     for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-gk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
+
+btn('aqs-save-dsocial-automation').addEventListener('click', function(){
+    var keys=[]; for(var i=1;i<=10;i++){var e=document.getElementById('aqs-dsocial-post-key-'+i);if(e&&e.value.trim().length>20)keys.push(e.value.trim());}
+    var data={darasocial_post_slot:keys,
+      darasocial_course_enabled:document.getElementById('aqs-dsocial-course-enabled').checked,
+      darasocial_course_interval_minutes:Math.max(30,Number(document.getElementById('aqs-dsocial-course-interval').value)||30),
+      darasocial_news_enabled:document.getElementById('aqs-dsocial-news-enabled').checked,
+      darasocial_news_interval_hours:Math.max(1,Number(document.getElementById('aqs-dsocial-news-interval').value)||5)};
+    if(typeof window.setFeatureGroqKeys==='function')window.setFeatureGroqKeys('darasocial_post_slot',keys);
+    saveSettings('/api/settings',data,'aqs-dsocial-automation-status',this,'Save Dara Social automations');
+});
 
 btn('aqs-save-lib-keys-btn').addEventListener('click', function(){
     var libKeys = [];
@@ -1944,8 +2019,59 @@ btn('aqs-save-brevo-btn').addEventListener('click', function(){
     saveSettings('/api/settings', {
         brevo_api_key: document.getElementById('aqs-brevo-key').value.trim(),
         brevo_from_name: document.getElementById('aqs-brevo-from-name').value.trim(),
-        brevo_from_email: document.getElementById('aqs-brevo-from-email').value.trim()
+        brevo_from_email: document.getElementById('aqs-brevo-from-email').value.trim(),
+        otp_enabled: document.getElementById('aqs-otp-enabled').checked
     }, 'aqs-brevo-status', this, '💾 Save Email Settings');
+});
+
+var brevoKeyInput = document.getElementById('aqs-brevo-key');
+var brevoKeyView = btn('aqs-view-brevo-key');
+if (brevoKeyInput) {
+    brevoKeyInput.addEventListener('input', _refreshBrevoKeyView);
+}
+if (brevoKeyView && brevoKeyInput) {
+    brevoKeyView.addEventListener('click', function() {
+        var showing = brevoKeyInput.type === 'text';
+        brevoKeyInput.type = showing ? 'password' : 'text';
+        brevoKeyView.textContent = showing ? '👁 Show' : '🙈 Hide';
+    });
+}
+
+btn('aqs-test-brevo-btn').addEventListener('click', function(){
+    var button = this;
+    var status = document.getElementById('aqs-brevo-status');
+    button.disabled = true;
+    button.textContent = 'Sending test…';
+    var recipient = document.getElementById('aqs-brevo-test-recipient').value.trim();
+    if (status) {
+        status.textContent = recipient
+            ? 'Sending a test email to ' + recipient + '…'
+            : 'Sending a test email to the signed-in admin address…';
+        status.style.color = '#4f46e5';
+    }
+    window.aqsAjax({ action: 'aqs_test_brevo', recipient: recipient }, function(res) {
+        button.disabled = false;
+        button.textContent = '🧪 Send Test Email';
+        if (status) {
+            var details = res && res.data;
+            var senderLabel = details && details.sender
+                ? ' Sender: ' + details.sender + '.'
+                : '';
+            status.textContent = res && res.success
+                ? (details && details.recipient && details.messageId
+                    ? '✓ Accepted by Brevo for ' + details.recipient + '. Message ID: ' + details.messageId + '.' + senderLabel + ' Check spam/Promotions if needed.'
+                    : '✓ Email request accepted by the email service. Check spam/Promotions if it is not visible.')
+                : ((res && res.data && res.data.message) || 'Test email failed.');
+            status.style.color = res && res.success ? '#059669' : '#dc2626';
+        }
+    }, function(err) {
+        button.disabled = false;
+        button.textContent = '🧪 Send Test Email';
+        if (status) {
+            status.textContent = (err && err.message) || 'Test email failed.';
+            status.style.color = '#dc2626';
+        }
+    });
 });
 
 btn('aqs-save-countdown-btn').addEventListener('click', function(){

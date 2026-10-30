@@ -3,13 +3,6 @@
 <head>
     <link rel="stylesheet" href="css/aqs-category-nav.css">
     <script defer src="js/aqs-category-nav.js"></script>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#050510">
@@ -26,15 +19,18 @@ window.AQS_HOME_URL='index.html';
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script src="js/aqs-avatars.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body class="aqs-pz-body">
+<body class="aqs-pz-body" data-aqs-page="puzzle" data-aqs-page-group="puzzle">
+<header class="aqs-phase2-page-header" aria-label="🧩 Puzzle Battle"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">🧩 Puzzle Battle</span></header>
+
 
 <!-- HEADER -->
 <header class="pz-header">
   <a href="index.html" class="pz-header-logo">⚡ xzily AI</a>
   <div class="pz-header-right">
     <a href="challenge.html" class="pz-btn pz-btn-ghost pz-btn-sm" style="font-size:.8rem;">⚔️ Challenge</a>
+    <a href="studyhub.html"     class="pz-btn pz-btn-ghost pz-btn-sm" style="font-size:.8rem;">📚 Study</a>
     <a href="index.html"     class="pz-btn pz-btn-ghost pz-btn-sm" style="font-size:.8rem;">🏠 Home</a>
     <a href="library.html" class="pz-btn pz-btn-ghost pz-btn-sm" style="font-size:.8rem;color:#4f46e5;font-weight:700;">📖 Library</a>
   </div>
@@ -535,6 +531,8 @@ window.AQS_HOME_URL='index.html';
 <div id="pz-toast"></div>
 
 <script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-gemini-tts.js"></script>
+<script src="js/aqs-voice.js"></script>
 <script src="js/aqs-notifs-bar.js"></script>
 <script src="js/aqs-session.js"></script>
 <script type="module" src="js/aqs-puzzle.js"></script>

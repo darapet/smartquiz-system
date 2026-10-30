@@ -3,13 +3,6 @@
 <head>
     <link rel="stylesheet" href="css/aqs-category-nav.css">
     <script defer src="js/aqs-category-nav.js"></script>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Quiz Results — xzily AI</title>
@@ -27,7 +20,7 @@ window.AQS = {
     ajax_url: 'firebase',
     nonce: '',
     home_url: 'index.html',
-    create_page_url: 'create-quiz.html',
+    create_page_url: 'quiz-setup.html',
     studio_url: 'studio.html',
     dashboard_url: 'dashboard.html',
     is_logged_in: true,
@@ -41,9 +34,11 @@ window.AQS = {
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body>
+<body data-aqs-page="quiz-results" data-aqs-page-group="quiz flows">
+<header class="aqs-phase2-page-header" aria-label="Quiz Results"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Quiz Results</span></header>
+
 <header class="aqs-site-header">
     <a href="index.html">⚡ xzily AI</a>
     <nav style="display:flex;gap:12px;">

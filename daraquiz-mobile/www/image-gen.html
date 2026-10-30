@@ -10,10 +10,11 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/aqs-imagegen.css">
-  <script defer src="capacitor-bridge.js?v=20260930-image-download-fix"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body class="aqs-imagegen-page">
+<body class="aqs-imagegen-page" data-aqs-page="image-gen" data-aqs-page-group="image studio">
+<header class="aqs-phase2-page-header" aria-label="Image Studio"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Image Studio</span></header>
+
   <header class="aqs-imagegen-header">
     <div class="aqs-imagegen-header-inner">
       <a class="aqs-imagegen-brand" href="index.html" aria-label="Back to xzily AI home">
@@ -117,7 +118,7 @@
             <span class="aqs-imagegen-step">02</span>
             <h2>Your result</h2>
           </div>
-          <span class="aqs-imagegen-result-status" id="aqs-imagegen-result-status" role="status" aria-live="polite">Ready when you are</span>
+          <span class="aqs-imagegen-result-status" id="aqs-imagegen-result-status">Ready when you are</span>
         </div>
 
         <div class="aqs-imagegen-result-stage" id="aqs-imagegen-result-stage">
@@ -167,6 +168,6 @@
   </main>
   <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Secure Google Gemini image engine with Cloudflare fallback</span></footer>
   <script>window.AQS_IMAGEGEN_CONFIG={preferredEngine:'cloudflare',firebaseEnabled:false,remoteHistoryEnabled:false,firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate',cloudflareModel:''};</script>
-  <script src="js/aqs-imagegen.js?v=20260929-android-cors-fix"></script>
+  <script src="js/aqs-imagegen.js?v=20260929-fallback-fix"></script>
 </body>
 </html>

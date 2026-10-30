@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <meta name="theme-color" content="#0a0b14">
@@ -447,9 +440,11 @@ a{text-decoration:none;color:inherit;}
 @media(max-width:600px){#ait-visual-canvas{height:118px;}.ait-visual-board{margin-bottom:10px;}}
 </style>
   <script src="js/aqs-nav-loader.js"></script>
-  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=561">
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body>
+<body data-aqs-page="studyhub" data-aqs-page-group="study hub">
+<header class="aqs-phase2-page-header" aria-label="📚 AI Study Hub"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">📚 AI Study Hub</span></header>
+
 <div id="sh-toast"></div>
 
 <!-- HEADER -->
@@ -487,8 +482,8 @@ a{text-decoration:none;color:inherit;}
       <span class="nav-icon">📝</span><span class="nav-label">Mock Exam</span>
     </div>
     <div class="sh-nav-divider"></div>
-    <div class="sh-nav-item" title="Open AI Teacher in your browser" onclick="return aqsOpenExternalPage('https://darapet.github.io/smartquiz-system/ai-teacher.html?source=mobile-app')">
-      <span class="nav-icon">🤖</span><span class="nav-label">AI Teacher · Browser</span>
+    <div class="sh-nav-item" onclick="location.href='ai-teacher.html'">
+      <span class="nav-icon">🤖</span><span class="nav-label">AI Teacher</span>
       <span class="nav-badge">PRO</span>
     </div>
   </div>
@@ -1108,6 +1103,8 @@ a{text-decoration:none;color:inherit;}
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 <script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-gemini-tts.js"></script>
+<script src="js/aqs-voice.js"></script>
 <script>
 /* ══════════════════════════════════════════════════
    AI STUDY HUB v3.0.0 — Complete Engine
@@ -1387,6 +1384,7 @@ function aitGetKeys(){
 async function aitMistral(messages, maxTokens=1200){
   const keys = aitGetKeys();
   if(!keys.length){ shToast('⚠️ No Mistral API keys found'); return null; }
+  const max429Retries = 3;
   for(let attempt=0; attempt<keys.length; attempt++){
     const key = keys[_mkeyIdx % keys.length];
     _mkeyIdx++;
@@ -1396,6 +1394,13 @@ async function aitMistral(messages, maxTokens=1200){
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
         body:JSON.stringify({model:'mistral-small-latest',messages,max_tokens:maxTokens,temperature:0.75})
       });
+      if(res.status===429){
+        const retryAfter = Number(res.headers.get('Retry-After'));
+        const delay = Number.isFinite(retryAfter) && retryAfter>0 ? Math.min(retryAfter*1000,15000) : Math.min(1000*Math.pow(2,Math.min(attempt,max429Retries-1)),8000);
+        console.warn('Mistral rate limited; backing off before rotating key');
+        if(attempt<keys.length-1) await new Promise(resolve=>setTimeout(resolve,delay));
+        continue;
+      }
       if(!res.ok){ console.warn('Mistral key failed:',res.status); continue; }
       const d = await res.json();
       return d.choices?.[0]?.message?.content || '';
