@@ -15,7 +15,7 @@
  */
 
 /* ══ CI patches this automatically — do NOT edit by hand ══════════════════ */
-var AQS_APP_VERSION_CODE = 537;
+var AQS_APP_VERSION_CODE = 523;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
@@ -297,7 +297,7 @@ var AQS_APP_VERSION_CODE = 537;
         /* Permanently dismissed only if user downloaded AND is actually on that version.
            If they dismissed but still have an older build, treat as snoozed instead. */
         var dismissedVer = parseInt(localStorage.getItem(DISMISSED_KEY) || '0', 10);
-        if (dismissedVer >= _remoteCode && AQS_APP_VERSION_CODE >= dismissedVer) {
+        if (dismissedVer >= _remoteCode) {
           console.log('[AQS-UPD] Already installed v' + _remoteCode);
           return;
         }
