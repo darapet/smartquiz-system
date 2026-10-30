@@ -12,7 +12,7 @@
   <link rel="stylesheet" href="css/aqs-imagegen.css">
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body class="aqs-imagegen-page" data-aqs-page="image-gen" data-aqs-page-group="image studio">
+<body data-ig-chat="1" class="aqs-imagegen-page" data-aqs-page="image-gen" data-aqs-page-group="image studio">
 <header class="aqs-phase2-page-header" aria-label="Image Studio"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">Image Studio</span></header>
 
   <header class="aqs-imagegen-header">
@@ -169,5 +169,59 @@
   <footer class="aqs-imagegen-footer"><span>© 2026 AI Quiz System</span><span>Secure Google Gemini image engine with Cloudflare fallback</span></footer>
   <script>window.AQS_IMAGEGEN_CONFIG={preferredEngine:'cloudflare',firebaseEnabled:false,remoteHistoryEnabled:false,firebaseEndpoint:'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate',cloudflareEndpoint:'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate',cloudflareModel:''};</script>
   <script src="js/aqs-imagegen.js?v=20260929-fallback-fix"></script>
+
+<!-- v1.569 chat-style image generation -->
+<div id="aqs-ig-chat" class="aqs-ig-chat" style="display:none">
+  <div id="aqs-ig-msgs" class="aqs-ig-msgs"></div>
+  <div class="aqs-ig-composer">
+    <textarea id="aqs-ig-chat-input" rows="1" placeholder="Describe the image you want…" maxlength="2000"></textarea>
+    <button id="aqs-ig-chat-send" class="aqs-ig-send" title="Generate">➤</button>
+  </div>
+</div>
+<style>
+.aqs-ig-chat{max-width:720px;margin:0 auto;height:calc(100dvh - 90px);display:flex;flex-direction:column;background:#faf3ea}
+.aqs-ig-msgs{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.aqs-ig-msg{max-width:100%;border-radius:16px;padding:12px 14px;font-size:.92rem;overflow-wrap:anywhere}
+.aqs-ig-msg.user{background:#e8912d;color:#fff;align-self:flex-end}
+.aqs-ig-msg.ai{background:#fff;border:1px solid #eee2d3;align-self:flex-start;color:#22374d}
+.aqs-ig-msg img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
+.aqs-ig-msg .st{color:#8496aa;font-style:italic}
+.aqs-ig-composer{display:flex;gap:8px;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #eee2d3}
+.aqs-ig-composer textarea{flex:1;resize:none;border:1px solid #e5d9c6;border-radius:14px;padding:12px 14px;font:.92rem 'Inter',sans-serif;background:#faf6f0;color:#1c2b3a;outline:none;max-height:120px}
+.aqs-ig-composer textarea:focus{border-color:#e8912d;box-shadow:0 0 0 3px rgba(232,145,45,.14)}
+.aqs-ig-send{width:44px;height:44px;border-radius:50%;border:none;background:linear-gradient(135deg,#e8912d,#d97706);color:#fff;font-size:1.1rem;cursor:pointer}
+</style>
+
+<script>
+(function(){
+  var msgs=document.getElementById('aqs-ig-msgs'),input=document.getElementById('aqs-ig-chat-input'),send=document.getElementById('aqs-ig-chat-send');
+  if(!msgs||!input||!send)return;
+  // hide the old form UI, keep the pipeline form hidden but functional
+  var old=document.querySelector('.aqs-imagegen-panel, form#imagegen-form, main .aqs-imagegen-wrap, .aqs-imagegen');
+  if(old){old.style.display='none';}
+  function add(cls,html){var d=document.createElement('div');d.className='aqs-ig-msg '+cls;d.innerHTML=html;msgs.appendChild(d);msgs.scrollTop=msgs.scrollHeight;return d;}
+  async function run(){
+    var p=input.value.trim();if(!p)return;
+    input.value='';
+    add('user',p.replace(/</g,'&lt;'));
+    var b=add('ai','<span class="st">🎨 Generating…</span>');
+    try{
+      // drive the existing pipeline: fill hidden form prompt and submit
+      var fp=document.getElementById('aqs-imagegen-prompt');var form=fp&&fp.closest('form');
+      if(form&&fp){fp.value=p;fp.dispatchEvent(new Event('input',{bubbles:true}));
+        var wait=new Promise(res=>{var mo=new MutationObserver(()=>{var img=document.getElementById('aqs-imagegen-result-image');if(img&&img.src&&!img.closest('[hidden]')){mo.disconnect();res(img.src);}});
+          mo.observe(document.body,{subtree:true,attributes:true,childList:true});
+          setTimeout(()=>{mo.disconnect();res(null);},120000);});
+        form.requestSubmit?form.requestSubmit():form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
+        var url=await wait;
+        if(url){b.innerHTML='🖼 '+p.replace(/</g,'&lt;')+'<img src="'+url+'" alt="generated">';}
+        else{b.innerHTML='<span class="st">Generation no finish — try again.</span>';}
+      }else{b.innerHTML='<span class="st">Generator no available.</span>';}
+    }catch(e){b.innerHTML='<span class="st">Error: '+(e.message||e)+'</span>';}
+  }
+  send.addEventListener('click',run);
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();run();}});
+})();
+</script>
 </body>
 </html>

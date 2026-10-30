@@ -196,8 +196,8 @@ html, body {
 .dts-user .dts-msg-avatar { background:var(--dts-primary); color:#12304a; }
 .dts-ai   .dts-msg-avatar { background:#faf3ea; color:#12304a; font-size:1rem; }
 
-.dts-msg-content { max-width:78%; }
-.dts-user .dts-msg-content { align-items:flex-end; display:flex; flex-direction:column; }
+.dts-msg-content { max-width:100%; min-width:0; overflow-wrap:anywhere; word-break:break-word; }
+.dts-user .dts-msg-content { align-items:flex-end; display:flex; flex-direction:column; max-width:78%; }
 
 .dts-msg-bubble {
     padding:12px 16px;
@@ -899,3 +899,10 @@ html {
 .dts-deep-search-chip { border:1px solid #d5c5b1; border-radius:999px; padding:6px 10px; background:#fffaf3; color:#1c2b3a; font:600 .74rem/1.2 inherit; cursor:pointer; white-space:nowrap; }
 .dts-deep-search-chip[aria-pressed="true"] { background:#e8912d; border-color:#e8912d; color:#1c2b3a; }
 .dts-deep-badge { display:inline-block; margin-bottom:8px; padding:3px 8px; border-radius:999px; background:#fff1dc; color:#1c2b3a; font-size:.75rem; font-weight:700; }
+
+/* v1.569: full-width AI messages, no clipping; chat area clears nav+footer */
+.dts-msg{max-width:100%}
+.dts-msg-content p,.dts-msg-content li{overflow-wrap:anywhere;word-break:break-word}
+.dts-chat,.dts-messages,.dts-conversation{padding-bottom:calc(140px + env(safe-area-inset-bottom)) !important}
+main.dts-main,.dts-main{padding-bottom:calc(140px + env(safe-area-inset-bottom)) !important}
+.dts-footer{bottom:calc(64px + env(safe-area-inset-bottom)) !important}
