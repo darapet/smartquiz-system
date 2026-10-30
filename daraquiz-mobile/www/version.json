@@ -2,7 +2,7 @@
   "version": "1.555",
   "versionCode": 534,
   "releaseDate": "2026-10-30",
-  "notes": "Bug fixes and improvements.",
+  "notes": "Front page now matches your reference: greeting, quote hero card, white tiles, Today and Discuss, matching bottom nav.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.555/daraquiz-v1.555.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.555/daraquiz-v1.555.apk"
 }
