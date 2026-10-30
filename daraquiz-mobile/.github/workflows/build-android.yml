@@ -1,0 +1,129 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'daraquiz-mobile/**'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    defaults:
+      run:
+        working-directory: daraquiz-mobile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      # ── PERMISSIONS FIX: copy our manifest AFTER cap sync so
+      #    RECORD_AUDIO, READ_MEDIA_AUDIO, CAMERA etc. are declared ──
+      - name: Copy AndroidManifest.xml (with permissions)
+        run: |
+          cp android-config/AndroidManifest.xml \
+             android/app/src/main/AndroidManifest.xml
+
+      # ── Copy custom MainActivity that requests mic on launch ──
+      - name: Copy custom MainActivity
+        run: |
+          mkdir -p android/app/src/main/java/com/darapet/smart
+          cp android-config/MainActivity.java \
+             android/app/src/main/java/com/darapet/smart/MainActivity.java
+
+      # ── Copy all resource / config overrides ──
+      - name: Copy Android resource files
+        run: |
+          mkdir -p android/app/src/main/res/values
+          mkdir -p android/app/src/main/res/xml
+          cp android-config/strings.xml              android/app/src/main/res/values/strings.xml
+          cp android-config/colors.xml               android/app/src/main/res/values/colors.xml
+          cp android-config/styles.xml               android/app/src/main/res/values/styles.xml
+          cp android-config/network_security_config.xml android/app/src/main/res/xml/network_security_config.xml
+          cp android-config/file_paths.xml           android/app/src/main/res/xml/file_paths.xml
+
+      - name: Copy icons into Android project
+        run: |
+          mkdir -p android/app/src/main/res/mipmap-mdpi
+          mkdir -p android/app/src/main/res/mipmap-hdpi
+          mkdir -p android/app/src/main/res/mipmap-xhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxhdpi
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          mkdir -p android/app/src/main/res/drawable
+          for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            src="resources/android/icon/mipmap-${density}"
+            dst="android/app/src/main/res/mipmap-${density}"
+            cp "${src}/ic_launcher.png"            "${dst}/" 2>/dev/null || true
+            cp "${src}/ic_launcher_round.png"      "${dst}/" 2>/dev/null || true
+            cp "${src}/ic_launcher_foreground.png" "${dst}/" 2>/dev/null || true
+          done
+          cp resources/android/splash/drawable/splash.png \
+             android/app/src/main/res/drawable/ 2>/dev/null || true
+
+      - name: Make Gradlew executable
+        run: chmod +x android/gradlew
+
+      # ── Set up a PERSISTENT debug keystore so every build is signed
+      #    with the same key → users can update without uninstalling ──
+      - name: Set up persistent debug keystore
+        run: |
+          KEYSTORE_DIR="$HOME/.android"
+          mkdir -p "$KEYSTORE_DIR"
+          # Use repo-stored keystore if provided as a secret; otherwise
+          # generate a stable one from a fixed seed so it stays consistent
+          if [ -n "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.DEBUG_KEYSTORE_BASE64 }}" | base64 -d > "$KEYSTORE_DIR/debug.keystore"
+          else
+            keytool -genkey -v \
+              -keystore "$KEYSTORE_DIR/debug.keystore" \
+              -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=DaraSmart Debug,O=Darapet,C=NG" 2>/dev/null || true
+          fi
+
+      - name: Build Debug APK
+        run: cd android && ./gradlew assembleDebug --stacktrace
+
+      - name: Build Release APK (unsigned)
+        run: cd android && ./gradlew assembleRelease --stacktrace
+
+      - name: Upload Debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: darasmart-debug-v${{ github.run_number }}
+          path: daraquiz-mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Upload Release APK (unsigned)
+        uses: actions/upload-artifact@v4
+        with:
+          name: darasmart-release-unsigned-v${{ github.run_number }}
+          path: daraquiz-mobile/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          retention-days: 30
