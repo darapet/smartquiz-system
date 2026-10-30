@@ -1,8 +1,8 @@
 {
-  "version": "1.563",
-  "versionCode": 544,
+  "version": "1.564",
+  "versionCode": 545,
   "releaseDate": "2026-10-30",
-  "notes": "Phase 2 page structure and responsive spacing across the app.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.563/daraquiz-v1.563.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.563/daraquiz-v1.563.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.564/daraquiz-v1.564.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.564/daraquiz-v1.564.apk"
 }
