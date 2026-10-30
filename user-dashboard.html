@@ -229,16 +229,19 @@ window.AQS = {
   </div>
 
 
-  <!-- View All Quiz Activity link -->
-  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
-      <div>
-        <div style="font-weight:700;font-size:.9rem;color:#1e293b;">Quiz Activity</div>
-        <div style="font-size:.76rem;color:#94a3b8;margin-top:2px;">See all quizzes you have taken</div>
+  <!-- Quiz Activity: recent quizzes inline -->
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
+        <div>
+          <div style="font-weight:700;font-size:.9rem;color:#1e293b;">Quiz Activity</div>
+          <div style="font-size:.76rem;color:#94a3b8;margin-top:2px;">Your recent quizzes</div>
+        </div>
       </div>
+      <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
     </div>
-    <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
+    <div id="udash-activity-list" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 </main>
 
@@ -290,6 +293,17 @@ window.AQS = {
             document.getElementById('udash-stat-created').textContent = d.quizzes_created||0;
             var streak = d.streak||0;
             document.getElementById('udash-stat-streak').textContent  = streak ? streak+' day'+(streak!==1?'s':'') : '—';
+            var list = document.getElementById('udash-activity-list');
+            var acts = d.recent_activity || [];
+            if (list) {
+                if (!acts.length) {
+                    list.innerHTML = '<p style="text-align:center;padding:14px;color:#94a3b8;font-size:.82rem;">No quiz activity yet — take a quiz to see it here.</p>';
+                } else {
+                    list.innerHTML = acts.map(function(a){
+                        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;"><span style="font-size:.84rem;color:#1e293b;">'+a.text+'</span><span style="font-size:.72rem;color:#94a3b8;white-space:nowrap;flex-shrink:0;">'+(a.time||'')+'</span></div>';
+                    }).join('');
+                }
+            }
         }).catch(function(){});
     }
 
