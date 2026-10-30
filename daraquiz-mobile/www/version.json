@@ -1,8 +1,8 @@
 {
-  "version": "1.557",
-  "versionCode": 537,
+  "version": "1.558",
+  "versionCode": 538,
   "releaseDate": "2026-10-30",
-  "notes": "Update popup no longer repeats after download; AI Coach opens Studio AI.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.557/daraquiz-v1.557.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.557/daraquiz-v1.557.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.558/daraquiz-v1.558.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.558/daraquiz-v1.558.apk"
 }
