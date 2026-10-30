@@ -15,6 +15,13 @@
   <link rel="stylesheet" href="css/landing-page.css?v=landing-video-fix-2">
   <script defer src="js/aqs-update-check.js"></script>
   <script defer src="js/landing-page.js?v=landing-video-fix-2"></script>
+<style>
+/* landing welcome quote (matches dashboard) */
+.lp-quote-banner{margin:18px auto 0;max-width:1100px;padding:22px 24px;border:1px solid #22505b;border-radius:18px;background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);box-shadow:0 14px 34px rgba(0,0,0,.2);color:#f8fafc}
+.lp-quote-banner .uq-eyebrow{color:#99f6e4;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+.lp-quote-banner blockquote{margin:10px 0 8px;font:italic 1.08rem/1.6 Georgia,serif}
+.lp-quote-banner cite{color:#a5b4fc;font-size:.82rem;font-style:normal}
+</style>
 </head>
 <body class="lp-page">
   <a class="lp-skip" href="#main-content">Skip to content</a>
@@ -43,6 +50,13 @@
   </header>
 
   <main id="main-content">
+    <div class="lp-wrap" style="padding-top:16px;">
+      <section class="lp-quote-banner" aria-label="Daily welcome quote">
+        <div class="uq-eyebrow">A thought for today</div>
+        <blockquote id="lp-welcome-quote-text">Small steps every day lead to remarkable results.</blockquote>
+        <cite id="lp-welcome-quote-author">SmartQuiz daily inspiration</cite>
+      </section>
+    </div>
     <section class="lp-hero" aria-labelledby="hero-title">
       <video class="lp-hero-video" muted loop playsinline webkit-playsinline preload="auto" poster="img/landing-hero-workspace.jpg" aria-hidden="true" tabindex="-1" data-scroll-autoplay>
         <source src="video/home-hero.mp4?v=landing-video-fix-2" type="video/mp4">
@@ -418,5 +432,16 @@
   </footer>
 
 
+<script>
+  (function(){
+    var quotes=[["Small steps every day lead to remarkable results.","SmartQuiz daily inspiration"],["The expert in anything was once a beginner.","SmartQuiz daily inspiration"],["Consistency beats intensity. Show up today.","SmartQuiz daily inspiration"],["Every question you ask makes you sharper.","SmartQuiz daily inspiration"],["Study smart, not just hard.","SmartQuiz daily inspiration"]];
+    var key=new Date().toDateString();
+    var idx=parseInt(localStorage.getItem('lp_quote_i')||'0',10);
+    if(localStorage.getItem('lp_quote_d')!==key){idx=(idx+1)%quotes.length;localStorage.setItem('lp_quote_i',String(idx));localStorage.setItem('lp_quote_d',key);}
+    var q=quotes[idx];
+    var t=document.getElementById('lp-welcome-quote-text'),a=document.getElementById('lp-welcome-quote-author');
+    if(t)t.textContent=q[0]; if(a)a.textContent=q[1];
+  })();
+</script>
 </body>
 </html>
