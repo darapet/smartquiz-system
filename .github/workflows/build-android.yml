@@ -94,15 +94,19 @@ jobs:
         run: |
           CUR_VER=$(grep '"version"' www/version.json | head -1 | sed 's/.*"\([0-9][^"]*\)".*/\1/')
           CUR_CODE=$(grep '"versionCode"' www/version.json | grep -o '[0-9][0-9]*' | head -1)
-          NEW_CODE=$((CUR_CODE + 1))
-          if [ -n "${{ github.event.inputs.version }}" ]; then
+          IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
+          if [ "$IS_MANUAL" = "true" ]; then
+            NEW_CODE="$CUR_CODE"
             NEW_VER="${{ github.event.inputs.version }}"
+            [ -n "$NEW_VER" ] || NEW_VER="$CUR_VER"
+            NOTES="${{ github.event.inputs.notes }}"
           else
+            NEW_CODE=$((CUR_CODE + 1))
             MAJOR=$(echo "$CUR_VER" | cut -d'.' -f1)
             MINOR=$(echo "$CUR_VER" | cut -d'.' -f2)
             NEW_VER="${MAJOR}.$((MINOR + 1))"
+            NOTES="Bug fixes and improvements."
           fi
-          NOTES="${{ github.event.inputs.notes }}"
           [ -z "$NOTES" ] && NOTES="Bug fixes and improvements."
           echo "new_ver=$NEW_VER"                    >> $GITHUB_OUTPUT
           echo "new_code=$NEW_CODE"                  >> $GITHUB_OUTPUT
@@ -211,18 +215,20 @@ jobs:
       - name: Bootstrap signing keystore
         if: steps.skip_check.outputs.skip != 'true'
         env:
-          KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           KS_FILE="android/app/daraquiz-release.keystore"
-          if [ -z "$KEYSTORE_B64" ] || [ -z "$KEYSTORE_PASSWORD" ]; then
-            echo "::error::Set KEYSTORE_B64 and KEYSTORE_PASSWORD to the original DaraQuiz signing key. Refusing to generate a different release key."
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ] || [ -z "$ANDROID_KEYSTORE_PASSWORD" ] || [ -z "$ANDROID_KEY_ALIAS" ] || [ -z "$ANDROID_KEY_PASSWORD" ]; then
+            echo "::error::Required Android signing secrets are missing."
             exit 1
           fi
-          echo "$KEYSTORE_B64" | tr -d '\n' | base64 -d > "$KS_FILE"
-          echo "$KEYSTORE_PASSWORD" > android/app/keystore-password.txt
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$KS_FILE"
+          test -s "$KS_FILE" || { echo "::error::Decoded keystore is empty."; exit 1; }
           git config --global --add safe.directory "$GITHUB_WORKSPACE" || true
-          printf "/android/app/daraquiz-release.keystore\n/android/app/keystore-password.txt\n" >> "$GITHUB_WORKSPACE/.git/info/exclude"
+          printf '%s\n' '/android/app/daraquiz-release.keystore' >> "$GITHUB_WORKSPACE/.git/info/exclude"
       - name: Make Gradlew executable
         if: steps.skip_check.outputs.skip != 'true'
         run: chmod +x android/gradlew
@@ -230,14 +236,16 @@ jobs:
       - name: Build signed release APK
         if: steps.skip_check.outputs.skip != 'true'
         env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           cd android
           ./gradlew assembleRelease \
             -Pandroid.injected.signing.store.file="$(pwd)/app/daraquiz-release.keystore" \
-            -Pandroid.injected.signing.store.password="${KEYSTORE_PASSWORD:-DaraQuiz_Release2024}" \
-            -Pandroid.injected.signing.key.alias="daraquiz" \
-            -Pandroid.injected.signing.key.password="${KEYSTORE_PASSWORD:-DaraQuiz_Release2024}"
+            -Pandroid.injected.signing.store.password="$ANDROID_KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$ANDROID_KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$ANDROID_KEY_PASSWORD"
 
       - name: Verify permissions in release manifest
         if: steps.skip_check.outputs.skip != 'true'
@@ -299,9 +307,7 @@ jobs:
           git add www/version.json www/js/aqs-update-check.js
           git diff --cached --quiet && exit 0
           git commit -m "chore: release v${{ steps.ver.outputs.new_ver }} (build ${{ steps.ver.outputs.new_code }}) [skip ci]"
-          git add -u
-          git pull --rebase -Xtheirs origin main
-          git push
+          git push origin HEAD:main
 
       - name: Summary
         if: steps.skip_check.outputs.skip != 'true'
