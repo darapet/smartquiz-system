@@ -1,8 +1,8 @@
 {
-  "version": "1.571",
-  "versionCode": 552,
+  "version": "1.572",
+  "versionCode": 553,
   "releaseDate": "2026-10-30",
-  "notes": "Image gen chat now visible by default, studio voice mode cream themed.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.571/daraquiz-v1.571.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.571/daraquiz-v1.571.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.572/daraquiz-v1.572.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.572/daraquiz-v1.572.apk"
 }
