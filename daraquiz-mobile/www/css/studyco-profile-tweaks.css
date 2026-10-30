@@ -1,0 +1,376 @@
+/* Keep profile prompts out of the profile page. */
+.studyco-profile-next{display:none!important}
+
+/* Keep composer previews contained without overriding Facebook feed images. */
+.studyco-post-preview img{
+  display:block;
+  width:100%;
+  max-width:100%;
+  height:auto;
+  object-fit:contain;
+  object-position:center;
+}
+
+/* Keep profile posts compact while preserving the complete image. */
+.studyco-view-profile .studyco-post-image{
+  max-height:380px;
+  object-fit:contain;
+}
+
+/* Profile media controls are rendered only on the signed-in user's profile. */
+.studyco-profile-cover{position:relative;overflow:hidden}
+.studyco-profile-cover>img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.studyco-profile-media-edit{position:absolute;z-index:3;display:grid;place-items:center;width:52px;height:52px;border:3px solid #fff;border-radius:50%;background:#151936e8;color:#12304a;box-shadow:0 5px 15px #080a2366;cursor:pointer}
+.studyco-profile-media-edit:hover{background:var(--sc-primary)}
+.studyco-profile-media-edit svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round}
+.studyco-profile-media-edit input{display:none}
+.studyco-profile-cover-edit{top:15px;right:16px}
+.studyco-profile-avatar{position:relative;width:132px;height:132px;flex:0 0 auto}
+.studyco-profile-identity .studyco-profile-avatar{margin-top:-66px}
+.studyco-profile-avatar-edit{right:2px;bottom:2px}
+.studyco-profile-avatar-edit svg{width:21px;height:21px}
+.studyco-profile-avatar>.studyco-avatar.large{width:132px;height:132px;border-width:7px}
+.studyco-profile-details{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px 18px;margin-top:15px}
+.studyco-profile-detail{min-width:0}
+.studyco-profile-detail.full{grid-column:1/-1}
+.studyco-profile-detail>span{display:block;color:var(--sc-muted);font-size:.62rem;font-weight:900;letter-spacing:.04em;text-transform:uppercase}
+.studyco-profile-detail>p{margin:5px 0 0;color:#4d5773;font-size:.78rem;line-height:1.55;overflow-wrap:anywhere}
+.studyco-profile-detail.full>p{margin-top:7px}
+.studyco-profile-about .studyco-section-title{align-items:center}
+.studyco-profile-about .studyco-section-title .studyco-button{position:relative;z-index:2;margin-left:auto}
+
+/* Profile post actions stay in normal document flow. There is no floating
+   profile menu to clip against the card, feed, or viewport. */
+.studyco-post-management-slot{
+  display:flex;
+  justify-content:flex-end;
+  align-items:flex-start;
+  min-height:32px;
+  margin:0 20px 4px;
+}
+.studyco-profile-post-management{
+  margin:0;
+  padding:0;
+  border:0;
+}
+.studyco-profile-post-management summary{
+  display:inline-flex;
+  align-items:center;
+  min-height:32px;
+  padding:6px 11px;
+  border:1px solid #d8dade;
+  border-radius:8px;
+  background:#faf3ea;
+  color:#050505;
+  cursor:pointer;
+  font-size:.72rem;
+  font-weight:700;
+  list-style:none;
+}
+.studyco-profile-post-management summary::-webkit-details-marker{display:none}
+.studyco-profile-post-management summary::before{
+  content:"⚙";
+  margin-right:6px;
+  font-size:.8rem;
+}
+.studyco-profile-post-management[open] summary{
+  border-color:#e8912d;
+  background:#eaf3ff;
+  color:#12304a;
+}
+.studyco-profile-post-management-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.studyco-profile-post-management-actions button,
+.studyco-post-preferences button{
+  border:1px solid #d8dade;
+  border-radius:8px;
+  padding:6px 9px;
+  background:#fff;
+  color:#65676b;
+  cursor:pointer;
+  font-size:.68rem;
+  font-weight:700;
+}
+.studyco-profile-post-management-actions button:hover{
+  border-color:#e8912d;
+  background:#eaf3ff;
+  color:#12304a;
+}
+.studyco-profile-post-management-actions button.danger{
+  color:#c93e50;
+}
+.studyco-profile-post-management-actions button.danger:hover{
+  border-color:#c93e50;
+  background:#fff2f3;
+}
+.studyco-profile-post-management-viewer{
+  display:block;
+  text-align:right;
+}
+.studyco-profile-post-management-viewer>summary{
+  width:34px;
+  height:32px;
+  justify-content:center;
+  margin-left:auto;
+  padding:0;
+  border-radius:50%;
+  font-size:.82rem;
+  letter-spacing:.08em;
+}
+.studyco-profile-post-management-viewer>summary::before{
+  content:none;
+  margin:0;
+}
+.studyco-profile-post-management-viewer[open]>summary{
+  border-color:#e8912d;
+  background:#eaf3ff;
+  color:#12304a;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences{
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  justify-content:flex-start;
+  text-align:left;
+  margin:8px 0 0;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences>span{
+  margin-right:0;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences button{
+  width:100%;
+  text-align:left;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences .close{
+  align-self:flex-end;
+  width:30px;
+  min-width:30px;
+  padding:4px 8px;
+  border-radius:50%;
+  text-align:center;
+  color:#65676b;
+  font-size:1rem;
+  line-height:1;
+}
+.studyco-profile-post-management-viewer .studyco-post-preferences .close:hover{
+  border-color:#c93e50;
+  background:#fff2f3;
+  color:#c93e50;
+}
+.studyco-post-preferences{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  flex-wrap:wrap;
+  margin:10px 20px 0;
+  padding-top:9px;
+  border-top:1px solid #e4e6eb;
+}
+.studyco-post-preferences>span{
+  margin-right:auto;
+  color:#65676b;
+  font-size:.7rem;
+}
+.studyco-post-preferences button{
+  border-radius:999px;
+  padding:6px 10px;
+}
+.studyco-post-preferences button:hover,
+.studyco-post-preferences button.selected{
+  border-color:#e8912d;
+  background:#eaf3ff;
+  color:#12304a;
+}
+
+@media(max-width:560px){
+  .studyco-view-profile .studyco-post-image{max-height:280px}
+  .studyco-profile-avatar{width:116px;height:116px}
+  .studyco-profile-identity .studyco-profile-avatar{margin-top:-50px}
+  .studyco-profile-avatar>.studyco-avatar.large{width:116px;height:116px}
+  .studyco-profile-media-edit{width:50px;height:50px}
+  .studyco-profile-details{grid-template-columns:1fr}
+  .studyco-profile-detail.full{grid-column:auto}
+}
+
+.studyco-comments-modal{
+  width:min(560px,100%);
+  max-height:min(720px,calc(100vh - 32px));
+  display:flex;
+  flex-direction:column;
+}
+.studyco-comments-modal .studyco-modal-head{flex:0 0 auto}
+.studyco-comments-list{
+  min-height:180px;
+  max-height:52vh;
+  overflow:auto;
+  padding:4px 2px 14px;
+}
+.studyco-comments-list .studyco-comment{
+  display:flex;
+  align-items:flex-start;
+  gap:9px;
+  padding:10px 0;
+  border-bottom:1px solid #e4e6eb;
+}
+.studyco-comments-list .studyco-comment:last-child{border-bottom:0}
+.studyco-comments-list .studyco-comment>div{min-width:0}
+.studyco-comments-list .studyco-comment strong,
+.studyco-comments-list .studyco-comment span,
+.studyco-comments-list .studyco-comment small{display:block}
+.studyco-comments-list .studyco-comment strong{font-size:.76rem;color:#050505}
+.studyco-comments-list .studyco-comment span{margin-top:3px;color:#343a40;font-size:.78rem;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere}
+.studyco-comments-list .studyco-comment small{margin-top:4px;color:#65676b;font-size:.64rem}
+.studyco-comments-modal .studyco-comment-form{
+  display:flex;
+  gap:8px;
+  flex:0 0 auto;
+  margin:8px 0 0;
+  padding-top:12px;
+  border-top:1px solid #e4e6eb;
+}
+.studyco-comments-modal .studyco-comment-form input{min-width:0;flex:1}
+.studyco-comments-modal .studyco-comment-form button{flex:0 0 auto}
+
+/* Profile redesign: owner and visitor views share a clear cover, identity, stats and tabs. */
+.studyco-profile-hero{padding:0;overflow:hidden;border-radius:18px;background:#fff}
+.studyco-profile-cover{height:clamp(180px,28vw,250px);margin:0;border-radius:18px 18px 0 0;background:linear-gradient(135deg,#faf3ea,#ffffff)}
+.studyco-profile-cover>img{z-index:0}
+.studyco-profile-cover-shade{z-index:1;pointer-events:none;background:linear-gradient(135deg,#faf3ea,#ffffff)}
+.studyco-profile-cover-label{z-index:2;right:auto;left:20px;bottom:16px;background:#10152d66;color:#12304a}
+.studyco-profile-cover-edit{top:auto;right:18px;bottom:14px;z-index:4;width:40px;height:40px;border-width:2px;background:#fff;color:#27304d}
+.studyco-profile-identity{display:flex;align-items:flex-end;gap:18px;padding:0 24px 14px}
+.studyco-profile-identity .studyco-profile-avatar{margin-top:-62px;z-index:3}
+.studyco-profile-avatar{width:124px;height:124px}
+.studyco-profile-avatar>.studyco-avatar.large{width:124px;height:124px;border:5px solid #fff;box-shadow:0 6px 20px #10152d24}
+.studyco-profile-avatar-edit{right:0;bottom:0;width:36px;height:36px;border-width:2px;background:#fff;color:#27304d}
+.studyco-profile-identity-copy{padding:8px 0 2px}
+.studyco-profile-name-row h2{font-size:clamp(1.35rem,2.5vw,1.8rem);letter-spacing:-.045em}
+.studyco-profile-identity-copy>p:last-child{max-width:620px;font-size:.84rem}
+.studyco-profile-actions{display:flex;align-items:center;gap:10px;padding:0 24px 17px}
+.studyco-profile-actions .studyco-button{min-height:42px;flex:1}
+.studyco-profile-actions .studyco-button.primary{background:#e8912d;box-shadow:none}
+.studyco-profile-actions .studyco-button.soft{border-color:#e4e6eb;background:#e4e6eb;color:#202124}
+.studyco-profile-stats{grid-template-columns:repeat(3,minmax(0,1fr));padding:14px 24px;border-top:1px solid #e4e6eb}
+.studyco-profile-stats.is-public{grid-template-columns:repeat(2,minmax(0,1fr))}
+.studyco-profile-stats>div{padding:0 14px;border-right:1px solid #e4e6eb}
+.studyco-profile-stats>div:first-child{padding-left:0}
+.studyco-profile-stats>div:last-child{border-right:0}
+.studyco-profile-stats strong{font-size:1.12rem;color:#16181c}
+.studyco-profile-stats span{font-size:.72rem;color:#65676b}
+.studyco-profile-tabs{display:flex;gap:6px;align-items:center;margin:0 0 14px;padding:5px;border:1px solid #e4e6eb;border-radius:14px;background:#fff;box-shadow:0 4px 16px #17213b08}
+.studyco-profile-tab{min-width:82px;padding:10px 16px;border:0;border-radius:10px;background:transparent;color:#65676b;font-size:.78rem;font-weight:800;cursor:pointer}
+.studyco-profile-tab:hover{background:#faf3ea;color:#12304a}
+.studyco-profile-tab.active{background:#eaf3ff;color:#12304a}
+.studyco-profile-panel{margin:0 0 18px}
+.studyco-profile-panel[hidden]{display:none!important}
+.studyco-profile-posts-card{padding:18px;border:1px solid #e4e6eb;border-radius:16px;background:#fff}
+.studyco-profile-about{padding:20px;border:1px solid #e4e6eb;border-radius:16px;background:#fff}
+.studyco-profile-progress[hidden]{display:none!important}
+@media(max-width:760px){
+  .studyco-profile-cover{height:190px}
+  .studyco-profile-identity{align-items:flex-start;gap:12px;padding:0 16px 14px}
+  .studyco-profile-identity .studyco-profile-avatar{width:104px;height:104px;margin-top:-48px}
+  .studyco-profile-avatar>.studyco-avatar.large{width:104px;height:104px;border-width:4px}
+  .studyco-profile-avatar-edit{width:32px;height:32px}
+  .studyco-profile-identity-copy{padding-top:8px}
+  .studyco-profile-name-row h2{font-size:1.25rem}
+  .studyco-profile-actions{padding:0 16px 14px;gap:8px}
+  .studyco-profile-actions .studyco-button{padding:9px 10px;font-size:.72rem}
+  .studyco-profile-stats{padding:13px 16px}
+  .studyco-profile-tabs{position:sticky;top:68px;z-index:5}
+  .studyco-profile-tab{min-width:0;flex:1;padding:10px 8px}
+}
+@media(max-width:480px){
+  .studyco-profile-cover{height:164px}
+  .studyco-profile-identity{display:grid;grid-template-columns:82px minmax(0,1fr);gap:10px;padding:0 14px 12px}
+  .studyco-profile-identity .studyco-profile-avatar{width:88px;height:88px;margin-top:-42px}
+  .studyco-profile-avatar>.studyco-avatar.large{width:88px;height:88px}
+  .studyco-profile-avatar-edit{width:29px;height:29px}
+  .studyco-profile-identity-copy{padding-top:5px}
+  .studyco-profile-name-row{gap:6px}
+  .studyco-profile-name-row h2{font-size:1.08rem}
+  .studyco-profile-status{font-size:.58rem}
+  .studyco-profile-identity-copy>p:last-child{font-size:.76rem}
+  .studyco-profile-actions{padding-right:14px;padding-left:14px}
+  .studyco-profile-stats{padding-right:14px;padding-left:14px}
+  .studyco-profile-tabs{top:60px}
+  .studyco-profile-posts-card,.studyco-profile-about{padding:14px}
+}
+
+
+/* Full profile details and owner-only inline edit affordances. */
+.studyco-profile-hero{position:relative;z-index:3;overflow:visible}
+.studyco-profile-cover{overflow:hidden}
+.studyco-profile-details-section{position:relative;z-index:1;margin:14px 0 18px;scroll-margin-top:76px}
+.studyco-profile-details-section .studyco-profile-about{padding:20px;border:1px solid #e4e6eb;border-radius:16px;background:#fff}
+.studyco-profile-details-section .studyco-section-title{margin-bottom:10px}
+.studyco-profile-details-section .studyco-section-title h2{font-size:1.12rem;letter-spacing:-.025em}
+.studyco-profile-details{gap:10px 12px}
+.studyco-profile-detail{position:relative;min-height:66px;padding:12px 48px 12px 12px;border:1px solid #e4e6eb;border-radius:12px;background:#fbfcff}
+.studyco-profile-detail.full{grid-column:1/-1}
+.studyco-profile-detail>span{font-size:.64rem;color:#6c7383}
+.studyco-profile-detail>p{margin-top:6px;color:#252a36;font-size:.82rem;line-height:1.5}
+.studyco-profile-detail.full>p{margin-top:7px}
+.studyco-profile-field-edit{position:absolute;top:8px;right:8px;display:grid;place-items:center;width:32px;height:32px;padding:0;border:1px solid #dce2ee;border-radius:9px;background:#fff;color:#58647a;cursor:pointer;transition:background .15s ease,color .15s ease,border-color .15s ease}
+.studyco-profile-field-edit:hover{border-color:#b9d6ff;background:#edf5ff;color:#12304a}
+.studyco-profile-field-edit svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.studyco-profile-field-edit[hidden]{display:none!important}
+.studyco-profile-more-wrap{position:relative;z-index:5;flex:0 0 auto}
+.studyco-profile-actions .studyco-profile-more-toggle{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-width:78px;flex:0 0 auto}
+.studyco-profile-more-toggle span{font-size:1.1rem;line-height:1}
+.studyco-profile-more-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:30;display:grid;min-width:220px;gap:3px;padding:7px;border:1px solid #e1e5ef;border-radius:13px;background:#fff;box-shadow:0 14px 36px #18233b24}
+.studyco-profile-more-menu[hidden]{display:none!important}
+.studyco-profile-more-menu button{width:100%;padding:10px 12px;border:0;border-radius:8px;background:transparent;color:#222b3a;text-align:left;font-size:.78rem;font-weight:700;cursor:pointer}
+.studyco-profile-more-menu button:hover{background:#f1f5fb;color:#12304a}
+@media(max-width:760px){
+  .studyco-profile-details-section{margin:12px 0 16px}
+  .studyco-profile-details-section .studyco-profile-about{padding:16px}
+  .studyco-profile-detail{min-height:60px}
+}
+@media(max-width:480px){
+  .studyco-profile-details-section .studyco-profile-about{padding:14px}
+  .studyco-profile-detail{padding:11px 44px 11px 10px}
+  .studyco-profile-field-edit{top:7px;right:7px;width:30px;height:30px}
+  .studyco-profile-more-menu{min-width:195px}
+}
+
+/* Premium profile editor */
+#studyco-edit-modal.studyco-modal-backdrop{z-index:120;background:rgba(255,255,255,.96);backdrop-filter:blur(11px);-webkit-backdrop-filter:blur(11px)}
+#studyco-edit-modal .studyco-profile-editor-modal{width:min(860px,100%);max-height:min(92dvh,980px);border:1px solid rgba(231,235,243,.9);border-radius:25px;background:#fff;box-shadow:0 32px 100px rgba(15,23,42,.22);scrollbar-width:thin}
+#studyco-edit-modal .studyco-modal-head{position:sticky;top:0;z-index:3;align-items:center;padding:22px 28px 17px;border-bottom:1px solid #edf0f5;background:rgba(255,255,255,.96);backdrop-filter:blur(12px)}
+#studyco-edit-modal .studyco-modal-head .studyco-eyebrow{margin:0;color:#6674df;font-size:10px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+#studyco-edit-modal .studyco-modal-head h2{margin:5px 0 0;color:#1b2637;font-size:23px;font-weight:800;letter-spacing:-.045em}
+#studyco-edit-modal .studyco-profile-editor-subtitle{max-width:540px;margin:5px 0 0;color:#7d8899;font-size:12px;line-height:1.5;letter-spacing:0}
+#studyco-edit-modal .studyco-modal-head .studyco-icon-button{width:38px;height:38px;display:grid;place-items:center;border:1px solid #e8ebf2;border-radius:12px;background:#f8f9fc;color:#687386;font-size:23px;line-height:1;transition:background .15s ease,color .15s ease}
+#studyco-edit-modal .studyco-modal-head .studyco-icon-button:hover{background:#eff1ff;color:#5263dd}
+#studyco-edit-modal .studyco-form{padding:19px 28px 28px}
+#studyco-edit-modal .studyco-profile-editor-note{margin:0 0 15px;padding:12px 14px;border:1px solid #e9edff;border-radius:13px;background:linear-gradient(110deg,#f6f7ff,#fbfaff);color:#677287;font-size:11px;line-height:1.5}
+#studyco-edit-modal .studyco-profile-editor-note strong{color:#4656c9;font-weight:750}
+#studyco-edit-modal .studyco-upload-row{grid-template-columns:minmax(145px,.72fr) minmax(220px,1.5fr);gap:12px}
+#studyco-edit-modal .studyco-upload-box{min-height:108px;border:1px solid #e4e8f0;border-radius:16px;background:linear-gradient(145deg,#f6f7ff,#f9fbff);color:#596579;font-size:11px;font-weight:700;transition:border-color .16s ease,box-shadow .16s ease,transform .16s ease}
+#studyco-edit-modal .studyco-upload-box:hover{border-color:#b8c0ff;box-shadow:0 8px 20px rgba(88,101,221,.10);transform:translateY(-1px)}
+#studyco-edit-modal .studyco-upload-box span{padding:8px 11px;border:1px solid #e8ebf3;border-radius:10px;background:rgba(255,255,255,.94);color:#596579;font-size:10px;font-weight:750;box-shadow:0 3px 9px rgba(19,27,44,.06)}
+#studyco-edit-modal .studyco-upload-box img{border-radius:15px}
+#studyco-edit-modal .studyco-form-grid{display:grid;grid-template-columns:1fr;gap:0;margin-top:18px}
+#studyco-edit-modal .studyco-form-section{min-width:0;padding:19px 0 18px;border-top:1px solid #edf0f5}
+#studyco-edit-modal .studyco-form-section-head{display:flex;align-items:flex-start;gap:11px;margin-bottom:13px}
+#studyco-edit-modal .studyco-form-section-number{flex:0 0 auto;display:grid;place-items:center;width:27px;height:27px;border-radius:9px;background:#eff1ff;color:#5663d5;font-size:10px;font-weight:800}
+#studyco-edit-modal .studyco-form-section-head h3{margin:0;color:#253247;font-size:13px;font-weight:800;letter-spacing:-.015em}
+#studyco-edit-modal .studyco-form-section-head p{margin:3px 0 0;color:#12304a;font-size:10.5px;line-height:1.45}
+#studyco-edit-modal .studyco-form-section-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+#studyco-edit-modal .studyco-form-section-fields label{display:grid;align-content:start;gap:6px;min-width:0;color:#49566a;font-size:11px;font-weight:700}
+#studyco-edit-modal .studyco-form-section-fields input:not([type=file]),#studyco-edit-modal .studyco-form-section-fields select,#studyco-edit-modal .studyco-form-section-fields textarea{width:100%;min-height:43px;padding:10px 12px;border:1px solid #e1e6ef;border-radius:11px;background:#fbfcfe;color:#233047;font:500 12px Inter,system-ui,sans-serif;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease}
+#studyco-edit-modal .studyco-form-section-fields textarea{min-height:86px;resize:vertical}
+#studyco-edit-modal #studyco-edit-bio{grid-column:1/-1}
+#studyco-edit-modal .studyco-form-section-fields input:focus,#studyco-edit-modal .studyco-form-section-fields select:focus,#studyco-edit-modal .studyco-form-section-fields textarea:focus{border-color:#8995ff;outline:0;background:#fff;box-shadow:0 0 0 4px rgba(101,114,242,.13)}
+#studyco-edit-modal .studyco-form-section-fields input::placeholder,#studyco-edit-modal .studyco-form-section-fields textarea::placeholder{color:#12304a}
+#studyco-edit-modal .studyco-modal-actions{position:sticky;bottom:0;z-index:3;margin:18px -28px -28px;padding:15px 28px max(17px,env(safe-area-inset-bottom));border-top:1px solid #edf0f5;background:rgba(255,255,255,.97);backdrop-filter:blur(12px)}
+#studyco-edit-modal .studyco-modal-actions .studyco-button{min-height:43px;padding:0 17px;border-radius:12px;font-size:12px;font-weight:750}
+#studyco-edit-modal .studyco-modal-actions .studyco-button.soft{border:1px solid #e3e8f0;background:#fff;color:#596579}
+#studyco-edit-modal .studyco-modal-actions .studyco-button.primary{border:0;background:linear-gradient(135deg,#e8912d,#c96f16);color:#12304a;box-shadow:0 7px 17px rgba(91,101,229,.22)}
+#studyco-edit-modal .studyco-modal-actions .studyco-button.primary:hover{filter:brightness(1.04);transform:translateY(-1px)}
+@media(max-width:640px){#studyco-edit-modal.studyco-modal-backdrop{align-items:end;padding:0}#studyco-edit-modal .studyco-profile-editor-modal{width:100%;max-height:96dvh;border-radius:23px 23px 0 0;border-bottom:0}#studyco-edit-modal .studyco-modal-head{padding:18px 17px 14px}#studyco-edit-modal .studyco-modal-head h2{font-size:21px}#studyco-edit-modal .studyco-profile-editor-subtitle{font-size:11px}#studyco-edit-modal .studyco-form{padding:14px 17px 19px}#studyco-edit-modal .studyco-profile-editor-note{font-size:10.5px}#studyco-edit-modal .studyco-upload-row{grid-template-columns:minmax(105px,.8fr) minmax(160px,1.2fr);gap:9px}#studyco-edit-modal .studyco-upload-box{min-height:88px}#studyco-edit-modal .studyco-form-section{padding:16px 0}#studyco-edit-modal .studyco-form-section-fields{grid-template-columns:1fr;gap:11px}#studyco-edit-modal #studyco-edit-bio{grid-column:auto}#studyco-edit-modal .studyco-modal-actions{margin:14px -17px -19px;padding:12px 17px max(14px,env(safe-area-inset-bottom))}#studyco-edit-modal .studyco-modal-actions .studyco-button{flex:1}}

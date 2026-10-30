@@ -1,0 +1,14 @@
+{
+  "assets": {
+    "iconSource": "logo-source.png",
+    "splashSource": "logo-source.png",
+    "icon": {
+      "backgroundColor": "#0d2e7d"
+    },
+    "splash": {
+      "backgroundColor": "#0d2e7d",
+      "logoWidth": 400,
+      "logoHeight": 400
+    }
+  }
+}

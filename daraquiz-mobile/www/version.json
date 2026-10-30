@@ -1,8 +1,8 @@
 {
-  "version": "1.580",
-  "versionCode": 564,
+  "version": "1.581",
+  "versionCode": 565,
   "releaseDate": "2026-10-30",
-  "notes": "Fix: in-chat image generation now renders (endpoint returns image directly).",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.580/daraquiz-v1.580.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.580/daraquiz-v1.580.apk"
+  "notes": "Fix: download now always uses the real GitHub release URL (localhost error gone).",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.581/daraquiz-v1.581.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.581/daraquiz-v1.581.apk"
 }

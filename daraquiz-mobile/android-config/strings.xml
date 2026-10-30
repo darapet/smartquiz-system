@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DaraQuiz AI — Android string resources
+  This file goes into: android/app/src/main/res/values/strings.xml
+-->
+<resources>
+    <string name="app_name">DaraEdu AI</string>
+    <string name="title_activity_main">DaraEdu AI</string>
+    <string name="package_name">com.darapet.smart</string>
+    <string name="custom_url_scheme">com.darapet.smart</string>
+</resources>
