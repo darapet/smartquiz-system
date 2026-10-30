@@ -1,8 +1,8 @@
 {
-  "version": "1.565",
-  "versionCode": 546,
+  "version": "1.566",
+  "versionCode": 547,
   "releaseDate": "2026-10-30",
-  "notes": "Cream palette and mobile layout fixes across app pages.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.565/daraquiz-v1.565.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.565/daraquiz-v1.565.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.566/daraquiz-v1.566.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.566/daraquiz-v1.566.apk"
 }
