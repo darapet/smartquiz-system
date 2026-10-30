@@ -289,6 +289,16 @@ var AQS_APP_VERSION_CODE = 519;
         if (!/github\.com\//.test(_apkUrl)) {
           _apkUrl = 'https://github.com/darapet/smartquiz-system/releases/latest';
         }
+        /* verify the APK link actually exists; stale version files point at
+           tags that were never released — fall back to the latest release page */
+        fetch(_apkUrl, { method: 'HEAD' })
+          .then(function (hr) {
+            if (!hr.ok) {
+              console.warn('[AQS-UPD] apkUrl dead (' + hr.status + '), using releases/latest');
+              _apkUrl = 'https://github.com/darapet/smartquiz-system/releases/latest';
+            }
+          })
+          .catch(function () {});
         showPopup(data);
       })
       .catch(function (err) {

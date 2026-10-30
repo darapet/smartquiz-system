@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AI Quiz System — Home</title>
+<link rel="icon" href="favicon.svg">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#faf3ea;color:#12304a;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;min-height:100vh;padding-bottom:84px}
+header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:rgba(250,243,234,.95);backdrop-filter:blur(8px)}
+.hleft{display:flex;align-items:center;gap:12px}
+.hleft img{width:44px;height:44px;border-radius:50%;object-fit:cover}
+.hleft small{display:block;color:#7a8ba0;font-size:.72rem}
+.hleft b{color:#12304a;font-size:1.25rem;font-weight:800;letter-spacing:-.01em}
+.bell{width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid #eee2d3;display:grid;place-items:center;font-size:1.15rem;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative}
+.avatar{width:44px;height:44px;border-radius:14px;background:#f4a548;color:#12304a;display:grid;place-items:center;font-weight:800;text-decoration:none;font-size:1.05rem;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.wrap{max-width:560px;margin:0 auto;padding:6px 18px 0}
+.hero{position:relative;border-radius:22px;padding:26px 24px 24px;background:linear-gradient(135deg,#faf3ea,#ffffff);box-shadow:0 18px 40px rgba(14,58,82,.35);color:#12304a;margin-bottom:22px;overflow:hidden}
+.hero .tag{color:#12304a;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.hero .big{margin-top:10px;font:italic 1.35rem/1.45 Georgia,serif;min-height:2.6em}
+.hero .who{margin-top:10px;color:#12304a;font-size:.8rem}
+.grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none;padding:14px 4px}
+.tile .ic{width:52px;height:52px;border-radius:16px;background:#fff;border:1px solid #eee2d3;box-shadow:0 4px 14px rgba(0,0,0,.06);display:grid;place-items:center;font-size:1.35rem}
+.tile .nm{color:#22374d;font-size:.76rem;font-weight:600;text-align:center}
+.sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.sec h3{color:#12304a;font-size:1.05rem;font-weight:800}
+.sec a{color:#3d7ab5;font-size:.8rem;text-decoration:none;font-weight:600}
+.empty{background:#fff;border:1px solid #eee2d3;border-radius:16px;padding:16px;color:#12304a;font-size:.86rem;margin-bottom:22px}
+.post{background:#fff;border:1px solid #eee2d3;border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;box-shadow:0 3px 10px rgba(0,0,0,.04)}
+.post .pic{width:42px;height:42px;border-radius:12px;background:#fdf0e0;display:grid;place-items:center;font-size:1.2rem;flex-shrink:0}
+.post .tt{color:#22374d;font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.post .chip{background:#fff4e2;color:#c77b2e;font-size:.62rem;font-weight:800;padding:3px 9px;border-radius:999px}
+.post .who{color:#12304a;font-size:.78rem;margin-top:3px}
+nav.bottom{position:fixed;bottom:0;left:0;right:0;z-index:60;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid #eee2d3;padding:10px 8px calc(10px + env(safe-area-inset-bottom))}
+nav.bottom a{display:flex;flex-direction:column;align-items:center;gap:3px;color:#12304a;text-decoration:none;font-size:.64rem;font-weight:600}
+nav.bottom a .ic{font-size:1.3rem}
+nav.bottom a.on{color:#e8912d;background:#fbf1e3;border-radius:14px;padding:4px 10px}
+@media(max-width:420px){.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.tile .ic{width:48px;height:48px}}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
+</style>
+  <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
+</head>
+<body data-aqs-page="index" data-aqs-page-group="dashboard">
+<header>
+  <div class="hleft">
+    <img src="img/darapet-logo-brand.png" alt="">
+    <span><small id="greet-time">Good morning</small><b id="greet-name">Hi there 👋</b></span>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center">
+    <a class="bell" href="notifications.html" aria-label="Notifications">🔔</a>
+    <a class="avatar" href="login.html" aria-label="Sign in">D</a>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero" aria-label="Daily welcome quote">
+    <div class="tag">A thought for today</div>
+    <div class="big" id="q-text">Small steps every day lead to remarkable results.</div>
+    <div class="who" id="q-author">SmartQuiz daily inspiration</div>
+  </section>
+
+  <div class="grid">
+    <a class="tile" href="quiz-setup.html"><span class="ic">🧠</span><span class="nm">Create Quiz</span></a>
+    <a class="tile" href="studyhub.html"><span class="ic">📖</span><span class="nm">Study Hub</span></a>
+    <a class="tile" href="studio.html"><span class="ic">✨</span><span class="nm">Studio AI</span></a>
+    <a class="tile" href="library.html"><span class="ic">📚</span><span class="nm">Library</span></a>
+    <a class="tile" href="image-gen.html"><span class="ic">🎨</span><span class="nm">Image Studio</span></a>
+    <a class="tile" href="studio.html"><span class="ic">⬡</span><span class="nm">Studio AI</span></a>
+    <a class="tile" href="challenge.html"><span class="ic">⚔️</span><span class="nm">Challenge</span></a>
+    <a class="tile" href="puzzle.html"><span class="ic">🧩</span><span class="nm">Puzzle Battle</span></a>
+    <a class="tile" href="user-dashboard.html"><span class="ic">💬</span><span class="nm">Dara Social</span></a>
+    <a class="tile" href="text-to-docs.html"><span class="ic">📄</span><span class="nm">Docs Gen</span></a>
+    <a class="tile" href="ai-animate.html"><span class="ic">✨</span><span class="nm">AI Animate</span></a>
+    <a class="tile" href="tts.html"><span class="ic">🎙️</span><span class="nm">Text to Speech</span></a>
+  </div>
+
+  <div class="sec"><h3>Today</h3><a href="user-dashboard.html">See all</a></div>
+  <div class="empty">No activity yet — take a quiz or open a tool to get started.</div>
+
+  <div class="sec"><h3>Discuss</h3><a href="user-dashboard.html">See all</a></div>
+  <div class="post"><div class="pic">💬</div><div><div class="tt">Join the conversation <span class="chip">Community</span></div><div class="who">Sign in to see what learners dey talk about</div></div></div>
+  <div class="post"><div class="pic">📰</div><div><div class="tt">Daily updates <span class="chip">News</span></div><div class="who">NELFUND, campus news, sports and more</div></div></div>
+</div>
+
+<nav class="bottom">
+  <a href="index.html" class="on"><span class="ic">🏠</span>Home</a>
+  <a href="user-dashboard.html"><span class="ic">💬</span>Discuss</a>
+  <a href="studio.html"><span class="ic">✨</span>AI Coach</a>
+  <a href="library.html"><span class="ic">📚</span>Library</a>
+  <a href="login.html"><span class="ic">👤</span>Me</a>
+</nav>
+
+<script src="js/aqs-update-check.js" defer></script>
+<script>
+(function(){
+  var h=new Date().getHours();
+  document.getElementById('greet-time').textContent = h<12?'Good morning':(h<17?'Good afternoon':'Good evening');
+  var quotes=[
+    ["Small steps every day lead to remarkable results.","SmartQuiz daily inspiration"],
+    ["The expert in anything was once a beginner.","SmartQuiz daily inspiration"],
+    ["Consistency beats intensity. Show up today.","SmartQuiz daily inspiration"],
+    ["Every question you ask makes you sharper.","SmartQuiz daily inspiration"],
+    ["Study smart, not just hard.","SmartQuiz daily inspiration"]
+  ];
+  var key=new Date().toDateString();
+  var idx=parseInt(localStorage.getItem('lp_quote_i')||'0',10);
+  if(localStorage.getItem('lp_quote_d')!==key){idx=(idx+1)%quotes.length;localStorage.setItem('lp_quote_i',String(idx));localStorage.setItem('lp_quote_d',key);}
+  var q=quotes[idx]||quotes[0];
+  document.getElementById('q-text').textContent=q[0];
+  document.getElementById('q-author').textContent=q[1];
+})();
+</script>
+</body>
+</html>
