@@ -777,6 +777,16 @@
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
 
+        /* IMAGE INTENT: route to in-chat generation instead of text AI */
+        var IMG_INTENT = /(generate|create|make|draw|design|produce)[^.?!]{0,40}(image|picture|photo|logo|drawing|art\b)|^\s*image of /i;
+        if (text && !attachedFileText && !attachedImageData && IMG_INTENT.test(text)) {
+            isSending = false; setSendState(false);
+            var inp0 = document.getElementById('dts-input');
+            if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
+            if (typeof window.dtsGenerateInline === 'function') { window.dtsGenerateInline(text); }
+            return;
+        }
+
         isSending = true;
         setSendState(true);
 

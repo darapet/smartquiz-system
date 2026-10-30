@@ -351,6 +351,7 @@
   var input=document.getElementById('dts-input'),send=document.getElementById('dts-send'),msgs=document.querySelector('.dts-chat,.dts-messages,.dts-conversation,.dts-msg-list')||document.body;
   var IMG_RE=/(generate|create|make|draw|design).{0,30}(image|picture|logo|art|photo|drawing)|(^image of)/i;
   if(!input||!send)return;
+  window.dtsGenerateInline = genInline;
   async function genInline(prompt){
     var b=document.createElement('div');b.className='dts-msg ai';b.innerHTML='<div class="dts-msg-content"><div class="dts-gen-square" style="width:120px;height:120px;border-radius:14px;background:linear-gradient(135deg,#fcd9a8,#f4a548,#c2660c);background-size:200% 200%;animation:dtsSq 1.6s ease infinite"></div></div>';
     var st=document.createElement('style');st.textContent='@keyframes dtsSq{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}';
