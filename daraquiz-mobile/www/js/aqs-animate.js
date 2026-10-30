@@ -1,355 +1,190 @@
-/* AI Quiz System — AI Animate JS
-   Developed by Omomo Excellence in corporation with Darapet Technology
-   Upload image → animate with CSS → generate AI frames via Pollinations FLUX */
-
 (function () {
-    'use strict';
+  'use strict';
+  var promptEl = document.getElementById('prompt');
+  var fileEl = document.getElementById('image');
+  var thumb = document.getElementById('thumb');
+  var fileName = document.getElementById('fileName');
+  var statusEl = document.getElementById('status');
+  var progressEl = document.getElementById('progress');
+  var errorEl = document.getElementById('error');
+  var framesEl = document.getElementById('frames');
+  var stage = document.getElementById('stage');
+  var placeholder = document.getElementById('placeholder');
+  var generateBtn = document.getElementById('generate');
+  var playBtn = document.getElementById('play');
+  var downloadBtn = document.getElementById('downloadAll');
+  var speedEl = document.getElementById('speed');
+  var uploadedUrl = '';
+  var frameUrls = [];
+  var stageImages = [];
+  var activeIndex = 0;
+  var timer = null;
+  var baseSeed = Math.floor(Math.random() * 9000000) + 100000;
+  var styles = ['gentle motion, frame 1 of a short visual sequence', 'subtle motion variation, frame 2 of a short visual sequence', 'another natural motion variation, frame 3 of a short visual sequence', 'final fluid motion variation, frame 4 of a short visual sequence'];
 
-    var $wrap = document.getElementById('aqs-anim-wrap');
-    if (!$wrap) return;
-
-    /* ── DOM refs ── */
-    var $dropzone       = document.getElementById('aqs-anim-dropzone');
-    var $fileInput      = document.getElementById('aqs-anim-file');
-    var $browseBtn      = document.getElementById('aqs-anim-browse-btn');
-    var $uploadCard     = document.getElementById('aqs-anim-upload-card');
-    var $previewCard    = document.getElementById('aqs-anim-preview-card');
-    var $previewImg     = document.getElementById('aqs-anim-preview-img');
-    var $previewWrap    = document.getElementById('aqs-anim-preview-wrap');
-    var $playBtn        = document.getElementById('aqs-anim-play-btn');
-    var $previewBadge   = document.getElementById('aqs-anim-preview-badge');
-    var $fileName       = document.getElementById('aqs-anim-file-name');
-    var $changeBtn      = document.getElementById('aqs-anim-change-btn');
-    var $promptTA       = document.getElementById('aqs-anim-prompt');
-    var $enhBtn         = document.getElementById('aqs-anim-enhance-btn');
-    var $styleBtns      = document.querySelectorAll('.aqs-anim-style');
-    var $previewBtn     = document.getElementById('aqs-anim-preview-btn');
-    var $genBtn         = document.getElementById('aqs-anim-generate-btn');
-    var $status         = document.getElementById('aqs-anim-status');
-    var $statusTxt      = document.getElementById('aqs-anim-status-text');
-    var $error          = document.getElementById('aqs-anim-error');
-    var $empty          = document.getElementById('aqs-anim-empty');
-    var $framesGrid     = document.getElementById('aqs-anim-frames-grid');
-    var $regenFramesBtn = document.getElementById('aqs-anim-regen-frames-btn');
-
-    /* ── State ── */
-    var uploadedDataUrl = null;
-    var uploadedName    = '';
-    var isPlaying       = false;
-    var activeStyle     = 'cinematic';
-    var activeCss       = 'aqs-anim-css-cinematic';
-
-    /* ── Prompt enhancer suffixes ── */
-    var ENHANCE_SUFFIXES = [
-        'cinematic motion, smooth animation, professional quality, film grain, depth of field',
-        'dynamic energy, vivid colors, high contrast, dramatic lighting, motion blur, 4K quality',
-        'slow motion, golden hour light, dreamy bokeh, ethereal atmosphere, smooth transitions',
-        'action energy, explosive visual effects, sharp detail, vibrant saturation, epic composition',
-        'neon glow, futuristic energy, vivid chromatic shifts, dark atmospheric mood, cinematic',
-    ];
-
-    /* ── Style → Pollinations suffix map ── */
-    var STYLE_AI_SUFFIX = {
-        cinematic: 'cinematic film still, dramatic lighting, motion blur, professional cinematography, anamorphic lens',
-        pulse:     'energy pulse visual, glowing aura, vibrant power effect, dynamic particle effects, vivid',
-        float:     'floating ethereal scene, soft bokeh background, dreamy atmosphere, gentle motion, aerial',
-        kenburns:  'stunning landscape photography, documentary style, epic wide shot, detailed environment, golden hour',
-        glitch:    'glitch art digital distortion, cyberpunk fragments, neon color aberration, visual corruption effect',
-        neon:      'neon glow vibrant scene, dark background, futuristic neon lights, vivid chromatic colors, cinematic',
-        reveal:    'dramatic cinematic reveal, high contrast composition, bold visual impact, cinematic moment',
-        vortex:    'hypnotic vortex abstract, swirling surreal digital art, vivid spiral motion, psychedelic',
-    };
-
-    /* ── File handling ── */
-    function handleFile(file) {
-        if (!file || !file.type.startsWith('image/')) return;
-        var reader = new FileReader();
-        reader.onload = function (e) {
-            uploadedDataUrl = e.target.result;
-            uploadedName    = file.name;
-            $previewImg.src = uploadedDataUrl;
-            $fileName.textContent = file.name;
-            $uploadCard.style.display = 'none';
-            $previewCard.style.display = 'block';
-            $previewBtn.disabled = false;
-            stopAnimation();
-        };
-        reader.readAsDataURL(file);
-    }
-
-    if ($browseBtn) $browseBtn.addEventListener('click', function (e) {
-        e.stopPropagation();
-        $fileInput.click();
-    });
-    if ($fileInput)  $fileInput.addEventListener('change', function () {
-        if (this.files && this.files[0]) handleFile(this.files[0]);
-    });
-    if ($changeBtn)  $changeBtn.addEventListener('click', function () {
-        stopAnimation();
-        $uploadCard.style.display = 'block';
-        $previewCard.style.display = 'none';
-        uploadedDataUrl = null;
-        $fileInput.value = '';
-        $previewBtn.disabled = true;
-    });
-
-    /* Drag & drop */
-    if ($dropzone) {
-        $dropzone.addEventListener('click', function () { $fileInput.click(); });
-        $dropzone.addEventListener('dragover', function (e) {
-            e.preventDefault();
-            $dropzone.classList.add('dragover');
-        });
-        $dropzone.addEventListener('dragleave', function () {
-            $dropzone.classList.remove('dragover');
-        });
-        $dropzone.addEventListener('drop', function (e) {
-            e.preventDefault();
-            $dropzone.classList.remove('dragover');
-            var file = e.dataTransfer.files && e.dataTransfer.files[0];
-            if (file) handleFile(file);
-        });
-    }
-
-    /* ── Animation playback ── */
-    function stopAnimation() {
-        isPlaying = false;
-        $previewImg.className = 'aqs-anim-preview-img';
-        $previewBadge.textContent = 'Paused';
-        $playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
-        if ($previewBtn) $previewBtn.innerHTML =
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg> Preview';
-    }
-    function startAnimation() {
-        isPlaying = true;
-        $previewImg.className = 'aqs-anim-preview-img ' + activeCss;
-        $previewBadge.textContent = getStyleLabel(activeStyle);
-        $playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
-        if ($previewBtn) $previewBtn.innerHTML =
-            '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause';
-    }
-    function toggleAnimation() {
-        if (!uploadedDataUrl) return;
-        if (isPlaying) stopAnimation(); else startAnimation();
-    }
-    function getStyleLabel(s) {
-        var btn = document.querySelector('.aqs-anim-style[data-style="' + s + '"]');
-        return btn ? btn.querySelector('.aqs-anim-style-name').textContent : s;
-    }
-
-    if ($playBtn)    $playBtn.addEventListener('click', toggleAnimation);
-    if ($previewBtn) $previewBtn.addEventListener('click', toggleAnimation);
-
-    /* ── Style selection ── */
-    $styleBtns.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            $styleBtns.forEach(function (b) { b.classList.remove('active'); });
-            btn.classList.add('active');
-            activeStyle = btn.getAttribute('data-style') || 'cinematic';
-            activeCss   = btn.getAttribute('data-css') || 'aqs-anim-css-cinematic';
-            if (isPlaying) {
-                $previewImg.className = 'aqs-anim-preview-img';
-                setTimeout(function () { $previewImg.className = 'aqs-anim-preview-img ' + activeCss; }, 30);
-                $previewBadge.textContent = getStyleLabel(activeStyle);
-            }
-        });
-    });
-
-    /* ── Prompt enhancer ── */
-    if ($enhBtn) {
-        $enhBtn.addEventListener('click', function () {
-            var raw = ($promptTA.value || '').trim();
-            $enhBtn.disabled = true;
-            $enhBtn.textContent = 'Enhancing...';
-
-            if (typeof window.groqFetch === 'function' && raw) {
-                window.groqFetch({
-                    model: 'llama3-8b-8192',
-                    messages: [
-                        {
-                            role: 'system',
-                            content: 'You are an AI animation prompt engineer. Enhance the user\'s animation prompt with professional motion, lighting, and cinematic quality descriptors. Return only the enhanced prompt, nothing else. Keep it under 150 words.'
-                        },
-                        { role: 'user', content: 'Enhance this animation prompt: ' + raw }
-                    ],
-                    max_tokens: 200,
-                    temperature: 0.7
-                }).then(function (res) { return res.json(); })
-                .then(function (data) {
-                    var enhanced = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
-                    if (enhanced) $promptTA.value = enhanced.trim();
-                    else localEnhance(raw);
-                })
-                .catch(function () { localEnhance(raw); })
-                .finally(resetEnhBtn);
-            } else {
-                setTimeout(function () {
-                    localEnhance(raw);
-                    resetEnhBtn();
-                }, 600);
-            }
-        });
-    }
-
-    function localEnhance(raw) {
-        var suffix = ENHANCE_SUFFIXES[Math.floor(Math.random() * ENHANCE_SUFFIXES.length)];
-        if (!raw) {
-            $promptTA.value = 'Animate this image with ' + suffix;
+  function setStatus(text) { statusEl.textContent = text; }
+  function showStageImage(url, alt, isActive) {
+    var img = document.createElement('img');
+    img.src = url;
+    img.alt = alt;
+    if (isActive) img.className = 'active';
+    stage.appendChild(img);
+    stageImages.push(img);
+    return img;
+  }
+  function selectFrame(index) {
+    if (!stageImages.length) return;
+    activeIndex = index % stageImages.length;
+    stageImages.forEach(function (img, i) { img.classList.toggle('active', i === activeIndex); });
+  }
+  function stop() {
+    if (timer) window.clearInterval(timer);
+    timer = null;
+    playBtn.textContent = '▶ Play';
+  }
+  function play() {
+    if (stageImages.length < 2) return;
+    stop();
+    playBtn.textContent = 'Ⅱ Pause';
+    timer = window.setInterval(function () { selectFrame((activeIndex + 1) % stageImages.length); }, Number(speedEl.value) || 600);
+  }
+  function download(url, number) {
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'smartquiz-animation-frame-' + number + '.jpg';
+    a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+  function makeCard(index) {
+    var card = document.createElement('article');
+    card.className = 'frame loading';
+    var shot = document.createElement('div');
+    shot.className = 'shot';
+    shot.textContent = 'Frame ' + (index + 1) + ' · waiting';
+    var footer = document.createElement('footer');
+    var label = document.createElement('span');
+    label.textContent = 'Frame ' + (index + 1);
+    var link = document.createElement('a');
+    link.textContent = '—';
+    link.href = '#';
+    link.setAttribute('aria-label', 'Frame not ready');
+    footer.append(label, link);
+    card.append(shot, footer);
+    framesEl.appendChild(card);
+    return { card: card, shot: shot, link: link };
+  }
+  function makeUrl(text, seed) {
+    return 'https://image.pollinations.ai/prompt/' + encodeURIComponent(text) + '?width=768&height=768&model=flux&seed=' + seed + '&nologo=true';
+  }
+  function loadFrame(item, index, url) {
+    return new Promise(function (resolve) {
+      var img = new Image();
+      var settled = false;
+      var timeout = window.setTimeout(function () { finish(false, 'Timed out — retry generation'); }, 120000);
+      function finish(ok, message) {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(timeout);
+        if (ok) {
+          item.card.classList.remove('loading');
+          item.shot.textContent = '';
+          var cardImg = document.createElement('img');
+          cardImg.src = url;
+          cardImg.alt = 'Generated animation frame ' + (index + 1);
+          item.shot.appendChild(cardImg);
+          item.link.textContent = '↓ Save';
+          item.link.href = url;
+          item.link.setAttribute('download', 'smartquiz-animation-frame-' + (index + 1) + '.jpg');
+          item.link.setAttribute('aria-label', 'Download frame ' + (index + 1));
+          frameUrls[index] = url;
+          var stageImg = showStageImage(url, 'Animation frame ' + (index + 1), stageImages.length === 0 && !uploadedUrl);
+          stageImg.addEventListener('error', function () { stageImg.alt = 'Frame preview could not load'; });
         } else {
-            $promptTA.value = raw.replace(/,\s*$/, '') + ', ' + suffix;
+          item.card.classList.remove('loading');
+          item.card.classList.add('failed');
+          item.shot.textContent = message;
+          item.link.textContent = 'Retry';
+          item.link.href = '#';
+          item.link.onclick = function (event) { event.preventDefault(); generate(); };
         }
+        resolve(ok);
+      }
+      img.onload = function () { finish(true); };
+      img.onerror = function () { finish(false, 'Could not load — check connection and retry'); };
+      img.src = url;
+    });
+  }
+  async function generate() {
+    var prompt = (promptEl.value || '').trim();
+    if (!prompt) {
+      errorEl.textContent = 'Add a visual prompt first.';
+      promptEl.focus();
+      return;
     }
-    function resetEnhBtn() {
-        $enhBtn.disabled = false;
-        $enhBtn.innerHTML =
-            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Enhance';
+    stop();
+    errorEl.textContent = '';
+    generateBtn.disabled = true;
+    playBtn.disabled = true;
+    downloadBtn.disabled = true;
+    frameUrls = [];
+    framesEl.replaceChildren();
+    stageImages = [];
+    stage.querySelectorAll('img').forEach(function (img) { img.remove(); });
+    if (uploadedUrl) showStageImage(uploadedUrl, 'Uploaded opening frame', true);
+    placeholder.style.display = 'none';
+    var cards = styles.map(function (unused, i) { return makeCard(i); });
+    progressEl.style.width = '0%';
+    baseSeed = Math.floor(Math.random() * 9000000) + 100000;
+    setStatus('Starting free FLUX frame generation…');
+    var successes = 0;
+    for (var i = 0; i < styles.length; i++) {
+      setStatus('Frame ' + (i + 1) + ' of ' + styles.length + ': generating…');
+      cards[i].shot.textContent = 'Frame ' + (i + 1) + ' · generating…';
+      var url = makeUrl(prompt + ', ' + styles[i] + ', consistent subject and art direction, no text, no watermark', baseSeed + i);
+      var ok = await loadFrame(cards[i], i, url);
+      if (ok) successes++;
+      progressEl.style.width = Math.round(((i + 1) / styles.length) * 100) + '%';
+      setStatus('Frame ' + (i + 1) + ' of ' + styles.length + (ok ? ' ready' : ' failed') + ' · ' + successes + ' ready');
     }
-
-    /* ── Generate AI frames ── */
-    function generateFrames() {
-        var raw = ($promptTA.value || '').trim();
-        if (!raw && !uploadedDataUrl) return;
-
-        hideError();
-        var styleSuffix = STYLE_AI_SUFFIX[activeStyle] || '';
-        var base = raw || ('animated ' + (uploadedName ? uploadedName.replace(/\.\w+$/, '') : 'visual'));
-        var full = base + (styleSuffix ? ', ' + styleSuffix : '') + ', no text, no watermark, ultra detailed, professional quality, 8K';
-
-        $genBtn.disabled = true;
-        $empty.style.display = 'none';
-        $framesGrid.style.display = 'grid';
-        $regenFramesBtn.style.display = 'inline-flex';
-        $framesGrid.innerHTML = '';
-        setStatus('Generating 4 AI animation frames\u2026 (10\u201320 seconds each)');
-
-        var seeds = [
-            Math.floor(Math.random() * 9999999),
-            Math.floor(Math.random() * 9999999),
-            Math.floor(Math.random() * 9999999),
-            Math.floor(Math.random() * 9999999),
-        ];
-
-        /* Create 4 skeleton frame cards */
-        var cards = [];
-        var i;
-        for (i = 0; i < 4; i++) {
-            var card = document.createElement('div');
-            card.className = 'aqs-anim-frame-card loading';
-            card.innerHTML =
-                '<div class="aqs-anim-frame-spinner">' +
-                    '<div class="aqs-anim-frame-spinner-ring"></div>' +
-                    '<span>Generating\u2026</span>' +
-                '</div>' +
-                '<span class="aqs-anim-frame-label">Frame ' + (i + 1) + '</span>';
-            $framesGrid.appendChild(card);
-            cards.push(card);
-        }
-
-        var settled = 0;
-
-        for (var idx = 0; idx < 4; idx++) {
-            (function (cardEl, frameIdx, seed) {
-                var delay = frameIdx * 3500;
-                var url = 'https://image.pollinations.ai/prompt/' +
-                    encodeURIComponent(full) +
-                    '?width=960&height=540&model=flux&seed=' + seed +
-                    '&enhance=true&nologo=true';
-
-                setTimeout(function () {
-                    if (frameIdx > 0) setStatus('Generating frame ' + (frameIdx + 1) + ' of 4\u2026');
-                    var imgEl = document.createElement('img');
-                    imgEl.onload = function () {
-                        settled++;
-                        cardEl.className = 'aqs-anim-frame-card loaded';
-                        cardEl.innerHTML =
-                            '<img src="' + url + '" alt="AI frame ' + (frameIdx + 1) + '" loading="lazy">' +
-                            '<div class="aqs-anim-frame-actions">' +
-                                '<a class="aqs-btn aqs-btn-sm aqs-btn-primary" href="' + url + '" download="xzily-frame-' + (frameIdx + 1) + '.jpg" target="_blank">\u2b07 Download</a>' +
-                                '<button class="aqs-btn aqs-btn-sm aqs-anim-regen-one" data-idx="' + frameIdx + '">\u21ba</button>' +
-                            '</div>' +
-                            '<span class="aqs-anim-frame-label">Frame ' + (frameIdx + 1) + '</span>';
-                        cardEl.querySelector('.aqs-anim-regen-one').addEventListener('click', function () {
-                            regenOneFrame(cardEl, frameIdx, full);
-                        });
-                        if (settled === 4) finishFrames();
-                    };
-                    imgEl.onerror = function () {
-                        settled++;
-                        cardEl.className = 'aqs-anim-frame-card error';
-                        cardEl.innerHTML =
-                            '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:12px;text-align:center;font-size:0.75rem;color:#ef4444;line-height:1.4;">' +
-                            '\u26a0\ufe0f Failed.<br><small>Try again.</small></div>' +
-                            '<span class="aqs-anim-frame-label">Frame ' + (frameIdx + 1) + '</span>';
-                        if (settled === 4) finishFrames();
-                    };
-                    imgEl.src = url;
-                }, delay);
-            })(cards[idx], idx, seeds[idx]);
-        }
+    generateBtn.disabled = false;
+    if (successes) {
+      playBtn.disabled = stageImages.length < 2;
+      downloadBtn.disabled = successes === 0;
+      setStatus(successes + ' of 4 FLUX frames ready · frame animation' + (uploadedUrl ? ' starts with your image' : '') + '.');
+    } else {
+      placeholder.style.display = 'block';
+      errorEl.textContent = 'No frames loaded. Pollinations may be temporarily unavailable; try again in a moment.';
+      setStatus('Generation failed.');
     }
-
-    function regenOneFrame(cardEl, frameIdx, fullPrompt) {
-        var seed = Math.floor(Math.random() * 9999999);
-        var url  = 'https://image.pollinations.ai/prompt/' +
-            encodeURIComponent(fullPrompt) +
-            '?width=960&height=540&model=flux&seed=' + seed +
-            '&enhance=true&nologo=true';
-        cardEl.className = 'aqs-anim-frame-card loading';
-        cardEl.innerHTML =
-            '<div class="aqs-anim-frame-spinner">' +
-                '<div class="aqs-anim-frame-spinner-ring"></div>' +
-                '<span>Regenerating\u2026</span>' +
-            '</div>' +
-            '<span class="aqs-anim-frame-label">Frame ' + (frameIdx + 1) + '</span>';
-        var imgEl = document.createElement('img');
-        imgEl.onload = function () {
-            cardEl.className = 'aqs-anim-frame-card loaded';
-            cardEl.innerHTML =
-                '<img src="' + url + '" alt="" loading="lazy">' +
-                '<div class="aqs-anim-frame-actions">' +
-                    '<a class="aqs-btn aqs-btn-sm aqs-btn-primary" href="' + url + '" download="xzily-frame-' + (frameIdx + 1) + '.jpg" target="_blank">\u2b07 Download</a>' +
-                    '<button class="aqs-btn aqs-btn-sm aqs-anim-regen-one" data-idx="' + frameIdx + '">\u21ba</button>' +
-                '</div>' +
-                '<span class="aqs-anim-frame-label">Frame ' + (frameIdx + 1) + '</span>';
-            cardEl.querySelector('.aqs-anim-regen-one').addEventListener('click', function () {
-                regenOneFrame(cardEl, frameIdx, fullPrompt);
-            });
-        };
-        imgEl.onerror = function () {
-            cardEl.className = 'aqs-anim-frame-card error';
-            cardEl.innerHTML =
-                '<div style="display:flex;align-items:center;justify-content:center;height:100%;padding:12px;text-align:center;font-size:0.75rem;color:#ef4444;">' +
-                '\u26a0\ufe0f Failed.<br><small>Try again.</small></div>' +
-                '<span class="aqs-anim-frame-label">Frame ' + (frameIdx + 1) + '</span>';
-        };
-        imgEl.src = url;
-    }
-
-    function finishFrames() {
-        $status.style.display = 'none';
-        $genBtn.disabled = false;
-        $genBtn.innerHTML =
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">' +
-            '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> Generate AI Frames';
-    }
-
-    if ($genBtn)         $genBtn.addEventListener('click', generateFrames);
-    if ($regenFramesBtn) $regenFramesBtn.addEventListener('click', generateFrames);
-
-    /* ── Prompt textarea auto-resize ── */
-    if ($promptTA) {
-        $promptTA.addEventListener('input', function () {
-            this.style.height = 'auto';
-            this.style.height = Math.min(this.scrollHeight, 200) + 'px';
-        });
-    }
-
-    /* ── Helpers ── */
-    function setStatus(txt) {
-        if ($status)    $status.style.display = 'flex';
-        if ($statusTxt) $statusTxt.textContent = txt;
-    }
-    function hideError() { if ($error) $error.style.display = 'none'; }
-
+  }
+  fileEl.addEventListener('change', function () {
+    var file = fileEl.files && fileEl.files[0];
+    if (!file) return;
+    if (uploadedUrl) URL.revokeObjectURL(uploadedUrl);
+    uploadedUrl = URL.createObjectURL(file);
+    thumb.src = uploadedUrl;
+    thumb.style.display = 'block';
+    fileName.textContent = file.name + ' · used as opening frame';
+  });
+  generateBtn.addEventListener('click', generate);
+  document.getElementById('clear').addEventListener('click', function () {
+    stop(); promptEl.value = ''; fileEl.value = '';
+    if (uploadedUrl) URL.revokeObjectURL(uploadedUrl);
+    uploadedUrl = ''; thumb.removeAttribute('src'); thumb.style.display = 'none';
+    fileName.textContent = 'It will be included as the opening frame.';
+    framesEl.replaceChildren(); frameUrls = []; stageImages = [];
+    stage.querySelectorAll('img').forEach(function (img) { img.remove(); });
+    placeholder.style.display = 'block'; progressEl.style.width = '0%';
+    generateBtn.disabled = false; playBtn.disabled = true; downloadBtn.disabled = true;
+    errorEl.textContent = ''; setStatus('Ready. Enter a prompt to begin.');
+  });
+  playBtn.addEventListener('click', function () { if (timer) stop(); else play(); });
+  speedEl.addEventListener('change', function () { if (timer) play(); });
+  downloadBtn.addEventListener('click', function () {
+    var ready = frameUrls.filter(Boolean);
+    ready.forEach(function (url, i) { window.setTimeout(function () { download(url, i + 1); }, i * 250); });
+  });
 })();
