@@ -142,3 +142,54 @@ body.ait-welcome-mode #ait-s0{height:0;margin:0;padding:0;border:0;background:no
 body.ait-welcome-mode #ait-s0>*{display:none}
 .ait-orb-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center}
 .ait-orb-state{margin-top:18px}
+
+/* == CREAM/LIGHT REDESIGN - matches app front page (v1.559) == */
+body{background:#faf3ea !important;color:#1c2b3a !important}
+body::before{display:none}
+:root{--text:#1c2b3a;--muted:#8496aa;--accent:#e8912d;--accent2:#d97706;--teal:#0d9488}
+.ait-hdr{background:rgba(250,243,234,.95) !important;border-bottom:1px solid #eee2d3 !important;backdrop-filter:blur(8px)}
+.ait-logo{background:linear-gradient(135deg,#0e3a52,#155a70) !important;-webkit-background-clip:text;background-clip:text}
+.ait-card{background:#fff !important;border:1px solid #eee2d3 !important;border-radius:20px !important;box-shadow:0 6px 22px rgba(0,0,0,.06);backdrop-filter:none}
+.ait-title{color:#12304a !important}
+.ait-sub{color:#8496aa !important}
+.ait-welcome-mark{background:radial-gradient(circle,#f4a548 0%,#e8912d 50%,#b45309 90%) !important;box-shadow:0 0 22px rgba(232,145,45,.45) !important;color:#fff}
+.ait-welcome-line{color:#b45309 !important;text-shadow:none !important}
+.ait-card#ait-s0{border-color:#f4d9b8 !important;box-shadow:0 14px 40px rgba(232,145,45,.15) !important}
+.ait-btn{border:1px solid #eee2d3;background:#fff;color:#22374d !important;box-shadow:0 2px 8px rgba(0,0,0,.04)}
+.ait-btn:hover{background:#fdf7ef;border-color:#e8d5b8}
+.ait-btn.primary{background:linear-gradient(135deg,#e8912d,#d97706) !important;color:#fff !important;border-color:transparent}
+.ait-input{background:#faf6f0 !important;border:1px solid #eee2d3 !important;color:#1c2b3a !important}
+.ait-input:focus{border-color:#e8912d !important;box-shadow:0 0 0 3px rgba(232,145,45,.15) !important}
+.ait-voice{background:#faf6f0 !important;border:1px solid #eee2d3 !important}
+.ait-voice:hover{border-color:#e8912d}
+.ait-voice:before{background:#fdf0e0 !important;color:#c77b2e !important}
+.ait-voice.sel{border-color:#e8912d !important;background:#fdf0e0 !important}
+.ait-voice b{color:#22374d}.ait-voice span{color:#8496aa}
+.ait-rate-val{color:#c77b2e !important}
+.ait-range{accent-color:#e8912d}
+.ait-panel{background:#fff !important;border:1px solid #eee2d3 !important;box-shadow:0 6px 22px rgba(0,0,0,.05)}
+.ait-panel-hd{border-bottom:1px solid #f3e8d8 !important;color:#8496aa !important}
+.ait-board{color:#22374d}
+.ait-board .step{border-left-color:#e8912d !important;background:#fdf6ec !important}
+.ait-board .step-n{color:#c77b2e !important}
+.ait-board .note{background:#fff4e2 !important;border:1px solid #f4d9b8 !important;color:#9a5b13 !important}
+.ait-board h3{color:#12304a !important}
+.ait-board .empty{color:#b3c0cf !important}
+.ait-transcript{color:#1c2b3a}
+.ait-msg.ai{background:#fdf6ec !important;border:1px solid #f4d9b8 !important}
+.ait-msg.me{background:#e9f4ee !important;border:1px solid #cfe7db !important;align-self:flex-end}
+.ait-msg .who{color:#8496aa !important}
+.ait-dock{background:rgba(250,243,234,.96) !important;border-top:1px solid #eee2d3 !important;backdrop-filter:blur(10px)}
+.ait-dock input{background:#fff !important;border:1px solid #eee2d3 !important;color:#1c2b3a !important}
+.ait-dock input:focus{border-color:#e8912d}
+.ait-mic{background:linear-gradient(135deg,#e8912d,#d97706) !important;box-shadow:0 6px 22px rgba(232,145,45,.4)}
+.ait-mic.on{background:linear-gradient(135deg,#0d9488,#0ea5e9) !important}
+.ait-mini{background:#fff !important;border:1px solid #eee2d3 !important;color:#22374d !important}
+.ait-mini:hover{background:#fdf7ef}
+.ait-mini.active{border-color:#e8912d !important;color:#e8912d !important}
+.ait-orb{background:radial-gradient(circle at 35% 30%,#fcd9a8,#f4a548 45%,#c2660c 78%,#7c3a06 100%) !important;box-shadow:0 0 60px rgba(232,145,45,.45),inset 0 0 40px rgba(255,255,255,.3) !important}
+.ait-orb.listening{background:radial-gradient(circle at 35% 30%,#99f0dd,#0d9488 45%,#0f766e 75%,#04211c 100%) !important;box-shadow:0 0 70px rgba(13,148,136,.55) !important}
+.ait-orb::after{border-color:rgba(232,145,45,.4)}
+.ait-orb::before{border-color:rgba(13,148,136,.3)}
+.ait-orb-state{color:#8496aa !important}
+.ait-hint{color:#8496aa !important}
