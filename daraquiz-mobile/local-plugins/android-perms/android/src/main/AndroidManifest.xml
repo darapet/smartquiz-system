@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!-- Network & connectivity -->
     <uses-permission android:name="android.permission.INTERNET" />
@@ -39,4 +40,8 @@
     <!-- Wake lock (keep screen on during quiz) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Play Protect hardening: strip system-level permissions that Capacitor/SDKs
+         merge in but the app never uses. In-app update (REQUEST_INSTALL_PACKAGES) stays. -->
+    <uses-permission android:name="android.permission.DUMP" tools:node="remove" />
+    <uses-permission android:name="android.permission.PACKAGE_VERIFICATION_AGENT" tools:node="remove" />
 </manifest>
