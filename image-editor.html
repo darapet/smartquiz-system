@@ -12,33 +12,36 @@
     <link rel="stylesheet" href="css/aqs-sidebar.css">
     <link rel="stylesheet" href="css/aqs-imagegen.css">
     <style>
-        .aqs-ie-upload-zone{border:2px dashed #6366f1;border-radius:16px;padding:40px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#f8f8ff}
-        .aqs-ie-upload-zone:hover,.aqs-ie-upload-zone.drag-over{border-color:#4f46e5;background:#eef2ff}
-        .aqs-ie-upload-zone svg{color:#6366f1;margin-bottom:12px}
+        .aqs-ie-upload-zone{border:2px dashed #e8912d;border-radius:16px;padding:40px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:#f8f8ff}
+        .aqs-ie-upload-zone:hover,.aqs-ie-upload-zone.drag-over{border-color:#e8912d;background:#fff7eb}
+        .aqs-ie-upload-zone svg{color:#12304a;margin-bottom:12px}
         .aqs-ie-upload-zone p{margin:4px 0;color:#555;font-size:.92rem}
-        .aqs-ie-upload-zone small{color:#999;font-size:.8rem}
+        .aqs-ie-upload-zone small{color:#12304a;font-size:.8rem}
         .aqs-ie-file-info{display:flex;align-items:center;gap:12px;background:#f0f0fa;border-radius:12px;padding:12px 16px;margin-bottom:16px}
         .aqs-ie-file-preview{width:80px;height:80px;object-fit:cover;border-radius:10px;border:2px solid #ddd;flex-shrink:0}
         .aqs-ie-file-meta{flex:1;min-width:0}
         .aqs-ie-file-meta strong{display:block;font-size:.95rem;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
         .aqs-ie-file-meta span{color:#777;font-size:.82rem}
-        .aqs-ie-remove-btn{background:none;border:none;cursor:pointer;color:#999;padding:4px;border-radius:6px;transition:color .2s}
+        .aqs-ie-remove-btn{background:none;border:none;cursor:pointer;color:#12304a;padding:4px;border-radius:6px;transition:color .2s}
         .aqs-ie-remove-btn:hover{color:#e53e3e}
         .aqs-ie-strength-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
         .aqs-ie-strength-row label{font-weight:600;color:#444;font-size:.9rem;white-space:nowrap}
-        .aqs-ie-strength-row input[type=range]{flex:1;min-width:120px;accent-color:#6366f1}
-        .aqs-ie-strength-val{font-weight:700;color:#6366f1;min-width:32px;text-align:right;font-size:.92rem}
+        .aqs-ie-strength-row input[type=range]{flex:1;min-width:120px;accent-color:#e8912d}
+        .aqs-ie-strength-val{font-weight:700;color:#12304a;min-width:32px;text-align:right;font-size:.92rem}
         .aqs-ie-before-after{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px}
-        @media(max-width:600px){.aqs-ie-before-after{grid-template-columns:1fr}}
+        @media(max-width:768px){.aqs-ie-before-after{grid-template-columns:1fr}}
         .aqs-ie-ba-card{border-radius:14px;overflow:hidden;border:1.5px solid #e8e8f5;background:#fff}
         .aqs-ie-ba-label{padding:8px 14px;font-weight:700;font-size:.82rem;letter-spacing:.04em;color:#666;background:#f5f5fb;border-bottom:1px solid #eee}
         .aqs-ie-ba-card img{width:100%;height:300px;object-fit:contain;background:#f0f0f8;display:block}
         .aqs-ie-ba-actions{padding:10px 12px;display:flex;gap:8px;flex-wrap:wrap}
         .aqs-ie-edit-type-grid{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
         .aqs-ie-type-btn{padding:6px 14px;border-radius:20px;border:1.5px solid #d8d8ee;background:#fff;cursor:pointer;font-size:.82rem;font-weight:500;color:#555;transition:all .2s}
-        .aqs-ie-type-btn:hover{border-color:#6366f1;color:#6366f1}
-        .aqs-ie-type-btn.active{border-color:#6366f1;background:#6366f1;color:#fff}
-    </style>
+        .aqs-ie-type-btn:hover{border-color:#e8912d;color:#12304a}
+        .aqs-ie-type-btn.active{border-color:#e8912d;background:#faf3ea;color:#12304a}
+    
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
+</style>
 
 <!-- Firebase SDK -->
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
@@ -56,8 +59,8 @@
 <div class="aqs-sidebar-overlay" id="aqs-sidebar-overlay"></div>
 <nav class="aqs-sidebar" id="aqs-sidebar">
     <div class="aqs-sidebar-logo">
-        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#6366f1"/></svg></div>
-        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY <span style="font-size:.55rem;font-weight:700;background:rgba(99,102,241,0.2);color:#a5b4fc;border-radius:4px;padding:1px 5px;margin-left:4px;letter-spacing:.03em;">v2.9.0</span></div></div>
+        <div class="aqs-sidebar-logo-icon"><svg width="22" height="22" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="#e8912d"/></svg></div>
+        <div class="aqs-sidebar-logo-text"><div class="aqs-sidebar-logo-name">xzily AI</div><div class="aqs-sidebar-logo-sub">BY DARAPET TECHNOLOGY <span style="font-size:.55rem;font-weight:700;background:rgba(99,102,241,0.2);color:#12304a;border-radius:4px;padding:1px 5px;margin-left:4px;letter-spacing:.03em;">v2.9.0</span></div></div>
     </div>
     <a href="#" class="aqs-sidebar-install-btn" id="aqs-sidebar-pwa-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>How to Install</a>
     <div class="aqs-sidebar-nav-label">NAVIGATE</div>
@@ -135,7 +138,7 @@
                     <input type="range" id="aqs-ie-strength" min="0.3" max="0.95" step="0.05" value="0.7">
                     <span class="aqs-ie-strength-val" id="aqs-ie-strength-val">70%</span>
                 </div>
-                <small style="color:#999;font-size:.75rem">Low = subtle changes &nbsp;|&nbsp; High = dramatic transformation</small>
+                <small style="color:#12304a;font-size:.75rem">Low = subtle changes &nbsp;|&nbsp; High = dramatic transformation</small>
             </div>
             <div class="aqs-ig-option-group">
                 <label>Output Size</label>
@@ -171,7 +174,7 @@
                 <div class="aqs-ie-ba-card">
                     <div class="aqs-ie-ba-label">ORIGINAL</div>
                     <img id="aqs-ie-before-img" src="" alt="Original">
-                    <div class="aqs-ie-ba-actions"><span style="font-size:.8rem;color:#888">Your uploaded image</span></div>
+                    <div class="aqs-ie-ba-actions"><span style="font-size:.8rem;color:#12304a">Your uploaded image</span></div>
                 </div>
                 <div class="aqs-ie-ba-card">
                     <div class="aqs-ie-ba-label">✦ AI EDITED</div>

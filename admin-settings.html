@@ -9,43 +9,43 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;}
-body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
+body{margin:0;padding:0;background:#ffffff;font-family:'Inter',sans-serif;display:flex;min-height:100vh;}
 /* Sidebar */
-.aqs-admin-sidebar{width:220px;background:#1e1b4b;color:#e0e7ff;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
+.aqs-admin-sidebar{width:220px;background:#faf3ea;color:#12304a;display:flex;flex-direction:column;flex-shrink:0;min-height:100vh;position:sticky;top:0;height:100vh;overflow-y:auto;}
 .aqs-admin-sidebar-brand{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
-.aqs-admin-sidebar-brand a{color:#fff;text-decoration:none;font-weight:800;font-size:1.1rem;}
+.aqs-admin-sidebar-brand a{color:#12304a;text-decoration:none;font-weight:800;font-size:1.1rem;}
 .aqs-admin-nav{padding:12px 0;flex:1;}
-.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#a5b4fc;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
-.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#fff;}
-.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#fff;border-left-color:#6366f1;}
+.aqs-admin-nav a{display:flex;align-items:center;gap:10px;padding:10px 20px;color:#12304a;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;border-left:3px solid transparent;}
+.aqs-admin-nav a:hover{background:rgba(99,102,241,.15);color:#12304a;}
+.aqs-admin-nav a.active{background:rgba(99,102,241,.25);color:#12304a;border-left-color:#e8912d;}
 .aqs-admin-nav .aqs-nav-icon{font-size:1rem;width:20px;text-align:center;}
 .aqs-admin-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.08);font-size:.75rem;}
 .aqs-admin-sidebar{transition:top .2s,height .2s;}
 /* Content */
 .aqs-admin-content{flex:1;min-width:0;padding:28px 32px;overflow-x:auto;}
 .aqs-admin-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
-.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#1e1b4b;}
+.aqs-admin-header h1{margin:0;font-size:1.5rem;font-weight:800;color:#fff;}
 /* Settings Cards */
-.aqs-settings-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;}
-.aqs-settings-card-header{display:flex;align-items:flex-start;gap:14px;padding:20px 24px;border-bottom:1px solid #e5e7eb;background:#fafafa;}
+.aqs-settings-card{background:#fff;border:1px solid #12304a;border-radius:14px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.04);overflow:hidden;}
+.aqs-settings-card-header{display:flex;align-items:flex-start;gap:14px;padding:20px 24px;border-bottom:1px solid #12304a;background:#fafafa;}
 .aqs-settings-card-icon{font-size:1.5rem;flex-shrink:0;}
 .aqs-settings-card-title{margin:0 0 3px;font-size:1rem;font-weight:700;color:#1e293b;}
-.aqs-settings-card-desc{margin:0;font-size:.82rem;color:#64748b;}
+.aqs-settings-card-desc{margin:0;font-size:.82rem;color:#526579;}
 .aqs-settings-card-body{padding:22px 24px;}
 /* Form fields */
 .aqs-field-group{margin-bottom:16px;}
 .aqs-field-group label{display:block;font-weight:600;font-size:.84rem;color:#374151;margin-bottom:6px;}
 .aqs-field-group input[type=text],.aqs-field-group input[type=email],.aqs-field-group input[type=url],.aqs-field-group input[type=password],.aqs-field-group input[type=number],.aqs-field-group select,.aqs-field-group textarea{width:100%;border:1.5px solid #d1d5db;border-radius:8px;padding:9px 12px;font-size:.9rem;color:#1e293b;transition:border-color .15s;box-sizing:border-box;font-family:inherit;}
-.aqs-field-group input:focus,.aqs-field-group select:focus,.aqs-field-group textarea:focus{border-color:#6366f1;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
-.aqs-field-group .aqs-field-hint{font-size:.78rem;color:#9ca3af;margin-top:4px;}
+.aqs-field-group input:focus,.aqs-field-group select:focus,.aqs-field-group textarea:focus{border-color:#e8912d;outline:none;box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.aqs-field-group .aqs-field-hint{font-size:.78rem;color:#12304a;margin-top:4px;}
 .aqs-settings-2col{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 .aqs-settings-4col{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;}
 .aqs-settings-actions{display:flex;align-items:center;gap:12px;margin-top:8px;flex-wrap:wrap;}
 /* Buttons */
 .aqs-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:.875rem;font-weight:600;cursor:pointer;border:1px solid #d1d5db;background:#fff;color:#374151;text-decoration:none;transition:all .15s;font-family:inherit;}
-.aqs-btn:hover{background:#f8fafc;}
-.aqs-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
-.aqs-btn-primary:hover{background:#4338ca;}
+.aqs-btn:hover{background:#fff;}
+.aqs-btn-primary{background:#e8912d;color:#12304a;border-color:#e8912d;}
+.aqs-btn-primary:hover{background:#e8912d;}
 .aqs-btn-sm{padding:6px 12px;font-size:.8rem;}
 /* Toggle */
 .aqs-toggle-wrap{display:flex;align-items:center;gap:10px;}
@@ -53,26 +53,29 @@ body{margin:0;padding:0;background:#f1f5f9;font-family:'Inter',sans-serif;displa
 .aqs-toggle-switch input{opacity:0;width:0;height:0;}
 .aqs-toggle-slider{position:absolute;inset:0;background:#d1d5db;border-radius:26px;transition:.3s;cursor:pointer;}
 .aqs-toggle-slider:before{content:'';position:absolute;width:20px;height:20px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
-.aqs-toggle-switch input:checked + .aqs-toggle-slider{background:#6366f1;}
+.aqs-toggle-switch input:checked + .aqs-toggle-slider{background:#ffffff;}
 .aqs-toggle-switch input:checked + .aqs-toggle-slider:before{transform:translateX(20px);}
 /* Status messages */
 .aqs-status-msg{font-size:.875rem;align-self:center;}
 /* Page tiles */
 .aqs-page-tile{background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:10px 14px;}
-.aqs-page-tile .aqs-tile-label{font-size:.75rem;font-weight:700;color:#64748b;margin-bottom:4px;}
-.aqs-page-tile a{font-size:.8rem;color:#4f46e5;word-break:break-all;}
+.aqs-page-tile .aqs-tile-label{font-size:.75rem;font-weight:700;color:#526579;margin-bottom:4px;}
+.aqs-page-tile a{font-size:.8rem;color:#12304a;word-break:break-all;}
 @media(max-width:900px){.aqs-settings-4col{grid-template-columns:1fr 1fr;}}
 
   /* ── Mobile hamburger ── */
-  .aqs-admin-hamburger{display:none;position:fixed;top:12px;left:12px;z-index:1001;background:#1e1b4b;color:#fff;border:none;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:1.3rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.25);}
-  .aqs-admin-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;}
-  @media(max-width:700px){
+  .aqs-admin-hamburger{display:none;position:fixed;top:12px;left:12px;z-index:1001;background:#faf3ea;color:#12304a;border:none;border-radius:8px;padding:9px 12px;cursor:pointer;font-size:1.3rem;line-height:1;box-shadow:0 2px 8px rgba(0,0,0,.25);}
+  .aqs-admin-overlay{display:none;position:fixed;inset:0;background:#faf3ea;z-index:999;}
+  @media(max-width:768px){
     .aqs-admin-hamburger{display:block;}
     .aqs-admin-sidebar{display:none!important;position:fixed!important;top:0;left:0;z-index:1000;height:100vh;overflow-y:auto;}
     .aqs-admin-sidebar.open{display:flex!important;}
     .aqs-admin-overlay.open{display:block;}
     .aqs-admin-content{padding:16px 14px!important;}
   }}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
 <script>
 window.AQS = { ajax_url: 'firebase', nonce: '', is_admin: true, plugin_url: './' };
@@ -252,13 +255,13 @@ window.addEventListener('DOMContentLoaded', function() {
     </nav>
     <div class="aqs-admin-sidebar-footer">
     <div id="aqs-admin-sb-user" style="display:flex;align-items:center;gap:9px;padding:8px 0 10px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:10px;">
-        <div id="aqs-sb-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:700;color:#fff;flex-shrink:0;">A</div>
+        <div id="aqs-sb-avatar" style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#faf3ea,#ffffff);display:flex;align-items:center;justify-content:center;font-size:.88rem;font-weight:700;color:#12304a;flex-shrink:0;">A</div>
         <div style="flex:1;overflow:hidden;">
-            <div id="aqs-sb-name" style="font-size:.78rem;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Admin</div>
-            <div id="aqs-sb-email" style="font-size:.68rem;color:#a5b4fc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+            <div id="aqs-sb-name" style="font-size:.78rem;font-weight:700;color:#12304a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Admin</div>
+            <div id="aqs-sb-email" style="font-size:.68rem;color:#12304a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
         </div>
     </div>
-    <a href="index.html" style="color:#a5b4fc;text-decoration:none;font-size:.75rem;">← View Site</a>
+    <a href="index.html" style="color:#12304a;text-decoration:none;font-size:.75rem;">← View Site</a>
     &nbsp;&nbsp;
     <a href="admin.html" style="color:#6ee7b7;text-decoration:none;font-size:.75rem;">⚙️ Panel</a>
 </div>
@@ -291,7 +294,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <!-- Email / Brevo — placed first so it is immediately visible -->
 <div class="aqs-settings-card" id="brevo-email-settings">
-    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fff7eb,#e0e7ff);">
         <span class="aqs-settings-card-icon">📧</span>
         <div>
             <h2 class="aqs-settings-card-title">Email (Brevo / SendinBlue)</h2>
@@ -318,10 +321,10 @@ window.addEventListener('DOMContentLoaded', function() {
                 <input type="email" id="aqs-brevo-from-email" placeholder="noreply@yourdomain.com" />
             </div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:4px 0 16px;border:1px solid #e0e7ff;border-radius:10px;background:#eef2ff;">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:14px 16px;margin:4px 0 16px;border:1px solid #e0e7ff;border-radius:10px;background:#fff7eb;">
             <div>
-                <strong style="display:block;color:#3730a3;font-size:.9rem;">Email OTP verification</strong>
-                <span style="display:block;color:#6366f1;font-size:.78rem;margin-top:3px;">Require a one-time code after registration. Codes expire after 10 minutes.</span>
+                <strong style="display:block;color:#12304a;font-size:.9rem;">Email OTP verification</strong>
+                <span style="display:block;color:#12304a;font-size:.78rem;margin-top:3px;">Require a one-time code after registration. Codes expire after 10 minutes.</span>
             </div>
             <label class="aqs-toggle-switch" title="Enable email OTP">
                 <input type="checkbox" id="aqs-otp-enabled" />
@@ -352,7 +355,7 @@ window.addEventListener('DOMContentLoaded', function() {
     <button id="aqs-test-all-btn" class="aqs-btn aqs-btn-primary" style="white-space:nowrap;align-self:center;flex-shrink:0;">🧪 Test All Pools</button>
   </div>
   <div id="aqs-pool-status-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:16px 24px 22px;">
-    <div style="color:#94a3b8;font-size:.82rem;grid-column:1/-1;padding:8px 0;">Loading pool status…</div>
+    <div style="color:#12304a;font-size:.82rem;grid-column:1/-1;padding:8px 0;">Loading pool status…</div>
   </div>
 </div>
 
@@ -366,7 +369,7 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
     <div class="aqs-settings-card-body">
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#1e40af;">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#12304a;">
             ⚡ <strong>Priority order:</strong> Groq keys (slots 1–20) → Mistral keys (slots 1–20). Rate-limited keys cool down 62 s automatically, then rejoin the pool.
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -462,17 +465,17 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-groq-btn">💾 Save Groq Settings</button>
-            <button class="aqs-btn" id="aqs-test-groq-btn" style="background:#8b5cf6;color:#fff;border-color:#7c3aed;">🔌 Test All Groq Keys</button>
+            <button class="aqs-btn" id="aqs-test-groq-btn" style="background:#faf3ea;color:#12304a;border-color:#e8912d;">🔌 Test All Groq Keys</button>
             <span id="aqs-groq-status" class="aqs-status-msg"></span>
         </div>
-        <div id="aqs-groq-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+        <div id="aqs-groq-test-results" style="display:none;margin-top:16px;background:#faf3ea;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
 
 <!-- Library AI Keys — Dedicated Pool (10 slots) -->
 <div class="aqs-settings-card">
-    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff);">
+    <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#fff7eb,#e0e7ff);">
         <span class="aqs-settings-card-icon">📚</span>
         <div>
             <h2 class="aqs-settings-card-title">Library AI Keys — Dedicated Pool (10 slots)</h2>
@@ -480,7 +483,7 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
     <div class="aqs-settings-card-body">
-        <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#3730a3;">
+        <div style="background:#fff7eb;border:1px solid #c7d2fe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#12304a;">
             📚 <strong>How it works:</strong> Students using AI Explain and AI MCQ Practice on library PDFs use these 10 keys in round-robin rotation. If all are rate-limited, the system automatically falls back to the main Groq pool.
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -536,7 +539,7 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <!-- Dara Social scheduled automations -->
 <div class="aqs-settings-card">
-  <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#dbeafe,#c4b5fd)"><span class="aqs-settings-card-icon">🌍</span><div><h2 class="aqs-settings-card-title">Dara Social Automations</h2><p class="aqs-settings-card-desc">Scheduled university-course learning posts and Nigerian news/sports updates.</p></div></div>
+  <div class="aqs-settings-card-header" style="background:linear-gradient(135deg,#dbeafe,#8b4d09)"><span class="aqs-settings-card-icon">🌍</span><div><h2 class="aqs-settings-card-title">Dara Social Automations</h2><p class="aqs-settings-card-desc">Scheduled university-course learning posts and Nigerian news/sports updates.</p></div></div>
   <div class="aqs-settings-card-body">
     <label><input type="checkbox" id="aqs-dsocial-course-enabled" checked> Course auto-poster</label>
     <label style="margin-left:18px">Every <input id="aqs-dsocial-course-interval" type="number" min="30" max="1440" value="30" style="width:80px"> minutes</label>
@@ -1020,11 +1023,11 @@ window.addEventListener('DOMContentLoaded', function() {
 
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-ai-btn">💾 Save Mistral Settings</button>
-            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#0ea5e9;color:#fff;border-color:#0284c7;">🔌 Test All Mistral Keys</button>
+            <button class="aqs-btn" id="aqs-test-ai-btn" style="background:#faf3ea;color:#12304a;border-color:#0284c7;">🔌 Test All Mistral Keys</button>
             <span id="aqs-ai-status" class="aqs-status-msg"></span>
         </div>
         <!-- Test results panel (hidden by default) -->
-        <div id="aqs-ai-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+        <div id="aqs-ai-test-results" style="display:none;margin-top:16px;background:#faf3ea;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
@@ -1145,8 +1148,8 @@ window.addEventListener('DOMContentLoaded', function() {
         <div class="aqs-field-group">
             <label for="aqs-splash-color">Accent / Primary Colour</label>
             <div style="display:flex;align-items:center;gap:10px;">
-                <input type="color" id="aqs-splash-color" value="#6366f1" style="width:48px;height:38px;border:1px solid #e2e8f0;border-radius:6px;cursor:pointer;padding:2px;" />
-                <input type="text" id="aqs-splash-color-hex" placeholder="#6366f1" maxlength="7" style="width:110px;" oninput="var c=this.value;if(/^#[0-9a-fA-F]{6}$/.test(c))document.getElementById('aqs-splash-color').value=c;" />
+                <input type="color" id="aqs-splash-color" value="#e8912d" style="width:48px;height:38px;border:1px solid #12304a;border-radius:6px;cursor:pointer;padding:2px;" />
+                <input type="text" id="aqs-splash-color-hex" placeholder="#e8912d" maxlength="7" style="width:110px;" oninput="var c=this.value;if(/^#[0-9a-fA-F]{6}$/.test(c))document.getElementById('aqs-splash-color').value=c;" />
                 <span style="font-size:.8rem;color:#6b7280;">Used for glows, bars, and highlights.</span>
             </div>
         </div>
@@ -1165,13 +1168,13 @@ window.addEventListener('DOMContentLoaded', function() {
                 <span id="aqs-splash-logo-upload-status" class="aqs-status-msg"></span>
             </div>
             <div id="aqs-splash-logo-preview-wrap" style="display:none;margin-top:10px;">
-                <img id="aqs-splash-logo-preview" src="" alt="Logo preview" style="max-height:60px;max-width:200px;border:1px solid #e2e8f0;border-radius:8px;padding:4px;" />
+                <img id="aqs-splash-logo-preview" src="" alt="Logo preview" style="max-height:60px;max-width:200px;border:1px solid #12304a;border-radius:8px;padding:4px;" />
             </div>
         </div>
 
         <div class="aqs-settings-actions" style="gap:10px;flex-wrap:wrap;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-splash-btn">💾 Save Splash Settings</button>
-            <button class="aqs-btn" id="aqs-preview-splash-btn" type="button" style="background:#f1f5f9;border:1px solid #e2e8f0;">👁 Preview Splash</button>
+            <button class="aqs-btn" id="aqs-preview-splash-btn" type="button" style="background:#ffffff;border:1px solid #12304a;">👁 Preview Splash</button>
             <span id="aqs-splash-status" class="aqs-status-msg"></span>
         </div>
     </div>
@@ -1341,8 +1344,8 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
         <div class="aqs-card-actions" style="flex-wrap:wrap;gap:10px;">
             <button class="aqs-btn aqs-btn-primary" id="aqs-save-quote-keys-btn">💾 Save Quote Keys</button>
-            <button class="aqs-btn" id="aqs-test-quote-btn" style="background:#f59e0b;color:#fff;border-color:#d97706;">🧪 Test Quote Popup</button>
-            <button class="aqs-btn" id="aqs-gen-now-btn" style="background:#059669;color:#fff;border-color:#047857;">🔄 Generate Now</button>
+            <button class="aqs-btn" id="aqs-test-quote-btn" style="background:#f59e0b;color:#12304a;border-color:#d97706;">🧪 Test Quote Popup</button>
+            <button class="aqs-btn" id="aqs-gen-now-btn" style="background:#faf3ea;color:#12304a;border-color:#047857;">🔄 Generate Now</button>
             <span id="aqs-quote-key-status" class="aqs-status-msg"></span>
         </div>
     </div>
@@ -1396,11 +1399,11 @@ window.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-hf-btn" style="background:#16a34a;border-color:#15803d;color:#fff;">🤗 Save HuggingFace Settings</button>
-            <button class="aqs-btn" id="aqs-test-hf-btn" style="background:#059669;color:#fff;border-color:#047857;">🔌 Test All HF Tokens</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-hf-btn" style="background:#faf3ea;border-color:#15803d;color:#12304a;">🤗 Save HuggingFace Settings</button>
+            <button class="aqs-btn" id="aqs-test-hf-btn" style="background:#faf3ea;color:#12304a;border-color:#047857;">🔌 Test All HF Tokens</button>
             <span id="aqs-hf-status" class="aqs-status-msg"></span>
         </div>
-        <div id="aqs-hf-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+        <div id="aqs-hf-test-results" style="display:none;margin-top:16px;background:#faf3ea;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
@@ -1469,14 +1472,14 @@ window.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-creator-image-btn" style="background:#0891b2;border-color:#0e7490;color:#fff;">🎨 Save Creator Studio Image Keys</button>
-            <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#0f766e;color:#fff;border-color:#115e59;">🧪 Test Gemini API Keys</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-creator-image-btn" style="background:#faf3ea;border-color:#0e7490;color:#12304a;">🎨 Save Creator Studio Image Keys</button>
+            <button class="aqs-btn" id="aqs-test-creator-image-btn" style="background:#faf3ea;color:#12304a;border-color:#115e59;">🧪 Test Gemini API Keys</button>
             <span id="aqs-creator-image-status" class="aqs-status-msg"></span>
         </div>
         <div id="aqs-creator-image-health-summary" style="margin-top:12px;padding:10px 14px;background:#f0fdfa;border:1px solid #99f6e4;border-radius:8px;color:#115e59;font-size:.78rem;">
             Health has not been checked yet. Gemini key pool required when no managed token succeeds.
         </div>
-        <div id="aqs-creator-image-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+        <div id="aqs-creator-image-test-results" style="display:none;margin-top:16px;background:#faf3ea;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
@@ -1490,7 +1493,7 @@ window.addEventListener('DOMContentLoaded', function() {
         </div>
     </div>
     <div class="aqs-settings-card-body">
-        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#1e40af;">
+        <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:.83rem;color:#12304a;">
             🎙️ <strong>How it works:</strong> Key 1 is used first. If it hits its free daily quota (429) or is invalid, Key 2 is tried, and so on. Add more keys to serve more students at once. If every Gemini key fails, the system falls back to the browser voice. (ElevenLabs is disabled.)
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
@@ -1516,11 +1519,11 @@ window.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-gtts-btn" style="background:#2563eb;border-color:#1d4ed8;color:#fff;">🎙️ Save Gemini TTS Keys</button>
-            <button class="aqs-btn" id="aqs-test-gtts-btn" style="background:#3b82f6;color:#fff;border-color:#2563eb;">🔌 Test All Gemini TTS Keys</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-gtts-btn" style="background:#faf3ea;border-color:#1d4ed8;color:#12304a;">🎙️ Save Gemini TTS Keys</button>
+            <button class="aqs-btn" id="aqs-test-gtts-btn" style="background:#faf3ea;color:#12304a;border-color:#2563eb;">🔌 Test All Gemini TTS Keys</button>
             <span id="aqs-gtts-status" class="aqs-status-msg"></span>
         </div>
-        <div id="aqs-gtts-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+        <div id="aqs-gtts-test-results" style="display:none;margin-top:16px;background:#faf3ea;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
@@ -1529,7 +1532,7 @@ window.addEventListener('DOMContentLoaded', function() {
     <div class="aqs-settings-card-header">
         <span class="aqs-settings-card-icon">🔊</span>
         <div>
-            <h2 class="aqs-settings-card-title">ElevenLabs — AI Text-to-Speech <span style="font-size:11px;font-weight:800;color:#fca5a5;background:#450a0a;border:1px solid #7f1d1d;border-radius:6px;padding:2px 8px;vertical-align:middle;margin-left:6px;">DISABLED</span></h2>
+            <h2 class="aqs-settings-card-title">ElevenLabs — AI Text-to-Speech <span style="font-size:11px;font-weight:800;color:#12304a;background:#faf3ea;border:1px solid #7f1d1d;border-radius:6px;padding:2px 8px;vertical-align:middle;margin-left:6px;">DISABLED</span></h2>
             <p class="aqs-settings-card-desc">Powers the <strong>TTS page</strong> with real AI voices in 16 languages. The first valid key in the list is used automatically — if it fails, the next one is tried. Free keys at <a href="https://elevenlabs.io" target="_blank" rel="noopener">elevenlabs.io</a> (10,000 chars/month free per account).</p>
         </div>
     </div>
@@ -1560,11 +1563,11 @@ window.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="aqs-settings-actions" style="flex-wrap:wrap;gap:10px;">
-            <button class="aqs-btn aqs-btn-primary" id="aqs-save-el-btn" style="background:#7c3aed;border-color:#6d28d9;color:#fff;">🔊 Save ElevenLabs Keys</button>
-            <button class="aqs-btn" id="aqs-test-el-btn" style="background:#8b5cf6;color:#fff;border-color:#7c3aed;">🔌 Test All EL Keys</button>
+            <button class="aqs-btn aqs-btn-primary" id="aqs-save-el-btn" style="background:#faf3ea;border-color:#6d28d9;color:#12304a;">🔊 Save ElevenLabs Keys</button>
+            <button class="aqs-btn" id="aqs-test-el-btn" style="background:#faf3ea;color:#12304a;border-color:#e8912d;">🔌 Test All EL Keys</button>
             <span id="aqs-el-status" class="aqs-status-msg"></span>
         </div>
-        <div id="aqs-el-test-results" style="display:none;margin-top:16px;background:#0f172a;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
+        <div id="aqs-el-test-results" style="display:none;margin-top:16px;background:#faf3ea;border:1px solid #1e293b;border-radius:10px;padding:14px;font-size:.82rem;"></div>
     </div>
 </div>
 
@@ -1719,7 +1722,7 @@ btn('aqs-save-quizstudio-groq-btn') && btn('aqs-save-quizstudio-groq-btn').addEv
                 for(var i=1;i<=10;i++){
                     var el=document.getElementById(MAP[field]+i);if(el)el.value=keys[i-1]||'';
                     var dot=document.getElementById(DOTS[field]+i);
-                    if(dot)dot.innerHTML=keys[i-1]?'<span style="color:#10b981;font-size:1rem;">●</span>':'<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+                    if(dot)dot.innerHTML=keys[i-1]?'<span style="color:#10b981;font-size:1rem;">●</span>':'<span style="color:#12304a;font-size:.8rem;">○</span>';
                 }
             });
             if(typeof window._aqsRefreshPoolStatus==='function')setTimeout(window._aqsRefreshPoolStatus,400);
@@ -1764,7 +1767,7 @@ async function _aqsTestGroqKeys() {
     }
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
+    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
     async function pingGroq(entry) {
         var key = entry.key, slot = entry.slot;
         var masked = key.slice(0, 7) + '…' + key.slice(-4);
@@ -1781,16 +1784,16 @@ async function _aqsTestGroqKeys() {
             if (res.ok) {
                 var data = await res.json();
                 var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
             } else if (res.status === 401) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span></div>' };
             } else if (res.status === 429) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
             } else {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
             }
         } catch(e) {
-            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (12s)':'Network error') + '</span></div>' };
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (12s)':'Network error') + '</span></div>' };
         }
     }
     var rows = await Promise.all(allKeys.map(pingGroq));
@@ -1801,8 +1804,8 @@ async function _aqsTestGroqKeys() {
     });
     var active = rows.filter(function(r){ return r.ok; }).length;
     var summary = active === rows.length
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Groq keys working!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Groq keys active.</div>';
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Groq keys working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Groq keys active.</div>';
     results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Groq Keys'; }
 }
@@ -1830,7 +1833,7 @@ async function _aqsTestAllKeys(auto) {
 
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
-    results.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:#94a3b8;padding:4px 0;">' +
+    results.innerHTML = '<div style="display:flex;align-items:center;gap:8px;color:#12304a;padding:4px 0;">' +
         '<span style="animation:spin 1s linear infinite;display:inline-block;">⏳</span>' +
         '<span>Testing ' + allKeys.length + ' key(s) — making real API calls…</span></div>';
 
@@ -1860,50 +1863,50 @@ async function _aqsTestAllKeys(auto) {
                 var data = await res.json();
                 var reply = (((data.choices || [])[0] || {}).message || {}).content || '✓';
                 return { ok: true, status: 'active', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' +
                     badge +
-                    '<span style="color:#86efac;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
                     '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim().replace(/"/g,'') + '"</em></span>' +
                     '</div>'
                 };
             } else if (res.status === 401) {
                 return { ok: false, status: '401', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' +
                     badge +
-                    '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span>' +
+                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span>' +
                     '</div>'
                 };
             } else if (res.status === 429) {
                 var errBody = {}; try { errBody = await res.json(); } catch(ex){}
                 var errMsg = (errBody.error && errBody.error.message) ? errBody.error.message.slice(0, 80) : 'Rate limited';
                 return { ok: false, status: '429', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' +
                     badge +
                     '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#fde68a;margin-left:auto;font-size:.78rem;max-width:200px;text-align:right;">⚠️ ' + errMsg + '</span>' +
+                    '<code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;max-width:200px;text-align:right;">⚠️ ' + errMsg + '</span>' +
                     '</div>'
                 };
             } else {
                 return { ok: false, status: 'http' + res.status, slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' +
+                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' +
                     badge +
-                    '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span>' +
+                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
+                    '<code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span>' +
                     '</div>'
                 };
             }
         } catch(e) {
             return { ok: false, status: 'err', slot: slot, html:
-                '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' +
+                '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' +
                 badge +
-                '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span>' +
-                '<code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                '<span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span>' +
+                '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
+                '<code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
+                '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span>' +
                 '</div>'
             };
         }
@@ -1923,8 +1926,8 @@ async function _aqsTestAllKeys(auto) {
     var activeCount = rows.filter(function(r){ return r.ok; }).length;
     var total = rows.length;
     var summary = activeCount === total
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + total + ' keys are working!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + activeCount + '/' + total + ' keys active — rotate or replace the failed ones.</div>';
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">✅ All ' + total + ' keys are working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">⚠️ ' + activeCount + '/' + total + ' keys active — rotate or replace the failed ones.</div>';
 
     results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){return r.html;}).join('') + '</div>';
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Keys'; }
@@ -2010,7 +2013,7 @@ btn('aqs-preview-splash-btn').addEventListener('click', function(){
         tagline:       document.getElementById('aqs-splash-tagline').value.trim() || 'Powered by Darapet Technology',
         duration:      document.getElementById('aqs-splash-duration').value || '3',
         sound:         document.getElementById('aqs-splash-sound').checked ? '1' : '0',
-        color_primary: document.getElementById('aqs-splash-color').value || '#6366f1',
+        color_primary: document.getElementById('aqs-splash-color').value || '#e8912d',
         logo_url:      document.getElementById('aqs-splash-logo').value.trim()
     });
 });
@@ -2047,7 +2050,7 @@ btn('aqs-test-brevo-btn').addEventListener('click', function(){
         status.textContent = recipient
             ? 'Sending a test email to ' + recipient + '…'
             : 'Sending a test email to the signed-in admin address…';
-        status.style.color = '#4f46e5';
+        status.style.color = '#e8912d';
     }
     window.aqsAjax({ action: 'aqs_test_brevo', recipient: recipient }, function(res) {
         button.disabled = false;
@@ -2190,7 +2193,7 @@ async function _aqsTestCreatorImageKeys() {
     }
     var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'gemini-3.1-flash-image';
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing the saved Gemini key pool…</div>';
+    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing the saved Gemini key pool…</div>';
     try {
         var health = [];
         /* The old Firebase Function route is no longer deployed. Test each
@@ -2237,9 +2240,9 @@ async function _aqsTestCreatorImageKeys() {
             var rows = health.map(function(entry) {
                 var color = entry.status === 'healthy' ? '#4ade80' : (entry.status === 'rate_limited' ? '#fbbf24' : '#f87171');
                 var status = entry.status === 'healthy' ? '✅ Healthy' : (entry.status === 'rate_limited' ? '⚠️ Rate limited' : (entry.status === 'invalid' ? '❌ Invalid token' : '❌ Unavailable'));
-                return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e293b;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#cbd5e1;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
+                return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#12304a;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
             });
-            results.innerHTML = '<div style="color:#94a3b8;font-size:.75rem;margin-bottom:8px;">Direct Gemini key test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
+            results.innerHTML = '<div style="color:#12304a;font-size:.75rem;margin-bottom:8px;">Direct Gemini key test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
             if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Gemini key pool required.';
             if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(healthyCount, health.length, 'checked');
         }
@@ -2268,7 +2271,7 @@ async function _aqsTestHFKeys() {
     var model = (document.getElementById('aqs-hf-model') || {}).value || 'mistralai/Mistral-7B-Instruct-v0.3';
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' token(s) via HuggingFace Inference API…</div>';
+    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' token(s) via HuggingFace Inference API…</div>';
     async function pingHF(entry) {
         var key = entry.key, slot = entry.slot;
         var masked = key.slice(0, 5) + '…' + key.slice(-4);
@@ -2285,16 +2288,16 @@ async function _aqsTestHFKeys() {
             if (res.ok) {
                 var data = await res.json();
                 var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
             } else if (res.status === 401 || res.status === 403) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid token (' + res.status + ')</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid token (' + res.status + ')</span></div>' };
             } else if (res.status === 429) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited</span></div>' };
             } else {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
             }
         } catch(e) {
-            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (15s)':'Network error') + '</span></div>' };
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (15s)':'Network error') + '</span></div>' };
         }
     }
     var rows = await Promise.all(allKeys.map(pingHF));
@@ -2305,8 +2308,8 @@ async function _aqsTestHFKeys() {
     });
     var active = rows.filter(function(r){ return r.ok; }).length;
     var summary = active === rows.length
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' HF token(s) working!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' HF tokens active.</div>';
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' HF token(s) working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' HF tokens active.</div>';
     results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All HF Tokens'; }
 }
@@ -2345,7 +2348,7 @@ async function _aqsTestELKeys() {
     }
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' ElevenLabs key(s)…</div>';
+    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' ElevenLabs key(s)…</div>';
     async function pingEL(entry) {
         var key = entry.key, slot = entry.slot;
         var masked = key.slice(0, 5) + '…' + key.slice(-4);
@@ -2363,21 +2366,21 @@ async function _aqsTestELKeys() {
             });
             var ms = Date.now() - tStart;
             if (res.ok) {
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#052e16;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#86efac;font-weight:700;">Key ' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#0d3321;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Valid · ' + ms + 'ms · full access</span></div>' };
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">Key ' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Valid · ' + ms + 'ms · full access</span></div>' };
             } else if (res.status === 401) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ Invalid key (401) — check at elevenlabs.io</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid key (401) — check at elevenlabs.io</span></div>' };
             } else if (res.status === 402) {
                 /* Key is valid but account is on free plan — library voices need a paid plan */
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1a01;border:1px solid #78700f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d2901;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Valid key · Free plan · Upgrade at elevenlabs.io to use AI voices via API</span></div>' };
+                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78700f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ Valid key · Free plan · Upgrade at elevenlabs.io to use AI voices via API</span></div>' };
             } else if (res.status === 429) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c1001;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#2d1a01;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fde68a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">Key ' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
             } else {
                 var errBody = {}; try { errBody = await res.json(); } catch(_) {}
                 var errMsg = (errBody.detail && errBody.detail.message) || ('HTTP ' + res.status);
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;">' + badge + '<span style="color:#a5b4fc;font-weight:700;">Key ' + slot + '</span><code style="color:#818cf8;font-size:.78rem;background:#0d0b2a;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#c7d2fe;margin-left:auto;font-size:.78rem;">⚠️ ' + errMsg + '</span></div>' };
+                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">Key ' + slot + '</span><code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ ' + errMsg + '</span></div>' };
             }
         } catch(e) {
-            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#1c0101;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#fca5a5;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#2d0404;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#fca5a5;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (15s)' : 'Network error') + '</span></div>' };
+            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">Key ' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (15s)' : 'Network error') + '</span></div>' };
         }
     }
     var rows = await Promise.all(allKeys.map(pingEL));
@@ -2387,8 +2390,8 @@ async function _aqsTestELKeys() {
     });
     var active = rows.filter(function(r){ return r.ok; }).length;
     var summary = active === rows.length
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' ElevenLabs key(s) valid!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' ElevenLabs keys valid.</div>';
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' ElevenLabs key(s) valid!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' ElevenLabs keys valid.</div>';
     results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All EL Keys'; }
 }
@@ -2428,12 +2431,12 @@ async function _aqsTestGeminiTTSKeys() {
     }
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
-    results.innerHTML = '<div style="color:#94a3b8;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Gemini TTS key(s)…</div>';
+    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Gemini TTS key(s)…</div>';
 
     var MODEL = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
 
     function row(bg, bd, nameCol, codeBg, codeCol, slot, masked, msgCol, msg) {
-        var badge = '<span style="font-size:.7rem;background:#dbeafe;color:#1e40af;border-radius:4px;padding:2px 7px;font-weight:700;">GEMINI TTS</span>';
+        var badge = '<span style="font-size:.7rem;background:#dbeafe;color:#12304a;border-radius:4px;padding:2px 7px;font-weight:700;">GEMINI TTS</span>';
         return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:' + bg + ';border:1px solid ' + bd + ';border-radius:8px;">' +
             badge + '<span style="color:' + nameCol + ';font-weight:700;">Key ' + slot + '</span>' +
             '<code style="color:' + codeCol + ';font-size:.78rem;background:' + codeBg + ';padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
@@ -2446,7 +2449,7 @@ async function _aqsTestGeminiTTSKeys() {
         var tStart = Date.now();
         try {
             if (!window.geminiTTS || !window.geminiTTS.testKey) {
-                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ TTS engine not loaded — refresh the page') };
+                return { ok: false, html: row('#fff','#7f1d1d','#fca5a5','#fff','#f87171',slot,masked,'#fca5a5','❌ TTS engine not loaded — refresh the page') };
             }
             var res = await window.geminiTTS.testKey(key);
             var ms = Date.now() - tStart;
@@ -2454,7 +2457,7 @@ async function _aqsTestGeminiTTSKeys() {
                 return { ok: true, html: row('#052e16','#166534','#86efac','#0d3321','#4ade80',slot,masked,'#6ee7b7','✅ Valid · ' + ms + 'ms · audio OK (' + (res.model || MODEL) + ')') };
             }
             if (res.reason === 'invalid') {
-                return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ Invalid key — check at aistudio.google.com/apikey') };
+                return { ok: false, html: row('#fff','#7f1d1d','#fca5a5','#fff','#f87171',slot,masked,'#fca5a5','❌ Invalid key — check at aistudio.google.com/apikey') };
             }
             if (res.reason === 'quota') {
                 return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ Valid key · free quota reached — try again later') };
@@ -2462,9 +2465,9 @@ async function _aqsTestGeminiTTSKeys() {
             if (res.reason === 'nomodel') {
                 return { ok: false, html: row('#1c1a01','#78700f','#fcd34d','#2d2901','#fbbf24',slot,masked,'#fde68a','⚠️ ' + res.message) };
             }
-            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (res.message || 'Failed')) };
+            return { ok: false, html: row('#fff','#7f1d1d','#fca5a5','#fff','#f87171',slot,masked,'#fca5a5','❌ ' + (res.message || 'Failed')) };
         } catch(e) {
-            return { ok: false, html: row('#1c0101','#7f1d1d','#fca5a5','#2d0404','#f87171',slot,masked,'#fca5a5','❌ ' + (e.name === 'TimeoutError' ? 'Timed out' : (e.message || 'Network error'))) };
+            return { ok: false, html: row('#fff','#7f1d1d','#fca5a5','#fff','#f87171',slot,masked,'#fca5a5','❌ ' + (e.name === 'TimeoutError' ? 'Timed out' : (e.message || 'Network error'))) };
         }
     }
 
@@ -2473,8 +2476,8 @@ async function _aqsTestGeminiTTSKeys() {
     for (var k = 0; k < allKeys.length; k++) { rows.push(await pingGTTS(allKeys[k])); }
     var active = rows.filter(function(r){ return r.ok; }).length;
     var summary = active === rows.length
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#052e16;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Gemini TTS key(s) working!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#1c1001;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Gemini TTS keys working.</div>';
+        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">✅ All ' + rows.length + ' Gemini TTS key(s) working!</div>'
+        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">⚠️ ' + active + '/' + rows.length + ' Gemini TTS keys working.</div>';
     results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){ return r.html; }).join('') + '</div>';
     if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Gemini TTS Keys'; }
 }
@@ -2499,7 +2502,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
 
         function dotColor(el, val) {
             if (!el) return;
-            el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#cbd5e1;font-size:.8rem;">○</span>';
+            el.innerHTML = val ? '<span style="color:#10b981;font-size:1rem;">●</span>' : '<span style="color:#12304a;font-size:.8rem;">○</span>';
         }
 
         /* Load keys via aqsAjax — works in regular <script> tags */
@@ -2721,7 +2724,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
       function _dots(n, m) {
           var s = '';
           for (var i = 0; i < m; i++)
-              s += i < n ? '<span style="color:#10b981;font-size:.48rem;">●</span>' : '<span style="color:#dde3ec;font-size:.4rem;">○</span>';
+              s += i < n ? '<span style="color:#10b981;font-size:.48rem;">●</span>' : '<span style="color:#12304a;font-size:.4rem;">○</span>';
           return s;
       }
 
@@ -2732,14 +2735,14 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
               var n = _getPoolKeys(p).length, m = p.slots, bar = m > 0 ? Math.round(n/m*100) : 0;
                var noKeyFallback = p.provider === 'creator_image' && n === 0;
                var col = noKeyFallback ? '#059669' : (n === 0 ? '#ef4444' : n < m ? '#f59e0b' : '#10b981');
-              return '<div id="aqs-dash-'+p.id+'" style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:7px;">'
+              return '<div id="aqs-dash-'+p.id+'" style="background:#fff;border:1px solid #12304a;border-radius:12px;padding:14px 15px;display:flex;flex-direction:column;gap:7px;">'
                   +'<div style="display:flex;align-items:center;gap:7px;"><span>'+p.emoji+'</span><span style="font-weight:700;color:#1e293b;font-size:.82rem;">'+p.label+'</span></div>'
                   +'<div style="letter-spacing:1.5px;">'+_dots(n,m)+'</div>'
-                  +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#e2e8f0;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
+                  +'<div style="display:flex;align-items:center;gap:8px;"><div style="flex:1;background:#ffffff;border-radius:999px;height:5px;overflow:hidden;"><div style="width:'+bar+'%;height:100%;background:'+col+';border-radius:999px;transition:width .4s;"></div></div>'
                    +'<span style="font-size:.72rem;font-weight:700;color:'+col+';min-width:30px;text-align:right;">'+(noKeyFallback ? 'ready' : n+'/'+m)+'</span></div>'
                   +'<div style="display:flex;align-items:center;justify-content:space-between;">'
-                   +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#94a3b8;">'+(noKeyFallback ? 'Gemini key pool required' : '—')+'</span>'
-                  +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
+                   +'<span id="aqs-dash-result-'+p.id+'" style="font-size:.72rem;color:#12304a;">'+(noKeyFallback ? 'Gemini key pool required' : '—')+'</span>'
+                  +'<button onclick="window._aqsTestPool(\''+p.id+'\')" style="font-size:.7rem;padding:4px 10px;border-radius:7px;border:1px solid #12304a;background:#fff;color:#475569;cursor:pointer;font-weight:600;">🧪 Test</button>'
                   +'</div>'
                   +'<div id="aqs-pool-detail-'+p.id+'" style="display:none;flex-direction:column;gap:4px;margin-top:2px;"></div>'
                   +'</div>';
@@ -2755,7 +2758,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
           var keys = _getPoolKeys(p);
            if (p.provider === 'creator_image') {
                if (r) { r.textContent = '🔄 Testing the secure image pool…'; r.style.color = '#f59e0b'; }
-               if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;">Tokens are checked server-side; values never leave this page.</span>'; }
+               if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#12304a;">Tokens are checked server-side; values never leave this page.</span>'; }
                try {
                    var creatorEndpoint = window._AQS_CREATOR_IMAGE_FUNCTION_URL || 'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
                    var creatorResponse = await fetch(creatorEndpoint, {
@@ -2778,7 +2781,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                            var label = healthy ? 'Healthy' : (limited ? 'Rate limited' : (entry.status === 'invalid' ? 'Invalid token' : 'Unavailable'));
                            var dotEl = document.getElementById('aqs-creator-image-dot-' + entry.slot);
                            if (dotEl) { dotEl.textContent = healthy ? '✅' : (limited ? '⚠️' : '❌'); dotEl.style.fontSize = '.9rem'; }
-                           return '<div style="padding:5px 8px;background:' + (healthy ? '#052e16' : limited ? '#1c1001' : '#1c0101') + ';border:1px solid ' + (healthy ? '#166534' : limited ? '#78350f' : '#7f1d1d') + ';border-radius:6px;display:flex;align-items:center;gap:6px;"><span style="color:' + color + ';font-weight:700;font-size:.72rem;">Token ' + entry.slot + '</span><span style="color:' + color + ';margin-left:auto;font-size:.7rem;">' + label + ' · ' + (entry.latencyMs || 0) + 'ms</span></div>';
+                           return '<div style="padding:5px 8px;background:#faf3ea;border:1px solid ' + (healthy ? '#166534' : limited ? '#78350f' : '#7f1d1d') + ';border-radius:6px;display:flex;align-items:center;gap:6px;"><span style="color:' + color + ';font-weight:700;font-size:.72rem;">Token ' + entry.slot + '</span><span style="color:' + color + ';margin-left:auto;font-size:.7rem;">' + label + ' · ' + (entry.latencyMs || 0) + 'ms</span></div>';
                        });
                        if (r) { r.innerHTML = '<span style="color:' + (active === total ? '#059669' : active ? '#d97706' : '#dc2626') + ';">' + active + '/' + total + ' healthy · Gemini key pool required</span>'; r.style.color = active === total ? '#059669' : active ? '#d97706' : '#dc2626'; }
                        if (det) { det.style.display = 'flex'; det.innerHTML = creatorRows.join(''); }
@@ -2788,7 +2791,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                    if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(active, total, total ? 'checked' : 'empty');
                } catch (creatorError) {
                    if (r) { r.innerHTML = '<span style="color:#d97706;">⚠️ Secure health check unavailable · Gemini key pool required</span>'; r.style.color = '#d97706'; }
-                   if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#fca5a5;">' + (creatorError.message || 'Health check failed.') + '</span>'; }
+                   if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#12304a;">' + (creatorError.message || 'Health check failed.') + '</span>'; }
                    var failedSummary = document.getElementById('aqs-creator-image-health-summary');
                    if (failedSummary) failedSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Gemini key pool required.';
                    if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
@@ -2801,7 +2804,7 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
               return;
           }
           if (r) { r.textContent = '🔄 Testing '+keys.length+' key(s)…'; r.style.color = '#f59e0b'; }
-          if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;">Testing in parallel…</span>'; }
+          if (det) { det.style.display = 'flex'; det.innerHTML = '<span style="font-size:.7rem;color:#12304a;">Testing in parallel…</span>'; }
 
           var results = await Promise.all(keys.map(async function(entry) {
               var masked = entry.key.slice(0,7)+'…'+entry.key.slice(-4);
@@ -2810,14 +2813,14 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
                   var dotEl = document.getElementById(p.dotPrefix+entry.slot);
                   if (dotEl) { dotEl.textContent = ping.ok ? '✅' : (ping.status===429 ? '⚠️' : '❌'); dotEl.style.fontSize='.9rem'; }
               }
-              var bg = ping.ok ? '#052e16' : (ping.status===429 ? '#1c1001' : '#1c0101');
+              var bg = ping.ok ? '#052e16' : (ping.status===429 ? '#fff' : '#fff');
               var bc = ping.ok ? '#166534' : (ping.status===429 ? '#78350f' : '#7f1d1d');
               var mc = ping.ok ? '#86efac' : (ping.status===429 ? '#fde68a' : '#fca5a5');
               return {
                   ok: ping.ok,
                   html: '<div style="padding:5px 8px;background:'+bg+';border:1px solid '+bc+';border-radius:6px;display:flex;flex-wrap:wrap;align-items:center;gap:5px;">'
                       +'<span style="color:'+mc+';font-weight:700;min-width:46px;font-size:.72rem;">Slot '+entry.slot+'</span>'
-                      +'<code style="color:'+mc+';font-size:.68rem;opacity:.8;background:rgba(0,0,0,.25);padding:0 5px;border-radius:4px;">'+masked+'</code>'
+                      +'<code style="color:'+mc+';font-size:.68rem;opacity:.8;background:#faf3ea;padding:0 5px;border-radius:4px;">'+masked+'</code>'
                       +'<span style="margin-left:auto;color:'+mc+';font-size:.7rem;text-align:right;">'+ping.msg+'</span>'
                       +'</div>'
               };

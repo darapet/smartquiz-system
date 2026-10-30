@@ -1,688 +1,688 @@
 .studyco-chat-call-actions {
-  display: flex !important;
-  align-items: center;
-  justify-content: flex-end;
-  flex: 0 0 auto !important;
-  gap: 6px !important;
-  margin-left: auto;
+  display:flex !important;
+  align-items:center;
+  justify-content:flex-end;
+  flex:0 0 auto !important;
+  gap:6px !important;
+  margin-left:auto;
 }
 
 .studyco-chat-call-actions .studyco-button {
-  padding: 8px 10px;
-  white-space: nowrap;
+  padding:8px 10px;
+  white-space:nowrap;
 }
 
 .studyco-call-history-modal {
-  width: min(560px, 100%);
+  width:min(560px, 100%);
 }
 
 .studyco-call-history-subtitle {
-  margin: 6px 0 0;
-  color: var(--sc-muted);
-  font-size: .7rem;
+  margin:6px 0 0;
+  color:var(--sc-muted);
+  font-size:.7rem;
 }
 
 .studyco-call-history-body {
-  padding: 0 24px 22px;
+  padding:0 24px 22px;
 }
 
 .studyco-call-history-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 15px 0 7px;
-  color: var(--sc-muted);
-  font-size: .7rem;
-  font-weight: 800;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:15px 0 7px;
+  color:var(--sc-muted);
+  font-size:.7rem;
+  font-weight:800;
 }
 
 .studyco-call-history-summary strong {
-  display: grid;
-  min-width: 25px;
-  height: 25px;
-  place-items: center;
-  border-radius: 999px;
-  background: #eef0ff;
-  color: var(--sc-primary-dark);
-  font-size: .68rem;
+  display:grid;
+  min-width:25px;
+  height:25px;
+  place-items:center;
+  border-radius:999px;
+  background:#eef0ff;
+  color:var(--sc-primary-dark);
+  font-size:.68rem;
 }
 
 .studyco-call-video-surface {
-  display: none;
+  display:none;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-video-surface {
-  display: block;
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #0c1028;
+  display:block;
+  position:relative;
+  width:100%;
+  aspect-ratio:16 / 9;
+  overflow:hidden;
+  border-radius:14px;
+  background:#ffffff;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage {
-  padding: 18px 20px 20px;
+  padding:18px 20px 20px;
 }
 
 .studyco-call-video-surface > #studyco-call-remote-video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  background: #0c1028;
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  background:#faf3ea;
 }
 
 .studyco-call-video-surface > .studyco-call-avatar {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  z-index: 2;
-  margin: -47px 0 0 -47px;
+  position:absolute;
+  top:50%;
+  left:50%;
+  z-index:2;
+  margin:-47px 0 0 -47px;
 }
 
 .studyco-call-stage.has-remote-video .studyco-call-avatar {
-  display: none;
+  display:none;
 }
 
 .studyco-call-local-video-wrap {
-  display: none;
-  position: absolute;
-  right: 12px;
-  bottom: 12px;
-  z-index: 3;
-  width: 106px;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  border: 2px solid #ffffffcc;
-  border-radius: 12px;
-  background: #20254f;
-  box-shadow: 0 8px 22px #0008;
+  display:none;
+  position:absolute;
+  right:12px;
+  bottom:12px;
+  z-index:3;
+  width:106px;
+  aspect-ratio:3 / 4;
+  overflow:hidden;
+  border:2px solid #ffffffcc;
+  border-radius:12px;
+  background:#faf3ea;
+  box-shadow:0 8px 22px #0008;
 }
 
 .studyco-call-stage.has-local-video .studyco-call-local-video-wrap {
-  display: block;
+  display:block;
 }
 
 .studyco-call-local-video-wrap video {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transform: scaleX(-1);
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transform:scaleX(-1);
 }
 
 .studyco-call-local-video-wrap span {
-  position: absolute;
-  right: 6px;
-  bottom: 5px;
-  padding: 3px 5px;
-  border-radius: 5px;
-  background: #10152fcc;
-  color: #fff;
-  font-size: .56rem;
-  font-weight: 800;
+  position:absolute;
+  right:6px;
+  bottom:5px;
+  padding:3px 5px;
+  border-radius:5px;
+  background:#ffffffcc;
+  color:#12304a;
+  font-size:.56rem;
+  font-weight:800;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-pulse {
-  display: none;
+  display:none;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage > .studyco-call-signal {
-  margin-top: 12px;
+  margin-top:12px;
 }
 
 @media (max-width: 520px) {
   .studyco-chat-call-actions .studyco-button {
-    padding: 7px 8px;
-    font-size: .66rem;
+    padding:7px 8px;
+    font-size:.66rem;
   }
 
   .studyco-call-local-video-wrap {
-    width: 86px;
+    width:86px;
   }
 
   .studyco-call-history-body {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left:16px;
+    padding-right:16px;
   }
 }
 
 /* Calls use their own app surface instead of competing with a centered modal. */
 #studyco-call-modal {
-  z-index: 240;
-  display: flex;
-  align-items: stretch;
-  justify-content: stretch;
-  padding: 0;
-  background: #090c20eF;
+  z-index:240;
+  display:flex;
+  align-items:stretch;
+  justify-content:stretch;
+  padding:0;
+  background:#ffffffeF;
 }
 
 #studyco-call-modal .studyco-call-modal {
-  width: 100%;
-  max-width: none;
-  height: 100%;
-  max-height: none;
-  min-height: 100%;
-  border-radius: 0;
-  padding: 0;
-  overflow: hidden;
-  background: #10152f;
-  color: #fff;
+  width:100%;
+  max-width:none;
+  height:100%;
+  max-height:none;
+  min-height:100%;
+  border-radius:0;
+  padding:0;
+  overflow:hidden;
+  background:#ffffff;
+  color:#12304a;
 }
 
 #studyco-call-modal .studyco-call-topline {
-  position: relative;
-  z-index: 5;
-  flex: 0 0 auto;
-  min-height: 64px;
-  padding: 12px clamp(16px, 4vw, 48px);
+  position:relative;
+  z-index:5;
+  flex:0 0 auto;
+  min-height:64px;
+  padding:12px clamp(16px, 4vw, 48px);
 }
 
 .studyco-call-minimize {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  margin-right: auto;
-  padding: 8px 11px;
-  border: 1px solid #ffffff29;
-  border-radius: 9px;
-  background: #ffffff0f;
-  color: #fff;
-  font-size: .68rem;
-  font-weight: 900;
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  margin-right:auto;
+  padding:8px 11px;
+  border:1px solid #ffffff29;
+  border-radius:9px;
+  background:#ffffff0f;
+  color:#12304a;
+  font-size:.68rem;
+  font-weight:900;
 }
 
 .studyco-call-minimize:hover {
-  background: #ffffff1d;
+  background:#ffffff1d;
 }
 
 .studyco-call-minimize span {
-  font-size: 1.05rem;
-  line-height: .7;
+  font-size:1.05rem;
+  line-height:.7;
 }
 
 #studyco-call-modal .studyco-call-label {
-  margin-right: 14px;
+  margin-right:14px;
 }
 
 #studyco-call-modal .studyco-call-stage {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  justify-content: center;
-  min-height: 0;
-  padding: clamp(18px, 4vh, 42px) clamp(16px, 5vw, 72px) 28px;
-  overflow: hidden;
-  background: radial-gradient(circle at 50% 0, #5f61db, #282b6b 54%, #10152f 100%);
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  justify-content:center;
+  min-height:0;
+  padding:clamp(18px, 4vh, 42px) clamp(16px, 5vw, 72px) 28px;
+  overflow:hidden;
+  background:linear-gradient(135deg,#faf3ea,#ffffff);
 }
 
 #studyco-call-modal .studyco-call-stage h2 {
-  margin-top: 20px;
+  margin-top:20px;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage {
-  justify-content: flex-start;
-  padding-top: clamp(16px, 4vh, 42px);
+  justify-content:flex-start;
+  padding-top:clamp(16px, 4vh, 42px);
 }
 
 #studyco-call-modal.is-video-call .studyco-call-video-surface {
-  width: min(1200px, 100%);
-  max-height: min(70vh, 760px);
-  margin: 0 auto;
-  border-radius: clamp(12px, 2vw, 22px);
-  box-shadow: 0 24px 80px #04061580;
+  width:min(1200px, 100%);
+  max-height:min(70vh, 760px);
+  margin:0 auto;
+  border-radius:clamp(12px, 2vw, 22px);
+  box-shadow:0 24px 80px #04061580;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage h2 {
-  margin-top: 16px;
+  margin-top:16px;
 }
 
 #studyco-call-modal .studyco-call-translation {
-  width: min(760px, calc(100% - 32px));
-  margin: 0 auto;
-  border-color: #ffffff1e;
-  background: #fff;
+  width:min(760px, calc(100% - 32px));
+  margin:0 auto;
+  border-color:#12304a1e;
+  background:#fff;
 }
 
 #studyco-call-modal .studyco-call-tools {
-  flex: 0 0 auto;
-  margin: 16px auto 0;
+  flex:0 0 auto;
+  margin:16px auto 0;
 }
 
 #studyco-call-modal .studyco-call-actions {
-  flex: 0 0 auto;
-  margin: 16px auto 0;
+  flex:0 0 auto;
+  margin:16px auto 0;
 }
 
 #studyco-call-modal .studyco-call-translation-status {
-  flex: 0 0 auto;
-  margin: 10px auto 0;
+  flex:0 0 auto;
+  margin:10px auto 0;
 }
 
 .studyco-call-minimized-bar {
-  position: fixed;
-  right: 18px;
-  bottom: 18px;
-  z-index: 250;
-  display: flex;
-  align-items: center;
-  width: min(360px, calc(100vw - 28px));
-  overflow: hidden;
-  border: 1px solid #ffffff2b;
-  border-radius: 16px;
-  background: #151936f5;
-  box-shadow: 0 18px 50px #05071966;
-  color: #fff;
-  backdrop-filter: blur(16px);
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  z-index:250;
+  display:flex;
+  align-items:center;
+  width:min(360px, calc(100vw - 28px));
+  overflow:hidden;
+  border:1px solid #ffffff2b;
+  border-radius:16px;
+  background:#151936f5;
+  box-shadow:0 18px 50px #05071966;
+  color:#12304a;
+  backdrop-filter:blur(16px);
 }
 
 .studyco-call-restore {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  flex: 1;
-  gap: 10px;
-  padding: 11px 12px;
-  border: 0;
-  background: none;
-  color: inherit;
-  text-align: left;
+  display:flex;
+  align-items:center;
+  min-width:0;
+  flex:1;
+  gap:10px;
+  padding:11px 12px;
+  border:0;
+  background:none;
+  color:inherit;
+  text-align:left;
 }
 
 .studyco-call-restore:hover {
-  background: #ffffff0d;
+  background:#ffffff0d;
 }
 
 .studyco-call-minimized-avatar {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #b5a1ff, #d769c9);
-  color: #fff;
-  font-size: .68rem;
-  font-weight: 900;
+  display:grid;
+  width:34px;
+  height:34px;
+  flex:0 0 auto;
+  place-items:center;
+  border-radius:50%;
+  background:linear-gradient(135deg, #b5a1ff, #d769c9);
+  color:#12304a;
+  font-size:.68rem;
+  font-weight:900;
 }
 
 .studyco-call-minimized-copy {
-  display: grid;
-  min-width: 0;
-  gap: 3px;
+  display:grid;
+  min-width:0;
+  gap:3px;
 }
 
 .studyco-call-minimized-copy strong,
 .studyco-call-minimized-copy small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
 }
 
 .studyco-call-minimized-copy strong {
-  font-size: .72rem;
+  font-size:.72rem;
 }
 
 .studyco-call-minimized-copy small {
-  color: #c5c8e4;
-  font-size: .62rem;
+  color:#12304a;
+  font-size:.62rem;
 }
 
 .studyco-call-minimized-elapsed {
-  margin-left: auto;
-  color: #aeb2db;
-  font-variant-numeric: tabular-nums;
-  font-size: .65rem;
-  font-weight: 800;
+  margin-left:auto;
+  color:#12304a;
+  font-variant-numeric:tabular-nums;
+  font-size:.65rem;
+  font-weight:800;
 }
 
 .studyco-call-minimized-end {
-  width: 38px;
-  height: 38px;
-  margin-right: 8px;
-  border: 0;
-  border-radius: 50%;
-  background: #c93e50;
-  color: #fff;
-  font-size: 1.25rem;
-  line-height: 1;
+  width:38px;
+  height:38px;
+  margin-right:8px;
+  border:0;
+  border-radius:50%;
+  background:#c93e50;
+  color:#12304a;
+  font-size:1.25rem;
+  line-height:1;
 }
 
 .studyco-call-minimized-end:hover {
-  background: #a72f42;
+  background:#a72f42;
 }
 
 body.studyco-call-hidden {
-  overflow: auto;
+  overflow:auto;
 }
 
 @media (max-width: 760px) {
   #studyco-call-modal .studyco-call-topline {
-    min-height: 58px;
-    padding: 10px 14px;
+    min-height:58px;
+    padding:10px 14px;
   }
 
   #studyco-call-modal .studyco-call-stage {
-    padding-left: 12px;
-    padding-right: 12px;
+    padding-left:12px;
+    padding-right:12px;
   }
 
   #studyco-call-modal .studyco-call-translation {
-    width: calc(100% - 24px);
-    margin-top: 0;
+    width:calc(100% - 24px);
+    margin-top:0;
   }
 
   #studyco-call-modal .studyco-call-tools {
-    gap: 7px;
-    margin-left: 12px;
-    margin-right: 12px;
+    gap:7px;
+    margin-left:12px;
+    margin-right:12px;
   }
 
   #studyco-call-modal .studyco-call-tool {
-    min-width: 68px;
+    min-width:68px;
   }
 
   .studyco-call-minimized-bar {
-    right: 12px;
-    bottom: 12px;
+    right:12px;
+    bottom:12px;
   }
 }
 
 .studyco-friends-stack {
-  display: grid;
-  gap: 15px;
+  display:grid;
+  gap:15px;
 }
 
 .studyco-friends-stack .studyco-card {
-  margin-bottom: 0;
+  margin-bottom:0;
 }
 
 .studyco-friend-row {
-  min-height: 52px;
-  padding: 8px 0;
-  border: 0;
-  border-top: 1px solid var(--sc-line);
-  border-radius: 0;
+  min-height:52px;
+  padding:8px 0;
+  border:0;
+  border-top:1px solid var(--sc-line);
+  border-radius:0;
 }
 
 .studyco-friend-row:first-child {
-  border-top: 0;
+  border-top:0;
 }
 
 .studyco-friend-row > div:nth-child(2) {
-  min-width: 0;
+  min-width:0;
 }
 
 .studyco-friend-row strong,
 .studyco-friend-row span {
-  white-space: nowrap;
+  white-space:nowrap;
 }
 
 .studyco-friend-row .studyco-button {
-  flex: 0 0 auto;
-  padding: 7px 9px;
-  font-size: .64rem;
+  flex:0 0 auto;
+  padding:7px 9px;
+  font-size:.64rem;
 }
 
 .studyco-friend-row .studyco-button + .studyco-button {
-  margin-left: -2px;
+  margin-left:-2px;
 }
 
 .studyco-sent-request {
-  background: #fafaff;
+  background:#fafaff;
 }
 
 /* Video calls use a full-page stage: local preview while ringing, remote
    video as the main feed after the call is accepted. */
 #studyco-call-modal.is-video-call .studyco-call-modal {
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
+  display:flex;
+  flex-direction:column;
+  overflow-y:auto;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage {
-  display: flex;
-  flex: 1 1 auto;
-  min-height: 0;
-  flex-direction: column;
-  justify-content: flex-start;
-  gap: 9px;
-  padding: clamp(10px, 2vh, 22px) clamp(12px, 4vw, 48px) 12px;
+  display:flex;
+  flex:1 1 auto;
+  min-height:0;
+  flex-direction:column;
+  justify-content:flex-start;
+  gap:9px;
+  padding:clamp(10px, 2vh, 22px) clamp(12px, 4vw, 48px) 12px;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-video-surface {
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 0;
-  height: auto;
-  max-height: none;
-  aspect-ratio: auto;
-  margin: 0 auto;
-  border-radius: clamp(12px, 2vw, 22px);
+  flex:1 1 auto;
+  width:100%;
+  min-height:0;
+  height:auto;
+  max-height:none;
+  aspect-ratio:auto;
+  margin:0 auto;
+  border-radius:clamp(12px, 2vw, 22px);
 }
 
 #studyco-call-modal.is-video-call .studyco-call-video-surface > #studyco-call-remote-video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage.has-local-video:not(.has-remote-video) .studyco-call-avatar {
-  display: none;
+  display:none;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage.has-local-video:not(.has-remote-video) .studyco-call-local-video-wrap {
-  display: block;
-  position: absolute;
-  inset: 0;
-  width: auto;
-  height: auto;
-  aspect-ratio: auto;
-  border: 0;
-  border-radius: inherit;
-  box-shadow: none;
+  display:block;
+  position:absolute;
+  inset:0;
+  width:auto;
+  height:auto;
+  aspect-ratio:auto;
+  border:0;
+  border-radius:inherit;
+  box-shadow:none;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage.has-local-video:not(.has-remote-video) .studyco-call-local-video-wrap video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width:100%;
+  height:100%;
+  object-fit:cover;
 }
 
 #studyco-call-modal.is-video-call.is-incoming-call:not(.is-call-connected) .studyco-call-stage.has-remote-video .studyco-call-local-video-wrap {
-  inset: auto 14px 14px auto;
-  width: clamp(128px, 28vw, 300px);
-  height: auto;
-  aspect-ratio: 4 / 3;
-  border: 2px solid #ffffffcc;
-  border-radius: 14px;
-  box-shadow: 0 10px 28px #0009;
+  inset:auto 14px 14px auto;
+  width:clamp(128px, 28vw, 300px);
+  height:auto;
+  aspect-ratio:4 / 3;
+  border:2px solid #ffffffcc;
+  border-radius:14px;
+  box-shadow:0 10px 28px #0009;
 }
 
 #studyco-call-modal.is-video-call.is-incoming-call:not(.is-call-connected) .studyco-call-stage.has-remote-video .studyco-call-local-video-wrap video {
-  object-fit: cover;
+  object-fit:cover;
 }
 
 #studyco-call-modal.is-video-call.is-call-connected .studyco-call-local-video-wrap {
-  display: block;
-  position: absolute;
-  inset: 14px 14px auto auto;
-  width: clamp(150px, 30vw, 360px);
-  height: auto;
-  aspect-ratio: 4 / 3;
-  border: 2px solid #ffffffcc;
-  border-radius: 14px;
-  box-shadow: 0 10px 28px #0009;
+  display:block;
+  position:absolute;
+  inset:14px 14px auto auto;
+  width:clamp(150px, 30vw, 360px);
+  height:auto;
+  aspect-ratio:4 / 3;
+  border:2px solid #ffffffcc;
+  border-radius:14px;
+  box-shadow:0 10px 28px #0009;
 }
 
 #studyco-call-modal.is-video-call.is-call-connected .studyco-call-local-video-wrap video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width:100%;
+  height:100%;
+  object-fit:cover;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-translation {
-  flex: 0 0 auto;
-  margin: 6px auto 0;
+  flex:0 0 auto;
+  margin:6px auto 0;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-tools,
 #studyco-call-modal.is-video-call .studyco-call-actions,
 #studyco-call-modal.is-video-call .studyco-call-translation-status {
-  flex: 0 0 auto;
+  flex:0 0 auto;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-actions {
-  margin-top: 10px;
-  padding-bottom: max(14px, env(safe-area-inset-bottom));
+  margin-top:10px;
+  padding-bottom:max(14px, env(safe-area-inset-bottom));
 }
 
 #studyco-call-modal.is-video-call .studyco-call-tool,
 #studyco-call-modal.is-video-call .studyco-call-actions .studyco-button {
-  position: relative;
-  z-index: 10;
-  pointer-events: auto;
+  position:relative;
+  z-index:10;
+  pointer-events:auto;
 }
 
 @media (max-width: 760px) {
   #studyco-call-modal.is-video-call .studyco-call-stage {
-    gap: 6px;
-    padding: 8px 10px 10px;
+    gap:6px;
+    padding:8px 10px 10px;
   }
 
   #studyco-call-modal.is-video-call .studyco-call-video-surface {
-    min-height: 220px;
+    min-height:220px;
   }
 
   #studyco-call-modal.is-video-call.is-call-connected .studyco-call-local-video-wrap,
   #studyco-call-modal.is-video-call.is-incoming-call:not(.is-call-connected) .studyco-call-stage.has-remote-video .studyco-call-local-video-wrap {
-    width: min(36vw, 220px);
-    min-width: 118px;
+    width:min(36vw, 220px);
+    min-width:118px;
   }
 }
 
 /* Keep the camera feed truly full-page and float call controls above it. */
 #studyco-call-modal.is-video-call .studyco-call-modal {
-  position: relative;
-  overflow: hidden;
+  position:relative;
+  overflow:hidden;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage {
-  position: absolute;
-  inset: 64px 0 0;
-  display: block;
-  padding: 0;
-  overflow: hidden;
+  position:absolute;
+  inset:64px 0 0;
+  display:block;
+  padding:0;
+  overflow:hidden;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-video-surface {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  min-height: 0;
-  border-radius: 0;
-  box-shadow: none;
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  min-height:0;
+  border-radius:0;
+  box-shadow:none;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage > .studyco-call-signal,
 #studyco-call-modal.is-video-call .studyco-call-stage > h2,
 #studyco-call-modal.is-video-call .studyco-call-stage > p {
-  position: absolute;
-  z-index: 8;
-  left: 18px;
-  margin: 0;
-  text-shadow: 0 2px 10px #000c;
+  position:absolute;
+  z-index:8;
+  left:18px;
+  margin:0;
+  text-shadow:0 2px 10px #000c;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage > .studyco-call-signal {
-  top: 18px;
+  top:18px;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage > h2 {
-  top: 43px;
+  top:43px;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage > p {
-  top: 74px;
+  top:74px;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-stage > #studyco-call-last-seen {
-  top: 98px;
+  top:98px;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-translation {
-  position: absolute;
-  top: 14px;
-  right: 18px;
-  z-index: 20;
-  width: min(360px, calc(100% - 36px));
-  margin: 0;
-  border-color: #ffffff36;
-  background: #10152fcc;
-  color: #fff;
-  box-shadow: 0 10px 28px #0006;
+  position:absolute;
+  top:14px;
+  right:18px;
+  z-index:20;
+  width:min(360px, calc(100% - 36px));
+  margin:0;
+  border-color:#12304a36;
+  background:#ffffffcc;
+  color:#12304a;
+  box-shadow:0 10px 28px #0006;
 }
 
 #studyco-call-modal.is-video-call .studyco-call-tools {
-  position: absolute;
-  bottom: max(78px, calc(58px + env(safe-area-inset-bottom)));
-  left: 50%;
-  z-index: 20;
-  margin: 0;
-  transform: translateX(-50%);
+  position:absolute;
+  bottom:max(78px, calc(58px + env(safe-area-inset-bottom)));
+  left:50%;
+  z-index:20;
+  margin:0;
+  transform:translateX(-50%);
 }
 
 #studyco-call-modal.is-video-call .studyco-call-actions {
-  position: absolute;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  left: 50%;
-  z-index: 20;
-  margin: 0;
-  transform: translateX(-50%);
+  position:absolute;
+  bottom:max(18px, env(safe-area-inset-bottom));
+  left:50%;
+  z-index:20;
+  margin:0;
+  transform:translateX(-50%);
 }
 
 #studyco-call-modal.is-video-call .studyco-call-translation-status {
-  position: absolute;
-  right: 18px;
-  bottom: max(18px, env(safe-area-inset-bottom));
-  z-index: 20;
-  margin: 0;
-  text-shadow: 0 2px 8px #000c;
+  position:absolute;
+  right:18px;
+  bottom:max(18px, env(safe-area-inset-bottom));
+  z-index:20;
+  margin:0;
+  text-shadow:0 2px 8px #000c;
 }
 
 @media (max-width: 760px) {
   #studyco-call-modal.is-video-call .studyco-call-stage {
-    inset: 58px 0 0;
+    inset:58px 0 0;
   }
 
   #studyco-call-modal.is-video-call .studyco-call-stage > .studyco-call-signal,
   #studyco-call-modal.is-video-call .studyco-call-stage > h2,
   #studyco-call-modal.is-video-call .studyco-call-stage > p {
-    left: 12px;
+    left:12px;
   }
 
   #studyco-call-modal.is-video-call .studyco-call-translation {
-    top: 10px;
-    right: 10px;
-    width: min(300px, calc(100% - 20px));
+    top:10px;
+    right:10px;
+    width:min(300px, calc(100% - 20px));
   }
 
   #studyco-call-modal.is-video-call .studyco-call-tools {
-    bottom: max(78px, calc(58px + env(safe-area-inset-bottom)));
-    max-width: calc(100% - 20px);
+    bottom:max(78px, calc(58px + env(safe-area-inset-bottom)));
+    max-width:calc(100% - 20px);
   }
 
   #studyco-call-modal.is-video-call .studyco-call-actions {
-    bottom: max(12px, env(safe-area-inset-bottom));
+    bottom:max(12px, env(safe-area-inset-bottom));
   }
 
   #studyco-call-modal.is-video-call .studyco-call-translation-status {
-    right: 10px;
-    bottom: max(12px, env(safe-area-inset-bottom));
-    max-width: calc(100% - 20px);
+    right:10px;
+    bottom:max(12px, env(safe-area-inset-bottom));
+    max-width:calc(100% - 20px);
   }
 }

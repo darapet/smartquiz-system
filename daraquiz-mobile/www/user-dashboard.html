@@ -9,44 +9,44 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
-.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
-.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.1rem;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #12304a;padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
+.aqs-site-logo{text-decoration:none;color:#12304a;font-weight:800;font-size:1.1rem;}
 .aqs-page-main{padding:32px 20px;max-width:1100px;margin:0 auto;}
 .aqs-hdr-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-.aqs-hdr-hamburger{display:none;align-items:center;justify-content:center;color:#374151;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:7px 8px;cursor:pointer;min-width:38px;min-height:36px;}
+.aqs-hdr-hamburger{display:none;align-items:center;justify-content:center;color:#374151;background:#fff;border:1px solid #526579;border-radius:8px;padding:7px 8px;cursor:pointer;min-width:38px;min-height:36px;}
 .aqs-hdr-hamburger svg{display:block;width:20px;height:20px;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
-.aqs-hdr-drawer{display:none;position:fixed;top:calc(var(--aqs-cd-bar-h,0px)+60px);left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:6px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);max-height:70vh;overflow-y:auto;}
+.aqs-hdr-drawer{display:none;position:fixed;top:calc(var(--aqs-cd-bar-h,0px)+60px);left:0;right:0;background:#fff;border-bottom:1px solid #12304a;flex-direction:column;padding:10px 16px 16px;gap:6px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);max-height:70vh;overflow-y:auto;}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;font-size:.9rem;}
 /* Stats bar */
 .udash-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;}
-.udash-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;text-align:center;}
-.udash-stat-num{font-size:1.9rem;font-weight:800;color:#4f46e5;line-height:1;}
-.udash-stat-label{font-size:.78rem;color:#64748b;margin-top:6px;font-weight:500;}
+.udash-stat-card{background:#fff;border:1px solid #12304a;border-radius:14px;padding:18px 16px;text-align:center;}
+.udash-stat-num{font-size:1.9rem;font-weight:800;color:#12304a;line-height:1;}
+.udash-stat-label{font-size:.78rem;color:#526579;margin-top:6px;font-weight:500;}
 /* Topbar */
-.aqs-user-topbar{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
+.aqs-user-topbar{background:#fff;border:1px solid #12304a;border-radius:16px;padding:22px 24px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px;flex-wrap:wrap;}
 .aqs-user-topbar-left{display:flex;align-items:center;gap:16px;}
-.aqs-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;font-size:1.4rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
-.aqs-user-name{font-size:1.25rem;font-weight:800;color:#0f172a;}
+.aqs-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#faf3ea,#ffffff);color:#12304a;font-size:1.4rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.aqs-user-name{font-size:1.25rem;font-weight:800;color:#fff;}
 .aqs-user-role-badge{display:inline-block;margin-top:4px;font-size:.75rem;font-weight:600;padding:3px 10px;border-radius:20px;background:#ede9fe;color:#6d28d9;}
 .aqs-user-topbar-actions{display:flex;gap:8px;flex-wrap:wrap;}
 /* Account card */
-.udash-account-card{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:22px 24px;margin-bottom:18px;}
+.udash-account-card{background:#fff;border:1px solid #12304a;border-radius:16px;padding:22px 24px;margin-bottom:18px;}
 .udash-account-title{font-size:1rem;font-weight:700;color:#1e293b;margin-bottom:14px;}
 .udash-table{width:100%;border-collapse:collapse;}
-.udash-table td{padding:9px 0;font-size:.9rem;border-bottom:1px solid #f1f5f9;}
-.udash-table td:first-child{color:#64748b;width:130px;}
-.udash-table td:last-child{font-weight:500;color:#0f172a;}
+.udash-table td{padding:9px 0;font-size:.9rem;border-bottom:1px solid #12304a;}
+.udash-table td:first-child{color:#526579;width:130px;}
+.udash-table td:last-child{font-weight:500;color:#fff;}
 .udash-table tr:last-child td{border-bottom:none;}
 /* Quick links */
 .udash-quick-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:24px;}
-.udash-quick-card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:18px 16px;text-decoration:none;transition:all .18s;display:block;}
+.udash-quick-card{background:#fff;border:1px solid #12304a;border-radius:14px;padding:18px 16px;text-decoration:none;transition:all .18s;display:block;}
 .udash-quick-card:hover{border-color:#c7d2fe;background:#f5f3ff;transform:translateY(-1px);box-shadow:0 4px 14px rgba(79,70,229,.1);}
 .udash-quick-icon{font-size:1.6rem;margin-bottom:8px;}
 .udash-quick-name{font-size:.88rem;font-weight:700;color:#1e293b;margin-bottom:3px;}
-.udash-quick-desc{font-size:.76rem;color:#64748b;line-height:1.4;}
+.udash-quick-desc{font-size:.76rem;color:#526579;line-height:1.4;}
 /* Loading skeleton */
-.udash-skeleton{background:linear-gradient(90deg,#f1f5f9 0%,#e2e8f0 50%,#f1f5f9 100%);background-size:200% 100%;animation:udash-shimmer 1.5s infinite;border-radius:8px;height:16px;margin:8px 0;}
+.udash-skeleton{background:linear-gradient(90deg,#12304a 0%,#12304a 50%,#12304a 100%);background-size:200% 100%;animation:udash-shimmer 1.5s infinite;border-radius:8px;height:16px;margin:8px 0;}
 @keyframes udash-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 /* Responsive */
 @media(max-width:768px){
@@ -58,36 +58,39 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
   .udash-stats{grid-template-columns:repeat(3,1fr);gap:8px;}
   .udash-stat-num{font-size:1.4rem;}
 }
-@media(max-width:480px){
+@media(max-width:768px){
   .udash-stats{grid-template-columns:1fr 1fr 1fr;}
   .udash-quick-grid{grid-template-columns:1fr 1fr;}
 }
 /* Dark home screen with compact feature tiles. */
-body{background:#080d1c;color:#e5e7eb;}
-.aqs-site-header,.aqs-hdr-drawer{background:#0f172a;border-color:#1e293b;}
-.aqs-site-logo{color:#a5b4fc;}
-.aqs-hdr-hamburger{background:#111b30;color:#e2e8f0;border-color:#334155;}
-.aqs-hdr-drawer .aqs-btn{background:#111b30;color:#e2e8f0;border-color:#334155;}
-.aqs-user-topbar{background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);border:1px solid #22505b;box-shadow:0 16px 40px rgba(0,0,0,.22);}
-.aqs-user-name{color:#f8fafc;}
-.aqs-user-role-badge{background:rgba(255,255,255,.12);color:#c4f1e8;}
+body{background:#faf3ea;color:#12304a;}
+.aqs-site-header,.aqs-hdr-drawer{background:#ffffff;border-color:#1e293b;}
+.aqs-site-logo{color:#12304a;}
+.aqs-hdr-hamburger{background:#faf3ea;color:#12304a;border-color:#334155;}
+.aqs-hdr-drawer .aqs-btn{background:#ffffff;color:#12304a;border-color:#334155;}
+.aqs-user-topbar{background:linear-gradient(135deg,#faf3ea,#ffffff);border:1px solid #22505b;box-shadow:0 16px 40px rgba(0,0,0,.22);}
+.aqs-user-name{color:#12304a;}
+.aqs-user-role-badge{background:rgba(255,255,255,.12);color:#12304a;}
 .udash-stats{grid-template-columns:1fr;margin-bottom:22px;}
-.udash-stat-card{display:flex;align-items:center;justify-content:space-between;text-align:left;padding:18px 22px;background:#111b30;border:1px solid #25344c;border-radius:16px;}
+.udash-stat-card{display:flex;align-items:center;justify-content:space-between;text-align:left;padding:18px 22px;background:#ffffff;border:1px solid #25344c;border-radius:16px;}
 .udash-stat-num{color:#67e8d0;font-size:1.55rem;}
-.udash-stat-label{margin:0;color:#cbd5e1;font-size:.9rem;}
+.udash-stat-label{margin:0;color:#12304a;font-size:.9rem;}
 .udash-quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 28px;}
-.udash-quick-card{min-height:92px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:12px 8px;background:#111b30;border:1px solid #27364d;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.12);}
-.udash-quick-card:hover{background:#17243b;border-color:#43b9ae;transform:translateY(-2px);box-shadow:0 12px 26px rgba(20,184,166,.13);}
-.udash-quick-icon{width:38px;height:38px;margin:0;display:grid;place-items:center;border-radius:12px;background:#1e3344;font-size:1.35rem;}
-.udash-quick-name{margin:0;color:#f1f5f9;font-size:.82rem;line-height:1.25;}
+.udash-quick-card{min-height:92px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:12px 8px;background:#ffffff;border:1px solid #27364d;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.12);}
+.udash-quick-card:hover{background:#ffffff;border-color:#43b9ae;transform:translateY(-2px);box-shadow:0 12px 26px rgba(20,184,166,.13);}
+.udash-quick-icon{width:38px;height:38px;margin:0;display:grid;place-items:center;border-radius:12px;background:#faf3ea;font-size:1.35rem;}
+.udash-quick-name{margin:0;color:#12304a;font-size:.82rem;line-height:1.25;}
 .udash-quick-desc{display:none;}
-.udash-welcome-quote{margin:0 0 20px;padding:22px 24px;border:1px solid #22505b;border-radius:18px;background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);box-shadow:0 14px 34px rgba(0,0,0,.2);color:#f8fafc}.udash-welcome-quote .uq-eyebrow{color:#99f6e4;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.udash-welcome-quote blockquote{margin:10px 0 8px;font:italic 1.08rem/1.6 Georgia,serif}.udash-welcome-quote cite{color:#a5b4fc;font-size:.82rem;font-style:normal}.aqs-user-avatar-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.65)}.udash-profile-tools{display:flex;align-items:center;gap:10px}.udash-notif{width:40px;height:40px;display:grid;place-items:center;border:1px solid #456070;border-radius:12px;background:#102b3a;color:#e2e8f0;text-decoration:none;font-size:1.2rem}.udash-auth-id{font-size:.7rem;color:#b6c5d4;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.udash-account-card{background:#111b30;border-color:#25344c;}
-.udash-account-title,.udash-table td:last-child{color:#e2e8f0;}
+.udash-welcome-quote{margin:0 0 20px;padding:22px 24px;border:1px solid #22505b;border-radius:18px;background:linear-gradient(135deg,#faf3ea,#ffffff);box-shadow:0 14px 34px rgba(0,0,0,.2);color:#12304a}.udash-welcome-quote .uq-eyebrow{color:#12304a;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.udash-welcome-quote blockquote{margin:10px 0 8px;font:italic 1.08rem/1.6 Georgia,serif}.udash-welcome-quote cite{color:#12304a;font-size:.82rem;font-style:normal}.aqs-user-avatar-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.65)}.udash-profile-tools{display:flex;align-items:center;gap:10px}.udash-notif{width:40px;height:40px;display:grid;place-items:center;border:1px solid #456070;border-radius:12px;background:#faf3ea;color:#12304a;text-decoration:none;font-size:1.2rem}.udash-auth-id{font-size:.7rem;color:#12304a;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.udash-account-card{background:#ffffff;border-color:#25344c;}
+.udash-account-title,.udash-table td:last-child{color:#12304a;}
 .udash-table td{border-color:#263449;}
-.udash-table td:first-child{color:#94a3b8;}
+.udash-table td:first-child{color:#12304a;}
 @media(max-width:760px){.udash-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;}}
-@media(max-width:480px){.udash-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.udash-quick-card{min-height:88px;}}
+@media(max-width:768px){.udash-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.udash-quick-card{min-height:88px;}}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
 <script>
 window.AQS = {
@@ -115,24 +118,24 @@ window.AQS = {
     </button>
     <nav class="aqs-hdr-nav">
         <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
-        <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
+        <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#12304a;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
         <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
         <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
         <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
         <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
     
-        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
+        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#fff7eb;color:#12304a;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
     </nav>
 </header>
 <div class="aqs-hdr-drawer" id="udash-drawer">
     <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
-    <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
+    <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#12304a;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
     <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
     <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
     <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
     <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
 
-    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
+    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#fff7eb;color:#12304a;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
 </div>
 <script>(function(){var b=document.getElementById('udash-hamburger'),d=document.getElementById('udash-drawer');if(b&&d){b.addEventListener('click',function(){var open=d.classList.toggle('open');b.classList.toggle('open',open);b.setAttribute('aria-expanded',String(open));});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');}});}}());</script>
 
@@ -233,16 +236,16 @@ window.AQS = {
 
 
   <!-- Quiz Activity: recent quizzes inline -->
-  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;">
+  <div style="background:#fff;border:1px solid #12304a;border-radius:16px;padding:18px 22px;margin-bottom:18px;">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
       <div style="display:flex;align-items:center;gap:12px;">
         <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
         <div>
           <div style="font-weight:700;font-size:.9rem;color:#1e293b;">Quiz Activity</div>
-          <div style="font-size:.76rem;color:#94a3b8;margin-top:2px;">Your recent quizzes</div>
+          <div style="font-size:.76rem;color:#12304a;margin-top:2px;">Your recent quizzes</div>
         </div>
       </div>
-      <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
+      <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#faf3ea;color:#12304a;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
     </div>
     <div id="udash-activity-list" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
@@ -300,10 +303,10 @@ window.AQS = {
             var acts = d.recent_activity || [];
             if (list) {
                 if (!acts.length) {
-                    list.innerHTML = '<p style="text-align:center;padding:14px;color:#94a3b8;font-size:.82rem;">No quiz activity yet — take a quiz to see it here.</p>';
+                    list.innerHTML = '<p style="text-align:center;padding:14px;color:#12304a;font-size:.82rem;">No quiz activity yet — take a quiz to see it here.</p>';
                 } else {
                     list.innerHTML = acts.map(function(a){
-                        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;"><span style="font-size:.84rem;color:#1e293b;">'+a.text+'</span><span style="font-size:.72rem;color:#94a3b8;white-space:nowrap;flex-shrink:0;">'+(a.time||'')+'</span></div>';
+                        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #12304a;border-radius:10px;background:#fafafa;"><span style="font-size:.84rem;color:#1e293b;">'+a.text+'</span><span style="font-size:.72rem;color:#12304a;white-space:nowrap;flex-shrink:0;">'+(a.time||'')+'</span></div>';
                     }).join('');
                 }
             }
@@ -324,7 +327,7 @@ window.AQS = {
             document.getElementById('aqs-user-display-name').textContent = 'Welcome';
             document.getElementById('udash-join-btn').hidden = false; document.getElementById('aqs-user-logout-btn').hidden=true; document.getElementById('aqs-user-logout-btn2').hidden=true;
             document.getElementById('aqs-user-avatar-initial').textContent = '?';
-            document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your activity.</p>';
+            document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#12304a;">Please <a href="login.html">log in</a> to see your activity.</p>';
             return;
         }
         loadProfile();

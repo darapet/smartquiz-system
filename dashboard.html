@@ -9,17 +9,17 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
-.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
-.aqs-site-logo{text-decoration:none;color:#4f46e5;font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #12304a;padding:0 16px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
+.aqs-site-logo{text-decoration:none;color:#12304a;font-weight:800;font-size:1.15rem;display:flex;align-items:center;gap:8px;}
 .aqs-page-main{padding:32px 20px;max-width:1200px;margin:0 auto;}
 /* Responsive header nav */
 .aqs-hdr-nav{display:flex;gap:8px;align-items:center;}
-.aqs-hdr-hamburger{display:none;align-items:center;justify-content:center;color:#374151;background:#fff;border:1px solid #cbd5e1;border-radius:8px;padding:7px 8px;cursor:pointer;min-width:38px;min-height:36px;}
+.aqs-hdr-hamburger{display:none;align-items:center;justify-content:center;color:#374151;background:#fff;border:1px solid #526579;border-radius:8px;padding:7px 8px;cursor:pointer;min-width:38px;min-height:36px;}
 .aqs-hdr-hamburger svg{display:block;width:20px;height:20px;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;}
-.aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #e5e7eb;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
+.aqs-hdr-drawer{display:none;position:fixed;top:60px;left:0;right:0;background:#fff;border-bottom:1px solid #12304a;flex-direction:column;padding:10px 16px 16px;gap:4px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.08);}
 .aqs-hdr-drawer.open{display:flex;}
 .aqs-hdr-drawer .aqs-btn{width:100%;justify-content:center;padding:11px 16px;}
-@media(max-width:640px){
+@media(max-width:768px){
   .aqs-hdr-nav{display:none;}
   .aqs-hdr-hamburger{display:flex;}
   .aqs-page-main{padding:20px 14px;}
@@ -27,6 +27,9 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
   .aqs-header > div{width:100%;display:flex;flex-direction:column;gap:8px;}
   .aqs-header > div .aqs-btn{width:100%;justify-content:center;}
 }
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
 <script>
 window.AQS = {
@@ -68,7 +71,7 @@ window.AQS = {
         <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
         <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
     
-        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
+        <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#fff7eb;color:#12304a;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
     </nav>
     </header>
 <div class="aqs-hdr-drawer" id="dash-drawer">
@@ -77,7 +80,7 @@ window.AQS = {
     <a href="user-dashboard.html" class="aqs-btn aqs-btn-sm">My Profile</a>
     <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
 
-    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
+    <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#fff7eb;color:#12304a;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
 </div>
 <script>(function(){var b=document.getElementById('dash-hamburger'),d=document.getElementById('dash-drawer');if(b&&d){b.addEventListener('click',function(){var open=d.classList.toggle('open');b.classList.toggle('open',open);b.setAttribute('aria-expanded',String(open));});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');}});}}());</script>
 
@@ -95,11 +98,11 @@ window.AQS = {
 
     <div style="background:linear-gradient(135deg,#7f1d1d,#991b1b);border:1px solid #fca5a5;border-radius:10px;padding:14px 18px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start;">
         <span style="font-size:1.6rem;line-height:1;">⚠️</span>
-        <div style="color:#fff;flex:1;">
+        <div style="color:#12304a;flex:1;">
             <strong style="font-size:.95rem;display:block;margin-bottom:4px;">Important: Your Quiz Results Are Automatically Deleted After 4 Days!</strong>
             <p style="margin:0 0 8px;font-size:.84rem;opacity:.92;line-height:1.5;">All quiz results, attendance records, and participant scores are permanently deleted after <strong>4 days maximum</strong> and <strong>cannot be restored</strong>. Please print or export your results before then.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                <a href="https://wa.me/2349164257181" target="_blank" style="background:#25d366;color:#fff;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;">💬 Message Admin to Keep Your Data</a>
+                <a href="https://wa.me/2349164257181" target="_blank" style="background:#faf3ea;color:#12304a;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:.78rem;font-weight:700;display:inline-flex;align-items:center;gap:5px;">💬 Message Admin to Keep Your Data</a>
             </div>
         </div>
     </div>

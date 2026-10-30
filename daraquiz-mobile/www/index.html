@@ -7,19 +7,19 @@
 <link rel="icon" href="favicon.svg">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:#faf3ea;color:#1c2b3a;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;min-height:100vh;padding-bottom:84px}
+body{background:#faf3ea;color:#12304a;font-family:-apple-system,BlinkMacSystemFont,'Inter','Segoe UI',sans-serif;min-height:100vh;padding-bottom:84px}
 header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:rgba(250,243,234,.95);backdrop-filter:blur(8px)}
 .hleft{display:flex;align-items:center;gap:12px}
 .hleft img{width:44px;height:44px;border-radius:50%;object-fit:cover}
 .hleft small{display:block;color:#7a8ba0;font-size:.72rem}
 .hleft b{color:#12304a;font-size:1.25rem;font-weight:800;letter-spacing:-.01em}
 .bell{width:44px;height:44px;border-radius:14px;background:#fff;border:1px solid #eee2d3;display:grid;place-items:center;font-size:1.15rem;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.05);position:relative}
-.avatar{width:44px;height:44px;border-radius:14px;background:#f4a548;color:#fff;display:grid;place-items:center;font-weight:800;text-decoration:none;font-size:1.05rem;box-shadow:0 2px 8px rgba(0,0,0,.08)}
+.avatar{width:44px;height:44px;border-radius:14px;background:#f4a548;color:#12304a;display:grid;place-items:center;font-weight:800;text-decoration:none;font-size:1.05rem;box-shadow:0 2px 8px rgba(0,0,0,.08)}
 .wrap{max-width:560px;margin:0 auto;padding:6px 18px 0}
-.hero{position:relative;border-radius:22px;padding:26px 24px 24px;background:linear-gradient(120deg,#0e3a52,#10485e 55%,#155a70);box-shadow:0 18px 40px rgba(14,58,82,.35);color:#f6fbfd;margin-bottom:22px;overflow:hidden}
-.hero .tag{color:#9fd8cf;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.hero{position:relative;border-radius:22px;padding:26px 24px 24px;background:linear-gradient(135deg,#faf3ea,#ffffff);box-shadow:0 18px 40px rgba(14,58,82,.35);color:#12304a;margin-bottom:22px;overflow:hidden}
+.hero .tag{color:#12304a;font-size:.68rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
 .hero .big{margin-top:10px;font:italic 1.35rem/1.45 Georgia,serif;min-height:2.6em}
-.hero .who{margin-top:10px;color:#a9c8e8;font-size:.8rem}
+.hero .who{margin-top:10px;color:#12304a;font-size:.8rem}
 .grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:26px}
 .tile{display:flex;flex-direction:column;align-items:center;gap:9px;text-decoration:none;padding:14px 4px}
 .tile .ic{width:52px;height:52px;border-radius:16px;background:#fff;border:1px solid #eee2d3;box-shadow:0 4px 14px rgba(0,0,0,.06);display:grid;place-items:center;font-size:1.35rem}
@@ -27,17 +27,20 @@ header{position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-
 .sec{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .sec h3{color:#12304a;font-size:1.05rem;font-weight:800}
 .sec a{color:#3d7ab5;font-size:.8rem;text-decoration:none;font-weight:600}
-.empty{background:#fff;border:1px solid #eee2d3;border-radius:16px;padding:16px;color:#8496aa;font-size:.86rem;margin-bottom:22px}
+.empty{background:#fff;border:1px solid #eee2d3;border-radius:16px;padding:16px;color:#12304a;font-size:.86rem;margin-bottom:22px}
 .post{background:#fff;border:1px solid #eee2d3;border-radius:18px;padding:14px 16px;display:flex;gap:12px;align-items:flex-start;margin-bottom:12px;box-shadow:0 3px 10px rgba(0,0,0,.04)}
 .post .pic{width:42px;height:42px;border-radius:12px;background:#fdf0e0;display:grid;place-items:center;font-size:1.2rem;flex-shrink:0}
 .post .tt{color:#22374d;font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .post .chip{background:#fff4e2;color:#c77b2e;font-size:.62rem;font-weight:800;padding:3px 9px;border-radius:999px}
-.post .who{color:#8496aa;font-size:.78rem;margin-top:3px}
+.post .who{color:#12304a;font-size:.78rem;margin-top:3px}
 nav.bottom{position:fixed;bottom:0;left:0;right:0;z-index:60;display:grid;grid-template-columns:repeat(5,1fr);background:#fff;border-top:1px solid #eee2d3;padding:10px 8px calc(10px + env(safe-area-inset-bottom))}
-nav.bottom a{display:flex;flex-direction:column;align-items:center;gap:3px;color:#93a5b8;text-decoration:none;font-size:.64rem;font-weight:600}
+nav.bottom a{display:flex;flex-direction:column;align-items:center;gap:3px;color:#12304a;text-decoration:none;font-size:.64rem;font-weight:600}
 nav.bottom a .ic{font-size:1.3rem}
 nav.bottom a.on{color:#e8912d;background:#fbf1e3;border-radius:14px;padding:4px 10px}
 @media(max-width:420px){.grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.tile .ic{width:48px;height:48px}}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>

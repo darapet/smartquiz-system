@@ -7,7 +7,10 @@
 <link rel="stylesheet" href="css/aqs-style.css">
 <link rel="stylesheet" href="css/aqs-auth.css">
 <style>
-body{margin:0;padding:0;background:linear-gradient(135deg,#0f0c29,#302b63,#24243e);min-height:100vh;font-family:'Inter',sans-serif;}
+body{margin:0;padding:0;background:linear-gradient(135deg,#faf3ea,#ffffff);min-height:100vh;font-family:'Inter',sans-serif;}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -41,7 +44,7 @@ window.AQS = {
         <div class="aqs-auth-logo-icon" aria-hidden="true">
             <svg width="28" height="28" viewBox="0 0 36 36" fill="none">
                 <polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="white" opacity="0.9"/>
-                <circle cx="18" cy="18" r="6" fill="#6366f1"/>
+                <circle cx="18" cy="18" r="6" fill="#e8912d"/>
             </svg>
         </div>
         <h1 class="aqs-auth-title">Welcome back</h1>
@@ -64,7 +67,7 @@ window.AQS = {
                 <button type="button" class="aqs-pw-toggle" data-target="login-password" aria-label="Toggle password visibility">Show</button>
             </div>
         </div>
-        <button type="button" id="aqs-forgot-password" style="display:block;margin:-4px 0 16px auto;border:0;background:none;color:#a5b4fc;font:inherit;font-size:.82rem;cursor:pointer;padding:0;">Forgot password?</button>
+        <button type="button" id="aqs-forgot-password" style="display:block;margin:-4px 0 16px auto;border:0;background:none;color:#12304a;font:inherit;font-size:.82rem;cursor:pointer;padding:0;">Forgot password?</button>
         <button type="submit" class="aqs-auth-submit" id="aqs-login-submit">Sign In</button>
     </form>
 

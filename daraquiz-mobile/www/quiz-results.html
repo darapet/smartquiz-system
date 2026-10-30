@@ -11,9 +11,12 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
-.aqs-site-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;}
-.aqs-site-header a{text-decoration:none;color:#4f46e5;font-weight:700;font-size:1.1rem;}
+.aqs-site-header{background:#fff;border-bottom:1px solid #12304a;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.aqs-site-header a{text-decoration:none;color:#12304a;font-weight:700;font-size:1.1rem;}
 .aqs-page-main{padding:40px 20px;}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
 <script>
 window.AQS = {

@@ -5,7 +5,7 @@
     <script defer src="js/aqs-category-nav.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<meta name="theme-color" content="#080910">
+<meta name="theme-color" content="#faf3ea">
 <title>Host Profile — xzily Library</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-library.css">
@@ -13,7 +13,7 @@
 /* Book-cover change button — visible only to the owner */
 .lib-card-cover-btn{
   display:none;position:absolute;bottom:6px;right:6px;
-  background:rgba(0,0,0,.72);color:#fff;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#e8912d,#c96f16);color:#12304a;border:none;border-radius:8px;
   padding:4px 9px;font-size:.7rem;font-weight:700;cursor:pointer;
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
   z-index:3;font-family:inherit;line-height:1.4;
@@ -25,7 +25,7 @@ body.lhp-is-owner .lib-card-cover-btn{display:block;}
 /* Delete button — bottom-left, owner only */
 .lib-card-delete-btn{
   display:none;position:absolute;bottom:6px;left:6px;
-  background:rgba(220,38,38,.82);color:#fff;border:none;border-radius:8px;
+  background:rgba(220,38,38,.82);color:#12304a;border:none;border-radius:8px;
   padding:4px 9px;font-size:.7rem;font-weight:700;cursor:pointer;
   backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
   z-index:3;font-family:inherit;line-height:1.4;
@@ -33,6 +33,9 @@ body.lhp-is-owner .lib-card-cover-btn{display:block;}
 }
 .lib-card-delete-btn:hover{background:rgba(185,28,28,.95);}
 body.lhp-is-owner .lib-card-delete-btn{display:block;}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
@@ -141,7 +144,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
   <!-- ABOUT TAB -->
   <div class="lhp-tab-body" id="tab-about">
     <div id="lhp-about-card" style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;">
-      <div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">Loading…</div>
+      <div style="color:#526579;font-size:.85rem;text-align:center;padding:20px">Loading…</div>
     </div>
   </div>
 
@@ -201,7 +204,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
       _profile = await window.libGetProfile(hostUid);
       if (!_profile) {
         document.getElementById('lhp-name').textContent = 'Unknown Host';
-        document.getElementById('lhp-about-card').innerHTML = '<div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">No profile found.</div>';
+        document.getElementById('lhp-about-card').innerHTML = '<div style="color:#526579;font-size:.85rem;text-align:center;padding:20px">No profile found.</div>';
         return;
       }
 
@@ -246,40 +249,40 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
       document.getElementById('lhp-about-card').innerHTML = `
         <div style="display:flex;flex-direction:column;gap:18px;">
           <div>
-            <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Full Name</div>
-            <div style="font-size:.92rem;color:#e2e8f0;font-weight:600;">${publicName}</div>
+            <div style="font-size:.68rem;font-weight:700;color:#526579;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Full Name</div>
+            <div style="font-size:.92rem;color:#12304a;font-weight:600;">${publicName}</div>
           </div>
           ${publicEducation ? `<div>
-            <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Institution</div>
-            <div style="font-size:.88rem;color:#cbd5e1;">${_profile.institution || '—'}</div>
+            <div style="font-size:.68rem;font-weight:700;color:#526579;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Institution</div>
+            <div style="font-size:.88rem;color:#12304a;">${_profile.institution || '—'}</div>
           </div>
           <div>
-            <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Department</div>
-            <div style="font-size:.88rem;color:#cbd5e1;">${_profile.department || '—'}</div>
+            <div style="font-size:.68rem;font-weight:700;color:#526579;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Department</div>
+            <div style="font-size:.88rem;color:#12304a;">${_profile.department || '—'}</div>
           </div>` : ''}
           ${publicBio && _profile.bio ? `<div>
-            <div style="font-size:.68rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Bio</div>
-            <div style="font-size:.88rem;color:#cbd5e1;line-height:1.65;">${_profile.bio}</div>
+            <div style="font-size:.68rem;font-weight:700;color:#526579;text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px;">Bio</div>
+            <div style="font-size:.88rem;color:#12304a;line-height:1.65;">${_profile.bio}</div>
           </div>` : ''}
           <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding-top:4px;border-top:1px solid rgba(255,255,255,.06);">
             <div style="text-align:center;padding:12px 8px;background:rgba(99,102,241,.07);border-radius:10px;border:1px solid rgba(99,102,241,.14);">
-              <div id="about-books-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
-              <div style="font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Books</div>
+              <div id="about-books-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#faf3ea,#ffffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
+              <div style="font-size:.65rem;color:#526579;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Books</div>
             </div>
             <div style="text-align:center;padding:12px 8px;background:rgba(99,102,241,.07);border-radius:10px;border:1px solid rgba(99,102,241,.14);">
-              <div id="about-readers-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
-              <div style="font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Readers</div>
+              <div id="about-readers-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#faf3ea,#ffffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
+              <div style="font-size:.65rem;color:#526579;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Readers</div>
             </div>
             <div style="text-align:center;padding:12px 8px;background:rgba(99,102,241,.07);border-radius:10px;border:1px solid rgba(99,102,241,.14);">
-              <div id="about-likes-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
-              <div style="font-size:.65rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Likes</div>
+              <div id="about-likes-num" style="font-size:1.4rem;font-weight:900;background:linear-gradient(135deg,#faf3ea,#ffffff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;">—</div>
+              <div style="font-size:.65rem;color:#526579;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:3px;">Likes</div>
             </div>
           </div>
         </div>`;
 
     } catch(e) {
       document.getElementById('lhp-name').textContent = 'Profile unavailable';
-      document.getElementById('lhp-about-card').innerHTML = `<div style="color:#64748b;font-size:.85rem;text-align:center;padding:20px">Could not load: ${e.message}</div>`;
+      document.getElementById('lhp-about-card').innerHTML = `<div style="color:#526579;font-size:.85rem;text-align:center;padding:20px">Could not load: ${e.message}</div>`;
     }
   }
 
@@ -322,7 +325,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
         </div>
         <div class="lib-card-meta">
           ${level?`<div><span class="lib-card-level">${level}</span></div>`:''}
-          <div style="font-size:.67rem;color:#64748b;">${_h((b.course||'').substring(0,24))}</div>
+          <div style="font-size:.67rem;color:#526579;">${_h((b.course||'').substring(0,24))}</div>
         </div>
         <div class="lib-card-stats">
           <span class="lib-card-stat">👁 ${b.views||0}</span>
@@ -411,7 +414,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
   async function loadFollowers() {
     if (_followersLoaded) return;
     const el = document.getElementById('lhp-followers-list');
-    el.innerHTML = `<div style="color:#64748b;font-size:.85rem;text-align:center;padding:24px;"><span class="lib-spinner"></span></div>`;
+    el.innerHTML = `<div style="color:#526579;font-size:.85rem;text-align:center;padding:24px;"><span class="lib-spinner"></span></div>`;
 
     function withTimeout(promise, ms) {
       return Promise.race([
@@ -448,7 +451,7 @@ body.lhp-is-owner .lib-card-delete-btn{display:block;}
       _followersLoaded = false;
       el.innerHTML = `<div style="color:#ef4444;font-size:.82rem;text-align:center;padding:24px;">
         Could not load followers.<br>
-        <button onclick="loadFollowers()" style="margin-top:10px;padding:6px 16px;border-radius:8px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.1);color:#a5b4fc;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
+        <button onclick="loadFollowers()" style="margin-top:10px;padding:6px 16px;border-radius:8px;border:1px solid rgba(99,102,241,.3);background:rgba(99,102,241,.1);color:#12304a;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;">
           Try Again
         </button>
       </div>`;

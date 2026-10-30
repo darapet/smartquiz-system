@@ -3,47 +3,47 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#080910">
+<meta name="theme-color" content="#faf3ea">
 <title>My Profile — xzily AI</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/aqs-style.css">
 <link rel="stylesheet" href="css/aqs-library.css">
 <style>
 /* Profile page specific styles */
-.prf-header{position:sticky;top:0;z-index:9500;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:rgba(8,9,16,.88);border-bottom:1px solid rgba(255,255,255,.08);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
-.prf-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#e0e7ff;font-weight:800;font-size:1.05rem;}
+.prf-header{position:sticky;top:0;z-index:9500;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);background:#faf3ea;border-bottom:1px solid rgba(255,255,255,.08);height:60px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;}
+.prf-logo{display:flex;align-items:center;gap:10px;text-decoration:none;color:#12304a;font-weight:800;font-size:1.05rem;}
 .prf-nav{display:flex;gap:6px;align-items:center;}
-.prf-nav a{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;font-size:.82rem;font-weight:600;text-decoration:none;color:#94a3b8;transition:background .15s,color .15s;}
-.prf-nav a:hover{background:rgba(99,102,241,.15);color:#e0e7ff;}
+.prf-nav a{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;font-size:.82rem;font-weight:600;text-decoration:none;color:#12304a;transition:background .15s,color .15s;}
+.prf-nav a:hover{background:rgba(99,102,241,.15);color:#12304a;}
 
 /* Page */
 .prf-page{max-width:860px;margin:0 auto;padding:32px 20px 100px;}
-@media(max-width:640px){.prf-page{padding:20px 14px 90px;}}
+@media(max-width:768px){.prf-page{padding:20px 14px 90px;}}
 
 /* Hero card */
 .prf-hero{background:linear-gradient(135deg,rgba(99,102,241,.14),rgba(139,92,246,.09));border:1px solid rgba(99,102,241,.18);border-radius:24px;padding:40px 32px 32px;text-align:center;position:relative;overflow:hidden;margin-bottom:24px;}
 .prf-hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:280px;height:280px;background:radial-gradient(circle,rgba(99,102,241,.18) 0%,transparent 70%);pointer-events:none;}
 
 .prf-avatar-wrap{position:relative;display:inline-block;margin-bottom:16px;}
-.prf-avatar{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:2.4rem;font-weight:800;color:#fff;border:4px solid rgba(255,255,255,.1);box-shadow:0 0 0 4px rgba(99,102,241,.25),0 8px 32px rgba(0,0,0,.4);position:relative;z-index:1;text-transform:uppercase;overflow:hidden;}
+.prf-avatar{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,#faf3ea,#ffffff);display:flex;align-items:center;justify-content:center;font-size:2.4rem;font-weight:800;color:#12304a;border:4px solid rgba(255,255,255,.1);box-shadow:0 0 0 4px rgba(99,102,241,.25),0 8px 32px rgba(0,0,0,.4);position:relative;z-index:1;text-transform:uppercase;overflow:hidden;}
 .prf-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover;}
-.prf-avatar-edit{position:absolute;bottom:2px;right:2px;width:28px;height:28px;background:#6366f1;border-radius:50%;border:2px solid #080910;display:flex;align-items:center;justify-content:center;font-size:.75rem;cursor:pointer;z-index:2;}
+.prf-avatar-edit{position:absolute;bottom:2px;right:2px;width:28px;height:28px;background:#faf3ea;border-radius:50%;border:2px solid #faf3ea;display:flex;align-items:center;justify-content:center;font-size:.75rem;cursor:pointer;z-index:2;}
 
-.prf-name{font-size:1.55rem;font-weight:800;color:#e0e7ff;margin-bottom:3px;letter-spacing:-.02em;}
-.prf-email-hide{color:#64748b;font-size:.82rem;margin-bottom:12px;}
-.prf-role-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:100px;padding:5px 14px;font-size:.73rem;font-weight:700;letter-spacing:.05em;color:#a5b4fc;text-transform:uppercase;margin-bottom:28px;}
+.prf-name{font-size:1.55rem;font-weight:800;color:#12304a;margin-bottom:3px;letter-spacing:-.02em;}
+.prf-email-hide{color:#526579;font-size:.82rem;margin-bottom:12px;}
+.prf-role-badge{display:inline-flex;align-items:center;gap:6px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:100px;padding:5px 14px;font-size:.73rem;font-weight:700;letter-spacing:.05em;color:#12304a;text-transform:uppercase;margin-bottom:28px;}
 .prf-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:440px;margin:0 auto 28px;}
 .prf-stat{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:14px 10px;}
-.prf-stat-num{font-size:1.75rem;font-weight:800;color:#e0e7ff;line-height:1;margin-bottom:4px;}
-.prf-stat-label{font-size:.7rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.06em;}
+.prf-stat-num{font-size:1.75rem;font-weight:800;color:#12304a;line-height:1;margin-bottom:4px;}
+.prf-stat-label{font-size:.7rem;font-weight:600;color:#526579;text-transform:uppercase;letter-spacing:.06em;}
 .prf-hero-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;}
-@media(max-width:480px){.prf-hero{padding:28px 16px 24px;}.prf-stats{gap:10px;}.prf-stat-num{font-size:1.3rem;}}
+@media(max-width:768px){.prf-hero{padding:28px 16px 24px;}.prf-stats{gap:10px;}.prf-stat-num{font-size:1.3rem;}}
 
 /* Cards */
-.prf-card{background:rgba(15,16,30,.85);border:1px solid rgba(99,102,241,.15);border-radius:20px;margin-bottom:16px;overflow:hidden;backdrop-filter:blur(8px);}
+.prf-card{background:rgba(255,255,255,.96);border:1px solid rgba(99,102,241,.15);border-radius:20px;margin-bottom:16px;overflow:hidden;backdrop-filter:blur(8px);}
 .prf-card-header{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid rgba(255,255,255,.06);}
-.prf-card-title{font-size:.85rem;font-weight:700;color:#e0e7ff;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em;}
-.prf-card-action{font-size:.78rem;font-weight:600;color:#6366f1;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:5px 11px;cursor:pointer;transition:background .15s;text-decoration:none;font-family:inherit;}
+.prf-card-title{font-size:.85rem;font-weight:700;color:#12304a;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.06em;}
+.prf-card-action{font-size:.78rem;font-weight:600;color:#12304a;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:8px;padding:5px 11px;cursor:pointer;transition:background .15s;text-decoration:none;font-family:inherit;}
 .prf-card-action:hover{background:rgba(99,102,241,.2);}
 .prf-card-body{padding:18px 22px;}
 @media(max-width:540px){.prf-card-body{padding:14px 16px;}.prf-card-header{padding:13px 16px;}}
@@ -52,26 +52,26 @@
 .prf-info-row{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);}
 .prf-info-row:last-child{border-bottom:none;}
 .prf-info-icon{width:32px;height:32px;border-radius:8px;background:rgba(99,102,241,.12);display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-right:13px;font-size:.95rem;}
-.prf-info-label{font-size:.72rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
-.prf-info-value{font-size:.9rem;font-weight:500;color:#e0e7ff;word-break:break-all;}
+.prf-info-label{font-size:.72rem;font-weight:600;color:#526579;text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px;}
+.prf-info-value{font-size:.9rem;font-weight:500;color:#12304a;word-break:break-all;}
 .prf-info-edit{margin-left:auto;padding-left:12px;}
-.prf-edit-btn{background:none;border:1px solid rgba(99,102,241,.3);border-radius:7px;color:#6366f1;padding:4px 10px;font-size:.73rem;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;}
+.prf-edit-btn{background:none;border:1px solid rgba(99,102,241,.3);border-radius:7px;color:#12304a;padding:4px 10px;font-size:.73rem;font-weight:600;cursor:pointer;transition:background .15s;font-family:inherit;}
 .prf-edit-btn:hover{background:rgba(99,102,241,.12);}
 
 /* Activity */
 .prf-activity-item{display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.04);}
 .prf-activity-item:last-child{border-bottom:none;}
-.prf-activity-dot{width:8px;height:8px;border-radius:50%;background:#6366f1;flex-shrink:0;margin-top:6px;}
-.prf-activity-text{font-size:.84rem;color:#cbd5e1;line-height:1.5;}
-.prf-activity-text b{color:#e0e7ff;font-weight:600;}
-.prf-activity-time{font-size:.7rem;color:#64748b;margin-top:2px;}
-.prf-empty{text-align:center;padding:30px 16px;color:#64748b;font-size:.85rem;}
+.prf-activity-dot{width:8px;height:8px;border-radius:50%;background:#faf3ea;flex-shrink:0;margin-top:6px;}
+.prf-activity-text{font-size:.84rem;color:#12304a;line-height:1.5;}
+.prf-activity-text b{color:#12304a;font-weight:600;}
+.prf-activity-time{font-size:.7rem;color:#526579;margin-top:2px;}
+.prf-empty{text-align:center;padding:30px 16px;color:#526579;font-size:.85rem;}
 
 /* Danger */
 .prf-danger-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid rgba(255,255,255,.04);}
 .prf-danger-row:last-child{border-bottom:none;}
-.prf-danger-label{font-size:.88rem;font-weight:600;color:#e2e8f0;}
-.prf-danger-sub{font-size:.73rem;color:#64748b;margin-top:2px;}
+.prf-danger-label{font-size:.88rem;font-weight:600;color:#12304a;}
+.prf-danger-sub{font-size:.73rem;color:#526579;margin-top:2px;}
 .prf-danger-btn{padding:7px 14px;border-radius:9px;font-size:.8rem;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:all .15s;}
 .prf-btn-red{background:rgba(225,29,72,.1);color:#f87171;border:1px solid rgba(225,29,72,.25);}
 .prf-btn-red:hover{background:rgba(225,29,72,.2);}
@@ -79,23 +79,26 @@
 /* Inline edit overlay */
 .prf-field-edit{
   display:none;position:fixed;inset:0;z-index:999;
-  background:rgba(0,0,0,.75);align-items:center;justify-content:center;padding:20px;
+  background:#faf3ea;align-items:center;justify-content:center;padding:20px;
   backdrop-filter:blur(8px);}
 .prf-field-edit.open{display:flex;}
-.prf-field-box{background:#0c0d1c;border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:26px;max-width:400px;width:100%;}
+.prf-field-box{background:#faf3ea;border:1px solid rgba(99,102,241,.2);border-radius:18px;padding:26px;max-width:400px;width:100%;}
 .prf-field-box-title{font-size:.95rem;font-weight:800;margin-bottom:16px;}
 .prf-field-box-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
-<body style="background:#080910;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
+<body style="background:#faf3ea;min-height:100vh;" data-aqs-page="profile" data-aqs-page-group="settings/account">
 <header class="aqs-phase2-page-header" aria-label="My Profile"><a href="index.html" class="aqs-phase2-back">← Home</a><span class="aqs-phase2-page-title">My Profile</span></header>
 
 
 <!-- HEADER -->
 <header class="prf-header">
   <a href="dashboard.html" class="prf-logo">
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e8912d" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
     xzily AI
   </a>
   <nav class="prf-nav">
@@ -107,7 +110,7 @@
 </header>
 
 <!-- PAGE -->
-<div class="prf-page" id="prf-loading" style="text-align:center;padding:80px 20px;color:#64748b;">
+<div class="prf-page" id="prf-loading" style="text-align:center;padding:80px 20px;color:#526579;">
   Loading profile…
 </div>
 

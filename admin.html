@@ -9,113 +9,113 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
-body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:100vh;display:flex;}
+body{font-family:'Inter',sans-serif;background:#faf3ea;color:#12304a;min-height:100vh;display:flex;}
 
 /* ── Gate ── */
-#admin-gate{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;position:fixed;inset:0;background:#0f0f1a;z-index:9999;}
-.gate-box{background:#1e1b4b;border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:48px 40px;text-align:center;max-width:360px;width:90%;}
+#admin-gate{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;position:fixed;inset:0;background:#faf3ea;z-index:9999;}
+.gate-box{background:#faf3ea;border:1px solid rgba(99,102,241,.3);border-radius:20px;padding:48px 40px;text-align:center;max-width:360px;width:90%;}
 .gate-icon{font-size:3rem;margin-bottom:16px;}
-.gate-box h2{color:#e0e7ff;font-size:1.4rem;margin-bottom:8px;}
-.gate-box p{color:#94a3b8;font-size:.9rem;margin-bottom:24px;}
+.gate-box h2{color:#12304a;font-size:1.4rem;margin-bottom:8px;}
+.gate-box p{color:#12304a;font-size:.9rem;margin-bottom:24px;}
 
 /* ── Layout ── */
 #admin-panel{display:none;width:100%;min-height:100vh;}
-.adm-sidebar{width:230px;min-height:100vh;background:#13111f;border-right:1px solid rgba(255,255,255,.07);padding:24px 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;}
+.adm-sidebar{width:230px;min-height:100vh;background:#faf3ea;border-right:1px solid rgba(255,255,255,.07);padding:24px 0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;}
 .adm-main{margin-left:230px;flex:1;min-height:100vh;padding:0;}
 
 /* ── Sidebar ── */
 .adm-brand{padding:0 20px 24px;border-bottom:1px solid rgba(255,255,255,.07);}
 .adm-brand-logo{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
 .adm-brand-logo svg{flex-shrink:0;}
-.adm-brand-name{font-weight:800;font-size:1.1rem;color:#e0e7ff;}
-.adm-brand-tag{font-size:.72rem;color:#6366f1;font-weight:600;background:rgba(99,102,241,.15);padding:2px 8px;border-radius:20px;display:inline-block;margin-top:4px;}
+.adm-brand-name{font-weight:800;font-size:1.1rem;color:#12304a;}
+.adm-brand-tag{font-size:.72rem;color:#12304a;font-weight:600;background:rgba(99,102,241,.15);padding:2px 8px;border-radius:20px;display:inline-block;margin-top:4px;}
 .adm-nav{padding:16px 0;flex:1;overflow-y:auto;}
-.adm-nav-link{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#94a3b8;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;cursor:pointer;border:none;background:none;width:100%;text-align:left;}
-.adm-nav-link:hover,.adm-nav-link.active{background:rgba(99,102,241,.12);color:#a5b4fc;}
-.adm-nav-link.active{border-right:3px solid #6366f1;}
+.adm-nav-link{display:flex;align-items:center;gap:10px;padding:11px 20px;color:#12304a;text-decoration:none;font-size:.88rem;font-weight:500;transition:all .15s;cursor:pointer;border:none;background:none;width:100%;text-align:left;}
+.adm-nav-link:hover,.adm-nav-link.active{background:rgba(99,102,241,.12);color:#12304a;}
+.adm-nav-link.active{border-right:3px solid #e8912d;}
 .adm-nav-link .adm-nav-icon{font-size:1.1rem;width:20px;text-align:center;}
 .adm-nav-section{padding:8px 20px 4px;font-size:.68rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.08em;}
 .adm-sidebar-footer{padding:16px 20px;border-top:1px solid rgba(255,255,255,.07);}
 .adm-user-chip{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
-.adm-user-dot{width:8px;height:8px;background:#10b981;border-radius:50%;flex-shrink:0;}
+.adm-user-dot{width:8px;height:8px;background:#faf3ea;border-radius:50%;flex-shrink:0;}
 .adm-user-email{font-size:.72rem;color:#6ee7b7;word-break:break-all;}
 
 /* ── Main area ── */
-.adm-topbar{background:#13111f;border-bottom:1px solid rgba(255,255,255,.07);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
-.adm-topbar-title{font-size:1.1rem;font-weight:700;color:#e0e7ff;}
+.adm-topbar{background:#faf3ea;border-bottom:1px solid rgba(255,255,255,.07);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.adm-topbar-title{font-size:1.1rem;font-weight:700;color:#12304a;}
 .adm-content{padding:28px;}
 
 /* ── Stats cards ── */
 .adm-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:28px;}
-.adm-stat-card{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;text-align:center;}
-.adm-stat-card .adm-stat-num{font-size:2rem;font-weight:800;color:#a5b4fc;display:block;}
-.adm-stat-card .adm-stat-label{font-size:.78rem;color:#64748b;margin-top:4px;display:block;}
+.adm-stat-card{background:#ffffff;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;text-align:center;}
+.adm-stat-card .adm-stat-num{font-size:2rem;font-weight:800;color:#12304a;display:block;}
+.adm-stat-card .adm-stat-label{font-size:.78rem;color:#526579;margin-top:4px;display:block;}
 
 /* ── Sections ── */
 .adm-section{display:none;}
 .adm-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;}
-.adm-section-title{font-size:1.05rem;font-weight:700;color:#e0e7ff;}
-.adm-bulk-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035);font-size:.8rem;color:#94a3b8;}
-.adm-bulk-toolbar label{display:inline-flex;align-items:center;gap:7px;color:#cbd5e1;font-weight:600;}
+.adm-section-title{font-size:1.05rem;font-weight:700;color:#12304a;}
+.adm-bulk-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 12px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:10px;background:rgba(255,255,255,.035);font-size:.8rem;color:#12304a;}
+.adm-bulk-toolbar label{display:inline-flex;align-items:center;gap:7px;color:#12304a;font-weight:600;}
 .adm-bulk-toolbar input[type="checkbox"],.adm-table input[type="checkbox"]{width:17px;height:17px;accent-color:#14b8a6;cursor:pointer;}
-.adm-bulk-toolbar [data-bulk-count]{margin-right:auto;color:#64748b;}
+.adm-bulk-toolbar [data-bulk-count]{margin-right:auto;color:#526579;}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
 
 /* ── Search ── */
-.adm-search{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;color:#e2e8f0;font-size:.85rem;outline:none;width:240px;}
+.adm-search{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:8px 14px;color:#12304a;font-size:.85rem;outline:none;width:240px;}
 .adm-search::placeholder{color:#475569;}
-.adm-search:focus{border-color:#6366f1;}
+.adm-search:focus{border-color:#e8912d;}
 
 /* ── Table ── */
 .adm-table{width:100%;border-collapse:collapse;font-size:.82rem;}
-.adm-table th{background:rgba(255,255,255,.04);color:#94a3b8;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07);}
+.adm-table th{background:rgba(255,255,255,.04);color:#12304a;font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.07);}
 .adm-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle;}
 .adm-table tr:hover td{background:rgba(255,255,255,.02);}
-.adm-table-wrap{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;overflow-x:auto;}
+.adm-table-wrap{background:#faf3ea;border:1px solid rgba(255,255,255,.08);border-radius:14px;overflow:hidden;overflow-x:auto;}
 
 /* ── Buttons ── */
-.adm-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;color:#e2e8f0;background:rgba(255,255,255,.08);}
+.adm-btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;text-decoration:none;transition:all .15s;color:#12304a;background:rgba(255,255,255,.08);}
 .adm-btn:hover{background:rgba(255,255,255,.14);}
-.adm-btn-primary{background:#6366f1;color:#fff;}
-.adm-btn-primary:hover{background:#4f46e5;}
+.adm-btn-primary{background:#e8912d;color:#12304a;}
+.adm-btn-primary:hover{background:#e8912d;}
 .adm-btn-danger{background:rgba(239,68,68,.15);color:#f87171;}
 .adm-btn-danger:hover{background:rgba(239,68,68,.3);}
-.adm-btn-success{background:rgba(16,185,129,.15);color:#6ee7b7;}
-.adm-btn-success:hover{background:rgba(16,185,129,.3);}
+.adm-btn-success{background:#faf3ea;color:#6ee7b7;}
+.adm-btn-success:hover{background:#faf3ea;}
 .adm-btn-warn{background:rgba(245,158,11,.15);color:#fcd34d;}
 .adm-btn-warn:hover{background:rgba(245,158,11,.3);}
 .adm-btn-sm{padding:5px 10px;font-size:.75rem;border-radius:6px;}
 
 /* ── Badges ── */
 .adm-badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:.72rem;font-weight:600;}
-.adm-badge-green{background:rgba(16,185,129,.15);color:#6ee7b7;}
+.adm-badge-green{background:#faf3ea;color:#6ee7b7;}
 .adm-badge-yellow{background:rgba(245,158,11,.15);color:#fcd34d;}
 .adm-badge-red{background:rgba(239,68,68,.15);color:#f87171;}
-.adm-badge-blue{background:rgba(59,130,246,.15);color:#93c5fd;}
-.adm-badge-purple{background:rgba(139,92,246,.15);color:#c4b5fd;}
-.adm-badge-gray{background:rgba(255,255,255,.07);color:#94a3b8;}
+.adm-badge-blue{background:#faf3ea;color:#12304a;}
+.adm-badge-purple{background:rgba(139,92,246,.15);color:#12304a;}
+.adm-badge-gray{background:rgba(255,255,255,.07);color:#12304a;}
 
 /* ── Cards (form) ── */
-.adm-card{background:#1a1730;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:24px;margin-bottom:20px;}
-.adm-card-title{font-size:.95rem;font-weight:700;color:#e0e7ff;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07);}
+.adm-card{background:#ffffff;border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:24px;margin-bottom:20px;}
+.adm-card-title{font-size:.95rem;font-weight:700;color:#12304a;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.07);}
 .adm-form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;}
 .adm-field{display:flex;flex-direction:column;gap:5px;}
-.adm-field label{font-size:.75rem;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;}
-.adm-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 13px;color:#e2e8f0;font-size:.85rem;outline:none;width:100%;font-family:'Inter',sans-serif;}
-.adm-input:focus{border-color:#6366f1;}
+.adm-field label{font-size:.75rem;font-weight:600;color:#12304a;text-transform:uppercase;letter-spacing:.04em;}
+.adm-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:9px 13px;color:#12304a;font-size:.85rem;outline:none;width:100%;font-family:'Inter',sans-serif;}
+.adm-input:focus{border-color:#e8912d;}
 .adm-input-color{padding:3px 6px;height:38px;cursor:pointer;}
 .adm-toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
 .adm-toggle{width:40px;height:22px;appearance:none;background:rgba(255,255,255,.1);border-radius:11px;cursor:pointer;position:relative;transition:background .2s;}
-.adm-toggle:checked{background:#6366f1;}
+.adm-toggle:checked{background:#faf3ea;}
 .adm-toggle::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:left .2s;}
 .adm-toggle:checked::after{left:21px;}
-.adm-select-sm{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;color:#e2e8f0;font-size:.75rem;outline:none;}
+.adm-select-sm{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;color:#12304a;font-size:.75rem;outline:none;}
 .adm-cloudinary-account{border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:16px;background:rgba(255,255,255,.025);margin-bottom:12px;}
 .adm-cloudinary-account-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;}
-.adm-cloudinary-account-title{font-size:.85rem;font-weight:700;color:#e0e7ff;}
+.adm-cloudinary-account-title{font-size:.85rem;font-weight:700;color:#12304a;}
 .adm-cloudinary-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
 .adm-cloudinary-grid .adm-field:last-child{grid-column:1/-1;}
-@media(max-width:640px){.adm-cloudinary-grid{grid-template-columns:1fr;}.adm-cloudinary-grid .adm-field:last-child{grid-column:auto;}}
+@media(max-width:768px){.adm-cloudinary-grid{grid-template-columns:1fr;}.adm-cloudinary-grid .adm-field:last-child{grid-column:auto;}}
 
 /* ── States ── */
 .adm-loading{padding:32px;text-align:center;color:#475569;}
@@ -136,33 +136,33 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
 
 /* ── Date Filters ── */
 .adm-filters-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px;}
-.adm-filters-row label{font-size:.72rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
-.adm-date-sel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 10px;color:#e2e8f0;font-size:.78rem;outline:none;cursor:pointer;}
-.adm-date-sel:focus{border-color:#6366f1;}
-.adm-date-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 8px;color:#e2e8f0;font-size:.78rem;outline:none;width:64px;text-align:center;}
-.adm-date-input:focus{border-color:#6366f1;}
+.adm-filters-row label{font-size:.72rem;color:#526579;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+.adm-date-sel{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 10px;color:#12304a;font-size:.78rem;outline:none;cursor:pointer;}
+.adm-date-sel:focus{border-color:#e8912d;}
+.adm-date-input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:5px 8px;color:#12304a;font-size:.78rem;outline:none;width:64px;text-align:center;}
+.adm-date-input:focus{border-color:#e8912d;}
 
 /* ── Activity Modal ── */
-#adm-activity-modal{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;}
-.adm-modal-panel{background:#1a1730;border:1px solid rgba(99,102,241,.35);border-radius:16px;width:100%;max-width:960px;margin:auto;position:relative;}
+#adm-activity-modal{position:fixed;inset:0;background:rgba(255,255,255,.96);z-index:2000;display:none;align-items:flex-start;justify-content:center;overflow-y:auto;padding:20px 12px;}
+.adm-modal-panel{background:#ffffff;border:1px solid rgba(99,102,241,.35);border-radius:16px;width:100%;max-width:960px;margin:auto;position:relative;}
 .adm-modal-header{padding:18px 24px;border-bottom:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;gap:12px;}
-.adm-modal-title{font-size:1.05rem;font-weight:700;color:#e0e7ff;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.adm-modal-close{background:rgba(255,255,255,.08);border:none;color:#94a3b8;font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:6px;line-height:1;flex-shrink:0;}
+.adm-modal-title{font-size:1.05rem;font-weight:700;color:#12304a;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.adm-modal-close{background:rgba(255,255,255,.08);border:none;color:#12304a;font-size:1.1rem;cursor:pointer;padding:6px 10px;border-radius:6px;line-height:1;flex-shrink:0;}
 .adm-modal-close:hover{background:rgba(239,68,68,.2);color:#f87171;}
 .adm-modal-body{padding:22px 24px;}
 .adm-modal-info-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:22px;}
 .adm-modal-info-item{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:11px 14px;}
-.adm-modal-info-label{font-size:.65rem;color:#64748b;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
-.adm-modal-info-val{font-size:.88rem;color:#e0e7ff;font-weight:600;word-break:break-all;}
-.adm-modal-section-title{font-size:.78rem;font-weight:700;color:#a5b4fc;margin:0 0 10px;text-transform:uppercase;letter-spacing:.07em;}
+.adm-modal-info-label{font-size:.65rem;color:#526579;font-weight:700;text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;}
+.adm-modal-info-val{font-size:.88rem;color:#12304a;font-weight:600;word-break:break-all;}
+.adm-modal-section-title{font-size:.78rem;font-weight:700;color:#12304a;margin:0 0 10px;text-transform:uppercase;letter-spacing:.07em;}
 .adm-modal-footer{padding:14px 24px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
 
 /* ── Export dropdown ── */
 .adm-export-wrap{position:relative;display:inline-block;}
-.adm-export-menu{position:absolute;bottom:110%;left:0;background:#1e1b4b;border:1px solid rgba(99,102,241,.35);border-radius:10px;padding:6px;min-width:200px;z-index:10;display:none;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+.adm-export-menu{position:absolute;bottom:110%;left:0;background:#faf3ea;border:1px solid rgba(99,102,241,.35);border-radius:10px;padding:6px;min-width:200px;z-index:10;display:none;box-shadow:0 10px 40px rgba(0,0,0,.5);}
 .adm-export-menu.open{display:block;}
-.adm-export-item{display:block;width:100%;padding:8px 12px;background:none;border:none;color:#e2e8f0;font-size:.82rem;cursor:pointer;text-align:left;border-radius:6px;font-family:'Inter',sans-serif;}
-.adm-export-item:hover{background:rgba(99,102,241,.2);color:#a5b4fc;}
+.adm-export-item{display:block;width:100%;padding:8px 12px;background:none;border:none;color:#12304a;font-size:.82rem;cursor:pointer;text-align:left;border-radius:6px;font-family:'Inter',sans-serif;}
+.adm-export-item:hover{background:rgba(99,102,241,.2);color:#12304a;}
 .adm-export-divider{height:1px;background:rgba(255,255,255,.07);margin:4px 2px;}
 
 /* ── Print ── */
@@ -171,6 +171,9 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
     #adm-print-frame{display:block!important;}
 }
 #adm-print-frame{display:none;}
+
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
 </style>
   <link rel="stylesheet" href="css/aqs-cream-theme.css?v=563">
 </head>
@@ -194,7 +197,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
     <aside class="adm-sidebar">
         <div class="adm-brand">
             <div class="adm-brand-logo">
-                <svg width="28" height="28" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#6366f1" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="white"/></svg>
+                <svg width="28" height="28" viewBox="0 0 36 36" fill="none"><polygon points="18,2 34,10 34,26 18,34 2,26 2,10" fill="#e8912d" opacity="0.9"/><circle cx="18" cy="18" r="6" fill="white"/></svg>
                 <span class="adm-brand-name">xzily AI</span>
             </div>
             <span class="adm-brand-tag">Admin Panel</span>
@@ -344,7 +347,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                         <script>for(var _d2=1;_d2<=31;_d2++){document.write('<option value="'+_d2+'">'+_d2+'</option>');}</script>
                     </select>
                 </div>
-                <p style="color:#94a3b8;font-size:.82rem;margin:10px 0 14px;">Quizzes deleted by hosts or admin. Click <strong>👁 View</strong> to see full activity, then <strong>🖨️ Print</strong> or <strong>⬇️ Export</strong> before permanently removing.</p>
+                <p style="color:#12304a;font-size:.82rem;margin:10px 0 14px;">Quizzes deleted by hosts or admin. Click <strong>👁 View</strong> to see full activity, then <strong>🖨️ Print</strong> or <strong>⬇️ Export</strong> before permanently removing.</p>
                 <div class="adm-table-wrap">
                     <div id="deleted-list"><div class="adm-loading">Loading…</div></div>
                 </div>
@@ -354,7 +357,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
             <div class="adm-section" id="section-hosts">
                 <div class="adm-section-header">
                     <span class="adm-section-title">🏠 Host Activity</span>
-                    <span style="color:#94a3b8;font-size:.82rem;">All hosts and their quizzes + attempt counts</span>
+                    <span style="color:#12304a;font-size:.82rem;">All hosts and their quizzes + attempt counts</span>
                 </div>
                 <div id="hosts-list"><div class="adm-loading">Loading…</div></div>
             </div>
@@ -409,7 +412,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                     <div class="adm-card-title">⏰ Countdown Bar</div>
                     <div class="adm-toggle-row">
                         <input type="checkbox" class="adm-toggle" id="notif-cd-enabled">
-                        <label for="notif-cd-enabled" style="font-size:.85rem;color:#94a3b8;">Enable countdown bar on all pages</label>
+                        <label for="notif-cd-enabled" style="font-size:.85rem;color:#12304a;">Enable countdown bar on all pages</label>
                     </div>
                     <div class="adm-form-grid">
                         <div class="adm-field">
@@ -422,7 +425,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                         </div>
                         <div class="adm-field">
                             <label>Background Color</label>
-                            <input type="color" class="adm-input adm-input-color" id="notif-cd-bg" value="#1e1b4b">
+                            <input type="color" class="adm-input adm-input-color" id="notif-cd-bg" value="#fff">
                         </div>
                         <div class="adm-field">
                             <label>Text Color</label>
@@ -430,7 +433,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                         </div>
                         <div class="adm-field">
                             <label>Accent Color</label>
-                            <input type="color" class="adm-input adm-input-color" id="notif-cd-accent" value="#6366f1">
+                            <input type="color" class="adm-input adm-input-color" id="notif-cd-accent" value="#e8912d">
                         </div>
                     </div>
                 </div>
@@ -440,7 +443,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                     <div class="adm-card-title">📢 News Ticker Bar</div>
                     <div class="adm-toggle-row">
                         <input type="checkbox" class="adm-toggle" id="notif-tk-enabled">
-                        <label for="notif-tk-enabled" style="font-size:.85rem;color:#94a3b8;">Enable scrolling news ticker on all pages</label>
+                        <label for="notif-tk-enabled" style="font-size:.85rem;color:#12304a;">Enable scrolling news ticker on all pages</label>
                     </div>
                     <div class="adm-form-grid">
                         <div class="adm-field">
@@ -457,7 +460,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                         </div>
                         <div class="adm-field">
                             <label>Background Color</label>
-                            <input type="color" class="adm-input adm-input-color" id="notif-tk-bg" value="#1e1b4b">
+                            <input type="color" class="adm-input adm-input-color" id="notif-tk-bg" value="#fff">
                         </div>
                         <div class="adm-field">
                             <label>Text Color</label>
@@ -475,7 +478,7 @@ body{font-family:'Inter',sans-serif;background:#0f0f1a;color:#e2e8f0;min-height:
                 <div class="adm-section-header">
                     <div>
                         <span class="adm-section-title">Cloudinary Storage</span>
-                        <p style="color:#94a3b8;font-size:.82rem;margin-top:6px;max-width:720px;">Connect up to six Cloudinary accounts for image and media uploads. Use each account's cloud name and an unsigned upload preset. API secrets are not requested or stored in this browser app.</p>
+                        <p style="color:#12304a;font-size:.82rem;margin-top:6px;max-width:720px;">Connect up to six Cloudinary accounts for image and media uploads. Use each account's cloud name and an unsigned upload preset. API secrets are not requested or stored in this browser app.</p>
                     </div>
                 </div>
                 <div class="adm-card">

@@ -15,10 +15,10 @@
 <style>
 *{box-sizing:border-box;}
 body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
-.qm-header{background:#fff;border-bottom:1px solid #e5e7eb;padding:0 20px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
-.qm-back{color:#6b7280;text-decoration:none;font-size:.85rem;display:flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid #e5e7eb;border-radius:8px;white-space:nowrap;}
+.qm-header{background:#fff;border-bottom:1px solid #12304a;padding:0 20px;height:58px;display:flex;align-items:center;gap:14px;position:sticky;top:var(--aqs-cd-bar-h,0px);z-index:100;}
+.qm-back{color:#6b7280;text-decoration:none;font-size:.85rem;display:flex;align-items:center;gap:5px;padding:6px 10px;border:1px solid #12304a;border-radius:8px;white-space:nowrap;}
 .qm-back:hover{background:#f9fafb;}
-.qm-header-title{font-weight:700;font-size:1rem;color:#0f172a;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.qm-header-title{font-weight:700;font-size:1rem;color:#fff;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .qm-status-badge{font-size:.72rem;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap;flex-shrink:0;}
 .badge-published{background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7;}
 .badge-draft{background:#fffbeb;color:#92400e;border:1px solid #fcd34d;}
@@ -26,67 +26,67 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
 .qm-main{max-width:1100px;margin:0 auto;padding:24px 18px;}
 .qm-actions{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px;}
 .qm-btn{padding:9px 18px;border-radius:9px;font-size:.85rem;font-weight:600;cursor:pointer;border:1px solid transparent;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:all .15s;}
-.qm-btn-outline{background:#fff;border-color:#e2e8f0;color:#374151;}
-.qm-btn-outline:hover{border-color:#c7d2fe;background:#f5f3ff;color:#4f46e5;}
-.qm-btn-primary{background:#4f46e5;color:#fff;border-color:#4f46e5;}
-.qm-btn-primary:hover{background:#4338ca;}
-.qm-btn-success{background:#059669;color:#fff;border-color:#059669;}
-.qm-btn-success:hover{background:#047857;}
-.qm-btn-warn{background:#d97706;color:#fff;border-color:#d97706;}
+.qm-btn-outline{background:#fff;border-color:#12304a;color:#374151;}
+.qm-btn-outline:hover{border-color:#c7d2fe;background:#f5f3ff;color:#12304a;}
+.qm-btn-primary{background:#e8912d;color:#12304a;border-color:#e8912d;}
+.qm-btn-primary:hover{background:#e8912d;}
+.qm-btn-success{background:#faf3ea;color:#12304a;border-color:#059669;}
+.qm-btn-success:hover{background:#faf3ea;}
+.qm-btn-warn{background:#d97706;color:#12304a;border-color:#d97706;}
 .qm-btn-warn:hover{background:#b45309;}
-.qm-btn-danger{background:#dc2626;color:#fff;border-color:#dc2626;}
+.qm-btn-danger{background:#dc2626;color:#12304a;border-color:#dc2626;}
 .qm-btn-danger:hover{background:#b91c1c;}
 .qm-btn-sm{padding:6px 12px;font-size:.78rem;}
 .qm-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
-.qm-stat{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:16px;text-align:center;}
-.qm-stat-num{font-size:1.7rem;font-weight:800;color:#4f46e5;line-height:1.1;}
-.qm-stat-label{font-size:.74rem;color:#64748b;margin-top:4px;font-weight:500;}
-.qm-tabs{display:flex;gap:0;border-bottom:2px solid #e5e7eb;margin-bottom:20px;}
-.qm-tab{padding:11px 20px;font-size:.88rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
-.qm-tab.active{color:#4f46e5;border-bottom-color:#4f46e5;}
+.qm-stat{background:#fff;border:1px solid #12304a;border-radius:13px;padding:16px;text-align:center;}
+.qm-stat-num{font-size:1.7rem;font-weight:800;color:#12304a;line-height:1.1;}
+.qm-stat-label{font-size:.74rem;color:#526579;margin-top:4px;font-weight:500;}
+.qm-tabs{display:flex;gap:0;border-bottom:2px solid #12304a;margin-bottom:20px;}
+.qm-tab{padding:11px 20px;font-size:.88rem;font-weight:600;color:#526579;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;background:none;border-top:none;border-left:none;border-right:none;}
+.qm-tab.active{color:#12304a;border-bottom-color:#e8912d;}
 .qm-tab:hover:not(.active){color:#374151;}
 .qm-panel{display:none;}
 .qm-panel.active{display:block;}
-.qm-card{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:22px 24px;margin-bottom:18px;}
-.qm-card-title{font-size:.95rem;font-weight:700;color:#0f172a;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.qm-card{background:#fff;border:1px solid #12304a;border-radius:15px;padding:22px 24px;margin-bottom:18px;}
+.qm-card-title{font-size:.95rem;font-weight:700;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
 .qm-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-.qm-detail-item label{font-size:.75rem;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:3px;}
-.qm-detail-item span{font-size:.92rem;color:#0f172a;font-weight:500;}
-.qm-question-item{border:1px solid #e5e7eb;border-radius:11px;padding:16px;margin-bottom:12px;background:#fafafa;}
+.qm-detail-item label{font-size:.75rem;color:#526579;font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:3px;}
+.qm-detail-item span{font-size:.92rem;color:#fff;font-weight:500;}
+.qm-question-item{border:1px solid #12304a;border-radius:11px;padding:16px;margin-bottom:12px;background:#fafafa;}
 .qm-q-header{display:flex;align-items:flex-start;gap:10px;margin-bottom:10px;}
-.qm-q-num{background:#4f46e5;color:#fff;font-size:.78rem;font-weight:700;padding:3px 9px;border-radius:6px;flex-shrink:0;margin-top:1px;}
+.qm-q-num{background:#faf3ea;color:#12304a;font-size:.78rem;font-weight:700;padding:3px 9px;border-radius:6px;flex-shrink:0;margin-top:1px;}
 .qm-q-text{font-size:.9rem;font-weight:600;color:#1e293b;line-height:1.5;}
 .qm-options{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px;}
-.qm-option{padding:7px 12px;border-radius:7px;font-size:.83rem;border:1px solid #e2e8f0;color:#374151;}
+.qm-option{padding:7px 12px;border-radius:7px;font-size:.83rem;border:1px solid #12304a;color:#374151;}
 .qm-option.correct{background:#ecfdf5;border-color:#6ee7b7;color:#065f46;font-weight:600;}
 .qm-explanation{margin-top:8px;padding:7px 12px;background:#f0f9ff;border-radius:7px;font-size:.8rem;color:#0369a1;border-left:3px solid #38bdf8;}
-.att-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:14px 16px;background:#f8fafc;border-radius:10px;border:1px solid #e2e8f0;}
+.att-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:16px;padding:14px 16px;background:#fff;border-radius:10px;border:1px solid #12304a;}
 .att-toolbar-label{font-size:.78rem;font-weight:700;color:#374151;margin-right:4px;white-space:nowrap;}
 .att-export-btns{display:flex;flex-wrap:wrap;gap:6px;}
-.att-sep{width:100%;height:0;border-top:1px dashed #e2e8f0;margin:6px 0;}
-.att-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #e2e8f0;}
+.att-sep{width:100%;height:0;border-top:1px dashed #12304a;margin:6px 0;}
+.att-table-wrap{overflow-x:auto;border-radius:10px;border:1px solid #12304a;}
 .att-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-.att-table th{background:#f8fafc;padding:10px 14px;text-align:left;font-weight:700;color:#374151;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #e2e8f0;}
-.att-table td{padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#374151;vertical-align:middle;}
+.att-table th{background:#fff;padding:10px 14px;text-align:left;font-weight:700;color:#374151;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #12304a;}
+.att-table td{padding:10px 14px;border-bottom:1px solid #12304a;color:#374151;vertical-align:middle;}
 .att-table tr:last-child td{border-bottom:none;}
 .att-table tr:hover td{background:#f9fafb;}
 .att-pass{color:#065f46;background:#ecfdf5;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;border:1px solid #6ee7b7;}
 .att-fail{color:#991b1b;background:#fef2f2;padding:2px 8px;border-radius:20px;font-size:.75rem;font-weight:700;border:1px solid #fca5a5;}
-.att-empty{text-align:center;padding:40px 20px;color:#94a3b8;}
+.att-empty{text-align:center;padding:40px 20px;color:#12304a;}
 .att-empty-icon{font-size:2.5rem;margin-bottom:8px;}
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;}
+.modal-overlay{position:fixed;inset:0;background:rgba(255,255,255,.96);z-index:500;display:flex;align-items:center;justify-content:center;padding:16px;}
 .modal-box{background:#fff;border-radius:16px;padding:28px 26px;max-width:460px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.18);}
-.modal-title{font-size:1.05rem;font-weight:800;color:#0f172a;margin-bottom:10px;}
+.modal-title{font-size:1.05rem;font-weight:800;color:#fff;margin-bottom:10px;}
 .modal-body{font-size:.9rem;color:#374151;line-height:1.6;margin-bottom:18px;}
 .modal-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
 .modal-export-btns{display:flex;flex-wrap:wrap;gap:7px;margin:14px 0;}
 .share-url-box{display:flex;gap:8px;margin:10px 0;}
-.share-url-box input{flex:1;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:.83rem;color:#374151;background:#f8fafc;}
-.loading-spinner{display:inline-block;width:18px;height:18px;border:2px solid #e2e8f0;border-top-color:#4f46e5;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+.share-url-box input{flex:1;padding:8px 12px;border:1px solid #12304a;border-radius:8px;font-size:.83rem;color:#374151;background:#fff;}
+.loading-spinner{display:inline-block;width:18px;height:18px;border:2px solid #12304a;border-top-color:#e8912d;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:10px 22px;border-radius:30px;font-size:.87rem;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#faf3ea;color:#12304a;padding:10px 22px;border-radius:30px;font-size:.87rem;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s;}
 .toast.show{opacity:1;}
-@media(max-width:700px){
+@media(max-width:768px){
   .qm-stats-row{grid-template-columns:1fr 1fr;}
   .qm-detail-grid{grid-template-columns:1fr;}
   .qm-options{grid-template-columns:1fr;}
@@ -128,7 +128,7 @@ window.AQS = {
 
   <!-- Action buttons -->
   <div class="qm-actions no-print" id="qm-actions">
-    <span style="color:#94a3b8;font-size:.85rem;padding:9px 0;"><span class="loading-spinner"></span>Loading…</span>
+    <span style="color:#12304a;font-size:.85rem;padding:9px 0;"><span class="loading-spinner"></span>Loading…</span>
   </div>
 
   <!-- Stats row -->
@@ -151,7 +151,7 @@ window.AQS = {
     <div class="qm-card">
       <div class="qm-card-title">📋 Quiz Information</div>
       <div class="qm-detail-grid" id="qm-detail-grid">
-        <div style="color:#94a3b8;font-size:.87rem;padding:12px 0;">Loading quiz details…</div>
+        <div style="color:#12304a;font-size:.87rem;padding:12px 0;">Loading quiz details…</div>
       </div>
     </div>
   </div>
@@ -159,8 +159,8 @@ window.AQS = {
   <!-- Questions tab -->
   <div class="qm-panel" id="tab-questions">
     <div class="qm-card">
-      <div class="qm-card-title">❓ Quiz Questions <span style="font-weight:400;color:#94a3b8;font-size:.8rem;" id="qm-q-count"></span></div>
-      <div id="qm-questions-list"><div style="color:#94a3b8;padding:12px 0;">Loading questions…</div></div>
+      <div class="qm-card-title">❓ Quiz Questions <span style="font-weight:400;color:#12304a;font-size:.8rem;" id="qm-q-count"></span></div>
+      <div id="qm-questions-list"><div style="color:#12304a;padding:12px 0;">Loading questions…</div></div>
     </div>
   </div>
 
@@ -169,7 +169,7 @@ window.AQS = {
     <div class="qm-card">
       <div class="qm-card-title" style="flex-wrap:wrap;gap:8px;">
         👥 Attendance
-        <span style="font-weight:400;color:#94a3b8;font-size:.8rem;" id="att-count-label"></span>
+        <span style="font-weight:400;color:#12304a;font-size:.8rem;" id="att-count-label"></span>
       </div>
 
       <div class="att-toolbar no-print">
@@ -370,7 +370,7 @@ window.AQS = {
   function renderQuestions(qs){
     document.getElementById('qm-q-count').textContent = '(' + qs.length + ' question' + (qs.length!==1?'s':'') + ')';
     if(!qs.length){
-      document.getElementById('qm-questions-list').innerHTML = '<div style="color:#94a3b8;padding:12px 0;">No questions found.</div>';
+      document.getElementById('qm-questions-list').innerHTML = '<div style="color:#12304a;padding:12px 0;">No questions found.</div>';
       return;
     }
     document.getElementById('qm-questions-list').innerHTML = qs.map(function(q,i){
@@ -393,7 +393,7 @@ window.AQS = {
     var container = document.getElementById('att-table-container');
 
     if(!attempts.length){
-      container.innerHTML = '<div class="att-empty"><div class="att-empty-icon">📭</div><div style="font-weight:600;color:#64748b;">No one has taken this quiz yet</div></div>';
+      container.innerHTML = '<div class="att-empty"><div class="att-empty-icon">📭</div><div style="font-weight:600;color:#526579;">No one has taken this quiz yet</div></div>';
       return;
     }
 
@@ -562,19 +562,19 @@ window.AQS = {
     var passCount = att.filter(function(a){ return pct(a.score,a.total)>=50; }).length;
     var avgScore  = att.length ? Math.round(att.reduce(function(s,a){ return s+pct(a.score,a.total); },0)/att.length) : 0;
 
-    var thead = '<tr>'+data.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:8px 12px;text-align:left;font-size:12px;">'+h+'</th>'; }).join('')+'</tr>';
+    var thead = '<tr>'+data.headers.map(function(h){ return '<th style="background:#faf3ea;color:#12304a;padding:8px 12px;text-align:left;font-size:12px;">'+h+'</th>'; }).join('')+'</tr>';
     var tbody = data.rows.map(function(r){
       var result = r[5];
       var color  = result==='Pass'?'#065f46':'#991b1b';
       return '<tr>'+r.map(function(c,ci){
-        var style = 'padding:7px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;';
+        var style = 'padding:7px 12px;border-bottom:1px solid #12304a;font-size:12px;';
         if(ci===5) style += 'color:'+color+';font-weight:700;';
         return '<td style="'+style+'">'+esc(String(c||''))+'</td>';
       }).join('')+'</tr>';
     }).join('');
 
     return '<div style="font-family:Arial,sans-serif;max-width:900px;margin:0 auto;">'+
-      '<h2 style="color:#4f46e5;margin-bottom:4px;">'+esc(title)+'</h2>'+
+      '<h2 style="color:#12304a;margin-bottom:4px;">'+esc(title)+'</h2>'+
       '<p style="color:#6b7280;font-size:13px;margin:0 0 8px;">Subject: '+esc(attData&&attData.quiz_subject||'')+'</p>'+
       '<div style="display:flex;gap:24px;margin-bottom:16px;">'+
         '<span style="font-size:13px;"><strong>Total:</strong> '+att.length+'</span>'+
@@ -639,13 +639,13 @@ window.AQS = {
 
   /* ── Word (HTML) export ── */
   function exportWord(data, title, isQuiz){
-    var thead = '<tr>'+data.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:7px 10px;font-size:11pt;">'+h+'</th>'; }).join('')+'</tr>';
+    var thead = '<tr>'+data.headers.map(function(h){ return '<th style="background:#faf3ea;color:#12304a;padding:7px 10px;font-size:11pt;">'+h+'</th>'; }).join('')+'</tr>';
     var tbody = data.rows.map(function(r){
-      return '<tr>'+r.map(function(c){ return '<td style="padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11pt;">'+esc(String(c||''))+'</td>'; }).join('')+'</tr>';
+      return '<tr>'+r.map(function(c){ return '<td style="padding:6px 10px;border-bottom:1px solid #12304a;font-size:11pt;">'+esc(String(c||''))+'</td>'; }).join('')+'</tr>';
     }).join('');
     var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">'+
       '<head><meta charset="UTF-8"><title>'+esc(title)+'</title></head><body>'+
-      '<h2 style="color:#4f46e5;font-family:Arial;">'+esc(title)+'</h2>'+
+      '<h2 style="color:#12304a;font-family:Arial;">'+esc(title)+'</h2>'+
       '<p style="font-size:11pt;font-family:Arial;color:#6b7280;">Exported: '+new Date().toLocaleString()+'</p>'+
       '<table style="border-collapse:collapse;width:100%;font-family:Arial;"><thead>'+thead+'</thead><tbody>'+tbody+'</tbody></table>'+
       '</body></html>';
@@ -663,7 +663,10 @@ window.AQS = {
   /* ── HTML file export ── */
   function exportHtmlFile(data, title){
     var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+esc(title)+'</title>'+
-      '<style>body{font-family:Arial,sans-serif;padding:20px;}h2{color:#4f46e5;}table{border-collapse:collapse;width:100%;}th{background:#4f46e5;color:#fff;padding:8px 12px;text-align:left;}td{padding:7px 12px;border-bottom:1px solid #e5e7eb;}</style></head><body>'+
+      '<style>body{font-family:Arial,sans-serif;padding:20px;}h2{color:#12304a;}table{border-collapse:collapse;width:100%;}th{background:#faf3ea;color:#12304a;padding:8px 12px;text-align:left;}td{padding:7px 12px;border-bottom:1px solid #12304a;}
+/* Responsive layout safety: keep fixed bars clear of content and controls tappable. */
+@media(max-width:768px){body{overflow-x:hidden} :is(main,.main,.content,.page-content,.container){min-width:0;max-width:100%} :is(.grid,.row,.form-row,[class*="grid-template-columns"]){min-width:0} :is(input,textarea,select,button){max-width:100%;min-width:0}}
+</style></head><body>'+
       '<h2>'+esc(title)+'</h2><p>Exported: '+new Date().toLocaleString()+'</p>'+
       '<table><thead><tr>'+data.headers.map(function(h){ return '<th>'+esc(h)+'</th>'; }).join('')+'</tr></thead>'+
       '<tbody>'+data.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td>'+esc(String(c||''))+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody></table></body></html>';
@@ -676,10 +679,10 @@ window.AQS = {
     if(!quizData){ toast('Quiz not loaded yet.'); return; }
     var att = attData ? attData.attempts||[] : [];
     var attRows = getAttRows();
-    var thead = '<tr>'+attRows.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:7px 10px;font-size:11px;">'+h+'</th>'; }).join('')+'</tr>';
+    var thead = '<tr>'+attRows.headers.map(function(h){ return '<th style="background:#faf3ea;color:#12304a;padding:7px 10px;font-size:11px;">'+h+'</th>'; }).join('')+'</tr>';
     var tbody = attRows.rows.map(function(r){
       return '<tr>'+r.map(function(c,ci){
-        var s = 'padding:6px 10px;border-bottom:1px solid #e5e7eb;font-size:11px;';
+        var s = 'padding:6px 10px;border-bottom:1px solid #12304a;font-size:11px;';
         if(ci===5) s += (String(c)==='Pass'?'color:#065f46;':'color:#991b1b;')+'font-weight:700;';
         return '<td style="'+s+'">'+esc(String(c||''))+'</td>';
       }).join('')+'</tr>';
@@ -687,26 +690,26 @@ window.AQS = {
 
     var qHtml = (quizData.questions||[]).map(function(q,i){
       var opts = (q.options||[]).map(function(o,oi){
-        var bg = oi===q.correct_answer_index ? 'background:#ecfdf5;border:1px solid #6ee7b7;' : 'border:1px solid #e5e7eb;';
+        var bg = oi===q.correct_answer_index ? 'background:#ecfdf5;border:1px solid #6ee7b7;' : 'border:1px solid #12304a;';
         return '<div style="padding:5px 10px;border-radius:6px;margin:3px 0;font-size:11px;'+bg+'">'+
           String.fromCharCode(65+oi)+'. '+esc(o)+(oi===q.correct_answer_index?' ✓':'')+
         '</div>';
       }).join('');
-      return '<div style="margin-bottom:14px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">'+
-        '<div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:7px;"><strong>Q'+(i+1)+'.</strong> '+esc(q.question)+'</div>'+
+      return '<div style="margin-bottom:14px;padding:12px;border:1px solid #12304a;border-radius:8px;">'+
+        '<div style="font-size:12px;font-weight:700;color:#fff;margin-bottom:7px;"><strong>Q'+(i+1)+'.</strong> '+esc(q.question)+'</div>'+
         opts+
         (q.explanation?'<div style="margin-top:6px;padding:5px 10px;background:#f0f9ff;border-radius:5px;font-size:10px;color:#0369a1;">💡 '+esc(q.explanation)+'</div>':'')+
       '</div>';
     }).join('');
 
     var html = '<div style="font-family:Arial,sans-serif;">'+
-      '<h2 style="color:#4f46e5;margin-bottom:4px;">'+esc(quizTitle())+'</h2>'+
+      '<h2 style="color:#12304a;margin-bottom:4px;">'+esc(quizTitle())+'</h2>'+
       '<table style="font-size:12px;border-collapse:collapse;margin-bottom:12px;"><tbody>'+
-        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Subject:</strong></td><td>'+esc(quizData.subject||'')+'</td></tr>'+
-        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Mode:</strong></td><td>'+esc(quizData.mode||'exam')+'</td></tr>'+
-        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Questions:</strong></td><td>'+esc((quizData.questions||[]).length)+'</td></tr>'+
-        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Time Limit:</strong></td><td>'+esc(quizData.time_limit||30)+' min</td></tr>'+
-        '<tr><td style="padding:3px 14px 3px 0;color:#64748b;"><strong>Printed:</strong></td><td>'+new Date().toLocaleString()+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#526579;"><strong>Subject:</strong></td><td>'+esc(quizData.subject||'')+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#526579;"><strong>Mode:</strong></td><td>'+esc(quizData.mode||'exam')+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#526579;"><strong>Questions:</strong></td><td>'+esc((quizData.questions||[]).length)+'</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#526579;"><strong>Time Limit:</strong></td><td>'+esc(quizData.time_limit||30)+' min</td></tr>'+
+        '<tr><td style="padding:3px 14px 3px 0;color:#526579;"><strong>Printed:</strong></td><td>'+new Date().toLocaleString()+'</td></tr>'+
       '</tbody></table>'+
       '<h3 style="color:#374151;margin:16px 0 10px;font-size:13px;">QUESTIONS</h3>'+qHtml+
       (att.length?'<h3 style="color:#374151;margin:20px 0 10px;font-size:13px;">ATTENDANCE ('+att.length+' participants)</h3>'+
@@ -772,18 +775,18 @@ window.AQS = {
         return '<li style="'+(oi===q.correct_answer_index?'color:#065f46;font-weight:bold;':'')+'">'+ String.fromCharCode(65+oi)+'. '+esc(o)+(oi===q.correct_answer_index?' ✓':'')+' </li>';
       }).join('');
       return '<p><strong>Q'+(i+1)+'.</strong> '+esc(q.question)+'</p><ul>'+opts+'</ul>'+(q.explanation?'<p style="color:#0369a1;font-size:10pt;">Explanation: '+esc(q.explanation)+'</p>':'');
-    }).join('<hr style="border:none;border-top:1px solid #e5e7eb;"/>');
+    }).join('<hr style="border:none;border-top:1px solid #12304a;"/>');
 
     var attHtml = '';
     if(attRows.rows.length){
-      var at = '<thead><tr>'+attRows.headers.map(function(h){ return '<th style="background:#4f46e5;color:#fff;padding:6px 10px;font-size:11pt;">'+h+'</th>'; }).join('')+'</tr></thead>';
-      at += '<tbody>'+attRows.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td style="padding:5px 10px;border-bottom:1px solid #e5e7eb;font-size:11pt;">'+esc(String(c||''))+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
-      attHtml = '<h3 style="color:#4f46e5;">Attendance</h3><table style="border-collapse:collapse;width:100%;">'+at+'</table>';
+      var at = '<thead><tr>'+attRows.headers.map(function(h){ return '<th style="background:#faf3ea;color:#12304a;padding:6px 10px;font-size:11pt;">'+h+'</th>'; }).join('')+'</tr></thead>';
+      at += '<tbody>'+attRows.rows.map(function(r){ return '<tr>'+r.map(function(c){ return '<td style="padding:5px 10px;border-bottom:1px solid #12304a;font-size:11pt;">'+esc(String(c||''))+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>';
+      attHtml = '<h3 style="color:#12304a;">Attendance</h3><table style="border-collapse:collapse;width:100%;">'+at+'</table>';
     }
 
     var html = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word">'+
       '<head><meta charset="UTF-8"><title>'+esc(quizTitle())+'</title></head><body style="font-family:Arial;padding:30px;">'+
-      '<h2 style="color:#4f46e5;">'+esc(quizTitle())+'</h2>'+
+      '<h2 style="color:#12304a;">'+esc(quizTitle())+'</h2>'+
       '<p>Subject: '+esc(quizData.subject||'')+'  |  Mode: '+esc(quizData.mode||'exam')+'  |  Exported: '+new Date().toLocaleString()+'</p>'+
       '<h3 style="color:#374151;">Questions</h3>'+qHtml+attHtml+
       '</body></html>';
