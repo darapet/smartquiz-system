@@ -6,16 +6,16 @@
     --dts-bg:#faf3ea;
     --dts-sidebar-bg:#fff;
     --dts-sidebar-text:#526579;
-    --dts-sidebar-hover:rgba(255,255,255,0.08);
-    --dts-sidebar-active:rgba(99,102,241,0.25);
+    --dts-sidebar-hover:#fff7eb;
+    --dts-sidebar-active:#fff1dc;
     --dts-primary:#e8912d;
     --dts-primary-dark:#e8912d;
     --dts-surface:#ffffff;
     --dts-border:#12304a;
-    --dts-text:#fff;
+    --dts-text:#1c2b3a;
     --dts-muted:#526579;
     --dts-user-bubble:#e8912d;
-    --dts-ai-bubble:#12304a;
+    --dts-ai-bubble:#fffaf3;
     --dts-footer-h:80px;
 }
 
@@ -63,8 +63,8 @@ html, body {
 .dts-new-chat-btn {
     margin:14px 12px 8px;
     padding:10px 14px;
-    background:rgba(99,102,241,0.2);
-    border:1px solid rgba(99,102,241,0.4);
+    background:rgba(232,145,45,0.2);
+    border:1px solid rgba(232,145,45,0.4);
     border-radius:10px;
     color:#12304a;
     font-size:0.875rem;
@@ -75,7 +75,7 @@ html, body {
     gap:8px;
     transition:all 0.15s;
 }
-.dts-new-chat-btn:hover { background:rgba(99,102,241,0.35); color:#12304a; }
+.dts-new-chat-btn:hover { background:rgba(232,145,45,0.35); color:#12304a; }
 
 .dts-nav { flex:1; padding:8px 8px; overflow-y:auto; }
 .dts-nav-section-label { font-size:0.68rem; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:1.5px; padding:8px 10px 4px; }
@@ -213,7 +213,7 @@ html, body {
 }
 .dts-ai .dts-msg-bubble {
     background:var(--dts-ai-bubble);
-    color:var(--dts-text);
+    color:#1c2b3a;
     border-bottom-left-radius:4px;
 }
 
@@ -261,11 +261,11 @@ html, body {
 .dts-msg-copy-btn {
   display:inline-flex; align-items:center; gap:5px;
   margin-top:10px; padding:5px 13px;
-  background:rgba(99,102,241,0.08); border:1px solid rgba(99,102,241,0.25);
+  background:rgba(232,145,45,0.08); border:1px solid rgba(232,145,45,0.25);
   border-radius:7px; font-size:0.76rem; font-weight:600; color:#12304a;
   cursor:pointer; transition:all 0.15s; font-family:inherit; line-height:1.5;
 }
-.dts-msg-copy-btn:hover { background:rgba(99,102,241,0.18); color:#12304a; border-color:rgba(99,102,241,0.5); transform:translateY(-1px); }
+.dts-msg-copy-btn:hover { background:rgba(232,145,45,0.18); color:#12304a; border-color:rgba(232,145,45,0.5); transform:translateY(-1px); }
 .dts-msg-copy-btn.copied { color:#4ade80; border-color:#4ade80; background:rgba(74,222,128,0.1); }
 
 /* Typing indicator */
@@ -291,7 +291,7 @@ html, body {
     background:var(--dts-bg);
     border-top:1px solid var(--dts-border);
     padding:12px 24px 8px;
-    z-index:100;
+    z-index:1000;
 }
 
 .dts-input-wrap {
@@ -615,7 +615,7 @@ html {
 
 .dts-voice-modal {
     background:#ffffff;
-    border:1px solid rgba(99,102,241,0.35);
+    border:1px solid rgba(232,145,45,0.35);
     border-radius:24px;
     padding:40px 32px 36px;
     max-width:420px;
@@ -661,7 +661,7 @@ html {
 .dts-voice-ring {
     position:absolute;
     border-radius:50%;
-    border:2px solid rgba(99,102,241,0.4);
+    border:2px solid rgba(232,145,45,0.4);
     animation:dts-voice-pulse 2.4s ease-out infinite;
     opacity:0;
 }
@@ -673,8 +673,8 @@ html {
 .dts-voice-orb[data-state="idle"]      .dts-voice-ring,
 .dts-voice-orb[data-state="thinking"]  .dts-voice-ring,
 .dts-voice-orb[data-state="error"]     .dts-voice-ring { animation:none; opacity:0; }
-.dts-voice-orb[data-state="speaking"]  .dts-voice-ring { border-color:rgba(16,185,129,0.4); }
-.dts-voice-orb[data-state="listening"] .dts-voice-ring { border-color:rgba(99,102,241,0.5); }
+.dts-voice-orb[data-state="speaking"]  .dts-voice-ring { border-color:rgba(232,145,45,0.4); }
+.dts-voice-orb[data-state="listening"] .dts-voice-ring { border-color:rgba(232,145,45,0.5); }
 
 @keyframes dts-voice-pulse {
     0%   { transform:scale(0.7); opacity:0.6; }
@@ -690,7 +690,7 @@ html {
     align-items:center;
     justify-content:center;
     color:#12304a;
-    box-shadow:0 0 0 0 rgba(99,102,241,0.4);
+    box-shadow:0 0 0 0 rgba(232,145,45,0.4);
     transition:background 0.3s;
     z-index:1;
 }
@@ -712,12 +712,12 @@ html {
 }
 
 @keyframes dts-orb-listening {
-    from { transform:scale(1);    box-shadow:0 0 0  4px rgba(99,102,241,0.25); }
-    to   { transform:scale(1.06); box-shadow:0 0 0 16px rgba(99,102,241,0.08); }
+    from { transform:scale(1);    box-shadow:0 0 0  4px rgba(232,145,45,0.25); }
+    to   { transform:scale(1.06); box-shadow:0 0 0 16px rgba(232,145,45,0.08); }
 }
 @keyframes dts-orb-speaking {
-    from { transform:scale(1);    box-shadow:0 0 0  4px rgba(16,185,129,0.25); }
-    to   { transform:scale(1.05); box-shadow:0 0 0 14px rgba(16,185,129,0.08); }
+    from { transform:scale(1);    box-shadow:0 0 0  4px rgba(232,145,45,0.25); }
+    to   { transform:scale(1.05); box-shadow:0 0 0 14px rgba(232,145,45,0.08); }
 }
 
 /* Status label */
@@ -803,7 +803,7 @@ html {
     justify-content:center;
     flex-shrink:0;
     transition:opacity 0.15s, transform 0.1s;
-    box-shadow:0 2px 8px rgba(99,102,241,0.35);
+    box-shadow:0 2px 8px rgba(232,145,45,0.35);
 }
 .dts-voice-btn:hover  { opacity:0.88; transform:translateY(-1px); }
 .dts-voice-btn:active { transform:translateY(0); }
@@ -888,3 +888,14 @@ html {
 
 /* AI answers use the full available conversation width */
 .dts-message.dts-ai .dts-msg-content{width:100%;max-width:none;flex:1 1 100%;min-width:0}.dts-message.dts-ai .dts-msg-bubble{width:100%;max-width:none;box-sizing:border-box}
+
+/* Studio phone clearance: composer stays above the app navigation and safe area. */
+@media (max-width: 768px) {
+  .dts-footer { bottom:calc(var(--aqs-bottom-nav-h, 66px) + env(safe-area-inset-bottom, 0px) + var(--aqs-ticker-bar-h, 0px)) !important; z-index:1000 !important; padding-bottom:calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .dts-input-wrap, .dts-input, .dts-file-btn, .dts-send-btn { position:relative; z-index:1001; pointer-events:auto; }
+}
+.dts-stream-cursor { display:inline-block; width:2px; height:1em; margin-left:2px; vertical-align:-0.12em; background:#e8912d; animation:dts-cursor-blink .8s steps(2,start) infinite; }
+@keyframes dts-cursor-blink { to { visibility:hidden; } }
+.dts-deep-search-chip { border:1px solid #d5c5b1; border-radius:999px; padding:6px 10px; background:#fffaf3; color:#1c2b3a; font:600 .74rem/1.2 inherit; cursor:pointer; white-space:nowrap; }
+.dts-deep-search-chip[aria-pressed="true"] { background:#e8912d; border-color:#e8912d; color:#1c2b3a; }
+.dts-deep-badge { display:inline-block; margin-bottom:8px; padding:3px 8px; border-radius:999px; background:#fff1dc; color:#1c2b3a; font-size:.75rem; font-weight:700; }

@@ -25,6 +25,7 @@
     var attachedImageData  = null;
     var attachedImageName  = null;
     var isSending          = false;
+    var deepSearchEnabled   = false;
 
     var STORAGE_KEY = 'dts_chat_sessions';
     var ACTIVE_KEY  = 'dts_active_session';
@@ -40,20 +41,9 @@
         'Today\'s date is ' + TODAY + '. ' +
 
         '\n\n## LANGUAGE & TONE RULES:' +
-        '\n- DEFAULT LANGUAGE: Always reply in clear, professional Standard English unless the user explicitly writes in another language.' +
-        '\n- ONLY switch to another language when the user\'s message is clearly and predominantly written in that language — not just because they used one or two casual words.' +
-        '\n- A Nigerian user writing casual English (e.g. "pls help me", "how far", "abeg") should receive a response in Standard English, not Pidgin.' +
-        '\n\n### Non-English languages — respond natively ONLY when the user writes the full message in that language:' +
-        '\n- Nigerian Pidgin English: reply in Pidgin ONLY if the majority of the message is in Pidgin (e.g. "wetin be the answer to dis question, abeg explain am well")' +
-        '\n- Yoruba: reply fully in Yoruba ONLY if user writes fully in Yoruba' +
-        '\n- Igbo: reply fully in Igbo ONLY if user writes fully in Igbo' +
-        '\n- Hausa: reply fully in Hausa ONLY if user writes fully in Hausa' +
-        '\n- French, Swahili, Twi, or other African languages: reply in that language ONLY if user writes fully in it' +
-        '\n\n### Tone matching (within Standard English):' +
-        '\n- Casual/informal English → match that casual energy but keep English' +
-        '\n- Formal English → be formal and structured' +
-        '\n- NEVER default to Pidgin or dialect — the user will clearly indicate if they want that.' +
-        '\n- The ONLY exception: financial data, rates, and factual information must always be clearly formatted and accurate, regardless of tone.' +
+        '\n- Detect the user\'s language and respond in the same language, including Nigerian English and Pidgin when the user uses them.' +
+        '\n- Respect Nigerian student context, local examples, school terminology and Nigerian English without stereotyping.' +
+        '\n- Match the user\'s formality and energy while staying clear, respectful and accurate.' +
 
         '\n\n## YOUR CAPABILITIES:' +
         '\n- Deep expertise across ALL subjects: science, technology, medicine, law, finance, economics, engineering, history, arts, literature, and business.' +
@@ -64,8 +54,9 @@
         '\n- Technical expertise: code in any programming language, debugging, architecture design, DevOps, and system design.' +
 
         '\n\n## RESPONSE FORMAT RULES:' +
-        '\n- Structure every response with appropriate headers, bullet points, numbered lists, or tables — whichever improves clarity.' +
-        '\n- Be thorough and comprehensive. A good response fully answers the question and provides useful context.' +
+        '\n- Give complete, useful answers, not lazy one-liners. Use headings, steps and examples when they improve clarity; keep simple answers proportionate.' +
+        '\n- For learning help, explain the reasoning step by step and include a relevant example or check for understanding.' +
+        '\n- Infer clear intent from context. Ask a concise clarification only when ambiguity materially changes the answer.' +
         '\n- Use LaTeX math notation where relevant: $ for inline math, $$ for display math.' +
         '\n- Always cite web search results when they are provided in the context.' +
         '\n- Be direct, confident, and honest. If information is uncertain or potentially outdated, clearly say so.' +
@@ -725,18 +716,23 @@
             '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
         messages.appendChild(wrap);
         var bubble = wrap.querySelector('.dts-msg-bubble');
-        var idx=0, acc='', DELAY=12;
+        var hasDeepBadge = /Deep search:/i.test(content);
+        var idx=0, acc='', DELAY=22;
+        var cursor=document.createElement('span'); cursor.className='dts-stream-cursor'; cursor.setAttribute('aria-hidden','true');
         function tick() {
             if (idx < content.length) {
-                acc += content.charAt(idx++);
+                var end=Math.min(content.length,idx+3); acc += content.slice(idx,end); idx=end;
                 try {
                     bubble.innerHTML = typeof marked!=='undefined'
                         ? marked.parse(acc,{breaks:true,gfm:true})
                         : escHtml(acc).replace(/\n/g,'<br>');
-                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); }
-                scrollToBottom();
+                    bubble.appendChild(cursor);
+                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); bubble.appendChild(cursor); }
+                scrollToBottom(true);
                 setTimeout(tick,DELAY);
             } else {
+                if (cursor.parentNode) cursor.parentNode.removeChild(cursor);
+                if (hasDeepBadge) { var badge=document.createElement('span'); badge.className='dts-deep-badge'; badge.textContent='🔍 Deep search'; bubble.insertBefore(badge,bubble.firstChild); }
                 applyMathAndHighlight(wrap);
                 /* Add copy button after streaming finishes */
                 var msgContent2 = wrap.querySelector('.dts-msg-content');
@@ -865,7 +861,21 @@
         var webSourceTag = '';
         var searchNeeds  = detectSearchNeeds(text);
 
-        if (searchNeeds) {
+        if (deepSearchEnabled && text) searchNeeds = { type:'deep', query:text };
+        if (searchNeeds && searchNeeds.type === 'deep') {
+            showTyping(true, '🔍 Searching…');
+            try {
+                var qRes = await window.groqFetch({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
+                var qData = qRes && qRes.json ? await qRes.json() : {};
+                var queryText = qData.choices && qData.choices[0] && qData.choices[0].message && qData.choices[0].message.content || text;
+                var subQueries = queryText.split(/\n|\r/).map(function(q){return q.replace(/^[-*\d.)\s]+/,'').trim();}).filter(Boolean).slice(0,4);
+                if (subQueries.length < 2) subQueries = [text, text + ' examples and explanation'];
+                var deepResults = await Promise.all(subQueries.map(function(q){return performWebSearch(q).catch(function(){return null;});}));
+                webContext = deepResults.filter(Boolean).map(function(r,i){return 'Query '+(i+1)+' ('+subQueries[i]+') via '+r.source+':\n'+r.content;}).join('\n\n');
+                if (webContext) { webSourceTag = '🔍 *Deep search: multi-query research pass using ' + Array.from(new Set(deepResults.filter(Boolean).map(function(r){return r.source;}))).join(', ') + '*'; }
+                else { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (no external results returned)*'; }
+            } catch(deepErr) { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (external search unavailable)*'; }
+        } else if (searchNeeds) {
             if (searchNeeds.type === 'url') {
                 showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
                 var pageContent = await fetchWebPage(searchNeeds.url);
@@ -922,7 +932,7 @@
             window.groqFetch({
                 model:       'llama-3.3-70b-versatile',
                 messages:    messages,
-                max_tokens:  1500,
+                max_tokens:  3072,
                 temperature: 0.7
             }).then(function (res) {
                 if (!res) return { error: { message: 'All AI keys were rejected (invalid, expired or out of quota). Add a fresh Groq key in Admin Settings \u2192 AI Keys.' } };
@@ -1296,7 +1306,21 @@
         /* Web search for voice too */
         var voiceWebContext = '';
         var searchNeeds = detectSearchNeeds(text);
-        if (searchNeeds) {
+        if (deepSearchEnabled && text) searchNeeds = { type:'deep', query:text };
+        if (searchNeeds && searchNeeds.type === 'deep') {
+            showTyping(true, '🔍 Searching…');
+            try {
+                var qRes = await window.groqFetch({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
+                var qData = qRes && qRes.json ? await qRes.json() : {};
+                var queryText = qData.choices && qData.choices[0] && qData.choices[0].message && qData.choices[0].message.content || text;
+                var subQueries = queryText.split(/\n|\r/).map(function(q){return q.replace(/^[-*\d.)\s]+/,'').trim();}).filter(Boolean).slice(0,4);
+                if (subQueries.length < 2) subQueries = [text, text + ' examples and explanation'];
+                var deepResults = await Promise.all(subQueries.map(function(q){return performWebSearch(q).catch(function(){return null;});}));
+                webContext = deepResults.filter(Boolean).map(function(r,i){return 'Query '+(i+1)+' ('+subQueries[i]+') via '+r.source+':\n'+r.content;}).join('\n\n');
+                if (webContext) { webSourceTag = '🔍 *Deep search: multi-query research pass using ' + Array.from(new Set(deepResults.filter(Boolean).map(function(r){return r.source;}))).join(', ') + '*'; }
+                else { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (no external results returned)*'; }
+            } catch(deepErr) { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (external search unavailable)*'; }
+        } else if (searchNeeds) {
             if (searchNeeds.type === 'url') {
                 var pg = await fetchWebPage(searchNeeds.url);
                 if (pg) voiceWebContext = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pg;
@@ -1625,6 +1649,10 @@
                 }
             });
         }
+
+        /* ── Deep search toggle ── */
+        var deepBtn = document.getElementById('dts-deep-search');
+        if (deepBtn) deepBtn.addEventListener('click', function(){ deepSearchEnabled=!deepSearchEnabled; deepBtn.setAttribute('aria-pressed',String(deepSearchEnabled)); deepBtn.textContent=deepSearchEnabled?'Deep search: On':'Deep search: Off'; });
 
         /* ── Send button ── */
         var sendBtn = document.getElementById('dts-send');

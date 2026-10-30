@@ -15,7 +15,6 @@
     var voiceRecognition   = null;
     var voiceActive        = false;
     var voiceMicLocked     = false;
-    var voiceSpeechWatchdog = null;
     var voiceSessionId     = 0;
     var voiceOperationId   = 0;
     var voiceRestartTimer  = null;
@@ -26,10 +25,10 @@
     var attachedImageData  = null;
     var attachedImageName  = null;
     var isSending          = false;
+    var deepSearchEnabled   = false;
 
     var STORAGE_KEY = 'dts_chat_sessions';
     var ACTIVE_KEY  = 'dts_active_session';
-    var VOICE_RECOVERY_KEY = 'dts_voice_session_active';
 
     /* ═══════════════════════════════════════════════════════════
        SYSTEM PROMPT — Professional General AI
@@ -42,20 +41,9 @@
         'Today\'s date is ' + TODAY + '. ' +
 
         '\n\n## LANGUAGE & TONE RULES:' +
-        '\n- DEFAULT LANGUAGE: Always reply in clear, professional Standard English unless the user explicitly writes in another language.' +
-        '\n- ONLY switch to another language when the user\'s message is clearly and predominantly written in that language — not just because they used one or two casual words.' +
-        '\n- A Nigerian user writing casual English (e.g. "pls help me", "how far", "abeg") should receive a response in Standard English, not Pidgin.' +
-        '\n\n### Non-English languages — respond natively ONLY when the user writes the full message in that language:' +
-        '\n- Nigerian Pidgin English: reply in Pidgin ONLY if the majority of the message is in Pidgin (e.g. "wetin be the answer to dis question, abeg explain am well")' +
-        '\n- Yoruba: reply fully in Yoruba ONLY if user writes fully in Yoruba' +
-        '\n- Igbo: reply fully in Igbo ONLY if user writes fully in Igbo' +
-        '\n- Hausa: reply fully in Hausa ONLY if user writes fully in Hausa' +
-        '\n- French, Swahili, Twi, or other African languages: reply in that language ONLY if user writes fully in it' +
-        '\n\n### Tone matching (within Standard English):' +
-        '\n- Casual/informal English → match that casual energy but keep English' +
-        '\n- Formal English → be formal and structured' +
-        '\n- NEVER default to Pidgin or dialect — the user will clearly indicate if they want that.' +
-        '\n- The ONLY exception: financial data, rates, and factual information must always be clearly formatted and accurate, regardless of tone.' +
+        '\n- Detect the user\'s language and respond in the same language, including Nigerian English and Pidgin when the user uses them.' +
+        '\n- Respect Nigerian student context, local examples, school terminology and Nigerian English without stereotyping.' +
+        '\n- Match the user\'s formality and energy while staying clear, respectful and accurate.' +
 
         '\n\n## YOUR CAPABILITIES:' +
         '\n- Deep expertise across ALL subjects: science, technology, medicine, law, finance, economics, engineering, history, arts, literature, and business.' +
@@ -66,8 +54,9 @@
         '\n- Technical expertise: code in any programming language, debugging, architecture design, DevOps, and system design.' +
 
         '\n\n## RESPONSE FORMAT RULES:' +
-        '\n- Structure every response with appropriate headers, bullet points, numbered lists, or tables — whichever improves clarity.' +
-        '\n- Be thorough and comprehensive. A good response fully answers the question and provides useful context.' +
+        '\n- Give complete, useful answers, not lazy one-liners. Use headings, steps and examples when they improve clarity; keep simple answers proportionate.' +
+        '\n- For learning help, explain the reasoning step by step and include a relevant example or check for understanding.' +
+        '\n- Infer clear intent from context. Ask a concise clarification only when ambiguity materially changes the answer.' +
         '\n- Use LaTeX math notation where relevant: $ for inline math, $$ for display math.' +
         '\n- Always cite web search results when they are provided in the context.' +
         '\n- Be direct, confident, and honest. If information is uncertain or potentially outdated, clearly say so.' +
@@ -727,18 +716,23 @@
             '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
         messages.appendChild(wrap);
         var bubble = wrap.querySelector('.dts-msg-bubble');
-        var idx=0, acc='', DELAY=12;
+        var hasDeepBadge = /Deep search:/i.test(content);
+        var idx=0, acc='', DELAY=22;
+        var cursor=document.createElement('span'); cursor.className='dts-stream-cursor'; cursor.setAttribute('aria-hidden','true');
         function tick() {
             if (idx < content.length) {
-                acc += content.charAt(idx++);
+                var end=Math.min(content.length,idx+3); acc += content.slice(idx,end); idx=end;
                 try {
                     bubble.innerHTML = typeof marked!=='undefined'
                         ? marked.parse(acc,{breaks:true,gfm:true})
                         : escHtml(acc).replace(/\n/g,'<br>');
-                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); }
-                scrollToBottom();
+                    bubble.appendChild(cursor);
+                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); bubble.appendChild(cursor); }
+                scrollToBottom(true);
                 setTimeout(tick,DELAY);
             } else {
+                if (cursor.parentNode) cursor.parentNode.removeChild(cursor);
+                if (hasDeepBadge) { var badge=document.createElement('span'); badge.className='dts-deep-badge'; badge.textContent='🔍 Deep search'; bubble.insertBefore(badge,bubble.firstChild); }
                 applyMathAndHighlight(wrap);
                 /* Add copy button after streaming finishes */
                 var msgContent2 = wrap.querySelector('.dts-msg-content');
@@ -867,7 +861,21 @@
         var webSourceTag = '';
         var searchNeeds  = detectSearchNeeds(text);
 
-        if (searchNeeds) {
+        if (deepSearchEnabled && text) searchNeeds = { type:'deep', query:text };
+        if (searchNeeds && searchNeeds.type === 'deep') {
+            showTyping(true, '🔍 Searching…');
+            try {
+                var qRes = await window.groqFetch({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
+                var qData = qRes && qRes.json ? await qRes.json() : {};
+                var queryText = qData.choices && qData.choices[0] && qData.choices[0].message && qData.choices[0].message.content || text;
+                var subQueries = queryText.split(/\n|\r/).map(function(q){return q.replace(/^[-*\d.)\s]+/,'').trim();}).filter(Boolean).slice(0,4);
+                if (subQueries.length < 2) subQueries = [text, text + ' examples and explanation'];
+                var deepResults = await Promise.all(subQueries.map(function(q){return performWebSearch(q).catch(function(){return null;});}));
+                webContext = deepResults.filter(Boolean).map(function(r,i){return 'Query '+(i+1)+' ('+subQueries[i]+') via '+r.source+':\n'+r.content;}).join('\n\n');
+                if (webContext) { webSourceTag = '🔍 *Deep search: multi-query research pass using ' + Array.from(new Set(deepResults.filter(Boolean).map(function(r){return r.source;}))).join(', ') + '*'; }
+                else { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (no external results returned)*'; }
+            } catch(deepErr) { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (external search unavailable)*'; }
+        } else if (searchNeeds) {
             if (searchNeeds.type === 'url') {
                 showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
                 var pageContent = await fetchWebPage(searchNeeds.url);
@@ -924,7 +932,7 @@
             window.groqFetch({
                 model:       'llama-3.3-70b-versatile',
                 messages:    messages,
-                max_tokens:  1500,
+                max_tokens:  3072,
                 temperature: 0.7
             }).then(function (res) {
                 if (!res) return { error: { message: 'All AI keys were rejected (invalid, expired or out of quota). Add a fresh Groq key in Admin Settings \u2192 AI Keys.' } };
@@ -1020,7 +1028,7 @@
         bar.querySelector('#dts-go-create-quiz').addEventListener('click', function () {
             try { sessionStorage.setItem('dts_quiz_content', content.slice(0, 5000)); } catch (e) {}
             var cfg = window.DTS_CONFIG || {};
-            window.location.href = cfg.create_url || 'create-quiz.html';
+            window.location.href = cfg.create_url || 'quiz-setup.html';
         });
 
         var msgs = document.getElementById('dts-messages');
@@ -1152,7 +1160,6 @@
         voiceMicLocked = false;
         clearTimeout(voiceRestartTimer);
         voiceRestartTimer = null;
-        try { sessionStorage.setItem(VOICE_RECOVERY_KEY, '1'); } catch (e) {}
         setVoiceState('idle');
         voiceActive = true;
     }
@@ -1160,9 +1167,6 @@
     function closeVoiceModal() {
         voiceActive = false;
         voiceMicLocked = true;
-        clearTimeout(voiceSpeechWatchdog);
-        voiceSpeechWatchdog = null;
-        try { sessionStorage.removeItem(VOICE_RECOVERY_KEY); } catch (e) {}
         voiceSessionId += 1;
         voiceOperationId += 1;
         clearTimeout(voiceRestartTimer);
@@ -1175,8 +1179,9 @@
     }
 
     function stopVoiceListening() {
-        /* Invalidate before aborting: browsers can dispatch a late callback
-           during abort, and stale callbacks must not reopen the microphone. */
+        /* Invalidate the instance before aborting it. Browsers can dispatch a
+           final result/error synchronously during abort, and stale callbacks
+           must never be allowed to restart the microphone. */
         var activeRecognition = voiceRecognition;
         voiceRecognition = null;
         if (activeRecognition) {
@@ -1186,8 +1191,6 @@
 
     function stopAiSpeech() {
         voiceOperationId += 1;
-        clearTimeout(voiceSpeechWatchdog);
-        voiceSpeechWatchdog = null;
         stopVoiceListening();
         voiceAiTalking = false;
         if (currentStudioAudio) {
@@ -1214,8 +1217,8 @@
     }
 
     function startVoiceListening() {
-        /* Hard lock: do not reopen while thinking, speaking, or while a
-           previous recognition instance is still unwinding. */
+        /* Hard lock: do not reopen the mic while thinking, speaking, or while
+           a previous recognition instance is still unwinding. */
         if (!voiceActive || voiceMicLocked || voiceAiTalking || voiceRecognition) return;
         var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         if (!SR) {
@@ -1244,21 +1247,12 @@
             }
             setVoiceTranscript(transcript);
             if (e.results[e.results.length - 1].isFinal && transcript.trim()) {
-                /* Studio voice input is transcription only. Keep sending
-                   separate so the user can review or edit the text first. */
+                /* Abort and invalidate recognition before the AI request
+                   starts. This prevents the user's remaining speech or a
+                   late browser event from leaking into the AI playback. */
                 stopVoiceListening();
-                var input = document.getElementById('dts-input');
-                if (input) {
-                    var existing = input.value.trim();
-                    input.value = existing ? existing + ' ' + transcript.trim() : transcript.trim();
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                    input.focus();
-                }
-                setVoiceTranscript('Transcription added to the message box.');
-                setVoiceState('idle');
-                setTimeout(function () {
-                    if (voiceActive && sessionId === voiceSessionId) closeVoiceModal();
-                }, 450);
+                setVoiceState('thinking');
+                handleVoiceInput(transcript.trim(), sessionId);
             }
         };
 
@@ -1312,7 +1306,21 @@
         /* Web search for voice too */
         var voiceWebContext = '';
         var searchNeeds = detectSearchNeeds(text);
-        if (searchNeeds) {
+        if (deepSearchEnabled && text) searchNeeds = { type:'deep', query:text };
+        if (searchNeeds && searchNeeds.type === 'deep') {
+            showTyping(true, '🔍 Searching…');
+            try {
+                var qRes = await window.groqFetch({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
+                var qData = qRes && qRes.json ? await qRes.json() : {};
+                var queryText = qData.choices && qData.choices[0] && qData.choices[0].message && qData.choices[0].message.content || text;
+                var subQueries = queryText.split(/\n|\r/).map(function(q){return q.replace(/^[-*\d.)\s]+/,'').trim();}).filter(Boolean).slice(0,4);
+                if (subQueries.length < 2) subQueries = [text, text + ' examples and explanation'];
+                var deepResults = await Promise.all(subQueries.map(function(q){return performWebSearch(q).catch(function(){return null;});}));
+                webContext = deepResults.filter(Boolean).map(function(r,i){return 'Query '+(i+1)+' ('+subQueries[i]+') via '+r.source+':\n'+r.content;}).join('\n\n');
+                if (webContext) { webSourceTag = '🔍 *Deep search: multi-query research pass using ' + Array.from(new Set(deepResults.filter(Boolean).map(function(r){return r.source;}))).join(', ') + '*'; }
+                else { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (no external results returned)*'; }
+            } catch(deepErr) { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (external search unavailable)*'; }
+        } else if (searchNeeds) {
             if (searchNeeds.type === 'url') {
                 var pg = await fetchWebPage(searchNeeds.url);
                 if (pg) voiceWebContext = 'WEBPAGE CONTENT FROM ' + searchNeeds.url + ':\n\n' + pg;
@@ -1353,53 +1361,23 @@
                 .trim()
                 .slice(0, 600);
 
+            setVoiceState('speaking');
+            setVoiceTranscript('');
             voiceAiTalking = true;
             voiceMicLocked = true;
             clearTimeout(voiceRestartTimer);
             voiceRestartTimer = null;
             stopVoiceListening();
             var speechOperationId = ++voiceOperationId;
-            clearTimeout(voiceSpeechWatchdog);
-            voiceSpeechWatchdog = setTimeout(function () {
+            speakStudioChunked(spoken, function () {
                 if (!voiceActive || sessionId !== voiceSessionId ||
-                    !voiceAiTalking || speechOperationId !== voiceOperationId) return;
-                voiceOperationId += 1;
-                stopVoiceListening();
-                if (currentStudioAudio) {
-                    try { currentStudioAudio.pause(); } catch (e) {}
-                    currentStudioAudio = null;
-                }
+                    speechOperationId !== voiceOperationId) return;
                 voiceAiTalking = false;
                 voiceMicLocked = false;
-                setVoiceState('error');
-                setVoiceTranscript('Audio stopped unexpectedly. Tap Retry to continue.');
-            }, 90000);
-            try {
-                speakStudioChunked(spoken, function () {
-                    if (!voiceActive || sessionId !== voiceSessionId ||
-                        speechOperationId !== voiceOperationId) return;
-                    clearTimeout(voiceSpeechWatchdog);
-                    voiceSpeechWatchdog = null;
-                    voiceAiTalking = false;
-                    voiceMicLocked = false;
-                    setVoiceState('idle');
-                    /* One guarded restart only — never stack retries after an interrupt. */
-                    scheduleVoiceRestart(sessionId, 450);
-                }, function () {
-                    /* Do not show "speaking" while the first Gemini chunk is
-                       still being generated. Change state immediately before
-                       the first real audio starts. */
-                    setVoiceState('speaking');
-                    setVoiceTranscript('');
-                });
-            } catch (err) {
-                clearTimeout(voiceSpeechWatchdog);
-                voiceSpeechWatchdog = null;
-                voiceAiTalking = false;
-                voiceMicLocked = false;
-                setVoiceState('error');
-                setVoiceTranscript('Audio could not start. Tap Retry to continue.');
-            }
+                setVoiceState('idle');
+                /* One guarded restart only — never stack retries after an interrupt. */
+                scheduleVoiceRestart(sessionId, 450);
+            });
         }).catch(function () {
             if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);
@@ -1436,13 +1414,7 @@
     }
 
     /* ═══════════════════════════════════════════════════════════
-       TTS — CHUNKED PLAYBACK (same route as the TTS page)
-
-       Studio used to generate Pollinations MP3 chunks and send them
-       through a separate Android/native playback path. The TTS page
-       uses Gemini WAV output plus aqsPlayAudioBlob(), which is routed
-       through the unlocked AudioContext on Android. Keep Studio on
-       that exact path so both features have the same audio behavior.
+       TTS — CHUNKED PLAYBACK (Pollinations audio API)
     ═══════════════════════════════════════════════════════════ */
     function splitSpeechChunks(text, maxLen) {
         var sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [text];
@@ -1459,78 +1431,32 @@
         return chunks.filter(function (c) { return c.length > 0; });
     }
 
+    function fetchStudioAudioBlob(text, voices, timeout) {
+        var voice = (voices && voices[0]) || 'onyx';
+        var url   = 'https://audio.pollinations.ai/tts?text=' + encodeURIComponent(text) +
+                    '&voice=' + encodeURIComponent(voice) + '&model=openai-audio';
+        return new Promise(function (resolve, reject) {
+            var ctrl  = new AbortController();
+            var timer = setTimeout(function () { ctrl.abort(); reject(new Error('timeout')); }, timeout || 12000);
+            fetch(url, { signal: ctrl.signal })
+                .then(function (r) { clearTimeout(timer); if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+                .then(resolve)
+                .catch(function (e) { clearTimeout(timer); reject(e); });
+        });
+    }
+
     function speakWithBrowserFallback(text, onDone) {
         if (typeof window.speechSynthesis === 'undefined') { if (onDone) onDone(); return; }
         var utt   = new SpeechSynthesisUtterance(text);
-        var done  = false;
-        var timer = null;
-        function finishFallback() {
-            if (done) return;
-            done = true;
-            clearTimeout(timer);
-            if (onDone) onDone();
-        }
         utt.rate  = 1.0;
-        utt.onend = utt.onerror = finishFallback;
-        try {
-            window.speechSynthesis.speak(utt);
-            /* Android WebView can leave speechSynthesis pending forever after
-               an audio-focus change. Do not strand the voice session. */
-            timer = setTimeout(function () {
-                try { window.speechSynthesis.cancel(); } catch (e) {}
-                finishFallback();
-            }, Math.max(20000, Math.min(90000, text.length * 140)));
-        } catch (e) {
-            finishFallback();
-        }
+        utt.onend = utt.onerror = function () { if (onDone) onDone(); };
+        window.speechSynthesis.speak(utt);
     }
 
-    function studioGeminiStyle(isContinuation) {
-        var style =
-            'Read the following text aloud exactly as written, like a clear, warm and natural narrator. ' +
-            'Use natural breathing, soft pauses at commas and full stops, gentle intonation that rises ' +
-            'and falls with meaning, and no robotic flatness. Do not add, skip, translate or comment on ' +
-            'anything — only speak the text.';
-        if (isContinuation) {
-            style += ' This is a continuation of the same passage — keep the exact same voice, energy and pacing.';
-        }
-        return style;
-    }
-
-    /* This is the same playback branch used by aqs-tts.js. */
-    function playStudioTTSBlob(blob, onEnd, onError) {
-        if (typeof window.aqsPlayAudioBlob === 'function') {
-            window.aqsPlayAudioBlob(blob, onEnd, onError);
-            return null;
-        }
-
-        var url = URL.createObjectURL(blob);
-        var audio = new Audio(url);
-        audio.setAttribute('playsinline', '');
-        audio.setAttribute('webkit-playsinline', '');
-        audio.onended = function () {
-            try { URL.revokeObjectURL(url); } catch (_) {}
-            if (onEnd) onEnd();
-        };
-        audio.onerror = function (err) {
-            try { URL.revokeObjectURL(url); } catch (_) {}
-            if (onError) onError(err || new Error('Audio playback failed'));
-        };
-        audio.play().catch(function (err) {
-            if (onError) onError(err);
-        });
-        return audio;
-    }
-
-    function speakStudioChunked(spoken, onDone, onStart) {
+    function speakStudioChunked(spoken, onDone) {
         var chunks    = splitSpeechChunks(spoken, 200);
+        var idx       = 0;
         var doneCalled = false;
-        var started = false;
-        var fallbackStarted = false;
-        var nextChunk = 0;
-        var pendingBuffer = null;
-        var synthInFlight = false;
-        var gem = window.geminiTTS;
 
         function finish() {
             if (doneCalled) return; doneCalled = true;
@@ -1539,94 +1465,144 @@
             if (onDone) onDone();
         }
 
-        function announceStart() {
-            if (started) return;
-            started = true;
-            if (onStart) onStart();
+        /* Android must not use blob URLs with HTMLAudioElement. Route each
+           chunk through the shared voice layer, which uses native MediaPlayer
+           for the packaged app and reports completion consistently. */
+        if (window.AQSVoice && window.AQSVoice.usingAndroidNative &&
+            typeof window.AQSVoice.speak === 'function') {
+            function playNativeNext() {
+                if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
+                var chunk = chunks[idx++];
+                currentStudioAudio = window.AQSVoice.speak(chunk, {
+                    voice: 'onyx',
+                    rate: 1.0,
+                    onend: function () {
+                        currentStudioAudio = null;
+                        playNativeNext();
+                    },
+                    onerror: function () {
+                        currentStudioAudio = null;
+                        playNativeNext();
+                    }
+                });
+            }
+            playNativeNext();
+            return;
         }
 
-        function useBrowserFallback() {
-            if (fallbackStarted) return;
-            fallbackStarted = true;
+        function fallbackRemaining() {
             if (!voiceAiTalking) { finish(); return; }
-            if (currentStudioAudio) {
-                try { currentStudioAudio.pause(); } catch (_) {}
-                currentStudioAudio = null;
-            }
-            announceStart();
-            speakWithBrowserFallback(spoken, finish);
-        }
-
-        function playReady() {
-            if (fallbackStarted) return;
-            if (!voiceAiTalking) { finish(); return; }
-            if (!pendingBuffer) {
-                if (!synthInFlight && nextChunk >= chunks.length) finish();
-                return;
-            }
-
-            var audioBuffer = pendingBuffer;
-            pendingBuffer = null;
-            var blob = new Blob([audioBuffer], { type: 'audio/wav' });
-            var htmlAudio = null;
-            var playback = {
-                pause: function () {
-                    try {
-                        if (htmlAudio) {
-                            htmlAudio.pause();
-                            htmlAudio.src = '';
-                        } else if (typeof window.aqsStopCurrentAudio === 'function') {
-                            window.aqsStopCurrentAudio();
-                        }
-                        if (currentStudioAudio === playback) currentStudioAudio = null;
-                    } catch (_) {}
-                }
-            };
-            currentStudioAudio = playback;
-            announceStart();
-
-            /* Start synthesizing the next chunk while this one plays. */
-            requestNext();
-
-            htmlAudio = playStudioTTSBlob(blob, function () {
-                if (currentStudioAudio === playback) currentStudioAudio = null;
-                playReady();
-            }, function (err) {
-                if (currentStudioAudio === playback) currentStudioAudio = null;
-                try { console.warn('[AQS Studio] shared TTS playback failed:', err); } catch (_) {}
-                if (!voiceAiTalking) { finish(); return; }
-                useBrowserFallback();
-            });
-        }
-
-        function requestNext() {
-            if (fallbackStarted || !voiceAiTalking || synthInFlight ||
-                pendingBuffer || nextChunk >= chunks.length) return;
-            if (!gem || typeof gem.synth !== 'function' || !gem.hasKeys()) {
-                useBrowserFallback();
-                return;
-            }
-
-            var chunk = chunks[nextChunk];
-            var isContinuation = nextChunk > 0;
-            nextChunk++;
-            synthInFlight = true;
-            gem.synth(chunk, 'Puck', studioGeminiStyle(isContinuation))
-                .then(function (audioBuffer) {
-                    synthInFlight = false;
+            var remaining = chunks.slice(idx - 1).join(' ');
+            if (!remaining.trim()) { finish(); return; }
+            fetchStudioAudioBlob(remaining.slice(0, 400), ['onyx', 'echo', 'shimmer'], 10000)
+                .then(function (blob) {
                     if (!voiceAiTalking) { finish(); return; }
-                    pendingBuffer = audioBuffer;
-                    playReady();
+                    var blobUrl = URL.createObjectURL(blob);
+                    var audio2  = new Audio();
+                    audio2.setAttribute('playsinline', '');
+                    audio2.src  = blobUrl;
+                    audio2.addEventListener('ended', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        idx = chunks.length;
+                        finish();
+                    });
+                    audio2.addEventListener('error', function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
+                    audio2.play().catch(function () {
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        speakWithBrowserFallback(remaining, finish);
+                    });
                 })
-                .catch(function (err) {
-                    synthInFlight = false;
-                    try { console.warn('[AQS Studio] Gemini TTS failed:', err); } catch (_) {}
+                .catch(function () { speakWithBrowserFallback(remaining, finish); });
+        }
+
+        function playNext() {
+            if (!voiceAiTalking || idx >= chunks.length) { finish(); return; }
+            var chunk = chunks[idx++];
+
+            fetchStudioAudioBlob(chunk, ['onyx', 'echo', 'shimmer'], 14000)
+                .then(function (blob) {
                     if (!voiceAiTalking) { finish(); return; }
-                    useBrowserFallback();
+
+                    var typedBlob = new Blob([blob], { type: 'audio/mpeg' });
+                    var blobUrl   = URL.createObjectURL(typedBlob);
+                    var audio     = new Audio();
+                    audio.setAttribute('playsinline', '');
+                    audio.setAttribute('webkit-playsinline', '');
+                    audio.preload  = 'auto';
+                    audio.volume   = 1.0;
+                    audio.src      = blobUrl;
+                    currentStudioAudio = audio;
+
+                    var stallTimer  = null;
+                    var cleaned     = false;
+                    var lastCurTime = -1;
+
+                    function cleanup() {
+                        if (cleaned) return; cleaned = true;
+                        clearTimeout(stallTimer);
+                        clearTimeout(hardCap);
+                        try { URL.revokeObjectURL(blobUrl); } catch (_) {}
+                        currentStudioAudio = null;
+                    }
+
+                    var hardCap = setTimeout(function () {
+                        if (!cleaned) { cleanup(); playNext(); }
+                    }, 60 * 60 * 1000);
+
+                    function armStallTimer() {
+                        clearTimeout(stallTimer);
+                        stallTimer = setTimeout(function () {
+                            if (cleaned) return;
+                            if (audio.currentTime > lastCurTime) {
+                                lastCurTime = audio.currentTime;
+                                armStallTimer();
+                            } else {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                playNext();
+                            }
+                        }, 4000);
+                    }
+
+                    audio.addEventListener('timeupdate', function () {
+                        lastCurTime = audio.currentTime;
+                        armStallTimer();
+                    });
+                    audio.addEventListener('canplay', function () {
+                        if (lastCurTime < 0) armStallTimer();
+                    });
+                    audio.addEventListener('ended', function () {
+                        clearTimeout(hardCap);
+                        cleanup();
+                        playNext();
+                    });
+                    audio.addEventListener('error', function () {
+                        clearTimeout(hardCap);
+                        cleanup();
+                        fallbackRemaining();
+                    });
+
+                    audio.play().catch(function () {
+                        setTimeout(function () {
+                            if (!voiceAiTalking) { clearTimeout(hardCap); cleanup(); finish(); return; }
+                            audio.play().catch(function () {
+                                clearTimeout(hardCap);
+                                cleanup();
+                                fallbackRemaining();
+                            });
+                        }, 400);
+                    });
+                })
+                .catch(function () {
+                    if (!voiceAiTalking) { finish(); return; }
+                    fallbackRemaining();
                 });
         }
 
-        requestNext();
+        playNext();
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -1673,6 +1649,10 @@
                 }
             });
         }
+
+        /* ── Deep search toggle ── */
+        var deepBtn = document.getElementById('dts-deep-search');
+        if (deepBtn) deepBtn.addEventListener('click', function(){ deepSearchEnabled=!deepSearchEnabled; deepBtn.setAttribute('aria-pressed',String(deepSearchEnabled)); deepBtn.textContent=deepSearchEnabled?'Deep search: On':'Deep search: Off'; });
 
         /* ── Send button ── */
         var sendBtn = document.getElementById('dts-send');
@@ -1795,17 +1775,15 @@
             });
         }
 
-        /* ── Restore an interrupted voice session without reopening the mic ── */
+        /* ── Restore last active session (optional) ── */
         try {
-            if (sessionStorage.getItem(VOICE_RECOVERY_KEY) === '1') {
-                var lastId = localStorage.getItem(ACTIVE_KEY);
+            var lastId = localStorage.getItem(ACTIVE_KEY);
+            if (lastId) {
                 var sessions = loadSessions();
-                if (lastId && sessions.some(function (s) { return s.id === lastId; })) {
-                    loadSessionById(lastId);
+                if (sessions.some(function (s) { return s.id === lastId; })) {
+                    /* Uncomment to restore last session on load: */
+                    /* loadSessionById(lastId); */
                 }
-                openVoiceModal();
-                setVoiceState('idle');
-                setVoiceTranscript('Voice session was interrupted. Tap Start Listening to continue.');
             }
         } catch (e) {}
 
