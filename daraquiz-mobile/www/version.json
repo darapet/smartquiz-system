@@ -1,8 +1,8 @@
 {
-  "version": "1.548",
-  "versionCode": 526,
+  "version": "1.549",
+  "versionCode": 527,
   "releaseDate": "2026-10-30",
-  "notes": "New front page with daily quote, dashboard quiz activity, CI fix.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.548/daraquiz-v1.548.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.548/daraquiz-v1.548.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.549/daraquiz-v1.549.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.549/daraquiz-v1.549.apk"
 }
