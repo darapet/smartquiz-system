@@ -1,0 +1,297 @@
+
+
+/* Reference-led friend requests and a cleaner, more usable messaging surface. */
+#studyco-request-section .studyco-request-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 12px;
+}
+
+#studyco-request-section .studyco-request-heading h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  color: #16181b;
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -.02em;
+}
+
+#studyco-request-count {
+  color: #d9304f;
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+#studyco-request-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 36px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: #355e70;
+  font: inherit;
+  font-size: .85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+#studyco-request-sort::after {
+  content: "⌄";
+  font-size: .9rem;
+}
+
+#studyco-request-sort:hover { color: #1877f2; }
+#studyco-request-sort:focus-visible { outline: 2px solid #1877f2; outline-offset: 2px; border-radius: 6px; }
+#studyco-request-list.studyco-list { gap: 0; margin: 0; }
+
+#studyco-request-list .studyco-incoming-request {
+  position: relative;
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto 40px;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 10px 0 14px;
+  border: 0;
+  border-bottom: 1px solid #e4e6eb;
+  border-radius: 0;
+  background: #fff;
+}
+
+#studyco-request-list .studyco-incoming-request > .studyco-avatar {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  font-size: 1rem;
+}
+
+#studyco-request-list .studyco-incoming-request > div:nth-child(2) {
+  grid-column: 2 / span 2;
+  grid-row: 1;
+  align-self: end;
+  min-width: 0;
+  padding-right: 52px;
+}
+
+#studyco-request-list .studyco-incoming-request > div:nth-child(2) strong {
+  display: block;
+  overflow: hidden;
+  color: #17191c;
+  font-size: .96rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#studyco-request-list .studyco-incoming-request > div:nth-child(2) span {
+  display: block;
+  margin-top: 4px;
+  overflow: hidden;
+  color: #62676d;
+  font-size: .78rem;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#studyco-request-list .studyco-incoming-request > .studyco-friend-request-time {
+  position: absolute;
+  top: 12px;
+  right: 0;
+  color: #72777d;
+  font-size: .68rem;
+  white-space: nowrap;
+}
+
+#studyco-request-list .studyco-incoming-request > .studyco-button {
+  width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 7px 8px;
+  border: 0;
+  border-radius: 7px;
+  font-size: .82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+#studyco-request-list .studyco-incoming-request > .studyco-button.success {
+  grid-column: 2;
+  grid-row: 2;
+  background: #1877f2;
+  color: #fff;
+}
+
+#studyco-request-list .studyco-incoming-request > .studyco-button.success:hover { background: #166fe5; }
+#studyco-request-list .studyco-incoming-request > .studyco-button.danger { grid-column: 3; grid-row: 2; background: #e4e6eb; color: #1c1e21; }
+#studyco-request-list .studyco-incoming-request > .studyco-button.danger:hover { background: #d8dadf; }
+#studyco-request-list .studyco-sent-request-heading { margin: 14px 0 5px; color: #65676b; font-size: .78rem; font-weight: 750; }
+#studyco-request-list .studyco-sent-request { border: 0; border-bottom: 1px solid #e4e6eb; border-radius: 0; }
+
+#studyco-view-messages .studyco-message-page-heading {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e4e6eb;
+  background: #fff;
+}
+
+#studyco-view-messages .studyco-message-page-heading h1 {
+  margin: 0;
+  color: #16181b;
+  font-size: 1.4rem;
+  font-weight: 780;
+  letter-spacing: -.03em;
+}
+
+#studyco-view-messages .studyco-message-back {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+#studyco-view-messages .studyco-message-back svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+#studyco-view-messages .studyco-messages-shell {
+  display: grid;
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr);
+  max-width: 1180px;
+  min-height: min(72vh, 740px);
+  margin: 0 auto 24px;
+  overflow: hidden;
+  border: 1px solid #e2e5e9;
+  border-top: 0;
+  border-radius: 0 0 14px 14px;
+  background: #fff;
+  box-shadow: 0 3px 16px rgba(24, 30, 36, .05);
+}
+
+#studyco-view-messages .studyco-conversations-panel { min-width: 0; border-right: 1px solid #e4e6eb; background: #fff; }
+#studyco-view-messages .studyco-conversations-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 16px 16px 10px; }
+#studyco-view-messages .studyco-conversations-head h2 { margin: 0; color: #16181b; font-size: 1.02rem; font-weight: 750; }
+#studyco-view-messages .studyco-conversations-head .studyco-eyebrow { display: none; }
+
+#studyco-view-messages .studyco-message-search {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 4px 14px 12px;
+  padding: 0 13px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: #f0f2f5;
+  color: #65676b;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+#studyco-view-messages .studyco-message-search:focus-within { border-color: #8db7f2; background: #fff; box-shadow: 0 0 0 3px rgba(24,119,242,.1); }
+#studyco-view-messages .studyco-message-search input { min-width: 0; min-height: 42px; border: 0; outline: 0; background: transparent; color: #17191c; font: inherit; font-size: .88rem; }
+#studyco-view-messages .studyco-message-search input::placeholder { color: #777d84; }
+#studyco-view-messages .studyco-chat-list > button[data-chat-uid] { min-height: 68px; padding: 10px 12px; border-radius: 10px; }
+#studyco-view-messages .studyco-chat-list > button[data-chat-uid].active { background: #eaf3ff; }
+#studyco-view-messages .studyco-chat-list > button[data-chat-uid] strong { color: #17191c; font-size: .88rem; }
+#studyco-view-messages .studyco-chat-list > button[data-chat-uid] span { margin-top: 4px; color: #6b7178; font-size: .78rem; }
+#studyco-view-messages .studyco-chat-panel { min-height: 0; background: #fff; }
+#studyco-view-messages .studyco-chat-empty { color: #70767d; font-size: .9rem; }
+#studyco-view-messages .studyco-chat-empty strong { margin: 0; color: #525960; font-size: .98rem; font-weight: 650; }
+#studyco-view-messages .studyco-chat-messages { gap: 10px; padding: 18px; background: #f7f8fa; }
+#studyco-view-messages .studyco-message .bubble { max-width: min(78%, 540px); padding: 10px 13px; border-radius: 17px; font-size: .9rem; line-height: 1.45; }
+#studyco-view-messages .studyco-message.mine .bubble { border-color: #1877f2; background: #1877f2; color: #fff; }
+#studyco-view-messages .studyco-message:not(.mine) .bubble { border-color: #e4e6eb; background: #fff; }
+#studyco-view-messages .studyco-message time { font-size: .65rem; }
+
+#studyco-chat-panel .studyco-chat-head { min-height: 64px; padding: 10px 14px; background: #fff; }
+#studyco-chat-panel .studyco-chat-identity { flex: 1; min-width: 0; }
+#studyco-chat-panel .studyco-chat-head strong { color: #17191c; font-size: .92rem; }
+#studyco-chat-panel .studyco-chat-head span { color: #71777d; font-size: .74rem; }
+#studyco-chat-panel .studyco-chat-call-actions { display: flex; align-items: center; gap: 4px; }
+#studyco-chat-panel .studyco-chat-icon-action { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: #f0f2f5; color: #1877f2; }
+#studyco-chat-panel .studyco-chat-icon-action:hover { background: #e4e6eb; }
+#studyco-chat-panel .studyco-chat-icon-action svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+#studyco-chat-panel .studyco-chat-compose {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 11px 12px;
+  border-top: 1px solid #e4e6eb;
+  background: #fff;
+}
+
+#studyco-chat-panel .studyco-chat-compose textarea {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  min-height: 44px;
+  max-height: 144px;
+  flex-basis: auto;
+  margin: 0;
+  padding: 11px 15px;
+  overflow-y: auto;
+  border: 1px solid #d9dde3;
+  border-radius: 22px;
+  outline: 0;
+  background: #f6f7f8;
+  color: #17191c;
+  font: inherit;
+  font-size: .92rem;
+  line-height: 1.4;
+  resize: none;
+  transition: border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+
+#studyco-chat-panel .studyco-chat-compose textarea:focus { border-color: #8db7f2; background: #fff; box-shadow: 0 0 0 3px rgba(24,119,242,.1); }
+#studyco-chat-panel .studyco-chat-compose textarea::placeholder { color: #777d84; }
+#studyco-chat-panel .studyco-chat-compose-actions { display: flex; flex: 0 0 auto; align-items: center; gap: 5px; width: auto; }
+#studyco-chat-panel .studyco-attachment-button { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #65676b; }
+#studyco-chat-panel .studyco-attachment-button:hover { background: #f0f2f5; color: #1877f2; }
+#studyco-chat-panel .studyco-attachment-button > svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+#studyco-chat-panel .studyco-chat-record-button { width: 38px; height: 38px; flex: 0 0 38px; border: 0; background: transparent; color: #65676b; }
+#studyco-chat-panel .studyco-chat-record-button:hover { background: #f0f2f5; color: #1877f2; }
+#studyco-chat-panel #studyco-chat-send { display: grid; place-items: center; width: 40px; height: 40px; min-width: 40px; flex: 0 0 40px; padding: 0; border: 0; border-radius: 50%; background: #1877f2; color: #fff; }
+#studyco-chat-panel #studyco-chat-send:hover { background: #166fe5; }
+#studyco-chat-panel #studyco-chat-send:disabled { opacity: .55; cursor: wait; }
+#studyco-chat-panel #studyco-chat-send svg { width: 18px; height: 18px; fill: currentColor; }
+#studyco-chat-panel .studyco-chat-file-name { max-width: 110px; overflow: hidden; color: #65676b; font-size: .73rem; text-overflow: ellipsis; white-space: nowrap; }
+
+.studyco-chat-report-dialog select,
+.studyco-chat-report-dialog textarea { min-height: 44px; padding: 12px 13px; border: 1px solid #d8dde5; border-radius: 12px; background: #f8f9fa; transition: border-color .15s ease, background .15s ease, box-shadow .15s ease; }
+.studyco-chat-report-dialog textarea { min-height: 120px; line-height: 1.45; }
+.studyco-chat-report-dialog select:focus,
+.studyco-chat-report-dialog textarea:focus { border-color: #8db7f2; outline: 0; background: #fff; box-shadow: 0 0 0 3px rgba(24,119,242,.1); }
+
+@media (max-width: 760px) {
+  #studyco-request-section .studyco-request-heading { margin-bottom: 10px; }
+  #studyco-request-list .studyco-incoming-request { grid-template-columns: 70px minmax(0,1fr) minmax(0,1fr); gap: 8px 9px; padding: 9px 0 12px; }
+  #studyco-request-list .studyco-incoming-request > .studyco-avatar { width: 66px; height: 66px; }
+  #studyco-request-list .studyco-incoming-request > div:nth-child(2) { padding-right: 46px; }
+  #studyco-request-list .studyco-incoming-request > .studyco-friend-request-time { top: 10px; font-size: .63rem; }
+  #studyco-request-list .studyco-incoming-request > .studyco-button { min-height: 36px; font-size: .76rem; }
+  #studyco-view-messages .studyco-message-page-heading { padding: 10px 12px; }
+  #studyco-view-messages .studyco-messages-shell { display: block; min-height: calc(100vh - 156px); margin: 0; border: 0; border-radius: 0; box-shadow: none; }
+  #studyco-view-messages .studyco-conversations-panel { border: 0; }
+  #studyco-view-messages .studyco-conversations-head { padding: 12px 14px 8px; }
+  #studyco-view-messages .studyco-message-search { margin: 3px 12px 10px; }
+  #studyco-view-messages .studyco-messages-shell.chat-open { display: flex; height: var(--studyco-chat-panel-height,calc(100vh - 172px)); min-height: 0; overflow: hidden; flex-direction: column; }
+  #studyco-view-messages .studyco-messages-shell.chat-open .studyco-chat-panel-full { display: flex; flex: 1 1 auto; height: 100%; min-height: 0; overflow: hidden; flex-direction: column; border-top: 1px solid #e4e6eb; }
+  #studyco-view-messages .studyco-messages-shell.chat-open .studyco-chat-head { flex: 0 0 auto; }
+  #studyco-view-messages .studyco-messages-shell.chat-open .studyco-chat-messages { flex: 1 1 0; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+  #studyco-chat-panel .studyco-chat-compose { gap: 4px; padding: 8px 8px calc(8px + env(safe-area-inset-bottom,0px)); }
+  #studyco-chat-panel .studyco-chat-compose textarea { min-height: 42px; max-height: 120px; padding: 10px 13px; font-size: .88rem; }
+  #studyco-chat-panel .studyco-chat-compose-actions { gap: 2px; }
+  #studyco-chat-panel .studyco-attachment-button { width: 34px; height: 38px; flex-basis: 34px; }
+  #studyco-chat-panel .studyco-chat-record-button { width: 34px; height: 38px; flex-basis: 34px; }
+  #studyco-chat-panel #studyco-chat-send { width: 38px; height: 38px; min-width: 38px; flex-basis: 38px; }
+  #studyco-chat-panel .studyco-chat-file-name { max-width: 70px; }
+  #studyco-chat-panel .studyco-chat-call-actions { gap: 2px; }
+  #studyco-chat-panel .studyco-chat-icon-action { width: 32px; height: 32px; }
+}

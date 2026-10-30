@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DaraQuiz AI — FileProvider paths
+  This file goes into: android/app/src/main/res/xml/file_paths.xml
+  Required for camera and file upload features.
+-->
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-path
+        name="my_images"
+        path="." />
+    <external-cache-path
+        name="my_cache"
+        path="." />
+    <cache-path
+        name="cache"
+        path="." />
+    <files-path
+        name="files"
+        path="." />
+</paths>

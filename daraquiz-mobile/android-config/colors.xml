@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  DaraQuiz AI — Android color resources
+  This file goes into: android/app/src/main/res/values/colors.xml
+  Darapet Technology brand colors.
+-->
+<resources>
+    <!-- Primary brand color: Darapet Blue -->
+    <color name="colorPrimary">#0d2e7d</color>
+    <color name="colorPrimaryDark">#091f57</color>
+    <color name="colorAccent">#1565C0</color>
+
+    <!-- Status bar -->
+    <color name="ic_launcher_background">#0d2e7d</color>
+
+    <!-- Splash screen -->
+    <color name="splashScreenBackground">#0d2e7d</color>
+</resources>

@@ -1,0 +1,131 @@
+/* Category navigation shown on every Dara Edu and Workspace screen. */
+.dara-category-nav {
+  position: relative;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-height: 54px;
+  padding: 8px max(16px, calc((100vw - 1180px) / 2));
+  color: #e2e8f0;
+  background: #0b1022;
+  border-bottom: 1px solid rgba(148, 163, 184, .2);
+  box-shadow: 0 3px 14px rgba(2, 6, 23, .15);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.dara-category-back {
+  flex: 0 0 auto;
+  padding: 8px 11px;
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 9px;
+  color: #c7d2fe;
+  font-size: .72rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+.dara-category-back:hover {
+  color: #fff;
+  border-color: rgba(165, 180, 252, .65);
+  background: rgba(99, 102, 241, .18);
+}
+
+.dara-category-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+  color: #fff;
+  font-size: .82rem;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.dara-category-title span {
+  font-size: 1.05rem;
+}
+
+.dara-category-toggle {
+  display: none;
+  margin-left: auto;
+  padding: 8px 10px;
+  border: 1px solid rgba(148, 163, 184, .25);
+  border-radius: 8px;
+  color: #c7d2fe;
+  background: rgba(255, 255, 255, .06);
+  font-size: .72rem;
+  font-weight: 800;
+}
+
+.dara-category-links {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+.dara-category-link {
+  padding: 8px 9px;
+  border-radius: 8px;
+  color: #a7b0c4;
+  font-size: .7rem;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.dara-category-link:hover,
+.dara-category-link.active {
+  color: #fff;
+  background: rgba(99, 102, 241, .22);
+}
+
+@media (max-width: 860px) {
+  .dara-category-nav { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .dara-category-title { font-size: .76rem; }
+  .dara-category-links { gap: 0; }
+  .dara-category-link { padding: 7px 6px; font-size: .64rem; }
+}
+
+@media (max-width: 650px) {
+  .dara-category-nav { min-height: 52px; }
+  .dara-category-toggle { display: block; }
+  .dara-category-links {
+    position: absolute;
+    top: calc(100% + 1px);
+    right: 10px;
+    left: 10px;
+    display: none;
+    padding: 7px;
+    border: 1px solid rgba(148, 163, 184, .25);
+    border-radius: 11px;
+    background: #111a34;
+    box-shadow: 0 12px 30px rgba(2, 6, 23, .28);
+  }
+  .dara-category-links.open { display: grid; }
+  .dara-category-link { padding: 10px; font-size: .74rem; }
+}
+
+/* Full-height AI Studio already owns the viewport. Keep its work area below
+   the category bar instead of letting the fixed-height canvas crop. */
+body.dts-body .dara-category-nav {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+}
+
+body.dts-body .aqs-sidebar {
+  top: 54px !important;
+  height: calc(100vh - 54px) !important;
+}
+
+body.dts-body .aqs-sidebar-body {
+  padding-top: 54px;
+}
+
+body.dts-body #dts-app {
+  height: calc(100dvh - 54px);
+}
