@@ -359,8 +359,16 @@
     try{
       var ep=window.AQS_IMGGEN_ENDPOINT;
       var r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt})});
-      var j=await r.json();
-      var url=j.imageUrl||j.image_url||j.url||(j.data&&j.data[0]&&(j.data[0].url||j.data[0].b64_json&&('data:image/png;base64,'+j.data[0].b64_json)));
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var ct=(r.headers.get('content-type')||'');
+      var url='';
+      if(ct.indexOf('image')>-1){
+        var blob=await r.blob();
+        url=URL.createObjectURL(blob);
+      }else{
+        var j=await r.json();
+        url=j.imageUrl||j.image_url||j.url||(j.data&&j.data[0]&&(j.data[0].url||j.data[0].b64_json&&('data:image/png;base64,'+j.data[0].b64_json)))||'';
+      }
       if(url){b.querySelector('.dts-msg-content').innerHTML='<img src="'+url+'" alt="generated" style="max-width:100%;border-radius:14px">';}
       else{b.querySelector('.dts-msg-content').innerHTML='<span style="color:#8496aa">Image generation no work this time — try again.</span>';}
     }catch(e){b.querySelector('.dts-msg-content').innerHTML='<span style="color:#8496aa">Image generation error — check connection.</span>';}

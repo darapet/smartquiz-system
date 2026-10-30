@@ -1,0 +1,48 @@
+/* UNIVERSAL CREAM THEME (v1.561) - homepage look on every page */
+html{background:#faf3ea}
+body{background:#faf3ea !important;color:#12304a !important}
+.card,.panel,.aqs-card,.box,.aqs-panel,.stat-card,.quick-card,.dashboard-card,.aqs-stat-card,.aqs-quick-card,.profile-card,.settings-card,.quiz-card,.aqs-quiz-card,.modal,.aqs-modal{background:#fff !important;color:#12304a !important;border:1px solid #eee2d3 !important;box-shadow:0 4px 16px rgba(0,0,0,.05) !important}
+h1,h2,h3,h4{color:#12304a !important}
+p,span,td,li,label,small{color:#526579}
+a{color:#3d7ab5}
+input,textarea,select{background:#fff !important;color:#12304a !important;border:1px solid #e5d9c6 !important}
+input:focus,textarea:focus,select:focus{border-color:#e8912d !important;box-shadow:0 0 0 3px rgba(232,145,45,.14) !important}
+button,.btn,.aqs-btn,.ait-btn{background:#fff;color:#22374d;border:1px solid #eee2d3}
+.btn-primary,.aqs-btn-primary,.aqs-btn-sm.aqs-btn-primary,.ait-btn.primary,button.primary{background:linear-gradient(135deg,#e8912d,#d97706) !important;color:#fff !important;border-color:transparent !important}
+table,th,td{border-color:#f3e8d8 !important}
+th{color:#12304a !important}
+.aqs-site-header,header,nav,.topbar,.aqs-topbar{background:rgba(250,243,234,.96) !important;color:#12304a !important;border-bottom:1px solid #eee2d3 !important}
+.aqs-user-topbar{background:linear-gradient(120deg,#0e3a52,#10485e 55%,#155a70) !important;border:1px solid #22505b !important;border-radius:20px;color:#f6fbfd !important;margin:0 4px}
+.aqs-user-topbar .aqs-user-name{color:#f6fbfd !important}
+.aqs-user-topbar .aqs-btn{background:#fff !important;color:#22374d !important}
+.aqs-user-topbar .aqs-btn.aqs-btn-primary{background:linear-gradient(135deg,#e8912d,#d97706) !important;color:#fff !important}
+.aqs-user-topbar .aqs-user-role-badge{background:rgba(255,255,255,.15) !important;color:#c4f1e8 !important}
+.aqs-hdr-drawer{background:#fff !important}
+*{scrollbar-color:#e8d5b8 #faf3ea}
+
+/* Phase 2 shared page structure utilities (v1.563) */
+body[data-aqs-page]{font-size:16px;line-height:1.55;min-width:320px;overflow-x:hidden}
+body[data-aqs-page] :is(h1,h2,h3){line-height:1.2;letter-spacing:-.02em}
+body[data-aqs-page] h1{font-size:clamp(1.55rem,4vw,2.35rem)}
+body[data-aqs-page] h2{font-size:clamp(1.2rem,3vw,1.65rem)}
+body[data-aqs-page] :is(main,article){min-width:0}
+body[data-aqs-page] main > :is(section,article,form) + :is(section,article,form){margin-top:clamp(18px,3vw,30px)}
+body[data-aqs-page] :is(.card,.panel,.aqs-card,.box,.aqs-panel,.stat-card,.quick-card,.dashboard-card,.aqs-stat-card,.aqs-quick-card,.profile-card,.settings-card,.quiz-card,.aqs-quiz-card){border-radius:18px!important;padding:clamp(16px,3vw,24px)}
+body[data-aqs-page] :is(button,.btn,.aqs-btn,.ait-btn){min-height:42px;border-radius:12px;max-width:100%;font:inherit;font-weight:650;cursor:pointer;transition:transform .16s ease,box-shadow .16s ease}
+body[data-aqs-page] :is(button,.btn,.aqs-btn,.ait-btn):active{transform:translateY(1px)}
+body[data-aqs-page] :is(.badge,.chip,.tag,[class*="badge"]){border-radius:999px;font-size:.82rem;line-height:1.25}
+body[data-aqs-page] :is(input,textarea,select){font-size:16px;max-width:100%;border-radius:12px}
+body[data-aqs-page] :is(.empty-state,.aqs-empty-state,[class*="empty-state"]){display:grid;place-items:center;gap:10px;text-align:center;padding:clamp(22px,5vw,40px);border:1px dashed #e5d9c6;border-radius:18px;background:rgba(255,255,255,.72);color:#526579}
+body[data-aqs-page] img,body[data-aqs-page] video,body[data-aqs-page] canvas{max-width:100%}
+@media(max-width:700px){
+ body[data-aqs-page] :is(main,article){padding-left:clamp(14px,4vw,20px);padding-right:clamp(14px,4vw,20px)}
+ body[data-aqs-page] :is(.card,.panel,.aqs-card,.box,.aqs-panel,.stat-card,.quick-card,.dashboard-card,.aqs-stat-card,.aqs-quick-card,.profile-card,.settings-card,.quiz-card,.aqs-quiz-card){padding:16px;border-radius:16px!important}
+ body[data-aqs-page] :is(.row,.actions,.button-row){flex-wrap:wrap;gap:10px}
+ body[data-aqs-page] :is(button,.btn,.aqs-btn,.ait-btn){white-space:normal}
+ body[data-aqs-page] :is(.table-wrap,.table-responsive){overflow-x:auto;max-width:100%}
+}
+/* Consistent Phase 2 page header */
+.aqs-phase2-page-header{position:relative;z-index:5;display:flex;align-items:center;gap:16px;width:min(100% - 32px,1120px);min-height:56px;margin:12px auto 18px;padding:10px 16px;background:rgba(255,255,255,.86);border:1px solid #eee2d3;border-radius:16px;box-shadow:0 3px 12px rgba(18,48,74,.04)}
+.aqs-phase2-back{flex:0 0 auto;display:inline-flex;align-items:center;min-height:38px;padding:0 12px;border-radius:10px;background:#fff7eb;color:#8b4d09!important;text-decoration:none;font-weight:700}
+.aqs-phase2-page-title{min-width:0;color:#12304a;font-size:clamp(1rem,2.5vw,1.3rem);font-weight:750;line-height:1.25;overflow-wrap:anywhere}
+@media(max-width:600px){.aqs-phase2-page-header{width:calc(100% - 24px);min-height:52px;margin:10px auto 14px;padding:8px 10px;gap:10px}.aqs-phase2-back{min-height:36px;padding:0 10px;font-size:.9rem}.aqs-phase2-page-title{font-size:1.02rem}}
