@@ -101,10 +101,11 @@ jobs:
             [ -n "$NEW_VER" ] || NEW_VER="$CUR_VER"
             NOTES="${{ github.event.inputs.notes }}"
           else
-            NEW_CODE=$((CUR_CODE + 1))
-            MAJOR=$(echo "$CUR_VER" | cut -d'.' -f1)
-            MINOR=$(echo "$CUR_VER" | cut -d'.' -f2)
-            NEW_VER="${MAJOR}.$((MINOR + 1))"
+            # No auto-bump on push: version.json (committed) is the single source of
+            # truth, so the APK version always matches the live version.json and the
+            # release tag actually exists. Auto-bump caused off-by-one dead links.
+            NEW_CODE="$CUR_CODE"
+            NEW_VER="$CUR_VER"
             NOTES="Bug fixes and improvements."
           fi
           [ -z "$NOTES" ] && NOTES="Bug fixes and improvements."

@@ -181,40 +181,6 @@
     download.download = 'xzily-ai-' + payload.category + '-' + Date.now() + '.png';
   }
 
-  async function generateForStudio(prompt) {
-    var text = String(prompt || '').trim();
-    if (text.length < 3) throw new Error('Please provide a longer image prompt.');
-    var payload = { prompt: text, category: detectCategory(text).value, aspectRatio: 'square', clientId: getClientId() };
-    var result;
-    if (chooseEngine() === 'cloudflare') {
-      try { result = await fetchCloudflare(payload); }
-      catch (cloudflareError) {
-        if (!firebaseEnabled || !firebaseEndpoint) throw cloudflareError;
-        result = await fetchGemini(payload);
-      }
-    } else {
-      try { result = await fetchGemini(payload); }
-      catch (geminiError) {
-        if (!cloudflareEndpoint) throw geminiError;
-        result = await fetchCloudflare(payload);
-      }
-    }
-    var normalized = Object.assign({}, result, { prompt: text, category: payload.category });
-    saveLocalResult(normalized);
-    if (normalized.url && normalized.url.indexOf('blob:') === 0) {
-      try { normalized.url = await new Promise(function (resolve, reject) {
-        var reader = new FileReader();
-        reader.onload = function () { resolve(reader.result); };
-        reader.onerror = reject;
-        fetch(normalized.url).then(function (response) { return response.blob(); }).then(function (blob) { reader.readAsDataURL(blob); }, reject);
-      }); } catch (error) { /* keep the current-session object URL usable */ }
-    }
-    return normalized;
-  }
-
-  window.AqsImageGen = window.AqsImageGen || {};
-  window.AqsImageGen.generate = generateForStudio;
-
   function friendlyError(error) {
     var text = error && error.message ? error.message : 'Image generation failed. Please try again.';
     if (/failed to fetch|network|timeout/i.test(text)) return 'The image service could not be reached. Check your connection and try again.';

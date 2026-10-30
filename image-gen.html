@@ -184,7 +184,7 @@
 .aqs-ig-msg{max-width:100%;border-radius:16px;padding:12px 14px;font-size:.92rem;overflow-wrap:anywhere}
 .aqs-ig-msg.user{background:#e8912d;color:#fff;align-self:flex-end}
 .aqs-ig-msg.ai{background:#fff;border:1px solid #eee2d3;align-self:flex-start;color:#22374d}
-.aqs-ig-msg img{max-width:100%;border-radius:12px;margin-top:8px;display:block;cursor:zoom-in}
+.aqs-ig-msg img{max-width:100%;border-radius:12px;margin-top:8px;display:block}
 .aqs-ig-msg .st{color:#8496aa;font-style:italic}
 .aqs-ig-composer{display:flex;gap:8px;padding:12px 14px calc(12px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid #eee2d3}
 .aqs-ig-composer textarea{flex:1;resize:none;border:1px solid #e5d9c6;border-radius:14px;padding:12px 14px;font:.92rem 'Inter',sans-serif;background:#faf6f0;color:#1c2b3a;outline:none;max-height:120px}
@@ -214,26 +214,14 @@
           setTimeout(()=>{mo.disconnect();res(null);},120000);});
         form.requestSubmit?form.requestSubmit():form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true}));
         var url=await wait;
-        if(url){b.innerHTML='🖼 '+p.replace(/</g,'&lt;')+'<img class="aqs-ig-generated-image" src="'+url+'" alt="generated">';}
+        if(url){b.innerHTML='🖼 '+p.replace(/</g,'&lt;')+'<img src="'+url+'" alt="generated">';}
         else{b.innerHTML='<span class="st">Generation no finish — try again.</span>';}
       }else{b.innerHTML='<span class="st">Generator no available.</span>';}
     }catch(e){b.innerHTML='<span class="st">Error: '+(e.message||e)+'</span>';}
   }
-  msgs.addEventListener('click',function(e){var img=e.target.closest&&e.target.closest('.aqs-ig-generated-image');if(img)window.AqsImagePreview&&window.AqsImagePreview.open(img.src,img.alt||'Generated image');});
   send.addEventListener('click',run);
   input.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();run();}});
 })();
 </script>
-
-<style>
-#aqs-image-preview{position:fixed;inset:0;z-index:5000;background:rgba(10,18,28,.94);display:none;align-items:center;justify-content:center;padding:20px}
-#aqs-image-preview.open{display:flex}#aqs-image-preview .aqs-ip-panel{width:min(96vw,1100px);height:min(94dvh,900px);background:#faf3ea;border-radius:18px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 70px rgba(0,0,0,.45)}
-#aqs-image-preview .aqs-ip-head{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;color:#12304a;font-weight:700}#aqs-image-preview .aqs-ip-stage{flex:1;min-height:0;display:grid;place-items:center;padding:8px;background:#faf3ea}#aqs-image-preview img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px}#aqs-image-preview .aqs-ip-actions{display:flex;justify-content:center;gap:10px;padding:12px;flex-wrap:wrap;background:#fff}#aqs-image-preview button{border:0;border-radius:10px;padding:10px 15px;background:#e8912d;color:#fff;font:700 .9rem Inter,sans-serif;cursor:pointer}#aqs-image-preview .aqs-ip-close{background:#fff;color:#12304a;border:1px solid #e5d9c6}
-</style>
-<div id="aqs-image-preview" aria-hidden="true"><div class="aqs-ip-panel" role="dialog" aria-modal="true" aria-label="Image preview"><div class="aqs-ip-head"><span class="aqs-ip-title">Image preview</span><button type="button" class="aqs-ip-close" aria-label="Close preview">✕</button></div><div class="aqs-ip-stage"><img alt="Generated image preview"></div><div class="aqs-ip-actions"><button type="button" class="aqs-ip-save">⬇️ Save / Download</button><button type="button" class="aqs-ip-share">🔗 Share</button></div></div></div>
-<script>
-(function(){var modal=document.getElementById('aqs-image-preview'),pic=modal&&modal.querySelector('img'),title=modal&&modal.querySelector('.aqs-ip-title');if(!modal)return;var current='';function close(){modal.classList.remove('open');modal.setAttribute('aria-hidden','true');}window.AqsImagePreview={open:function(src,label){current=src;pic.src=src;pic.alt=label||'Generated image';title.textContent=label||'Image preview';modal.classList.add('open');modal.setAttribute('aria-hidden','false');}};modal.querySelector('.aqs-ip-close').addEventListener('click',close);modal.addEventListener('click',function(e){if(e.target===modal)close();});document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.classList.contains('open'))close();});modal.querySelector('.aqs-ip-save').addEventListener('click',function(){if(!current)return;if(window.AqsDownloadBridge&&typeof window.AqsDownloadBridge.startDownload==='function'&&/^https?:/.test(current)){window.AqsDownloadBridge.startDownload(current,'xzily-ai-image.png');return;}var a=document.createElement('a');a.href=current;a.download='xzily-ai-image.png';document.body.appendChild(a);a.click();a.remove();});modal.querySelector('.aqs-ip-share').addEventListener('click',async function(){if(!current)return;try{if(navigator.share){var blob=await(await fetch(current)).blob();var file=new File([blob],'xzily-ai-image.png',{type:blob.type||'image/png'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Generated image'});return;}await navigator.share({title:'Generated image',url:current});return;}}catch(e){if(e&&e.name==='AbortError')return;}try{await navigator.clipboard.writeText(current);this.textContent='✓ Link copied';setTimeout(()=>{this.textContent='🔗 Share';},1500);}catch(e){window.prompt('Copy image link:',current);}});})();
-</script>
-
 </body>
 </html>

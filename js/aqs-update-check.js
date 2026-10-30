@@ -184,6 +184,12 @@ var AQS_APP_VERSION_CODE = 519;
   /* ── Download dispatcher — web fallback: open download link in browser ─── */
     function downloadInApp(url) {
       var btn = document.getElementById('aqs-upd-btn-now');
+      /* CRITICAL: the app origin is https://localhost (capacitor). A relative or
+         scheme-less url becomes https://localhost/... in the native bridge and
+         fails. Force absolute github release URL before anything else. */
+      if (!/^https:\/\/github\.com\//.test(url)) {
+        url = 'https://github.com/darapet/smartquiz-system/releases/latest';
+      }
       /* Native Android bridge takes priority */
       if (window.AqsDownloadBridge && typeof window.AqsDownloadBridge.startDownload === 'function') {
         downloadNative(url);
