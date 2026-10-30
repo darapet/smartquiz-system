@@ -1,8 +1,8 @@
 {
-  "version": "1.581",
-  "versionCode": 565,
+  "version": "1.582",
+  "versionCode": 566,
   "releaseDate": "2026-10-30",
-  "notes": "Fix: download now always uses the real GitHub release URL (localhost error gone).",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.581/daraquiz-v1.581.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.581/daraquiz-v1.581.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.582/daraquiz-v1.582.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.582/daraquiz-v1.582.apk"
 }
