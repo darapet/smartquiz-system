@@ -1,13 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script defer src="capacitor-bridge.js"></script>
-<script src="js/aqs-capacitor-speech.js"></script>
-<script src="js/aqs-gemini-tts.js"></script>
-<script src="js/aqs-voice.js"></script>
-<script defer src="js/aqs-update-check.js"></script>
-<script defer src="js/aqs-whats-new.js"></script>
-
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>My Profile — xzily AI</title>
@@ -69,11 +62,37 @@ body{margin:0;padding:0;background:#f9fafb;font-family:'Inter',sans-serif;}
   .udash-stats{grid-template-columns:1fr 1fr 1fr;}
   .udash-quick-grid{grid-template-columns:1fr 1fr;}
 }
+/* Dark home screen with compact feature tiles. */
+body{background:#080d1c;color:#e5e7eb;}
+.aqs-site-header,.aqs-hdr-drawer{background:#0f172a;border-color:#1e293b;}
+.aqs-site-logo{color:#a5b4fc;}
+.aqs-hdr-hamburger{background:#111b30;color:#e2e8f0;border-color:#334155;}
+.aqs-hdr-drawer .aqs-btn{background:#111b30;color:#e2e8f0;border-color:#334155;}
+.aqs-user-topbar{background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);border:1px solid #22505b;box-shadow:0 16px 40px rgba(0,0,0,.22);}
+.aqs-user-name{color:#f8fafc;}
+.aqs-user-role-badge{background:rgba(255,255,255,.12);color:#c4f1e8;}
+.udash-stats{grid-template-columns:1fr;margin-bottom:22px;}
+.udash-stat-card{display:flex;align-items:center;justify-content:space-between;text-align:left;padding:18px 22px;background:#111b30;border:1px solid #25344c;border-radius:16px;}
+.udash-stat-num{color:#67e8d0;font-size:1.55rem;}
+.udash-stat-label{margin:0;color:#cbd5e1;font-size:.9rem;}
+.udash-quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin:0 0 28px;}
+.udash-quick-card{min-height:92px;box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;text-align:center;padding:12px 8px;background:#111b30;border:1px solid #27364d;border-radius:16px;box-shadow:0 8px 20px rgba(0,0,0,.12);}
+.udash-quick-card:hover{background:#17243b;border-color:#43b9ae;transform:translateY(-2px);box-shadow:0 12px 26px rgba(20,184,166,.13);}
+.udash-quick-icon{width:38px;height:38px;margin:0;display:grid;place-items:center;border-radius:12px;background:#1e3344;font-size:1.35rem;}
+.udash-quick-name{margin:0;color:#f1f5f9;font-size:.82rem;line-height:1.25;}
+.udash-quick-desc{display:none;}
+.udash-welcome-quote{margin:0 0 20px;padding:22px 24px;border:1px solid #22505b;border-radius:18px;background:linear-gradient(115deg,#102a43,#123c4a 60%,#174b52);box-shadow:0 14px 34px rgba(0,0,0,.2);color:#f8fafc}.udash-welcome-quote .uq-eyebrow{color:#99f6e4;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.udash-welcome-quote blockquote{margin:10px 0 8px;font:italic 1.08rem/1.6 Georgia,serif}.udash-welcome-quote cite{color:#a5b4fc;font-size:.82rem;font-style:normal}.aqs-user-avatar-photo{width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,255,255,.65)}.udash-profile-tools{display:flex;align-items:center;gap:10px}.udash-notif{width:40px;height:40px;display:grid;place-items:center;border:1px solid #456070;border-radius:12px;background:#102b3a;color:#e2e8f0;text-decoration:none;font-size:1.2rem}.udash-auth-id{font-size:.7rem;color:#b6c5d4;max-width:210px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.udash-account-card{background:#111b30;border-color:#25344c;}
+.udash-account-title,.udash-table td:last-child{color:#e2e8f0;}
+.udash-table td{border-color:#263449;}
+.udash-table td:first-child{color:#94a3b8;}
+@media(max-width:760px){.udash-quick-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;}}
+@media(max-width:480px){.udash-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}.udash-quick-card{min-height:88px;}}
 </style>
 <script>
 window.AQS = {
     ajax_url: 'firebase', nonce:'', auth_nonce:'',
-    home_url:'index.html', create_page_url:'create-quiz.html',
+    home_url:'index.html', create_page_url:'quiz-setup.html',
     studio_url:'studio.html', dashboard_url:'dashboard.html',
     imagegen_url:'image-gen.html',
     is_logged_in:true, is_host:true, is_admin:false,
@@ -88,16 +107,18 @@ window.AQS = {
 <body>
 <header class="aqs-site-header">
     <a href="index.html" class="aqs-site-logo">⚡ xzily AI</a>
-    <button class="aqs-hdr-hamburger" id="udash-hamburger" aria-label="Open menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button>
+    <button class="aqs-hdr-hamburger" id="udash-hamburger" aria-label="Open menu" aria-expanded="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </button>
     <nav class="aqs-hdr-nav">
         <a href="challenge.html" class="aqs-btn aqs-btn-sm" style="background:#fef2f2;color:#e11d48;border:1px solid #fecdd3;font-weight:700;">⚔️ Challenge</a>
         <a href="puzzle.html"    class="aqs-btn aqs-btn-sm" style="background:#f5f3ff;color:#7c3aed;border:1px solid #ddd6fe;font-weight:700;">🧩 Puzzle</a>
         <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
         <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
         <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
+        <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
     
         <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
-        <a href="social.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;font-weight:700;">♧ Social</a>
     </nav>
 </header>
 <div class="aqs-hdr-drawer" id="udash-drawer">
@@ -106,9 +127,9 @@ window.AQS = {
     <a href="studio.html"   class="aqs-btn aqs-btn-sm aqs-btn-primary">⬡ xzily Ai</a>
     <a href="dashboard.html" class="aqs-btn aqs-btn-sm">Dashboard</a>
     <a href="account-settings.html" class="aqs-btn aqs-btn-sm">Settings</a>
+    <a href="studyhub.html"    class="aqs-btn aqs-btn-sm" style="color:#059669;border-color:#a7f3d0;">📚 Study</a>
 
     <a href="library.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4f46e5;border:1px solid #c7d2fe;font-weight:700;">📖 Library</a>
-    <a href="social.html" class="aqs-btn aqs-btn-sm" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe;font-weight:700;">♧ Social</a>
 </div>
 <script>(function(){var b=document.getElementById('udash-hamburger'),d=document.getElementById('udash-drawer');if(b&&d){b.addEventListener('click',function(){var open=d.classList.toggle('open');b.classList.toggle('open',open);b.setAttribute('aria-expanded',String(open));});document.addEventListener('click',function(e){if(!b.contains(e.target)&&!d.contains(e.target)){d.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');}});}}());</script>
 
@@ -121,14 +142,18 @@ window.AQS = {
       <div>
         <div class="aqs-user-name" id="aqs-user-display-name">Loading…</div>
         <div class="aqs-user-role-badge" id="aqs-user-role-badge">Member</div>
+        <div class="udash-auth-id" id="udash-auth-id"></div>
       </div>
     </div>
-    <div class="aqs-user-topbar-actions">
-      <a href="create-quiz.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
+    <div class="udash-profile-tools"><a class="udash-notif" href="notifications.html" aria-label="Notifications" title="Notifications">♧</a><div class="aqs-user-topbar-actions">
+      <a href="quiz-setup.html" class="aqs-btn aqs-btn-sm aqs-btn-primary">+ Create Quiz</a>
       <a href="studio.html"      class="aqs-btn aqs-btn-sm" style="background:#f0fdf4;color:#059669;border:1px solid #bbf7d0;">⬡ xzily Ai</a>
       <button class="aqs-btn aqs-btn-sm" id="aqs-user-logout-btn" style="color:#dc2626;border-color:#fecaca;">Log Out</button>
-    </div>
+      <a class="aqs-btn aqs-btn-sm" id="udash-join-btn" href="login.html" hidden>Join / Sign in</a>
+    </div></div>
   </div>
+
+  <section class="udash-welcome-quote" aria-label="Daily welcome quote"><div class="uq-eyebrow">A thought for today</div><blockquote id="udash-welcome-quote-text">Small steps every day lead to remarkable results.</blockquote><cite id="udash-welcome-quote-author">SmartQuiz daily inspiration</cite></section>
 
   <!-- Stats Row -->
   <div class="udash-stats">
@@ -148,30 +173,41 @@ window.AQS = {
 
   <!-- Quick Links -->
   <div class="udash-quick-grid">
-    <a href="create-quiz.html" class="udash-quick-card">
-      <div class="udash-quick-icon">✏️</div>
-      <div class="udash-quick-name">Create Quiz</div>
-      <div class="udash-quick-desc">Build and share a new quiz</div>
+    <a href="quiz-setup.html" class="udash-quick-card" aria-label="Create Quiz">
+      <div class="udash-quick-icon">🧠</div><div class="udash-quick-name">Create Quiz</div><div class="udash-quick-desc">Build and share a new quiz</div>
     </a>
-    <a href="puzzle.html" class="udash-quick-card">
-      <div class="udash-quick-icon">🧩</div>
-      <div class="udash-quick-name">Puzzle Battle</div>
-      <div class="udash-quick-desc">Play 4 puzzle modes, up to 10 players</div>
+    <a href="studyhub.html" class="udash-quick-card" aria-label="Study Hub">
+      <div class="udash-quick-icon">📖</div><div class="udash-quick-name">Study Hub</div><div class="udash-quick-desc">Study any subject with AI help</div>
     </a>
-    <a href="challenge.html" class="udash-quick-card">
-      <div class="udash-quick-icon">⚔️</div>
-      <div class="udash-quick-name">Challenge Mode</div>
-      <div class="udash-quick-desc">Host or join a live quiz battle</div>
+    <a href="ai-teacher.html" class="udash-quick-card" aria-label="AI Teacher">
+      <div class="udash-quick-icon">🎓</div><div class="udash-quick-name">AI Teacher</div><div class="udash-quick-desc">Get guided subject help</div>
     </a>
-    <a href="studio.html" class="udash-quick-card">
-      <div class="udash-quick-icon">⬡</div>
-      <div class="udash-quick-name">AI Studio</div>
-      <div class="udash-quick-desc">Chat with XZILY AI, web search</div>
+    <a href="library.html" class="udash-quick-card" aria-label="Library">
+      <div class="udash-quick-icon">📚</div><div class="udash-quick-name">Library</div><div class="udash-quick-desc">Browse learning resources</div>
     </a>
-    <a href="image-gen.html" class="udash-quick-card">
-      <div class="udash-quick-icon">🖼️</div>
-      <div class="udash-quick-name">Image Creator</div>
-      <div class="udash-quick-desc">Generate AI images with FLUX</div>
+    <a href="image-gen.html" class="udash-quick-card" aria-label="Image Studio">
+      <div class="udash-quick-icon">🖼️</div><div class="udash-quick-name">Image Studio</div><div class="udash-quick-desc">Generate AI images</div>
+    </a>
+    <a href="studio.html" class="udash-quick-card" aria-label="Studio AI">
+      <div class="udash-quick-icon">✨</div><div class="udash-quick-name">Studio AI</div><div class="udash-quick-desc">Chat with AI and search the web</div>
+    </a>
+    <a href="challenge.html" class="udash-quick-card" aria-label="Challenge">
+      <div class="udash-quick-icon">⚔️</div><div class="udash-quick-name">Challenge</div><div class="udash-quick-desc">Host or join a quiz battle</div>
+    </a>
+    <a href="puzzle.html" class="udash-quick-card" aria-label="Puzzle Battle">
+      <div class="udash-quick-icon">🧩</div><div class="udash-quick-name">Puzzle Battle</div><div class="udash-quick-desc">Play puzzle modes with friends</div>
+    </a>
+    <a href="studyco-meet.html" class="udash-quick-card" aria-label="chat with your friend">
+      <div class="udash-quick-icon">💬</div><div class="udash-quick-name">chat with your friend</div><div class="udash-quick-desc">Learn together with your circle</div>
+    </a>
+    <a href="docs-gen.html" class="udash-quick-card" aria-label="Docs Gen">
+      <div class="udash-quick-icon">📄</div><div class="udash-quick-name">Docs Gen</div><div class="udash-quick-desc">Create documents with AI</div>
+    </a>
+    <a href="ai-animate.html" class="udash-quick-card" aria-label="AI Animate">
+      <div class="udash-quick-icon">🎞️</div><div class="udash-quick-name">AI Animate</div><div class="udash-quick-desc">Create AI animations</div>
+    </a>
+    <a href="tts.html" class="udash-quick-card" aria-label="Text to Speech">
+      <div class="udash-quick-icon">🎙️</div><div class="udash-quick-name">Text to Speech</div><div class="udash-quick-desc">Turn text into spoken audio</div>
     </a>
   </div>
 
@@ -193,16 +229,19 @@ window.AQS = {
   </div>
 
 
-  <!-- View All Quiz Activity link -->
-  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;gap:12px;">
-    <div style="display:flex;align-items:center;gap:12px;">
-      <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
-      <div>
-        <div style="font-weight:700;font-size:.9rem;color:#1e293b;">Quiz Activity</div>
-        <div style="font-size:.76rem;color:#94a3b8;margin-top:2px;">See all quizzes you have taken</div>
+  <!-- Quiz Activity: recent quizzes inline -->
+  <div style="background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px 22px;margin-bottom:18px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:12px;">
+        <div style="width:42px;height:42px;border-radius:11px;background:#f5f3ff;border:2px solid #ddd6fe;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0;">📋</div>
+        <div>
+          <div style="font-weight:700;font-size:.9rem;color:#1e293b;">Quiz Activity</div>
+          <div style="font-size:.76rem;color:#94a3b8;margin-top:2px;">Your recent quizzes</div>
+        </div>
       </div>
+      <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
     </div>
-    <a href="dashboard.html" style="display:inline-flex;align-items:center;gap:5px;background:#4f46e5;color:#fff;padding:8px 16px;border-radius:9px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;flex-shrink:0;">View All →</a>
+    <div id="udash-activity-list" style="display:flex;flex-direction:column;gap:8px;"></div>
   </div>
 </main>
 
@@ -223,6 +262,8 @@ window.AQS = {
         }
     }
 
+    function showEntryQuote(){try{var d=new Date(),key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');var qs=JSON.parse(localStorage.getItem('aqs_dq_'+key)||'null');if(!Array.isArray(qs)||!qs.length)return;var idx=Math.max(0,(parseInt(localStorage.getItem('aqs_visit_qi')||'1',10)-1)%qs.length),q=qs[idx];if(q&&q.text){document.getElementById('udash-welcome-quote-text').textContent=q.text;document.getElementById('udash-welcome-quote-author').textContent=q.author||'SmartQuiz';}}catch(e){}}
+    showEntryQuote();
     function loadProfile(){
         jQuery.post(AQS.ajax_url, {action:'aqs_get_my_profile'}).then(function(res){
             var d = unwrap(res);
@@ -240,6 +281,7 @@ window.AQS = {
                 document.getElementById('aqs-user-role-badge').textContent   = d.role;
             }
             if(d.username) document.getElementById('aqs-account-username').textContent = '@'+d.username;
+            var user=window._aqsFirebaseUser; if(user){ var id=document.getElementById('udash-auth-id'); if(id) id.textContent='ID: '+user.uid; if(user.photoURL){var av=document.getElementById('aqs-user-avatar-initial'),img=document.createElement('img');img.src=user.photoURL;img.alt='Profile picture';img.className='aqs-user-avatar-photo';av.replaceWith(img);img.id='aqs-user-avatar-initial';}}
         }).catch(function(e){ console.warn('[udash] profile error', e); });
     }
 
@@ -251,6 +293,17 @@ window.AQS = {
             document.getElementById('udash-stat-created').textContent = d.quizzes_created||0;
             var streak = d.streak||0;
             document.getElementById('udash-stat-streak').textContent  = streak ? streak+' day'+(streak!==1?'s':'') : '—';
+            var list = document.getElementById('udash-activity-list');
+            var acts = d.recent_activity || [];
+            if (list) {
+                if (!acts.length) {
+                    list.innerHTML = '<p style="text-align:center;padding:14px;color:#94a3b8;font-size:.82rem;">No quiz activity yet — take a quiz to see it here.</p>';
+                } else {
+                    list.innerHTML = acts.map(function(a){
+                        return '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid #e5e7eb;border-radius:10px;background:#fafafa;"><span style="font-size:.84rem;color:#1e293b;">'+a.text+'</span><span style="font-size:.72rem;color:#94a3b8;white-space:nowrap;flex-shrink:0;">'+(a.time||'')+'</span></div>';
+                    }).join('');
+                }
+            }
         }).catch(function(){});
     }
 
@@ -265,7 +318,8 @@ window.AQS = {
 
     waitReady(function(user){
         if(!user){
-            document.getElementById('aqs-user-display-name').textContent = 'Please log in';
+            document.getElementById('aqs-user-display-name').textContent = 'Welcome';
+            document.getElementById('udash-join-btn').hidden = false; document.getElementById('aqs-user-logout-btn').hidden=true; document.getElementById('aqs-user-logout-btn2').hidden=true;
             document.getElementById('aqs-user-avatar-initial').textContent = '?';
             document.getElementById('udash-activity-list').innerHTML = '<p style="text-align:center;padding:24px;color:#94a3b8;">Please <a href="login.html">log in</a> to see your activity.</p>';
             return;
