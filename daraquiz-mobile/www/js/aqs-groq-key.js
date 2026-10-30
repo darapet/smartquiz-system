@@ -1,0 +1,809 @@
+/* ═══════════════════════════════════════════════════════════════════
+   AI KEY POOL  —  Groq → Mistral → HuggingFace
+   Priority: Groq (up to 20) → Mistral (up to 20) → HuggingFace (up to 5)
+
+   All providers share the same public API: window.groqFetch()
+   Used by: Studio, Study Hub, Quiz Generator, Challenge, and all AI
+   features throughout xzily AI.
+
+   Hardcoded slots are intentionally empty — all keys are managed via
+   Admin Settings (stored in Firestore, loaded at runtime automatically).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Groq hardcoded keys (primary — up to 10 slots) ─────────────── */
+window._AQS_GROQ_MASTER_KEYS = (window._AQS_GROQ_MASTER_KEYS || []).concat(
+    [
+        /* Slot  1  — paste reversed Groq key (gsk_…) */  '',
+        /* Slot  2  */  '',
+        /* Slot  3  */  '',
+        /* Slot  4  */  '',
+        /* Slot  5  */  '',
+        /* Slot  6  */  '',
+        /* Slot  7  */  '',
+        /* Slot  8  */  '',
+        /* Slot  9  */  '',
+        /* Slot 10  */  ''
+    ]
+    .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
+    .filter(function(k){ return typeof k === 'string' && k.length > 20; })
+);
+
+/* ── Mistral hardcoded keys (fallback 1 — up to 10 slots) ───────── */
+window._AQS_MISTRAL_MASTER_KEYS = (window._AQS_MISTRAL_MASTER_KEYS || []).concat(
+    [
+        /* Slot  1  — paste reversed Mistral key */  '',
+        /* Slot  2  */  '',
+        /* Slot  3  */  '',
+        /* Slot  4  */  '',
+        /* Slot  5  */  '',
+        /* Slot  6  */  '',
+        /* Slot  7  */  '',
+        /* Slot  8  */  '',
+        /* Slot  9  */  '',
+        /* Slot 10  */  ''
+    ]
+    .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
+    .filter(function(k){ return typeof k === 'string' && k.length > 20; })
+);
+
+/* ── HuggingFace hardcoded tokens (fallback 2 — up to 5 slots) ─── */
+window._AQS_HF_MASTER_KEYS = (window._AQS_HF_MASTER_KEYS || []).concat(
+    [
+        /* Slot  1  — paste reversed HF token (hf_…) */  '',
+        /* Slot  2  */  '',
+        /* Slot  3  */  '',
+        /* Slot  4  */  '',
+        /* Slot  5  */  ''
+    ]
+    .map(function(r){ return r ? r.split('').reverse().join('') : ''; })
+    .filter(function(k){ return typeof k === 'string' && k.length > 10; })
+);
+/* Creator Studio image generation is server-side. Keep only non-secret
+   metadata in the browser; Hugging Face tokens stay in Firebase Admin SDK. */
+window._AQS_CREATOR_IMAGE_KEY_COUNT = window._AQS_CREATOR_IMAGE_KEY_COUNT || 0;
+window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'gemini-3.1-flash-image';
+
+/* ── Keys-ready promise ──────────────────────────────────────────────
+   Resolves once the Firebase auto-loader has finished (or after a
+   5-second timeout). groqFetch() awaits this before deciding that no
+   keys are configured, so a slow Firestore read no longer causes a
+   false "AI Not Configured" error on page load.
+   ─────────────────────────────────────────────────────────────────── */
+window._aqsKeysReady = new Promise(function(resolve) {
+    window._aqsKeysReadyResolve = resolve;
+    /* Safety timeout: resolve after 5 s even if Firebase never fires */
+    setTimeout(resolve, 5000);
+});
+
+(function(){
+    var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
+    var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';
+    var HF_URL          = 'https://api-inference.huggingface.co/v1/chat/completions';
+    var GROQ_IDX_KEY    = 'aqs_groq_key_idx';
+    var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
+    var HF_IDX_KEY      = 'aqs_hf_key_idx';
+    var CREATOR_IMAGE_IDX_KEY = 'aqs_creator_image_key_idx';
+    var CREATOR_IMAGE_CLIENT_ID_KEY = 'aqs_creator_image_client_id';
+    var CREATOR_IMAGE_FUNCTION_URL = window._AQS_CREATOR_IMAGE_FUNCTION_URL ||
+        'https://us-central1-smartquiz-darapet.cloudfunctions.net/creatorImageGenerate';
+    /*
+     * The Worker returns a raw PNG, so this URL is intentionally separate
+     * from the Gemini JSON function. Set it to an empty string to disable the
+     * free route and use Gemini automatically.
+     */
+    var CREATOR_IMAGE_WORKER_URL = Object.prototype.hasOwnProperty.call(window, '_AQS_CREATOR_IMAGE_WORKER_URL')
+        ? String(window._AQS_CREATOR_IMAGE_WORKER_URL || '').trim()
+        : 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image';
+    var CREATOR_IMAGE_ENGINE_KEY = 'aqs_creator_image_engine';
+    var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
+    var _creatorImageRateLimitedUntil = {};
+
+    /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
+    var _rateLimitedUntil = {};
+
+    /* ── Silent AI logger ── visible only when _AQS_ADMIN_MODE is set ──── */
+    window._aqsAIErrorLog = window._aqsAIErrorLog || [];
+    function _aqsLog(level, msg) {
+        var entry = { t: new Date().toISOString(), level: level, msg: [].slice.call(arguments, 1).join(' ') };
+        window._aqsAIErrorLog.unshift(entry);
+        if (window._aqsAIErrorLog.length > 60) window._aqsAIErrorLog.length = 60;
+        if (window._AQS_ADMIN_MODE) {
+            if (level === 'error') console.error('[aqs-ai]', entry.msg);
+            else console.warn('[aqs-ai]', entry.msg);
+        }
+    }
+    /* expose so the auto-loader IIFE below can also use it */
+    window._aqsLog = _aqsLog;
+
+    /* ── Professional user error modal ─────────────────────────────────── */
+    var _aqsLastErrTime = 0;
+    function _aqsShowUserError(type) {
+        var now = Date.now(); if (now - _aqsLastErrTime < 4000) return; _aqsLastErrTime = now;
+        var old = document.getElementById('_aqs-err-modal'); if (old) old.remove();
+        var isNet = type==='network', isCfg = type==='config';
+        var icon  = isNet ? '📡' : '🤖';
+        var title = isNet ? 'Connection Issue' : (isCfg ? 'AI Not Configured' : 'AI Unavailable');
+        var msg   = isNet
+            ? 'Your internet connection seems unstable. Please check your network and try again.'
+            : (isCfg ? 'AI features have not been configured. Please contact the admin.'
+                     : 'There is a network issue with the AI connection. The service may be temporarily unavailable.');
+        var footer = !isNet ? '<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);text-align:center;"><p style="margin:0 0 8px;font-size:.72rem;color:#64748b;letter-spacing:.05em;text-transform:uppercase;font-weight:700;">Contact Admin to Report This</p><div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;"><a href="https://wa.me/2349134873694" target="_blank" style="display:inline-flex;align-items:center;gap:5px;background:rgba(37,211,102,.1);border:1px solid rgba(37,211,102,.22);border-radius:8px;color:#4ade80;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">📱 WhatsApp</a><a href="tel:+2349134873694" style="display:inline-flex;align-items:center;gap:5px;background:rgba(14,165,233,.08);border:1px solid rgba(14,165,233,.18);border-radius:8px;color:#38bdf8;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">📞 Call</a><a href="mailto:daramolapeter98@gmail.com" style="display:inline-flex;align-items:center;gap:5px;background:rgba(249,115,22,.08);border:1px solid rgba(249,115,22,.18);border-radius:8px;color:#fb923c;font-size:.8rem;font-weight:700;padding:7px 13px;text-decoration:none;">✉️ Email</a></div></div>' : '';
+        var modal = document.createElement('div'); modal.id = '_aqs-err-modal';
+        modal.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:999997;max-width:430px;width:calc(100% - 32px);background:rgba(10,10,25,.97);border:1px solid rgba(255,255,255,.1);border-radius:18px;padding:20px 22px;box-shadow:0 20px 60px rgba(0,0,0,.75);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;animation:_aqsErrIn .4s cubic-bezier(.22,1,.36,1) both;';
+        modal.innerHTML = '<style>@keyframes _aqsErrIn{from{opacity:0;transform:translateX(-50%) translateY(20px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}</style><div style="display:flex;align-items:flex-start;gap:13px;"><div style="width:40px;height:40px;border-radius:10px;background:rgba(249,115,22,.13);border:1px solid rgba(249,115,22,.27);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;">' + icon + '</div><div style="flex:1;min-width:0;"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;"><span style="font-weight:800;color:#f1f5f9;font-size:.93rem;">' + title + '</span><button onclick="document.getElementById(\'_aqs-err-modal\').remove();" style="background:none;border:none;color:#475569;font-size:1.05rem;cursor:pointer;padding:0;line-height:1;">✕</button></div><p style="margin:0;font-size:.82rem;color:#94a3b8;line-height:1.55;">' + msg + '</p>' + footer + '</div></div>';
+        document.body.appendChild(modal);
+        if (isNet) setTimeout(function(){ var m=document.getElementById('_aqs-err-modal'); if(m)m.remove(); }, 7000);
+    }
+    window._aqsShowUserError = _aqsShowUserError;
+
+
+    function _keyHash(k)         { return k ? k.slice(-8) : '?'; }
+    function _isRateLimited(k)   { return (_rateLimitedUntil[_keyHash(k)] || 0) > Date.now(); }
+    function _markRateLimited(k) {
+        _rateLimitedUntil[_keyHash(k)] = Date.now() + RL_COOLDOWN_MS;
+        _aqsLog('warn', 'key ...' + _keyHash(k) + ' rate-limited; 62 s cooldown');
+    }
+
+    /* ── Dead-key quarantine: revoked/expired/disabled keys (401/403/invalid) ──
+       Skipped for 30 min so a bad key never gets retried every request. ────── */
+    var DEAD_KEY_TTL_MS = 30 * 60 * 1000;
+    var _deadKeyUntil = {};
+    function _isDeadKey(k) { return (_deadKeyUntil[_keyHash(k)] || 0) > Date.now(); }
+    function _markDeadKey(k, why) {
+        _deadKeyUntil[_keyHash(k)] = Date.now() + DEAD_KEY_TTL_MS;
+        _aqsLog('error', 'key ...' + _keyHash(k) + ' marked dead (' + why + '); skipped for 30 min');
+    }
+    function _isInvalidKeyBody(txt) {
+        if (!txt) return false;
+        return /invalid[_ ]api[_ ]key|invalid_api_key|incorrect api key|api key not valid|authentication/i.test(txt);
+    }
+
+    /* ── Key pool helpers ────────────────────────────────────────────── */
+    function _getKeys(arr, minLen) {
+        return Array.isArray(arr) ? arr.filter(function(k){ return k && k.length >= (minLen||20); }) : [];
+    }
+    function _getIdx(storageKey, keys) {
+        if (!keys.length) return 0;
+        var i = 0;
+        try { i = parseInt(localStorage.getItem(storageKey) || '0') || 0; } catch(e){}
+        if (isNaN(i) || i >= keys.length) i = 0;
+        return i;
+    }
+    function _setIdx(storageKey, i, keys) {
+        try { localStorage.setItem(storageKey, String(i % Math.max(1, keys.length))); } catch(e){}
+    }
+
+    function _getGroqKeys()    { return _getKeys(window._AQS_GROQ_MASTER_KEYS, 20); }
+    function _getMistralKeys() { return _getKeys(window._AQS_MISTRAL_MASTER_KEYS, 20); }
+    function _getHFKeys()      { return _getKeys(window._AQS_HF_MASTER_KEYS, 10); }
+    /* ── Generic provider fetch ──────────────────────────────────────── */
+    async function _providerFetch(url, keys, idxKey, bodyObj, extraOpts, modelOverride) {
+        if (!keys.length) return null;
+        var model    = modelOverride || 'unknown';
+        var body     = Object.assign({}, bodyObj, { model: model });
+        var startIdx = _getIdx(idxKey, keys);
+
+        for (var attempt = 0; attempt < keys.length; attempt++) {
+            var idx = (startIdx + attempt) % keys.length;
+            var key = _sanitizeKey ? _sanitizeKey(keys[idx]) : (keys[idx] || '').trim();
+            if (_isDeadKey(key)) {
+                _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' dead key — skip');
+                _setIdx(idxKey, idx + 1, keys); continue;
+            }
+            if (_isRateLimited(key)) {
+                _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' cooling — skip');
+                _setIdx(idxKey, idx + 1, keys); continue;
+            }
+            try {
+                var res = await fetch(url, Object.assign({}, extraOpts || {}, {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                    body:    JSON.stringify(body)
+                }));
+                if (res.status === 413) { _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — 413 payload too large, skipping key'); _setIdx(idxKey, idx + 1, keys); continue; }
+                if (res.status === 429) { _markRateLimited(key); _setIdx(idxKey, idx + 1, keys); continue; }
+                if (res.status === 401 || res.status === 403) {
+                    _markDeadKey(key, res.status); _setIdx(idxKey, idx + 1, keys); continue;
+                }
+                if (res.status === 400) {
+                    var _txt400 = await res.clone().text().catch(function(){ return ''; });
+                    if (_isInvalidKeyBody(_txt400)) { _markDeadKey(key, 'invalid_api_key'); _setIdx(idxKey, idx + 1, keys); continue; }
+                    /* genuine request error — return to caller untouched */
+                    _setIdx(idxKey, idx + 1, keys);
+                    return res;
+                }
+                if (res.status >= 500) {
+                    _aqsLog('warn', url.split('/')[2] + ' slot ' + (idx + 1) + ' — upstream ' + res.status + ', trying next key');
+                    _setIdx(idxKey, idx + 1, keys); continue;
+                }
+                _setIdx(idxKey, idx + 1, keys);
+                return res;
+            } catch(e) {
+                if (!navigator.onLine || (e instanceof TypeError && /fetch|network/i.test(e.message||''))) { _aqsShowUserError('network'); } _aqsLog('error', url.split('/')[2] + ' slot ' + (idx + 1) + ' error: ' + (e.message || e));
+            }
+        }
+        return null;
+    }
+
+    async function _groqFetch(bodyObj, extraOpts) {
+        return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
+            window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
+    }
+    async function _mistralFetch(bodyObj, extraOpts) {
+        return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
+            window._AQS_MISTRAL_MODEL || 'mistral-small-latest');
+    }
+    async function _hfFetch(bodyObj, extraOpts) {
+        /* HuggingFace uses the same OpenAI-compatible /v1/chat/completions endpoint */
+        return _providerFetch(HF_URL, _getHFKeys(), HF_IDX_KEY, bodyObj, extraOpts,
+            window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
+    }
+    function _fallbackOpts(extraOpts) {
+        var opts = Object.assign({}, extraOpts || {});
+        /* A caller timeout may stop one stalled provider, but must not cancel
+           the next provider in the fallback chain. */
+        if (opts.signal && opts.signal.aborted) delete opts.signal;
+        return opts;
+    }
+
+    function _creatorImageDimensions(aspectRatio) {
+        if (aspectRatio === 'square') return { width: 1024, height: 1024 };
+        if (aspectRatio === 'portrait') return { width: 576, height: 1024 };
+        return { width: 1024, height: 576 };
+    }
+    function _creatorImagePrompt(prompt, category) {
+        var brief = String(prompt || '').replace(/\s+/g, ' ').trim();
+        var direction = {
+            logo: 'Design a clean, scalable logo mark with one clear focal symbol and intentional negative space. Use a plain background. Do not invent a brand name or lettering unless the brief explicitly requests it.',
+            banner: 'Design a deliberate banner composition with a strong focal subject, readable visual hierarchy, and intentional open space where the brief implies it. Do not add unrelated objects or text.',
+            avatar: 'Create one centered avatar subject with a clear silhouette, readable face or emblem, and a simple uncluttered background. Do not add extra people or competing subjects.',
+            general: 'Create one coherent scene or composition. Keep the main subject, object count, setting, colors, and action exactly aligned with the brief.'
+        }[category] || 'Create one coherent scene or composition.';
+        return 'Faithful image interpretation. Primary brief: "' + brief + '". ' + direction +
+            ' Preserve the specific nouns, relationships, colors, mood, and constraints in the brief. High detail, crisp edges, natural anatomy, intentional composition.';
+    }
+    function _creatorImageClientId() {
+        try {
+            var existing = localStorage.getItem(CREATOR_IMAGE_CLIENT_ID_KEY);
+            if (existing) return existing;
+            var created = (window.crypto && window.crypto.randomUUID)
+                ? window.crypto.randomUUID()
+                : 'client-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+            localStorage.setItem(CREATOR_IMAGE_CLIENT_ID_KEY, created);
+            return created;
+        } catch(e) {
+            return 'session-' + Date.now();
+        }
+    }
+    function _creatorImageLocalHistory() {
+        try {
+            var raw = JSON.parse(localStorage.getItem('aqs_creator_image_history') || '[]');
+            return Array.isArray(raw) ? raw.filter(function(item){ return item && item.url; }).slice(0, 12) : [];
+        } catch(e) {
+            return [];
+        }
+    }
+    function _saveCreatorImageLocalHistory(result) {
+        if (!result || !result.url) return;
+        try {
+            var history = [result].concat(_creatorImageLocalHistory().filter(function(item){ return item.id !== result.id; })).slice(0, 12);
+            localStorage.setItem('aqs_creator_image_history', JSON.stringify(history));
+        } catch(e) {}
+    }
+    function _selectedCreatorImageEngine() {
+        var selector = document.querySelector('[data-testid="select-creator-image-engine"]');
+        if (selector && selector.value) return selector.value;
+        try {
+            return localStorage.getItem(CREATOR_IMAGE_ENGINE_KEY) || 'cloudflare';
+        } catch(e) {
+            return 'cloudflare';
+        }
+    }
+    function _installCreatorImageEngineSelector() {
+        var form = document.querySelector('form[data-testid="form-generation"]');
+        if (!form || form.querySelector('[data-testid="creator-image-engine"]')) return;
+        var imageMode = form.querySelector('[data-testid="button-mode-image"]');
+        var mediumSection = imageMode && imageMode.closest('section');
+        if (!mediumSection) return;
+        var directionButton = form.querySelector('[data-testid="button-category-general"]');
+        var insertAfter = directionButton && directionButton.closest('section');
+
+        var section = document.createElement('section');
+        section.setAttribute('data-testid', 'creator-image-engine');
+        section.style.cssText = 'margin-top:24px;padding-top:24px;border-top:1px solid #e2ddd2;';
+        section.innerHTML =
+            '<div style="margin-bottom:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1;text-transform:uppercase;letter-spacing:.08em;color:#69766d;">04 / choose an engine</div>' +
+            '<label style="display:block;position:relative;">' +
+                '<span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:15px;pointer-events:none;">⚙️</span>' +
+                '<select data-testid="select-creator-image-engine" aria-label="Choose image engine" style="width:100%;appearance:none;border:1px solid #d8d1c4;border-radius:10px;background:#f7f4ed;color:#39473e;padding:12px 38px 12px 42px;font:600 13px Inter,system-ui,sans-serif;outline:none;cursor:pointer;">' +
+                    '<option value="cloudflare">Free Engine (Default) · Cloudflare Workers AI</option>' +
+                    '<option value="gemini">Premium Engine · Gemini admin key pool</option>' +
+                '</select>' +
+                '<span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#69766d;pointer-events:none;">⌄</span>' +
+            '</label>' +
+            '<p data-testid="creator-image-engine-note" style="margin:8px 0 0;color:#8a958c;font-size:11px;line-height:1.5;">Free generation uses the Cloudflare Worker when configured; otherwise Gemini is used.</p>';
+        var selector = section.querySelector('select');
+        var current = _selectedCreatorImageEngine();
+        selector.value = current === 'gemini' ? 'gemini' : 'cloudflare';
+        selector.addEventListener('change', function() {
+            var selected = selector.value === 'gemini' ? 'gemini' : 'cloudflare';
+            try { localStorage.setItem(CREATOR_IMAGE_ENGINE_KEY, selected); } catch(e) {}
+            window._AQS_CREATOR_IMAGE_ENGINE = selected;
+        });
+        (insertAfter || mediumSection).insertAdjacentElement('afterend', section);
+    }
+    if (typeof MutationObserver !== 'undefined') {
+        var _creatorImageEngineObserver = new MutationObserver(_installCreatorImageEngineSelector);
+        _creatorImageEngineObserver.observe(document.documentElement, { childList: true, subtree: true });
+    }
+    function _creatorImageWorkerUrl() {
+        return Object.prototype.hasOwnProperty.call(window, '_AQS_CREATOR_IMAGE_WORKER_URL')
+            ? String(window._AQS_CREATOR_IMAGE_WORKER_URL || '').trim()
+            : CREATOR_IMAGE_WORKER_URL;
+    }
+    async function _generateWithCloudflareWorker(input, endpoint) {
+        var response;
+        try {
+            response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: String(input.prompt || '').trim(),
+                    engine: 'cloudflare',
+                    category: input.category,
+                    aspectRatio: input.aspectRatio
+                }),
+                signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+            });
+        } catch(error) {
+            error.fallbackEligible = true;
+            throw error;
+        }
+        if (!response.ok) {
+            var details = await response.text().catch(function(){ return ''; });
+            var workerError = new Error(details || 'The free Cloudflare image engine is unavailable.');
+            workerError.workerStatus = response.status;
+            workerError.fallbackEligible = response.status >= 500 || response.status === 404;
+            throw workerError;
+        }
+        var blob = await response.blob();
+        if (!blob || !blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) {
+            var invalidImage = new Error('The free image engine returned an invalid image.');
+            invalidImage.fallbackEligible = true;
+            throw invalidImage;
+        }
+        return {
+            id: 'creator-image-cloudflare-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8),
+            mediaType: 'image',
+            url: URL.createObjectURL(blob),
+            prompt: String(input.prompt || '').trim(),
+            provider: 'Cloudflare Workers AI · Free Engine',
+            fallbackUsed: false,
+            createdAt: new Date().toISOString(),
+            qualityNotes: ['Cloudflare Workers AI returned a raw PNG.', 'Professional prompt wrapper applied server-side.']
+        };
+    }
+    async function _generateWithGemini(input) {
+        var prompt = _creatorImagePrompt(input.prompt, input.category);
+        try {
+            var response = await fetch(CREATOR_IMAGE_FUNCTION_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    prompt: String(input.prompt || '').trim(),
+                    category: input.category,
+                    aspectRatio: input.aspectRatio,
+                    inputImageDataUrl: input.inputImageDataUrl || null,
+                    clientId: _creatorImageClientId()
+                }),
+                signal: typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+            });
+            var body = await response.json().catch(function(){ return {}; });
+            if (response.status === 429) {
+                var quotaError = new Error(body.error || 'You have used all five image generations for this rolling 24-hour window.');
+                quotaError.code = 'QUOTA_EXHAUSTED';
+                throw quotaError;
+            }
+            if (!response.ok || !body.url) {
+                throw new Error(body.error || 'The secure image service is unavailable.');
+            }
+            return body;
+        } catch (error) {
+            if (error && error.code === 'QUOTA_EXHAUSTED') throw error;
+            _aqsLog('error', 'Secure Creator Studio image service failed: ' + (error.message || error));
+            throw error;
+        }
+    }
+    async function _creatorImageGenerate(input) {
+        var selectedEngine = window._AQS_CREATOR_IMAGE_ENGINE || _selectedCreatorImageEngine();
+        if (selectedEngine === 'cloudflare') {
+            var workerUrl = _creatorImageWorkerUrl();
+            if (workerUrl) {
+                try {
+                    return await _generateWithCloudflareWorker(input, workerUrl);
+                } catch(workerError) {
+                    if (!workerError.fallbackEligible) throw workerError;
+                    _aqsLog('warn', 'Free Cloudflare image engine unavailable; falling back to Gemini: ' + (workerError.message || workerError));
+                }
+            } else {
+                _aqsLog('warn', 'Cloudflare image Worker URL is not configured; using Gemini fallback.');
+            }
+        }
+        try {
+            return await _generateWithGemini(input);
+        } catch(geminiError) {
+            if (geminiError && geminiError.code === 'QUOTA_EXHAUSTED') throw geminiError;
+            _aqsLog('error', 'Gemini image generation failed; no image fallback is enabled: ' + (geminiError.message || geminiError));
+            throw geminiError;
+        }
+    }
+    window.aqsCreatorImageGenerate = _creatorImageGenerate;
+    window.aqsCreatorImageList = async function() {
+        var localHistory = _creatorImageLocalHistory();
+        try {
+            var response = await fetch(CREATOR_IMAGE_FUNCTION_URL + '?clientId=' + encodeURIComponent(_creatorImageClientId()), {
+                method: 'GET'
+            });
+            if (!response.ok) return localHistory;
+            var remoteHistory = await response.json().catch(function(){ return []; });
+            if (!Array.isArray(remoteHistory)) return localHistory;
+            return remoteHistory.concat(localHistory.filter(function(localItem) {
+                return !remoteHistory.some(function(remoteItem){ return remoteItem.id === localItem.id; });
+            })).slice(0, 12);
+        } catch(e) {
+            return localHistory;
+        }
+    };
+
+    /* ── Public: groqFetch — Groq → Mistral → HuggingFace ───────────── *
+     *  Used by: Studio, Study Hub, Quiz Gen, Challenge, and all AI     *
+     *  features. The provider chain is transparent to callers.         */
+    window.groqFetch = async function(bodyObj, extraOpts) {
+        /* Wait for the Firebase key auto-loader to complete before checking
+           key counts. This prevents false "not configured" errors that happen
+           when groqFetch is called before the async Firestore read finishes.
+           The promise resolves in ≤5 s (safety timeout) so we never hang. */
+        if (!_getGroqKeys().length && !_getMistralKeys().length && !_getHFKeys().length) {
+            await window._aqsKeysReady;
+        }
+
+        var lastResponse = null;
+
+        /* 1. Try Groq (fastest, free tier). A provider can return an error
+           response object, so only a successful response ends the chain. */
+        var res = await _groqFetch(bodyObj, extraOpts);
+        if (res && res.ok) return res;
+        if (res) lastResponse = res;
+
+        /* 2. Fall back to Mistral */
+        if (_getMistralKeys().length) {
+            _aqsLog('warn', 'All Groq keys busy — falling back to Mistral');
+            res = await _mistralFetch(bodyObj, _fallbackOpts(extraOpts));
+            if (res && res.ok) return res;
+            if (res) lastResponse = res;
+        }
+
+        /* 3. Fall back to HuggingFace (Study Hub + Studio also benefit) */
+        if (_getHFKeys().length) {
+            _aqsLog('warn', 'All Mistral keys busy — falling back to HuggingFace');
+            res = await _hfFetch(bodyObj, _fallbackOpts(extraOpts));
+            if (res && res.ok) return res;
+            if (res) lastResponse = res;
+        }
+
+        /* 4. Nothing left */
+        var gc = _getGroqKeys().length, mc = _getMistralKeys().length, hc = _getHFKeys().length;
+        if (!gc && !mc && !hc) {
+            _aqsShowUserError('config'); throw new Error('AI features not configured.');
+        }
+        if (lastResponse) return lastResponse;
+        throw new Error('All AI keys are busy or rate-limited. Please wait a moment and try again.');
+    };
+
+    /* ── Direct provider access (used by admin test panels) ─────────── */
+    window._groqFetchDirect    = _groqFetch;
+    window._mistralFetchDirect = _mistralFetch;
+    window._hfFetchDirect      = _hfFetch;
+
+    /* ── Key count helpers (used by status badges) ───────────────────── */
+    window._aqsGroqKeyCount    = function() { return _getGroqKeys().length; };
+    window._aqsMistralKeyCount = function() { return _getMistralKeys().length; };
+    window._aqsHFKeyCount      = function() { return _getHFKeys().length; };
+
+    /* ── Setters — called by Admin Settings save buttons ─────────────── */
+    /* Strip invisible / non-ASCII chars that can sneak in when copy-pasting keys */
+    function _sanitizeKey(k) {
+        return typeof k === 'string' ? k.replace(/[^\x20-\x7E]/g, '').trim() : '';
+    }
+
+    window.setGroqKeys = function(arr) {
+        window._AQS_GROQ_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
+        try { localStorage.setItem(GROQ_IDX_KEY, '0'); localStorage.setItem('aqs_groq_saved_at', Date.now()); } catch(e){}
+    };
+    window.setMistralKeys = function(arr) {
+        window._AQS_MISTRAL_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 20; });
+        try { localStorage.setItem(MISTRAL_IDX_KEY, '0'); localStorage.setItem('aqs_mistral_saved_at', Date.now()); } catch(e){}
+    };
+    window.setHFKeys = function(arr) {
+        window._AQS_HF_MASTER_KEYS = (arr || []).map(_sanitizeKey).filter(function(k){ return k.length > 10; });
+        try { localStorage.setItem(HF_IDX_KEY, '0'); localStorage.setItem('aqs_hf_saved_at', Date.now()); } catch(e){}
+    };
+    window.setCreatorImageKeys = function(arr) {
+        window._AQS_CREATOR_IMAGE_KEY_COUNT = Array.isArray(arr)
+            ? arr.filter(function(k){ return typeof k === 'string' && k.trim().length > 10; }).length
+            : 0;
+        try { localStorage.removeItem(CREATOR_IMAGE_IDX_KEY); localStorage.removeItem('aqs_creator_image_saved_at'); } catch(e){}
+    };
+
+    /* ── Legacy stubs — safe no-ops so old callers don't break ──────── */
+    window.getGroqKey  = function(){ return _getGroqKeys()[0] || ''; };
+    window.setGroqKey  = function(){};
+})();
+
+/* ═══════════════════════════════════════════════════════════════════
+   AUTO-LOADER — pulls AI keys from Firebase settings on every page
+   that includes this file + aqs-firebase.js (Studio, Study Hub, etc.)
+   Fires once Firebase is ready; never blocks page rendering.
+   Resolves window._aqsKeysReady when complete so groqFetch() can
+   safely wait for keys before declaring "not configured".
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+    var _settingsLoadStarted = false;
+
+    function _resolveAIKeysReady() {
+        if (typeof window._aqsKeysReadyResolve === 'function') {
+            window._aqsKeysReadyResolve();
+            window._aqsKeysReadyResolve = null;
+        }
+    }
+
+    function _logAISettingsFailure(cause) {
+        if (typeof window._aqsLog === 'function') {
+            window._aqsLog('error', 'AI settings load failed: ' + cause);
+        }
+    }
+
+    function _loadAIKeysFromFirebase() {
+        if (_settingsLoadStarted) return;
+        _settingsLoadStarted = true;
+        if (typeof window.aqsAjax !== 'function') {
+            _logAISettingsFailure('aqsAjax is unavailable');
+            _resolveAIKeysReady();
+            return;
+        }
+        var settled = false;
+        function fail(cause) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            _logAISettingsFailure(cause);
+            _resolveAIKeysReady();
+        }
+        var timer = setTimeout(function() {
+            fail('aqs_get_settings timed out after 20000 ms');
+        }, 20000);
+        try {
+            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+                if (settled) return;
+                if (!res || !res.success || !res.data || !res.data.settings) {
+                    fail('aqs_get_settings failed: ' + (res && res.data ? (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)) : 'empty response'));
+                    return;
+                }
+                settled = true;
+                clearTimeout(timer);
+                var s = res.data.settings;
+                if (Array.isArray(s.groq_keys) && s.groq_keys.length) window.setGroqKeys(s.groq_keys);
+                var retired = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
+                window._AQS_GROQ_MODEL = s.groq_model && retired.indexOf(s.groq_model) === -1 ? s.groq_model : 'openai/gpt-oss-20b';
+                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) window.setMistralKeys(s.mistral_keys);
+                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+                if (Array.isArray(s.hf_keys) && s.hf_keys.length) window.setHFKeys(s.hf_keys);
+                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+                if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
+                if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
+                var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+                if (total && typeof window._aqsLog === 'function') window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+                var pools = {quiz:'quiz_groq_keys',challenge:'challenge_groq_keys',studyhub:'studyhub_groq_keys',textdocs:'textdocs_groq_keys',puzzle:'puzzle_groq_keys',quizstudio:'quizstudio_groq_keys'};
+                Object.keys(pools).forEach(function(id) {
+                    if (Array.isArray(s[pools[id]]) && typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(id, s[pools[id]]);
+                });
+                _resolveAIKeysReady();
+            }, function(error) {
+                fail('aqs_get_settings rejected: ' + (error && error.message ? error.message : String(error || 'unknown Firebase error')));
+            });
+        } catch(error) {
+            fail('aqs_get_settings threw: ' + (error && error.message ? error.message : String(error)));
+        }
+    }
+
+    function _startAISettingsLoadAfterAuth() {
+        if (typeof window.onAqsAuthChange === 'function') {
+            window.onAqsAuthChange(function(user) {
+                if (user) _loadAIKeysFromFirebase();
+                else {
+                    _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
+                    _resolveAIKeysReady();
+                }
+            });
+            return;
+        }
+        /* Firebase bootstrap can finish before its auth helper is installed.
+           Wait briefly for that helper, then allow the loader to report the
+           concrete request failure rather than silently waiting forever. */
+        var attempts = 0;
+        var waitTimer = setInterval(function() {
+            attempts += 1;
+            if (typeof window.onAqsAuthChange === 'function') {
+                clearInterval(waitTimer);
+                _startAISettingsLoadAfterAuth();
+            } else if (attempts >= 40) {
+                clearInterval(waitTimer);
+                _logAISettingsFailure('Firebase auth state helper is unavailable');
+                _resolveAIKeysReady();
+            }
+        }, 100);
+    }
+
+    if (window._aqsFirebaseReady) _startAISettingsLoadAfterAuth();
+    else document.addEventListener('aqs:firebase:ready', _startAISettingsLoadAfterAuth, { once: true });
+})();
+
+
+/* ═══════════════════════════════════════════════════════════════════
+   FEATURE-SPECIFIC GROQ KEY POOLS
+   Each app feature has its own isolated 10-slot Groq key pool.
+   Pools auto-load from Firebase admin settings. Quiz generation additionally
+   falls back to the shared Mistral pool when Groq is unavailable.
+   Exposed as: window.quizGroqFetch, window.challengeGroqFetch, etc.
+═══════════════════════════════════════════════════════════════════ */
+(function () {
+    var RL_MS = 62000;
+    var _pools = {};
+    /* Capture the shared chain before Self Quiz wraps window.groqFetch.
+       This prevents a feature-pool fallback from recursively calling itself. */
+    var _sharedGroqFetch = window.groqFetch;
+
+    function _responseHasQuizContent(res) {
+        if (!res || !res.ok) return false;
+        if (typeof res.clone !== 'function') return true;
+        return res.clone().json().then(function(body) {
+            var content = body && body.choices && body.choices[0] &&
+                body.choices[0].message && body.choices[0].message.content;
+            return typeof content === 'string' && content.trim().length > 20;
+        }).catch(function() { return false; });
+    }
+
+    function _fallbackOptions(extraOpts) {
+        var opts = Object.assign({}, extraOpts || {});
+        if (opts.signal && opts.signal.aborted) delete opts.signal;
+        return opts;
+    }
+
+    function _sharedKeyCount() {
+        var count = 0;
+        ['_aqsGroqKeyCount', '_aqsMistralKeyCount', '_aqsHFKeyCount'].forEach(function(name) {
+            if (typeof window[name] === 'function') count += window[name]();
+        });
+        return count;
+    }
+
+    function _createPool(id, opts) {
+        opts = opts || {};
+        var slots = [], rl = {}, IDX = 'aqs_fp_' + id;
+        function _h(k) { return k ? k.slice(-8) : '?'; }
+        function _isRL(k) { return (rl[_h(k)] || 0) > Date.now(); }
+        function _markRL(k) { rl[_h(k)] = Date.now() + RL_MS; }
+        /* shared dead-key quarantine (revoked / expired / invalid keys) */
+        window._aqsDeadKeys = window._aqsDeadKeys || {};
+        var DEAD_MS = 30 * 60 * 1000;
+        function _isDead(k) { return (window._aqsDeadKeys[_h(k)] || 0) > Date.now(); }
+        function _markDead(k, why) {
+            window._aqsDeadKeys[_h(k)] = Date.now() + DEAD_MS;
+            console.warn('[' + id + '-pool] key ...' + _h(k) + ' invalid (' + why + ') - skipped for 30 min');
+        }
+        function _looksInvalidKey(t) {
+            return !!t && /invalid[_ ]api[_ ]key|invalid_api_key|incorrect api key|api key not valid|authentication|unauthorized/i.test(t);
+        }
+        function _idx() {
+            var i = 0;
+            try { i = parseInt(localStorage.getItem(IDX) || '0') || 0; } catch(e) {}
+            return (isNaN(i) || i >= Math.max(1, slots.length)) ? 0 : i;
+        }
+        function _setIdx(i) {
+            try { localStorage.setItem(IDX, String(i % Math.max(1, slots.length))); } catch(e) {}
+        }
+        return {
+            setKeys: function(arr) {
+                slots.length = 0;
+                (arr || []).map(function(k) { return (k || '').replace(/[^ -~]/g, '').trim(); })
+                           .filter(function(k) { return k.length > 20; })
+                           .forEach(function(k) { slots.push(k); });
+                try { localStorage.setItem(IDX, '0'); } catch(e) {}
+            },
+            keyCount: function() { return slots.length; },
+            fetch: async function(bodyObj, extraOpts) {
+                /* Firebase settings load asynchronously. Wait once before
+                   concluding that the dedicated slots are empty. */
+                if (!slots.length && !_sharedKeyCount() && window._aqsKeysReady) {
+                    await window._aqsKeysReady;
+                }
+                var request = Object.assign({
+                    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
+                }, bodyObj || {});
+                var lastResponse = null;
+                var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
+                if (slots.length) {
+                    var start = _idx();
+                    for (var i = 0; i < slots.length; i++) {
+                        var at = (start + i) % slots.length, key = slots[at];
+                        if (_isDead(key) || _isRL(key)) { _setIdx(at + 1); continue; }
+                        try {
+                            var res = await fetch(URL_, Object.assign({}, _fallbackOptions(extraOpts), {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
+                                body: JSON.stringify(request)
+                            }));
+                            if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
+                            if (res.status === 413) { _setIdx(at + 1); continue; }
+                            if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(at + 1); continue; }
+                            if (res.status >= 500) { _setIdx(at + 1); continue; }
+                            if (!res.ok) {
+                                lastResponse = res;
+                                _setIdx(at + 1);
+                                continue;
+                            }
+                            if (id === 'quiz' && !(await _responseHasQuizContent(res))) {
+                                lastResponse = res;
+                                _setIdx(at + 1);
+                                continue;
+                            }
+                            _setIdx(at + 1);
+                            return res;
+                        } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
+                    }
+                }
+                /* Dedicated quiz Groq slots are empty or exhausted: use the
+                   shared Mistral pool before trying the shared AI chain. */
+                if (id === 'quiz' && typeof window._mistralFetchDirect === 'function') {
+                    var fallbackRes = await window._mistralFetchDirect(request, _fallbackOptions(extraOpts));
+                    if (fallbackRes && await _responseHasQuizContent(fallbackRes)) return fallbackRes;
+                    if (fallbackRes) lastResponse = fallbackRes;
+                }
+                /* Shared Groq → Mistral → HuggingFace chain. Use the
+                   captured function so Self Quiz cannot recurse here. */
+                if (!opts.noFallback && typeof _sharedGroqFetch === 'function') {
+                    var sharedRes = await _sharedGroqFetch(request, _fallbackOptions(extraOpts));
+                    if (sharedRes && sharedRes.ok) {
+                        if (id !== 'quiz' || await _responseHasQuizContent(sharedRes)) return sharedRes;
+                    }
+                    if (sharedRes) lastResponse = sharedRes;
+                }
+                if (lastResponse) return lastResponse;
+                throw new Error('No quiz AI keys configured — add Groq or Mistral keys in Admin Settings.');
+            }
+        };
+    }
+
+    /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
+       available so a missing or exhausted dedicated slot does not stop it. */
+    var _poolOpts = { quiz: { noFallback: false } };
+    ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio'].forEach(function(id) {
+        _pools[id] = _createPool(id, _poolOpts[id] || {});
+    });
+
+    /* Public key management API */
+    window.setFeatureGroqKeys = function(id, arr) {
+        if (_pools[id]) _pools[id].setKeys(arr);
+    };
+    window.getFeatureGroqKeyCount = function(id) {
+        return _pools[id] ? _pools[id].keyCount() : 0;
+    };
+
+    /* Named fetch shortcuts (used by each feature JS file) */
+    window.quizGroqFetch       = function(b, o) { return _pools.quiz.fetch(b, o); };
+    window.challengeGroqFetch  = function(b, o) { return _pools.challenge.fetch(b, o); };
+    window.studyhubGroqFetch   = function(b, o) { return _pools.studyhub.fetch(b, o); };
+    window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
+    window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
+    window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
+})();

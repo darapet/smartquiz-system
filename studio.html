@@ -177,6 +177,31 @@
 .dts-sidebar{background:#fff !important}
 .dts-suggestion-btn{background:#fff !important;border:1px solid #eee2d3 !important;color:#22374d !important}
 </style>
+<style>
+/* v1.573: AI text sits directly on page (ChatGPT style), user keeps bubble */
+.dts-msg.ai{background:transparent !important;border:none !important;padding:6px 0 !important}
+.dts-msg.ai .dts-msg-content{max-width:100%;padding-left:0 !important}
+.dts-msg.ai .dts-msg-avatar{display:none}
+/* thinking indicator: single straight line, inline dots */
+.dts-thinking,.dts-msg.interim{display:flex !important;align-items:center;gap:8px !important;line-height:1 !important}
+.dts-typing-dots{display:inline-flex;align-items:center;gap:4px;height:14px}
+.dts-typing-dots i{width:6px;height:6px;border-radius:50%;background:#c77b2e;display:inline-block;animation:dtsBlink 1.2s infinite}
+.dts-typing-dots i:nth-child(2){animation-delay:.2s}.dts-typing-dots i:nth-child(3){animation-delay:.4s}
+@keyframes dtsBlink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+/* reduce left margin of chat */
+.dts-chat,.dts-messages,.dts-conversation,.dts-msg-list{padding-left:10px !important;margin-left:0 !important}
+@media(min-width:768px){.dts-chat,.dts-messages,.dts-conversation,.dts-msg-list{padding-left:24px !important}}
+/* keyboard-aware composer */
+.dts-footer{transition:bottom .15s ease}
+</style>
+<script>
+(function(){
+  var vv=window.visualViewport,f=document.getElementById('dts-footer');
+  if(vv&&f){function up(){f.style.bottom=(window.innerHeight-vv.height+vv.offsetTop)+'px';}
+  vv.addEventListener('resize',up);vv.addEventListener('scroll',up);}
+})();
+</script>
+<script>window.AQS_IMGGEN_ENDPOINT='https://darapet-technologyimafe.daramolapeter98.workers.dev/generate';</script>
 </head>
 <body class="dts-body aqs-full-page-body" data-aqs-page="studio" data-aqs-page-group="studio AI">
 
@@ -298,6 +323,30 @@
     </div>
     <p class="dts-disclaimer">xzily AI may make mistakes. Verify important information.</p>
 </footer>
+<script>
+(function(){
+  var input=document.getElementById('dts-input'),send=document.getElementById('dts-send'),msgs=document.querySelector('.dts-chat,.dts-messages,.dts-conversation,.dts-msg-list')||document.body;
+  var IMG_RE=/(generate|create|make|draw|design).{0,30}(image|picture|logo|art|photo|drawing)|(^image of)/i;
+  if(!input||!send)return;
+  async function genInline(prompt){
+    var b=document.createElement('div');b.className='dts-msg ai';b.innerHTML='<div class="dts-msg-content"><div class="dts-gen-square" style="width:120px;height:120px;border-radius:14px;background:linear-gradient(135deg,#fcd9a8,#f4a548,#c2660c);background-size:200% 200%;animation:dtsSq 1.6s ease infinite"></div></div>';
+    var st=document.createElement('style');st.textContent='@keyframes dtsSq{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}';
+    document.head.appendChild(st);msgs.appendChild(b);b.scrollIntoView({behavior:'smooth'});
+    try{
+      var ep=window.AQS_IMGGEN_ENDPOINT;
+      var r=await fetch(ep,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:prompt})});
+      var j=await r.json();
+      var url=j.imageUrl||j.image_url||j.url||(j.data&&j.data[0]&&(j.data[0].url||j.data[0].b64_json&&('data:image/png;base64,'+j.data[0].b64_json)));
+      if(url){b.querySelector('.dts-msg-content').innerHTML='<img src="'+url+'" alt="generated" style="max-width:100%;border-radius:14px">';}
+      else{b.querySelector('.dts-msg-content').innerHTML='<span style="color:#8496aa">Image generation no work this time — try again.</span>';}
+    }catch(e){b.querySelector('.dts-msg-content').innerHTML='<span style="color:#8496aa">Image generation error — check connection.</span>';}
+  }
+  send.addEventListener('click',function(){
+    var t=input.value.trim();
+    if(t&&IMG_RE.test(t)&&t.length<300){setTimeout(function(){genInline(t.replace(/^(generate|create|make|draw|design)\s*(me\s*)?(an?\s*)?(image|picture|photo|drawing)?\s*(of|for)?\s*/i,'')||t);},100);}
+  },true);
+})();
+</script>
 <script>
 (function(){
   var btn=document.getElementById('dts-pin-btn'),menu=document.getElementById('dts-pin-menu');
