@@ -1,8 +1,8 @@
 {
-  "version": "1.560",
-  "versionCode": 541,
+  "version": "1.561",
+  "versionCode": 542,
   "releaseDate": "2026-10-30",
-  "notes": "AI Teacher redesigned (cream/light, voice verified working), notifications page added, all links wired.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.560/daraquiz-v1.560.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.560/daraquiz-v1.560.apk"
+  "notes": "Bug fixes and improvements.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.561/daraquiz-v1.561.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.561/daraquiz-v1.561.apk"
 }
