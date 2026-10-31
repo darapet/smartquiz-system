@@ -1045,7 +1045,23 @@ Source: ${url}
       html = '';
       await new Promise(r => setTimeout(r, 700 * (attempt + 1)));
     }
-    if (!html) return new Response(JSON.stringify({ query: q, results: [], note: 'search engine temporarily rate-limited, try again shortly' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (!html) {
+      /* DDG blocked: fall back to Google News RSS (any query, rarely blocked) */
+      try {
+        const rssRes = await fetch('https://news.google.com/rss/search?q=' + encodeURIComponent(q) + '&hl=en-US&gl=US&ceid=US:en', { headers: { 'User-Agent': UAS[0] } });
+        if (rssRes.ok) {
+          const rss = await rssRes.text();
+          const items = [...rss.matchAll(/<item>[\s\S]*?<\/item>/g)].slice(0, 12);
+          const results = items.map(it => ({
+            title: ((it[0].match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/) || [])[1] || '').trim(),
+            link: ((it[0].match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '').trim(),
+            snippet: ((it[0].match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '').trim()
+          })).filter(r => r.title && r.link);
+          if (results.length) return new Response(JSON.stringify({ query: q, results, source: 'google-news-rss' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+        }
+      } catch (_) {}
+      return new Response(JSON.stringify({ query: q, results: [], note: 'search engine temporarily rate-limited, try again shortly' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
     try {
       const results = [];
       const linkRe = /<a[^>]+href="(?:https?:)?\/\/duckduckgo\.com\/l\/\?uddg=([^"&]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
