@@ -251,10 +251,7 @@
         for (var idx = 0; idx < 4; idx++) {
             (function (cardEl, frameIdx, seed) {
                 var delay = frameIdx * 3500;
-                var url = 'https://image.pollinations.ai/prompt/' +
-                    encodeURIComponent(full) +
-                    '?width=960&height=540&model=flux&seed=' + seed +
-                    '&enhance=true&nologo=true';
+                var url = 'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate?prompt=' + encodeURIComponent(full) + '&seed=' + seed + '&width=960&height=540';
 
                 setTimeout(function () {
                     if (frameIdx > 0) setStatus('Generating frame ' + (frameIdx + 1) + ' of 4\u2026');
@@ -291,10 +288,7 @@
 
     function regenOneFrame(cardEl, frameIdx, fullPrompt) {
         var seed = Math.floor(Math.random() * 9999999);
-        var url  = 'https://image.pollinations.ai/prompt/' +
-            encodeURIComponent(fullPrompt) +
-            '?width=960&height=540&model=flux&seed=' + seed +
-            '&enhance=true&nologo=true';
+        var url  = 'https://darapet-technologyimafe.daramolapeter98.workers.dev/generate?prompt=' + encodeURIComponent(fullPrompt) + '&seed=' + seed + '&width=960&height=540';
         cardEl.className = 'aqs-anim-frame-card loading';
         cardEl.innerHTML =
             '<div class="aqs-anim-frame-spinner">' +
