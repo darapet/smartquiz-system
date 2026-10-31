@@ -1024,12 +1024,29 @@ Source: ${url}
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').trim();
     if (!q) return new Response(JSON.stringify({ error: 'missing q' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
-    try {
-      const res = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), {
-        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.9' },
+    const UAS = [
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
+      'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36'
+    ];
+    const ENDPOINTS = [
+      (qq) => 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(qq),
+      (qq) => 'https://html.duckduckgo.com/html/?q=' + encodeURIComponent(qq),
+      (qq) => 'https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(qq)
+    ];
+    let html = '';
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const res = await fetch(ENDPOINTS[attempt](q), {
+        headers: { 'User-Agent': UAS[attempt % UAS.length], 'Accept-Language': 'en-US,en;q=0.9', 'Accept': 'text/html' },
       });
-      if (!res.ok) throw new Error('DDG HTTP ' + res.status);
-      const html = await res.text();
+      if (!res.ok) { await new Promise(r => setTimeout(r, 700 * (attempt + 1))); continue; }
+      html = await res.text();
+      if (html && html.indexOf('uddg=') !== -1) break;
+      html = '';
+      await new Promise(r => setTimeout(r, 700 * (attempt + 1)));
+    }
+    if (!html) throw new Error('DDG returned no parseable results after retries');
+    try {
       const results = [];
       const linkRe = /<a[^>]+href="(?:https?:)?\/\/duckduckgo\.com\/l\/\?uddg=([^"&]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
       let m;
@@ -1041,7 +1058,7 @@ Source: ${url}
         results.push({ title, link });
       }
       /* snippets follow links in order in the lite layout */
-      const snipRe = /class="result-snippet">([\s\S]*?)<\/td>/g;
+      const snipRe = /class="result(?:__|-)snippet[^"]*">([\s\S]*?)<\/(?:td|a)>/g;
       let si = 0, sn;
       while ((sn = snipRe.exec(html)) && si < results.length) {
         const txt = sn[1].replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
