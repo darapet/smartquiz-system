@@ -114,6 +114,7 @@
     /* ── Animation playback ── */
     function stopAnimation() {
         isPlaying = false;
+        if (frameTimer) { clearInterval(frameTimer); frameTimer = null; }
         $previewImg.className = 'aqs-anim-preview-img';
         $previewBadge.textContent = 'Paused';
         $playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
@@ -128,9 +129,39 @@
         if ($previewBtn) $previewBtn.innerHTML =
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg> Pause';
     }
+    /* frame URLs captured from the last generation */
+    var generatedFrameUrls = [];
+    var frameTimer = null;
+    var currentFrame = 0;
+
     function toggleAnimation() {
+        if (generatedFrameUrls.length >= 2) { toggleFrameLoop(); return; }
         if (!uploadedDataUrl) return;
         if (isPlaying) stopAnimation(); else startAnimation();
+    }
+
+    /* real frame-by-frame loop over the generated frames */
+    function toggleFrameLoop() {
+        if (frameTimer) {
+            clearInterval(frameTimer); frameTimer = null;
+            $previewBadge.textContent = 'Paused';
+            $playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+            return;
+        }
+        if (!uploadedDataUrl) {
+            /* show preview card even without an upload */
+            $previewCard.style.display = 'block';
+            $uploadCard.style.display = 'none';
+        }
+        currentFrame = 0;
+        $previewImg.src = generatedFrameUrls[0];
+        $previewBadge.textContent = 'Playing \u25b6 frame 1/' + generatedFrameUrls.length;
+        $playBtn.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+        frameTimer = setInterval(function () {
+            currentFrame = (currentFrame + 1) % generatedFrameUrls.length;
+            $previewImg.src = generatedFrameUrls[currentFrame];
+            $previewBadge.textContent = 'Playing \u25b6 frame ' + (currentFrame + 1) + '/' + generatedFrameUrls.length;
+        }, 450);
     }
     function getStyleLabel(s) {
         var btn = document.querySelector('.aqs-anim-style[data-style="' + s + '"]');
@@ -321,6 +352,13 @@
     }
 
     function finishFrames() {
+        generatedFrameUrls = [];
+        document.querySelectorAll('#aqs-anim-frames-grid .aqs-anim-frame-card.loaded img').forEach(function (im) {
+            if (im.src) generatedFrameUrls.push(im.src);
+        });
+        var pb = document.getElementById('aqs-anim-preview-btn');
+        if (pb) pb.disabled = false;
+
         $status.style.display = 'none';
         $genBtn.disabled = false;
         $genBtn.innerHTML =

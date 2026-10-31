@@ -1,8 +1,8 @@
 {
-  "version": "1.588",
-  "versionCode": 572,
-  "releaseDate": "2026-10-31",
-  "notes": "Bug fixes and improvements.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.588/daraquiz-v1.588.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.588/daraquiz-v1.588.apk"
+  "version": "1.589",
+  "versionCode": 573,
+  "releaseDate": "2026-10-30",
+  "notes": "AI Animate: real frame-by-frame playback now works after generation.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.589/daraquiz-v1.589.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.589/daraquiz-v1.589.apk"
 }
