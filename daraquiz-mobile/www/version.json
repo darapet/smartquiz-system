@@ -1,8 +1,8 @@
 {
   "version": "1.569",
   "versionCode": 550,
-  "releaseDate": "2026-10-30",
-  "notes": "Study Hub fixed: AI generation working, all text visible, indigo leftovers removed.",
+  "releaseDate": "2026-10-31",
+  "notes": "Bug fixes and improvements.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.569/daraquiz-v1.569.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.569/daraquiz-v1.569.apk"
 }
