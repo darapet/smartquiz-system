@@ -1054,6 +1054,28 @@ Source: ${url}
     }
   }
 
+
+  /* ── Webpage scraper proxy: returns clean text + extracted emails/phones ── */
+  async function handleWebPageScrape(request) {
+    const url = new URL(request.url);
+    const target = (url.searchParams.get('url') || '').trim();
+    if (!/^https?:\/\//.test(target)) return new Response(JSON.stringify({ error: 'bad url' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    try {
+      const res = await fetch(target, { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36' }, redirect: 'follow' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const html = await res.text();
+      const emails = Array.from(new Set((html.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g) || []).filter(e => !/\.(png|jpg|jpeg|gif|webp|svg)$/i.test(e)))).slice(0, 15);
+      const phones = Array.from(new Set((html.match(/\+?\d[\d\s().-]{8,16}\d/g) || []).map(p => p.trim()))).slice(0, 10);
+      const text = html
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+        .replace(/\s{2,}/g, ' ').trim().slice(0, 6000);
+      return new Response(JSON.stringify({ url: target, title: (html.match(/<title[^>]*>([\s\S]*?)<\/title>/i) || [,''])[1].replace(/<[^>]+>/g,'').trim(), emails, phones, text }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: String(e) }), { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+  }
+
 export default {
   async scheduled(controller, env, ctx) { ctx.waitUntil(runSocialAutomation(env, controller.cron || '*/30 * * * *')); },
   async fetch(request, env) {
@@ -1080,6 +1102,15 @@ export default {
         return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
       }
       return handleWebSearch(request);
+    }
+    if (
+      url.pathname === '/webpage'
+      || url.pathname === '/api/webpage'
+    ) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
+      }
+      return handleWebPageScrape(request);
     }
     if (
       url.pathname === '/generate'
