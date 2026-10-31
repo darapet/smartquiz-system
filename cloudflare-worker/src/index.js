@@ -1148,7 +1148,7 @@ export default {
       if (request.method === 'OPTIONS') {
         return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
       }
-      return handleWebSearch(request);
+      return handleWebSearch(request, env);
     }
     if (
       url.pathname === '/webpage'
