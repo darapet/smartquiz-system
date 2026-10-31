@@ -1024,6 +1024,14 @@ Source: ${url}
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').trim();
     if (!q) return new Response(JSON.stringify({ error: 'missing q' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    /* Serve a fresh cached result when we already searched this query (30 min TTL) */
+    const CACHE_KEY = 'websearch:' + q.toLowerCase();
+    try {
+      if (env.EMAIL_CONFIG) {
+        const cached = await env.EMAIL_CONFIG.get(CACHE_KEY);
+        if (cached) return new Response(cached, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      }
+    } catch (_) {}
     const UAS = [
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
       'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15',
@@ -1057,7 +1065,11 @@ Source: ${url}
             link: ((it[0].match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '').trim(),
             snippet: ((it[0].match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || '').trim()
           })).filter(r => r.title && r.link);
-          if (results.length) return new Response(JSON.stringify({ query: q, results, source: 'google-news-rss' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+          if (results.length) {
+            const ok = JSON.stringify({ query: q, results, source: 'google-news-rss' });
+            if (env.EMAIL_CONFIG) { try { await env.EMAIL_CONFIG.put(CACHE_KEY, ok, { expirationTtl: 1800 }); } catch (_) {} }
+            return new Response(ok, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+          }
         }
       } catch (_) {}
       return new Response(JSON.stringify({ query: q, results: [], note: 'search engine temporarily rate-limited, try again shortly' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
@@ -1081,7 +1093,9 @@ Source: ${url}
         if (txt) results[si].snippet = txt;
         si++;
       }
-      return new Response(JSON.stringify({ query: q, results }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+      const ok = JSON.stringify({ query: q, results });
+      if (results.length && env.EMAIL_CONFIG) { try { await env.EMAIL_CONFIG.put(CACHE_KEY, ok, { expirationTtl: 1800 }); } catch (_) {} }
+      return new Response(ok, { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     } catch (e) {
       return new Response(JSON.stringify({ error: String(e) }), { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     }
