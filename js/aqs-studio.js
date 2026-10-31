@@ -234,6 +234,26 @@
         });
     }
 
+
+    /* Primary: real web results via our own worker /websearch proxy */
+    async function searchOwnWorkerResults(query) {
+        try {
+            var base = (window.location && window.location.origin && window.location.origin.indexOf('workers.dev') !== -1)
+                ? window.location.origin
+                : 'https://smartquiz-system3.daramolapeter98.workers.dev';
+            var res = await timedFetch(base + '/websearch?q=' + encodeURIComponent(query), {}, 9000);
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            var data = await res.json();
+            var rs = (data && data.results) || [];
+            if (!rs.length) return null;
+            var lines = rs.map(function (r, i) {
+                var sn = r.snippet ? '\n   ' + r.snippet : '';
+                return (i + 1) + '. ' + (r.title || '') + ' - ' + (r.link || '') + sn;
+            });
+            return { source: 'Web', content: 'LIVE WEB RESULTS for "' + query + '":\n' + lines.join('\n') };
+        } catch (e) { return null; }
+    }
+
     /* Search DuckDuckGo Instant Answer API — FREE, no key needed */
     async function searchDuckDuckGo(query) {
         try {
@@ -357,6 +377,8 @@
 
         /* Fire all searches at once */
         var searches = [
+            /* 0. Our own worker proxy - real DuckDuckGo results with links */
+            searchOwnWorkerResults(query).catch(function(){ return null; }),
             /* 1. Jina Search — real live web results (usually fastest & best) */
             searchJinaWeb(query).catch(function(){ return null; }),
             /* 2. DuckDuckGo instant answers (fast for well-known topics) */
