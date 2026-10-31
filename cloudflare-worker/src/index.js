@@ -1020,7 +1020,7 @@ Source: ${url}
 
 
   /* ── Web search proxy: server-side DuckDuckGo lite scrape, CORS-open ── */
-  async function handleWebSearch(request) {
+  async function handleWebSearch(request, env) {
     const url = new URL(request.url);
     const q = (url.searchParams.get('q') || '').trim();
     if (!q) return new Response(JSON.stringify({ error: 'missing q' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
