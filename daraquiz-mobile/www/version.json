@@ -1,8 +1,8 @@
 {
   "version": "1.588",
   "versionCode": 572,
-  "releaseDate": "2026-10-30",
-  "notes": "AI Animate fixed: now uses the working image endpoint, frames generate for real.",
+  "releaseDate": "2026-10-31",
+  "notes": "Bug fixes and improvements.",
   "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.588/daraquiz-v1.588.apk",
   "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.588/daraquiz-v1.588.apk"
 }
