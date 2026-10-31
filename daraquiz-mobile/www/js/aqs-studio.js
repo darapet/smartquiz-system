@@ -218,6 +218,19 @@
         } catch (e) { return null; }
     }
 
+
+    /* Exposed scraper for deep search detail pass */
+    window._aqsWebScrapePage = async function(url) {
+        try {
+            var base = (window.location && window.location.origin && window.location.origin.indexOf('workers.dev') !== -1)
+                ? window.location.origin
+                : 'https://smartquiz-system3.daramolapeter98.workers.dev';
+            var res = await fetch(base + '/webpage?url=' + encodeURIComponent(url));
+            if (!res.ok) return null;
+            return await res.json();
+        } catch (e) { return null; }
+    };
+
     /* Master fetchWebPage — all 3 methods in parallel, fastest wins */
     async function fetchWebPage(url) {
         return new Promise(function(resolve) {
@@ -250,7 +263,7 @@
                 var sn = r.snippet ? '\n   ' + r.snippet : '';
                 return (i + 1) + '. ' + (r.title || '') + ' - ' + (r.link || '') + sn;
             });
-            return { source: 'Web', content: 'LIVE WEB RESULTS for "' + query + '":\n' + lines.join('\n') };
+            return { source: 'Web', content: 'LIVE WEB RESULTS for "' + query + '":\n' + lines.join('\n'), links: rs.map(function(r){ return r.link; }).filter(Boolean) };
         } catch (e) { return null; }
     }
 
@@ -909,7 +922,18 @@
                 webContext = deepResults.filter(Boolean).map(function(r,i){return 'Query '+(i+1)+' ('+subQueries[i]+') via '+r.source+':\n'+r.content;}).join('\n\n');
                 if (webContext) { webSourceTag = '🔍 *Deep search: multi-query research pass using ' + Array.from(new Set(deepResults.filter(Boolean).map(function(r){return r.source;}))).join(', ') + '*'; }
                 else { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (no external results returned)*'; }
-            } catch(deepErr) { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '🔍 *Deep search: multi-query reasoning pass (external search unavailable)*'; }
+            } catch(deepErr) { webContext = 'No external search results were available. Answer from your existing knowledge, clearly distinguish it from verified research.'; webSourceTag = '\uD83D\uDD0D *Deep search*'; }
+            /* Scrape detail pass: emails/app names/contact details from top result pages */
+            try {
+                var detailLinks = [];
+                (deepResults || []).filter(Boolean).forEach(function(r){ if (r && r.links) detailLinks = detailLinks.concat(r.links); });
+                if (detailLinks.length && typeof window._aqsWebScrapePage === 'function') {
+                    showTyping(true, '\uD83D\uDF04 Reading top pages for contact details...');
+                    var scraped = await Promise.all(detailLinks.slice(0, 3).map(function(u){ return window._aqsWebScrapePage(u).catch(function(){ return null; }); }));
+                    var det = scraped.filter(Boolean).map(function(d){ return 'PAGE: ' + d.url + '\nTitle: ' + (d.title||'') + '\nEmails: ' + ((d.emails&&d.emails.join(', '))||'none found') + '\nPhones: ' + ((d.phones&&d.phones.join(', '))||'none found') + '\nPage text (excerpt): ' + ((d.text||'').slice(0, 1500)); }).join('\n\n');
+                    if (det) webContext = webContext + '\n\n=== SCRAPED PAGE DETAILS (extract emails, app names, contact info from these) ===\n' + det;
+                }
+            } catch (scrapeErr) { console.warn('scrape pass failed', scrapeErr); }
         } else if (searchNeeds) {
             if (searchNeeds.type === 'url') {
                 showTyping(true, '\uD83C\uDF10 Visiting ' + searchNeeds.url.slice(0, 60) + '\u2026');
