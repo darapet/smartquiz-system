@@ -1018,6 +1018,42 @@ Source: ${url}
 #DaraSocial #Nigeria`,imageUrl:'',bgTemplateId:'',fileUrl:'',fileName:'',linkUrl:url,status:'published',likeCount:0,commentCount:0,createdAt:stamp,updatedAt:stamp,automated:true,automationType:'news'},token);await socialPatch(env,'settings/private',{darasocial_news_last_post_at:stamp,darasocial_news_index:(ix+1)%SOCIAL_NEWS_SOURCES.length},token)}}
 }
 
+
+  /* ── Web search proxy: server-side DuckDuckGo lite scrape, CORS-open ── */
+  async function handleWebSearch(request) {
+    const url = new URL(request.url);
+    const q = (url.searchParams.get('q') || '').trim();
+    if (!q) return new Response(JSON.stringify({ error: 'missing q' }), { status: 400, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    try {
+      const res = await fetch('https://lite.duckduckgo.com/lite/?q=' + encodeURIComponent(q), {
+        headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36', 'Accept-Language': 'en-US,en;q=0.9' },
+      });
+      if (!res.ok) throw new Error('DDG HTTP ' + res.status);
+      const html = await res.text();
+      const results = [];
+      const linkRe = /<a[^>]+href="(?:https?:)?\/\/duckduckgo\.com\/l\/\?uddg=([^"&]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
+      let m;
+      while ((m = linkRe.exec(html)) && results.length < 12) {
+        const link = decodeURIComponent(m[1]);
+        const title = m[2].replace(/<[^>]+>/g, '').trim();
+        if (!title || !/^https?:\/\//.test(link)) continue;
+        if (results.some(r => r.link === link)) continue;
+        results.push({ title, link });
+      }
+      /* snippets follow links in order in the lite layout */
+      const snipRe = /class="result-snippet">([\s\S]*?)<\/td>/g;
+      let si = 0, sn;
+      while ((sn = snipRe.exec(html)) && si < results.length) {
+        const txt = sn[1].replace(/<[^>]+>/g, ' ').replace(/\s{2,}/g, ' ').trim();
+        if (txt) results[si].snippet = txt;
+        si++;
+      }
+      return new Response(JSON.stringify({ query: q, results }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    } catch (e) {
+      return new Response(JSON.stringify({ error: String(e) }), { status: 502, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    }
+  }
+
 export default {
   async scheduled(controller, env, ctx) { ctx.waitUntil(runSocialAutomation(env, controller.cron || '*/30 * * * *')); },
   async fetch(request, env) {
@@ -1034,6 +1070,16 @@ export default {
       || url.pathname === '/brevoEmail/'
     ) {
       return handleEmail(request, env);
+    }
+    if (
+      url.pathname === '/websearch'
+      || url.pathname === '/websearch/'
+      || url.pathname === '/api/websearch'
+    ) {
+      if (request.method === 'OPTIONS') {
+        return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
+      }
+      return handleWebSearch(request);
     }
     if (
       url.pathname === '/generate'
