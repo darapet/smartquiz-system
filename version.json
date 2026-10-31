@@ -1,8 +1,8 @@
 {
-  "version": "1.570",
-  "versionCode": 551,
+  "version": "1.571",
+  "versionCode": 552,
   "releaseDate": "2026-10-30",
-  "notes": "Studio web search upgrade: real live results with links via worker proxy.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.570/daraquiz-v1.570.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.570/daraquiz-v1.570.apk"
+  "notes": "Deep search now scrapes pages: emails, app names and contact details included in answers.",
+  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.571/daraquiz-v1.571.apk",
+  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.571/daraquiz-v1.571.apk"
 }
