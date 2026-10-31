@@ -1045,7 +1045,7 @@ Source: ${url}
       html = '';
       await new Promise(r => setTimeout(r, 700 * (attempt + 1)));
     }
-    if (!html) throw new Error('DDG returned no parseable results after retries');
+    if (!html) return new Response(JSON.stringify({ query: q, results: [], note: 'search engine temporarily rate-limited, try again shortly' }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
     try {
       const results = [];
       const linkRe = /<a[^>]+href="(?:https?:)?\/\/duckduckgo\.com\/l\/\?uddg=([^"&]+)[^"]*"[^>]*>([\s\S]*?)<\/a>/g;
