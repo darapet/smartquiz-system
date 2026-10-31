@@ -717,7 +717,10 @@
         messages.appendChild(wrap);
         var bubble = wrap.querySelector('.dts-msg-bubble');
         var hasDeepBadge = /Deep search:/i.test(content);
-        var idx=0, acc='', DELAY=22;
+        /* Reduced typing animation: full reply renders immediately (a subtle
+           typing indicator already shows while the request runs). No slow
+           character-by-character playback. */
+        var acc=content, idx=content.length, DELAY=0;
         var cursor=document.createElement('span'); cursor.className='dts-stream-cursor'; cursor.setAttribute('aria-hidden','true');
         function tick() {
             if (idx < content.length) {
@@ -835,8 +838,8 @@
             window.groqFetch({
                 model: 'meta-llama/llama-4-scout-17b-16e-instruct',
                 messages: visionMessages,
-                max_tokens: 2048,
-                temperature: 0.7
+                max_tokens: 4096,
+                temperature: 0.6
             }).then(function(res) { return res.json(); })
             .then(function(data) {
                 showTyping(false);
@@ -942,8 +945,8 @@
             window.groqFetch({
                 model:       'llama-3.3-70b-versatile',
                 messages:    messages,
-                max_tokens:  3072,
-                temperature: 0.7
+                max_tokens:  4096,
+                temperature: 0.6
             }).then(function (res) {
                 if (!res) return { error: { message: 'All AI keys were rejected (invalid, expired or out of quota). Add a fresh Groq key in Admin Settings \u2192 AI Keys.' } };
                 return res.json();
