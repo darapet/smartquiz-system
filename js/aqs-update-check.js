@@ -22,7 +22,7 @@ var AQS_APP_VERSION_CODE = 519;
   'use strict';
 
   var VERSION_JSON_URL =
-    'https://smartquiz-system3.daramolapeter98.workers.dev/daraquiz-mobile/www/version.json';
+    'https://darapet.name.ng/daraquiz-mobile/www/version.json';
 
   var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
   var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
