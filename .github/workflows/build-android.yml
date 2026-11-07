@@ -296,13 +296,7 @@ jobs:
         run: |
           APK_URL="https://github.com/darapet/smartquiz-system/releases/download/${{ steps.ver.outputs.tag }}/${{ steps.ver.outputs.apk_name }}"
           TODAY=$(date +%Y-%m-%d)
-          printf '{\n  "version": "%s",\n  "versionCode": %s,\n  "releaseDate": "%s",\n  "notes": "%s",\n  "downloadUrl": "%s",\n  "apkUrl": "%s"\n}\n' \\
-            "${{ steps.ver.outputs.new_ver }}" \\
-            "${{ steps.ver.outputs.new_code }}" \\
-            "$TODAY" \\
-            "${{ steps.ver.outputs.notes }}" \\
-            "$APK_URL" \\
-            "$APK_URL" > www/version.json
+          printf '{"version":"%s","versionCode":%s,"releaseDate":"%s","notes":"%s","downloadUrl":"%s","apkUrl":"%s"}\n' "${{ steps.ver.outputs.new_ver }}" "${{ steps.ver.outputs.new_code }}" "$TODAY" "${{ steps.ver.outputs.notes }}" "$APK_URL" "$APK_URL" > www/version.json
           cp www/version.json ../version.json
 
       - name: Commit and push version bumps
