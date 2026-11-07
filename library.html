@@ -20,8 +20,6 @@
   <a href="library.html" class="lib-logo">📚 xzily Library</a>
   <div class="lib-hdr-actions">
     <a href="dashboard.html" class="lib-back">← Dashboard</a>
-    <a href="library-host-view.html" class="lib-back" id="hdr-mybooks" style="display:none">My Books</a>
-    <button class="lib-upload-btn" onclick="location.href='library-upload.html'">+ Upload</button>
   </div>
 </header>
 
@@ -96,10 +94,6 @@
   let _allBooks = [];
   let _profileCache = {};
 
-  /* Show My Books button if logged in */
-  window.libOnAuth(function(user){
-    if(user) document.getElementById('hdr-mybooks').style.display='inline-flex';
-  });
 
   /* ── CASCADE ── */
   window.onTypeChange = function(type) {
@@ -172,7 +166,7 @@
       grid.innerHTML = `<div class="lib-empty">
         <div class="lib-empty-icon">📭</div>
         <div class="lib-empty-title">No books found</div>
-        <div class="lib-empty-sub">Be the first to <a href="library-upload.html" style="color:#12304a;font-weight:700">upload one!</a></div>
+        <div class="lib-empty-sub">No books found. Try changing your search filters.</div>
       </div>`;
       return;
     }

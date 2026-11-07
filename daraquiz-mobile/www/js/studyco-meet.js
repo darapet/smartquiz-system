@@ -309,7 +309,7 @@ async function ensureProfile(user) {
   if (existing) {
     const backfill = {};
     const legacyValues = {
-      displayName: legacy.name || legacy.displayName || user.displayName || '',
+      displayName: legacy.displayName || legacy.name || user.displayName || '',
       username: legacy.username || '',
       phone: legacy.phone || legacy.phoneNumber || '',
       school: legacy.institution || legacy.school || legacy.school_name || '',
@@ -331,12 +331,13 @@ async function ensureProfile(user) {
     return state.profile;
   }
   const fallback = {
-    uid: user.uid, displayName: user.displayName || legacy.name || legacy.displayName || user.email?.split('@')[0] || 'StudyCo learner',
-    username: legacy.username || (user.email || 'learner').split('@')[0].replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'learner',
-    email: user.email || '', loginIdentifier: user.email || '', phone: legacy.phone || legacy.phoneNumber || '', bio: '', studentStatus: '',
+    uid: user.uid,
+    displayName: profile.displayName || legacy.displayName || legacy.name || user.displayName || '',
+    username: profile.username || legacy.username || '',
+    email: user.email || '', loginIdentifier: user.email || '', phone: legacy.phone || legacy.phoneNumber || '', bio: legacy.bio || '', studentStatus: legacy.studentStatus || '',
     school: legacy.institution || legacy.school || legacy.school_name || '', department: legacy.department || '', major: legacy.major || '',
     gender: legacy.gender || legacy.sex || '', location: legacy.location || legacy.city || '',
-    photoURL: user.photoURL || legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || '', coverURL: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    photoURL: legacy.photoURL || legacy.photoUrl || legacy.profile_picture || legacy.avatar || user.photoURL || '', coverURL: legacy.coverURL || '', profileVisibility: legacy.profileVisibility || {}, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
   };
   await setDoc(doc(db, 'social_profiles', user.uid), fallback, { merge: true });
   state.profile = { ...fallback, id: user.uid }; state.profiles.set(user.uid, state.profile);
@@ -3809,7 +3810,7 @@ function fillEditForm() {
   const marital = String(p.maritalStatus || '').trim().toLowerCase();
   const maritalValue = marital === 'single' ? 'Single' : marital === 'in a relationship' || marital === 'in_relationship' ? 'In a relationship' : marital === 'engaged' ? 'Engaged' : marital === 'married' ? 'Married' : marital === 'divorced' ? 'Divorced' : '';
   $('studyco-edit-name').value = p.displayName || ''; $('studyco-edit-contact').value = p.phone || '';
-  $('studyco-edit-email').value = p.email || state.user?.email || '';
+  $('studyco-edit-email').value = p.email || '';
   $('studyco-edit-date-of-birth').value = p.dateOfBirth || '';
   $('studyco-edit-bio').value = p.bio || ''; $('studyco-edit-status').value = p.studentStatus || '';
   $('studyco-edit-address').value = p.address || '';

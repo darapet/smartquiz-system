@@ -312,8 +312,8 @@ async function ensureProfile(user) {
   const profile = existing || {};
   const values = {
     uid: user.uid,
-    displayName: profile.displayName || legacy.displayName || legacy.name || user.displayName || user.email?.split('@')[0] || 'StudyCo learner',
-    username: profile.username || legacy.username || (user.email || 'learner').split('@')[0].replace(/[^a-z0-9_-]/gi, '').slice(0, 24) || 'learner',
+    displayName: profile.displayName || legacy.displayName || legacy.name || user.displayName || '',
+    username: profile.username || legacy.username || '',
     email: user.email || profile.email || legacy.email || '', loginIdentifier: user.email || profile.loginIdentifier || '',
     phone: profile.phone || legacy.phone || legacy.phoneNumber || '', bio: profile.bio || legacy.bio || '',
     studentStatus: profile.studentStatus || legacy.studentStatus || '',
@@ -3758,7 +3758,7 @@ function fillEditForm() {
   const marital = String(p.maritalStatus || '').trim().toLowerCase();
   const maritalValue = marital === 'single' ? 'Single' : marital === 'in a relationship' || marital === 'in_relationship' ? 'In a relationship' : marital === 'engaged' ? 'Engaged' : marital === 'married' ? 'Married' : marital === 'divorced' ? 'Divorced' : '';
   $('studyco-edit-name').value = p.displayName || ''; $('studyco-edit-contact').value = p.phone || '';
-  $('studyco-edit-email').value = p.email || state.user?.email || '';
+  $('studyco-edit-email').value = p.email || '';
   $('studyco-edit-date-of-birth').value = p.dateOfBirth || '';
   $('studyco-edit-bio').value = p.bio || ''; $('studyco-edit-status').value = p.studentStatus || '';
   $('studyco-edit-address').value = p.address || '';
