@@ -1,8 +1,1 @@
-{
-  "version": "1.590",
-  "versionCode": 574,
-  "releaseDate": "2026-11-07",
-  "notes": "Fixes Android update prompting and keeps release metadata aligned.",
-  "downloadUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.590/daraquiz-v1.590.apk",
-  "apkUrl": "https://github.com/darapet/smartquiz-system/releases/download/v1.590/daraquiz-v1.590.apk"
-}
+{"version":"1.592","versionCode":574,"releaseDate":"2026-11-07","notes":"Fixes Android update prompting and keeps release metadata aligned.","downloadUrl":"https://github.com/darapet/smartquiz-system/releases/download/v1.592/daraquiz-v1.592.apk","apkUrl":"https://github.com/darapet/smartquiz-system/releases/download/v1.592/daraquiz-v1.592.apk"}
