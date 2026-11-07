@@ -811,7 +811,15 @@ async function actionRegister(data) {
         await _withAqsStepTimeout(user.getIdToken(true), 'refreshing your verified account');
 
         var profileRef = doc(db, 'users', user.uid);
-        var profileSnap = await _withAqsStepTimeout(getDoc(profileRef), 'checking your account profile');
+        var profileSnap;
+        try {
+            profileSnap = await _withAqsStepTimeout(getDoc(profileRef), 'checking your account profile');
+        } catch (profileReadError) {
+            console.warn('[AQS Registration] Profile check deferred:', profileReadError && profileReadError.message || profileReadError);
+            var pendingProfile = { uid: user.uid, email: email, role: 'student', status: 'pending', registration_status: 'profile_pending', otp_verified: true, email_verified: true };
+            _updateAqsGlobals(user, pendingProfile);
+            return { account_created: true, profile_setup_deferred: true, redirect: _dashboardUrl('student'), message: 'Your account is ready. Profile setup will continue from your dashboard.' };
+        }
         var existing = profileSnap.exists() ? profileSnap.data() : {};
         if (profileSnap.exists()
             && (existing.registration_status === 'complete'
@@ -834,7 +842,21 @@ async function actionRegister(data) {
             email_verified: true
         };
         if (!profileSnap.exists()) profile.created_at = serverTimestamp();
-        await _withAqsStepTimeout(setDoc(profileRef, profile, { merge: true }), 'saving your verified profile');
+        try {
+            await _withAqsStepTimeout(setDoc(profileRef, profile, { merge: true }), 'saving your verified profile');
+        } catch (profileError) {
+            /* Firebase auth has already created and signed in this account. A
+               follow-up profile write must not turn that success into a signup
+               failure; route the authenticated user into the dashboard flow. */
+            console.warn('[AQS Registration] Pending profile save deferred:', profileError && profileError.message || profileError);
+            _updateAqsGlobals(user, profile);
+            return {
+                account_created: true,
+                profile_setup_deferred: true,
+                redirect: _dashboardUrl('student'),
+                message: 'Your account is ready. Profile setup will continue from your dashboard.'
+            };
+        }
         _updateAqsGlobals(user, profile);
 
         var welcomeEmailSent = registration.welcomeEmailSent === true;

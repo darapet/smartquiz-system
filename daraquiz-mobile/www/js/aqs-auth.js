@@ -230,20 +230,27 @@
     }
 
     function updateProgress(step) {
-        registrationStep = step;
+        var previousStep = registrationStep;
         if (step >= 1 && step <= 5) {
             try { sessionStorage.setItem('aqs_registration_step', String(step)); } catch (_) {}
         }
+        var pageBefore = previousStep <= 3 ? 1 : (previousStep <= 5 ? 2 : 3);
+        var pageNow = step <= 3 ? 1 : (step <= 5 ? 2 : 3);
+        registrationStep = step;
         document.querySelectorAll('.aqs-register-step').forEach(function (panel) {
-            panel.hidden = Number(panel.getAttribute('data-step')) !== step;
+            var panelStep = Number(panel.getAttribute('data-step'));
+            if (step <= 3) panel.hidden = panelStep > 3 || panelStep > step;
+            else if (step <= 5) panel.hidden = panelStep < 4 || panelStep > step;
+            else panel.hidden = panelStep !== step;
         });
+        var visibleStep = step <= 3 ? 1 : (step <= 5 ? 2 : 3);
         document.querySelectorAll('[data-flow-step]').forEach(function (item) {
             var itemStep = Number(item.getAttribute('data-flow-step'));
-            item.classList.toggle('active', itemStep <= step);
-            item.classList.toggle('current', itemStep === step);
+            item.classList.toggle('active', itemStep <= visibleStep);
+            item.classList.toggle('current', itemStep === visibleStep);
         });
         var bar = document.getElementById('aqs-flow-progress-bar');
-        if (bar) bar.style.width = Math.max(0, Math.min(100, ((step - 1) / 4) * 100)) + '%';
+        if (bar) bar.style.width = (visibleStep >= 2 ? '100%' : '0%');
         var title = document.getElementById('aqs-register-title');
         var subtitle = document.getElementById('aqs-register-subtitle');
         var copy = {
@@ -256,7 +263,7 @@
         };
         if (title && copy[step]) title.textContent = copy[step][0];
         if (subtitle && copy[step]) subtitle.textContent = copy[step][1];
-        window.scrollTo(0, 0);
+        if (pageBefore !== pageNow) window.scrollTo(0, 0);
     }
 
     function restoreRegistrationForm() {
@@ -479,6 +486,11 @@
                     if (res.data && res.data.existing_account) {
                         showAlert('aqs-register-alert', 'This email already has an account. Opening it now.', false);
                         window.location.replace(res.data.redirect || 'user-dashboard.html');
+                        return;
+                    }
+                    if (res.data && res.data.profile_setup_deferred) {
+                        showAlert('aqs-register-alert', 'Your account is signed in. Opening your dashboard while profile setup is restored.', false);
+                        window.setTimeout(function () { window.location.replace(res.data.redirect || 'user-dashboard.html'); }, 500);
                         return;
                     }
                     showAlert('aqs-register-alert', 'Account created. Continue setting up your profile.', false);
