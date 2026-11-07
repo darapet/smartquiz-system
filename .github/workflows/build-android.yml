@@ -163,6 +163,10 @@ jobs:
           sed -i "s/versionCode [0-9]*/versionCode ${{ steps.ver.outputs.new_code }}/" android/app/build.gradle
           sed -i "s/versionName \"[^\"]*\"/versionName \"${{ steps.ver.outputs.new_ver }}\"/" android/app/build.gradle
 
+      - name: Sync web updater version code
+        if: steps.skip_check.outputs.skip != 'true'
+        run: cp www/js/aqs-update-check.js ../js/aqs-update-check.js
+
       - name: Copy custom MainActivity
         if: steps.skip_check.outputs.skip != 'true'
         run: |
@@ -292,20 +296,21 @@ jobs:
         run: |
           APK_URL="https://github.com/darapet/smartquiz-system/releases/download/${{ steps.ver.outputs.tag }}/${{ steps.ver.outputs.apk_name }}"
           TODAY=$(date +%Y-%m-%d)
-          printf '{\n  "version": "%s",\n  "versionCode": %s,\n  "releaseDate": "%s",\n  "notes": "%s",\n  "downloadUrl": "%s",\n  "apkUrl": "%s"\n}\n' \
-            "${{ steps.ver.outputs.new_ver }}" \
-            "${{ steps.ver.outputs.new_code }}" \
-            "$TODAY" \
-            "${{ steps.ver.outputs.notes }}" \
-            "$APK_URL" \
+          printf '{\n  "version": "%s",\n  "versionCode": %s,\n  "releaseDate": "%s",\n  "notes": "%s",\n  "downloadUrl": "%s",\n  "apkUrl": "%s"\n}\n' \\
+            "${{ steps.ver.outputs.new_ver }}" \\
+            "${{ steps.ver.outputs.new_code }}" \\
+            "$TODAY" \\
+            "${{ steps.ver.outputs.notes }}" \\
+            "$APK_URL" \\
             "$APK_URL" > www/version.json
+          cp www/version.json ../version.json
 
       - name: Commit and push version bumps
         if: steps.skip_check.outputs.skip != 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add www/version.json www/js/aqs-update-check.js
+          git add www/version.json www/js/aqs-update-check.js ../version.json ../js/aqs-update-check.js
           git diff --cached --quiet && exit 0
           git commit -m "chore: release v${{ steps.ver.outputs.new_ver }} (build ${{ steps.ver.outputs.new_code }}) [skip ci]"
           git push origin HEAD:main

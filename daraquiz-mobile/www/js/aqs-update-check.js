@@ -15,14 +15,16 @@
  */
 
 /* ══ CI patches this automatically — do NOT edit by hand ══════════════════ */
-var AQS_APP_VERSION_CODE = 553;
+var AQS_APP_VERSION_CODE = 574;
 /* ══════════════════════════════════════════════════════════════════════════ */
 
 (function () {
   'use strict';
 
-  var VERSION_JSON_URL =
-    'https://darapet.name.ng/daraquiz-mobile/www/version.json';
+  var VERSION_JSON_URLS = [
+    'https://darapet.name.ng/daraquiz-mobile/www/version.json',
+    'https://raw.githubusercontent.com/darapet/smartquiz-system/main/daraquiz-mobile/www/version.json'
+  ];
 
   var DISMISSED_KEY = 'aqs_update_dismissed_ver';  /* set only after download starts */
   var SNOOZE_KEY    = 'aqs_update_snooze_time';    /* set when user taps X or Remind me later */
@@ -255,12 +257,28 @@ var AQS_APP_VERSION_CODE = 553;
   /* ── Main check ─────────────────────────────────────────────────────────── */
   var _remoteCode = 0;
 
-  function runCheck() {
-    fetch(VERSION_JSON_URL + '?_=' + Date.now())
+  function fetchVersionMetadata(index) {
+    if (index >= VERSION_JSON_URLS.length) {
+      return Promise.reject(new Error('All version metadata sources failed'));
+    }
+    return fetch(VERSION_JSON_URLS[index] + '?_=' + Date.now())
       .then(function (r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.json();
       })
+      .then(function (data) {
+        if (!data || !Number.isFinite(parseInt(data.versionCode, 10))) {
+          throw new Error('Invalid version metadata');
+        }
+        return data;
+      })
+      .catch(function () {
+        return fetchVersionMetadata(index + 1);
+      });
+  }
+
+  function runCheck() {
+    fetchVersionMetadata(0)
       .then(function (data) {
         _remoteCode = parseInt(data.versionCode, 10) || 0;
         console.log('[AQS-UPD] Local:', AQS_APP_VERSION_CODE, '| Remote:', _remoteCode);
