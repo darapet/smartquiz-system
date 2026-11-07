@@ -300,8 +300,8 @@ jobs:
             "${{ steps.ver.outputs.new_ver }}" \\
             "${{ steps.ver.outputs.new_code }}" \\
             "$TODAY" \\
-            "${{ steps.ver.outputs.notes }}" \\
-            "$APK_URL" \\
+            "${{ steps.ver.outputs.notes }}" \
+            "$APK_URL" \
             "$APK_URL" > www/version.json
           cp www/version.json ../version.json
 
