@@ -145,7 +145,7 @@ jobs:
           lines = [line for line in text.splitlines() if not line.startswith("networkTimeout=")]
           distribution_url = next(i for i, line in enumerate(lines) if line.startswith("distributionUrl="))
           lines.insert(distribution_url + 1, timeout)
-          properties.write_text("\\n".join(lines) + "\\n")
+          properties.write_text("\n".join(lines) + "\n")
           print(f"Configured Gradle wrapper download timeout: {timeout}")
           PY
 
