@@ -641,10 +641,12 @@ function setupRoleChips() {
     }
 
 function setupGoogleSignIn() {
-          var btn = document.getElementById('aqs-google-login');
-          if (!btn) return;
-          var alertId = document.getElementById('aqs-login-alert') ? 'aqs-login-alert'
-                      : document.getElementById('aqs-register-alert') ? 'aqs-register-alert' : null;
+          var buttons = document.querySelectorAll('#aqs-google-login, #aqs-login-google, #aqs-register-google');
+          if (!buttons.length) return;
+
+          buttons.forEach(function(btn) {
+          var alertId = btn.id === 'aqs-register-google' || document.getElementById('aqs-register-alert')
+                      ? 'aqs-register-alert' : 'aqs-login-alert';
 
           function resetBtn() {
               btn.disabled = false;
@@ -678,6 +680,7 @@ function setupGoogleSignIn() {
                       if (alertId) showAlert(alertId, (err && err.message) || 'Google sign-in failed. Try again.', true);
                   }
               );
+          });
           });
       }
 
