@@ -661,6 +661,119 @@ async function actionLogin(data) {
     };
 }
 
+/* ── Google / Social Sign-In ───────────────────────────────────────────────
+   Firebase's signInWithPopup relies on a browser popup and is unreliable in
+   GitHub Pages subfolders and Capacitor WebViews. Google Identity Services
+   returns an OAuth access token directly; Firebase then exchanges that token
+   with signInWithCredential. This also avoids Firebase Hosting's
+   /__/auth/handler requirement. */
+function _loadGoogleIdentityServices() {
+    if (typeof window !== 'undefined' && window.google &&
+        window.google.accounts && window.google.accounts.oauth2) {
+        return Promise.resolve();
+    }
+
+    return new Promise(function(resolve, reject) {
+        var existing = document.querySelector('script[data-aqs-google-identity]');
+        var settled = false;
+        var timeoutId;
+        var pollId;
+
+        function finish(error) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timeoutId);
+            clearInterval(pollId);
+            if (error) reject(error);
+            else resolve();
+        }
+
+        function checkReady() {
+            if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+                finish();
+            }
+        }
+
+        if (!existing) {
+            existing = document.createElement('script');
+            existing.src = 'https://accounts.google.com/gsi/client';
+            existing.async = true;
+            existing.defer = true;
+            existing.dataset.aqsGoogleIdentity = 'true';
+            existing.onerror = function() {
+                finish(new Error('Google Sign-In could not load. Check your internet connection and try again.'));
+            };
+            document.head.appendChild(existing);
+        }
+
+        existing.addEventListener('load', checkReady, { once: true });
+        pollId = setInterval(checkReady, 100);
+        timeoutId = setTimeout(function() {
+            finish(new Error('Google Sign-In is taking too long to load. Check your internet connection and try again.'));
+        }, 10000);
+        checkReady();
+    });
+}
+
+async function actionSocialLogin(data) {
+    var providerName = data.provider || 'google';
+    if (providerName !== 'google') throw new Error('Unsupported social provider: ' + providerName);
+
+    await _loadGoogleIdentityServices();
+
+    var result = await new Promise(function(resolve, reject) {
+        var tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: '915234258423-au2kl568mirohob21ejl5n0nrt68bg5r.apps.googleusercontent.com',
+            scope: 'email profile openid',
+            callback: async function(tokenResponse) {
+                if (tokenResponse.error) {
+                    reject(new Error(tokenResponse.error_description || tokenResponse.error));
+                    return;
+                }
+                try {
+                    var credential = GoogleAuthProvider.credential(null, tokenResponse.access_token);
+                    resolve(await signInWithCredential(auth, credential));
+                } catch (error) {
+                    reject(error);
+                }
+            }
+        });
+        tokenClient.requestAccessToken({ prompt: '' });
+    });
+    var user = result.user;
+    var profileRef = doc(db, 'users', user.uid);
+    var profileDoc = await getDoc(profileRef);
+    var profile;
+
+    if (profileDoc.exists()) {
+        profile = profileDoc.data();
+        await updateDoc(profileRef, { last_login: serverTimestamp() });
+    } else {
+        var displayName = user.displayName || '';
+        var emailLocal = (user.email || '').split('@')[0];
+        var baseUsername = (displayName.replace(/\s+/g, '').toLowerCase() || emailLocal).substring(0, 20);
+        var finalUsername = baseUsername;
+        var collision = await getDoc(doc(db, 'usernames', finalUsername));
+        if (collision.exists()) finalUsername = baseUsername + Math.floor(1000 + Math.random() * 9000);
+        profile = {
+            uid: user.uid,
+            name: displayName,
+            username: finalUsername,
+            email: user.email,
+            role: 'student',
+            avatar: user.photoURL || '',
+            provider: 'google',
+            status: 'active',
+            created_at: serverTimestamp(),
+            last_login: serverTimestamp()
+        };
+        await setDoc(profileRef, profile);
+        await setDoc(doc(db, 'usernames', finalUsername), { uid: user.uid });
+    }
+
+    _updateAqsGlobals(user, profile);
+    return { redirect: _dashboardUrl(profile.role), user_name: profile.name || user.displayName || user.email };
+}
 async function actionRegister(data) {
     var email    = String(data.email || '').trim().toLowerCase();
     var password = (data.password || '').trim();
