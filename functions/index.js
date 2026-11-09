@@ -7,6 +7,8 @@ const { onRequest } = require('firebase-functions/v2/https');
 
 admin.initializeApp();
 
+exports.multiplayer = require('./multiplayer-functions').multiplayer;
+
 const db = admin.firestore();
 const CREATOR_IMAGE_WINDOW_MS = 24 * 60 * 60 * 1000;
 const CREATOR_IMAGE_LIMIT = 5;

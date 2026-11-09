@@ -466,6 +466,32 @@ service cloud.firestore {
       allow create, delete: if isSignedIn();
     }
 
+    // SmartQuiz multiplayer is server-authoritative. Clients can only read
+    // an authenticated room and its roster. All writes, including lifecycle,
+    // roster, answers, and scores, go through the authenticated Cloud Function.
+    match /multiplayerRooms/{roomId} {
+      allow get: if isSignedIn()
+        && (request.auth.uid == resource.data.hostUid
+          || exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.auth.uid)));
+      allow list: if false;
+      allow create, update, delete: if false;
+
+      match /players/{playerUid} {
+        allow read: if isSignedIn()
+          && (request.auth.uid == get(/databases/$(database)/documents/multiplayerRooms/$(roomId)).data.hostUid
+            || exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.auth.uid)));
+        allow create, update, delete: if false;
+      }
+
+      match /answers/{answerId} {
+        allow read, write: if false;
+      }
+
+      match /private/{privateId} {
+        allow read, write: if false;
+      }
+    }
+
     // ─── Library Views ──────────────────────────────────────────────
     match /library_views/{viewId} {
       allow read: if isSignedIn();

@@ -1,0 +1,12 @@
+'use strict';
+const test=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs');
+const path=require('node:path');
+const {validateRoom,publicQuestion,answerOutcome}=require('../multiplayer');
+const fixture=()=>({title:'  Demo quiz ',pin:'1234',capacity:200,secondsPerQuestion:30,difficulty:'Easy',questions:[{text:'Question?',options:[{text:'Right',correct:true},{text:'Wrong 1',correct:false},{text:'Wrong 2',correct:false},{text:'Wrong 3',correct:false}]}]});
+test('validates and normalizes a room',()=>{const room=validateRoom(fixture());assert.equal(room.title,'Demo quiz');assert.equal(room.capacity,200);});
+test('rejects invalid pin, capacity, timer, and ambiguous keys',()=>{for(const edit of [r=>r.pin='12',r=>r.capacity=201,r=>r.secondsPerQuestion=4,r=>r.questions[0].options[1].correct=true]){const r=fixture();edit(r);assert.throws(()=>validateRoom(r));}});
+test('public question strips correctness',()=>{const q=publicQuestion(fixture().questions[0]);assert.deepEqual(q.options,[{text:'Right'},{text:'Wrong 1'},{text:'Wrong 2'},{text:'Wrong 3'}]);assert.equal(JSON.stringify(q).includes('correct'),false);});
+test('only first correct answer earns points',()=>{assert.deepEqual(answerOutcome({correct:true,firstCorrectUid:null}),{correct:true,firstCorrect:true,scoreDelta:5});assert.equal(answerOutcome({correct:true,firstCorrectUid:'a'}).scoreDelta,0);assert.equal(answerOutcome({correct:false,firstCorrectUid:null}).scoreDelta,0);});
+test('Firestore rules deny client writes and protect answer/private docs',()=>{const rules=fs.readFileSync(path.join(__dirname,'../../firestore.rules'),'utf8'),block=rules.match(/match \/multiplayerRooms\/\{roomId\} \{([\s\S]*?)\/\/ ─── Library Views/);assert.ok(block,'multiplayer rule block exists');assert.match(block[1],/allow create, update, delete: if false;/);assert.match(block[1],/match \/answers\/\{answerId\} \{\s*allow read, write: if false;/);assert.match(block[1],/match \/private\/\{privateId\} \{\s*allow read, write: if false;/);assert.match(block[1],/match \/players\/\{playerUid\}/);});

@@ -3,7 +3,8 @@
   "description": "Firebase Cloud Functions for xzily AI",
   "scripts": {
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "test": "node --test"
   },
   "engines": {
     "node": "20"

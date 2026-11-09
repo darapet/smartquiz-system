@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Multiplayer Quiz Host — SmartQuiz</title>
+<link rel="stylesheet" href="css/multiplayer-host.css"><script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+</head>
+<body>
+<header class="top"><a href="index.html" class="brand">◈ <span>SmartQuiz</span></a><a href="index.html" class="back">← Home</a></header>
+<main class="shell">
+<section class="hero"><div class="eyebrow">LIVE MULTIPLAYER</div><h1>Bring everyone into the game.</h1><p>Build a question set, open a room, and race to the right answer.</p><div class="hero-stats"><span>Up to 200 players</span><span>Up to 1,500 questions</span><span>First correct answer wins</span></div></section>
+<section class="panel" id="sign-in-panel"><div class="step-label">HOST ACCOUNT</div><h2>Sign in to host</h2><p>Players can join with a room link. Hosting requires your SmartQuiz account.</p><a class="primary" href="login.html?redirect=multiplayer-host.html">Sign in</a></section>
+<section class="panel" id="setup-panel" hidden><div class="step-label">01 · ROOM SETUP</div><h2>Set up your quiz</h2><div class="fields">
+<label>Quiz title<input id="title" maxlength="100" value="Quick-fire quiz" required></label>
+<label>Questions<input id="count" type="number" min="1" max="1500" value="10"></label>
+<label>Players allowed<input id="capacity" type="number" min="1" max="200" value="30"></label>
+<label>Room PIN <span class="input-inline"><input id="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="4 digits"><button type="button" class="subtle" id="random-pin">Generate</button></span></label>
+<label>Difficulty<select id="difficulty"><option>Easy</option><option>Hard</option><option>Harder</option><option>Professional</option></select></label>
+<label>Seconds per question<input id="seconds" type="number" min="5" max="120" value="20"></label>
+<label class="wide">Topic or generation prompt<textarea id="prompt" rows="3" placeholder="e.g. Introductory biology: cells, genetics, and ecosystems"></textarea></label>
+</div><div class="actions"><button class="primary" id="generate">Generate questions</button><button class="outline" id="add-manual">Add sample question</button></div>
+<div class="generation" id="generation" hidden><div class="progress-head"><strong id="progress-label">Generated 0 / 10 questions</strong><button class="subtle" id="continue" hidden>Continue generation</button></div><progress id="progress" value="0" max="10"></progress><div class="question-list" id="question-list"></div></div>
+<div class="status" id="status" role="status"></div><button class="primary full" id="open-room" hidden>Open waiting lobby</button>
+</section>
+<section class="panel lobby" id="lobby-panel" hidden><div class="lobby-top"><div><div class="step-label">02 · WAITING LOBBY</div><h2 id="lobby-title">Your room is ready</h2></div><span class="live"><i></i> Lobby open</span></div>
+<div class="room-share"><div><small>ROOM PIN</small><strong id="room-pin"></strong></div><div class="share-url"><small>ROOM LINK</small><code id="room-link"></code></div><button class="outline" id="copy-link">Copy link</button><canvas id="qr" aria-label="Room QR code"></canvas></div>
+<div class="lobby-tools"><strong><span id="player-count">1</span> / <span id="room-capacity">30</span> players</strong><label class="ready-toggle"><input id="host-ready" type="checkbox" checked><span>Host ready</span></label><button class="outline" id="add-player">Add demo player</button><button class="primary" id="start-game">Start game</button></div>
+<div class="players" id="players"></div><div class="voice-bar"><span>🎙 Voice chat</span><button class="outline" id="mic-toggle" aria-pressed="false">Mic muted</button><span class="voice-note">Voice mesh requires compatible browsers and network access.</span></div>
+</section>
+<section class="panel game" id="game-panel" hidden><div class="game-head"><div><div class="step-label" id="round-label">03 · LIVE GAME</div><h2 id="game-title"></h2></div><div class="top-leaders" id="top-leaders"></div></div><div class="countdown" id="countdown" hidden></div><div id="question-stage"></div><div class="game-foot"><span id="timer"></span><button class="outline" id="next-question" hidden>Next question</button><button class="outline" id="finish-game" hidden>End game</button></div></section>
+<section class="panel results" id="results-panel" hidden><div class="step-label">04 · MATCH RESULTS</div><h2>Final standings</h2><div id="podium" class="podium"></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Answered</th><th>Correct / wrong</th><th>Accuracy</th><th>Avg. speed</th></tr></thead><tbody id="leaderboard"></tbody></table></div></section>
+</main>
+<script type="module" src="js/multiplayer-host.js"></script>
+</body></html>

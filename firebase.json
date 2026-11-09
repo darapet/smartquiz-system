@@ -52,6 +52,10 @@
     ],
     "rewrites": [
       {
+        "source": "/api/multiplayer",
+        "function": {"functionId": "multiplayer", "region": "us-central1"}
+      },
+      {
         "source": "/api/email",
         "function": {
           "functionId": "brevoEmail",
