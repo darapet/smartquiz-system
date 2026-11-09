@@ -23,4 +23,13 @@ function answerOutcome({ correct, firstCorrectUid }) {
   return { correct: Boolean(correct), firstCorrect, scoreDelta: firstCorrect ? 5 : 0 };
 }
 
-module.exports = { validateRoom, publicQuestion, answerOutcome };
+function errorStatus(error) {
+  const message = String(error && error.message || '');
+  if (message === 'Authentication required.') return 401;
+  if (['Only the host can remove players.', 'Only the host can change game state.', 'A non-anonymous host account is required.'].includes(message)) return 403;
+  if (['Room not found.', 'Player not found.'].includes(message)) return 404;
+  if (['Room is closed or full.', 'Room state changed; try again.'].includes(message)) return 409;
+  return 400;
+}
+
+module.exports = { validateRoom, publicQuestion, answerOutcome, errorStatus };

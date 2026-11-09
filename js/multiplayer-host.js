@@ -1,7 +1,7 @@
 import {initializeApp} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
 import {getAuth,signInAnonymously,onAuthStateChanged} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import {initializeFirestore,collection,doc,getDoc,onSnapshot,orderBy,query} from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
-const firebaseConfig={apiKey:'AIzaSy...YxtY',authDomain:'smartquiz-darapet.firebaseapp.com',databaseURL:'https://smartquiz-darapet-default-rtdb.firebaseio.com',projectId:'smartquiz-darapet',storageBucket:'smartquiz-darapet.firebasestorage.app',messagingSenderId:'915234258423',appId:'1:915234258423:web:0c8fc183e9e3ce0852c2f2',measurementId:'G-W4G9C4X9H0'};
+const firebaseConfig={apiKey:'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY',authDomain:'smartquiz-darapet.firebaseapp.com',databaseURL:'https://smartquiz-darapet-default-rtdb.firebaseio.com',projectId:'smartquiz-darapet',storageBucket:'smartquiz-darapet.firebasestorage.app',messagingSenderId:'915234258423',appId:'1:915234258423:web:0c8fc183e9e3ce0852c2f2',measurementId:'G-W4G9C4X9H0'};
 const app=initializeApp(firebaseConfig),auth=getAuth(app),db=initializeFirestore(app,{experimentalForceLongPolling:true,useFetchStreams:false});
 const $=id=>document.getElementById(id), S={questions:[],players:[],room:null,id:'',unsubs:[],i:-1,timer:null,link:''}, icons=['🦊','🐼','🐸','🦉','🐙','🐯','🐨','🦄','🐧','🐢','🐬','🐝'];
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
