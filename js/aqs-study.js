@@ -7,7 +7,7 @@
 
 /* ── CONFIG ─────────────────────────────────────────────────── */
 var CFG        = window.AQS_CONFIG || {};
-var GROQ_MODEL = CFG.groqModel || 'llama-3.3-70b-versatile';
+var GROQ_MODEL = CFG.groqModel || 'openai/gpt-oss-20b';
 
 /* ── CONSTANTS ─────────────────────────────────────────────── */
 var WIKI_API  = 'https://en.wikipedia.org/w/api.php';

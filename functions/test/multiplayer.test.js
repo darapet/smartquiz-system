@@ -109,3 +109,65 @@ test('voice signals are limited to room players and readable only by the address
   assert.match(signals[1], /allow read, delete: if isSignedIn\(\) && resource\.data\.to == request\.auth\.uid;/);
   assert.match(signals[1], /allow update: if false;/);
 });
+
+test('validates an AI request and trims it', () => {
+  const input = M.validateGenerate({ topic: '  Cell   biology  ', difficulty: 'Hard', count: 15, batch: 3, avoid: ['  a  ', '', 'b'] });
+  assert.deepEqual(input, { topic: 'Cell biology', difficulty: 'Hard', count: 15, batch: 3, avoid: ['a', 'b'] });
+});
+
+test('rejects bad AI requests', () => {
+  assert.throws(() => M.validateGenerate({ topic: 'ab', difficulty: 'Easy', count: 5 }), /Describe/);
+  assert.throws(() => M.validateGenerate({ topic: 'Biology', difficulty: 'Impossible', count: 5 }), /difficulty/);
+  assert.throws(() => M.validateGenerate({ topic: 'Biology', difficulty: 'Easy', count: 21 }), /1 to 20/);
+  assert.throws(() => M.validateGenerate({ topic: 'x'.repeat(1501), difficulty: 'Easy', count: 5 }), /characters/);
+  assert.throws(() => M.validateGenerate(null), /Describe/);
+});
+
+test('keeps only the newest 30 avoid entries and caps their length', () => {
+  const avoid = Array.from({ length: 50 }, (_, i) => `q${i}`);
+  assert.equal(M.validateGenerate({ topic: 'Biology', difficulty: 'Easy', count: 5, avoid }).avoid.length, 30);
+  assert.equal(M.validateGenerate({ topic: 'Biology', difficulty: 'Easy', count: 5, avoid }).avoid[0], 'q20');
+  assert.equal(M.validateGenerate({ topic: 'Biology', difficulty: 'Easy', count: 5, avoid: ['z'.repeat(999)] }).avoid[0].length, M.AI_LIMITS.maxAvoidChars);
+});
+
+test('builds a prompt with count, topic, level and avoid list', () => {
+  const p = M.buildQuizPrompt({ topic: 'Photosynthesis', difficulty: 'Professional', count: 12, avoid: ['What is a leaf?'], batch: 4 });
+  assert.match(p, /exactly 12 multiple-choice/);
+  assert.match(p, /about: Photosynthesis/);
+  assert.match(p, /Professional: expert-level/);
+  assert.match(p, /batch 4/);
+  assert.match(p, /- What is a leaf\?/);
+});
+
+test('moves retired Groq models to current ones', () => {
+  assert.equal(M.groqModelFor('llama-3.3-70b-versatile'), 'openai/gpt-oss-120b');
+  assert.equal(M.groqModelFor('llama-3.1-8b-instant'), 'openai/gpt-oss-20b');
+  assert.equal(M.groqModelFor('openai/gpt-oss-120b'), 'openai/gpt-oss-120b');
+  assert.equal(M.groqModelFor(''), 'openai/gpt-oss-20b');
+  assert.equal(M.groqModelFor(undefined), 'openai/gpt-oss-20b');
+});
+
+test('collects, cleans and de-duplicates AI keys across pools', () => {
+  const k1 = 'gsk_' + 'a'.repeat(30), k2 = 'gsk_' + 'b'.repeat(30);
+  const keys = M.collectKeys({ quiz_groq_keys: [k1, ' ' + k1 + '​', 'short'], groq_keys: [k2, null, 5], other: ['x'.repeat(40)] }, ['quiz_groq_keys', 'groq_keys']);
+  assert.deepEqual(keys, [k1, k2]);
+  assert.deepEqual(M.collectKeys({}, ['groq_keys']), []);
+  assert.deepEqual(M.collectKeys(null, ['groq_keys']), []);
+});
+
+test('fixed-window quota counts, blocks, then resets', () => {
+  const hour = 3600e3;
+  let s = M.nextQuota(null, 1000, 2, hour);
+  assert.deepEqual(s, { ok: true, start: 1000, count: 1 });
+  s = M.nextQuota(s, 2000, 2, hour);
+  assert.deepEqual(s, { ok: true, start: 1000, count: 2 });
+  assert.equal(M.nextQuota(s, 3000, 2, hour).ok, false);
+  const reset = M.nextQuota(s, 1000 + hour, 2, hour);
+  assert.deepEqual(reset, { ok: true, start: 1000 + hour, count: 1 });
+});
+
+test('maps guest-facing errors to useful status codes', () => {
+  assert.equal(M.errorStatus(new Error('Too many requests. Please wait a while and try again.')), 429);
+  assert.equal(M.errorStatus(new Error('AI is not set up yet. The site owner needs to add AI keys in Admin Settings.')), 503);
+  assert.equal(M.errorStatus(new Error('The AI service is busy or unavailable right now. Wait a minute, then press Continue.')), 503);
+});

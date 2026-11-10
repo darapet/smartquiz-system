@@ -2278,7 +2278,7 @@ async function _aqsTestHFKeys() {
         var badge = '<span style="font-size:.7rem;background:#d1fae5;color:#065f46;border-radius:4px;padding:2px 7px;font-weight:700;">HF</span>';
         var tStart = Date.now();
         try {
-            var res = await fetch('https://api-inference.huggingface.co/v1/chat/completions', {
+            var res = await fetch('https://router.huggingface.co/v1/chat/completions', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
                 body: JSON.stringify({ model: model, messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 5 }),

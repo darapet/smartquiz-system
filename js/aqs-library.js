@@ -81,7 +81,7 @@ function _waitFirebase() {
     /* Wait for Firebase auto-loader before deciding no keys are set */
     if(!_SLOTS.length) await window._libKeysReady;
 
-    var model = 'llama-3.3-70b-versatile';
+    var model = (window._aqsGroqModel ? window._aqsGroqModel(window._AQS_GROQ_MODEL) : window._AQS_GROQ_MODEL) || 'openai/gpt-oss-20b';
     if(_SLOTS.length){
       var start=_idx();
       for(var i=0;i<_SLOTS.length;i++){

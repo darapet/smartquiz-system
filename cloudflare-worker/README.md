@@ -71,3 +71,22 @@ per minute and caps each request at 1,800 output tokens.
 The same secret-backed Worker also provides `POST /api/ai/transcribe` for
 authenticated audio transcription. Audio is limited to 20 MB and uses the same
 per-user request limit and `GROQ_API_KEY` secret.
+
+## Live multiplayer (free, no Firebase Blaze)
+
+`POST /api/multiplayer` runs the host-a-quiz game server (rooms, PIN join, ready,
+start, answers, scoring, AI question writing). It talks to Firestore over REST with
+the `FIREBASE_SERVICE_ACCOUNT` secret and writes questions with the same Groq keys
+as `/api/ai` (saved from Admin Settings, or the `GROQ_API_KEY` secret). Nobody needs an account: the browser
+signs in anonymously and the Worker checks that token.
+
+Setup once:
+
+```bash
+npx wrangler secret put FIREBASE_SERVICE_ACCOUNT   # paste the service-account JSON
+npx wrangler deploy
+firebase deploy --only firestore:rules             # free on the Spark plan
+```
+
+Also enable Authentication -> Sign-in method -> Anonymous in the Firebase console.
+Tests: `npm test` in this folder.

@@ -1,4 +1,6 @@
 import { handleImage } from './worker.js';
+import { handleMultiplayer } from './multiplayer.js';
+import { groqModelFor } from './multiplayer-logic.js';
 
 const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
 const FIREBASE_SIGNUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
@@ -1196,13 +1198,12 @@ async function handleAI(request, env) {
       return json(request, env, { error: 'A valid messages array is required (maximum 20 messages).' }, 400);
     }
     const allowedModels = new Set([
-      'llama-3.3-70b-versatile',
-      'llama-3.1-8b-instant',
       'openai/gpt-oss-20b',
-      'llama-3.1-70b-versatile'
+      'openai/gpt-oss-120b'
     ]);
-    const requestedModel = String(payload.model || env.GROQ_MODEL || 'llama-3.3-70b-versatile').trim();
-    const model = allowedModels.has(requestedModel) ? requestedModel : String(env.GROQ_MODEL || 'llama-3.3-70b-versatile');
+    /* Groq retired the llama 3.x models; old settings and old pages are mapped to the current ones. */
+    const requestedModel = groqModelFor(String(payload.model || env.GROQ_MODEL || '').trim());
+    const model = allowedModels.has(requestedModel) ? requestedModel : 'openai/gpt-oss-20b';
     const messages = [];
     let totalChars = 0;
     for (const item of payload.messages) {
@@ -1230,7 +1231,8 @@ async function handleAI(request, env) {
     if (fallbackSecret && !keys.includes(fallbackSecret)) keys.push(fallbackSecret);
     if (!keys.length) return json(request, env, { error: 'No Groq API keys are configured. Add a key in SmartQuiz Admin Settings and save the settings.' }, 503);
     const configuredModel = aiConfig.model;
-    const effectiveModel = allowedModels.has(configuredModel) ? configuredModel : model;
+    const mappedConfigured = groqModelFor(configuredModel);
+    const effectiveModel = configuredModel && allowedModels.has(mappedConfigured) ? mappedConfigured : model;
     const maxTokens = Math.max(64, Math.min(1800, Number(payload.max_tokens) || 1200));
     const temperature = Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7));
     let upstream = null;
@@ -1331,6 +1333,16 @@ export default {
       || url.pathname === '/brevoEmail/'
     ) {
       return handleEmail(request, env);
+    }
+    if (url.pathname === '/api/multiplayer' || url.pathname === '/api/multiplayer/') {
+      return handleMultiplayer(request, env, { json, corsHeaders, getAccessToken: createGoogleAccessToken,
+        getGroqConfig: async (e) => {
+          const cfg = await getGroqAIConfig(e);
+          const secret = String(e.GROQ_API_KEY || '').trim();
+          const keys = cfg.keys.slice();
+          if (secret && !keys.includes(secret)) keys.push(secret);
+          return { keys, model: cfg.model || String(e.GROQ_MODEL || '') };
+        } });
     }
     if (
       url.pathname === '/websearch'
