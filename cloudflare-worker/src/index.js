@@ -4,6 +4,7 @@ const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:
 const FIREBASE_SIGNUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
 const BREVO_EMAIL_URL = 'https://api.brevo.com/v3/smtp/email';
 const BREVO_CONFIG_KEY = 'brevo';
+const GROQ_AI_CONFIG_KEY = 'groq-ai';
 const REGISTRATION_KEY_PREFIX = 'registration:';
 const EMAIL_PREFERENCES_PREFIX = 'email-preferences:';
 const EMAIL_UNSUBSCRIBE_PREFIX = 'email-unsubscribe:';
@@ -1142,6 +1143,40 @@ async function verifyFirebaseAIUser(request, env) {
   return { uid: String(user.localId), email: String(user.email || '').trim().toLowerCase() };
 }
 
+
+async function getGroqAIConfig(env) {
+  if (!env.EMAIL_CONFIG) return { keys: [], model: '' };
+  const stored = await env.EMAIL_CONFIG.get(GROQ_AI_CONFIG_KEY, 'json').catch(() => ({})) || {};
+  return {
+    keys: Array.isArray(stored.keys) ? stored.keys.filter((key) => typeof key === 'string' && key.startsWith('gsk_') && key.length > 20).slice(0, 20) : [],
+    model: String(stored.model || '').trim(),
+  };
+}
+
+async function handleAIConfig(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST to sync AI settings.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+    if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
+    if (!env.EMAIL_CONFIG) return json(request, env, { error: 'Cloudflare KV storage is not configured.' }, 503);
+    const payload = await request.json().catch(() => ({}));
+    const rawKeys = Array.isArray(payload.groq_keys) ? payload.groq_keys : [];
+    const keys = rawKeys.map((key) => String(key || '').trim()).filter((key) => key.startsWith('gsk_') && key.length > 20).slice(0, 20);
+    if (rawKeys.length && !keys.length) return json(request, env, { error: 'No valid Groq API keys were supplied. Check the Groq keys in Admin Settings.' }, 400);
+    const model = String(payload.groq_model || '').trim().slice(0, 100);
+    await env.EMAIL_CONFIG.put(GROQ_AI_CONFIG_KEY, JSON.stringify({ keys, model, updatedAt: Date.now(), updatedBy: user.email }));
+    return json(request, env, { saved: true, keyCount: keys.length, model });
+  } catch (error) {
+    return json(request, env, { error: error && error.message ? error.message : 'Could not sync AI settings.' }, Number(error && error.httpStatus) || 500);
+  }
+}
+
 async function handleAI(request, env) {
   if (request.method === 'OPTIONS') {
     if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') {
@@ -1189,16 +1224,27 @@ async function handleAI(request, env) {
       await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
     }
 
-    const apiKey = String(env.GROQ_API_KEY || '').trim();
-    if (!apiKey) return json(request, env, { error: 'AI service is not configured yet. The administrator must add the GROQ_API_KEY Worker secret.' }, 503);
+    const aiConfig = await getGroqAIConfig(env);
+    const keys = aiConfig.keys.slice();
+    const fallbackSecret = String(env.GROQ_API_KEY || '').trim();
+    if (fallbackSecret && !keys.includes(fallbackSecret)) keys.push(fallbackSecret);
+    if (!keys.length) return json(request, env, { error: 'No Groq API keys are configured. Add a key in SmartQuiz Admin Settings and save the settings.' }, 503);
+    const configuredModel = aiConfig.model;
+    const effectiveModel = allowedModels.has(configuredModel) ? configuredModel : model;
     const maxTokens = Math.max(64, Math.min(1800, Number(payload.max_tokens) || 1200));
     const temperature = Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7));
-    const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
-      body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }),
-    });
-    const result = await upstream.json().catch(() => ({}));
+    let upstream = null;
+    let result = {};
+    for (const apiKey of keys) {
+      upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({ model: effectiveModel, messages, max_tokens: maxTokens, temperature }),
+      });
+      result = await upstream.json().catch(() => ({}));
+      if (upstream.ok) break;
+      if (![401, 403, 429].includes(upstream.status)) break;
+    }
     if (!upstream.ok) {
       const detail = result && result.error && result.error.message ? String(result.error.message).slice(0, 300) : 'The AI provider rejected the request.';
       const retryAfter = upstream.headers.get('Retry-After');
@@ -1224,8 +1270,9 @@ async function handleAITranscribe(request, env) {
   if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
   try {
     const user = await verifyFirebaseAIUser(request, env);
-    const apiKey = String(env.GROQ_API_KEY || '').trim();
-    if (!apiKey) return json(request, env, { error: 'AI service is not configured yet.' }, 503);
+    const aiConfig = await getGroqAIConfig(env);
+    const apiKey = aiConfig.keys[0] || String(env.GROQ_API_KEY || '').trim();
+    if (!apiKey) return json(request, env, { error: 'No Groq API keys are configured. Add one in SmartQuiz Admin Settings.' }, 503);
     const incoming = await request.formData();
     const file = incoming.get('file');
     if (!file || typeof file.arrayBuffer !== 'function' || !file.size) return json(request, env, { error: 'An audio recording is required.' }, 400);
@@ -1268,7 +1315,7 @@ export default {
      * prevents cached/older SmartQuiz admin pages from turning a valid Worker
      * deployment into a misleading 404 while they refresh.
      */
-    if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
+    if (url.pathname === '/api/ai/config' || url.pathname === '/api/ai/config/') {\n      return handleAIConfig(request, env);\n    }\n    if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
       return handleAITranscribe(request, env);
     }
     if (url.pathname === '/api/ai' || url.pathname === '/api/ai/') {
