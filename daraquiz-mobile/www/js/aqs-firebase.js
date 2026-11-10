@@ -2697,6 +2697,8 @@ async function actionGetSettings() {
                         }
                         await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
                     }
+                    try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                    catch (syncError) { console.warn('[SmartQuiz AI] Admin Groq settings loaded but Worker sync failed:', syncError.message); }
                     settings.groq_keys = privateGroqKeys;
                 }
             }
