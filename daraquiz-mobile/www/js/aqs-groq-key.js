@@ -849,6 +849,26 @@ window._aqsKeysReady = new Promise(function(resolve) {
     return response;
   };
 
+
+  window.aqsWorkerTranscribe = async function(audioBlob) {
+    var user = await currentFirebaseUser();
+    var token = await user.getIdToken();
+    var form = new FormData();
+    form.append('file', audioBlob, 'recording.webm');
+    var response = await fetch(AI_WORKER_ENDPOINT.replace(/\\/api\\/ai$/, '/api/ai/transcribe'), {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: form,
+      cache: 'no-store'
+    });
+    var data = await response.json().catch(function(){ return {}; });
+    if (!response.ok) {
+      var message = data && data.error && (data.error.message || data.error);
+      throw new Error(message || ('Transcription failed (' + response.status + ').'));
+    }
+    return String(data.text || '').trim();
+  };
+
   /* Preserve the Response contract expected by existing AI feature callers. */
   window.groqFetch = window.aqsWorkerAI;
   window.studyhubGroqFetch = window.aqsWorkerAI;
