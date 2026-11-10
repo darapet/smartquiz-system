@@ -2674,6 +2674,7 @@ async function actionGetSettings() {
         var snap = await getDoc(doc(db, 'settings', 'main'));
         if (snap.exists()) {
             var settings = snap.data();
+            var legacyGroqKeys = Array.isArray(settings.groq_keys) ? settings.groq_keys.slice(0, 20) : [];
             /* Public pages may use non-secret AI settings, but the Creator
                Studio image-token pool is read only by the server function.
                Admin Settings opts in explicitly before loading this module. */
@@ -2685,7 +2686,16 @@ async function actionGetSettings() {
                 var currentUser = auth.currentUser || window._aqsFirebaseUser;
                 if (isConfiguredAdmin(currentUser)) {
                     var privateSnap = await getDoc(doc(db, 'settings', 'private'));
-                    if (privateSnap.exists()) settings.groq_keys = privateSnap.data().groq_keys || [];
+                    var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                    var privateGroqKeys = Array.isArray(privateData.groq_keys) ? privateData.groq_keys : [];
+                    if (!privateGroqKeys.length && legacyGroqKeys.length) {
+                        privateGroqKeys = legacyGroqKeys;
+                        await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
+                        await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+                        try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                        catch (syncError) { console.warn('[SmartQuiz AI] Legacy Groq keys moved to private settings but Worker sync failed:', syncError.message); }
+                    }
+                    settings.groq_keys = privateGroqKeys;
                 }
             }
             return { settings: settings };
