@@ -200,6 +200,24 @@ function _brevoEmailEndpoint() {
     return 'https://darapet-technologyimafe.daramolapeter98.workers.dev/api/email';
 }
 
+
+async function syncGroqAIConfiguration(config) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('Sign in as admin before syncing AI settings.');
+    var token = await user.getIdToken();
+    var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+            groq_keys: Array.isArray(config && config.keys) ? config.keys : [],
+            groq_model: String(config && config.model || '')
+        })
+    });
+    var body = await response.json().catch(function(){ return {}; });
+    if (!response.ok) throw new Error(body.error || ('AI settings sync failed (' + response.status + ').'));
+    return body;
+}
+
 async function callBrevoEmail(payload) {
     var user = requireAuth();
     var token = await user.getIdToken();
@@ -2656,12 +2674,33 @@ async function actionGetSettings() {
         var snap = await getDoc(doc(db, 'settings', 'main'));
         if (snap.exists()) {
             var settings = snap.data();
+            var legacyGroqKeys = Array.isArray(settings.groq_keys) ? settings.groq_keys.slice(0, 20) : [];
             /* Public pages may use non-secret AI settings, but the Creator
                Studio image-token pool is read only by the server function.
                Admin Settings opts in explicitly before loading this module. */
+            settings = Object.assign({}, settings);
+            delete settings.groq_keys;
             if (!window._AQS_ADMIN_SETTINGS_MODE) {
-                settings = Object.assign({}, settings);
                 delete settings.creator_image_keys;
+            } else {
+                var currentUser = auth.currentUser || window._aqsFirebaseUser;
+                if (isConfiguredAdmin(currentUser)) {
+                    var privateSnap = await getDoc(doc(db, 'settings', 'private'));
+                    var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                    var privateGroqKeys = Array.isArray(privateData.groq_keys) ? privateData.groq_keys : [];
+                    if (legacyGroqKeys.length) {
+                        if (!privateGroqKeys.length) {
+                            privateGroqKeys = legacyGroqKeys;
+                            await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
+                            try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                            catch (syncError) { console.warn('[SmartQuiz AI] Legacy Groq keys moved to private settings but Worker sync failed:', syncError.message); }
+                        }
+                        await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+                    }
+                    try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                    catch (syncError) { console.warn('[SmartQuiz AI] Admin Groq settings loaded but Worker sync failed:', syncError.message); }
+                    settings.groq_keys = privateGroqKeys;
+                }
             }
             return { settings: settings };
         }
@@ -2673,6 +2712,7 @@ async function actionSaveSettings(data) {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
+    var privatePayload = {};
     var allowed = [
         'groq_keys','groq_model',
         'mistral_keys','mistral_model',
@@ -2697,7 +2737,11 @@ async function actionSaveSettings(data) {
         'quizstudio_groq_keys',
         'gemini_tts_keys'
     ];
-    allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    allowed.forEach(function(k) {
+        if (!(k in data)) return;
+        if (k === 'groq_keys') privatePayload[k] = data[k];
+        else payload[k] = data[k];
+    });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
     if (Array.isArray(payload.gemini_tts_keys)) {
         payload.gemini_tts_keys = payload.gemini_tts_keys
@@ -2757,14 +2801,25 @@ async function actionSaveSettings(data) {
                 .slice(0, 10);
         }
     });
+    delete payload.groq_keys;
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
-    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
-        var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-        var _gMerged = payload.groq_keys.slice();
-        _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
-        window._AQS_GROQ_MASTER_KEYS = _gMerged;
+    if ('groq_keys' in privatePayload || 'groq_model' in payload) {
+        var cleanGroqKeys;
+        if ('groq_keys' in privatePayload) {
+            cleanGroqKeys = Array.isArray(privatePayload.groq_keys)
+                ? privatePayload.groq_keys.map(function(k){ return String(k || '').trim(); }).filter(function(k){ return k.indexOf('gsk_') === 0 && k.length > 20; }).slice(0,20)
+                : [];
+            await setDoc(doc(db, 'settings', 'private'), { groq_keys: cleanGroqKeys }, { merge: true });
+            await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+        } else {
+            var savedPrivateSnap = await getDoc(doc(db, 'settings', 'private'));
+            var savedPrivate = savedPrivateSnap.exists() ? savedPrivateSnap.data() : {};
+            cleanGroqKeys = Array.isArray(savedPrivate.groq_keys) ? savedPrivate.groq_keys : [];
+        }
+        await syncGroqAIConfiguration({ keys: cleanGroqKeys, model: payload.groq_model || window._AQS_GROQ_MODEL || '' });
+        window._AQS_GROQ_MASTER_KEYS = cleanGroqKeys.slice();
     }
+    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
