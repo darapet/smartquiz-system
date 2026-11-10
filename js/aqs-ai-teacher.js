@@ -326,20 +326,15 @@ function aitSignal(ms){
   try{ if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms); }catch(e){}
   return undefined;
 }
-/* Keys load from Firebase after aqs:firebase:ready — wait briefly on first use */
+/* Wait for the shared Firebase AI-key loader instead of using a 3-second
+   polling window that can expire on slow connections. */
 function keysReady(){
-  return new Promise(function(resolve){
-    function count(){
-      try{ return (window.getFeatureGroqKeyCount ? window.getFeatureGroqKeyCount('studyhub') : 0)
-                 + (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0); }catch(e){ return 0; }
-    }
-    if(count() > 0) return resolve(true);
-    var tries = 0;
-    var iv = setInterval(function(){
-      tries++;
-      if(count() > 0 || tries > 20){ clearInterval(iv); resolve(count() > 0); }
-    }, 150);
-  });
+  function count(){
+    try{ return (window.getFeatureGroqKeyCount ? window.getFeatureGroqKeyCount('studyhub') : 0)
+               + (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0); }catch(e){ return 0; }
+  }
+  if(count() > 0) return Promise.resolve(true);
+  return Promise.resolve(window._aqsKeysReady).then(function(){ return count() > 0; });
 }
 function aiFetch(messages){
   var body = { model: AIT_MODEL, messages: messages, temperature: 0.6, max_tokens: 900 };
