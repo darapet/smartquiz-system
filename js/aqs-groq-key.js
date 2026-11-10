@@ -736,7 +736,12 @@ window._aqsKeysReady = new Promise(function(resolve) {
                    concluding that the dedicated slots are empty. */
                 if (!slots.length && window._aqsKeysReady &&
                     (opts.noFallback || !_sharedKeyCount())) {
-                    await window._aqsKeysReady;
+                    /* Firebase auth/ready events can fail to fire on a cached or
+                       partially initialized page. Never let generation wait forever. */
+                    await Promise.race([
+                        window._aqsKeysReady,
+                        new Promise(function(resolve) { setTimeout(resolve, 8000); })
+                    ]);
                 }
                 var request = Object.assign({
                     model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
