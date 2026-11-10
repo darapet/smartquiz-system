@@ -809,3 +809,54 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
     window.darasocialPostGroqFetch = function(b, o) { return _pools.darasocial_post_slot.fetch(b, o); };
 })();
+
+
+/* ── Secure server-side AI route: provider keys never leave Cloudflare ── */
+(function () {
+  var AI_WORKER_ENDPOINT = 'https://smartquiz-system3.daramolapeter98.workers.dev/api/ai';
+  async function currentFirebaseUser() {
+    var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+    if (user && typeof user.getIdToken === 'function') return user;
+    if (window._aqsAuthResolved === false) {
+      await new Promise(function(resolve) {
+        var done = false;
+        function finish() {
+          if (done) return;
+          done = true;
+          document.removeEventListener('aqs:authchange', finish);
+          resolve();
+        }
+        document.addEventListener('aqs:authchange', finish);
+        setTimeout(finish, 10000);
+      });
+    }
+    user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+    if (!user || typeof user.getIdToken !== 'function') {
+      throw new Error('Please sign in before using AI generation.');
+    }
+    return user;
+  }
+  window.aqsWorkerAI = async function(bodyObj, extraOpts) {
+    var user = await currentFirebaseUser();
+    var token = await user.getIdToken();
+    var options = Object.assign({}, extraOpts || {});
+    var signal = options.signal;
+    var response = await fetch(AI_WORKER_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(bodyObj || {}),
+      cache: 'no-store',
+      signal: signal
+    });
+    return response;
+  };
+
+  /* Preserve the Response contract expected by existing AI feature callers. */
+  window.groqFetch = window.aqsWorkerAI;
+  window.studyhubGroqFetch = window.aqsWorkerAI;
+  window.quizGroqFetch = window.aqsWorkerAI;
+  window.challengeGroqFetch = window.aqsWorkerAI;
+  window.textdocsGroqFetch = window.aqsWorkerAI;
+  window.puzzleGroqFetch = window.aqsWorkerAI;
+  window.quizstudioGroqFetch = window.aqsWorkerAI;
+})();
