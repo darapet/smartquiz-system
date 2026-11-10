@@ -46,3 +46,5 @@ body[data-aqs-page] img,body[data-aqs-page] video,body[data-aqs-page] canvas{max
 .aqs-phase2-back{flex:0 0 auto;display:inline-flex;align-items:center;min-height:38px;padding:0 12px;border-radius:10px;background:#fff7eb;color:#8b4d09!important;text-decoration:none;font-weight:700}
 .aqs-phase2-page-title{min-width:0;color:#12304a;font-size:clamp(1rem,2.5vw,1.3rem);font-weight:750;line-height:1.25;overflow-wrap:anywhere}
 @media(max-width:600px){.aqs-phase2-page-header{width:calc(100% - 24px);min-height:52px;margin:10px auto 14px;padding:8px 10px;gap:10px}.aqs-phase2-back{min-height:36px;padding:0 10px;font-size:.9rem}.aqs-phase2-page-title{font-size:1.02rem}}
+/* Admin pages have their own sidebar. The shared page header would otherwise become a flex item that squeezes the layout. */
+body[data-aqs-page-group="admin"] .aqs-phase2-page-header{display:none!important}
