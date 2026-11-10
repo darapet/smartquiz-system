@@ -66,3 +66,8 @@ source files, GitHub commits, or chat. The allowed browser origins are configure
 in `wrangler.toml`; include the production website and Capacitor origins used by
 the app. The AI endpoint currently allows up to 12 requests per Firebase user
 per minute and caps each request at 1,800 output tokens.
+
+
+The same secret-backed Worker also provides `POST /api/ai/transcribe` for
+authenticated audio transcription. Audio is limited to 20 MB and uses the same
+per-user request limit and `GROQ_API_KEY` secret.
