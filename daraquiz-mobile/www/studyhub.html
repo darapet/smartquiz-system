@@ -1942,18 +1942,28 @@ function aitSetSpeed(rate, el){
   _ait.speechRate = rate;
 }
 
+/* Secure AI Teacher compatibility adapter: no provider keys are stored in this page. */
+const AIT_DEFAULT_KEYS = [];
+function aitGetKeys(){ return []; }
+async function aitMistral(messages, maxTokens=1200){
+  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
+  const response = await window.aqsWorkerAI({
+    model: 'llama-3.3-70b-versatile',
+    messages: Array.isArray(messages) ? messages : [{role:'user', content:String(messages || '')}],
+    max_tokens: maxTokens,
+    temperature: 0.7
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok){
+    const message = data && data.error && (data.error.message || data.error);
+    throw new Error(message || ('AI request failed (' + response.status + ').'));
+  }
+  return data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+}
+
 function aitRenderKeySlots(){
   const container = document.getElementById('ait-key-slots');
-  let html = '';
-  for(let i=0;i<10;i++){
-    const saved = localStorage.getItem('ait_key_'+i)||'';
-    const def = AIT_DEFAULT_KEYS[i]||'';
-    html += `<div class="ait-key-row">
-      <span class="ait-key-label">Key ${i+1}</span>
-      <input class="ait-key-input" id="ait-key-${i}" type="password" placeholder="Paste Mistral API key ${i+1}…" value="${saved||def}" onchange="localStorage.setItem('ait_key_${i}',this.value)">
-    </div>`;
-  }
-  container.innerHTML = html;
+  if(container) container.innerHTML = '<p class="ait-key-notice">AI access is securely managed by SmartQuiz. You do not need to enter or store API keys on this device.</p>';
 }
 
 function aitGoToSession(){
@@ -2954,37 +2964,19 @@ function aitMicSetUI(on){
 }
 
 async function aitMicTranscribe(blob, target){
-  var keys = aitGetKeys();
-  if(!keys.length){ shToast('No API key — cannot transcribe.'); return; }
-  var fd = new FormData();
-  fd.append('file', blob, 'rec.webm');
-  fd.append('model', 'whisper-large-v3-turbo');
-  fd.append('response_format', 'json');
   try{
-    var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method:'POST',
-      headers:{Authorization:'Bearer ' + keys[Math.floor(Math.random()*keys.length)]},
-      body: fd
-    });
-    var j = await res.json();
-    var txt = (j.text || '').trim();
-    if(!txt){ return; }
-    /* Clear auto-continue timer — user spoke */
+    if(typeof window.aqsWorkerTranscribe !== 'function') throw new Error('Secure transcription service is unavailable. Refresh the page and try again.');
+    var txt = await window.aqsWorkerTranscribe(blob);
+    if(!txt) return;
     if(_ait._autoContTimer){ clearTimeout(_ait._autoContTimer); _ait._autoContTimer = null; }
     if(target === 'qa'){
       var inp = document.getElementById('ait-qa-input');
       if(inp){ inp.value = txt; aitSendQA(); }
     } else if(target === 'main'){
-      /* Free conversational mode — route by intent */
       var lower = txt.toLowerCase().replace(/[^a-z ]/g,'').trim();
       var continueWords = /^(continue|next|go on|go ahead|okay|ok|yes|sure|alright|got it|i see|understood|i understand|keep going|proceed|move on)$/;
-      if(continueWords.test(lower) || lower.length < 8){
-        /* Short/continue phrase → move to next teaching segment */
-        setTimeout(aitNextTeachingSegment, 300);
-      } else {
-        /* Real question or response → send to AI as free conversation */
-        aitSendToAI(txt, function(){ setTimeout(_aitAutoListen, 400); });
-      }
+      if(continueWords.test(lower) || lower.length < 8) setTimeout(aitNextTeachingSegment, 300);
+      else aitSendToAI(txt, function(){ setTimeout(_aitAutoListen, 400); });
     } else {
       var ta = document.getElementById('ait-type-answer');
       if(ta){ ta.value = txt; aitSubmitAnswer(); }
