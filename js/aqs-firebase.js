@@ -2575,11 +2575,11 @@ async function actionGetSettings() {
                     if (!privateGroqKeys.length) {
                         privateGroqKeys = legacyGroqKeys;
                         await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
-                        try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
-                        catch (syncError) { console.warn('[SmartQuiz AI] Legacy Groq keys moved to private settings but Worker sync failed:', syncError.message); }
                     }
                     await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
                 }
+                try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                catch (syncError) { console.warn('[SmartQuiz AI] Admin Groq settings loaded but Worker sync failed:', syncError.message); }
                 settings.groq_keys = privateGroqKeys;
                 if (privateSnap.exists()) {
                     settings.brevo_api_key = privateData.brevo_api_key || '';
