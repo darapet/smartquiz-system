@@ -1315,7 +1315,10 @@ export default {
      * prevents cached/older SmartQuiz admin pages from turning a valid Worker
      * deployment into a misleading 404 while they refresh.
      */
-    if (url.pathname === '/api/ai/config' || url.pathname === '/api/ai/config/') {\n      return handleAIConfig(request, env);\n    }\n    if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
+    if (url.pathname === '/api/ai/config' || url.pathname === '/api/ai/config/') {
+      return handleAIConfig(request, env);
+    }
+    if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
       return handleAITranscribe(request, env);
     }
     if (url.pathname === '/api/ai' || url.pathname === '/api/ai/') {
