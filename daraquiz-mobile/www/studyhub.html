@@ -1103,27 +1103,6 @@ a{text-decoration:none;color:inherit;}
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 <script src="js/aqs-groq-key.js"></script>
-<script>
-/* Anonymous AI key bootstrap: studyhub Groq pool from public settings doc
-   (settings/main is publicly readable; the auth-gated loader skips guests). */
-(function(){
-  function register(keys){
-    if(!Array.isArray(keys)||!keys.length) return;
-    if(typeof window.setFeatureGroqKeys==='function') window.setFeatureGroqKeys('studyhub',keys);
-    if(typeof window.setGroqKeys==='function') window.setGroqKeys(keys);
-  }
-  try{
-    fetch('https://firestore.googleapis.com/v1/projects/smartquiz-darapet/databases/(default)/documents/settings/main')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var f=(d&&d.fields)||{};
-        var pick=function(k){ return (f[k]&&f[k].arrayValue&&f[k].arrayValue.values)?f[k].arrayValue.values.map(function(x){return x.stringValue||'';}).filter(Boolean):[]; };
-        register(pick('studyhub_groq_keys').concat(pick('groq_keys')));
-      })
-      .catch(function(e){ console.warn('AI key bootstrap failed',e); });
-  }catch(e){ console.warn('AI key bootstrap error',e); }
-})();
-</script>
 <script src="js/aqs-gemini-tts.js"></script>
 <script src="js/aqs-voice.js"></script>
 <script>
@@ -1376,86 +1355,24 @@ function shToast(msg, dur=3000){
   setTimeout(()=>el.remove(), dur);
 }
 
-/* ══════════════════════════════
-   MISTRAL AI — 10 key cycling
-══════════════════════════════ */
-const AIT_DEFAULT_KEYS = [
-  'lGPCWwSD9DdQXxZV1tpgvrOIfgjDqkcJ',
-  '34v1vccfwrobTIL8aqH69dxRa9xQFgIx',
-  '6B56rUaoF9VEHXm3ab4XDqzepo6Q7AfS',
-  'B3BcwVcnG1HAZ9OOvJKwC5VhKwEQ5fJR',
-  '9tTqL4XzmKHQEBwTLWqb8CVsGwV92crS',
-  'pZ6AJekEECnlQpQiKKMjSjTxERGemlF1',
-  'bDIWZlfhuwfHRSSWxUXOd8YJtt2TGPTG',
-  '9ytdl4fetK9wW459kImNSHkuUrTulw2w',
-  'xOGvfjNNC1wRq8zuw5p57FET3YhieWBu',
-  'Uyij77eMFADFoptpf2A65VCYc0ybjmlW'
-];
-let _mkeyIdx = 0;
-
-function aitGetKeys(){
-  const saved = [];
-  for(let i=0;i<10;i++){
-    const el = document.getElementById('ait-key-'+i);
-    if(el && el.value.trim()) saved.push(el.value.trim());
-  }
-  if(saved.length) return saved;
-  const pool = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS.filter(k=>k && k.length>8) : [];
-  if(pool.length) return pool;
-  return AIT_DEFAULT_KEYS.filter(k=>k.length>8);
-}
-
-async function aitMistral(messages, maxTokens=1200){
-  const keys = aitGetKeys();
-  if(!keys.length){ shToast('⚠️ No Mistral API keys found'); return null; }
-  const max429Retries = 3;
-  for(let attempt=0; attempt<keys.length; attempt++){
-    const key = keys[_mkeyIdx % keys.length];
-    _mkeyIdx++;
-    try{
-      const res = await fetch('https://api.mistral.ai/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body:JSON.stringify({model:'mistral-small-latest',messages,max_tokens:maxTokens,temperature:0.75})
-      });
-      if(res.status===429){
-        const retryAfter = Number(res.headers.get('Retry-After'));
-        const delay = Number.isFinite(retryAfter) && retryAfter>0 ? Math.min(retryAfter*1000,15000) : Math.min(1000*Math.pow(2,Math.min(attempt,max429Retries-1)),8000);
-        console.warn('Mistral rate limited; backing off before rotating key');
-        if(attempt<keys.length-1) await new Promise(resolve=>setTimeout(resolve,delay));
-        continue;
-      }
-      if(!res.ok){ console.warn('Mistral key failed:',res.status); continue; }
-      const d = await res.json();
-      return d.choices?.[0]?.message?.content || '';
-    }catch(e){ console.warn('Mistral fetch err',e); }
-  }
-  shToast('⚠️ All Mistral keys failed. Check your keys.');
-  return null;
-}
-
-/* ── Fallback: use groqFetch (original) for non-AI-timer features ── */
+/* AI generation now uses the authenticated Cloudflare Worker. No provider keys belong in this public page. */
 async function shAI(prompt, maxTokens=1200){
-  /* 1. Study Hub dedicated Groq pool */
-  if(typeof window.studyhubGroqFetch==='function'){
-    try{
-      const sr=await window.studyhubGroqFetch({messages:[{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7});
-      const st=sr&&sr.choices&&sr.choices[0]&&sr.choices[0].message&&sr.choices[0].message.content;
-      if(st) return st;
-    }catch(e){ console.warn('StudyHub pool error',e); }
+  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
+  const response = await window.aqsWorkerAI({
+    model: 'llama-3.3-70b-versatile',
+    messages: [{role:'user', content:String(prompt || '')}],
+    max_tokens: maxTokens,
+    temperature: 0.7
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok){
+    const message = data && data.error && (data.error.message || data.error);
+    if(response.status === 429) throw new Error('AI is busy right now. Please wait one minute and try again.');
+    throw new Error(message || ('AI request failed (' + response.status + ').'));
   }
-  /* 2. Shared key pool (admin-configured Groq/Mistral/HF keys) */
-  if(typeof window.groqFetch==='function'){
-    try{
-      const gr=await window.groqFetch({messages:[{role:'user',content:prompt}],max_tokens:maxTokens,temperature:0.7});
-      const txt=gr&&gr.choices&&gr.choices[0]&&gr.choices[0].message&&gr.choices[0].message.content;
-      if(txt) return txt;
-    }catch(e){ console.warn('Shared pool error',e); }
-  }
-  /* 3. Legacy direct Mistral fallback */
-  const r = await aitMistral([{role:'user',content:prompt}], maxTokens);
-  if(r) return r;
-  return null;
+  const text = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if(!text) throw new Error('The AI service returned an empty response. Please try again.');
+  return text;
 }
 
 /* ══════════════════════════════
@@ -1490,11 +1407,19 @@ Format the notes using Markdown with clear headings (## for sections, ### for su
 
 Make it thorough, academically rigorous, and student-friendly.`;
 
-  const raw = await shAI(prompt, 2000);
-  document.getElementById('notes-gen-btn').disabled=false;
-  document.getElementById('notes-spinner').style.display='none';
-  document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
-  document.getElementById('notes-loading').style.display='none';
+  let raw = '';
+  try {
+    raw = await shAI(prompt, 1800);
+  } catch(error) {
+    console.error('[StudyHub:Notes]', error);
+    shToast('⚠️ ' + (error && error.message ? error.message : 'Could not generate notes.'));
+    return;
+  } finally {
+    document.getElementById('notes-gen-btn').disabled=false;
+    document.getElementById('notes-spinner').style.display='none';
+    document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
+    document.getElementById('notes-loading').style.display='none';
+  }
 
   if(!raw){ shToast('⚠️ Could not generate notes. Check API keys.'); return; }
   _notesRaw=raw;
@@ -1554,13 +1479,21 @@ async function shGenerateFlashcards(){
 
   const prompt=`Generate exactly ${count} flashcards about "${topic}" for university study.
 Return ONLY valid JSON:
-{"cards":[{"q":"Question text","a":"Answer text"},...]}}
+{"cards":[{"q":"Question text","a":"Answer text"},...]}
 Make questions test key concepts, definitions, formulas, or applications. Keep answers concise but complete. Return ONLY JSON.`;
 
-  const raw=await shAI(prompt, 1500);
-  document.getElementById('fc-gen-btn').disabled=false;
-  document.getElementById('fc-spinner').style.display='none';
-  document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
+  let raw = '';
+  try {
+    raw = await shAI(prompt, 1500);
+  } catch(error) {
+    console.error('[StudyHub:Flashcards]', error);
+    shToast('⚠️ ' + (error && error.message ? error.message : 'Could not generate flashcards.'));
+    return;
+  } finally {
+    document.getElementById('fc-gen-btn').disabled=false;
+    document.getElementById('fc-spinner').style.display='none';
+    document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
+  }
 
   if(!raw){ shToast('⚠️ Failed to generate flashcards'); return; }
   try{
@@ -1743,12 +1676,20 @@ async function shStartExam(){
   const diffLabel={easy:'100-level (basic)',medium:'200-300 level (intermediate)',hard:'400-level (advanced)'};
   const prompt=`Generate exactly ${count} multiple-choice exam questions about "${topic}" at ${diffLabel[diff]} university level.
 Return ONLY valid JSON:
-{"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}}
+{"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}
 Exactly one option per question must be correct. Shuffle option positions. Academic and rigorous. Return ONLY the JSON.`;
-  const raw=await shAI(prompt, 2500);
-  document.getElementById('exam-start-btn').disabled=false;
-  document.getElementById('exam-spinner').style.display='none';
-  document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
+  let raw = '';
+  try {
+    raw = await shAI(prompt, 1800);
+  } catch(error) {
+    console.error('[StudyHub:MockExam]', error);
+    shToast('⚠️ ' + (error && error.message ? error.message : 'Could not generate exam questions.'));
+    return;
+  } finally {
+    document.getElementById('exam-start-btn').disabled=false;
+    document.getElementById('exam-spinner').style.display='none';
+    document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
+  }
   let qs=[];
   if(raw){ try{ const match=raw.match(/\{[\s\S]*\}/); if(match){ const obj=JSON.parse(match[0]); qs=obj.questions||[]; } }catch(e){} }
   if(!qs.length){ shToast('⚠️ Could not generate exam questions. Try again.'); return; }
@@ -2004,18 +1945,28 @@ function aitSetSpeed(rate, el){
   _ait.speechRate = rate;
 }
 
+/* Secure AI Teacher compatibility adapter: no provider keys are stored in this page. */
+const AIT_DEFAULT_KEYS = [];
+function aitGetKeys(){ return []; }
+async function aitMistral(messages, maxTokens=1200){
+  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
+  const response = await window.aqsWorkerAI({
+    model: 'llama-3.3-70b-versatile',
+    messages: Array.isArray(messages) ? messages : [{role:'user', content:String(messages || '')}],
+    max_tokens: maxTokens,
+    temperature: 0.7
+  });
+  const data = await response.json().catch(()=>({}));
+  if(!response.ok){
+    const message = data && data.error && (data.error.message || data.error);
+    throw new Error(message || ('AI request failed (' + response.status + ').'));
+  }
+  return data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content || '';
+}
+
 function aitRenderKeySlots(){
   const container = document.getElementById('ait-key-slots');
-  let html = '';
-  for(let i=0;i<10;i++){
-    const saved = localStorage.getItem('ait_key_'+i)||'';
-    const def = AIT_DEFAULT_KEYS[i]||'';
-    html += `<div class="ait-key-row">
-      <span class="ait-key-label">Key ${i+1}</span>
-      <input class="ait-key-input" id="ait-key-${i}" type="password" placeholder="Paste Mistral API key ${i+1}…" value="${saved||def}" onchange="localStorage.setItem('ait_key_${i}',this.value)">
-    </div>`;
-  }
-  container.innerHTML = html;
+  if(container) container.innerHTML = '<p class="ait-key-notice">AI access is securely managed by SmartQuiz. You do not need to enter or store API keys on this device.</p>';
 }
 
 function aitGoToSession(){
@@ -3016,37 +2967,19 @@ function aitMicSetUI(on){
 }
 
 async function aitMicTranscribe(blob, target){
-  var keys = aitGetKeys();
-  if(!keys.length){ shToast('No API key — cannot transcribe.'); return; }
-  var fd = new FormData();
-  fd.append('file', blob, 'rec.webm');
-  fd.append('model', 'whisper-large-v3-turbo');
-  fd.append('response_format', 'json');
   try{
-    var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
-      method:'POST',
-      headers:{Authorization:'Bearer ' + keys[Math.floor(Math.random()*keys.length)]},
-      body: fd
-    });
-    var j = await res.json();
-    var txt = (j.text || '').trim();
-    if(!txt){ return; }
-    /* Clear auto-continue timer — user spoke */
+    if(typeof window.aqsWorkerTranscribe !== 'function') throw new Error('Secure transcription service is unavailable. Refresh the page and try again.');
+    var txt = await window.aqsWorkerTranscribe(blob);
+    if(!txt) return;
     if(_ait._autoContTimer){ clearTimeout(_ait._autoContTimer); _ait._autoContTimer = null; }
     if(target === 'qa'){
       var inp = document.getElementById('ait-qa-input');
       if(inp){ inp.value = txt; aitSendQA(); }
     } else if(target === 'main'){
-      /* Free conversational mode — route by intent */
       var lower = txt.toLowerCase().replace(/[^a-z ]/g,'').trim();
       var continueWords = /^(continue|next|go on|go ahead|okay|ok|yes|sure|alright|got it|i see|understood|i understand|keep going|proceed|move on)$/;
-      if(continueWords.test(lower) || lower.length < 8){
-        /* Short/continue phrase → move to next teaching segment */
-        setTimeout(aitNextTeachingSegment, 300);
-      } else {
-        /* Real question or response → send to AI as free conversation */
-        aitSendToAI(txt, function(){ setTimeout(_aitAutoListen, 400); });
-      }
+      if(continueWords.test(lower) || lower.length < 8) setTimeout(aitNextTeachingSegment, 300);
+      else aitSendToAI(txt, function(){ setTimeout(_aitAutoListen, 400); });
     } else {
       var ta = document.getElementById('ait-type-answer');
       if(ta){ ta.value = txt; aitSubmitAnswer(); }

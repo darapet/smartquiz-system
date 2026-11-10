@@ -93,7 +93,7 @@ jobs:
         id: ver
         run: |
           CUR_VER=$(grep '"version"' www/version.json | head -1 | sed 's/.*"\([0-9][^"]*\)".*/\1/')
-          CUR_CODE=$(grep '"versionCode"' www/version.json | grep -o '[0-9][0-9]*' | head -1)
+          CUR_CODE=$(grep -o '"versionCode":[0-9][0-9]*' www/version.json | grep -o '[0-9][0-9]*' | head -1)
           IS_MANUAL="${{ github.event_name == 'workflow_dispatch' }}"
           if [ "$IS_MANUAL" = "true" ]; then
             NEW_CODE="$CUR_CODE"

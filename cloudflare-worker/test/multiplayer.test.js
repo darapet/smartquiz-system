@@ -71,7 +71,8 @@ function makeWorld() {
 const deps = {
   json: (_r, _e, body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } }),
   corsHeaders: () => ({}),
-  getAccessToken: async () => 'access'
+  getAccessToken: async () => 'access',
+  getGroqConfig: async () => ({ keys: ['gsk_test_key_value_123456789'], model: 'llama-3.3-70b-versatile' })
 };
 const env = { FIREBASE_PROJECT_ID: 'p', FIREBASE_WEB_API_KEY: 'k' };
 
@@ -186,7 +187,9 @@ test('AI generate: works, rate limits, and reports missing keys', async () => {
   assert.equal(ok.status, 200); assert.ok(ok.text.includes('"q"'));
   world.docs.set('settings/main', {});
   __test.resetCaches();
+  const saved = deps.getGroqConfig; deps.getGroqConfig = async () => ({ keys: [], model: '' });
   assert.equal((await call('g', { action: 'generate', topic: 'Photosynthesis', difficulty: 'Easy', count: 5 })).status, 503);
+  deps.getGroqConfig = saved;
   assert.equal((await call('g', { action: 'generate', topic: 'x', difficulty: 'Easy', count: 5 })).status, 400);
   world.docs.set('multiplayerLimits/spam_generate', { start: { integerValue: String(Date.now()) }, count: { integerValue: '200' } });
   assert.equal((await call('spam', { action: 'generate', topic: 'Photosynthesis', difficulty: 'Easy', count: 5 })).status, 429);

@@ -206,16 +206,18 @@ async function chatOnce(url, key, body, timeoutMs) {
   }
 }
 
-async function writeQuestions(fs, prompt) {
+async function writeQuestions(fs, prompt, deps, env) {
   const settings = await aiSettings(fs);
-  const groq = M.collectKeys(settings, ['quiz_groq_keys', 'groq_keys']);
+  /* Groq keys live in Worker storage (same place as /api/ai). Old Firestore keys still work as a fallback. */
+  const stored = deps.getGroqConfig ? await deps.getGroqConfig(env).catch(() => ({ keys: [], model: '' })) : { keys: [], model: '' };
+  const groq = M.collectKeys({ w: stored.keys, q: settings.quiz_groq_keys, g: settings.groq_keys }, ['w', 'q', 'g']);
   const mistral = M.collectKeys(settings, ['mistral_keys']);
   if (!groq.length && !mistral.length) throw new Error('AI is not set up yet. The site owner needs to add AI keys in Admin Settings.');
   const messages = [
     { role: 'system', content: 'You are an expert quiz writer. Reply with only the raw JSON array that was asked for.' },
     { role: 'user', content: prompt }
   ];
-  const gModel = M.groqModelFor(settings.groq_model);
+  const gModel = M.groqModelFor(stored.model || settings.groq_model);
   const groqP = groq.map(k => ({ name: 'groq', key: k, url: 'https://api.groq.com/openai/v1/chat/completions', body: { model: gModel, messages, max_tokens: 4096, temperature: 0.5, ...(gModel.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}) } }));
   const mistralP = mistral.map(k => ({ name: 'mistral', key: k, url: 'https://api.mistral.ai/v1/chat/completions', body: { model: String(settings.mistral_model || 'mistral-small-latest'), messages, max_tokens: 4096, temperature: 0.5 } }));
   /* Start at a random key so one busy key does not take every request. */
@@ -305,10 +307,10 @@ const actions = {
     return { title: d.title, phase: d.phase, capacity: d.capacity, playerCount: d.playerCount, secondsPerQuestion: d.secondsPerQuestion, questionCount: d.questionCount, difficulty: d.difficulty, takenAvatars: claims.map(x => Number(x.id)) };
   },
 
-  async generate({ fs, uid, body }) {
+  async generate({ fs, uid, body, deps, env }) {
     const input = M.validateGenerate(body);
     await takeQuota(fs, uid, 'generate');
-    return { text: await writeQuestions(fs, M.buildQuizPrompt(input)) };
+    return { text: await writeQuestions(fs, M.buildQuizPrompt(input), deps, env) };
   },
 
   async create({ fs, uid, body }) {
@@ -520,7 +522,7 @@ const actions = {
 
 /* ── HTTP entry ───────────────────────────────────────────────────────────── */
 
-/* deps: { json(request, env, body, status), corsHeaders(request, env), getAccessToken(env) } */
+/* deps: { json, corsHeaders, getAccessToken(env), getGroqConfig(env) -> { keys, model } } */
 export async function handleMultiplayer(request, env, deps) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: deps.corsHeaders(request, env) });
   if (request.method !== 'POST') return deps.json(request, env, { error: 'Use POST.' }, 405);
@@ -537,7 +539,7 @@ export async function handleMultiplayer(request, env, deps) {
       if (!ROOM_ID.test(id)) throw new Error('Invalid room id.');
     }
     const fs = makeClient(env, deps.getAccessToken);
-    const result = await handler({ fs, id, uid, body: input });
+    const result = await handler({ fs, id, uid, body: input, deps, env });
     /* serverNow lets each browser correct for its own clock when counting down. */
     return deps.json(request, env, { ...result, serverNow: Date.now() });
   } catch (e) {

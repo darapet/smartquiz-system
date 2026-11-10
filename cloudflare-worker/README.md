@@ -45,12 +45,39 @@ npx wrangler deploy
 The default model is `@cf/stabilityai/stable-diffusion-xl-base-1.0`. Change
 `CF_IMAGE_MODEL` only to one of the allowlisted models in `src/worker.js`.
 The existing `/api/email` and `/brevoEmail` routes remain unchanged.
+
+## AI generation proxy
+
+The Worker exposes authenticated `POST /api/ai` for SmartQuiz AI generation.
+It validates Firebase ID tokens (including anonymous Firebase sessions), applies a
+per-user request limit, validates prompt size/model/token limits, and calls Groq
+server-to-server. Provider credentials must never be stored in browser JavaScript
+or Firestore settings.
+
+Before deploying the AI route, add the provider key as a Worker secret:
+
+```bash
+npx wrangler secret put GROQ_API_KEY
+npx wrangler deploy
+```
+
+Set the secret value when Wrangler prompts for it. Do not paste the key into
+source files, GitHub commits, or chat. The allowed browser origins are configured
+in `wrangler.toml`; include the production website and Capacitor origins used by
+the app. The AI endpoint currently allows up to 12 requests per Firebase user
+per minute and caps each request at 1,800 output tokens.
+
+
+The same secret-backed Worker also provides `POST /api/ai/transcribe` for
+authenticated audio transcription. Audio is limited to 20 MB and uses the same
+per-user request limit and `GROQ_API_KEY` secret.
+
 ## Live multiplayer (free, no Firebase Blaze)
 
 `POST /api/multiplayer` runs the host-a-quiz game server (rooms, PIN join, ready,
 start, answers, scoring, AI question writing). It talks to Firestore over REST with
-the `FIREBASE_SERVICE_ACCOUNT` secret and writes questions with the Groq/Mistral
-keys saved in Admin Settings (`settings/main`). Nobody needs an account: the browser
+the `FIREBASE_SERVICE_ACCOUNT` secret and writes questions with the same Groq keys
+as `/api/ai` (saved from Admin Settings, or the `GROQ_API_KEY` secret). Nobody needs an account: the browser
 signs in anonymously and the Worker checks that token.
 
 Setup once:
