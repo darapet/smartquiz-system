@@ -871,7 +871,7 @@
             }
 
             window.groqFetch({
-                model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                model: 'qwen/qwen3.8-27b',
                 messages: visionMessages,
                 max_tokens: 4096,
                 temperature: 0.6
@@ -913,7 +913,7 @@
         if (searchNeeds && searchNeeds.type === 'deep') {
             showTyping(true, '🔍 Searching…');
             try {
-                var qRes = await window.groqFetch({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
+                var qRes = await window.groqFetch({model:'openai/gpt-oss-20b',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
                 var qData = qRes && qRes.json ? await qRes.json() : {};
                 var queryText = qData.choices && qData.choices[0] && qData.choices[0].message && qData.choices[0].message.content || text;
                 var subQueries = queryText.split(/\n|\r/).map(function(q){return q.replace(/^[-*\d.)\s]+/,'').trim();}).filter(Boolean).slice(0,4);
@@ -989,7 +989,7 @@
         /* ── Step 3: Call Groq — wrapped so rate-limit auto-retry stays within this turn ── */
         function _attemptCall(attemptN) {
             window.groqFetch({
-                model:       'llama-3.3-70b-versatile',
+                model:       'openai/gpt-oss-120b',
                 messages:    messages,
                 max_tokens:  4096,
                 temperature: 0.6
@@ -1369,7 +1369,7 @@
         if (searchNeeds && searchNeeds.type === 'deep') {
             showTyping(true, '🔍 Searching…');
             try {
-                var qRes = await window.groqFetch({model:'llama-3.1-8b-instant',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
+                var qRes = await window.groqFetch({model:'openai/gpt-oss-20b',messages:[{role:'system',content:'Create 2 to 4 distinct concise web search queries that investigate different useful aspects of the user question. Return only one query per line, no commentary.'},{role:'user',content:text}],max_tokens:180,temperature:0.7});
                 var qData = qRes && qRes.json ? await qRes.json() : {};
                 var queryText = qData.choices && qData.choices[0] && qData.choices[0].message && qData.choices[0].message.content || text;
                 var subQueries = queryText.split(/\n|\r/).map(function(q){return q.replace(/^[-*\d.)\s]+/,'').trim();}).filter(Boolean).slice(0,4);
@@ -1397,7 +1397,7 @@
         var messages = [{ role: 'system', content: dynamicSystem }].concat(chatHistory);
 
         window.groqFetch({
-            model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 600, temperature: 0.7
+            model: 'openai/gpt-oss-20b', messages: messages, max_tokens: 600, temperature: 0.7
         }).then(function (r) { return r.json(); }).then(function (data) {
             if (!voiceActive || sessionId !== voiceSessionId) return;
             showTyping(false);

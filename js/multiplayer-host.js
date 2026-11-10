@@ -7,7 +7,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import * as fs from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
-  LIMITS, buildPrompt, extractJsonArray, normalizeQuestions, validateSetup, validateRoomSettings,
+  LIMITS, extractJsonArray, normalizeQuestions, validateSetup, validateRoomSettings,
   rankPlayers, accuracy, countdownLabel, timeFraction, randomPin
 } from './mp-core.js';
 import { avatarSvg } from './mp-avatars.js';
@@ -119,9 +119,26 @@ function updateHeader() {
 
 /* ───────────────────────── server calls ───────────────────────── */
 
-async function api(action, payload = {}) {
+/* No account is needed to host or join. Everyone gets a guest session from Firebase. */
+async function ensureSignedIn() {
+  if (auth.currentUser) return '';
+  try {
+    await signInAnonymously(auth);
+    return '';
+  } catch (e) {
+    if (e && /admin-restricted|operation-not-allowed/.test(e.code || '')) {
+      return 'Guest access is turned off for this project. In the Firebase console open Authentication, then Sign-in method, and enable Anonymous.';
+    }
+    return 'Could not start a guest session. Check your connection and refresh the page.';
+  }
+}
+
+async function api(action, payload = {}, signal) {
+  if (!auth.currentUser) {
+    const problem = await ensureSignedIn();
+    if (problem) throw new Error(problem);
+  }
   const user = auth.currentUser;
-  if (!user) throw new Error('Sign-in is required.');
   const token = await user.getIdToken();
   S.token = token;
   const t0 = Date.now();
@@ -130,17 +147,22 @@ async function api(action, payload = {}) {
     res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action, ...payload })
+      body: JSON.stringify({ action, ...payload }),
+      signal
     });
   } catch (e) {
+    if (e && e.name === 'AbortError') throw e;
     throw new Error('Could not reach the server. Check your internet connection.');
   }
   const t1 = Date.now();
   const body = await res.json().catch(() => ({}));
   if (typeof body.serverNow === 'number') S.skew = body.serverNow - (t0 + t1) / 2;
   if (!res.ok) {
-    if (!body.error && (res.status === 404 || res.status === 405)) throw new Error('The multiplayer server was not found. The host needs to deploy the multiplayer function.');
-    throw new Error(body.error || `The multiplayer service returned ${res.status}.`);
+    const failure = new Error(!body.error && (res.status === 404 || res.status === 405)
+      ? 'The multiplayer server was not found. The host needs to deploy the multiplayer function.'
+      : body.error || `The multiplayer service returned ${res.status}.`);
+    failure.status = res.status;
+    throw failure;
   }
   return body;
 }
@@ -166,37 +188,25 @@ function lockSetup(locked) {
 
 function aiErrorText(status, e) {
   if (navigator.onLine === false) return 'You appear to be offline. Reconnect, then press Continue.';
-  if (status === 401 || status === 403) return 'The AI key was rejected. Add a valid Groq key in Admin Settings, then press Continue.';
-  if (status === 402) return 'The AI service needs a paid key. Add a Groq key in Admin Settings, then press Continue.';
-  if (status === 429) return 'The AI is busy (rate limit). Wait a minute, then press Continue.';
-  if (status >= 500) return `The AI service is down for a moment (error ${status}). Press Continue to try again.`;
   return (e && e.message) || 'The AI did not answer. Press Continue to try again.';
 }
 
-async function askAI(prompt, G) {
-  const call = window.quizGroqFetch || window.groqFetch;
-  if (typeof call !== 'function') throw new Error('The AI service has not loaded. Refresh the page and try again.');
+/* The AI keys live on the server, so guests can generate questions without logging in. */
+async function askAI(cfg, need, G) {
   G.status = 0;
   G.ctrl = new AbortController();
-  const timer = setTimeout(() => G.ctrl.abort(), 60000);
+  const timer = setTimeout(() => G.ctrl.abort(), 110000);
   try {
-    const res = await call({
-      model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b',
-      messages: [
-        { role: 'system', content: 'You are an expert quiz writer. Reply with only the raw JSON array that was asked for.' },
-        { role: 'user', content: prompt }
-      ],
-      max_tokens: 4096,
-      temperature: 0.5
-    }, { signal: G.ctrl.signal });
-    if (!res.ok) {
-      G.status = res.status;
-      throw new Error(`AI request failed (${res.status}).`);
-    }
-    const data = await res.json();
-    const text = (((data.choices || [])[0] || {}).message || {}).content || '';
+    const r = await api('generate', {
+      topic: cfg.prompt, difficulty: cfg.level, count: need,
+      avoid: G.questions.slice(-30).map(q => q.text), batch: ++G.batch
+    }, G.ctrl.signal);
+    const text = String(r.text || '');
     if (text.trim().length < 20) throw new Error('The AI sent an empty reply.');
     return text;
+  } catch (e) {
+    G.status = e.status || 0;
+    throw e;
   } finally {
     clearTimeout(timer);
   }
@@ -244,10 +254,7 @@ async function runGeneration() {
     const need = Math.min(LIMITS.batchSize, cfg.count - have);
     $('gen-state').textContent = `Writing questions ${have + 1} to ${have + need}…`;
     try {
-      const raw = await askAI(buildPrompt({
-        topic: cfg.prompt, difficulty: cfg.level, count: need,
-        avoid: G.questions.slice(-30).map(q => q.text), batch: ++G.batch
-      }), G);
+      const raw = await askAI(cfg, need, G);
       const fresh = normalizeQuestions(extractJsonArray(raw), G.questions).slice(0, need);
       if (!fresh.length) {
         if (++stalls >= 3) throw new Error('The AI keeps repeating itself. Try a broader topic, then press Continue.');
@@ -260,11 +267,12 @@ async function runGeneration() {
       paintGen();
     } catch (e) {
       if (G.stop) break;
-      if (++failures >= 2) {
+      const final = G.status === 429 || /AI is not set up/.test(e.message || '');
+      if (final || ++failures >= 2) {
         G.error = aiErrorText(G.status, e);
         break;
       }
-      await sleep(G.status === 429 ? 4000 : 1500);
+      await sleep(1500);
     }
   }
 
@@ -305,8 +313,6 @@ function openRoomStep() {
 }
 
 async function hostRoom() {
-  const user = auth.currentUser;
-  if (!user || user.isAnonymous) return say('msg-room', 'Sign in with a host account to create a room.');
   const setup = readSetup();
   const seconds = setup.seconds;
   const title = setup.title;
@@ -321,7 +327,7 @@ async function hostRoom() {
   say('msg-room', 'Creating your room…', 'ok');
   try {
     const r = await api('create', {
-      hostName: user.displayName || 'Host',
+      hostName: $('host-name').value.trim().slice(0, 35) || 'Host',
       avatar: S.hostPicker.get(),
       room: { title, pin, capacity, secondsPerQuestion: seconds, difficulty: S.gen.cfg.level, questions: S.gen.questions }
     });
@@ -346,11 +352,8 @@ async function bootPlayer(rid, pinParam, notice) {
   say('msg-join', notice || '');
   $('join-btn').disabled = true;
   if (!ROOM_ID.test(rid)) return say('msg-join', 'This room link is not valid. Ask the host for a new one.');
-  try {
-    if (!auth.currentUser) await signInAnonymously(auth);
-  } catch (e) {
-    return say('msg-join', 'Could not sign you in. Check your connection and refresh.');
-  }
+  const problem = await ensureSignedIn();
+  if (problem) return say('msg-join', problem);
 
   /* Already in this room (a refresh, or the host coming back)? Go straight in. */
   try {
@@ -946,17 +949,18 @@ function bindEvents() {
 }
 
 let booted = false;
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   if (booted) return;
   booted = true;
   bindEvents();
   const params = new URLSearchParams(location.search);
   const rid = (params.get('room') || '').toUpperCase();
-  if (rid) bootPlayer(rid, params.get('pin'));
-  else if (user && !user.isAnonymous) {
-    show('setup');
-    /* Hosts need the site script that loads the AI keys. Players never do, and it would
-       send anonymous guests to the sign-up page. */
-    import('./aqs-firebase.js?v=351e289c').catch(() => {});
-  } else show('auth');
+  if (rid) return bootPlayer(rid, params.get('pin'));
+  show('setup');
+  if (!user) {
+    const problem = await ensureSignedIn();
+    if (problem) say('msg-setup', problem);
+  } else if (!user.isAnonymous && user.displayName && !$('host-name').value) {
+    $('host-name').value = user.displayName.slice(0, 35);
+  }
 });

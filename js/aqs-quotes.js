@@ -17,9 +17,8 @@
 
       /* Models tried in order — first available wins */
       var _QUOTE_MODELS = [
-          'llama-3.1-8b-instant',
-          'llama3-8b-8192',
-          'llama-3.3-70b-versatile'
+          'openai/gpt-oss-20b',
+          'openai/gpt-oss-120b'
       ];
 
       /* ── Quote categories: science + motivation ─────────────────────── */

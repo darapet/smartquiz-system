@@ -2565,9 +2565,16 @@ async function actionGetSettings() {
                     settings.darasocial_news_index = privateSnap.data().darasocial_news_index || 0;
                 }
             }
+            window._aqsSettingsLoadError = '';
             return { settings: settings };
         }
-    } catch(_) {}
+        window._aqsSettingsLoadError = 'settings/main does not exist';
+    } catch (e) {
+        /* Keep the failure visible: a blocked read (rules not published, not signed in,
+           network blocked) used to look exactly like "no keys saved". */
+        window._aqsSettingsLoadError = (e && (e.code || e.message)) || 'unknown error';
+        console.warn('[aqs] Could not read settings/main:', window._aqsSettingsLoadError);
+    }
     return { settings: {} };
 }
 

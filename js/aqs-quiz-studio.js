@@ -85,7 +85,7 @@
             var ctrl = new AbortController();
             var tid  = setTimeout(function () { ctrl.abort(); }, 20000);
             var res  = await window.quizstudioGroqFetch({
-                model:       'llama-3.1-8b-instant',
+                model:       'openai/gpt-oss-20b',
                 messages:    apiMessages,
                 max_tokens:  2048,
                 temperature: 0.7

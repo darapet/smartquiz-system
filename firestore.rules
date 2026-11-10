@@ -513,6 +513,12 @@ service cloud.firestore {
       }
     }
 
+    // Rate-limit counters for live multiplayer (guests can host and use the AI).
+    // Only the Cloud Function reads or writes these.
+    match /multiplayerLimits/{limitId} {
+      allow read, write: if false;
+    }
+
     // ─── Library Views ──────────────────────────────────────────────
     match /library_views/{viewId} {
       allow read: if isSignedIn();
