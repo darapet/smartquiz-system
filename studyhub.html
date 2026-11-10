@@ -1102,7 +1102,7 @@ a{text-decoration:none;color:inherit;}
 
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
-<script src="js/aqs-groq-key.js"></script>
+<script src="js/aqs-groq-key.js?v=studyhub-firebase-pool-2"></script>
 <script src="js/aqs-gemini-tts.js"></script>
 <script src="js/aqs-voice.js"></script>
 <script>
@@ -1357,9 +1357,9 @@ function shToast(msg, dur=3000){
 
 /* AI generation now uses the authenticated Cloudflare Worker. No provider keys belong in this public page. */
 async function shAI(prompt, maxTokens=1200){
-  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
-  const response = await window.aqsWorkerAI({
-    model: 'llama-3.3-70b-versatile',
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b',
     messages: [{role:'user', content:String(prompt || '')}],
     max_tokens: maxTokens,
     temperature: 0.7
@@ -1949,9 +1949,9 @@ function aitSetSpeed(rate, el){
 const AIT_DEFAULT_KEYS = [];
 function aitGetKeys(){ return []; }
 async function aitMistral(messages, maxTokens=1200){
-  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
-  const response = await window.aqsWorkerAI({
-    model: 'llama-3.3-70b-versatile',
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b',
     messages: Array.isArray(messages) ? messages : [{role:'user', content:String(messages || '')}],
     max_tokens: maxTokens,
     temperature: 0.7

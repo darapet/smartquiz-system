@@ -596,9 +596,34 @@ window._aqsKeysReady = new Promise(function(resolve) {
     function _loadAIKeysFromFirebase() {
         if (_settingsLoadStarted) return;
         _settingsLoadStarted = true;
-        /* Provider credentials are now held only as Cloudflare Worker secrets.
-           Never download Groq, Mistral, or Hugging Face keys into the browser. */
-        _resolveAIKeysReady();
+
+        /* Load only the dedicated Study Hub Groq pool from authenticated
+           Firebase settings. Do not fall back to Cloudflare or shared pools. */
+        if (!window.jQuery || typeof window.jQuery.ajax !== 'function') {
+            _logAISettingsFailure('Firebase settings bridge is unavailable');
+            _resolveAIKeysReady();
+            return;
+        }
+        window.jQuery.ajax({
+            url: 'firebase',
+            method: 'POST',
+            data: { action: 'aqs_get_settings' },
+            timeout: 15000
+        }).done(function(result) {
+            var settings = result && result.success && result.data && result.data.settings
+                ? result.data.settings : {};
+            var keys = Array.isArray(settings.studyhub_groq_keys)
+                ? settings.studyhub_groq_keys : [];
+            if (typeof window.setFeatureGroqKeys === 'function') {
+                window.setFeatureGroqKeys('studyhub', keys);
+            }
+            if (settings.groq_model) window._AQS_GROQ_MODEL = settings.groq_model;
+            if (!keys.length) _logAISettingsFailure('No keys found in settings/main.studyhub_groq_keys');
+            _resolveAIKeysReady();
+        }).fail(function(xhr, status, error) {
+            _logAISettingsFailure('Firebase settings request failed: ' + (error || status || 'unknown error'));
+            _resolveAIKeysReady();
+        });
     }
 
     function _startAISettingsLoadAfterAuth() {
@@ -709,7 +734,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
             fetch: async function(bodyObj, extraOpts) {
                 /* Firebase settings load asynchronously. Wait once before
                    concluding that the dedicated slots are empty. */
-                if (!slots.length && !_sharedKeyCount() && window._aqsKeysReady) {
+                if (!slots.length && window._aqsKeysReady &&
+                    (opts.noFallback || !_sharedKeyCount())) {
                     await window._aqsKeysReady;
                 }
                 var request = Object.assign({
@@ -772,7 +798,11 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
     /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
        available so a missing or exhausted dedicated slot does not stop it. */
-    var _poolOpts = { quiz: { noFallback: false } };
+    var _poolOpts = {
+        quiz: { noFallback: false },
+        /* Study Hub must use only its dedicated Firebase pool. */
+        studyhub: { noFallback: true }
+    };
     ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio', 'darasocial_post_slot'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
@@ -858,7 +888,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
   /* Preserve the Response contract expected by existing AI feature callers. */
   window.groqFetch = window.aqsWorkerAI;
-  window.studyhubGroqFetch = window.aqsWorkerAI;
+  /* Study Hub keeps the dedicated Firebase key-pool fetch defined above. */
   window.quizGroqFetch = window.aqsWorkerAI;
   window.challengeGroqFetch = window.aqsWorkerAI;
   window.textdocsGroqFetch = window.aqsWorkerAI;
