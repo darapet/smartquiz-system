@@ -258,6 +258,24 @@ async function trySendWelcomeEmail() {
     }
 }
 
+
+async function syncGroqAIConfiguration(config) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('Sign in as admin before syncing AI settings.');
+    var token = await user.getIdToken();
+    var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+            groq_keys: Array.isArray(config && config.keys) ? config.keys : [],
+            groq_model: String(config && config.model || '')
+        })
+    });
+    var body = await response.json().catch(function(){ return {}; });
+    if (!response.ok) throw new Error(body.error || ('AI settings sync failed (' + response.status + ').'));
+    return body;
+}
+
 async function syncBrevoEmailConfiguration(config) {
     return await callBrevoEmail({
         kind: 'config',
@@ -2537,6 +2555,7 @@ async function actionGetSettings() {
         var snap = await getDoc(doc(db, 'settings', 'main'));
         if (snap.exists()) {
             var settings = snap.data();
+            var legacyGroqKeys = Array.isArray(settings.groq_keys) ? settings.groq_keys.slice(0, 20) : [];
             /* Public pages may use non-secret AI settings, but the Creator
                Studio image-token pool is read only by the server function.
                Admin Settings opts in explicitly before loading this module. */
@@ -2546,11 +2565,24 @@ async function actionGetSettings() {
                 delete settings.darasocial_post_slot;
             }
             delete settings.brevo_api_key;
+            delete settings.groq_keys;
             var currentUser = auth.currentUser || window._aqsFirebaseUser;
             if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
                 var privateSnap = await getDoc(doc(db, 'settings', 'private'));
+                var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                var privateGroqKeys = Array.isArray(privateData.groq_keys) ? privateData.groq_keys : [];
+                if (legacyGroqKeys.length) {
+                    if (!privateGroqKeys.length) {
+                        privateGroqKeys = legacyGroqKeys;
+                        await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
+                    }
+                    await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+                }
+                try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                catch (syncError) { console.warn('[SmartQuiz AI] Admin Groq settings loaded but Worker sync failed:', syncError.message); }
+                settings.groq_keys = privateGroqKeys;
                 if (privateSnap.exists()) {
-                    settings.brevo_api_key = privateSnap.data().brevo_api_key || '';
+                    settings.brevo_api_key = privateData.brevo_api_key || '';
                     ['google_client_secret','github_client_secret','microsoft_client_secret','yahoo_client_secret'].forEach(function (k) {
                         settings[k] = privateSnap.data()[k] || '';
                     });
@@ -2603,7 +2635,7 @@ async function actionSaveSettings(data) {
     ];
     allowed.forEach(function(k) {
         if (!(k in data)) return;
-        if (k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_')) privatePayload[k] = data[k];
+        if (k === 'groq_keys' || k === 'brevo_api_key' || k.endsWith('_client_secret') || k === 'darasocial_post_slot' || k.startsWith('darasocial_')) privatePayload[k] = data[k];
         else payload[k] = data[k];
     });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
@@ -2665,13 +2697,31 @@ async function actionSaveSettings(data) {
                 .slice(0, 10);
         }
     });
+    delete payload.groq_keys;
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
+    if ('groq_keys' in privatePayload || 'groq_model' in payload) {
+        var cleanGroqKeys;
+        if ('groq_keys' in privatePayload) {
+            cleanGroqKeys = Array.isArray(privatePayload.groq_keys)
+                ? privatePayload.groq_keys.map(function(k){ return String(k || '').trim(); }).filter(function(k){ return k.indexOf('gsk_') === 0 && k.length > 20; }).slice(0,20)
+                : [];
+            await setDoc(doc(db, 'settings', 'private'), { groq_keys: cleanGroqKeys }, { merge: true });
+            await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+        } else {
+            var savedPrivateSnap = await getDoc(doc(db, 'settings', 'private'));
+            var savedPrivate = savedPrivateSnap.exists() ? savedPrivateSnap.data() : {};
+            cleanGroqKeys = Array.isArray(savedPrivate.groq_keys) ? savedPrivate.groq_keys : [];
+        }
+        await syncGroqAIConfiguration({ keys: cleanGroqKeys, model: payload.groq_model || window._AQS_GROQ_MODEL || '' });
+        window._AQS_GROQ_MASTER_KEYS = cleanGroqKeys.slice();
+    }
     var privateKeys = Object.keys(privatePayload).filter(function (k) { return k !== 'brevo_api_key'; });
     if (privateKeys.length) {
         var privateMerge = {};
         privateKeys.forEach(function (k) {
             var v = privatePayload[k];
-            if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
+            if (k === 'groq_keys') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.indexOf('gsk_') === 0 && x.length > 20; }).slice(0,20) : [];
+            else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
             else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
             else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
             else privateMerge[k] = String(v || '').trim();
@@ -2702,12 +2752,6 @@ async function actionSaveSettings(data) {
         }
     }
     /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
-    if (Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
-        var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-        var _gMerged = payload.groq_keys.slice();
-        _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
-        window._AQS_GROQ_MASTER_KEYS = _gMerged;
-    }
     if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
