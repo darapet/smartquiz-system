@@ -1103,27 +1103,6 @@ a{text-decoration:none;color:inherit;}
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
 <script src="js/aqs-groq-key.js"></script>
-<script>
-/* Anonymous AI key bootstrap: studyhub Groq pool from public settings doc
-   (settings/main is publicly readable; the auth-gated loader skips guests). */
-(function(){
-  function register(keys){
-    if(!Array.isArray(keys)||!keys.length) return;
-    if(typeof window.setFeatureGroqKeys==='function') window.setFeatureGroqKeys('studyhub',keys);
-    if(typeof window.setGroqKeys==='function') window.setGroqKeys(keys);
-  }
-  try{
-    fetch('https://firestore.googleapis.com/v1/projects/smartquiz-darapet/databases/(default)/documents/settings/main')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var f=(d&&d.fields)||{};
-        var pick=function(k){ return (f[k]&&f[k].arrayValue&&f[k].arrayValue.values)?f[k].arrayValue.values.map(function(x){return x.stringValue||'';}).filter(Boolean):[]; };
-        register(pick('studyhub_groq_keys').concat(pick('groq_keys')));
-      })
-      .catch(function(e){ console.warn('AI key bootstrap failed',e); });
-  }catch(e){ console.warn('AI key bootstrap error',e); }
-})();
-</script>
 <script src="js/aqs-gemini-tts.js"></script>
 <script src="js/aqs-voice.js"></script>
 <script>
@@ -1428,11 +1407,19 @@ Format the notes using Markdown with clear headings (## for sections, ### for su
 
 Make it thorough, academically rigorous, and student-friendly.`;
 
-  const raw = await shAI(prompt, 2000);
-  document.getElementById('notes-gen-btn').disabled=false;
-  document.getElementById('notes-spinner').style.display='none';
-  document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
-  document.getElementById('notes-loading').style.display='none';
+  let raw = '';
+  try {
+    raw = await shAI(prompt, 1800);
+  } catch(error) {
+    console.error('[StudyHub:Notes]', error);
+    shToast('⚠️ ' + (error && error.message ? error.message : 'Could not generate notes.'));
+    return;
+  } finally {
+    document.getElementById('notes-gen-btn').disabled=false;
+    document.getElementById('notes-spinner').style.display='none';
+    document.getElementById('notes-btn-text').textContent='✨ Generate Notes';
+    document.getElementById('notes-loading').style.display='none';
+  }
 
   if(!raw){ shToast('⚠️ Could not generate notes. Check API keys.'); return; }
   _notesRaw=raw;
@@ -1492,13 +1479,21 @@ async function shGenerateFlashcards(){
 
   const prompt=`Generate exactly ${count} flashcards about "${topic}" for university study.
 Return ONLY valid JSON:
-{"cards":[{"q":"Question text","a":"Answer text"},...]}}
+{"cards":[{"q":"Question text","a":"Answer text"},...]}
 Make questions test key concepts, definitions, formulas, or applications. Keep answers concise but complete. Return ONLY JSON.`;
 
-  const raw=await shAI(prompt, 1500);
-  document.getElementById('fc-gen-btn').disabled=false;
-  document.getElementById('fc-spinner').style.display='none';
-  document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
+  let raw = '';
+  try {
+    raw = await shAI(prompt, 1500);
+  } catch(error) {
+    console.error('[StudyHub:Flashcards]', error);
+    shToast('⚠️ ' + (error && error.message ? error.message : 'Could not generate flashcards.'));
+    return;
+  } finally {
+    document.getElementById('fc-gen-btn').disabled=false;
+    document.getElementById('fc-spinner').style.display='none';
+    document.getElementById('fc-btn-text').textContent='🃏 Generate Flashcards';
+  }
 
   if(!raw){ shToast('⚠️ Failed to generate flashcards'); return; }
   try{
@@ -1681,12 +1676,20 @@ async function shStartExam(){
   const diffLabel={easy:'100-level (basic)',medium:'200-300 level (intermediate)',hard:'400-level (advanced)'};
   const prompt=`Generate exactly ${count} multiple-choice exam questions about "${topic}" at ${diffLabel[diff]} university level.
 Return ONLY valid JSON:
-{"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}}
+{"questions":[{"q":"Question text","options":[{"text":"Option A","correct":false},{"text":"Option B","correct":true},{"text":"Option C","correct":false},{"text":"Option D","correct":false}],"explanation":"Brief explanation of the correct answer"},...]}
 Exactly one option per question must be correct. Shuffle option positions. Academic and rigorous. Return ONLY the JSON.`;
-  const raw=await shAI(prompt, 2500);
-  document.getElementById('exam-start-btn').disabled=false;
-  document.getElementById('exam-spinner').style.display='none';
-  document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
+  let raw = '';
+  try {
+    raw = await shAI(prompt, 1800);
+  } catch(error) {
+    console.error('[StudyHub:MockExam]', error);
+    shToast('⚠️ ' + (error && error.message ? error.message : 'Could not generate exam questions.'));
+    return;
+  } finally {
+    document.getElementById('exam-start-btn').disabled=false;
+    document.getElementById('exam-spinner').style.display='none';
+    document.getElementById('exam-btn-text').textContent='🚀 Generate & Start Exam';
+  }
   let qs=[];
   if(raw){ try{ const match=raw.match(/\{[\s\S]*\}/); if(match){ const obj=JSON.parse(match[0]); qs=obj.questions||[]; } }catch(e){} }
   if(!qs.length){ shToast('⚠️ Could not generate exam questions. Try again.'); return; }

@@ -19,6 +19,76 @@ async function getUid(req) {
   }
 }
 
+/* Per-user limits. Guests can host, so keep one visitor from running up AI or storage costs. */
+const QUOTA = { create: { limit: 10, windowMs: 3600e3 }, generate: { limit: 200, windowMs: 3600e3 } };
+
+async function takeQuota(uid, bucket) {
+  const { limit, windowMs } = QUOTA[bucket];
+  const ref = db.collection('multiplayerLimits').doc(`${uid}_${bucket}`);
+  await db.runTransaction(async tx => {
+    const snap = await tx.get(ref);
+    const next = M.nextQuota(snap.exists ? snap.data() : null, Date.now(), limit, windowMs);
+    if (!next.ok) throw new Error('Too many requests. Please wait a while and try again.');
+    tx.set(ref, { start: next.start, count: next.count });
+  });
+}
+
+let settingsCache = { at: 0, data: {} };
+async function aiSettings() {
+  if (Date.now() - settingsCache.at < 60e3) return settingsCache.data;
+  const snap = await db.collection('settings').doc('main').get();
+  settingsCache = { at: Date.now(), data: snap.exists ? snap.data() : {} };
+  return settingsCache.data;
+}
+
+async function chatOnce(url, key, body, timeoutMs) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { method: 'POST', signal: ctrl.signal, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` }, body: JSON.stringify(body) });
+    return res;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/* Groq first (quiz keys, then the shared pool), then Mistral. A bad, busy or rate-limited key
+   moves on to the next one. Returns the model's raw text. */
+async function writeQuestions(prompt) {
+  const settings = await aiSettings();
+  const groq = M.collectKeys(settings, ['quiz_groq_keys', 'groq_keys']);
+  const mistral = M.collectKeys(settings, ['mistral_keys']);
+  if (!groq.length && !mistral.length) throw new Error('AI is not set up yet. The site owner needs to add AI keys in Admin Settings.');
+  const messages = [
+    { role: 'system', content: 'You are an expert quiz writer. Reply with only the raw JSON array that was asked for.' },
+    { role: 'user', content: prompt }
+  ];
+  const gModel = M.groqModelFor(settings.groq_model);
+  const providers = [
+    ...groq.map(k => ({ name: 'groq', key: k, url: 'https://api.groq.com/openai/v1/chat/completions', body: { model: gModel, messages, max_tokens: 4096, temperature: 0.5, ...(gModel.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}) } })),
+    ...mistral.map(k => ({ name: 'mistral', key: k, url: 'https://api.mistral.ai/v1/chat/completions', body: { model: String(settings.mistral_model || 'mistral-small-latest'), messages, max_tokens: 4096, temperature: 0.5 } }))
+  ];
+  /* Start at a random key so one busy key does not take every request. */
+  const offset = Math.floor(Math.random() * Math.max(1, groq.length));
+  const ordered = [...groq.map((_, i) => providers[(i + offset) % groq.length]), ...providers.slice(groq.length)];
+  const deadline = Date.now() + 100e3;
+  let tried = 0;
+  for (const p of ordered) {
+    if (tried >= 6 || Date.now() > deadline - 5e3) break;
+    tried++;
+    try {
+      const res = await chatOnce(p.url, p.key, p.body, Math.min(45e3, deadline - Date.now()));
+      if (!res.ok) { console.warn(`multiplayer AI: ${p.name} answered ${res.status}`); continue; }
+      const data = await res.json();
+      const text = String(((data.choices || [])[0] || {}).message?.content || '');
+      if (text.trim().length >= 20) return text;
+    } catch (e) {
+      console.warn(`multiplayer AI: ${p.name} failed: ${e.message}`);
+    }
+  }
+  throw new Error('The AI service is busy or unavailable right now. Wait a minute, then press Continue.');
+}
+
 const roomRef = id => db.collection('multiplayerRooms').doc(id);
 const playerRef = (id, uid) => roomRef(id).collection('players').doc(uid);
 const claimRef = (id, avatar) => roomRef(id).collection('avatarClaims').doc(String(avatar));
@@ -50,12 +120,19 @@ const actions = {
     return { title: d.title, phase: d.phase, capacity: d.capacity, playerCount: d.playerCount, secondsPerQuestion: d.secondsPerQuestion, questionCount: d.questionCount, difficulty: d.difficulty, takenAvatars: claims.docs.map(x => Number(x.id)) };
   },
 
+  /* Anyone, including guests, can write questions with the site's AI keys. */
+  async generate({ uid, body }) {
+    const input = M.validateGenerate(body);
+    await takeQuota(uid, 'generate');
+    return { text: await writeQuestions(M.buildQuizPrompt(input)) };
+  },
+
+  /* Anyone, including guests, can host. Limited per user so rooms cannot be spammed. */
   async create({ uid, body }) {
-    const acct = await admin.auth().getUser(uid);
-    if (!acct.providerData.length) throw new Error('A non-anonymous host account is required.');
     const input = M.validateRoom(body.room);
     const avatar = M.validateAvatar(body.avatar);
     const shards = M.shardQuestions(input.questions);
+    await takeQuota(uid, 'create');
     const id = crypto.randomBytes(8).toString('hex').toUpperCase();
     const batch = db.batch();
     batch.create(roomRef(id), {
@@ -265,7 +342,7 @@ const actions = {
   }
 };
 
-exports.multiplayer = onRequest({ cors: true, region: 'us-central1', timeoutSeconds: 60, memory: '512MiB' }, async (req, res) => {
+exports.multiplayer = onRequest({ cors: true, region: 'us-central1', timeoutSeconds: 120, memory: '512MiB' }, async (req, res) => {
   res.set('Cache-Control', 'no-store');
   if (req.method === 'OPTIONS') return res.status(204).send('');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Use POST.' });
@@ -276,7 +353,7 @@ exports.multiplayer = onRequest({ cors: true, region: 'us-central1', timeoutSeco
     const handler = Object.prototype.hasOwnProperty.call(actions, action) ? actions[action] : null;
     if (!handler) return res.status(400).json({ error: 'Unknown multiplayer action.' });
     let id = '';
-    if (action !== 'create') {
+    if (action !== 'create' && action !== 'generate') {
       id = String(body.roomId || '');
       if (!ROOM_ID.test(id)) throw new Error('Invalid room id.');
     }

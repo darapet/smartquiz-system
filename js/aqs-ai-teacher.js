@@ -320,7 +320,7 @@ function sysPrompt(){
   '3. Use MATH: lines for every equation and show full working, one step per STEP line.\n'+
   '4. Keep the spoken part under 130 words. Never mention the board syntax aloud.';
 }
-var AIT_MODEL = (window.AQS_CONFIG && window.AQS_CONFIG.groqModel) || 'llama-3.3-70b-versatile';
+var AIT_MODEL = (window.AQS_CONFIG && window.AQS_CONFIG.groqModel) || 'openai/gpt-oss-120b';
 
 function aitSignal(ms){
   try{ if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms); }catch(e){}

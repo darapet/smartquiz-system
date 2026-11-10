@@ -224,13 +224,13 @@
             ]
         }];
 
-        /* Try Groq vision first (meta-llama/llama-4-scout supports vision) */
+        /* Try Groq vision first (qwen3.8-27b supports vision) */
         if (typeof window.groqFetch === 'function') {
             try {
                 var ctrl = new AbortController();
                 setTimeout(function () { ctrl.abort(); }, 30000);
                 var res = await window.groqFetch({
-                    model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+                    model: 'qwen/qwen3.8-27b',
                     messages: visionMsg,
                     max_tokens: 4096,
                     temperature: 0.1
@@ -319,7 +319,7 @@
         var ctrl = new AbortController();
         var tid  = setTimeout(function () { ctrl.abort(); }, 25000);
         return window.groqFetch(
-            { model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 2000, temperature: 0.5 },
+            { model: 'openai/gpt-oss-20b', messages: messages, max_tokens: 2000, temperature: 0.5 },
             { signal: ctrl.signal }
         )
         .then(function (r) { clearTimeout(tid); return r.json(); })

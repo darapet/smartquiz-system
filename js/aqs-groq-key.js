@@ -76,7 +76,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 (function(){
     var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
     var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';
-    var HF_URL          = 'https://api-inference.huggingface.co/v1/chat/completions';
+    var HF_URL          = 'https://router.huggingface.co/v1/chat/completions';
     var GROQ_IDX_KEY    = 'aqs_groq_key_idx';
     var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
     var HF_IDX_KEY      = 'aqs_hf_key_idx';
@@ -94,6 +94,34 @@ window._aqsKeysReady = new Promise(function(resolve) {
         : 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image';
     var CREATOR_IMAGE_ENGINE_KEY = 'aqs_creator_image_engine';
     var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
+
+    /* ── Retired Groq models ─────────────────────────────────────────────
+       Groq shut these down in 2026 (see console.groq.com/docs/deprecations).
+       Any request that still names one is moved to its current replacement,
+       and any request that carries an image goes to a vision model. */
+    var GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';
+    var GROQ_RETIRED = {
+        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+        'llama3-8b-8192': 'openai/gpt-oss-20b',
+        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+        'llama3-70b-8192': 'openai/gpt-oss-120b',
+        'qwen/qwen3-32b': 'openai/gpt-oss-120b',
+        'moonshotai/kimi-k2-instruct-0905': 'openai/gpt-oss-120b',
+        'qwen/qwen3.6-27b': 'qwen/qwen3.8-27b',
+        'meta-llama/llama-4-scout-17b-16e-instruct': GROQ_VISION_MODEL,
+        'meta-llama/llama-4-maverick-17b-128e-instruct': GROQ_VISION_MODEL
+    };
+    function _bodyHasImage(body) {
+        try {
+            return (body.messages || []).some(function(m) {
+                return Array.isArray(m.content) && m.content.some(function(p) { return p && p.type === 'image_url'; });
+            });
+        } catch (e) { return false; }
+    }
+    window._aqsGroqModel = function(model, body) {
+        if (body && _bodyHasImage(body)) return GROQ_VISION_MODEL;
+        return GROQ_RETIRED[model] || model || 'openai/gpt-oss-20b';
+    };
     var _creatorImageRateLimitedUntil = {};
 
     /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
@@ -228,7 +256,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
            otherwise use the model selected in Admin Settings. */
         var requestedModel = bodyObj && typeof bodyObj.model === 'string' && bodyObj.model.trim();
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            requestedModel || window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
+            window._aqsGroqModel(requestedModel || window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', bodyObj));
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -237,7 +265,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     async function _hfFetch(bodyObj, extraOpts) {
         /* HuggingFace uses the same OpenAI-compatible /v1/chat/completions endpoint */
         return _providerFetch(HF_URL, _getHFKeys(), HF_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
+            window._AQS_HF_MODEL || 'openai/gpt-oss-20b');
     }
     function _fallbackOpts(extraOpts) {
         var opts = Object.assign({}, extraOpts || {});
@@ -495,7 +523,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
         /* 4. Nothing left */
         var gc = _getGroqKeys().length, mc = _getMistralKeys().length, hc = _getHFKeys().length;
         if (!gc && !mc && !hc) {
-            _aqsShowUserError('config'); throw new Error('AI features not configured.');
+            _aqsShowUserError('config');
+            throw new Error('AI features not configured.' + (window._aqsSettingsLoadError ? ' Could not read AI settings: ' + window._aqsSettingsLoadError + '.' : ''));
         }
         if (lastResponse) return lastResponse;
         throw new Error('All AI keys are busy or rate-limited. Please wait a moment and try again.');
@@ -712,6 +741,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 var request = Object.assign({
                     model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
                 }, bodyObj || {});
+                request.model = window._aqsGroqModel(request.model, request);
                 var lastResponse = null;
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
                 if (slots.length) {

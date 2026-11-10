@@ -93,7 +93,6 @@ const STATUS = new Map([
   ['Authentication required.', 401],
   ['Only the host can remove players.', 403],
   ['Only the host can change game state.', 403],
-  ['A non-anonymous host account is required.', 403],
   ['Incorrect room PIN.', 403],
   ['Room not found.', 404],
   ['Player not found.', 404],
@@ -101,8 +100,92 @@ const STATUS = new Map([
   ['Room state changed; try again.', 409],
   ['Avatar already taken.', 409],
   ['Voice chat is full right now.', 409],
-  ['You already answered this question.', 409]
+  ['You already answered this question.', 409],
+  ['Too many requests. Please wait a while and try again.', 429],
+  ['AI is not set up yet. The site owner needs to add AI keys in Admin Settings.', 503],
+  ['The AI service is busy or unavailable right now. Wait a minute, then press Continue.', 503]
 ]);
+
+/* ── Server-side AI question writing ───────────────────────────────────────
+   Hosts do not need an account, so the AI keys stay on the server and the browser
+   only sends the topic. Every call is validated and rate limited per user. */
+
+const DIFFICULTY_GUIDE = Object.freeze({
+  Easy: 'Easy: basic recall of core facts and definitions. Short, clear wording. Wrong options are clearly different from the right one.',
+  Hard: 'Hard: apply ideas to new situations and compare related concepts. Wrong options are plausible to someone who studied.',
+  Harder: 'Harder: multi-step reasoning, subtle distinctions, and common misconceptions. Wrong options are very plausible.',
+  Professional: 'Professional: expert-level, exam or industry standard. Nuanced scenarios, edge cases, and precise terminology. Distractors reflect real expert-level confusions.'
+});
+
+const AI_LIMITS = Object.freeze({ maxTopic: 1500, maxCount: 20, maxAvoid: 30, maxAvoidChars: 240, maxBatch: 200 });
+
+function validateGenerate(body) {
+  const b = body && typeof body === 'object' ? body : {};
+  const topic = String(b.topic || '').replace(/\s+/g, ' ').trim();
+  if (topic.length < 3) throw new Error('Describe what the questions should be about.');
+  if (topic.length > AI_LIMITS.maxTopic) throw new Error(`The topic must be ${AI_LIMITS.maxTopic} characters or fewer.`);
+  if (!DIFFICULTIES.includes(b.difficulty)) throw new Error('Choose a difficulty level.');
+  const count = Number(b.count);
+  if (!Number.isInteger(count) || count < 1 || count > AI_LIMITS.maxCount) throw new Error(`Ask for 1 to ${AI_LIMITS.maxCount} questions at a time.`);
+  const batch = Number.isInteger(Number(b.batch)) ? Math.min(AI_LIMITS.maxBatch, Math.max(1, Number(b.batch))) : 1;
+  const avoid = (Array.isArray(b.avoid) ? b.avoid : []).slice(-AI_LIMITS.maxAvoid)
+    .map(x => String(x || '').replace(/\s+/g, ' ').trim().slice(0, AI_LIMITS.maxAvoidChars)).filter(Boolean);
+  return { topic, difficulty: b.difficulty, count, batch, avoid };
+}
+
+function buildQuizPrompt({ topic, difficulty, count, avoid = [], batch = 1 }) {
+  const guide = DIFFICULTY_GUIDE[difficulty] || DIFFICULTY_GUIDE.Easy;
+  const avoidText = avoid.length
+    ? `\nDo NOT repeat or rephrase any of these existing questions:\n${avoid.map(q => `- ${q}`).join('\n')}\n`
+    : '';
+  return `Write exactly ${count} multiple-choice quiz questions about: ${topic}
+
+Difficulty: ${guide}
+This is batch ${batch}. Cover a different sub-topic or angle than earlier batches.${avoidText}
+Rules:
+- Each question has exactly 4 answer options and exactly 1 correct option.
+- Plain text only. No markdown. Write math in plain text (for example x^2 or sqrt(9)).
+- Keep each question under 220 characters and each option under 100 characters.
+- Do not put letters like "A)" in the options.
+
+Return ONLY a raw JSON array, nothing else. Format:
+[{"q":"Question text","options":["Option 1","Option 2","Option 3","Option 4"],"answer":0}]
+"answer" is the index (0 to 3) of the correct option.`;
+}
+
+/* Groq retired these in 2026; an old admin setting must not send requests to them. */
+const GROQ_DEFAULT_MODEL = 'openai/gpt-oss-20b';
+const GROQ_RETIRED = Object.freeze({
+  'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+  'llama3-8b-8192': 'openai/gpt-oss-20b',
+  'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+  'llama3-70b-8192': 'openai/gpt-oss-120b',
+  'qwen/qwen3-32b': 'openai/gpt-oss-120b',
+  'moonshotai/kimi-k2-instruct-0905': 'openai/gpt-oss-120b',
+  'meta-llama/llama-4-scout-17b-16e-instruct': 'openai/gpt-oss-120b',
+  'meta-llama/llama-4-maverick-17b-128e-instruct': 'openai/gpt-oss-120b'
+});
+const groqModelFor = model => GROQ_RETIRED[String(model || '').trim()] || String(model || '').trim() || GROQ_DEFAULT_MODEL;
+
+/* Admin Settings stores key pools as arrays of strings. Quiz keys first, then the shared pool. */
+function collectKeys(settings, fields) {
+  const seen = new Set(), out = [];
+  for (const f of fields) {
+    for (const raw of Array.isArray(settings && settings[f]) ? settings[f] : []) {
+      const k = String(raw || '').replace(/[^\x20-\x7E]/g, '').trim();
+      if (k.length > 20 && !seen.has(k)) { seen.add(k); out.push(k); }
+    }
+  }
+  return out;
+}
+
+/* Fixed-window rate limit. Returns the next stored state, or ok:false when the limit is used up. */
+function nextQuota(state, nowMs, limit, windowMs) {
+  let start = Number(state && state.start) || 0, count = Number(state && state.count) || 0;
+  if (!start || nowMs - start >= windowMs) { start = nowMs; count = 0; }
+  if (count >= limit) return { ok: false, start, count };
+  return { ok: true, start, count: count + 1 };
+}
 
 function errorStatus(error) {
   return STATUS.get(String(error && error.message || '')) || 400;
@@ -110,5 +193,6 @@ function errorStatus(error) {
 
 module.exports = {
   LIMITS, DIFFICULTIES, validateAvatar, validateRoom, shardQuestions, shardIndex, shardOffset,
-  publicQuestion, correctIndex, answerOutcome, answerWindow, rankPlayers, errorStatus
+  publicQuestion, correctIndex, answerOutcome, answerWindow, rankPlayers, errorStatus,
+  AI_LIMITS, validateGenerate, buildQuizPrompt, groqModelFor, collectKeys, nextQuota, GROQ_DEFAULT_MODEL
 };

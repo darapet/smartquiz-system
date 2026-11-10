@@ -59,7 +59,7 @@
     async function callAI(messages) {
         if (typeof window.groqFetch !== 'function') return null;
         try {
-            var res = await window.groqFetch({ model: 'llama-3.1-8b-instant', messages: messages, max_tokens: 250, temperature: 0.7 });
+            var res = await window.groqFetch({ model: 'openai/gpt-oss-20b', messages: messages, max_tokens: 250, temperature: 0.7 });
             if (!res || !res.ok) return null;
             var data = await res.json();
             return ((data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || '').trim() || null;

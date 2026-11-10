@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="css/multiplayer-host.css">
 <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
-<body data-view="auth">
+<body data-view="setup">
 
 <header class="top" id="top">
   <a href="index.html" class="brand" aria-label="SmartQuiz home"><span class="brand-mark">◈</span><span>SmartQuiz</span></a>
@@ -26,15 +26,6 @@
 </header>
 
 <main class="shell">
-
-  <!-- Sign in (hosts only) -->
-  <section class="view card" id="v-auth">
-    <p class="eyebrow">Live multiplayer</p>
-    <h1>Host a live quiz</h1>
-    <p class="lead">Create a quiz with AI, open a room, and race your players to the right answer.</p>
-    <a class="btn primary" href="login.html">Sign in to host</a>
-    <p class="hint">After you sign in, open <strong>Live multiplayer</strong> again from the quiz menu.</p>
-  </section>
 
   <!-- Host step 1: quiz details and AI generation -->
   <section class="view" id="v-setup" hidden>
@@ -119,6 +110,10 @@
           <small>Players need this PIN to enter.</small>
         </label>
       </div>
+      <label class="field">Your name
+        <input id="host-name" maxlength="35" placeholder="Host" autocomplete="nickname">
+        <small>Players see this next to the crown in the lobby.</small>
+      </label>
       <h2>Your avatar</h2>
       <div id="host-picker"></div>
       <div class="row">
@@ -243,7 +238,6 @@
 
 <div id="voice-audio" hidden></div>
 
-<script src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/multiplayer-host.js"></script>
 </body>
 </html>
