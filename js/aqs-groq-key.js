@@ -571,25 +571,16 @@ window._aqsKeysReady = new Promise(function(resolve) {
 })();
 
 /* ═══════════════════════════════════════════════════════════════════
-   AUTO-LOADER — pulls AI keys from Firebase settings on every page
-   that includes this file + aqs-firebase.js (Studio, Study Hub, etc.)
-   Fires once Firebase is ready; never blocks page rendering.
-   Resolves window._aqsKeysReady when complete so groqFetch() can
-   safely wait for keys before declaring "not configured".
+   AUTO-LOADER — loads shared and feature-specific AI keys from Firebase.
+   Browser calls Groq/Mistral/Hugging Face directly using these pools.
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
     var _settingsLoadStarted = false;
 
-    function _resolveAIKeysReady() {
+    function _resolveKeysReady() {
         if (typeof window._aqsKeysReadyResolve === 'function') {
             window._aqsKeysReadyResolve();
             window._aqsKeysReadyResolve = null;
-        }
-    }
-
-    function _logAISettingsFailure(cause) {
-        if (typeof window._aqsLog === 'function') {
-            window._aqsLog('error', 'AI settings load failed: ' + cause);
         }
     }
 
@@ -597,65 +588,78 @@ window._aqsKeysReady = new Promise(function(resolve) {
         if (_settingsLoadStarted) return;
         _settingsLoadStarted = true;
 
-        /* Load only the dedicated Study Hub Groq pool from authenticated
-           Firebase settings. Do not fall back to Cloudflare or shared pools. */
-        if (!window.jQuery || typeof window.jQuery.ajax !== 'function') {
-            _logAISettingsFailure('Firebase settings bridge is unavailable');
-            _resolveAIKeysReady();
+        if (typeof window.aqsAjax !== 'function') {
+            if (typeof window._aqsLog === 'function') {
+                window._aqsLog('error', 'AI settings load failed: Firebase aqsAjax is unavailable.');
+            }
+            _resolveKeysReady();
             return;
         }
-        window.jQuery.ajax({
-            url: 'firebase',
-            method: 'POST',
-            data: { action: 'aqs_get_settings' },
-            timeout: 15000
-        }).done(function(result) {
-            var settings = result && result.success && result.data && result.data.settings
-                ? result.data.settings : {};
-            var keys = Array.isArray(settings.studyhub_groq_keys)
-                ? settings.studyhub_groq_keys : [];
-            if (typeof window.setFeatureGroqKeys === 'function') {
-                window.setFeatureGroqKeys('studyhub', keys);
+
+        window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
+            var s = (res && res.success && res.data && res.data.settings)
+                ? res.data.settings : {};
+
+            /* Shared provider pools: Groq → Mistral → Hugging Face. */
+            if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
+                window.setGroqKeys(s.groq_keys);
             }
-            if (settings.groq_model) window._AQS_GROQ_MODEL = settings.groq_model;
-            if (!keys.length) _logAISettingsFailure('No keys found in settings/main.studyhub_groq_keys');
-            _resolveAIKeysReady();
-        }).fail(function(xhr, status, error) {
-            _logAISettingsFailure('Firebase settings request failed: ' + (error || status || 'unknown error'));
-            _resolveAIKeysReady();
+            var savedGroqModel = s.groq_model;
+            var retiredGroqModels = [
+                'llama-3.3-70b-versatile', 'llama-3.1-8b-instant',
+                'llama3-70b-8192', 'llama3-8b-8192'
+            ];
+            window._AQS_GROQ_MODEL = savedGroqModel &&
+                retiredGroqModels.indexOf(savedGroqModel) === -1
+                ? savedGroqModel : 'openai/gpt-oss-20b';
+
+            if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
+                window.setMistralKeys(s.mistral_keys);
+            }
+            if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+
+            if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
+                window.setHFKeys(s.hf_keys);
+            }
+            if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+
+            /* Feature-specific pools, including Study Hub's own Groq keys. */
+            var featureFields = {
+                quiz: 'quiz_groq_keys',
+                challenge: 'challenge_groq_keys',
+                studyhub: 'studyhub_groq_keys',
+                textdocs: 'textdocs_groq_keys',
+                puzzle: 'puzzle_groq_keys',
+                quizstudio: 'quizstudio_groq_keys'
+            };
+            Object.keys(featureFields).forEach(function (id) {
+                var keys = s[featureFields[id]];
+                if (Array.isArray(keys) && typeof window.setFeatureGroqKeys === 'function') {
+                    window.setFeatureGroqKeys(id, keys);
+                }
+            });
+
+            var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) +
+                (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) +
+                (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+            if (typeof window._aqsLog === 'function') {
+                window._aqsLog('info', 'Loaded shared and feature AI key pools from Firebase. Shared keys: ' + total +
+                    '; Study Hub keys: ' + (window.getFeatureGroqKeyCount ? window.getFeatureGroqKeyCount('studyhub') : 0));
+            }
+            _resolveKeysReady();
+        }, function (error) {
+            if (typeof window._aqsLog === 'function') {
+                window._aqsLog('error', 'AI settings load failed: ' + (error && error.message ? error.message : error));
+            }
+            _resolveKeysReady();
         });
     }
 
-    function _startAISettingsLoadAfterAuth() {
-        if (typeof window.onAqsAuthChange === 'function') {
-            window.onAqsAuthChange(function(user) {
-                if (user) _loadAIKeysFromFirebase();
-                else {
-                    _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
-                    _resolveAIKeysReady();
-                }
-            });
-            return;
-        }
-        /* Firebase bootstrap can finish before its auth helper is installed.
-           Wait briefly for that helper, then allow the loader to report the
-           concrete request failure rather than silently waiting forever. */
-        var attempts = 0;
-        var waitTimer = setInterval(function() {
-            attempts += 1;
-            if (typeof window.onAqsAuthChange === 'function') {
-                clearInterval(waitTimer);
-                _startAISettingsLoadAfterAuth();
-            } else if (attempts >= 40) {
-                clearInterval(waitTimer);
-                _logAISettingsFailure('Firebase auth state helper is unavailable');
-                _resolveAIKeysReady();
-            }
-        }, 100);
+    if (window._aqsFirebaseReady) {
+        _loadAIKeysFromFirebase();
+    } else {
+        document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
     }
-
-    if (window._aqsFirebaseReady) _startAISettingsLoadAfterAuth();
-    else document.addEventListener('aqs:firebase:ready', _startAISettingsLoadAfterAuth, { once: true });
 })();
 
 
@@ -828,7 +832,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     var _poolOpts = {
         quiz: { noFallback: false },
         /* Study Hub must use only its dedicated Firebase pool. */
-        studyhub: { noFallback: true }
+        studyhub: { noFallback: false }
     };
     ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio', 'darasocial_post_slot'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
