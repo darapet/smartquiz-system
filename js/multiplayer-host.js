@@ -26,6 +26,14 @@ try {
 }
 
 const ROOM_ID = /^[A-F0-9]{16}$/;
+
+/* The site is served from GitHub Pages / Cloudflare, where the Firebase Hosting rewrite
+   (/api/multiplayer) does not exist. Call the Cloud Function directly unless this page is
+   itself on Firebase Hosting. Set window.AQS_MULTIPLAYER_API_URL to override. */
+const API_URL = (typeof window.AQS_MULTIPLAYER_API_URL === 'string' && window.AQS_MULTIPLAYER_API_URL) ||
+  (/\.(web\.app|firebaseapp\.com)$/.test(location.hostname)
+    ? '/api/multiplayer'
+    : 'https://us-central1-smartquiz-darapet.cloudfunctions.net/multiplayer');
 const POINTS = 5;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -119,7 +127,7 @@ async function api(action, payload = {}) {
   const t0 = Date.now();
   let res;
   try {
-    res = await fetch('/api/multiplayer', {
+    res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ action, ...payload })
@@ -130,7 +138,10 @@ async function api(action, payload = {}) {
   const t1 = Date.now();
   const body = await res.json().catch(() => ({}));
   if (typeof body.serverNow === 'number') S.skew = body.serverNow - (t0 + t1) / 2;
-  if (!res.ok) throw new Error(body.error || `The multiplayer service returned ${res.status}.`);
+  if (!res.ok) {
+    if (!body.error && (res.status === 404 || res.status === 405)) throw new Error('The multiplayer server was not found. The host needs to deploy the multiplayer function.');
+    throw new Error(body.error || `The multiplayer service returned ${res.status}.`);
+  }
   return body;
 }
 
@@ -925,7 +936,7 @@ function bindEvents() {
     if (e.persisted || !S.roomId || !S.token) return;
     const post = body => {
       try {
-        fetch('/api/multiplayer', { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${S.token}` }, body: JSON.stringify(body) });
+        fetch(API_URL, { method: 'POST', keepalive: true, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${S.token}` }, body: JSON.stringify(body) });
       } catch (err) { /* best effort */ }
     };
     if (S.voice && S.voice.state() !== 'off') post({ action: 'voice', roomId: S.roomId, on: false });
