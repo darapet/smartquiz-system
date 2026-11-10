@@ -71,8 +71,6 @@ window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'gemini-3.1
    ─────────────────────────────────────────────────────────────────── */
 window._aqsKeysReady = new Promise(function(resolve) {
     window._aqsKeysReadyResolve = resolve;
-    /* Safety timeout: resolve after 5 s even if Firebase never fires */
-    setTimeout(resolve, 5000);
 });
 
 (function(){
@@ -226,8 +224,11 @@ window._aqsKeysReady = new Promise(function(resolve) {
     }
 
     async function _groqFetch(bodyObj, extraOpts) {
+        /* Respect an explicit per-request model (for model fallback attempts);
+           otherwise use the model selected in Admin Settings. */
+        var requestedModel = bodyObj && typeof bodyObj.model === 'string' && bodyObj.model.trim();
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
+            requestedModel || window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -462,7 +463,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
         /* Wait for the Firebase key auto-loader to complete before checking
            key counts. This prevents false "not configured" errors that happen
            when groqFetch is called before the async Firestore read finishes.
-           The promise resolves in ≤5 s (safety timeout) so we never hang. */
+           The Firebase loader resolves it after settings load or its 20-second timeout. */
         if (!_getGroqKeys().length && !_getMistralKeys().length && !_getHFKeys().length) {
             await window._aqsKeysReady;
         }
@@ -566,54 +567,9 @@ window._aqsKeysReady = new Promise(function(resolve) {
     function _loadAIKeysFromFirebase() {
         if (_settingsLoadStarted) return;
         _settingsLoadStarted = true;
-        if (typeof window.aqsAjax !== 'function') {
-            _logAISettingsFailure('aqsAjax is unavailable');
-            _resolveAIKeysReady();
-            return;
-        }
-        var settled = false;
-        function fail(cause) {
-            if (settled) return;
-            settled = true;
-            clearTimeout(timer);
-            _logAISettingsFailure(cause);
-            _resolveAIKeysReady();
-        }
-        var timer = setTimeout(function() {
-            fail('aqs_get_settings timed out after 20000 ms');
-        }, 20000);
-        try {
-            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
-                if (settled) return;
-                if (!res || !res.success || !res.data || !res.data.settings) {
-                    fail('aqs_get_settings failed: ' + (res && res.data ? (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)) : 'empty response'));
-                    return;
-                }
-                settled = true;
-                clearTimeout(timer);
-                var s = res.data.settings;
-                if (Array.isArray(s.groq_keys) && s.groq_keys.length) window.setGroqKeys(s.groq_keys);
-                var retired = ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'llama3-70b-8192', 'llama3-8b-8192'];
-                window._AQS_GROQ_MODEL = s.groq_model && retired.indexOf(s.groq_model) === -1 ? s.groq_model : 'openai/gpt-oss-20b';
-                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) window.setMistralKeys(s.mistral_keys);
-                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
-                if (Array.isArray(s.hf_keys) && s.hf_keys.length) window.setHFKeys(s.hf_keys);
-                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
-                if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
-                if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
-                var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
-                if (total && typeof window._aqsLog === 'function') window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
-                var pools = {quiz:'quiz_groq_keys',challenge:'challenge_groq_keys',studyhub:'studyhub_groq_keys',textdocs:'textdocs_groq_keys',puzzle:'puzzle_groq_keys',quizstudio:'quizstudio_groq_keys'};
-                Object.keys(pools).forEach(function(id) {
-                    if (Array.isArray(s[pools[id]]) && typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(id, s[pools[id]]);
-                });
-                _resolveAIKeysReady();
-            }, function(error) {
-                fail('aqs_get_settings rejected: ' + (error && error.message ? error.message : String(error || 'unknown Firebase error')));
-            });
-        } catch(error) {
-            fail('aqs_get_settings threw: ' + (error && error.message ? error.message : String(error)));
-        }
+        /* Provider credentials are now held only as Cloudflare Worker secrets.
+           Never download Groq, Mistral, or Hugging Face keys into the browser. */
+        _resolveAIKeysReady();
     }
 
     function _startAISettingsLoadAfterAuth() {
@@ -807,4 +763,75 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
     window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
     window.darasocialPostGroqFetch = function(b, o) { return _pools.darasocial_post_slot.fetch(b, o); };
+})();
+
+
+/* ── Secure server-side AI route: provider keys never leave Cloudflare ── */
+(function () {
+  var AI_WORKER_ENDPOINT = 'https://smartquiz-system3.daramolapeter98.workers.dev/api/ai';
+  async function currentFirebaseUser() {
+    var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+    if (user && typeof user.getIdToken === 'function') return user;
+    if (window._aqsAuthResolved !== true) {
+      await new Promise(function(resolve) {
+        var done = false;
+        function finish() {
+          if (done) return;
+          done = true;
+          document.removeEventListener('aqs:authchange', finish);
+          resolve();
+        }
+        document.addEventListener('aqs:authchange', finish);
+        setTimeout(finish, 10000);
+      });
+    }
+    user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+    if (!user || typeof user.getIdToken !== 'function') {
+      throw new Error('Please sign in before using AI generation.');
+    }
+    return user;
+  }
+  window.aqsWorkerAI = async function(bodyObj, extraOpts) {
+    var user = await currentFirebaseUser();
+    var token = await user.getIdToken();
+    var options = Object.assign({}, extraOpts || {});
+    var signal = options.signal;
+    var response = await fetch(AI_WORKER_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(bodyObj || {}),
+      cache: 'no-store',
+      signal: signal
+    });
+    return response;
+  };
+
+
+  window.aqsWorkerTranscribe = async function(audioBlob) {
+    var user = await currentFirebaseUser();
+    var token = await user.getIdToken();
+    var form = new FormData();
+    form.append('file', audioBlob, 'recording.webm');
+    var response = await fetch(AI_WORKER_ENDPOINT.replace('/api/ai', '/api/ai/transcribe'), {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token },
+      body: form,
+      cache: 'no-store'
+    });
+    var data = await response.json().catch(function(){ return {}; });
+    if (!response.ok) {
+      var message = data && data.error && (data.error.message || data.error);
+      throw new Error(message || ('Transcription failed (' + response.status + ').'));
+    }
+    return String(data.text || '').trim();
+  };
+
+  /* Preserve the Response contract expected by existing AI feature callers. */
+  window.groqFetch = window.aqsWorkerAI;
+  window.studyhubGroqFetch = window.aqsWorkerAI;
+  window.quizGroqFetch = window.aqsWorkerAI;
+  window.challengeGroqFetch = window.aqsWorkerAI;
+  window.textdocsGroqFetch = window.aqsWorkerAI;
+  window.puzzleGroqFetch = window.aqsWorkerAI;
+  window.quizstudioGroqFetch = window.aqsWorkerAI;
 })();

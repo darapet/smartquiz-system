@@ -379,17 +379,32 @@ async function generateQuestions(){
     var arr = JSON.parse(match[0]);
     if(!Array.isArray(arr) || arr.length < 1) throw new Error('No questions generated');
 
-    /* Normalize quiz answer to integer (AI sometimes returns string like "2" instead of 2) */
+    /* Validate quiz data strictly. Never silently turn a malformed answer
+       into option A, because that can mark the wrong answer as correct. */
     if(G.mode === 'quiz'){
-        arr = arr.map(function(q){
-            var ans = parseInt(q.answer, 10);
-            q.answer = isNaN(ans) ? 0 : Math.max(0, Math.min(3, ans));
+        if(arr.length < G.numQ) throw new Error('AI returned only ' + arr.length + ' questions; expected ' + G.numQ + '. Please try again.');
+        arr = arr.slice(0, G.numQ).map(function(q, index){
+            if(!q || typeof q !== 'object' || typeof q.q !== 'string' || !q.q.trim()){
+                throw new Error('AI returned an invalid question at item ' + (index + 1) + '. Please try again.');
+            }
+            if(!Array.isArray(q.options) || q.options.length !== 4 ||
+               q.options.some(function(option){ return typeof option !== 'string' || !option.trim(); })){
+                throw new Error('AI returned invalid answer options at question ' + (index + 1) + '. Please try again.');
+            }
+            var ans = typeof q.answer === 'number' ? q.answer :
+                (typeof q.answer === 'string' && /^\d+$/.test(q.answer.trim()) ? Number(q.answer) : NaN);
+            if(!Number.isInteger(ans) || ans < 0 || ans > 3){
+                throw new Error('AI returned an invalid correct-answer index at question ' + (index + 1) + '. Please try again.');
+            }
+            q.answer = ans;
             return q;
         });
+        return arr;
     }
 
-    /* Sanitize */
+    /* Sanitize other modes */
     if(G.mode === 'jigsaw') return arr.slice(0, 9);
+    if(arr.length < G.numQ) throw new Error('AI returned too few puzzle items. Please try again.');
     return arr.slice(0, G.numQ);
 }
 

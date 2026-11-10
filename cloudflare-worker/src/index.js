@@ -1123,6 +1123,142 @@ Source: ${url}
     }
   }
 
+
+async function verifyFirebaseAIUser(request, env) {
+  const token = bearerToken(request);
+  if (!token) throw registrationError('Sign in to use AI generation.', 401);
+  const apiKey = String(env.FIREBASE_WEB_API_KEY || '').trim();
+  if (!apiKey) throw registrationError('Firebase authentication is not configured on the AI Worker.', 503);
+  const response = await fetch(`${FIREBASE_LOOKUP_URL}?key=${encodeURIComponent(apiKey)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: token }),
+  });
+  const body = await response.json().catch(() => ({}));
+  const user = body && Array.isArray(body.users) ? body.users[0] : null;
+  if (!response.ok || !user || !user.localId) {
+    throw registrationError('Your Firebase session is invalid or expired. Sign in again.', 401);
+  }
+  return { uid: String(user.localId), email: String(user.email || '').trim().toLowerCase() };
+}
+
+async function handleAI(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') {
+      return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    }
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST for AI generation.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') {
+    return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  }
+
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const payload = await request.json().catch(() => null);
+    if (!payload || !Array.isArray(payload.messages) || !payload.messages.length || payload.messages.length > 20) {
+      return json(request, env, { error: 'A valid messages array is required (maximum 20 messages).' }, 400);
+    }
+    const allowedModels = new Set([
+      'llama-3.3-70b-versatile',
+      'llama-3.1-8b-instant',
+      'openai/gpt-oss-20b',
+      'llama-3.1-70b-versatile'
+    ]);
+    const requestedModel = String(payload.model || env.GROQ_MODEL || 'llama-3.3-70b-versatile').trim();
+    const model = allowedModels.has(requestedModel) ? requestedModel : String(env.GROQ_MODEL || 'llama-3.3-70b-versatile');
+    const messages = [];
+    let totalChars = 0;
+    for (const item of payload.messages) {
+      const role = String(item && item.role || '');
+      const content = String(item && item.content || '');
+      if (!['system', 'user', 'assistant'].includes(role) || !content.trim() || content.length > 12000) {
+        return json(request, env, { error: 'Each message must have a supported role and non-empty text under 12,000 characters.' }, 400);
+      }
+      totalChars += content.length;
+      messages.push({ role, content });
+    }
+    if (totalChars > 30000) return json(request, env, { error: 'The AI prompt is too large. Shorten the material and try again.' }, 413);
+
+    if (env.EMAIL_CONFIG) {
+      const minute = Math.floor(Date.now() / 60000);
+      const rateKey = `ai-rate:${user.uid}:${minute}`;
+      const used = Number(await env.EMAIL_CONFIG.get(rateKey) || 0);
+      if (used >= 12) return json(request, env, { error: 'You have reached the AI request limit. Please wait one minute and try again.' }, 429);
+      await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
+    }
+
+    const apiKey = String(env.GROQ_API_KEY || '').trim();
+    if (!apiKey) return json(request, env, { error: 'AI service is not configured yet. The administrator must add the GROQ_API_KEY Worker secret.' }, 503);
+    const maxTokens = Math.max(64, Math.min(1800, Number(payload.max_tokens) || 1200));
+    const temperature = Math.max(0, Math.min(1.5, Number(payload.temperature) || 0.7));
+    const upstream = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + apiKey },
+      body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature }),
+    });
+    const result = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const detail = result && result.error && result.error.message ? String(result.error.message).slice(0, 300) : 'The AI provider rejected the request.';
+      const retryAfter = upstream.headers.get('Retry-After');
+      return new Response(JSON.stringify({ error: { message: upstream.status === 429 ? 'The AI provider is busy. Please wait briefly and try again.' : detail } }), {
+        status: upstream.status,
+        headers: { ...corsHeaders(request, env), 'Content-Type': 'application/json; charset=utf-8', ...(retryAfter ? { 'Retry-After': retryAfter } : {}) },
+      });
+    }
+    return json(request, env, result);
+  } catch (error) {
+    const status = Number(error && error.httpStatus) || 500;
+    return json(request, env, { error: error && error.message ? error.message : 'AI request failed.' }, status);
+  }
+}
+
+
+async function handleAITranscribe(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST for audio transcription.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const apiKey = String(env.GROQ_API_KEY || '').trim();
+    if (!apiKey) return json(request, env, { error: 'AI service is not configured yet.' }, 503);
+    const incoming = await request.formData();
+    const file = incoming.get('file');
+    if (!file || typeof file.arrayBuffer !== 'function' || !file.size) return json(request, env, { error: 'An audio recording is required.' }, 400);
+    if (file.size > 20 * 1024 * 1024) return json(request, env, { error: 'Audio recording must be 20 MB or smaller.' }, 413);
+    if (env.EMAIL_CONFIG) {
+      const minute = Math.floor(Date.now() / 60000);
+      const rateKey = `ai-rate:${user.uid}:${minute}`;
+      const used = Number(await env.EMAIL_CONFIG.get(rateKey) || 0);
+      if (used >= 12) return json(request, env, { error: 'You have reached the AI request limit. Please wait one minute and try again.' }, 429);
+      await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
+    }
+    const form = new FormData();
+    form.append('file', file, file.name || 'recording.webm');
+    form.append('model', 'whisper-large-v3-turbo');
+    form.append('response_format', 'json');
+    const upstream = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + apiKey },
+      body: form,
+    });
+    const result = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const message = upstream.status === 429
+        ? 'Audio transcription is busy right now. Please wait and try again.'
+        : String(result && result.error && result.error.message || 'Audio transcription failed.').slice(0, 300);
+      return json(request, env, { error: message }, upstream.status);
+    }
+    return json(request, env, result);
+  } catch (error) {
+    return json(request, env, { error: error && error.message ? error.message : 'Audio transcription failed.' }, Number(error && error.httpStatus) || 500);
+  }
+}
+
 export default {
   async scheduled(controller, env, ctx) { ctx.waitUntil(runSocialAutomation(env, controller.cron || '*/30 * * * *')); },
   async fetch(request, env) {
@@ -1132,6 +1268,12 @@ export default {
      * prevents cached/older SmartQuiz admin pages from turning a valid Worker
      * deployment into a misleading 404 while they refresh.
      */
+    if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
+      return handleAITranscribe(request, env);
+    }
+    if (url.pathname === '/api/ai' || url.pathname === '/api/ai/') {
+      return handleAI(request, env);
+    }
     if (
       url.pathname === '/api/email'
       || url.pathname === '/api/email/'

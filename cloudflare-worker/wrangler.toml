@@ -7,8 +7,9 @@ FIREBASE_PROJECT_ID = "smartquiz-darapet"
 FIREBASE_STORAGE_BUCKET = "smartquiz-darapet.firebasestorage.app"
 FIREBASE_WEB_API_KEY = "AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY"
 ADMIN_EMAIL = "daramolapeter98@gmail.com"
+GROQ_MODEL = "llama-3.3-70b-versatile"
 # Replace this with the Cloudflare hostname serving the website.
-ALLOWED_ORIGINS = "https://darapet.github.io,https://smartquiz-system.pages.dev,https://smartquiz-system3.daramolapeter98.workers.dev,https://localhost,capacitor://localhost"
+ALLOWED_ORIGINS = "https://darapet.name.ng,https://www.darapet.name.ng,https://darapet.github.io,https://smartquiz-system.pages.dev,https://smartquiz-system3.daramolapeter98.workers.dev,https://localhost,capacitor://localhost"
 CF_IMAGE_MODEL = "@cf/black-forest-labs/flux-1-schnell"
 
 [[kv_namespaces]]
