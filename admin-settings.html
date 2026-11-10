@@ -2571,89 +2571,13 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
 
       /* ── Real direct API ping — returns { ok, status, ms, msg } ── */
       async function pingKey(key, provider) {
-          var tStart = Date.now(), ms, res, errBody, errMsg;
+          var started=Date.now();
           try {
-              if (provider === 'groq') {
-                  var model = window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b';
-                  res = await fetch(GROQ_URL, {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
-                      signal:AbortSignal.timeout(13000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) {
-                      var data = await res.json();
-                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
-                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
-                  }
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = (errBody.error&&errBody.error.message) ? errBody.error.message.slice(0,110) : 'HTTP '+res.status;
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
-                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-
-              } else if (provider === 'mistral') {
-                  var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
-                  res = await fetch(MISTRAL_URL, {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
-                      signal:AbortSignal.timeout(15000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) {
-                      var data = await res.json();
-                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
-                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
-                  }
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = errBody.message||errBody.error||(errBody.error&&errBody.error.message)||'HTTP '+res.status;
-                  if (typeof errMsg !== 'string') errMsg = JSON.stringify(errMsg);
-                  errMsg = errMsg.slice(0,110);
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
-                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-
-              } else if (provider === 'hf') {
-                  var hfModel = window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
-                  res = await fetch(HF_URL_BASE + hfModel, {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-                      body:JSON.stringify({inputs:'Say OK',parameters:{max_new_tokens:3}}),
-                      signal:AbortSignal.timeout(20000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms'};
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = (typeof errBody.error==='string' ? errBody.error : JSON.stringify(errBody.error||errBody)).slice(0,110);
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
-                  if (res.status===401||res.status===403) return {ok:false, status:res.status, ms:ms, msg:'❌ Invalid token ('+res.status+') — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-
-              } else if (provider === 'gtts') {
-                  var gModel = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
-                  res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+gModel+':generateContent?key='+encodeURIComponent(key), {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json'},
-                      body:JSON.stringify({
-                          contents:[{role:'user',parts:[{text:'Hi'}]}],
-                          generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}
-                      }),
-                      signal:AbortSignal.timeout(30000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · audio OK'};
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = ((errBody.error&&errBody.error.message)||('HTTP '+res.status)).slice(0,110);
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Free quota reached — '+errMsg};
-                  if (res.status===403) return {ok:false, status:403, ms:ms, msg:'❌ Forbidden (403) — '+errMsg};
-                  if (res.status===400 && /API key not valid|API_KEY_INVALID/i.test(errMsg)) return {ok:false, status:400, ms:ms, msg:'❌ Invalid key — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-              }
-          } catch(e) {
-              ms = Date.now() - tStart;
-              return {ok:false, status:'err', ms:ms, msg:'❌ '+(e.name==='TimeoutError'?'Timeout (13s)':e.message||'Network error')};
+              var model=provider==='mistral'?(window._AQS_MISTRAL_MODEL||'mistral-small-latest'):(window._AQS_GROQ_MODEL||'openai/gpt-oss-20b');
+              var result=await window._aqsTestProviderKeyOnWorker(key,provider,model);
+              return {ok:result.ok===true,status:Number(result.status||(result.ok?200:0)),ms:Number(result.ms||(Date.now()-started)),msg:result.msg||(result.ok?'✅ Active':'❌ Provider rejected this key')};
+          } catch(error) {
+              return {ok:false,status:'err',ms:Date.now()-started,msg:'❌ '+(error.name==='TimeoutError'?'Worker test timed out':(error.message||'Server-side test failed'))};
           }
       }
 
