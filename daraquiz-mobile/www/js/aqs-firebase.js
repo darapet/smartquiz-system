@@ -200,6 +200,24 @@ function _brevoEmailEndpoint() {
     return 'https://darapet-technologyimafe.daramolapeter98.workers.dev/api/email';
 }
 
+
+async function syncGroqAIConfiguration(config) {
+    var user = auth.currentUser || window._aqsFirebaseUser;
+    if (!user) throw new Error('Sign in as admin before syncing AI settings.');
+    var token = await user.getIdToken();
+    var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({
+            groq_keys: Array.isArray(config && config.keys) ? config.keys : [],
+            groq_model: String(config && config.model || '')
+        })
+    });
+    var body = await response.json().catch(function(){ return {}; });
+    if (!response.ok) throw new Error(body.error || ('AI settings sync failed (' + response.status + ').'));
+    return body;
+}
+
 async function callBrevoEmail(payload) {
     var user = requireAuth();
     var token = await user.getIdToken();
