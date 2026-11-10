@@ -1179,6 +1179,51 @@ async function handleAIConfig(request, env) {
   }
 }
 
+async function handleAIKeyTest(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST to test an AI key.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const adminEmail = String(env.ADMIN_EMAIL || 'daramolapeter98@gmail.com').trim().toLowerCase();
+    if (user.email !== adminEmail) return json(request, env, { error: 'Admin access required.' }, 403);
+    const payload = await request.json().catch(() => ({}));
+    const provider = String(payload.provider || '').trim().toLowerCase();
+    const key = String(payload.key || '').trim();
+    if (!['groq', 'mistral'].includes(provider)) return json(request, env, { error: 'Unsupported AI provider.' }, 400);
+    if (key.length < 20 || key.length > 512 || /[\r\n]/.test(key)) return json(request, env, { error: 'Enter a valid API key.' }, 400);
+    const model = provider === 'groq'
+      ? (String(payload.model || env.GROQ_MODEL || 'openai/gpt-oss-20b').trim().slice(0, 100) || 'openai/gpt-oss-20b')
+      : (String(payload.model || 'mistral-small-latest').trim().slice(0, 100) || 'mistral-small-latest');
+    const endpoint = provider === 'groq' ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.mistral.ai/v1/chat/completions';
+    const started = Date.now();
+    let upstream;
+    try {
+      upstream = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + key },
+        body: JSON.stringify({ model, messages: [{ role: 'user', content: 'Reply with OK.' }], max_tokens: 3, temperature: 0 }),
+        signal: AbortSignal.timeout(15000),
+      });
+    } catch (networkError) {
+      const timedOut = networkError && (networkError.name === 'TimeoutError' || networkError.name === 'AbortError');
+      return json(request, env, { ok: false, status: 0, ms: Date.now() - started, msg: timedOut ? 'Provider request timed out.' : 'Cloudflare could not reach the provider. Try again shortly.' });
+    }
+    const ms = Date.now() - started;
+    const body = await upstream.json().catch(() => ({}));
+    if (upstream.ok) return json(request, env, { ok: true, status: upstream.status, ms, msg: 'Key is active.' });
+    const rawMessage = String(body && body.error && (body.error.message || body.error) || body && body.message || 'Provider rejected the request.').replace(/[\r\n\t]/g, ' ').slice(0, 140);
+    const label = upstream.status === 401 || upstream.status === 403 ? 'Invalid or unauthorized key' : upstream.status === 429 ? 'Rate limited or quota exhausted' : 'Provider returned an error';
+    return json(request, env, { ok: false, status: upstream.status, ms, msg: label + ' · ' + rawMessage });
+  } catch (error) {
+    const status = Number(error && error.httpStatus) || 500;
+    return json(request, env, { error: error && error.message ? error.message : 'AI key test failed.' }, status);
+  }
+}
+
 async function handleAI(request, env) {
   if (request.method === 'OPTIONS') {
     if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') {
@@ -1319,6 +1364,9 @@ export default {
      */
     if (url.pathname === '/api/ai/config' || url.pathname === '/api/ai/config/') {
       return handleAIConfig(request, env);
+    }
+    if (url.pathname === '/api/ai/test' || url.pathname === '/api/ai/test/') {
+      return handleAIKeyTest(request, env);
     }
     if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
       return handleAITranscribe(request, env);
