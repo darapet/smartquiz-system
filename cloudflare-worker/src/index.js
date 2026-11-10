@@ -1214,6 +1214,51 @@ async function handleAI(request, env) {
   }
 }
 
+
+async function handleAITranscribe(request, env) {
+  if (request.method === 'OPTIONS') {
+    if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+    return new Response('', { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') return json(request, env, { error: 'Use POST for audio transcription.' }, 405);
+  if (request.headers.get('Origin') && allowedOrigin(request, env) === 'null') return json(request, env, { error: 'Origin is not allowed.' }, 403);
+  try {
+    const user = await verifyFirebaseAIUser(request, env);
+    const apiKey = String(env.GROQ_API_KEY || '').trim();
+    if (!apiKey) return json(request, env, { error: 'AI service is not configured yet.' }, 503);
+    const incoming = await request.formData();
+    const file = incoming.get('file');
+    if (!file || typeof file.arrayBuffer !== 'function' || !file.size) return json(request, env, { error: 'An audio recording is required.' }, 400);
+    if (file.size > 20 * 1024 * 1024) return json(request, env, { error: 'Audio recording must be 20 MB or smaller.' }, 413);
+    if (env.EMAIL_CONFIG) {
+      const minute = Math.floor(Date.now() / 60000);
+      const rateKey = `ai-rate:${user.uid}:${minute}`;
+      const used = Number(await env.EMAIL_CONFIG.get(rateKey) || 0);
+      if (used >= 12) return json(request, env, { error: 'You have reached the AI request limit. Please wait one minute and try again.' }, 429);
+      await env.EMAIL_CONFIG.put(rateKey, String(used + 1), { expirationTtl: 120 });
+    }
+    const form = new FormData();
+    form.append('file', file, file.name || 'recording.webm');
+    form.append('model', 'whisper-large-v3-turbo');
+    form.append('response_format', 'json');
+    const upstream = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + apiKey },
+      body: form,
+    });
+    const result = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const message = upstream.status === 429
+        ? 'Audio transcription is busy right now. Please wait and try again.'
+        : String(result && result.error && result.error.message || 'Audio transcription failed.').slice(0, 300);
+      return json(request, env, { error: message }, upstream.status);
+    }
+    return json(request, env, result);
+  } catch (error) {
+    return json(request, env, { error: error && error.message ? error.message : 'Audio transcription failed.' }, Number(error && error.httpStatus) || 500);
+  }
+}
+
 export default {
   async scheduled(controller, env, ctx) { ctx.waitUntil(runSocialAutomation(env, controller.cron || '*/30 * * * *')); },
   async fetch(request, env) {
@@ -1223,6 +1268,9 @@ export default {
      * prevents cached/older SmartQuiz admin pages from turning a valid Worker
      * deployment into a misleading 404 while they refresh.
      */
+    if (url.pathname === '/api/ai/transcribe' || url.pathname === '/api/ai/transcribe/') {
+      return handleAITranscribe(request, env);
+    }
     if (url.pathname === '/api/ai' || url.pathname === '/api/ai/') {
       return handleAI(request, env);
     }
