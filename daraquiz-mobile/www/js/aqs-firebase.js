@@ -2799,12 +2799,19 @@ async function actionSaveSettings(data) {
     });
     delete payload.groq_keys;
     await setDoc(doc(db, 'settings', 'main'), payload, { merge: true });
-    if ('groq_keys' in privatePayload) {
-        var cleanGroqKeys = Array.isArray(privatePayload.groq_keys)
-            ? privatePayload.groq_keys.map(function(k){ return String(k || '').trim(); }).filter(function(k){ return k.indexOf('gsk_') === 0 && k.length > 20; }).slice(0,20)
-            : [];
-        await setDoc(doc(db, 'settings', 'private'), { groq_keys: cleanGroqKeys }, { merge: true });
-        await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+    if ('groq_keys' in privatePayload || 'groq_model' in payload) {
+        var cleanGroqKeys;
+        if ('groq_keys' in privatePayload) {
+            cleanGroqKeys = Array.isArray(privatePayload.groq_keys)
+                ? privatePayload.groq_keys.map(function(k){ return String(k || '').trim(); }).filter(function(k){ return k.indexOf('gsk_') === 0 && k.length > 20; }).slice(0,20)
+                : [];
+            await setDoc(doc(db, 'settings', 'private'), { groq_keys: cleanGroqKeys }, { merge: true });
+            await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+        } else {
+            var savedPrivateSnap = await getDoc(doc(db, 'settings', 'private'));
+            var savedPrivate = savedPrivateSnap.exists() ? savedPrivateSnap.data() : {};
+            cleanGroqKeys = Array.isArray(savedPrivate.groq_keys) ? savedPrivate.groq_keys : [];
+        }
         await syncGroqAIConfiguration({ keys: cleanGroqKeys, model: payload.groq_model || window._AQS_GROQ_MODEL || '' });
         window._AQS_GROQ_MASTER_KEYS = cleanGroqKeys.slice();
     }
