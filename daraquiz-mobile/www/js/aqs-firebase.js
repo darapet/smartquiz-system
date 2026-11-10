@@ -2688,12 +2688,14 @@ async function actionGetSettings() {
                     var privateSnap = await getDoc(doc(db, 'settings', 'private'));
                     var privateData = privateSnap.exists() ? privateSnap.data() : {};
                     var privateGroqKeys = Array.isArray(privateData.groq_keys) ? privateData.groq_keys : [];
-                    if (!privateGroqKeys.length && legacyGroqKeys.length) {
-                        privateGroqKeys = legacyGroqKeys;
-                        await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
+                    if (legacyGroqKeys.length) {
+                        if (!privateGroqKeys.length) {
+                            privateGroqKeys = legacyGroqKeys;
+                            await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
+                            try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                            catch (syncError) { console.warn('[SmartQuiz AI] Legacy Groq keys moved to private settings but Worker sync failed:', syncError.message); }
+                        }
                         await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
-                        try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
-                        catch (syncError) { console.warn('[SmartQuiz AI] Legacy Groq keys moved to private settings but Worker sync failed:', syncError.message); }
                     }
                     settings.groq_keys = privateGroqKeys;
                 }
