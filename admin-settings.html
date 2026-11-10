@@ -1749,25 +1749,8 @@ btn('aqs-save-ai-btn').addEventListener('click', function(){
     for (var ci = 1; ci <= 20; ci++) { var d = document.getElementById('aqs-mk-dot-' + ci); if (d) { d.textContent = ''; d.title = ''; } }
 });
 
-/* ── Groq Key Health Monitor ─────────────────────────────────────────────── */
-async function _aqsTestGroqKeys() {
-    var allKeys = [];
-    for (var gi = 1; gi <= 20; gi++) {
-        var gel = document.getElementById('aqs-groq-key-' + gi);
-        if (gel && gel.value.trim().length > 20) {
-            allKeys.push({ slot: 'Key ' + gi, key: gel.value.trim(), provider: 'groq' });
-        }
-    }
-    var results = document.getElementById('aqs-groq-test-results');
-    var testBtn = document.getElementById('aqs-test-groq-btn');
-    if (!allKeys.length) {
-        results.style.display = 'block';
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No Groq keys found. Add at least one key above, then click Test.</span>';
-        return;
-    }
-    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-    results.style.display = 'block';
-    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
+/* Shared authenticated Worker key-test helper. Keep this outside both test handlers
+   so Groq and Mistral tests can call it independently. */
 window._aqsTestProviderKeyOnWorker = window._aqsTestProviderKeyOnWorker || (async function(key, provider, model) {
     var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
     if (!user && typeof auth !== 'undefined' && auth) user = auth.currentUser || null;
@@ -1790,6 +1773,27 @@ window._aqsTestProviderKeyOnWorker = window._aqsTestProviderKeyOnWorker || (asyn
     if (!response.ok && !data.status) throw new Error(data.error || ('Worker test failed (HTTP '+response.status+').'));
     return data;
 });
+
+/* ── Groq Key Health Monitor ─────────────────────────────────────────────── */
+async function _aqsTestGroqKeys() {
+    var allKeys = [];
+    for (var gi = 1; gi <= 20; gi++) {
+        var gel = document.getElementById('aqs-groq-key-' + gi);
+        if (gel && gel.value.trim().length > 20) {
+            allKeys.push({ slot: 'Key ' + gi, key: gel.value.trim(), provider: 'groq' });
+        }
+    }
+    var results = document.getElementById('aqs-groq-test-results');
+    var testBtn = document.getElementById('aqs-test-groq-btn');
+    if (!allKeys.length) {
+        results.style.display = 'block';
+        results.innerHTML = '<span style="color:#f87171;">⚠️ No Groq keys found. Add at least one key above, then click Test.</span>';
+        return;
+    }
+    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
+    results.style.display = 'block';
+    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
+
 
     async function pingGroq(entry) {
         var key=entry.key, slot=entry.slot, masked=key.slice(0,7)+'…'+key.slice(-4);
