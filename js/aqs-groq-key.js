@@ -744,17 +744,34 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 request.model = window._aqsGroqModel(request.model, request);
                 var lastResponse = null;
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
+                /* A stalled provider/network request must never leave Study Hub
+                   stuck on "Generating…". Bound the entire key-rotation attempt. */
+                var poolRequestStartedAt = Date.now();
+                var poolRequestTimeoutMs = 45000;
                 if (slots.length) {
                     var start = _idx();
                     for (var i = 0; i < slots.length; i++) {
                         var at = (start + i) % slots.length, key = slots[at];
                         if (_isDead(key) || _isRL(key)) { _setIdx(at + 1); continue; }
+                        if (Date.now() - poolRequestStartedAt >= poolRequestTimeoutMs) {
+                            throw new Error('Study Hub AI request timed out after 45 seconds. Check your connection and try again.');
+                        }
                         try {
-                            var res = await fetch(URL_, Object.assign({}, _fallbackOptions(extraOpts), {
+                            var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+                            var remainingMs = Math.max(1, poolRequestTimeoutMs - (Date.now() - poolRequestStartedAt));
+                            var requestTimer = controller ? setTimeout(function() { controller.abort(); }, remainingMs) : null;
+                            var fetchOptions = Object.assign({}, _fallbackOptions(extraOpts), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
                                 body: JSON.stringify(request)
-                            }));
+                            });
+                            if (controller) fetchOptions.signal = controller.signal;
+                            var res;
+                            try {
+                                res = await fetch(URL_, fetchOptions);
+                            } finally {
+                                if (requestTimer) clearTimeout(requestTimer);
+                            }
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
                             if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(at + 1); continue; }
@@ -771,7 +788,12 @@ window._aqsKeysReady = new Promise(function(resolve) {
                             }
                             _setIdx(at + 1);
                             return res;
-                        } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
+                        } catch(e) {
+                            if (Date.now() - poolRequestStartedAt >= poolRequestTimeoutMs) {
+                                throw new Error('Study Hub AI request timed out after 45 seconds. Check your connection and try again.');
+                            }
+                            console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message);
+                        }
                     }
                 }
                 /* Dedicated quiz Groq slots are empty or exhausted: use the
