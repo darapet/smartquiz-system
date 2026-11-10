@@ -858,7 +858,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
   /* Preserve the Response contract expected by existing AI feature callers. */
   window.groqFetch = window.aqsWorkerAI;
-  window.studyhubGroqFetch = window.aqsWorkerAI;
+  /* Study Hub keeps the dedicated Firebase key-pool fetch defined above. */
   window.quizGroqFetch = window.aqsWorkerAI;
   window.challengeGroqFetch = window.aqsWorkerAI;
   window.textdocsGroqFetch = window.aqsWorkerAI;
