@@ -2555,6 +2555,7 @@ async function actionGetSettings() {
         var snap = await getDoc(doc(db, 'settings', 'main'));
         if (snap.exists()) {
             var settings = snap.data();
+            var legacyGroqKeys = Array.isArray(settings.groq_keys) ? settings.groq_keys.slice(0, 20) : [];
             /* Public pages may use non-secret AI settings, but the Creator
                Studio image-token pool is read only by the server function.
                Admin Settings opts in explicitly before loading this module. */
@@ -2568,9 +2569,18 @@ async function actionGetSettings() {
             var currentUser = auth.currentUser || window._aqsFirebaseUser;
             if (window._AQS_ADMIN_SETTINGS_MODE && isConfiguredAdmin(currentUser)) {
                 var privateSnap = await getDoc(doc(db, 'settings', 'private'));
+                var privateData = privateSnap.exists() ? privateSnap.data() : {};
+                var privateGroqKeys = Array.isArray(privateData.groq_keys) ? privateData.groq_keys : [];
+                if (!privateGroqKeys.length && legacyGroqKeys.length) {
+                    privateGroqKeys = legacyGroqKeys;
+                    await setDoc(doc(db, 'settings', 'private'), { groq_keys: privateGroqKeys }, { merge: true });
+                    await setDoc(doc(db, 'settings', 'main'), { groq_keys: deleteField() }, { merge: true });
+                    try { await syncGroqAIConfiguration({ keys: privateGroqKeys, model: settings.groq_model || '' }); }
+                    catch (syncError) { console.warn('[SmartQuiz AI] Legacy Groq keys moved to private settings but Worker sync failed:', syncError.message); }
+                }
+                settings.groq_keys = privateGroqKeys;
                 if (privateSnap.exists()) {
-                    settings.brevo_api_key = privateSnap.data().brevo_api_key || '';
-                    settings.groq_keys = Array.isArray(privateSnap.data().groq_keys) ? privateSnap.data().groq_keys : [];
+                    settings.brevo_api_key = privateData.brevo_api_key || '';
                     ['google_client_secret','github_client_secret','microsoft_client_secret','yahoo_client_secret'].forEach(function (k) {
                         settings[k] = privateSnap.data()[k] || '';
                     });
