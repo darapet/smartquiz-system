@@ -772,7 +772,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
   async function currentFirebaseUser() {
     var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
     if (user && typeof user.getIdToken === 'function') return user;
-    if (window._aqsAuthResolved === false) {
+    if (window._aqsAuthResolved !== true) {
       await new Promise(function(resolve) {
         var done = false;
         function finish() {
