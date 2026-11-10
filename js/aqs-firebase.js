@@ -2720,7 +2720,8 @@ async function actionSaveSettings(data) {
         var privateMerge = {};
         privateKeys.forEach(function (k) {
             var v = privatePayload[k];
-            if (k === 'groq_keys') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.indexOf('gsk_') === 0 && x.length > 20; }).slice(0,20) : [];\n            else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
+            if (k === 'groq_keys') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.indexOf('gsk_') === 0 && x.length > 20; }).slice(0,20) : [];
+            else if (k === 'darasocial_post_slot') privateMerge[k] = Array.isArray(v) ? v.map(function(x){ return String(x || '').trim(); }).filter(function(x){ return x.length > 20; }).slice(0,10) : [];
             else if (k.endsWith('_enabled') || k.endsWith('_index')) privateMerge[k] = typeof v === 'boolean' ? v : Number(v) || 0;
             else if (k.endsWith('_minutes') || k.endsWith('_hours')) privateMerge[k] = Math.max(1, Number(v) || (k.endsWith('_minutes') ? 30 : 5));
             else privateMerge[k] = String(v || '').trim();
@@ -2750,7 +2751,7 @@ async function actionSaveSettings(data) {
             });
         }
     }
-    if ('groq_keys' in privatePayload) {\n        await syncGroqAIConfiguration({ keys: privatePayload.groq_keys, model: payload.groq_model || window._AQS_GROQ_MODEL || '' });\n        window._AQS_GROQ_MASTER_KEYS = Array.isArray(privatePayload.groq_keys) ? privatePayload.groq_keys.slice() : [];\n    }\n    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
+    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
     if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
