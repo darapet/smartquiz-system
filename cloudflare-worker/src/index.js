@@ -1,4 +1,5 @@
 import { handleImage } from './worker.js';
+import { handleMultiplayer } from './multiplayer.js';
 
 const FIREBASE_LOOKUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup';
 const FIREBASE_SIGNUP_URL = 'https://identitytoolkit.googleapis.com/v1/accounts:signUp';
@@ -1139,6 +1140,9 @@ export default {
       || url.pathname === '/brevoEmail/'
     ) {
       return handleEmail(request, env);
+    }
+    if (url.pathname === '/api/multiplayer' || url.pathname === '/api/multiplayer/') {
+      return handleMultiplayer(request, env, { json, corsHeaders, getAccessToken: createGoogleAccessToken });
     }
     if (
       url.pathname === '/websearch'

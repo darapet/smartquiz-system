@@ -45,3 +45,21 @@ npx wrangler deploy
 The default model is `@cf/stabilityai/stable-diffusion-xl-base-1.0`. Change
 `CF_IMAGE_MODEL` only to one of the allowlisted models in `src/worker.js`.
 The existing `/api/email` and `/brevoEmail` routes remain unchanged.
+## Live multiplayer (free, no Firebase Blaze)
+
+`POST /api/multiplayer` runs the host-a-quiz game server (rooms, PIN join, ready,
+start, answers, scoring, AI question writing). It talks to Firestore over REST with
+the `FIREBASE_SERVICE_ACCOUNT` secret and writes questions with the Groq/Mistral
+keys saved in Admin Settings (`settings/main`). Nobody needs an account: the browser
+signs in anonymously and the Worker checks that token.
+
+Setup once:
+
+```bash
+npx wrangler secret put FIREBASE_SERVICE_ACCOUNT   # paste the service-account JSON
+npx wrangler deploy
+firebase deploy --only firestore:rules             # free on the Spark plan
+```
+
+Also enable Authentication -> Sign-in method -> Anonymous in the Firebase console.
+Tests: `npm test` in this folder.

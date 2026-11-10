@@ -31,9 +31,7 @@ const ROOM_ID = /^[A-F0-9]{16}$/;
    (/api/multiplayer) does not exist. Call the Cloud Function directly unless this page is
    itself on Firebase Hosting. Set window.AQS_MULTIPLAYER_API_URL to override. */
 const API_URL = (typeof window.AQS_MULTIPLAYER_API_URL === 'string' && window.AQS_MULTIPLAYER_API_URL) ||
-  (/\.(web\.app|firebaseapp\.com)$/.test(location.hostname)
-    ? '/api/multiplayer'
-    : 'https://us-central1-smartquiz-darapet.cloudfunctions.net/multiplayer');
+  'https://smartquiz-system3.daramolapeter98.workers.dev/api/multiplayer';
 const POINTS = 5;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -159,7 +157,7 @@ async function api(action, payload = {}, signal) {
   if (typeof body.serverNow === 'number') S.skew = body.serverNow - (t0 + t1) / 2;
   if (!res.ok) {
     const failure = new Error(!body.error && (res.status === 404 || res.status === 405)
-      ? 'The multiplayer server was not found. The host needs to deploy the multiplayer function.'
+      ? 'The multiplayer server was not found. The site owner needs to deploy the Cloudflare Worker.'
       : body.error || `The multiplayer service returned ${res.status}.`);
     failure.status = res.status;
     throw failure;
