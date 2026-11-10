@@ -2677,9 +2677,16 @@ async function actionGetSettings() {
             /* Public pages may use non-secret AI settings, but the Creator
                Studio image-token pool is read only by the server function.
                Admin Settings opts in explicitly before loading this module. */
+            settings = Object.assign({}, settings);
+            delete settings.groq_keys;
             if (!window._AQS_ADMIN_SETTINGS_MODE) {
-                settings = Object.assign({}, settings);
                 delete settings.creator_image_keys;
+            } else {
+                var currentUser = auth.currentUser || window._aqsFirebaseUser;
+                if (isConfiguredAdmin(currentUser)) {
+                    var privateSnap = await getDoc(doc(db, 'settings', 'private'));
+                    if (privateSnap.exists()) settings.groq_keys = privateSnap.data().groq_keys || [];
+                }
             }
             return { settings: settings };
         }
@@ -2691,6 +2698,7 @@ async function actionSaveSettings(data) {
     var user = auth.currentUser || window._aqsFirebaseUser;
     if (!user) throw new Error('Not authenticated.');
     var payload = {};
+    var privatePayload = {};
     var allowed = [
         'groq_keys','groq_model',
         'mistral_keys','mistral_model',
@@ -2715,7 +2723,11 @@ async function actionSaveSettings(data) {
         'quizstudio_groq_keys',
         'gemini_tts_keys'
     ];
-    allowed.forEach(function(k) { if (k in data) payload[k] = data[k]; });
+    allowed.forEach(function(k) {
+        if (!(k in data)) return;
+        if (k === 'groq_keys') privatePayload[k] = data[k];
+        else payload[k] = data[k];
+    });
     /* Trim and validate Gemini TTS keys (up to 5) before saving */
     if (Array.isArray(payload.gemini_tts_keys)) {
         payload.gemini_tts_keys = payload.gemini_tts_keys
