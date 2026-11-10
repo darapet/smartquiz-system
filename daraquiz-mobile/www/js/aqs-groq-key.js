@@ -855,7 +855,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     var token = await user.getIdToken();
     var form = new FormData();
     form.append('file', audioBlob, 'recording.webm');
-    var response = await fetch(AI_WORKER_ENDPOINT.replace(/\\/api\\/ai$/, '/api/ai/transcribe'), {
+    var response = await fetch(AI_WORKER_ENDPOINT.replace('/api/ai', '/api/ai/transcribe'), {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + token },
       body: form,
