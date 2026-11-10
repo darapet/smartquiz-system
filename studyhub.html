@@ -1102,28 +1102,7 @@ a{text-decoration:none;color:inherit;}
 
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
 <script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
-<script src="js/aqs-groq-key.js"></script>
-<script>
-/* Anonymous AI key bootstrap: studyhub Groq pool from public settings doc
-   (settings/main is publicly readable; the auth-gated loader skips guests). */
-(function(){
-  function register(keys){
-    if(!Array.isArray(keys)||!keys.length) return;
-    if(typeof window.setFeatureGroqKeys==='function') window.setFeatureGroqKeys('studyhub',keys);
-    if(typeof window.setGroqKeys==='function') window.setGroqKeys(keys);
-  }
-  try{
-    fetch('https://firestore.googleapis.com/v1/projects/smartquiz-darapet/databases/(default)/documents/settings/main')
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var f=(d&&d.fields)||{};
-        var pick=function(k){ return (f[k]&&f[k].arrayValue&&f[k].arrayValue.values)?f[k].arrayValue.values.map(function(x){return x.stringValue||'';}).filter(Boolean):[]; };
-        register(pick('studyhub_groq_keys').concat(pick('groq_keys')));
-      })
-      .catch(function(e){ console.warn('AI key bootstrap failed',e); });
-  }catch(e){ console.warn('AI key bootstrap error',e); }
-})();
-</script>
+<script src="js/aqs-groq-key.js?v=studyhub-firebase-pool-1"></script>
 <script src="js/aqs-gemini-tts.js"></script>
 <script src="js/aqs-voice.js"></script>
 <script>
@@ -1378,9 +1357,9 @@ function shToast(msg, dur=3000){
 
 /* AI generation now uses the authenticated Cloudflare Worker. No provider keys belong in this public page. */
 async function shAI(prompt, maxTokens=1200){
-  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
-  const response = await window.aqsWorkerAI({
-    model: 'llama-3.3-70b-versatile',
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b',
     messages: [{role:'user', content:String(prompt || '')}],
     max_tokens: maxTokens,
     temperature: 0.7
@@ -1946,9 +1925,9 @@ function aitSetSpeed(rate, el){
 const AIT_DEFAULT_KEYS = [];
 function aitGetKeys(){ return []; }
 async function aitMistral(messages, maxTokens=1200){
-  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
-  const response = await window.aqsWorkerAI({
-    model: 'llama-3.3-70b-versatile',
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b',
     messages: Array.isArray(messages) ? messages : [{role:'user', content:String(messages || '')}],
     max_tokens: maxTokens,
     temperature: 0.7
