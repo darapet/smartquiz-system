@@ -71,8 +71,6 @@ window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'gemini-3.1
    ─────────────────────────────────────────────────────────────────── */
 window._aqsKeysReady = new Promise(function(resolve) {
     window._aqsKeysReadyResolve = resolve;
-    /* Safety timeout: resolve after 5 s even if Firebase never fires */
-    setTimeout(resolve, 5000);
 });
 
 (function(){
@@ -226,8 +224,11 @@ window._aqsKeysReady = new Promise(function(resolve) {
     }
 
     async function _groqFetch(bodyObj, extraOpts) {
+        /* Respect an explicit per-request model (for model fallback attempts);
+           otherwise use the model selected in Admin Settings. */
+        var requestedModel = bodyObj && typeof bodyObj.model === 'string' && bodyObj.model.trim();
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
+            requestedModel || window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -462,7 +463,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
         /* Wait for the Firebase key auto-loader to complete before checking
            key counts. This prevents false "not configured" errors that happen
            when groqFetch is called before the async Firestore read finishes.
-           The promise resolves in ≤5 s (safety timeout) so we never hang. */
+           The Firebase loader resolves it after settings load or its 20-second timeout. */
         if (!_getGroqKeys().length && !_getMistralKeys().length && !_getHFKeys().length) {
             await window._aqsKeysReady;
         }
