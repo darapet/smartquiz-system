@@ -2749,12 +2749,6 @@ async function actionSaveSettings(data) {
         }
     }
     if ('groq_keys' in privatePayload) {\n        await syncGroqAIConfiguration({ keys: privatePayload.groq_keys, model: payload.groq_model || window._AQS_GROQ_MODEL || '' });\n        window._AQS_GROQ_MASTER_KEYS = Array.isArray(privatePayload.groq_keys) ? privatePayload.groq_keys.slice() : [];\n    }\n    /* Immediately merge saved keys into in-memory pools (hardcoded keys stay as fallback) */
-    if (false && Array.isArray(payload.groq_keys) && payload.groq_keys.length) {
-        var _hcG = Array.isArray(window._AQS_GROQ_MASTER_KEYS) ? window._AQS_GROQ_MASTER_KEYS : [];
-        var _gMerged = payload.groq_keys.slice();
-        _hcG.forEach(function(k){ if (_gMerged.indexOf(k) === -1) _gMerged.push(k); });
-        window._AQS_GROQ_MASTER_KEYS = _gMerged;
-    }
     if (payload.groq_model) window._AQS_GROQ_MODEL = payload.groq_model;
     if (Array.isArray(payload.mistral_keys) && payload.mistral_keys.length) {
         var _hcM = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS : [];
