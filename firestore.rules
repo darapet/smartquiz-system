@@ -490,6 +490,27 @@ service cloud.firestore {
       match /private/{privateId} {
         allow read, write: if false;
       }
+
+      match /avatarClaims/{avatarId} {
+        allow read, write: if false;
+      }
+
+      // Voice chat signaling only. Peers exchange WebRTC offers, answers and
+      // ICE candidates here. Messages can only be sent between players of the
+      // same room, and only the addressed player can read or clear them.
+      match /signals/{signalId} {
+        allow create: if isSignedIn()
+          && request.resource.data.keys().hasOnly(['from', 'to', 'kind', 'data', 'at'])
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.to is string
+          && request.resource.data.kind in ['offer', 'answer', 'ice']
+          && request.resource.data.data is string
+          && request.resource.data.data.size() < 6000
+          && exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.auth.uid))
+          && exists(/databases/$(database)/documents/multiplayerRooms/$(roomId)/players/$(request.resource.data.to));
+        allow read, delete: if isSignedIn() && resource.data.to == request.auth.uid;
+        allow update: if false;
+      }
     }
 
     // ─── Library Views ──────────────────────────────────────────────

@@ -1,33 +1,249 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Multiplayer Quiz Host — SmartQuiz</title>
-<link rel="stylesheet" href="css/multiplayer-host.css"><script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Live Multiplayer Quiz — SmartQuiz</title>
+<link rel="stylesheet" href="css/mp-avatars.css">
+<link rel="stylesheet" href="css/multiplayer-host.css">
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 </head>
-<body>
-<header class="top"><a href="index.html" class="brand">◈ <span>SmartQuiz</span></a><a href="index.html" class="back">← Home</a></header>
+<body data-view="auth">
+
+<header class="top" id="top">
+  <a href="index.html" class="brand" aria-label="SmartQuiz home"><span class="brand-mark">◈</span><span>SmartQuiz</span></a>
+  <div class="top-room" id="top-room" hidden>
+    <strong id="top-title"></strong>
+    <span class="chip" id="top-seconds"></span>
+    <span class="chip" id="top-count"></span>
+  </div>
+  <div class="top-actions">
+    <button class="icon-btn mic" id="mic-toggle" type="button" hidden aria-pressed="false" aria-label="Turn microphone on">
+      <span class="mic-icon" id="mic-icon"></span><span class="mic-text" id="mic-text">Mic off</span>
+    </button>
+    <a href="index.html" class="back" id="back-link">← Home</a>
+  </div>
+</header>
+
 <main class="shell">
-<section class="hero"><div class="eyebrow">LIVE MULTIPLAYER</div><h1>Bring everyone into the game.</h1><p>Build a question set, open a room, and race to the right answer.</p><div class="hero-stats"><span>Up to 200 players</span><span>Up to 1,500 questions</span><span>First correct answer wins</span></div></section>
-<section class="panel" id="sign-in-panel"><div class="step-label">HOST ACCOUNT</div><h2>Sign in to host</h2><p>Players can join with a room link. Hosting requires your SmartQuiz account.</p><a class="primary" href="login.html?redirect=multiplayer-host.html">Sign in</a></section>
-<section class="panel" id="setup-panel" hidden><div class="step-label">01 · ROOM SETUP</div><h2>Set up your quiz</h2><div class="fields">
-<label>Quiz title<input id="title" maxlength="100" value="Quick-fire quiz" required></label>
-<label>Questions<input id="count" type="number" min="1" max="1500" value="10"></label>
-<label>Players allowed<input id="capacity" type="number" min="1" max="200" value="30"></label>
-<label>Room PIN <span class="input-inline"><input id="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="4 digits"><button type="button" class="subtle" id="random-pin">Generate</button></span></label>
-<label>Difficulty<select id="difficulty"><option>Easy</option><option>Hard</option><option>Harder</option><option>Professional</option></select></label>
-<label>Seconds per question<input id="seconds" type="number" min="5" max="120" value="20"></label>
-<label class="wide">Topic or generation prompt<textarea id="prompt" rows="3" placeholder="e.g. Introductory biology: cells, genetics, and ecosystems"></textarea></label>
-</div><div class="actions"><button class="primary" id="generate">Generate questions</button><button class="outline" id="add-manual">Add sample question</button></div>
-<div class="generation" id="generation" hidden><div class="progress-head"><strong id="progress-label">Generated 0 / 10 questions</strong><button class="subtle" id="continue" hidden>Continue generation</button></div><progress id="progress" value="0" max="10"></progress><div class="question-list" id="question-list"></div></div>
-<div class="status" id="status" role="status"></div><button class="primary full" id="open-room" hidden>Open waiting lobby</button>
-</section>
-<section class="panel lobby" id="lobby-panel" hidden><div class="lobby-top"><div><div class="step-label">02 · WAITING LOBBY</div><h2 id="lobby-title">Your room is ready</h2></div><span class="live"><i></i> Lobby open</span></div>
-<div class="room-share"><div><small>ROOM PIN</small><strong id="room-pin"></strong></div><div class="share-url"><small>ROOM LINK</small><code id="room-link"></code></div><button class="outline" id="copy-link">Copy link</button><canvas id="qr" aria-label="Room QR code"></canvas></div>
-<div class="lobby-tools"><strong><span id="player-count">1</span> / <span id="room-capacity">30</span> players</strong><label class="ready-toggle"><input id="host-ready" type="checkbox" checked><span>Host ready</span></label><button class="outline" id="add-player">Add demo player</button><button class="primary" id="start-game">Start game</button></div>
-<div class="players" id="players"></div><div class="voice-bar"><span>🎙 Voice chat</span><button class="outline" id="mic-toggle" aria-pressed="false">Mic muted</button><span class="voice-note">Voice mesh requires compatible browsers and network access.</span></div>
-</section>
-<section class="panel game" id="game-panel" hidden><div class="game-head"><div><div class="step-label" id="round-label">03 · LIVE GAME</div><h2 id="game-title"></h2></div><div class="top-leaders" id="top-leaders"></div></div><div class="countdown" id="countdown" hidden></div><div id="question-stage"></div><div class="game-foot"><span id="timer"></span><button class="outline" id="next-question" hidden>Next question</button><button class="outline" id="finish-game" hidden>End game</button></div></section>
-<section class="panel results" id="results-panel" hidden><div class="step-label">04 · MATCH RESULTS</div><h2>Final standings</h2><div id="podium" class="podium"></div><div class="table-wrap"><table><thead><tr><th>Rank</th><th>Player</th><th>Score</th><th>Answered</th><th>Correct / wrong</th><th>Accuracy</th><th>Avg. speed</th></tr></thead><tbody id="leaderboard"></tbody></table></div></section>
+
+  <!-- Sign in (hosts only) -->
+  <section class="view card" id="v-auth">
+    <p class="eyebrow">Live multiplayer</p>
+    <h1>Host a live quiz</h1>
+    <p class="lead">Create a quiz with AI, open a room, and race your players to the right answer.</p>
+    <a class="btn primary" href="login.html">Sign in to host</a>
+    <p class="hint">After you sign in, open <strong>Live multiplayer</strong> again from the quiz menu.</p>
+  </section>
+
+  <!-- Host step 1: quiz details and AI generation -->
+  <section class="view" id="v-setup" hidden>
+    <ol class="steps" aria-label="Progress">
+      <li class="on"><span>1</span>Quiz</li>
+      <li><span>2</span>Room</li>
+      <li><span>3</span>Lobby</li>
+    </ol>
+
+    <div class="card">
+      <p class="eyebrow">Step 1</p>
+      <h1>Build your quiz</h1>
+      <div class="grid">
+        <label class="field wide">Quiz name
+          <input id="title" maxlength="100" placeholder="e.g. Biology Showdown" autocomplete="off">
+        </label>
+        <label class="field">Time per question (seconds)
+          <input id="seconds" type="number" inputmode="numeric" min="5" max="120" value="20">
+        </label>
+        <label class="field">Number of questions
+          <input id="count" type="number" inputmode="numeric" min="1" max="1500" value="10">
+          <small>Anything from 1 to 1,500.</small>
+        </label>
+        <div class="field wide">
+          <span class="label">Difficulty <small>Choose this before generating.</small></span>
+          <div class="levels" id="levels" role="radiogroup" aria-label="Difficulty">
+            <button type="button" class="level on" data-level="Easy" role="radio" aria-checked="true"><b>Easy</b><span>Core facts and basics</span></button>
+            <button type="button" class="level" data-level="Hard" role="radio" aria-checked="false"><b>Hard</b><span>Applying ideas</span></button>
+            <button type="button" class="level" data-level="Harder" role="radio" aria-checked="false"><b>Harder</b><span>Multi-step reasoning</span></button>
+            <button type="button" class="level" data-level="Professional" role="radio" aria-checked="false"><b>Professional</b><span>Expert level</span></button>
+          </div>
+        </div>
+        <label class="field wide">What should the questions be about?
+          <textarea id="prompt" rows="4" placeholder="e.g. Cell biology for first-year university students: organelles, mitosis, DNA replication"></textarea>
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn primary big" id="generate" type="button">Generate questions with AI</button>
+      </div>
+      <p class="msg" id="msg-setup" role="status" aria-live="polite"></p>
+
+      <div class="gen" id="gen" hidden>
+        <div class="gen-head">
+          <div>
+            <strong id="gen-count">0 of 10 questions</strong>
+            <span id="gen-state" class="gen-state">Starting…</span>
+          </div>
+          <div class="row tight">
+            <button class="btn ghost" id="gen-stop" type="button">Pause</button>
+            <button class="btn primary" id="gen-continue" type="button" hidden>Continue generating</button>
+          </div>
+        </div>
+        <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="gen-bar"><i id="gen-fill"></i></div>
+        <ol class="qlist" id="qlist"></ol>
+        <div class="row end">
+          <button class="btn primary big" id="to-room" type="button" hidden>Next: room settings →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Host step 2: room settings and host button -->
+  <section class="view" id="v-room" hidden>
+    <ol class="steps" aria-label="Progress">
+      <li class="done"><span>✓</span>Quiz</li>
+      <li class="on"><span>2</span>Room</li>
+      <li><span>3</span>Lobby</li>
+    </ol>
+    <div class="card">
+      <p class="eyebrow">Step 2</p>
+      <h1>Set up the room</h1>
+      <div class="grid">
+        <label class="field">Maximum players
+          <input id="capacity" type="number" inputmode="numeric" min="1" max="200" value="30">
+          <small>Choose how many people can join, up to 200.</small>
+        </label>
+        <label class="field">Room PIN (4 digits)
+          <span class="inline">
+            <input id="pin" inputmode="numeric" maxlength="4" placeholder="0000" autocomplete="off">
+            <button class="btn ghost" id="random-pin" type="button">Random</button>
+          </span>
+          <small>Players need this PIN to enter.</small>
+        </label>
+      </div>
+      <h2>Your avatar</h2>
+      <div id="host-picker"></div>
+      <div class="row">
+        <button class="btn ghost" id="back-setup" type="button">← Back</button>
+        <button class="btn primary big" id="host-btn" type="button">Host this quiz</button>
+      </div>
+      <p class="msg" id="msg-room" role="status" aria-live="polite"></p>
+
+      <div class="linkcard" id="linkcard" hidden>
+        <p class="eyebrow">Your room is live</p>
+        <div class="linkrow"><code id="link-text"></code><button class="btn ghost" id="copy-link-1" type="button">Copy link</button></div>
+        <p class="hint">Share this link. Players also need the PIN <strong id="link-pin"></strong>.</p>
+        <button class="btn primary big" id="to-lobby" type="button">Go to lobby →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Player join -->
+  <section class="view" id="v-join" hidden>
+    <div class="card">
+      <p class="eyebrow">You're invited</p>
+      <h1 id="join-title">Join the quiz</h1>
+      <p class="lead" id="join-meta"></p>
+      <div class="grid">
+        <label class="field">Your name
+          <input id="join-name" maxlength="35" placeholder="e.g. Ada" autocomplete="nickname">
+        </label>
+        <label class="field">Room PIN
+          <input id="join-pin" inputmode="numeric" maxlength="4" placeholder="4 digits" autocomplete="off">
+        </label>
+      </div>
+      <h2>Choose your avatar</h2>
+      <div id="join-picker"></div>
+      <div class="row"><button class="btn primary big" id="join-btn" type="button">Join the lobby</button></div>
+      <p class="msg" id="msg-join" role="status" aria-live="polite"></p>
+    </div>
+  </section>
+
+  <!-- Lobby -->
+  <section class="view" id="v-lobby" hidden>
+    <div class="card lobby-head">
+      <div class="lobby-info">
+        <p class="eyebrow">Waiting lobby</p>
+        <h1 id="lobby-title"></h1>
+        <p class="lobby-meta" id="lobby-meta"></p>
+      </div>
+      <div class="lobby-share">
+        <div class="pin-box"><small>Room PIN</small><strong id="room-pin">----</strong></div>
+        <div class="share">
+          <small>Room link</small>
+          <div class="linkrow"><code id="room-link"></code><button class="btn ghost" id="copy-link-2" type="button">Copy link</button></div>
+        </div>
+        <canvas id="qr" width="96" height="96" aria-label="Room QR code"></canvas>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stage-head">
+        <h2><span id="player-count">0</span> / <span id="player-cap">0</span> players <span class="ready-count" id="ready-count"></span></h2>
+        <div class="row tight">
+          <button class="btn ghost" id="change-avatar" type="button">Change avatar</button>
+          <button class="btn ready" id="ready-btn" type="button">I'm ready</button>
+          <button class="btn primary big" id="start-btn" type="button" hidden>Start game</button>
+        </div>
+      </div>
+      <p class="msg" id="msg-lobby" role="status" aria-live="polite"></p>
+      <div class="stage" id="stage" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <!-- Game -->
+  <section class="view" id="v-game" hidden>
+    <div class="game-bar">
+      <div class="progress-pill" id="game-progress"></div>
+      <div class="top3" id="top3" aria-label="Top three players"></div>
+      <div class="me" id="me-box"></div>
+    </div>
+    <div class="timer" role="timer" aria-live="off"><i id="timer-fill"></i><span id="timer-text"></span></div>
+    <div class="card qcard" id="qcard">
+      <div class="countdown" id="countdown" hidden aria-live="assertive"></div>
+      <p class="eyebrow" id="q-eyebrow"></p>
+      <h2 class="qtext" id="q-text"></h2>
+      <div class="options" id="options"></div>
+      <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+      <div class="winner-banner" id="winner-banner" hidden></div>
+    </div>
+    <div class="row end" id="host-controls" hidden>
+      <button class="btn ghost" id="next-btn" type="button">Next question →</button>
+      <button class="btn danger" id="end-btn" type="button">End game</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section class="view" id="v-results" hidden>
+    <div class="card results-head">
+      <p class="eyebrow">Game over</p>
+      <h1 id="winner-line"></h1>
+      <div class="podium" id="podium"></div>
+    </div>
+    <div class="card">
+      <h2>Leaderboard</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Player</th><th class="num">Points</th><th class="num">Correct</th><th class="num">Wrong</th><th class="num">Answered</th><th class="num">Accuracy</th></tr></thead>
+          <tbody id="board"></tbody>
+        </table>
+      </div>
+      <p class="hint" id="results-note"></p>
+      <div class="row end"><a class="btn primary" href="multiplayer-host.html">Host another quiz</a></div>
+    </div>
+  </section>
+
 </main>
+
+<!-- Avatar picker dialog (used from the lobby) -->
+<dialog id="picker-dialog" class="dialog">
+  <div class="dialog-body">
+    <div class="dialog-head"><h2>Choose your avatar</h2><button class="icon-btn" id="picker-close" type="button" aria-label="Close">✕</button></div>
+    <div id="dialog-picker"></div>
+  </div>
+</dialog>
+
+<div id="voice-audio" hidden></div>
+
+<script src="js/aqs-groq-key.js"></script>
 <script type="module" src="js/multiplayer-host.js"></script>
-</body></html>
+</body>
+</html>
