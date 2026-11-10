@@ -1768,35 +1768,42 @@ async function _aqsTestGroqKeys() {
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
     results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
+window._aqsTestProviderKeyOnWorker = window._aqsTestProviderKeyOnWorker || (async function(key, provider, model) {
+    var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+    if (!user && typeof auth !== 'undefined' && auth) user = auth.currentUser || null;
+    if (!user && window._aqsAuthResolved !== true) {
+        await new Promise(function(resolve) {
+            var done = false, finish = function(){if(done)return;done=true;resolve();};
+            document.addEventListener('aqs:firebase:ready', finish, {once:true});
+            setTimeout(finish, 8000);
+        });
+        user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && typeof auth !== 'undefined' && auth) user = auth.currentUser || null;
+    }
+    if (!user || typeof user.getIdToken !== 'function') throw new Error('Admin session not ready. Sign in again and reload this page.');
+    var token = await user.getIdToken();
+    var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/test', {
+        method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({key:key,provider:provider,model:model||''}), signal:AbortSignal.timeout(20000)
+    });
+    var data = await response.json().catch(function(){return {};});
+    if (!response.ok && !data.status) throw new Error(data.error || ('Worker test failed (HTTP '+response.status+').'));
+    return data;
+});
+
     async function pingGroq(entry) {
-        var key = entry.key, slot = entry.slot;
-        var masked = key.slice(0, 7) + '…' + key.slice(-4);
-        var badge = '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;">GROQ</span>';
-        var tStart = Date.now();
+        var key=entry.key, slot=entry.slot, masked=key.slice(0,7)+'…'+key.slice(-4);
+        var badge='<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;">GROQ</span>';
         try {
-            var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
-                signal: AbortSignal.timeout(12000)
-            });
-            var ms = Date.now() - tStart;
-            if (res.ok) {
-                var data = await res.json();
-                var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
-            } else if (res.status === 401) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span></div>' };
-            } else if (res.status === 429) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
-            } else {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
-            }
-        } catch(e) {
-            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (12s)':'Network error') + '</span></div>' };
+            var result=await window._aqsTestProviderKeyOnWorker(key,'groq',window._AQS_GROQ_MODEL||'openai/gpt-oss-20b');
+            var good=result.ok===true, status=Number(result.status||0), ms=Number(result.ms||0), color=good?'#166534':status===429?'#92400e':'#991b1b';
+            var message=good?'✅ Active · '+ms+'ms':(result.msg||('HTTP '+status));
+            return {ok:good,status:good?'active':String(status||'err'),slot:slot,html:'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid '+color+';border-radius:8px;">'+badge+'<span style="color:#12304a;font-weight:700;">'+slot+'</span><code style="color:'+color+';font-size:.78rem;">'+masked+'</code><span style="color:'+color+';margin-left:auto;font-size:.78rem;">'+message+'</span></div>'};
+        } catch(error) {
+            return {ok:false,status:'err',slot:slot,html:'<div style="padding:8px 12px;border:1px solid #991b1b;border-radius:8px;color:#991b1b;">GROQ · Slot '+slot+' · '+masked+' · '+(error.message||'Server-side test failed')+'</div>'};
         }
     }
-    var rows = await Promise.all(allKeys.map(pingGroq));
+    var rows = await Promise.all(allKeys.map(pingGroq));    var rows = await Promise.all(allKeys.map(pingGroq));
     rows.forEach(function(r, ri) {
         var dot = document.getElementById('aqs-gk-dot-' + (ri + 1));
         if (!dot) return;
@@ -1839,80 +1846,18 @@ async function _aqsTestAllKeys(auto) {
 
     /* Ping each key with a real but minimal API call */
     async function pingKey(entry) {
-        var key = entry.key, slot = entry.slot, provider = entry.provider;
-        var masked = key.slice(0, 7) + '…' + key.slice(-4);
-        var url   = 'https://api.mistral.ai/v1/chat/completions';
-        var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
-        var badge = '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">MISTRAL</span>';
-
-        var tStart = Date.now();
+        var key=entry.key, slot=entry.slot, masked=key.slice(0,7)+'…'+key.slice(-4);
+        var badge='<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;">MISTRAL</span>';
         try {
-            var res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: 'user', content: 'Say exactly: OK' }],
-                    max_tokens: 3,
-                    temperature: 0
-                }),
-                signal: AbortSignal.timeout(12000)
-            });
-            var ms = Date.now() - tStart;
-            if (res.ok) {
-                var data = await res.json();
-                var reply = (((data.choices || [])[0] || {}).message || {}).content || '✓';
-                return { ok: true, status: 'active', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim().replace(/"/g,'') + '"</em></span>' +
-                    '</div>'
-                };
-            } else if (res.status === 401) {
-                return { ok: false, status: '401', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span>' +
-                    '</div>'
-                };
-            } else if (res.status === 429) {
-                var errBody = {}; try { errBody = await res.json(); } catch(ex){}
-                var errMsg = (errBody.error && errBody.error.message) ? errBody.error.message.slice(0, 80) : 'Rate limited';
-                return { ok: false, status: '429', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;max-width:200px;text-align:right;">⚠️ ' + errMsg + '</span>' +
-                    '</div>'
-                };
-            } else {
-                return { ok: false, status: 'http' + res.status, slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span>' +
-                    '</div>'
-                };
-            }
-        } catch(e) {
-            return { ok: false, status: 'err', slot: slot, html:
-                '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' +
-                badge +
-                '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                '<code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span>' +
-                '</div>'
-            };
+            var result=await window._aqsTestProviderKeyOnWorker(key,'mistral',window._AQS_MISTRAL_MODEL||'mistral-small-latest');
+            var good=result.ok===true, status=Number(result.status||0), ms=Number(result.ms||0), color=good?'#166534':status===429?'#92400e':'#991b1b';
+            var message=good?'✅ Active · '+ms+'ms':(result.msg||('HTTP '+status));
+            return {ok:good,status:good?'active':String(status||'err'),slot:slot,html:'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid '+color+';border-radius:8px;">'+badge+'<span style="color:#12304a;font-weight:700;">'+slot+'</span><code style="color:'+color+';font-size:.78rem;">'+masked+'</code><span style="color:'+color+';margin-left:auto;font-size:.78rem;">'+message+'</span></div>'};
+        } catch(error) {
+            return {ok:false,status:'err',slot:slot,html:'<div style="padding:8px 12px;border:1px solid #991b1b;border-radius:8px;color:#991b1b;">MISTRAL · Slot '+slot+' · '+masked+' · '+(error.message||'Server-side test failed')+'</div>'};
         }
     }
-
-    var rows = await Promise.all(allKeys.map(pingKey));
+    var rows = await Promise.all(allKeys.map(pingKey));    var rows = await Promise.all(allKeys.map(pingKey));
 
     /* Update inline status dots next to each Mistral key label */
     rows.forEach(function(r, ri) {
@@ -2626,89 +2571,13 @@ btn('aqs-test-gtts-btn') && btn('aqs-test-gtts-btn').addEventListener('click', _
 
       /* ── Real direct API ping — returns { ok, status, ms, msg } ── */
       async function pingKey(key, provider) {
-          var tStart = Date.now(), ms, res, errBody, errMsg;
+          var started=Date.now();
           try {
-              if (provider === 'groq') {
-                  var model = window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b';
-                  res = await fetch(GROQ_URL, {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
-                      signal:AbortSignal.timeout(13000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) {
-                      var data = await res.json();
-                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
-                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
-                  }
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = (errBody.error&&errBody.error.message) ? errBody.error.message.slice(0,110) : 'HTTP '+res.status;
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
-                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-
-              } else if (provider === 'mistral') {
-                  var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
-                  res = await fetch(MISTRAL_URL, {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-                      body:JSON.stringify({model:model,messages:[{role:'user',content:'Say: OK'}],max_tokens:3,temperature:0}),
-                      signal:AbortSignal.timeout(15000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) {
-                      var data = await res.json();
-                      var reply = (((data.choices||[])[0]||{}).message||{}).content||'OK';
-                      return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · "'+reply.trim().slice(0,20)+'"'};
-                  }
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = errBody.message||errBody.error||(errBody.error&&errBody.error.message)||'HTTP '+res.status;
-                  if (typeof errMsg !== 'string') errMsg = JSON.stringify(errMsg);
-                  errMsg = errMsg.slice(0,110);
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
-                  if (res.status===401) return {ok:false, status:401, ms:ms, msg:'❌ Invalid key (401) — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-
-              } else if (provider === 'hf') {
-                  var hfModel = window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
-                  res = await fetch(HF_URL_BASE + hfModel, {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-                      body:JSON.stringify({inputs:'Say OK',parameters:{max_new_tokens:3}}),
-                      signal:AbortSignal.timeout(20000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms'};
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = (typeof errBody.error==='string' ? errBody.error : JSON.stringify(errBody.error||errBody)).slice(0,110);
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Rate limited — '+errMsg};
-                  if (res.status===401||res.status===403) return {ok:false, status:res.status, ms:ms, msg:'❌ Invalid token ('+res.status+') — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-
-              } else if (provider === 'gtts') {
-                  var gModel = (window.geminiTTS && window.geminiTTS.MODEL) || 'gemini-2.5-flash-preview-tts';
-                  res = await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+gModel+':generateContent?key='+encodeURIComponent(key), {
-                      method:'POST',
-                      headers:{'Content-Type':'application/json'},
-                      body:JSON.stringify({
-                          contents:[{role:'user',parts:[{text:'Hi'}]}],
-                          generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}
-                      }),
-                      signal:AbortSignal.timeout(30000)
-                  });
-                  ms = Date.now() - tStart;
-                  if (res.ok) return {ok:true, status:200, ms:ms, msg:'✅ Active · '+ms+'ms · audio OK'};
-                  errBody={}; try{errBody=await res.json();}catch(_){}
-                  errMsg = ((errBody.error&&errBody.error.message)||('HTTP '+res.status)).slice(0,110);
-                  if (res.status===429) return {ok:false, status:429, ms:ms, msg:'⚠️ Free quota reached — '+errMsg};
-                  if (res.status===403) return {ok:false, status:403, ms:ms, msg:'❌ Forbidden (403) — '+errMsg};
-                  if (res.status===400 && /API key not valid|API_KEY_INVALID/i.test(errMsg)) return {ok:false, status:400, ms:ms, msg:'❌ Invalid key — '+errMsg};
-                  return {ok:false, status:res.status, ms:ms, msg:'❌ Error '+res.status+' — '+errMsg};
-              }
-          } catch(e) {
-              ms = Date.now() - tStart;
-              return {ok:false, status:'err', ms:ms, msg:'❌ '+(e.name==='TimeoutError'?'Timeout (13s)':e.message||'Network error')};
+              var model=provider==='mistral'?(window._AQS_MISTRAL_MODEL||'mistral-small-latest'):(window._AQS_GROQ_MODEL||'openai/gpt-oss-20b');
+              var result=await window._aqsTestProviderKeyOnWorker(key,provider,model);
+              return {ok:result.ok===true,status:Number(result.status||(result.ok?200:0)),ms:Number(result.ms||(Date.now()-started)),msg:result.msg||(result.ok?'✅ Active':'❌ Provider rejected this key')};
+          } catch(error) {
+              return {ok:false,status:'err',ms:Date.now()-started,msg:'❌ '+(error.name==='TimeoutError'?'Worker test timed out':(error.message||'Server-side test failed'))};
           }
       }
 
