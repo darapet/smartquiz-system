@@ -1768,32 +1768,42 @@ async function _aqsTestGroqKeys() {
     if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
     results.style.display = 'block';
     results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing ' + allKeys.length + ' Groq key(s)…</div>';
-    async function pingGroq(entry) {
-        var key = entry.key, slot = entry.slot;
-        var masked = key.slice(0, 7) + '…' + key.slice(-4);
-        var badge = '<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;">GROQ</span>';
-        var tStart = Date.now();
+    window._aqsTestProviderKeyOnWorker = window._aqsTestProviderKeyOnWorker || (async function(key, provider, model) {
+    var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+    if (!user && typeof auth !== 'undefined' && auth) user = auth.currentUser || null;
+    if (!user && window._aqsAuthResolved !== true) {
+        await new Promise(function(resolve) {
+            var done = false, finish = function(){if(done)return;done=true;resolve();};
+            document.addEventListener('aqs:firebase:ready', finish, {once:true});
+            setTimeout(finish, 8000);
+        });
+        user = window._aqsFirebaseUser || window._aqsAuthUser || null;
+        if (!user && typeof auth !== 'undefined' && auth) user = auth.currentUser || null;
+    }
+    if (!user || typeof user.getIdToken !== 'function') throw new Error('Admin session not ready. Sign in again and reload this page.');
+    var token = await user.getIdToken();
+    var response = await fetch('https://smartquiz-system3.daramolapeter98.workers.dev/api/ai/test', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({key:key,provider:provider,model:model||''}),
+        signal:AbortSignal.timeout(20000)
+    });
+    var data = await response.json().catch(function(){return {};});
+    if (!response.ok && !data.status) throw new Error(data.error || ('Worker test failed (HTTP '+response.status+').'));
+    return data;
+});
+
+async function pingGroq(entry) {
+        var key=entry.key, slot=entry.slot, masked=key.slice(0,7)+'…'+key.slice(-4);
+        var badge='<span style="font-size:.7rem;background:#ede9fe;color:#5b21b6;border-radius:4px;padding:2px 7px;font-weight:700;">GROQ</span>';
         try {
-            var res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({ model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', messages: [{ role: 'user', content: 'Say: OK' }], max_tokens: 3, temperature: 0 }),
-                signal: AbortSignal.timeout(12000)
-            });
-            var ms = Date.now() - tStart;
-            if (res.ok) {
-                var data = await res.json();
-                var reply = (((data.choices||[])[0]||{}).message||{}).content||'✓';
-                return { ok: true, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim() + '"</em></span></div>' };
-            } else if (res.status === 401) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span></div>' };
-            } else if (res.status === 429) {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' + badge + '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span><code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ Rate limited (429)</span></div>' };
-            } else {
-                return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span></div>' };
-            }
-        } catch(e) {
-            return { ok: false, html: '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' + badge + '<span style="color:#12304a;font-weight:700;">' + slot + '</span><code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code><span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name==='TimeoutError'?'Timeout (12s)':'Network error') + '</span></div>' };
+            var result=await window._aqsTestProviderKeyOnWorker(key,'groq',window._AQS_GROQ_MODEL||'openai/gpt-oss-20b');
+            var good=result.ok===true, status=Number(result.status||0), ms=Number(result.ms||0);
+            var color=good?'#166534':status===429?'#92400e':'#991b1b';
+            var message=good?'✅ Active · '+ms+'ms':(result.msg||('HTTP '+status));
+            return {ok:good,status:good?'active':String(status||'err'),slot:slot,html:'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid '+color+';border-radius:8px;">'+badge+'<span style="color:#12304a;font-weight:700;">'+slot+'</span><code style="color:'+color+';font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">'+masked+'</code><span style="color:'+color+';margin-left:auto;font-size:.78rem;">'+message+'</span></div>'};
+        } catch(error) {
+            return {ok:false,status:'err',slot:slot,html:'<div style="padding:8px 12px;border:1px solid #991b1b;border-radius:8px;color:#991b1b;">GROQ · Slot '+slot+' · '+masked+' · '+(error.message||'Server-side test failed')+'</div>'};
         }
     }
     var rows = await Promise.all(allKeys.map(pingGroq));
@@ -1839,420 +1849,19 @@ async function _aqsTestAllKeys(auto) {
 
     /* Ping each key with a real but minimal API call */
     async function pingKey(entry) {
-        var key = entry.key, slot = entry.slot, provider = entry.provider;
-        var masked = key.slice(0, 7) + '…' + key.slice(-4);
-        var url   = 'https://api.mistral.ai/v1/chat/completions';
-        var model = window._AQS_MISTRAL_MODEL || 'mistral-small-latest';
-        var badge = '<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;letter-spacing:.02em;">MISTRAL</span>';
-
-        var tStart = Date.now();
+        var key=entry.key, slot=entry.slot, provider=entry.provider||'mistral';
+        var masked=key.slice(0,7)+'…'+key.slice(-4);
+        var badge='<span style="font-size:.7rem;background:#fef3c7;color:#92400e;border-radius:4px;padding:2px 7px;font-weight:700;">MISTRAL</span>';
         try {
-            var res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [{ role: 'user', content: 'Say exactly: OK' }],
-                    max_tokens: 3,
-                    temperature: 0
-                }),
-                signal: AbortSignal.timeout(12000)
-            });
-            var ms = Date.now() - tStart;
-            if (res.ok) {
-                var data = await res.json();
-                var reply = (((data.choices || [])[0] || {}).message || {}).content || '✓';
-                return { ok: true, status: 'active', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #166534;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#4ade80;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#6ee7b7;margin-left:auto;font-size:.78rem;">✅ Active · ' + ms + 'ms · <em>"' + reply.trim().replace(/"/g,'') + '"</em></span>' +
-                    '</div>'
-                };
-            } else if (res.status === 401) {
-                return { ok: false, status: '401', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ Invalid / Revoked (401)</span>' +
-                    '</div>'
-                };
-            } else if (res.status === 429) {
-                var errBody = {}; try { errBody = await res.json(); } catch(ex){}
-                var errMsg = (errBody.error && errBody.error.message) ? errBody.error.message.slice(0, 80) : 'Rate limited';
-                return { ok: false, status: '429', slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #78350f;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#fcd34d;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#fbbf24;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;max-width:200px;text-align:right;">⚠️ ' + errMsg + '</span>' +
-                    '</div>'
-                };
-            } else {
-                return { ok: false, status: 'http' + res.status, slot: slot, html:
-                    '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #c96f16;border-radius:8px;">' +
-                    badge +
-                    '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                    '<code style="color:#12304a;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                    '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">⚠️ HTTP ' + res.status + '</span>' +
-                    '</div>'
-                };
-            }
-        } catch(e) {
-            return { ok: false, status: 'err', slot: slot, html:
-                '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #7f1d1d;border-radius:8px;">' +
-                badge +
-                '<span style="color:#12304a;font-weight:700;">' + slot + '</span>' +
-                '<code style="color:#f87171;font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">' + masked + '</code>' +
-                '<span style="color:#12304a;margin-left:auto;font-size:.78rem;">❌ ' + (e.name === 'TimeoutError' ? 'Timeout (12s)' : 'Network error') + '</span>' +
-                '</div>'
-            };
+            var result=await window._aqsTestProviderKeyOnWorker(key,'mistral',window._AQS_MISTRAL_MODEL||'mistral-small-latest');
+            var good=result.ok===true, status=Number(result.status||0), ms=Number(result.ms||0);
+            var color=good?'#166534':status===429?'#92400e':'#991b1b';
+            var message=good?'✅ Active · '+ms+'ms':(result.msg||('HTTP '+status));
+            return {ok:good,status:good?'active':String(status||'err'),slot:slot,html:'<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid '+color+';border-radius:8px;">'+badge+'<span style="color:#12304a;font-weight:700;">'+slot+'</span><code style="color:'+color+';font-size:.78rem;background:#faf3ea;padding:1px 6px;border-radius:4px;">'+masked+'</code><span style="color:'+color+';margin-left:auto;font-size:.78rem;">'+message+'</span></div>'};
+        } catch(error) {
+            return {ok:false,status:'err',slot:slot,html:'<div style="padding:8px 12px;border:1px solid #991b1b;border-radius:8px;color:#991b1b;">MISTRAL · Slot '+slot+' · '+masked+' · '+(error.message||'Server-side test failed')+'</div>'};
         }
     }
-
-    var rows = await Promise.all(allKeys.map(pingKey));
-
-    /* Update inline status dots next to each Mistral key label */
-    rows.forEach(function(r, ri) {
-        var dot = document.getElementById('aqs-mk-dot-' + (ri + 1));
-        if (!dot) return;
-        dot.textContent = r.status === 'active' ? '✅' : (r.status === '429' ? '⚠️' : '❌');
-        dot.title = r.status === 'active' ? 'Working' : (r.status === '429' ? 'Rate limited' : 'Invalid / Error');
-        dot.style.fontSize = '.9rem';
-    });
-
-    var activeCount = rows.filter(function(r){ return r.ok; }).length;
-    var total = rows.length;
-    var summary = activeCount === total
-        ? '<div style="color:#4ade80;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">✅ All ' + total + ' keys are working!</div>'
-        : '<div style="color:#fbbf24;font-weight:700;padding:6px 10px;background:#faf3ea;border-radius:7px;margin-bottom:10px;">⚠️ ' + activeCount + '/' + total + ' keys active — rotate or replace the failed ones.</div>';
-
-    results.innerHTML = summary + '<div style="display:flex;flex-direction:column;gap:8px;">' + rows.map(function(r){return r.html;}).join('') + '</div>';
-    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🔌 Test All Keys'; }
-}
-
-btn('aqs-test-ai-btn').addEventListener('click', function(){ _aqsTestAllKeys(false); });
-
-/* Auto-test REMOVED — was burning API quota every time admin page opened.
-   Click "Test All Keys" button to test manually. */
-
-/* ── File upload helper ── */
-function _aqsDoUpload(fileInputId, urlInputId, uploadBtnId, statusId, storagePath, onSuccess) {
-    var fileInput = document.getElementById(fileInputId);
-    var file = fileInput && fileInput.files && fileInput.files[0];
-    if (!file) { _showStatus(statusId, false, 'Please choose a file first.'); return; }
-    var uploadBtn = document.getElementById(uploadBtnId);
-    if (uploadBtn) { uploadBtn.disabled = true; uploadBtn.textContent = '⏳ Uploading…'; }
-    _showStatus(statusId, true, 'Uploading…');
-    function doUpload() {
-        window.aqsUploadFile(file, storagePath + '/' + file.name)
-            .then(function(url) {
-                var urlInput = document.getElementById(urlInputId);
-                if (urlInput) urlInput.value = url;
-                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = '☁️ Upload'; }
-                _showStatus(statusId, true, '✓ Uploaded! Click Save to apply.');
-                if (onSuccess) onSuccess(url);
-            })
-            .catch(function(err) {
-                if (uploadBtn) { uploadBtn.disabled = false; uploadBtn.textContent = '☁️ Upload'; }
-                _showStatus(statusId, false, 'Upload failed: ' + (err.message || err));
-            });
-    }
-    if (window._aqsFirebaseReady) { doUpload(); }
-    else { document.addEventListener('aqs:firebase:ready', doUpload, { once: true }); }
-}
-
-btn('aqs-music-upload-btn').addEventListener('click', function(){
-    _aqsDoUpload('aqs-music-file', 'aqs-music-url', 'aqs-music-upload-btn', 'aqs-music-upload-status', 'uploads/music');
-});
-
-btn('aqs-splash-logo-upload-btn').addEventListener('click', function(){
-    _aqsDoUpload('aqs-splash-logo-file', 'aqs-splash-logo', 'aqs-splash-logo-upload-btn', 'aqs-splash-logo-upload-status', 'uploads/logo', function(url){
-        var wrap = document.getElementById('aqs-splash-logo-preview-wrap');
-        var img  = document.getElementById('aqs-splash-logo-preview');
-        if (wrap && img) { img.src = url; wrap.style.display = 'block'; }
-    });
-});
-
-btn('aqs-save-music-btn').addEventListener('click', function(){
-    saveSettings('/api/settings', {
-        bg_music_url: document.getElementById('aqs-music-url').value.trim()
-    }, 'aqs-music-status', this, '💾 Save Music Settings');
-});
-
-btn('aqs-save-splash-btn').addEventListener('click', function(){
-    saveSettings('/api/settings', {
-        splash_enabled:  document.getElementById('aqs-splash-enabled').checked,
-        splash_template: document.getElementById('aqs-splash-template').value,
-        splash_app_name: document.getElementById('aqs-splash-app-name').value.trim(),
-        splash_tagline:  document.getElementById('aqs-splash-tagline').value.trim(),
-        splash_duration: document.getElementById('aqs-splash-duration').value || '3',
-        splash_once:     document.getElementById('aqs-splash-once').checked,
-        splash_sound:    document.getElementById('aqs-splash-sound').checked,
-        splash_color:    document.getElementById('aqs-splash-color').value,
-        splash_logo_url: document.getElementById('aqs-splash-logo').value.trim()
-    }, 'aqs-splash-status', this, '💾 Save Splash Settings');
-});
-
-btn('aqs-preview-splash-btn').addEventListener('click', function(){
-    /* Remove any existing splash so preview always shows fresh */
-    var old = document.getElementById('aqs-splash');
-    if (old) old.parentNode.removeChild(old);
-    sessionStorage.removeItem('aqs_splash_shown');
-    if (typeof window.aqsRunSplash !== 'function') {
-        alert('Splash script not loaded yet. Please wait a moment and try again.');
-        return;
-    }
-    window.aqsRunSplash({
-        enabled:       '1',
-        once:          '0',
-        template:      document.getElementById('aqs-splash-template').value || '1',
-        app_name:      document.getElementById('aqs-splash-app-name').value.trim() || 'XZILY AI',
-        tagline:       document.getElementById('aqs-splash-tagline').value.trim() || 'Powered by Darapet Technology',
-        duration:      document.getElementById('aqs-splash-duration').value || '3',
-        sound:         document.getElementById('aqs-splash-sound').checked ? '1' : '0',
-        color_primary: document.getElementById('aqs-splash-color').value || '#e8912d',
-        logo_url:      document.getElementById('aqs-splash-logo').value.trim()
-    });
-});
-
-btn('aqs-save-brevo-btn').addEventListener('click', function(){
-    saveSettings('/api/settings', {
-        brevo_api_key: document.getElementById('aqs-brevo-key').value.trim(),
-        brevo_from_name: document.getElementById('aqs-brevo-from-name').value.trim(),
-        brevo_from_email: document.getElementById('aqs-brevo-from-email').value.trim(),
-        otp_enabled: document.getElementById('aqs-otp-enabled').checked
-    }, 'aqs-brevo-status', this, '💾 Save Email Settings');
-});
-
-var brevoKeyInput = document.getElementById('aqs-brevo-key');
-var brevoKeyView = btn('aqs-view-brevo-key');
-if (brevoKeyInput) {
-    brevoKeyInput.addEventListener('input', _refreshBrevoKeyView);
-}
-if (brevoKeyView && brevoKeyInput) {
-    brevoKeyView.addEventListener('click', function() {
-        var showing = brevoKeyInput.type === 'text';
-        brevoKeyInput.type = showing ? 'password' : 'text';
-        brevoKeyView.textContent = showing ? '👁 Show' : '🙈 Hide';
-    });
-}
-
-btn('aqs-test-brevo-btn').addEventListener('click', function(){
-    var button = this;
-    var status = document.getElementById('aqs-brevo-status');
-    button.disabled = true;
-    button.textContent = 'Sending test…';
-    var recipient = document.getElementById('aqs-brevo-test-recipient').value.trim();
-    if (status) {
-        status.textContent = recipient
-            ? 'Sending a test email to ' + recipient + '…'
-            : 'Sending a test email to the signed-in admin address…';
-        status.style.color = '#e8912d';
-    }
-    window.aqsAjax({ action: 'aqs_test_brevo', recipient: recipient }, function(res) {
-        button.disabled = false;
-        button.textContent = '🧪 Send Test Email';
-        if (status) {
-            var details = res && res.data;
-            var senderLabel = details && details.sender
-                ? ' Sender: ' + details.sender + '.'
-                : '';
-            status.textContent = res && res.success
-                ? (details && details.recipient && details.messageId
-                    ? '✓ Accepted by Brevo for ' + details.recipient + '. Message ID: ' + details.messageId + '.' + senderLabel + ' Check spam/Promotions if needed.'
-                    : '✓ Email request accepted by the email service. Check spam/Promotions if it is not visible.')
-                : ((res && res.data && res.data.message) || 'Test email failed.');
-            status.style.color = res && res.success ? '#059669' : '#dc2626';
-        }
-    }, function(err) {
-        button.disabled = false;
-        button.textContent = '🧪 Send Test Email';
-        if (status) {
-            status.textContent = (err && err.message) || 'Test email failed.';
-            status.style.color = '#dc2626';
-        }
-    });
-});
-
-btn('aqs-save-countdown-btn').addEventListener('click', function(){
-    saveSettings('/api/settings', {
-        countdown_enabled: document.getElementById('aqs-cd-enabled').checked,
-        countdown_label: document.getElementById('aqs-cd-label').value.trim(),
-        countdown_date: document.getElementById('aqs-cd-date').value,
-        countdown_hour: document.getElementById('aqs-cd-hour').value,
-        countdown_minute: document.getElementById('aqs-cd-minute').value
-    }, 'aqs-countdown-status', this, '💾 Save Countdown Settings');
-});
-
-btn('aqs-save-ticker-btn').addEventListener('click', function(){
-    saveSettings('/api/settings', {
-        ticker_text: document.getElementById('aqs-ticker-text').value.trim()
-    }, 'aqs-ticker-status', this, '💾 Save News Ticker');
-});
-
-btn('aqs-save-oauth-btn').addEventListener('click', function(){
-    saveSettings('/api/settings', {
-        google_client_id: document.getElementById('aqs-oauth-google-id').value.trim(),
-        google_client_secret: document.getElementById('aqs-oauth-google-secret').value.trim(),
-        github_client_id: document.getElementById('aqs-oauth-github-id').value.trim(),
-        github_client_secret: document.getElementById('aqs-oauth-github-secret').value.trim(),
-        microsoft_client_id: document.getElementById('aqs-oauth-microsoft-id').value.trim(),
-        microsoft_client_secret: document.getElementById('aqs-oauth-microsoft-secret').value.trim(),
-        yahoo_client_id: document.getElementById('aqs-oauth-yahoo-id').value.trim(),
-        yahoo_client_secret: document.getElementById('aqs-oauth-yahoo-secret').value.trim()
-    }, 'aqs-oauth-status', this, '💾 Save OAuth Settings');
-});
-
-  btn('aqs-save-hf-btn').addEventListener('click', function(){
-    var hfKeys = [];
-    for (var hi = 1; hi <= 5; hi++) {
-        var hel = document.getElementById('aqs-hf-key-' + hi);
-        if (hel && hel.value.trim().length > 10) hfKeys.push(hel.value.trim());
-    }
-    var hfModelEl = document.getElementById('aqs-hf-model');
-    if (typeof window.setHFKeys === 'function') window.setHFKeys(hfKeys);
-    window._AQS_HF_MODEL = hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3';
-    saveSettings('/api/settings', {
-        hf_keys: hfKeys,
-        hf_model: hfModelEl ? hfModelEl.value : 'mistralai/Mistral-7B-Instruct-v0.3'
-    }, 'aqs-hf-status', this, '🤗 Save HuggingFace Settings');
-    for (var ci = 1; ci <= 10; ci++) { var d = document.getElementById('aqs-hf-dot-' + ci); if (d) d.textContent = ''; }
-});
-
-btn('aqs-save-creator-image-btn').addEventListener('click', function(){
-    var creatorImageKeys = [];
-    for (var cii = 1; cii <= 10; cii++) {
-        var ciel = document.getElementById('aqs-creator-image-key-' + cii);
-        if (ciel && ciel.value.trim().length > 10) creatorImageKeys.push(ciel.value.trim());
-    }
-    var creatorImageModelEl = document.getElementById('aqs-creator-image-model');
-    var creatorImageModel = creatorImageModelEl && creatorImageModelEl.value.trim()
-        ? creatorImageModelEl.value.trim()
-        : 'gemini-3.1-flash-image';
-    var creatorImageWorkerUrlEl = document.getElementById('aqs-creator-image-worker-url');
-    var creatorImageWorkerUrl = creatorImageWorkerUrlEl ? creatorImageWorkerUrlEl.value.trim() : '';
-    if (creatorImageWorkerUrl && !/^https:\/\//i.test(creatorImageWorkerUrl)) {
-        var creatorImageStatus = document.getElementById('aqs-creator-image-status');
-        if (creatorImageStatus) {
-            creatorImageStatus.textContent = 'Use an HTTPS Cloudflare Worker URL or leave it blank.';
-            creatorImageStatus.style.color = '#dc2626';
-        }
-        return;
-    }
-    if (typeof window.setCreatorImageKeys === 'function') window.setCreatorImageKeys(creatorImageKeys);
-    window._AQS_CREATOR_IMAGE_MODEL = creatorImageModel;
-    window._AQS_CREATOR_IMAGE_WORKER_URL = creatorImageWorkerUrl;
-    saveSettings('/api/settings', {
-        creator_image_keys: creatorImageKeys,
-        creator_image_model: creatorImageModel,
-        creator_image_worker_url: creatorImageWorkerUrl
-    }, 'aqs-creator-image-status', this, '🎨 Save Creator Studio Image Keys');
-    for (var cdi = 1; cdi <= 10; cdi++) {
-        var cd = document.getElementById('aqs-creator-image-dot-' + cdi);
-        if (cd) cd.textContent = '';
-    }
-});
-
-async function _aqsTestCreatorImageKeys() {
-    var configuredSlots = [];
-    for (var cti = 1; cti <= 10; cti++) {
-        var ctel = document.getElementById('aqs-creator-image-key-' + cti);
-        if (ctel && ctel.value.trim().length > 10) configuredSlots.push('Token ' + cti);
-    }
-    var results = document.getElementById('aqs-creator-image-test-results');
-    var testBtn = document.getElementById('aqs-test-creator-image-btn');
-    var healthSummary = document.getElementById('aqs-creator-image-health-summary');
-    window._aqsRememberCreatorImageHealth = function(healthy, total, status) {
-        try {
-            localStorage.setItem('aqs_creator_image_health_last', JSON.stringify({
-                at: new Date().toISOString(),
-                healthy: healthy,
-                total: total,
-                status: status || 'checked'
-            }));
-        } catch (e) {}
-    };
-    try {
-        var lastCreatorHealth = JSON.parse(localStorage.getItem('aqs_creator_image_health_last') || 'null');
-        if (healthSummary && lastCreatorHealth && lastCreatorHealth.at) {
-            var lastLabel = lastCreatorHealth.total
-                ? lastCreatorHealth.healthy + '/' + lastCreatorHealth.total + ' managed token(s) healthy'
-                : 'No managed tokens configured';
-            healthSummary.innerHTML = 'Last checked ' + new Date(lastCreatorHealth.at).toLocaleString() + ' · ' + lastLabel + ' · Gemini key pool required.';
-        }
-    } catch (e) {}
-    if (!results) return;
-    results.style.display = 'block';
-    if (!configuredSlots.length) {
-        results.innerHTML = '<span style="color:#f87171;">⚠️ No Creator Studio image tokens found. Add at least one above, save the pool, then click Test.</span>';
-        if (healthSummary) healthSummary.innerHTML = 'No managed tokens configured · Gemini key pool required.';
-        return;
-    }
-    var model = (document.getElementById('aqs-creator-image-model') || {}).value || 'gemini-3.1-flash-image';
-    if (testBtn) { testBtn.disabled = true; testBtn.textContent = '⏳ Testing…'; }
-    results.innerHTML = '<div style="color:#12304a;padding:4px 0;">⏳ Testing the saved Gemini key pool…</div>';
-    try {
-        var health = [];
-        /* The old Firebase Function route is no longer deployed. Test each
-           configured key directly from this admin-only page instead of
-           turning its 404/CORS response into the misleading "Failed to fetch". */
-        for (var hti = 0; hti < configuredSlots.length; hti++) {
-            var slotNumber = parseInt(String(configuredSlots[hti]).replace(/\D/g, ''), 10);
-            var keyInput = document.getElementById('aqs-creator-image-key-' + slotNumber);
-            var key = keyInput ? keyInput.value.trim() : '';
-            var startedAt = Date.now();
-            var httpStatus = 0;
-            var keyStatus = 'unavailable';
-            try {
-                var geminiEndpoint = 'https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent?key=' + encodeURIComponent(key);
-                var geminiResponse = await fetch(geminiEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents: [{ role: 'user', parts: [{ text: 'Generate a simple blue circle on a clean white background.' }] }],
-                        generationConfig: { responseModalities: ['IMAGE'], imageConfig: { aspectRatio: '1:1', imageSize: '1K' } }
-                    })
-                });
-                httpStatus = geminiResponse.status;
-                var geminiPayload = await geminiResponse.json().catch(function(){ return {}; });
-                var geminiParts = (geminiPayload.candidates || []).flatMap(function(candidate) {
-                    return candidate.content && Array.isArray(candidate.content.parts) ? candidate.content.parts : [];
-                });
-                var imagePart = geminiParts.find(function(part){ return part.inlineData || part.inline_data; });
-                if (geminiResponse.ok && imagePart) keyStatus = 'healthy';
-                else if (httpStatus === 401 || httpStatus === 403) keyStatus = 'invalid';
-                else if (httpStatus === 429) keyStatus = 'rate_limited';
-            } catch (directTestError) {
-                keyStatus = 'unavailable';
-            }
-            health.push({ slot: slotNumber, status: keyStatus, httpStatus: httpStatus, latencyMs: keyStatus === 'unavailable' ? 0 : Date.now() - startedAt });
-        }
-        var data = { model: model, health: health };
-        if (!health.length) {
-            results.innerHTML = '<span style="color:#fbbf24;">⚠️ No saved Gemini keys were found. Save the pool first.</span>';
-            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · No managed tokens configured · Gemini key pool required.';
-            if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'empty');
-        } else {
-            var healthyCount = health.filter(function(entry){ return entry.status === 'healthy'; }).length;
-            var rows = health.map(function(entry) {
-                var color = entry.status === 'healthy' ? '#4ade80' : (entry.status === 'rate_limited' ? '#fbbf24' : '#f87171');
-                var status = entry.status === 'healthy' ? '✅ Healthy' : (entry.status === 'rate_limited' ? '⚠️ Rate limited' : (entry.status === 'invalid' ? '❌ Invalid token' : '❌ Unavailable'));
-                return '<div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:#faf3ea;border:1px solid #334155;border-radius:8px;"><span style="color:' + color + ';font-weight:700;">Token ' + entry.slot + '</span><span style="color:#12304a;font-size:.78rem;">' + (entry.latencyMs || 0) + ' ms</span><span style="color:' + color + ';margin-left:auto;font-size:.78rem;">' + status + '</span></div>';
-            });
-            results.innerHTML = '<div style="color:#12304a;font-size:.75rem;margin-bottom:8px;">Direct Gemini key test · ' + (data.model || model) + '</div><div style="display:flex;flex-direction:column;gap:8px;">' + rows.join('') + '</div>';
-            if (healthSummary) healthSummary.innerHTML = 'Last checked ' + new Date().toLocaleString() + ' · ' + healthyCount + '/' + health.length + ' managed token(s) healthy · Gemini key pool required.';
-            if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(healthyCount, health.length, 'checked');
-        }
-    } catch (e) {
-        results.innerHTML = '<span style="color:#f87171;">❌ ' + (e.message || 'Gemini key test unavailable.') + '</span>';
-        if (healthSummary) healthSummary.innerHTML = 'Last check failed at ' + new Date().toLocaleString() + ' · Gemini key pool required.';
-        if (window._aqsRememberCreatorImageHealth) window._aqsRememberCreatorImageHealth(0, 0, 'failed');
-    }
-    if (testBtn) { testBtn.disabled = false; testBtn.textContent = '🧪 Test Gemini API Keys'; }
-}
 btn('aqs-test-creator-image-btn').addEventListener('click', _aqsTestCreatorImageKeys);
 
 async function _aqsTestHFKeys() {
