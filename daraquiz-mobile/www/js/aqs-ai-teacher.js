@@ -345,13 +345,10 @@ function keysReady(){
 function aiFetch(messages){
   var body = { model: AIT_MODEL, messages: messages, temperature: 0.6, max_tokens: 900 };
   var opts = { signal: aitSignal(60000) };
-  return keysReady().then(function(hasKeys){
-    if(typeof window.studyhubGroqFetch === 'function') return window.studyhubGroqFetch(body, opts);
-    if(typeof window.groqFetch === 'function') return window.groqFetch(body, opts);
-    throw new Error(hasKeys ? 'AI service unavailable.' : 'No Study Hub AI keys configured — add them in Admin Settings.');
-  });
+  if(typeof window.aqsWorkerAI !== 'function') return Promise.reject(new Error('Secure AI service is unavailable. Refresh the page and try again.'));
+  return window.aqsWorkerAI(body, opts);
 }
-/* The key pools return a raw Response — read it properly */
+/* The secure Worker returns a raw Response — read it properly */
 function readResponse(res){
   if(res && typeof res === 'object' && typeof res.json === 'function' && 'ok' in res){
     if(!res.ok){
