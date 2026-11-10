@@ -1376,65 +1376,7 @@ function shToast(msg, dur=3000){
   setTimeout(()=>el.remove(), dur);
 }
 
-/* ══════════════════════════════
-   MISTRAL AI — 10 key cycling
-══════════════════════════════ */
-const AIT_DEFAULT_KEYS = [
-  'lGPCWwSD9DdQXxZV1tpgvrOIfgjDqkcJ',
-  '34v1vccfwrobTIL8aqH69dxRa9xQFgIx',
-  '6B56rUaoF9VEHXm3ab4XDqzepo6Q7AfS',
-  'B3BcwVcnG1HAZ9OOvJKwC5VhKwEQ5fJR',
-  '9tTqL4XzmKHQEBwTLWqb8CVsGwV92crS',
-  'pZ6AJekEECnlQpQiKKMjSjTxERGemlF1',
-  'bDIWZlfhuwfHRSSWxUXOd8YJtt2TGPTG',
-  '9ytdl4fetK9wW459kImNSHkuUrTulw2w',
-  'xOGvfjNNC1wRq8zuw5p57FET3YhieWBu',
-  'Uyij77eMFADFoptpf2A65VCYc0ybjmlW'
-];
-let _mkeyIdx = 0;
-
-function aitGetKeys(){
-  const saved = [];
-  for(let i=0;i<10;i++){
-    const el = document.getElementById('ait-key-'+i);
-    if(el && el.value.trim()) saved.push(el.value.trim());
-  }
-  if(saved.length) return saved;
-  const pool = Array.isArray(window._AQS_MISTRAL_MASTER_KEYS) ? window._AQS_MISTRAL_MASTER_KEYS.filter(k=>k && k.length>8) : [];
-  if(pool.length) return pool;
-  return AIT_DEFAULT_KEYS.filter(k=>k.length>8);
-}
-
-async function aitMistral(messages, maxTokens=1200){
-  const keys = aitGetKeys();
-  if(!keys.length){ shToast('⚠️ No Mistral API keys found'); return null; }
-  const max429Retries = 3;
-  for(let attempt=0; attempt<keys.length; attempt++){
-    const key = keys[_mkeyIdx % keys.length];
-    _mkeyIdx++;
-    try{
-      const res = await fetch('https://api.mistral.ai/v1/chat/completions',{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-        body:JSON.stringify({model:'mistral-small-latest',messages,max_tokens:maxTokens,temperature:0.75})
-      });
-      if(res.status===429){
-        const retryAfter = Number(res.headers.get('Retry-After'));
-        const delay = Number.isFinite(retryAfter) && retryAfter>0 ? Math.min(retryAfter*1000,15000) : Math.min(1000*Math.pow(2,Math.min(attempt,max429Retries-1)),8000);
-        console.warn('Mistral rate limited; backing off before rotating key');
-        if(attempt<keys.length-1) await new Promise(resolve=>setTimeout(resolve,delay));
-        continue;
-      }
-      if(!res.ok){ console.warn('Mistral key failed:',res.status); continue; }
-      const d = await res.json();
-      return d.choices?.[0]?.message?.content || '';
-    }catch(e){ console.warn('Mistral fetch err',e); }
-  }
-  shToast('⚠️ All Mistral keys failed. Check your keys.');
-  return null;
-}
-
-/* ── Fallback: use groqFetch (original) for non-AI-timer features ── */
+/* AI generation now uses the authenticated Cloudflare Worker. No provider keys belong in this public page. */
 async function shAI(prompt, maxTokens=1200){
   if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
   const response = await window.aqsWorkerAI({
