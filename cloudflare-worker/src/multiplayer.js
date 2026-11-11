@@ -515,7 +515,7 @@ const actions = {
         tx.create(firstP, { uid, at: SERVER_TS });
         tx.update(roomP(id), { lastWinner: { questionIndex: qi, uid, name: me.name, avatar: me.avatar } });
       }
-      return { correct, firstCorrect: outcome.firstCorrect, scoreDelta: outcome.scoreDelta, correctIndex: right };
+      return { correct, firstCorrect: outcome.firstCorrect, scoreDelta: outcome.scoreDelta };
     });
   }
 };
