@@ -337,7 +337,7 @@ const actions = {
         tx.create(first, { uid, at: FieldValue.serverTimestamp() });
         tx.update(roomRef(id), { lastWinner: { questionIndex: qi, uid, name: me.data().name, avatar: me.data().avatar } });
       }
-      return { correct, firstCorrect: outcome.firstCorrect, scoreDelta: outcome.scoreDelta, correctIndex: right };
+      return { correct, firstCorrect: outcome.firstCorrect, scoreDelta: outcome.scoreDelta };
     });
   }
 };
