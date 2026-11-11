@@ -121,6 +121,47 @@ function imageResponse(request, env, image) {
   });
 }
 
+
+/* Image-to-image editing for Studio, using Cloudflare FLUX.2 Klein 4B. */
+export async function handleImageEdit(request, env) {
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders(request, env) });
+  }
+  if (request.method !== 'POST') {
+    return json(request, env, { error: 'Use POST to edit an image.' }, 405);
+  }
+  if (!env.AI || typeof env.AI.run !== 'function') {
+    return json(request, env, { error: 'Cloudflare Workers AI is not configured.' }, 503);
+  }
+  try {
+    const incoming = await request.formData();
+    const prompt = String(incoming.get('prompt') || '').replace(/\\s+/g, ' ').trim();
+    const inputImage = incoming.get('image');
+    if (prompt.length < 3 || prompt.length > MAX_PROMPT_LENGTH) {
+      return json(request, env, { error: 'Enter an image-edit instruction between 3 and 2000 characters.' }, 400);
+    }
+    if (!(inputImage instanceof Blob) || !String(inputImage.type || '').startsWith('image/')) {
+      return json(request, env, { error: 'Attach a valid image to edit.' }, 400);
+    }
+    if (inputImage.size > 8 * 1024 * 1024) {
+      return json(request, env, { error: 'The image must be 8 MB or smaller.' }, 413);
+    }
+    const form = new FormData();
+    form.append('prompt', 'Edit the provided reference image according to these instructions while preserving all elements not requested to change: ' + prompt);
+    form.append('input_image_0', inputImage, 'studio-input-image');
+    form.append('width', '1024');
+    form.append('height', '1024');
+    const serialized = new Response(form);
+    const image = await env.AI.run('@cf/black-forest-labs/flux-2-klein-4b', {
+      multipart: { body: serialized.body, contentType: serialized.headers.get('content-type') },
+    });
+    return imageResponse(request, env, image);
+  } catch (error) {
+    console.error('XZILY Studio image edit error:', error);
+    return json(request, env, { error: 'The image editing service could not complete this edit. Please try again.' }, 502);
+  }
+}
+
 export async function handleImage(request, env) {
   if (request.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders(request, env) });
