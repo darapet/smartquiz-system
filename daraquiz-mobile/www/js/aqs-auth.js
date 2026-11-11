@@ -239,9 +239,7 @@
         registrationStep = step;
         document.querySelectorAll('.aqs-register-step').forEach(function (panel) {
             var panelStep = Number(panel.getAttribute('data-step'));
-            if (step <= 3) panel.hidden = panelStep > 3 || panelStep > step;
-            else if (step <= 5) panel.hidden = panelStep < 4 || panelStep > step;
-            else panel.hidden = panelStep !== step;
+            panel.hidden = panelStep !== step;
         });
         var visibleStep = step <= 3 ? 1 : (step <= 5 ? 2 : 3);
         document.querySelectorAll('[data-flow-step]').forEach(function (item) {
@@ -255,8 +253,8 @@
         var subtitle = document.getElementById('aqs-register-subtitle');
         var copy = {
             1: ['Create your account', 'A few quick steps and you are ready to learn.'],
-            2: ['Verify your email', 'This keeps your SmartQuiz account secure.'],
-            3: ['Create your password', 'Your email is verified. Choose a password for your account.'],
+            2: ['Create your password', 'Choose a password for your SmartQuiz account.'],
+            3: ['Create your password', 'Choose a password for your account.'],
             4: ['Build your learning profile', 'Tell us enough to make your study experience useful.'],
             5: ['Add your photos', 'You can skip either photo and add it later.'],
             6: ['Welcome to SmartQuiz', 'Your profile is complete and ready to use.']
