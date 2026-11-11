@@ -807,28 +807,48 @@
         return wrap;
     }
     function wantsDownloadableDocument(prompt) {
-        return /\b(download|export|save|give me|provide|send me|create)\b/i.test(prompt || '') &&
-          /\b(file|document|docx|doc|word|pdf|report|essay|letter|proposal|resume|cv|spreadsheet|excel|ppt|powerpoint)\b/i.test(prompt || '');
+        return /\\b(download|export|save|give me|provide|send me|create|make)\\b/i.test(prompt || '') &&
+          /\\b(file|document|docx|word|pdf)\\b/i.test(prompt || '');
     }
-    function downloadAIArtifact(prompt, answer) {
-        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\s+["“]?([^"”.,!?]+)["”]?/i);
-        var safeName = (titleMatch ? titleMatch[1] : 'XZILY-AI-Document').trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60) || 'XZILY-AI-Document';
-        var htmlBody = typeof marked !== 'undefined' ? marked.parse(answer) : '<pre>' + String(answer).replace(/[&<>]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch];}) + '</pre>';
-        var html = '<!doctype html><html><head><meta charset="utf-8"><title>'+safeName+'</title><style>body{font:11pt Arial,sans-serif;line-height:1.65;margin:2cm;color:#222}h1,h2,h3{page-break-after:avoid}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:6px}pre{white-space:pre-wrap}</style></head><body>'+htmlBody+'</body></html>';
-        var wantsPdf = /\bpdf\b/i.test(prompt || '');
-        var mime = 'application/msword';
-        var blob = new Blob(['\ufeff', html], {type:mime});
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a'); a.href=url; a.download=safeName+'.doc';
-        document.body.appendChild(a); a.click(); a.remove();
-        setTimeout(function(){URL.revokeObjectURL(url);},5000);
-        if (wantsPdf) {
-            var win = window.open('', '_blank');
-            if (win) {
-                win.document.open(); win.document.write(html); win.document.close();
-                setTimeout(function(){win.focus();win.print();},500);
-            }
+    function loadStudioLibrary(src, test) {
+        return new Promise(function(resolve,reject) {
+            if (test()) return resolve();
+            var existing = document.querySelector('script[data-studio-library="'+src+'"]');
+            if (existing) { existing.addEventListener('load',resolve,{once:true}); existing.addEventListener('error',reject,{once:true}); return; }
+            var script=document.createElement('script');script.src=src;script.async=true;script.dataset.studioLibrary=src;
+            script.onload=resolve;script.onerror=function(){reject(new Error('Could not load document export library.'));};
+            document.head.appendChild(script);
+        });
+    }
+    async function downloadAIArtifact(prompt, answer) {
+        var isPdf = /\\bpdf\\b/i.test(prompt || '');
+        var isDocx = /\\b(docx|word)\\b/i.test(prompt || '');
+        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\\s+["“]?([^"”.,!?]+)["”]?/i);
+        var name=(titleMatch?titleMatch[1]:'XZILY-AI-Document').trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60)||'XZILY-AI-Document';
+        var plain=String(answer||'').replace(/\\r/g,'').replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g,'$1').replace(/[*_`#>]/g,'');
+        if(isPdf){
+            await loadStudioLibrary('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',function(){return !!(window.jspdf&&window.jspdf.jsPDF);});
+            var pdf=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
+            var margin=48,width=pdf.internal.pageSize.getWidth()-margin*2,y=margin;
+            pdf.setFont('helvetica','normal');pdf.setFontSize(11);
+            plain.split(/\\n/).forEach(function(line){
+                var wrapped=pdf.splitTextToSize(line||' ',width);
+                wrapped.forEach(function(part){if(y>pdf.internal.pageSize.getHeight()-margin){pdf.addPage();y=margin;}pdf.text(part,margin,y);y+=16;});
+                y+=5;
+            });
+            pdf.save(name+'.pdf');return true;
         }
+        if(isDocx){
+            await loadStudioLibrary('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',function(){return !!window.docx;});
+            var d=window.docx;
+            var paragraphs=plain.split(/\\n/).map(function(line){return new d.Paragraph({children:[new d.TextRun(line||' ')]});});
+            var doc=new d.Document({sections:[{children:paragraphs}]});
+            var blob=await d.Packer.toBlob(doc);var url=URL.createObjectURL(blob);
+            var a=document.createElement('a');a.href=url;a.download=name+'.docx';document.body.appendChild(a);a.click();a.remove();
+            setTimeout(function(){URL.revokeObjectURL(url);},5000);return true;
+        }
+        appendMessage('assistant','Please specify PDF or DOCX so I can create the correct downloadable file.');
+        return false;
     }
 
     /* ═══════════════════════════════════════════════════════════
