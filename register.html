@@ -48,7 +48,7 @@ window.AQS = {
     <div class="aqs-flow-progress" aria-label="Registration progress">
         <div class="aqs-flow-progress-line"><span id="aqs-flow-progress-bar"></span></div>
         <ol>
-            <li class="active" data-flow-step="1"><span>1</span><small>Verify email</small></li>
+            <li class="active" data-flow-step="1"><span>1</span><small>Account</small></li>
             <li data-flow-step="2"><span>2</span><small>Profile setup</small></li>
         </ol>
     </div>
@@ -60,34 +60,19 @@ window.AQS = {
     <form id="aqs-register-account-form" class="aqs-register-step" data-step="1" autocomplete="off" novalidate>
         <div class="aqs-step-intro">
             <span class="aqs-step-number">01</span>
-            <div><h2>Start with your email</h2><p>We will send a one-time code to confirm it belongs to you.</p></div>
+            <div><h2>Start with your email</h2><p>Enter your email address to begin creating your account.</p></div>
         </div>
         <div class="aqs-auth-field">
             <label for="reg-email">Email address</label>
             <input type="email" id="reg-email" placeholder="you@example.com" required autocomplete="email">
         </div>
-        <button type="submit" class="aqs-auth-submit" id="aqs-register-account-submit">Send verification code</button>
+        <button type="submit" class="aqs-auth-submit" id="aqs-register-account-submit">Continue to password</button>
     </form>
-
-    <section id="aqs-register-otp-step" class="aqs-register-step" data-step="2" hidden>
-        <div class="aqs-step-intro">
-            <span class="aqs-step-number">02</span>
-            <div><h2>Check your inbox</h2><p>Enter the six-digit code sent to <strong id="aqs-register-email-copy">your email</strong>.</p></div>
-        </div>
-        <label class="aqs-otp-label" for="aqs-register-otp">Verification code</label>
-        <input id="aqs-register-otp" class="aqs-otp-input" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="000000" aria-label="Email verification code">
-        <p id="aqs-otp-status" class="aqs-inline-status"></p>
-        <div class="aqs-step-actions">
-            <button type="button" class="aqs-auth-secondary" id="aqs-otp-back-btn">Back</button>
-            <button type="button" class="aqs-auth-submit" id="aqs-verify-otp-btn">Verify email</button>
-        </div>
-        <button type="button" class="aqs-text-button" id="aqs-resend-otp-btn">Resend code</button>
-    </section>
 
     <form id="aqs-register-password-form" class="aqs-register-step" data-step="3" hidden autocomplete="off" novalidate>
         <div class="aqs-step-intro">
             <span class="aqs-step-number">03</span>
-            <div><h2>Create your password</h2><p>Your email is verified. Choose a password for your SmartQuiz account.</p></div>
+            <div><h2>Create your password</h2><p>Choose a password for your SmartQuiz account.</p></div>
         </div>
         <div class="aqs-auth-row-2">
             <div class="aqs-auth-field">
@@ -126,7 +111,7 @@ window.AQS = {
             <div class="aqs-auth-field"><label for="reg-age">Age</label><input type="number" id="reg-age" min="5" max="120" placeholder="e.g. 18" required inputmode="numeric"></div>
         </div>
         <div class="aqs-auth-field">
-            <label for="reg-education-level">Education level</label>
+            <div class="aqs-auth-field"><label for="reg-phone">Phone number</label><input type="tel" id="reg-phone" placeholder="e.g. 08012345678" required autocomplete="tel"></div>\n        <label for="reg-education-level">Education level</label>
             <select id="reg-education-level" required>
                 <option value="">Choose your level</option>
                 <option value="primary">Primary</option>
@@ -223,7 +208,7 @@ window.AQS = {
 </div>
 <script src="js/aqs-education-data.js?v=20260922"></script>
 <script src="js/aqs-notifs-bar.js"></script>
-<script src="js/aqs-auth.js?v=20261015-registration-otp"></script>
+<script src="js/aqs-auth.js?v=20261111-no-registration-otp"></script>
 <script src="js/aqs-session.js?v=20260923-registration-session-2"></script>
 </body>
 </html>
