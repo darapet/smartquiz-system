@@ -861,9 +861,9 @@
         if (isSending) return;
 
         /* CONVERSATIONAL IMAGE DESIGNER: clarify professional briefs before generation. */
-        var IMG_INTENT = /\\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait|graphic|design)\\b/i.test(text) &&
-            /\\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want|help me|build me)\\b/i.test(text) ||
-            /^\\s*(show me|give me)\\s+(an?\\s+)?(image|picture|photo|logo|illustration)\\b/i.test(text);
+        var IMG_INTENT = /\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait|graphic|design)\b/i.test(text) &&
+            /\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want|help me|build me)\b/i.test(text) ||
+            /^\s*(show me|give me)\s+(an?\s+)?(image|picture|photo|logo|illustration)\b/i.test(text);
         if (text && !attachedFileText && !attachedImageData && (IMG_INTENT || imageDesignSessionActive)) {
             isSending = true; setSendState(true);
             var inp0 = document.getElementById('dts-input');
@@ -910,9 +910,6 @@
         }
 
         isSending = true;
-        setSendState(true);
-
-        /* Snapshot and clear attachments before async work */        isSending = true;
         setSendState(true);
 
         /* Snapshot and clear attachments before async work */
