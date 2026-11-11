@@ -717,6 +717,7 @@ async function actionGoogleSignIn() {
 
 async function actionLogin(data) {
     var identifier = (data.username || '').trim();
+    if (identifier.charAt(0) === '@') identifier = identifier.slice(1);
     var password   = (data.password || '').trim();
 
     /* identifier may be email or username — try email first, then look up by username */
