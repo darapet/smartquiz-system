@@ -356,7 +356,7 @@ async function getOrCreateGuestSession() {
 var AQS_ACTION_TIMEOUT_MS = 15000;
 
 function _aqsActionTimeoutFor(action) {
-    return /^(aqs_send_registration_otp|aqs_verify_registration_otp|aqs_register)$/.test(String(action || ''))
+    return /^(aqs_register)$/.test(String(action || ''))
         ? 30000
         : AQS_ACTION_TIMEOUT_MS;
 }
@@ -794,15 +794,10 @@ async function actionRegister(data) {
 
     window._aqsIsRegistering = true;
     try {
-        var registration = await callRegistrationApi({
-            kind: 'registration_create',
-            email: email,
-            password: password,
-            challengeId: challengeId
-        });
+        var registration = { welcomeEmailSent: false, reusedExisting: false };
         var credential = await _withAqsStepTimeout(
-            signInWithEmailAndPassword(auth, email, password),
-            'signing in to your verified account'
+            createUserWithEmailAndPassword(auth, email, password),
+            'creating your email and password account'
         );
         var user = credential.user;
         await _withAqsStepTimeout(user.getIdToken(true), 'refreshing your verified account');
@@ -813,7 +808,7 @@ async function actionRegister(data) {
             profileSnap = await _withAqsStepTimeout(getDoc(profileRef), 'checking your account profile');
         } catch (profileReadError) {
             console.warn('[AQS Registration] Profile check deferred:', profileReadError && profileReadError.message || profileReadError);
-            var pendingProfile = { uid: user.uid, email: email, role: 'student', status: 'pending', registration_status: 'profile_pending', otp_verified: true, email_verified: true };
+            var pendingProfile = { uid: user.uid, email: email, role: 'student', status: 'pending', registration_status: 'profile_pending', otp_verified: false, email_verified: false };
             _updateAqsGlobals(user, pendingProfile);
             return { account_created: true, profile_setup_deferred: true, redirect: _dashboardUrl('student'), message: 'Your account is ready. Profile setup will continue from your dashboard.' };
         }
@@ -967,7 +962,7 @@ async function actionCompleteRegistration(data) {
         completed.institution_type = institutionType;
         completed.school_country = schoolCountry;
         completed.school_name = schoolName;
-        completed.study_level = studyLevel;
+        completed.study_level = studyLevel;\n        completed.department = String(profile.department || '').trim();
     } else {
         var grade = String(profile.grade || '').trim();
         if (!grade) throw new Error('Choose your grade, class, or programme.');
