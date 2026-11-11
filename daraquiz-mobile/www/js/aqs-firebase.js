@@ -795,10 +795,10 @@ async function actionRegister(data) {
         var registration = { welcomeEmailSent: false, reusedExisting: false };
         var credential = await _withAqsStepTimeout(
             createUserWithEmailAndPassword(auth, email, password),
-            'creating your email and password account'
+            'creating your account'
         );
         var user = credential.user;
-        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing your verified account');
+        await _withAqsStepTimeout(user.getIdToken(true), 'refreshing your account');
 
         var profileRef = doc(db, 'users', user.uid);
         var profileSnap;
@@ -835,7 +835,7 @@ async function actionRegister(data) {
         try {
             await _withAqsStepTimeout(
                 setDoc(profileRef, profile, { merge: true }),
-                'saving your verified profile'
+                'saving your profile'
             );
         } catch (profileError) {
             /* Firebase auth has already created and signed in this account. A
@@ -954,7 +954,8 @@ async function actionCompleteRegistration(data) {
         var schoolCountry = String(profile.school_country || '').trim();
         var schoolName = String(profile.school_name || '').trim();
         var studyLevel = String(profile.study_level || '').trim();
-        if (types.indexOf(institutionType) === -1 || !schoolName || !studyLevel) {
+        var department = String(profile.department || '').trim();
+        if (types.indexOf(institutionType) === -1 || !schoolName || !studyLevel || !department) {
             throw new Error('Choose your institution type, school, and study level.');
         }
         if (schoolCountry !== 'nigeria' && schoolCountry !== 'other') throw new Error('Choose where your school is located.');
@@ -962,12 +963,13 @@ async function actionCompleteRegistration(data) {
         completed.school_country = schoolCountry;
         completed.school_name = schoolName;
         completed.study_level = studyLevel;
-        completed.department = String(profile.department || '').trim();
+        completed.department = department;
     } else {
         var grade = String(profile.grade || '').trim();
-        if (!grade) throw new Error('Choose your grade, class, or programme.');
+        var schoolName = String(profile.school_name || '').trim();
+        if (!grade || !schoolName) throw new Error('Choose your grade, class, or programme.');
         completed.grade = grade;
-        completed.school_name = String(profile.school_name || '').trim();
+        completed.school_name = schoolName;
     }
 
     var profilePicture = String(data.profile_picture || '');
