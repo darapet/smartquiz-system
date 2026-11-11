@@ -796,10 +796,20 @@ async function actionRegister(data) {
     window._aqsIsRegistering = true;
     try {
         var registration = { welcomeEmailSent: false, reusedExisting: false };
-        var credential = await _withAqsStepTimeout(
-            createUserWithEmailAndPassword(auth, email, password),
-            'creating your account'
-        );
+        var credential;
+        try {
+            credential = await _withAqsStepTimeout(
+                createUserWithEmailAndPassword(auth, email, password),
+                'creating your account'
+            );
+        } catch (createError) {
+            if (!createError || createError.code !== 'auth/email-already-in-use') throw createError;
+            credential = await _withAqsStepTimeout(
+                signInWithEmailAndPassword(auth, email, password),
+                'signing in to your existing account'
+            );
+            registration.reusedExisting = true;
+        }
         var user = credential.user;
         await _withAqsStepTimeout(user.getIdToken(true), 'refreshing your account');
 
@@ -934,6 +944,9 @@ async function actionCompleteRegistration(data) {
     if (!Number.isInteger(age) || age < 5 || age > 120) throw new Error('Enter a valid age.');
     if (allowedEducation.indexOf(educationLevel) === -1) throw new Error('Choose a valid education level.');
 
+    var phone = String(profile.phone || '').trim();
+    if (!phone) throw new Error('Enter your phone number.');
+
     var completed = {
         uid: user.uid,
         email: user.email || existing.email || '',
@@ -945,7 +958,7 @@ async function actionCompleteRegistration(data) {
         registration_status: 'complete',
         otp_verified: false,
         email_verified: !!user.emailVerified,
-        phone: String(profile.phone || '').trim(),
+        phone: phone,
         updated_at: serverTimestamp()
     };
     if (educationLevel === 'higher_institution') {
