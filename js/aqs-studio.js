@@ -678,6 +678,28 @@
     /* ═══════════════════════════════════════════════════════════
        MESSAGE RENDERING
     ═══════════════════════════════════════════════════════════ */
+    function addDocumentExportActions(msgContent, text) {
+        if (!msgContent || !text || typeof text !== 'string') return;
+        var actions = document.createElement('div');
+        actions.className = 'dts-document-actions';
+        var word = document.createElement('button');
+        word.type = 'button'; word.textContent = 'Download Word';
+        word.addEventListener('click', function(){
+            var safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+            var html = '<!doctype html><html><head><meta charset="utf-8"><title>XZILY AI Document</title><style>body{font:11pt Arial,sans-serif;line-height:1.6;margin:2.2cm;color:#222}pre{white-space:pre-wrap}h1,h2,h3{color:#1c2b3a}</style></head><body>' + (typeof marked!=='undefined'?marked.parse(text):'<p>'+safe.replace(/\\n/g,'<br>')+'</p>') + '</body></html>';
+            var blob = new Blob(['\ufeff',html],{type:'application/msword'});
+            var url = URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='xzily-ai-document.doc';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},3000);
+        });
+        var pdf = document.createElement('button');
+        pdf.type = 'button'; pdf.textContent = 'Print / Save PDF';
+        pdf.addEventListener('click', function(){
+            var win=window.open('','_blank');if(!win){alert('Allow pop-ups to create the PDF.');return;}
+            var body=typeof marked!=='undefined'?marked.parse(text):'<p>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')+'</p>';
+            win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>XZILY AI Document</title><style>body{font:11pt Arial,sans-serif;line-height:1.65;margin:2cm;color:#222}h1,h2,h3{page-break-after:avoid}pre{white-space:pre-wrap}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:6px}</style></head><body>'+body+'</body></html>');win.document.close();win.focus();setTimeout(function(){win.print();},400);
+        });
+        actions.appendChild(word);actions.appendChild(pdf);msgContent.appendChild(actions);
+    }
+
     function appendMessage(role, content) {
         var messages = document.getElementById('dts-messages');
         if (!messages) return;
@@ -710,6 +732,7 @@
             bubble.appendChild(caption);
         }
         if (role === 'assistant' && !isSavedImage) applyMathAndHighlight(wrap);
+        if (role === 'assistant' && !isSavedImage) addDocumentExportActions(wrap.querySelector('.dts-msg-content'), content);
         if (role === 'assistant') {
             var msgContent = wrap.querySelector('.dts-msg-content');
             if (msgContent) {
@@ -784,6 +807,7 @@
                 var badge=document.createElement('span');badge.className='dts-deep-badge';badge.textContent='🔍 Deep search';bubble.insertBefore(badge,bubble.firstChild);
             }
             applyMathAndHighlight(wrap);
+            addDocumentExportActions(msgContent, content);
             if(onDone)onDone();
         }
         typeNext();
