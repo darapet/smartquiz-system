@@ -135,7 +135,7 @@ export async function handleImageEdit(request, env) {
   }
   try {
     const incoming = await request.formData();
-    const prompt = String(incoming.get('prompt') || '').replace(/\\s+/g, ' ').trim();
+    const prompt = String(incoming.get('prompt') || '').replace(/\s+/g, ' ').trim();
     const inputImage = incoming.get('image');
     if (prompt.length < 3 || prompt.length > MAX_PROMPT_LENGTH) {
       return json(request, env, { error: 'Enter an image-edit instruction between 3 and 2000 characters.' }, 400);
