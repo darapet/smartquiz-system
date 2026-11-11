@@ -818,10 +818,32 @@
         /* IMAGE INTENT: route to in-chat generation instead of text AI */
         var IMG_INTENT = /(generate|create|make|draw|design|produce)[^.?!]{0,40}(image|picture|photo|logo|drawing|art\b)|^\s*image of /i;
         if (text && !attachedFileText && !attachedImageData && IMG_INTENT.test(text)) {
-            isSending = false; setSendState(false);
+            isSending = true; setSendState(true);
             var inp0 = document.getElementById('dts-input');
             if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
-            if (typeof window.dtsGenerateInline === 'function') { window.dtsGenerateInline(text); }
+            chatHistory.push({ role: 'user', content: text });
+            appendMessage('user', text);
+            if (typeof window.dtsGenerateInline === 'function') {
+                Promise.resolve(window.dtsGenerateInline(text)).then(function (imageUrl) {
+                    chatHistory.push({
+                        role: 'assistant',
+                        content: imageUrl ? 'Image generated successfully for: ' + text : 'Image generation failed for: ' + text
+                    });
+                    saveSession();
+                    renderHistoryList();
+                }).catch(function () {
+                    chatHistory.push({ role: 'assistant', content: 'Image generation failed for: ' + text });
+                    saveSession();
+                    renderHistoryList();
+                }).finally(function () {
+                    isSending = false; setSendState(false);
+                });
+            } else {
+                appendMessage('assistant', 'The image generator is not available right now.');
+                chatHistory.push({ role: 'assistant', content: 'The image generator is not available right now.' });
+                saveSession(); renderHistoryList();
+                isSending = false; setSendState(false);
+            }
             return;
         }
 
