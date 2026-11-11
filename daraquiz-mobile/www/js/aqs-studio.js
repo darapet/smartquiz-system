@@ -803,12 +803,12 @@
             if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){copyBtn.textContent='✅ Copied!';setTimeout(function(){copyBtn.textContent='📋 Copy';},1800);});
         });
         msgContent.appendChild(copyBtn);
-        var index = 0, step = 5;
+        var index = 0, step = 3;
         function typeNext(){
             index = Math.min(index + step, content.length);
             bubble.textContent = content.slice(0,index);
             scrollToBottom(true);
-            if(index < content.length){setTimeout(typeNext, 16);return;}
+            if(index < content.length){setTimeout(typeNext, 20);return;}
             bubble.innerHTML = renderMessage(content);
             if (/Deep search:/i.test(content)) {
                 var badge=document.createElement('span');badge.className='dts-deep-badge';badge.textContent='🔍 Deep search';bubble.insertBefore(badge,bubble.firstChild);
