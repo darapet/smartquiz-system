@@ -17,7 +17,7 @@
   ];
   var workspacePages = [
     'workspace.html', 'studio.html', 'text-to-docs.html', 'docs-gen.html',
-    'image-gen.html', 'image-editor.html', 'tts.html', 'ai-animate.html',
+    'image-gen.html', 'image-editor.html', 'tts.html',
     'design-studio.html'
   ];
   if (file.indexOf('ai-creator-studio-pro') !== -1) workspacePages.push(file);
@@ -45,7 +45,6 @@
     ['Docs AI', 'docs-gen.html'],
     ['Images', IMAGE_GEN_URL],
     ['Speech', 'tts.html'],
-    ['Animate', 'ai-animate.html'],
     ['Design', 'design-studio.html']
   ];
 
