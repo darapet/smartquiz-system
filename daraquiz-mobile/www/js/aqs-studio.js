@@ -766,6 +766,15 @@
         return wrap;
     }
 
+    document.addEventListener('dts-attach-generated-image', function(event) {
+        var detail = event.detail || {};
+        if (!detail.dataUrl) return;
+        attachedImageData = detail.dataUrl;
+        attachedImageName = 'generated-image.jpg';
+        var input = document.getElementById('dts-input');
+        if (input) { input.value = 'Edit this image: '; input.focus(); }
+    });
+
     function openGeneratedImage(src, title) {
         var old = document.getElementById('dts-image-preview-modal');
         if (old) old.remove();
