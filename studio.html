@@ -420,7 +420,7 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
  var messages=document.getElementById('dts-messages');if(!messages)return;
  window.dtsGenerateInline=async function(prompt,options){
   options=options||{};
-  var category=/^(logo|banner|flyer|poster)$/.test(options.category)?options.category:'general';
+  var category=/^(logo|banner|flyer|poster|social|design)$/.test(options.category)?options.category:'general';
   var aspectRatio=/^(square|landscape|portrait)$/.test(options.aspectRatio)?options.aspectRatio:'square';
   var item=document.createElement('div');item.className='dts-message dts-ai';
   item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>XZILY is bringing your design to life</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
@@ -522,7 +522,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
-<script src="js/aqs-studio.js?v=20261111-full-graphic-design"></script>
+<script src="js/aqs-studio.js?v=20261111-lucid-auto-routing"></script>
 <script src="js/aqs-studio-flyer-overlay.js"></script>
 <script>
 (function(){
