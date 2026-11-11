@@ -1,4 +1,4 @@
-import { handleImage } from './worker.js';
+import { handleImage, handleImageEdit } from './worker.js';
 import { handleMultiplayer } from './multiplayer.js';
 import { groqModelFor } from './multiplayer-logic.js';
 
@@ -1410,6 +1410,9 @@ export default {
         return new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type' } });
       }
       return handleWebPageScrape(request);
+    }
+    if (url.pathname === '/edit' || url.pathname === '/edit/') {
+      return handleImageEdit(request, env);
     }
     if (
       url.pathname === '/generate'
