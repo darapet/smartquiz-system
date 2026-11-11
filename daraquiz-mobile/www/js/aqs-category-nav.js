@@ -5,13 +5,13 @@
   var isSocial = file === 'social.html' || file === 'studyco-meet.html' || file === 'profile.html';
   if (isSocial || document.getElementById('dara-category-nav')) return;
   var eduPages = ['dara-edu.html','create-quiz.html','self-quiz.html','take-quiz.html','quiz-results.html','quiz-manage.html','quiz-leaderboard.html','studyhub.html','ai-teacher.html','challenge.html','puzzle.html','library.html','library-upload.html','library-read.html','library-host-profile.html','library-host-view.html','user-dashboard.html'];
-  var workspacePages = ['workspace.html','studio.html','text-to-docs.html','docs-gen.html','image-gen.html','image-editor.html','tts.html','ai-animate.html','design-studio.html'];
+  var workspacePages = ['workspace.html','studio.html','text-to-docs.html','docs-gen.html','image-gen.html','image-editor.html','tts.html','design-studio.html'];
   var category = eduPages.indexOf(file) !== -1 ? 'edu' : (workspacePages.indexOf(file) !== -1 ? 'workspace' : '');
   if (!category) return;
   var links = category === 'edu' ? [
     ['Dara Edu','dara-edu.html'],['Create Quiz','create-quiz.html'],['AI Teacher','ai-teacher.html'],['Study Hub','studyhub.html'],['Challenge','challenge.html'],['Puzzle','puzzle.html'],['Library','library.html']
   ] : [
-    ['Workspace','workspace.html'],['Studio AI','studio.html'],['Text to Docs','text-to-docs.html'],['Docs AI','docs-gen.html'],['Images',IMAGE_GEN_URL],['Speech','tts.html'],['Animate','ai-animate.html'],['Design','design-studio.html']
+    ['Workspace','workspace.html'],['Studio AI','studio.html'],['Text to Docs','text-to-docs.html'],['Docs AI','docs-gen.html'],['Images',IMAGE_GEN_URL],['Speech','tts.html'],['Design','design-studio.html']
   ];
   var nav = document.createElement('div');
   nav.id = 'dara-category-nav';
