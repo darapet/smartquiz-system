@@ -678,28 +678,6 @@
     /* ═══════════════════════════════════════════════════════════
        MESSAGE RENDERING
     ═══════════════════════════════════════════════════════════ */
-    function addDocumentExportActions(msgContent, text) {
-        if (!msgContent || !text || typeof text !== 'string') return;
-        var actions = document.createElement('div');
-        actions.className = 'dts-document-actions';
-        var word = document.createElement('button');
-        word.type = 'button'; word.textContent = 'Download Word';
-        word.addEventListener('click', function(){
-            var safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-            var html = '<!doctype html><html><head><meta charset="utf-8"><title>XZILY AI Document</title><style>body{font:11pt Arial,sans-serif;line-height:1.6;margin:2.2cm;color:#222}pre{white-space:pre-wrap}h1,h2,h3{color:#1c2b3a}</style></head><body>' + (typeof marked!=='undefined'?marked.parse(text):'<p>'+safe.replace(/\\n/g,'<br>')+'</p>') + '</body></html>';
-            var blob = new Blob(['\ufeff',html],{type:'application/msword'});
-            var url = URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='xzily-ai-document.doc';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},3000);
-        });
-        var pdf = document.createElement('button');
-        pdf.type = 'button'; pdf.textContent = 'Print / Save PDF';
-        pdf.addEventListener('click', function(){
-            var win=window.open('','_blank');if(!win){alert('Allow pop-ups to create the PDF.');return;}
-            var body=typeof marked!=='undefined'?marked.parse(text):'<p>'+text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>')+'</p>';
-            win.document.open();win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>XZILY AI Document</title><style>body{font:11pt Arial,sans-serif;line-height:1.65;margin:2cm;color:#222}h1,h2,h3{page-break-after:avoid}pre{white-space:pre-wrap}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:6px}</style></head><body>'+body+'</body></html>');win.document.close();win.focus();setTimeout(function(){win.print();},400);
-        });
-        actions.appendChild(word);actions.appendChild(pdf);msgContent.appendChild(actions);
-    }
-
     function appendMessage(role, content) {
         var messages = document.getElementById('dts-messages');
         if (!messages) return;
@@ -823,12 +801,26 @@
                 var badge=document.createElement('span');badge.className='dts-deep-badge';badge.textContent='🔍 Deep search';bubble.insertBefore(badge,bubble.firstChild);
             }
             applyMathAndHighlight(wrap);
-            addDocumentExportActions(msgContent, content);
             if(onDone)onDone();
         }
         typeNext();
         return wrap;
     }
+    function wantsDownloadableDocument(prompt) {
+        return /\\b(download|export|save|give me|provide|send me)\\b/i.test(prompt || '') &&
+          /\\b(file|document|docx|doc|word|pdf|report|essay|letter|proposal|resume|cv|spreadsheet|excel|ppt|powerpoint)\\b/i.test(prompt || '');
+    }
+    function downloadAIArtifact(prompt, answer) {
+        var title = (String(prompt || '').match(/(?:called|named|titled)\\s+["“]?([^"”.,!?]+)["”]?/i) || [])[1] || 'XZILY-AI-Document';
+        var safeName = title.trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60) || 'XZILY-AI-Document';
+        var htmlBody = typeof marked !== 'undefined' ? marked.parse(answer) : '<pre>' + String(answer).replace(/[&<>]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch];}) + '</pre>';
+        var html = '<!doctype html><html><head><meta charset="utf-8"><title>'+safeName+'</title><style>body{font:11pt Arial,sans-serif;line-height:1.65;margin:2cm;color:#222}h1,h2,h3{page-break-after:avoid}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:6px}pre{white-space:pre-wrap}</style></head><body>'+htmlBody+'</body></html>';
+        var wantsPdf = /\\bpdf\\b/i.test(prompt || '');
+        var blob = new Blob([html], {type:'text/html;charset=utf-8'});
+        var url = URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=safeName+(wantsPdf?'.html':'.html');document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);
+        return true;
+    }
+
     /* ═══════════════════════════════════════════════════════════
        SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
@@ -838,7 +830,7 @@
         if (isSending) return;
 
         /* IMAGE INTENT: route to in-chat generation instead of text AI */
-        var IMG_INTENT = /(generate|create|make|draw|design|produce)[^.?!]{0,40}(image|picture|photo|logo|drawing|art\b)|^\s*image of /i;
+        var IMG_INTENT = /\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait)\b/i.test(text) && /\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want)\b/i.test(text) || /^\s*(show me|give me)\s+(an?\s+)?(image|picture|photo|logo|illustration)\b/i.test(text);
         if (text && !attachedFileText && !attachedImageData && IMG_INTENT.test(text)) {
             isSending = true; setSendState(true);
             var inp0 = document.getElementById('dts-input');
@@ -884,7 +876,7 @@
         clearFileAttachment();
 
         /* Route explicit image-edit requests to the image-to-image service. */
-        var editIntent = /\b(edit|change|modify|replace|remove|add to|redesign|retouch|restyle)\b/i.test(text || '');
+        var editIntent = /\b(edit|change|modify|replace|remove|erase|delete|add|insert|put|include|redesign|retouch|restyle|recolour|recolor|crop|resize|brighten|darken|sharpen|clean up|enhance|improve|make it|turn it into|convert it|update|fix|adjust|background|text on|write on)\b/i.test(text || '');
         if (snapImageData && editIntent && typeof window.dtsEditInline === 'function') {
             var editPrompt = (text || '').replace(/^\s*edit this image[:\s-]*/i, '').trim();
             if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
@@ -892,11 +884,12 @@
             appendMessage('user', userContent);
             var editInput = document.getElementById('dts-input');
             if (editInput) { editInput.value=''; editInput.style.height='auto'; }
-            showTyping(true, 'Editing image…');
+            showTyping(true, 'XZILY AI is editing your image…');
             Promise.resolve(window.dtsEditInline(snapImageData, editPrompt)).then(function(result){
                 showTyping(false);
-                if(result) chatHistory.push({role:'assistant',content:result});
-                else chatHistory.push({role:'assistant',content:'Image editing failed. Please try again.'});
+                if (result && typeof result === 'object' && result.type === 'generated-image') { chatHistory.push({role:'assistant',content:result}); appendMessage('assistant',result); }
+                if(result && !(typeof result === 'object' && result.type === 'generated-image')) { chatHistory.push({role:'assistant',content:result}); appendMessage('assistant',result); }
+                else if(!result) { chatHistory.push({role:'assistant',content:'Image editing failed. Please try again.'}); appendMessage('assistant','Image editing failed. Please try again.'); }
                 saveSession();renderHistoryList();
             }).catch(function(err){
                 showTyping(false);chatHistory.push({role:'assistant',content:'Image editing failed: '+(err&&err.message||'Please try again.')});
@@ -949,7 +942,7 @@
                         ? data.choices[0].message.content
                         : 'Sorry, I could not analyse the image. Please try again.';
                     chatHistory.push({ role: 'assistant', content: reply });
-                    streamReply(reply, function() { saveSession(); renderHistoryList(); });
+                    streamReply(reply, function() { if (wantsDownloadableDocument(text)) downloadAIArtifact(text, reply); saveSession(); renderHistoryList(); });
                 }
                 isSending = false; setSendState(false);
             }).catch(function(err) {
