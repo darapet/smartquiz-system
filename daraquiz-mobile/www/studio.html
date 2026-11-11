@@ -428,7 +428,7 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
    var endpoint=window.AQS_IMGGEN_ENDPOINT;if(!endpoint)throw new Error('Cloudflare image endpoint is not configured.');
    var response=await fetch(endpoint+'?prompt='+encodeURIComponent(prompt)+'&category=general&aspectRatio=square',{method:'GET',mode:'cors',cache:'no-store'});
    if(!response.ok){var detail=await response.text().catch(function(){return '';});throw new Error('Cloudflare returned HTTP '+response.status+(detail?' — '+detail.slice(0,180):''));}
-   var blob=await response.blob();if(!blob.size||!/^image\\//i.test(blob.type||''))throw new Error('The image service returned an invalid image.');
+   var blob=await response.blob();if(!blob.size||String(blob.type||'').indexOf('image/')!==0)throw new Error('The image service returned an invalid image.');
    var imageUrl=URL.createObjectURL(blob);
    item.querySelector('.dts-msg-content').innerHTML='<img class="dts-inline-generated-image" src="'+imageUrl+'" alt="AI generated image"><p style="margin-top:10px;color:#526579;font-size:12px">Generated with Cloudflare Workers AI</p>';
    return imageUrl;
