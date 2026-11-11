@@ -418,35 +418,28 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
 <script>
 (function(){
  var messages=document.getElementById('dts-messages');if(!messages)return;
- window.dtsGenerateInline=async function(prompt){
+ window.dtsGenerateInline=async function(prompt,options){
+  options=options||{};
+  var category=/^(logo|banner|flyer|poster)$/.test(options.category)?options.category:'general';
+  var aspectRatio=/^(square|landscape|portrait)$/.test(options.aspectRatio)?options.aspectRatio:'square';
   var item=document.createElement('div');item.className='dts-message dts-ai';
-  item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>XZILY AI is generating your image</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
+  item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>XZILY is bringing your design to life</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
   messages.appendChild(item);item.scrollIntoView({behavior:'smooth',block:'end'});
   try{
    var endpoint=window.AQS_IMGGEN_ENDPOINT;if(!endpoint)throw new Error('Cloudflare image endpoint is not configured.');
-   var response=await fetch(endpoint+'?prompt='+encodeURIComponent(prompt)+'&category=general&aspectRatio=square',{method:'GET',mode:'cors',cache:'no-store'});
+   var response=await fetch(endpoint+'?prompt='+encodeURIComponent(prompt)+'&category='+encodeURIComponent(category)+'&aspectRatio='+encodeURIComponent(aspectRatio),{method:'GET',mode:'cors',cache:'no-store'});
    if(!response.ok){var detail=await response.text().catch(function(){return '';});throw new Error('Image service returned HTTP '+response.status+(detail?' — '+detail.slice(0,160):''));}
    var blob=await response.blob();if(!blob.size||String(blob.type||'').indexOf('image/')!==0)throw new Error('The image service returned an invalid image.');
    var sourceUrl=URL.createObjectURL(blob);
-   var dataUrl=await new Promise(function(resolve,reject){
-    var image=new Image();image.onload=function(){
-     try{var canvas=document.createElement('canvas');var scale=Math.min(1,1280/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.82));}
-     catch(e){reject(e);}finally{URL.revokeObjectURL(sourceUrl);}
-    };image.onerror=function(){URL.revokeObjectURL(sourceUrl);reject(new Error('Could not prepare the generated image for chat history.'));};image.src=sourceUrl;
-   });
+   var dataUrl=await new Promise(function(resolve,reject){var image=new Image();image.onload=function(){try{var canvas=document.createElement('canvas');var scale=Math.min(1,1280/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.82));}catch(e){reject(e);}finally{URL.revokeObjectURL(sourceUrl);}};image.onerror=function(){URL.revokeObjectURL(sourceUrl);reject(new Error('Could not prepare the generated image for chat history.'));};image.src=sourceUrl;});
    var image=document.createElement('img');image.className='dts-inline-generated-image';image.src=dataUrl;image.alt=prompt;image.addEventListener('click',function(){if(window.openGeneratedImage)window.openGeneratedImage(dataUrl,prompt);else{var a=document.createElement('a');a.href=dataUrl;a.download='xzily-generated-image.jpg';a.click();}});
    var content=item.querySelector('.dts-msg-content');content.innerHTML='';content.appendChild(image);
    var actions=document.createElement('div');actions.className='dts-image-actions';actions.innerHTML='<button type="button" class="dts-image-preview">View image</button><a download="xzily-generated-image.jpg">Download</a>';
-   actions.querySelector('a').href=dataUrl;actions.querySelector('button').addEventListener('click',function(){var ev=new CustomEvent('dts-open-generated-image',{detail:{src:dataUrl,title:prompt}});document.dispatchEvent(ev);});
-   var editButton=document.createElement('button');editButton.type='button';editButton.textContent='Edit image';editButton.addEventListener('click',function(){document.dispatchEvent(new CustomEvent('dts-attach-generated-image',{detail:{dataUrl:dataUrl}}));});actions.appendChild(editButton);
-   content.appendChild(actions);
+   actions.querySelector('a').href=dataUrl;actions.querySelector('button').addEventListener('click',function(){document.dispatchEvent(new CustomEvent('dts-open-generated-image',{detail:{src:dataUrl,title:prompt}}));});
+   var editButton=document.createElement('button');editButton.type='button';editButton.textContent='Edit image';editButton.addEventListener('click',function(){document.dispatchEvent(new CustomEvent('dts-attach-generated-image',{detail:{dataUrl:dataUrl}}));});actions.appendChild(editButton);content.appendChild(actions);
    var caption=document.createElement('p');caption.className='dts-image-caption';caption.textContent='Generated with XZILY AI';content.appendChild(caption);
    return {type:'generated-image',dataUrl:dataUrl,prompt:prompt};
-  }catch(error){
-   item.querySelector('.dts-msg-content').innerHTML='<div class="dts-inline-image-error">Image generation failed: '+String(error&&error.message||error).replace(/[<>]/g,'')+'</div>';
-
-   return null;
-  }
+  }catch(error){item.querySelector('.dts-msg-content').innerHTML='<div class="dts-inline-image-error">Image generation failed: '+String(error&&error.message||error).replace(/[<>]/g,'')+'</div>';return null;}
  };
  window.dtsEditInline=async function(dataUrl,prompt){
   // The chat controller already displays the compact single-line thinking status.
@@ -529,7 +522,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
-<script src="js/aqs-studio.js?v=20261111-docxpdf-fix"></script>
+<script src="js/aqs-studio.js?v=20261111-design-intake"></script>
 <script src="js/aqs-studio-flyer-overlay.js"></script>
 <script>
 (function(){
