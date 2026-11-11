@@ -807,8 +807,8 @@
         return wrap;
     }
     function wantsDownloadableDocument(prompt) {
-        return /\\b(download|export|save|give me|provide|send me|create|make)\\b/i.test(prompt || '') &&
-          /\\b(file|document|docx|word|pdf)\\b/i.test(prompt || '');
+        return /\b(download|export|save|give me|provide|send me|create|make)\b/i.test(prompt || '') &&
+          /\b(file|document|docx|word|pdf)\b/i.test(prompt || '');
     }
     function loadStudioLibrary(src, test) {
         return new Promise(function(resolve,reject) {
@@ -821,17 +821,17 @@
         });
     }
     async function downloadAIArtifact(prompt, answer) {
-        var isPdf = /\\bpdf\\b/i.test(prompt || '');
-        var isDocx = /\\b(docx|word)\\b/i.test(prompt || '');
-        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\\s+["“]?([^"”.,!?]+)["”]?/i);
+        var isPdf = /\bpdf\b/i.test(prompt || '');
+        var isDocx = /\b(docx|word)\b/i.test(prompt || '');
+        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\s+["“]?([^"”.,!?]+)["”]?/i);
         var name=(titleMatch?titleMatch[1]:'XZILY-AI-Document').trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60)||'XZILY-AI-Document';
-        var plain=String(answer||'').replace(/\\r/g,'').replace(/\\[([^\\]]+)\\]\\([^)]+\\)/g,'$1').replace(/[*_`#>]/g,'');
+        var plain=String(answer||'').replace(/\r/g,'').replace(/\[([^\]]+)\]\([^)]+\)/g,'$1').replace(/[*_`#>]/g,'');
         if(isPdf){
             await loadStudioLibrary('https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js',function(){return !!(window.jspdf&&window.jspdf.jsPDF);});
             var pdf=new window.jspdf.jsPDF({unit:'pt',format:'a4'});
             var margin=48,width=pdf.internal.pageSize.getWidth()-margin*2,y=margin;
             pdf.setFont('helvetica','normal');pdf.setFontSize(11);
-            plain.split(/\\n/).forEach(function(line){
+            plain.split(/\n/).forEach(function(line){
                 var wrapped=pdf.splitTextToSize(line||' ',width);
                 wrapped.forEach(function(part){if(y>pdf.internal.pageSize.getHeight()-margin){pdf.addPage();y=margin;}pdf.text(part,margin,y);y+=16;});
                 y+=5;
@@ -841,7 +841,7 @@
         if(isDocx){
             await loadStudioLibrary('https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js',function(){return !!window.docx;});
             var d=window.docx;
-            var paragraphs=plain.split(/\\n/).map(function(line){return new d.Paragraph({children:[new d.TextRun(line||' ')]});});
+            var paragraphs=plain.split(/\n/).map(function(line){return new d.Paragraph({children:[new d.TextRun(line||' ')]});});
             var doc=new d.Document({sections:[{children:paragraphs}]});
             var blob=await d.Packer.toBlob(doc);var url=URL.createObjectURL(blob);
             var a=document.createElement('a');a.href=url;a.download=name+'.docx';document.body.appendChild(a);a.click();a.remove();
