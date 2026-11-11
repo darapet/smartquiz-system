@@ -807,18 +807,28 @@
         return wrap;
     }
     function wantsDownloadableDocument(prompt) {
-        return /\\b(download|export|save|give me|provide|send me)\\b/i.test(prompt || '') &&
-          /\\b(file|document|docx|doc|word|pdf|report|essay|letter|proposal|resume|cv|spreadsheet|excel|ppt|powerpoint)\\b/i.test(prompt || '');
+        return /\b(download|export|save|give me|provide|send me|create)\b/i.test(prompt || '') &&
+          /\b(file|document|docx|doc|word|pdf|report|essay|letter|proposal|resume|cv|spreadsheet|excel|ppt|powerpoint)\b/i.test(prompt || '');
     }
     function downloadAIArtifact(prompt, answer) {
-        var title = (String(prompt || '').match(/(?:called|named|titled)\\s+["“]?([^"”.,!?]+)["”]?/i) || [])[1] || 'XZILY-AI-Document';
-        var safeName = title.trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60) || 'XZILY-AI-Document';
+        var titleMatch = String(prompt || '').match(/(?:called|named|titled)\s+["“]?([^"”.,!?]+)["”]?/i);
+        var safeName = (titleMatch ? titleMatch[1] : 'XZILY-AI-Document').trim().replace(/[^a-z0-9-_]+/gi,'-').replace(/^-|-$/g,'').slice(0,60) || 'XZILY-AI-Document';
         var htmlBody = typeof marked !== 'undefined' ? marked.parse(answer) : '<pre>' + String(answer).replace(/[&<>]/g,function(ch){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[ch];}) + '</pre>';
         var html = '<!doctype html><html><head><meta charset="utf-8"><title>'+safeName+'</title><style>body{font:11pt Arial,sans-serif;line-height:1.65;margin:2cm;color:#222}h1,h2,h3{page-break-after:avoid}table{border-collapse:collapse;width:100%}td,th{border:1px solid #aaa;padding:6px}pre{white-space:pre-wrap}</style></head><body>'+htmlBody+'</body></html>';
-        var wantsPdf = /\\bpdf\\b/i.test(prompt || '');
-        var blob = new Blob([html], {type:'text/html;charset=utf-8'});
-        var url = URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download=safeName+(wantsPdf?'.html':'.html');document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url);},5000);
-        return true;
+        var wantsPdf = /\bpdf\b/i.test(prompt || '');
+        var mime = 'application/msword';
+        var blob = new Blob(['\ufeff', html], {type:mime});
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href=url; a.download=safeName+'.doc';
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(function(){URL.revokeObjectURL(url);},5000);
+        if (wantsPdf) {
+            var win = window.open('', '_blank');
+            if (win) {
+                win.document.open(); win.document.write(html); win.document.close();
+                setTimeout(function(){win.focus();win.print();},500);
+            }
+        }
     }
 
     /* ═══════════════════════════════════════════════════════════
@@ -876,7 +886,7 @@
         clearFileAttachment();
 
         /* Route explicit image-edit requests to the image-to-image service. */
-        var editIntent = /\b(edit|change|modify|replace|remove|erase|delete|add|insert|put|include|redesign|retouch|restyle|recolour|recolor|crop|resize|brighten|darken|sharpen|clean up|enhance|improve|make it|turn it into|convert it|update|fix|adjust|background|text on|write on)\b/i.test(text || '');
+        var editIntent = /\b(edit|change|modify|replace|remove|erase|delete|add|insert|put|include|redesign|retouch|restyle|recolour|recolor|crop|resize|brighten|darken|sharpen|clean up|enhance|improve|make it|turn it into|convert it|update|fix|adjust|background|text on|write on|professional|modern|realistic|cartoon|anime|illustration|transparent|white background|black background|social media|profile picture|product photo|remove the background|change the background)\b/i.test(text || '');
         if (snapImageData && editIntent && typeof window.dtsEditInline === 'function') {
             var editPrompt = (text || '').replace(/^\s*edit this image[:\s-]*/i, '').trim();
             if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
@@ -887,8 +897,7 @@
             showTyping(true, 'XZILY AI is editing your image…');
             Promise.resolve(window.dtsEditInline(snapImageData, editPrompt)).then(function(result){
                 showTyping(false);
-                if (result && typeof result === 'object' && result.type === 'generated-image') { chatHistory.push({role:'assistant',content:result}); appendMessage('assistant',result); }
-                if(result && !(typeof result === 'object' && result.type === 'generated-image')) { chatHistory.push({role:'assistant',content:result}); appendMessage('assistant',result); }
+                if (result) { chatHistory.push({role:'assistant',content:result}); appendMessage('assistant',result); }
                 else if(!result) { chatHistory.push({role:'assistant',content:'Image editing failed. Please try again.'}); appendMessage('assistant','Image editing failed. Please try again.'); }
                 saveSession();renderHistoryList();
             }).catch(function(err){
@@ -1074,6 +1083,7 @@
 
                     chatHistory.push({ role: 'assistant', content: reply });
                     streamReply(reply, function () {
+                        if (wantsDownloadableDocument(text)) downloadAIArtifact(text, reply);
                         saveSession();
                         renderHistoryList();
                         if (/\n\s*[A-D][.)]\s/i.test(reply) && /\d+[.)]\s/.test(reply)) {
