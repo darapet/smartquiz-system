@@ -777,10 +777,8 @@ async function actionSocialLogin(data) {
 async function actionRegister(data) {
     var email    = String(data.email || '').trim().toLowerCase();
     var password = (data.password || '').trim();
-    var challengeId = String(data.challenge_id || '').trim();
     if (!email || email.indexOf('@') === -1) throw new Error('Enter a valid email address.');
     if (password.length < 8) throw new Error('Password must be at least 8 characters.');
-    if (!challengeId) throw new Error('Verify your email before creating the account.');
 
     var currentUser = auth.currentUser || window._aqsFirebaseUser;
     if (currentUser && !currentUser.isAnonymous
@@ -830,8 +828,8 @@ async function actionRegister(data) {
             role: 'student',
             status: 'pending',
             registration_status: 'profile_pending',
-            otp_verified: true,
-            email_verified: true
+            otp_verified: false,
+            email_verified: false
         };
         if (!profileSnap.exists()) profile.created_at = serverTimestamp();
         try {
@@ -862,7 +860,7 @@ async function actionRegister(data) {
             message: 'Account created. Continue setting up your profile.',
             redirect: 'register.html?resume=1',
             account_created: true,
-            otp_verified: true,
+            otp_verified: false,
             welcome_email_sent: welcomeEmailSent
         };
     } finally {
@@ -923,8 +921,8 @@ async function actionCompleteRegistration(data) {
         'loading your pending profile'
     );
     var existing = existingSnap.exists() ? existingSnap.data() : {};
-    if (existing.registration_status !== 'profile_pending' || existing.otp_verified !== true) {
-        throw new Error('Verify your email before completing your profile.');
+    if (existing.registration_status !== 'profile_pending') {
+        throw new Error('Your account is not waiting for profile setup.');
     }
 
     var profile = data.profile || {};
@@ -945,8 +943,9 @@ async function actionCompleteRegistration(data) {
         role: 'student',
         status: 'active',
         registration_status: 'complete',
-        otp_verified: true,
-        email_verified: true,
+        otp_verified: false,
+        email_verified: !!user.emailVerified,
+        phone: String(profile.phone || '').trim(),
         updated_at: serverTimestamp()
     };
     if (educationLevel === 'higher_institution') {
@@ -962,7 +961,8 @@ async function actionCompleteRegistration(data) {
         completed.institution_type = institutionType;
         completed.school_country = schoolCountry;
         completed.school_name = schoolName;
-        completed.study_level = studyLevel;\n        completed.department = String(profile.department || '').trim();
+        completed.study_level = studyLevel;
+        completed.department = String(profile.department || '').trim();
     } else {
         var grade = String(profile.grade || '').trim();
         if (!grade) throw new Error('Choose your grade, class, or programme.');
