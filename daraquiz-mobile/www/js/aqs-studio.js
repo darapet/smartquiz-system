@@ -723,6 +723,13 @@
             var actions = document.createElement('div');
             actions.className = 'dts-image-actions';
             actions.innerHTML = '<button type="button" class="dts-image-preview">View image</button><a class="dts-image-download" download="xzily-generated-image.jpg">Download</a>';
+            var editBtn = document.createElement('button'); editBtn.type='button'; editBtn.textContent='Edit image';
+            editBtn.addEventListener('click', function(){
+                attachedImageData = content.dataUrl; attachedImageName = 'generated-image.jpg';
+                var input = document.getElementById('dts-input');
+                if (input) { input.value = 'Edit this image: '; input.focus(); }
+            });
+            actions.appendChild(editBtn);
             actions.querySelector('.dts-image-preview').addEventListener('click', function(){ openGeneratedImage(content.dataUrl, content.prompt || 'Generated image'); });
             actions.querySelector('.dts-image-download').href = content.dataUrl;
             bubble.appendChild(actions);
@@ -866,6 +873,28 @@
         }
 
         clearFileAttachment();
+
+        /* Route explicit image-edit requests to the image-to-image service. */
+        var editIntent = /\\b(edit|change|modify|replace|remove|add to|redesign|retouch|restyle)\\b/i.test(text || '');
+        if (snapImageData && editIntent && typeof window.dtsEditInline === 'function') {
+            var editPrompt = (text || '').replace(/^\\s*edit this image[:\\s-]*/i, '').trim();
+            if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
+            chatHistory.push({ role: 'user', content: userContent });
+            appendMessage('user', userContent);
+            var editInput = document.getElementById('dts-input');
+            if (editInput) { editInput.value=''; editInput.style.height='auto'; }
+            showTyping(true, 'Editing image…');
+            Promise.resolve(window.dtsEditInline(snapImageData, editPrompt)).then(function(result){
+                showTyping(false);
+                if(result) chatHistory.push({role:'assistant',content:result});
+                else chatHistory.push({role:'assistant',content:'Image editing failed. Please try again.'});
+                saveSession();renderHistoryList();
+            }).catch(function(err){
+                showTyping(false);chatHistory.push({role:'assistant',content:'Image editing failed: '+(err&&err.message||'Please try again.')});
+                saveSession();renderHistoryList();
+            }).finally(function(){attachedImageData=null;attachedImageName=null;isSending=false;setSendState(false);});
+            return;
+        }
 
         /* --- Image vision path --- */
         if (snapImageData) {
