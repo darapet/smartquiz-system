@@ -1,4 +1,7 @@
 const DEFAULT_IMAGE_MODEL = '@cf/black-forest-labs/flux-1-schnell';
+const PROFESSIONAL_IMAGE_MODEL = '@cf/leonardo/lucid-origin';
+const LUCID_DAILY_REQUEST_LIMIT = 3;
+const LUCID_DAILY_BUDGET_KEY = 'xzily-lucid-usage:';
 const MAX_PROMPT_LENGTH = 2000;
 
 /*
@@ -60,7 +63,7 @@ function json(request, env, body, status = 200) {
   });
 }
 
-function modelFor(env, requestedModel) {
+function modelFor(env, requestedModel, category) {
   const configured = String(env.CF_IMAGE_MODEL || '').trim();
   const requested = String(requestedModel || '').trim();
   const model = requested || configured || DEFAULT_IMAGE_MODEL;
@@ -68,8 +71,25 @@ function modelFor(env, requestedModel) {
     '@cf/stabilityai/stable-diffusion-xl-base-1.0',
     '@cf/iohg/flux-1-schnell',
     '@cf/black-forest-labs/flux-1-schnell',
+    PROFESSIONAL_IMAGE_MODEL,
   ]);
-  return allowed.has(model) ? model : DEFAULT_IMAGE_MODEL;
+  if (allowed.has(requested)) return requested;
+  if (['logo', 'banner', 'flyer', 'poster', 'social', 'design'].includes(String(category || '').toLowerCase())) {
+    return PROFESSIONAL_IMAGE_MODEL;
+  }
+  return allowed.has(configured) ? configured : DEFAULT_IMAGE_MODEL;
+}
+
+async function reserveLucidDailySlot(env) {
+  if (!env.EMAIL_CONFIG || typeof env.EMAIL_CONFIG.get !== 'function' || typeof env.EMAIL_CONFIG.put !== 'function') {
+    throw new Error('Design usage protection is not configured.');
+  }
+  const day = new Date().toISOString().slice(0, 10);
+  const key = LUCID_DAILY_BUDGET_KEY + day;
+  const current = Number(await env.EMAIL_CONFIG.get(key) || 0);
+  if (current >= LUCID_DAILY_REQUEST_LIMIT) return false;
+  await env.EMAIL_CONFIG.put(key, String(current + 1), { expirationTtl: 172800 });
+  return true;
 }
 
 function decodeBase64(value) {
@@ -105,7 +125,7 @@ function imageBody(image) {
   return null;
 }
 
-function imageResponse(request, env, image) {
+function imageResponse(request, env, image, model) {
   const body = imageBody(image);
   if (!body || !isBinaryBody(body)) {
     return json(request, env, { error: 'Cloudflare returned an invalid image payload.' }, 502);
@@ -117,6 +137,7 @@ function imageResponse(request, env, image) {
       'Content-Type': 'image/png',
       'Content-Disposition': 'inline; filename="smartquiz-creator.png"',
       'X-Image-Engine': 'cloudflare-workers-ai',
+      'X-Image-Model': String(model || DEFAULT_IMAGE_MODEL),
     },
   });
 }
@@ -196,10 +217,31 @@ export async function handleImage(request, env) {
   }
 
   try {
-    const image = await env.AI.run(modelFor(env, payload.engineModel), {
-      prompt: enrichedPrompt(prompt, payload.category, payload.aspectRatio),
+    const category = String(payload.category || 'general').toLowerCase();
+    const model = modelFor(env, payload.engineModel, category);
+    if (model === PROFESSIONAL_IMAGE_MODEL) {
+      const slotAvailable = await reserveLucidDailySlot(env);
+      if (!slotAvailable) {
+        return json(request, env, {
+          error: 'XZILY has reached its three professional-design generations for today on the free allowance. Ordinary image generation is still available. The professional-design allowance resets at 00:00 UTC.',
+          code: 'LUCID_DAILY_LIMIT',
+        }, 429);
+      }
+      const dimensions = payload.aspectRatio === 'landscape' ? { width: 1024, height: 576 }
+        : payload.aspectRatio === 'portrait' ? { width: 576, height: 1024 }
+          : { width: 768, height: 768 };
+      const image = await env.AI.run(model, {
+        prompt: enrichedPrompt(prompt, category, payload.aspectRatio),
+        ...dimensions,
+        num_steps: 12,
+        guidance: 5,
+      });
+      return imageResponse(request, env, image, model);
+    }
+    const image = await env.AI.run(model, {
+      prompt: enrichedPrompt(prompt, category, payload.aspectRatio),
     });
-    return imageResponse(request, env, image);
+    return imageResponse(request, env, image, model);
   } catch (error) {
     console.error('Cloudflare Workers AI image generation error:', error);
     return json(request, env, {
