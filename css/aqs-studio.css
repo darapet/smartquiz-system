@@ -933,3 +933,7 @@ main.dts-main,.dts-main{padding-bottom:calc(140px + env(safe-area-inset-bottom))
 .dts-image-preview-panel img{display:block;max-width:100%;max-height:78vh;object-fit:contain;border-radius:10px}
 .dts-image-preview-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:0;border-radius:50%;background:#fff;color:#1c2b3a;font-size:24px;cursor:pointer;z-index:2}
 .dts-inline-image-error{padding:14px;border:1px solid #efcaca;border-radius:12px;background:#fff;color:#9f2d2d;line-height:1.55}
+
+.dts-document-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.dts-document-actions button{border:1px solid #ead9c5;border-radius:9px;background:#fffaf3;color:#1c2b3a;padding:8px 12px;font:600 12px Inter,sans-serif;cursor:pointer}
+.dts-document-actions button:hover{background:#fff1dc;border-color:#e8912d}
