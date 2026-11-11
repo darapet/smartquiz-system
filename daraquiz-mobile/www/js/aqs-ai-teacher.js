@@ -321,7 +321,7 @@ function sysPrompt(){
   '3. Use MATH: lines for every equation and show full working, one step per STEP line.\n'+
   '4. Keep the spoken part under 130 words. Never mention the board syntax aloud.';
 }
-var AIT_MODEL = (window.AQS_CONFIG && window.AQS_CONFIG.groqModel) || 'llama-3.3-70b-versatile';
+var AIT_MODEL = (window.AQS_CONFIG && window.AQS_CONFIG.groqModel) || 'openai/gpt-oss-120b';
 
 function aitSignal(ms){
   try{ if(typeof AbortSignal !== 'undefined' && AbortSignal.timeout) return AbortSignal.timeout(ms); }catch(e){}
@@ -345,10 +345,13 @@ function keysReady(){
 function aiFetch(messages){
   var body = { model: AIT_MODEL, messages: messages, temperature: 0.6, max_tokens: 900 };
   var opts = { signal: aitSignal(60000) };
-  if(typeof window.aqsWorkerAI !== 'function') return Promise.reject(new Error('Secure AI service is unavailable. Refresh the page and try again.'));
-  return window.aqsWorkerAI(body, opts);
+  return keysReady().then(function(hasKeys){
+    if(typeof window.studyhubGroqFetch === 'function') return window.studyhubGroqFetch(body, opts);
+    if(typeof window.groqFetch === 'function') return window.groqFetch(body, opts);
+    throw new Error(hasKeys ? 'AI service unavailable.' : 'No Study Hub AI keys configured — add them in Admin Settings.');
+  });
 }
-/* The secure Worker returns a raw Response — read it properly */
+/* The key pools return a raw Response — read it properly */
 function readResponse(res){
   if(res && typeof res === 'object' && typeof res.json === 'function' && 'ok' in res){
     if(!res.ok){

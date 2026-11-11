@@ -71,6 +71,8 @@ window._AQS_CREATOR_IMAGE_MODEL = window._AQS_CREATOR_IMAGE_MODEL || 'gemini-3.1
    ─────────────────────────────────────────────────────────────────── */
 window._aqsKeysReady = new Promise(function(resolve) {
     window._aqsKeysReadyResolve = resolve;
+    /* Safety timeout: resolve after 5 s even if Firebase never fires */
+    setTimeout(resolve, 5000);
 });
 
 (function(){
@@ -252,11 +254,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
     }
 
     async function _groqFetch(bodyObj, extraOpts) {
-        /* Respect an explicit per-request model (for model fallback attempts);
-           otherwise use the model selected in Admin Settings. */
-        var requestedModel = bodyObj && typeof bodyObj.model === 'string' && bodyObj.model.trim();
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            window._aqsGroqModel(requestedModel || window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', bodyObj));
+            window._aqsGroqModel(window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', bodyObj));
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -491,7 +490,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
         /* Wait for the Firebase key auto-loader to complete before checking
            key counts. This prevents false "not configured" errors that happen
            when groqFetch is called before the async Firestore read finishes.
-           The Firebase loader resolves it after settings load or its 20-second timeout. */
+           The promise resolves in ≤5 s (safety timeout) so we never hang. */
         if (!_getGroqKeys().length && !_getMistralKeys().length && !_getHFKeys().length) {
             await window._aqsKeysReady;
         }
@@ -571,95 +570,111 @@ window._aqsKeysReady = new Promise(function(resolve) {
 })();
 
 /* ═══════════════════════════════════════════════════════════════════
-   AUTO-LOADER — loads shared and feature-specific AI keys from Firebase.
-   Browser calls Groq/Mistral/Hugging Face directly using these pools.
+   AUTO-LOADER — pulls AI keys from Firebase settings on every page
+   that includes this file + aqs-firebase.js (Studio, Study Hub, etc.)
+   Fires once Firebase is ready; never blocks page rendering.
+   Resolves window._aqsKeysReady when complete so groqFetch() can
+   safely wait for keys before declaring "not configured".
    ═══════════════════════════════════════════════════════════════════ */
 (function () {
     var _settingsLoadStarted = false;
 
-    function _resolveKeysReady() {
+    function _resolveAIKeysReady() {
         if (typeof window._aqsKeysReadyResolve === 'function') {
             window._aqsKeysReadyResolve();
             window._aqsKeysReadyResolve = null;
         }
     }
 
+    function _logAISettingsFailure(cause) {
+        if (typeof window._aqsLog === 'function') {
+            window._aqsLog('error', 'AI settings load failed: ' + cause);
+        }
+    }
+
     function _loadAIKeysFromFirebase() {
         if (_settingsLoadStarted) return;
         _settingsLoadStarted = true;
-
         if (typeof window.aqsAjax !== 'function') {
-            if (typeof window._aqsLog === 'function') {
-                window._aqsLog('error', 'AI settings load failed: Firebase aqsAjax is unavailable.');
-            }
-            _resolveKeysReady();
+            _logAISettingsFailure('aqsAjax is unavailable');
+            _resolveAIKeysReady();
             return;
         }
+        var settled = false;
+        function fail(cause) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            _logAISettingsFailure(cause);
+            _resolveAIKeysReady();
+        }
+        var timer = setTimeout(function() {
+            fail('aqs_get_settings timed out after 20000 ms');
+        }, 20000);
+        try {
+            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+                if (settled) return;
+                if (!res || !res.success || !res.data || !res.data.settings) {
+                    fail('aqs_get_settings failed: ' + (res && res.data ? (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)) : 'empty response'));
+                    return;
+                }
+                settled = true;
+                clearTimeout(timer);
+                var s = res.data.settings;
+                if (Array.isArray(s.groq_keys) && s.groq_keys.length) window.setGroqKeys(s.groq_keys);
+                window._AQS_GROQ_MODEL = window._aqsGroqModel(s.groq_model || 'openai/gpt-oss-20b');
+                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) window.setMistralKeys(s.mistral_keys);
+                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+                if (Array.isArray(s.hf_keys) && s.hf_keys.length) window.setHFKeys(s.hf_keys);
+                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+                if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
+                if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
+                var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+                if (total && typeof window._aqsLog === 'function') window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+                if (!total) _logAISettingsFailure('settings/main was read but holds no AI keys' + (window._aqsSettingsLoadError ? ' (read error: ' + window._aqsSettingsLoadError + ')' : '') + '. Add keys in Admin Settings.');
+                var pools = {quiz:'quiz_groq_keys',challenge:'challenge_groq_keys',studyhub:'studyhub_groq_keys',textdocs:'textdocs_groq_keys',puzzle:'puzzle_groq_keys',quizstudio:'quizstudio_groq_keys'};
+                Object.keys(pools).forEach(function(id) {
+                    if (Array.isArray(s[pools[id]]) && typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(id, s[pools[id]]);
+                });
+                _resolveAIKeysReady();
+            }, function(error) {
+                fail('aqs_get_settings rejected: ' + (error && error.message ? error.message : String(error || 'unknown Firebase error')));
+            });
+        } catch(error) {
+            fail('aqs_get_settings threw: ' + (error && error.message ? error.message : String(error)));
+        }
+    }
 
-        window.aqsAjax({ action: 'aqs_get_settings' }, function (res) {
-            var s = (res && res.success && res.data && res.data.settings)
-                ? res.data.settings : {};
-
-            /* Shared provider pools: Groq → Mistral → Hugging Face. */
-            if (Array.isArray(s.groq_keys) && s.groq_keys.length) {
-                window.setGroqKeys(s.groq_keys);
-            }
-            var savedGroqModel = s.groq_model;
-            var retiredGroqModels = [
-                'llama-3.3-70b-versatile', 'llama-3.1-8b-instant',
-                'llama3-70b-8192', 'llama3-8b-8192'
-            ];
-            window._AQS_GROQ_MODEL = savedGroqModel &&
-                retiredGroqModels.indexOf(savedGroqModel) === -1
-                ? savedGroqModel : 'openai/gpt-oss-20b';
-
-            if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) {
-                window.setMistralKeys(s.mistral_keys);
-            }
-            if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
-
-            if (Array.isArray(s.hf_keys) && s.hf_keys.length) {
-                window.setHFKeys(s.hf_keys);
-            }
-            if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
-
-            /* Feature-specific pools, including Study Hub's own Groq keys. */
-            var featureFields = {
-                quiz: 'quiz_groq_keys',
-                challenge: 'challenge_groq_keys',
-                studyhub: 'studyhub_groq_keys',
-                textdocs: 'textdocs_groq_keys',
-                puzzle: 'puzzle_groq_keys',
-                quizstudio: 'quizstudio_groq_keys'
-            };
-            Object.keys(featureFields).forEach(function (id) {
-                var keys = s[featureFields[id]];
-                if (Array.isArray(keys) && typeof window.setFeatureGroqKeys === 'function') {
-                    window.setFeatureGroqKeys(id, keys);
+    function _startAISettingsLoadAfterAuth() {
+        if (typeof window.onAqsAuthChange === 'function') {
+            window.onAqsAuthChange(function(user) {
+                if (user) _loadAIKeysFromFirebase();
+                else {
+                    _logAISettingsFailure('Firebase auth resolved without a signed-in user; settings/main requires sign-in');
+                    _resolveAIKeysReady();
                 }
             });
-
-            var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) +
-                (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) +
-                (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
-            if (typeof window._aqsLog === 'function') {
-                window._aqsLog('info', 'Loaded shared and feature AI key pools from Firebase. Shared keys: ' + total +
-                    '; Study Hub keys: ' + (window.getFeatureGroqKeyCount ? window.getFeatureGroqKeyCount('studyhub') : 0));
+            return;
+        }
+        /* Firebase bootstrap can finish before its auth helper is installed.
+           Wait briefly for that helper, then allow the loader to report the
+           concrete request failure rather than silently waiting forever. */
+        var attempts = 0;
+        var waitTimer = setInterval(function() {
+            attempts += 1;
+            if (typeof window.onAqsAuthChange === 'function') {
+                clearInterval(waitTimer);
+                _startAISettingsLoadAfterAuth();
+            } else if (attempts >= 40) {
+                clearInterval(waitTimer);
+                _logAISettingsFailure('Firebase auth state helper is unavailable');
+                _resolveAIKeysReady();
             }
-            _resolveKeysReady();
-        }, function (error) {
-            if (typeof window._aqsLog === 'function') {
-                window._aqsLog('error', 'AI settings load failed: ' + (error && error.message ? error.message : error));
-            }
-            _resolveKeysReady();
-        });
+        }, 100);
     }
 
-    if (window._aqsFirebaseReady) {
-        _loadAIKeysFromFirebase();
-    } else {
-        document.addEventListener('aqs:firebase:ready', _loadAIKeysFromFirebase, { once: true });
-    }
+    if (window._aqsFirebaseReady) _startAISettingsLoadAfterAuth();
+    else document.addEventListener('aqs:firebase:ready', _startAISettingsLoadAfterAuth, { once: true });
 })();
 
 
@@ -738,14 +753,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
             fetch: async function(bodyObj, extraOpts) {
                 /* Firebase settings load asynchronously. Wait once before
                    concluding that the dedicated slots are empty. */
-                if (!slots.length && window._aqsKeysReady &&
-                    (opts.noFallback || !_sharedKeyCount())) {
-                    /* Firebase auth/ready events can fail to fire on a cached or
-                       partially initialized page. Never let generation wait forever. */
-                    await Promise.race([
-                        window._aqsKeysReady,
-                        new Promise(function(resolve) { setTimeout(resolve, 8000); })
-                    ]);
+                if (!slots.length && !_sharedKeyCount() && window._aqsKeysReady) {
+                    await window._aqsKeysReady;
                 }
                 var request = Object.assign({
                     model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
@@ -753,34 +762,17 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 request.model = window._aqsGroqModel(request.model, request);
                 var lastResponse = null;
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
-                /* A stalled provider/network request must never leave Study Hub
-                   stuck on "Generating…". Bound the entire key-rotation attempt. */
-                var poolRequestStartedAt = Date.now();
-                var poolRequestTimeoutMs = 45000;
                 if (slots.length) {
                     var start = _idx();
                     for (var i = 0; i < slots.length; i++) {
                         var at = (start + i) % slots.length, key = slots[at];
                         if (_isDead(key) || _isRL(key)) { _setIdx(at + 1); continue; }
-                        if (Date.now() - poolRequestStartedAt >= poolRequestTimeoutMs) {
-                            throw new Error('Study Hub AI request timed out after 45 seconds. Check your connection and try again.');
-                        }
                         try {
-                            var controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
-                            var remainingMs = Math.max(1, poolRequestTimeoutMs - (Date.now() - poolRequestStartedAt));
-                            var requestTimer = controller ? setTimeout(function() { controller.abort(); }, remainingMs) : null;
-                            var fetchOptions = Object.assign({}, _fallbackOptions(extraOpts), {
+                            var res = await fetch(URL_, Object.assign({}, _fallbackOptions(extraOpts), {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
                                 body: JSON.stringify(request)
-                            });
-                            if (controller) fetchOptions.signal = controller.signal;
-                            var res;
-                            try {
-                                res = await fetch(URL_, fetchOptions);
-                            } finally {
-                                if (requestTimer) clearTimeout(requestTimer);
-                            }
+                            }));
                             if (res.status === 429) { _markRL(key); _setIdx(at + 1); continue; }
                             if (res.status === 413) { _setIdx(at + 1); continue; }
                             if (res.status === 401 || res.status === 403) { _markDead(key, res.status); _setIdx(at + 1); continue; }
@@ -797,12 +789,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                             }
                             _setIdx(at + 1);
                             return res;
-                        } catch(e) {
-                            if (Date.now() - poolRequestStartedAt >= poolRequestTimeoutMs) {
-                                throw new Error('Study Hub AI request timed out after 45 seconds. Check your connection and try again.');
-                            }
-                            console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message);
-                        }
+                        } catch(e) { console.warn('[' + id + '-pool] slot ' + (at + 1) + ':', e.message); }
                     }
                 }
                 /* Dedicated quiz Groq slots are empty or exhausted: use the
@@ -829,11 +816,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
     /* Quiz keys are preferred, but shared Groq/Mistral/HuggingFace remain
        available so a missing or exhausted dedicated slot does not stop it. */
-    var _poolOpts = {
-        quiz: { noFallback: false },
-        /* Study Hub must use only its dedicated Firebase pool. */
-        studyhub: { noFallback: false }
-    };
+    var _poolOpts = { quiz: { noFallback: false } };
     ['quiz', 'challenge', 'studyhub', 'textdocs', 'puzzle', 'quizstudio', 'darasocial_post_slot'].forEach(function(id) {
         _pools[id] = _createPool(id, _poolOpts[id] || {});
     });
@@ -854,75 +837,29 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
     window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
     window.darasocialPostGroqFetch = function(b, o) { return _pools.darasocial_post_slot.fetch(b, o); };
-})();
-
-
-/* ── Secure server-side AI route: provider keys never leave Cloudflare ── */
-(function () {
-  var AI_WORKER_ENDPOINT = 'https://smartquiz-system3.daramolapeter98.workers.dev/api/ai';
-  async function currentFirebaseUser() {
-    var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
-    if (user && typeof user.getIdToken === 'function') return user;
-    if (window._aqsAuthResolved !== true) {
-      await new Promise(function(resolve) {
-        var done = false;
-        function finish() {
-          if (done) return;
-          done = true;
-          document.removeEventListener('aqs:authchange', finish);
-          resolve();
+    /* Speech to text with the same Groq key pool (used by Study Hub's voice tutor). */
+    window.aqsTranscribe = async function(audioBlob) {
+        var keys = _getGroqKeys();
+        if (!keys.length) {
+            if (window._aqsKeysReady) await window._aqsKeysReady;
+            keys = _getGroqKeys();
         }
-        document.addEventListener('aqs:authchange', finish);
-        setTimeout(finish, 10000);
-      });
-    }
-    user = window._aqsFirebaseUser || window._aqsAuthUser || null;
-    if (!user || typeof user.getIdToken !== 'function') {
-      throw new Error('Please sign in before using AI generation.');
-    }
-    return user;
-  }
-  window.aqsWorkerAI = async function(bodyObj, extraOpts) {
-    var user = await currentFirebaseUser();
-    var token = await user.getIdToken();
-    var options = Object.assign({}, extraOpts || {});
-    var signal = options.signal;
-    var response = await fetch(AI_WORKER_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify(bodyObj || {}),
-      cache: 'no-store',
-      signal: signal
-    });
-    return response;
-  };
-
-
-  window.aqsWorkerTranscribe = async function(audioBlob) {
-    var user = await currentFirebaseUser();
-    var token = await user.getIdToken();
-    var form = new FormData();
-    form.append('file', audioBlob, 'recording.webm');
-    var response = await fetch(AI_WORKER_ENDPOINT.replace('/api/ai', '/api/ai/transcribe'), {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
-      body: form,
-      cache: 'no-store'
-    });
-    var data = await response.json().catch(function(){ return {}; });
-    if (!response.ok) {
-      var message = data && data.error && (data.error.message || data.error);
-      throw new Error(message || ('Transcription failed (' + response.status + ').'));
-    }
-    return String(data.text || '').trim();
-  };
-
-  /* Preserve the Response contract expected by existing AI feature callers. */
-  window.groqFetch = window.aqsWorkerAI;
-  /* Study Hub keeps the dedicated Firebase key-pool fetch defined above. */
-  window.quizGroqFetch = window.aqsWorkerAI;
-  window.challengeGroqFetch = window.aqsWorkerAI;
-  window.textdocsGroqFetch = window.aqsWorkerAI;
-  window.puzzleGroqFetch = window.aqsWorkerAI;
-  window.quizstudioGroqFetch = window.aqsWorkerAI;
+        if (!keys.length) throw new Error('No Groq AI keys are set up. Add them in Admin Settings.');
+        var lastStatus = 0;
+        for (var i = 0; i < Math.min(keys.length, 4); i++) {
+            var fd = new FormData();
+            fd.append('file', audioBlob, 'rec.webm');
+            fd.append('model', 'whisper-large-v3-turbo');
+            fd.append('response_format', 'json');
+            var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + keys[(Math.floor(Math.random() * keys.length) + i) % keys.length] },
+                body: fd
+            });
+            lastStatus = res.status;
+            if (res.ok) { var j = await res.json().catch(function(){ return {}; }); return String(j.text || '').trim(); }
+            if (res.status !== 429 && res.status !== 401 && res.status !== 403) break;
+        }
+        throw new Error('Speech to text failed (' + lastStatus + ').');
+    };
 })();

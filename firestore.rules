@@ -382,9 +382,10 @@ service cloud.firestore {
 
     // ─── Settings ───────────────────────────────────────────────────
     match /settings/{settingId} {
-      /* API key pools live in settings/main; reading them requires a
-         signed-in account so anonymous visitors cannot scrape keys. */
-      allow read: if isSignedIn() && settingId != 'private';
+      /* API key pools live in settings/main; reading them requires a real
+         signed-in account. Guest (anonymous) sessions, used for multiplayer,
+         can never read them. */
+      allow read: if isSignedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous' && settingId != 'private';
       allow write: if isAdmin();
     }
 

@@ -78,7 +78,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 (function(){
     var GROQ_URL        = 'https://api.groq.com/openai/v1/chat/completions';
     var MISTRAL_URL     = 'https://api.mistral.ai/v1/chat/completions';
-    var HF_URL          = 'https://api-inference.huggingface.co/v1/chat/completions';
+    var HF_URL          = 'https://router.huggingface.co/v1/chat/completions';
     var GROQ_IDX_KEY    = 'aqs_groq_key_idx';
     var MISTRAL_IDX_KEY = 'aqs_mistral_key_idx';
     var HF_IDX_KEY      = 'aqs_hf_key_idx';
@@ -96,6 +96,34 @@ window._aqsKeysReady = new Promise(function(resolve) {
         : 'https://smartquiz-system3.daramolapeter98.workers.dev/api/image';
     var CREATOR_IMAGE_ENGINE_KEY = 'aqs_creator_image_engine';
     var RL_COOLDOWN_MS  = 62000; /* 62 s past the 1-min window */
+
+    /* ── Retired Groq models ─────────────────────────────────────────────
+       Groq shut these down in 2026 (see console.groq.com/docs/deprecations).
+       Any request that still names one is moved to its current replacement,
+       and any request that carries an image goes to a vision model. */
+    var GROQ_VISION_MODEL = 'qwen/qwen3.8-27b';
+    var GROQ_RETIRED = {
+        'llama-3.1-8b-instant': 'openai/gpt-oss-20b',
+        'llama3-8b-8192': 'openai/gpt-oss-20b',
+        'llama-3.3-70b-versatile': 'openai/gpt-oss-120b',
+        'llama3-70b-8192': 'openai/gpt-oss-120b',
+        'qwen/qwen3-32b': 'openai/gpt-oss-120b',
+        'moonshotai/kimi-k2-instruct-0905': 'openai/gpt-oss-120b',
+        'qwen/qwen3.6-27b': 'qwen/qwen3.8-27b',
+        'meta-llama/llama-4-scout-17b-16e-instruct': GROQ_VISION_MODEL,
+        'meta-llama/llama-4-maverick-17b-128e-instruct': GROQ_VISION_MODEL
+    };
+    function _bodyHasImage(body) {
+        try {
+            return (body.messages || []).some(function(m) {
+                return Array.isArray(m.content) && m.content.some(function(p) { return p && p.type === 'image_url'; });
+            });
+        } catch (e) { return false; }
+    }
+    window._aqsGroqModel = function(model, body) {
+        if (body && _bodyHasImage(body)) return GROQ_VISION_MODEL;
+        return GROQ_RETIRED[model] || model || 'openai/gpt-oss-20b';
+    };
     var _creatorImageRateLimitedUntil = {};
 
     /* ── Per-key 429 cooldown tracker ───────────────────────────────── */
@@ -227,7 +255,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
 
     async function _groqFetch(bodyObj, extraOpts) {
         return _providerFetch(GROQ_URL, _getGroqKeys(), GROQ_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b');
+            window._aqsGroqModel(window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b', bodyObj));
     }
     async function _mistralFetch(bodyObj, extraOpts) {
         return _providerFetch(MISTRAL_URL, _getMistralKeys(), MISTRAL_IDX_KEY, bodyObj, extraOpts,
@@ -236,7 +264,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
     async function _hfFetch(bodyObj, extraOpts) {
         /* HuggingFace uses the same OpenAI-compatible /v1/chat/completions endpoint */
         return _providerFetch(HF_URL, _getHFKeys(), HF_IDX_KEY, bodyObj, extraOpts,
-            window._AQS_HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3');
+            window._AQS_HF_MODEL || 'openai/gpt-oss-20b');
     }
     function _fallbackOpts(extraOpts) {
         var opts = Object.assign({}, extraOpts || {});
@@ -494,7 +522,8 @@ window._aqsKeysReady = new Promise(function(resolve) {
         /* 4. Nothing left */
         var gc = _getGroqKeys().length, mc = _getMistralKeys().length, hc = _getHFKeys().length;
         if (!gc && !mc && !hc) {
-            _aqsShowUserError('config'); throw new Error('AI features not configured.');
+            _aqsShowUserError('config');
+            throw new Error('AI features not configured.' + (window._aqsSettingsLoadError ? ' Could not read AI settings: ' + window._aqsSettingsLoadError + '.' : ''));
         }
         if (lastResponse) return lastResponse;
         throw new Error('All AI keys are busy or rate-limited. Please wait a moment and try again.');
@@ -566,9 +595,54 @@ window._aqsKeysReady = new Promise(function(resolve) {
     function _loadAIKeysFromFirebase() {
         if (_settingsLoadStarted) return;
         _settingsLoadStarted = true;
-        /* Provider credentials are now held only as Cloudflare Worker secrets.
-           Never download Groq, Mistral, or Hugging Face keys into the browser. */
-        _resolveAIKeysReady();
+        if (typeof window.aqsAjax !== 'function') {
+            _logAISettingsFailure('aqsAjax is unavailable');
+            _resolveAIKeysReady();
+            return;
+        }
+        var settled = false;
+        function fail(cause) {
+            if (settled) return;
+            settled = true;
+            clearTimeout(timer);
+            _logAISettingsFailure(cause);
+            _resolveAIKeysReady();
+        }
+        var timer = setTimeout(function() {
+            fail('aqs_get_settings timed out after 20000 ms');
+        }, 20000);
+        try {
+            window.aqsAjax({ action: 'aqs_get_settings' }, function(res) {
+                if (settled) return;
+                if (!res || !res.success || !res.data || !res.data.settings) {
+                    fail('aqs_get_settings failed: ' + (res && res.data ? (typeof res.data === 'string' ? res.data : JSON.stringify(res.data)) : 'empty response'));
+                    return;
+                }
+                settled = true;
+                clearTimeout(timer);
+                var s = res.data.settings;
+                if (Array.isArray(s.groq_keys) && s.groq_keys.length) window.setGroqKeys(s.groq_keys);
+                window._AQS_GROQ_MODEL = window._aqsGroqModel(s.groq_model || 'openai/gpt-oss-20b');
+                if (Array.isArray(s.mistral_keys) && s.mistral_keys.length) window.setMistralKeys(s.mistral_keys);
+                if (s.mistral_model) window._AQS_MISTRAL_MODEL = s.mistral_model;
+                if (Array.isArray(s.hf_keys) && s.hf_keys.length) window.setHFKeys(s.hf_keys);
+                if (s.hf_model) window._AQS_HF_MODEL = s.hf_model;
+                if (s.creator_image_model) window._AQS_CREATOR_IMAGE_MODEL = s.creator_image_model;
+                if (Object.prototype.hasOwnProperty.call(s, 'creator_image_worker_url')) window._AQS_CREATOR_IMAGE_WORKER_URL = String(s.creator_image_worker_url || '').trim();
+                var total = (window._aqsGroqKeyCount ? window._aqsGroqKeyCount() : 0) + (window._aqsMistralKeyCount ? window._aqsMistralKeyCount() : 0) + (window._aqsHFKeyCount ? window._aqsHFKeyCount() : 0);
+                if (total && typeof window._aqsLog === 'function') window._aqsLog('info', 'Auto-loaded ' + total + ' AI key(s) from Firebase settings.');
+                if (!total) _logAISettingsFailure('settings/main was read but holds no AI keys' + (window._aqsSettingsLoadError ? ' (read error: ' + window._aqsSettingsLoadError + ')' : '') + '. Add keys in Admin Settings.');
+                var pools = {quiz:'quiz_groq_keys',challenge:'challenge_groq_keys',studyhub:'studyhub_groq_keys',textdocs:'textdocs_groq_keys',puzzle:'puzzle_groq_keys',quizstudio:'quizstudio_groq_keys'};
+                Object.keys(pools).forEach(function(id) {
+                    if (Array.isArray(s[pools[id]]) && typeof window.setFeatureGroqKeys === 'function') window.setFeatureGroqKeys(id, s[pools[id]]);
+                });
+                _resolveAIKeysReady();
+            }, function(error) {
+                fail('aqs_get_settings rejected: ' + (error && error.message ? error.message : String(error || 'unknown Firebase error')));
+            });
+        } catch(error) {
+            fail('aqs_get_settings threw: ' + (error && error.message ? error.message : String(error)));
+        }
     }
 
     function _startAISettingsLoadAfterAuth() {
@@ -685,6 +759,7 @@ window._aqsKeysReady = new Promise(function(resolve) {
                 var request = Object.assign({
                     model: window._AQS_GROQ_MODEL || 'openai/gpt-oss-20b'
                 }, bodyObj || {});
+                request.model = window._aqsGroqModel(request.model, request);
                 var lastResponse = null;
                 var URL_ = 'https://api.groq.com/openai/v1/chat/completions';
                 if (slots.length) {
@@ -761,75 +836,29 @@ window._aqsKeysReady = new Promise(function(resolve) {
     window.textdocsGroqFetch   = function(b, o) { return _pools.textdocs.fetch(b, o); };
     window.puzzleGroqFetch     = function(b, o) { return _pools.puzzle.fetch(b, o); };
     window.quizstudioGroqFetch = function(b, o) { return _pools.quizstudio.fetch(b, o); };
-})();
-
-
-/* ── Secure server-side AI route: provider keys never leave Cloudflare ── */
-(function () {
-  var AI_WORKER_ENDPOINT = 'https://smartquiz-system3.daramolapeter98.workers.dev/api/ai';
-  async function currentFirebaseUser() {
-    var user = window._aqsFirebaseUser || window._aqsAuthUser || null;
-    if (user && typeof user.getIdToken === 'function') return user;
-    if (window._aqsAuthResolved !== true) {
-      await new Promise(function(resolve) {
-        var done = false;
-        function finish() {
-          if (done) return;
-          done = true;
-          document.removeEventListener('aqs:authchange', finish);
-          resolve();
+    /* Speech to text with the same Groq key pool (used by Study Hub's voice tutor). */
+    window.aqsTranscribe = async function(audioBlob) {
+        var keys = _getGroqKeys();
+        if (!keys.length) {
+            if (window._aqsKeysReady) await window._aqsKeysReady;
+            keys = _getGroqKeys();
         }
-        document.addEventListener('aqs:authchange', finish);
-        setTimeout(finish, 10000);
-      });
-    }
-    user = window._aqsFirebaseUser || window._aqsAuthUser || null;
-    if (!user || typeof user.getIdToken !== 'function') {
-      throw new Error('Please sign in before using AI generation.');
-    }
-    return user;
-  }
-  window.aqsWorkerAI = async function(bodyObj, extraOpts) {
-    var user = await currentFirebaseUser();
-    var token = await user.getIdToken();
-    var options = Object.assign({}, extraOpts || {});
-    var signal = options.signal;
-    var response = await fetch(AI_WORKER_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify(bodyObj || {}),
-      cache: 'no-store',
-      signal: signal
-    });
-    return response;
-  };
-
-
-  window.aqsWorkerTranscribe = async function(audioBlob) {
-    var user = await currentFirebaseUser();
-    var token = await user.getIdToken();
-    var form = new FormData();
-    form.append('file', audioBlob, 'recording.webm');
-    var response = await fetch(AI_WORKER_ENDPOINT.replace('/api/ai', '/api/ai/transcribe'), {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + token },
-      body: form,
-      cache: 'no-store'
-    });
-    var data = await response.json().catch(function(){ return {}; });
-    if (!response.ok) {
-      var message = data && data.error && (data.error.message || data.error);
-      throw new Error(message || ('Transcription failed (' + response.status + ').'));
-    }
-    return String(data.text || '').trim();
-  };
-
-  /* Preserve the Response contract expected by existing AI feature callers. */
-  window.groqFetch = window.aqsWorkerAI;
-  window.studyhubGroqFetch = window.aqsWorkerAI;
-  window.quizGroqFetch = window.aqsWorkerAI;
-  window.challengeGroqFetch = window.aqsWorkerAI;
-  window.textdocsGroqFetch = window.aqsWorkerAI;
-  window.puzzleGroqFetch = window.aqsWorkerAI;
-  window.quizstudioGroqFetch = window.aqsWorkerAI;
+        if (!keys.length) throw new Error('No Groq AI keys are set up. Add them in Admin Settings.');
+        var lastStatus = 0;
+        for (var i = 0; i < Math.min(keys.length, 4); i++) {
+            var fd = new FormData();
+            fd.append('file', audioBlob, 'rec.webm');
+            fd.append('model', 'whisper-large-v3-turbo');
+            fd.append('response_format', 'json');
+            var res = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
+                method: 'POST',
+                headers: { Authorization: 'Bearer ' + keys[(Math.floor(Math.random() * keys.length) + i) % keys.length] },
+                body: fd
+            });
+            lastStatus = res.status;
+            if (res.ok) { var j = await res.json().catch(function(){ return {}; }); return String(j.text || '').trim(); }
+            if (res.status !== 429 && res.status !== 401 && res.status !== 403) break;
+        }
+        throw new Error('Speech to text failed (' + lastStatus + ').');
+    };
 })();
