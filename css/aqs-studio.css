@@ -915,3 +915,21 @@ html {
 .dts-chat,.dts-messages,.dts-conversation{padding-bottom:calc(140px + env(safe-area-inset-bottom)) !important}
 main.dts-main,.dts-main{padding-bottom:calc(140px + env(safe-area-inset-bottom)) !important}
 .dts-footer{bottom:calc(64px + env(safe-area-inset-bottom)) !important}
+
+
+/* XZILY Studio: compact single-line assistant status */
+.dts-typing{display:flex;align-items:center;justify-content:flex-start;gap:10px;width:fit-content;max-width:calc(100% - 32px);margin:12px auto;padding:10px 14px;border:1px solid rgba(232,145,45,.22);border-radius:999px;background:#fffaf3;color:#526579;font-size:13px;line-height:1.2;white-space:nowrap}
+.dts-typing-label{display:inline;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dts-typing-dots{display:inline-flex;align-items:center;gap:3px;flex:0 0 auto}
+.dts-typing-dots span{width:5px;height:5px;border-radius:50%;background:#e8912d;animation:dts-typing-pulse 1s infinite ease-in-out}
+.dts-typing-dots span:nth-child(2){animation-delay:.15s}.dts-typing-dots span:nth-child(3){animation-delay:.3s}
+@keyframes dts-typing-pulse{0%,80%,100%{opacity:.35;transform:translateY(0)}40%{opacity:1;transform:translateY(-3px)}}
+.dts-image-actions{display:flex;align-items:center;gap:9px;margin-top:10px;flex-wrap:wrap}
+.dts-image-actions button,.dts-image-actions a,.dts-image-preview-actions a{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border:1px solid #ead9c5;border-radius:10px;background:#fffaf3;color:#1c2b3a;text-decoration:none;font:600 13px Inter,sans-serif;cursor:pointer}
+.dts-inline-generated-image{display:block;width:min(100%,620px);height:auto;max-height:70vh;object-fit:contain;border-radius:14px;cursor:zoom-in}
+.dts-image-caption{margin-top:7px;color:#526579;font-size:12px}
+.dts-image-preview-modal{position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:18px;background:rgba(20,25,32,.88)}
+.dts-image-preview-panel{position:relative;display:flex;flex-direction:column;align-items:center;gap:12px;max-width:min(96vw,1000px);max-height:94vh;padding:14px;background:#fffaf3;border-radius:16px}
+.dts-image-preview-panel img{display:block;max-width:100%;max-height:78vh;object-fit:contain;border-radius:10px}
+.dts-image-preview-close{position:absolute;top:8px;right:8px;width:36px;height:36px;border:0;border-radius:50%;background:#fff;color:#1c2b3a;font-size:24px;cursor:pointer;z-index:2}
+.dts-inline-image-error{padding:14px;border:1px solid #efcaca;border-radius:12px;background:#fff;color:#9f2d2d;line-height:1.55}
