@@ -741,69 +741,55 @@
     ═══════════════════════════════════════════════════════════ */
     function streamReply(content, onDone) {
         var messages = document.getElementById('dts-messages');
-        var welcome  = document.getElementById('dts-welcome');
+        var welcome = document.getElementById('dts-welcome');
         if (!messages) { if (onDone) onDone(); return; }
         if (welcome) welcome.style.display = 'none';
+
+        /* Render the full reply immediately. Previously idx was initialized
+           to content.length, so the render loop skipped painting the bubble. */
+        content = String(content || '');
         var wrap = document.createElement('div');
         wrap.className = 'dts-message dts-ai';
-        wrap.innerHTML =
-            '<div class="dts-msg-avatar">✶</div>' +
-            '<div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
-        messages.appendChild(wrap);
+        wrap.innerHTML = '<div class="dts-msg-avatar">✶</div><div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
         var bubble = wrap.querySelector('.dts-msg-bubble');
-        var hasDeepBadge = /Deep search:/i.test(content);
-        /* Reduced typing animation: full reply renders immediately (a subtle
-           typing indicator already shows while the request runs). No slow
-           character-by-character playback. */
-        var acc=content, idx=content.length, DELAY=0;
-        var cursor=document.createElement('span'); cursor.className='dts-stream-cursor'; cursor.setAttribute('aria-hidden','true');
-        function tick() {
-            if (idx < content.length) {
-                var end=Math.min(content.length,idx+3); acc += content.slice(idx,end); idx=end;
-                try {
-                    bubble.innerHTML = typeof marked!=='undefined'
-                        ? marked.parse(acc,{breaks:true,gfm:true})
-                        : escHtml(acc).replace(/\n/g,'<br>');
-                    bubble.appendChild(cursor);
-                } catch(e){ bubble.innerHTML=escHtml(acc).replace(/\n/g,'<br>'); bubble.appendChild(cursor); }
-                scrollToBottom(true);
-                setTimeout(tick,DELAY);
-            } else {
-                if (cursor.parentNode) cursor.parentNode.removeChild(cursor);
-                if (hasDeepBadge) { var badge=document.createElement('span'); badge.className='dts-deep-badge'; badge.textContent='🔍 Deep search'; bubble.insertBefore(badge,bubble.firstChild); }
-                applyMathAndHighlight(wrap);
-                /* Add copy button after streaming finishes */
-                var msgContent2 = wrap.querySelector('.dts-msg-content');
-                if (msgContent2 && !msgContent2.querySelector('.dts-msg-copy-btn')) {
-                    var copyBtn2 = document.createElement('button');
-                    copyBtn2.className = 'dts-msg-copy-btn';
-                    copyBtn2.textContent = '📋 Copy';
-                    copyBtn2.addEventListener('click', function() {
-                        var bubble2 = wrap.querySelector('.dts-msg-bubble');
-                        var text2 = bubble2 ? (bubble2.innerText || bubble2.textContent || '') : acc;
-                        function doFallback2() {
-                            var ta = document.createElement('textarea');
-                            ta.value = text2; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
-                            document.body.appendChild(ta); ta.focus(); ta.select();
-                            try { document.execCommand('copy'); copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied'); }
-                            catch(e2) { copyBtn2.textContent = '❌ Error'; }
-                            document.body.removeChild(ta);
-                            setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
-                        }
-                        if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                            navigator.clipboard.writeText(text2).then(function() {
-                                copyBtn2.textContent = '✅ Copied!'; copyBtn2.classList.add('copied');
-                                setTimeout(function(){ copyBtn2.textContent = '📋 Copy'; copyBtn2.classList.remove('copied'); }, 2000);
-                            }).catch(doFallback2);
-                        } else { doFallback2(); }
-                    });
-                    msgContent2.appendChild(copyBtn2);
-                }
-                scrollToBottom();
-                if (onDone) onDone();
-            }
+        bubble.innerHTML = renderMessage(content);
+        if (/Deep search:/i.test(content)) {
+            var badge = document.createElement('span');
+            badge.className = 'dts-deep-badge';
+            badge.textContent = '🔍 Deep search';
+            bubble.insertBefore(badge, bubble.firstChild);
         }
-        tick();
+        messages.appendChild(wrap);
+        applyMathAndHighlight(wrap);
+
+        var msgContent = wrap.querySelector('.dts-msg-content');
+        if (msgContent) {
+            var copyBtn = document.createElement('button');
+            copyBtn.className = 'dts-msg-copy-btn';
+            copyBtn.textContent = '📋 Copy';
+            copyBtn.addEventListener('click', function() {
+                var copyText = bubble.innerText || bubble.textContent || content;
+                function fallbackCopy() {
+                    var ta = document.createElement('textarea');
+                    ta.value = copyText;
+                    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                    document.body.appendChild(ta); ta.focus(); ta.select();
+                    try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
+                    catch(e) { copyBtn.textContent = '❌ Error'; }
+                    document.body.removeChild(ta);
+                    setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                }
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(copyText).then(function() {
+                        copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
+                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                    }).catch(fallbackCopy);
+                } else { fallbackCopy(); }
+            });
+            msgContent.appendChild(copyBtn);
+        }
+        scrollToBottom(true);
+        if (onDone) onDone();
         return wrap;
     }
 
