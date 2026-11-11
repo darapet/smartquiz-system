@@ -272,7 +272,9 @@
         setValue('reg-email', account.email);
         setText('aqs-register-email-copy', account.email || 'your email');
         setValue('reg-name', education.name);
-        setValue('reg-age', education.age);\n        setValue('reg-phone', education.phone);\n        setValue('reg-department', education.department);
+        setValue('reg-age', education.age);
+        setValue('reg-phone', education.phone);
+        setValue('reg-department', education.department);
         setValue('reg-education-level', education.education_level);
         setValue('reg-institution-type', education.institution_type);
         setValue('reg-school-name-other', education.school_name);
@@ -377,8 +379,8 @@
             var password = (document.getElementById('reg-password') || {}).value || '';
             var confirm = (document.getElementById('reg-confirm') || {}).value || '';
             var terms = document.getElementById('reg-terms');
-            if (!account.email || !account.challenge_id || !account.otp_verified) {
-                return showAlert('aqs-register-alert', 'Verify your email before creating your account.', true);
+            if (!account.email) {
+                return showAlert('aqs-register-alert', 'Enter your email address first.', true);
             }
             if (password.length < 8) return showAlert('aqs-register-alert', 'Password must be at least 8 characters.', true);
             if (password !== confirm) return showAlert('aqs-register-alert', 'Passwords do not match.', true);
@@ -390,7 +392,6 @@
                 action: 'aqs_register',
                 email: account.email,
                 password: password,
-                challenge_id: account.challenge_id
             }, function (res) {
                 window._aqsIsRegistering = false;
                 if (res && res.success) {
@@ -439,7 +440,9 @@
             if (name.length < 2) return showAlert('aqs-register-alert', 'Enter your full name.', true);
             if (!Number.isInteger(age) || age < 5 || age > 120) return showAlert('aqs-register-alert', 'Enter an age between 5 and 120.', true);
             if (!level) return showAlert('aqs-register-alert', 'Choose your education level.', true);
-            var phone = ((document.getElementById('reg-phone') || {}).value || '').trim();\n            if (!phone) return showAlert('aqs-register-alert', 'Enter your phone number.', true);\n            var education = { name: name, age: age, phone: phone, education_level: level };
+            var phone = ((document.getElementById('reg-phone') || {}).value || '').trim();
+            if (!phone) return showAlert('aqs-register-alert', 'Enter your phone number.', true);
+            var education = { name: name, age: age, phone: phone, education_level: level };
             if (level === 'higher_institution') {
                 var country = (document.getElementById('reg-school-country-value') || {}).value || 'nigeria';
                 var type = (institutionType || {}).value || '';
@@ -451,7 +454,8 @@
                 education.institution_type = type;
                 education.school_country = country;
                 education.school_name = school;
-                education.study_level = study;\n                education.department = ((document.getElementById('reg-department') || {}).value || '').trim();
+                education.study_level = study;
+                education.department = ((document.getElementById('reg-department') || {}).value || '').trim();
             } else {
                 var grade = (document.getElementById('reg-grade') || {}).value || '';
                 if (!grade) return showAlert('aqs-register-alert', 'Choose your grade, class, or programme.', true);
