@@ -420,21 +420,43 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
  var messages=document.getElementById('dts-messages');if(!messages)return;
  window.dtsGenerateInline=async function(prompt){
   var item=document.createElement('div');item.className='dts-message dts-ai';
-  item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>Cloudflare AI is working on your prompt</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
+  item.innerHTML='<div class="dts-msg-content"><div class="dts-inline-image-loading" role="status" aria-live="polite"><span class="dts-inline-image-spinner" aria-hidden="true"></span><strong>Creating your image…</strong><small>XZILY AI is generating your image</small><span class="dts-inline-image-progress"><span></span></span></div></div>';
   messages.appendChild(item);item.scrollIntoView({behavior:'smooth',block:'end'});
   try{
    var endpoint=window.AQS_IMGGEN_ENDPOINT;if(!endpoint)throw new Error('Cloudflare image endpoint is not configured.');
    var response=await fetch(endpoint+'?prompt='+encodeURIComponent(prompt)+'&category=general&aspectRatio=square',{method:'GET',mode:'cors',cache:'no-store'});
-   if(!response.ok){var detail=await response.text().catch(function(){return '';});throw new Error('Cloudflare returned HTTP '+response.status+(detail?' — '+detail.slice(0,180):''));}
+   if(!response.ok){var detail=await response.text().catch(function(){return '';});throw new Error('Image service returned HTTP '+response.status+(detail?' — '+detail.slice(0,160):''));}
    var blob=await response.blob();if(!blob.size||String(blob.type||'').indexOf('image/')!==0)throw new Error('The image service returned an invalid image.');
-   var imageUrl=URL.createObjectURL(blob);
-   item.querySelector('.dts-msg-content').innerHTML='<img class="dts-inline-generated-image" src="'+imageUrl+'" alt="AI generated image"><p style="margin-top:10px;color:#526579;font-size:12px">Generated with Cloudflare Workers AI</p>';
-   return imageUrl;
+   var sourceUrl=URL.createObjectURL(blob);
+   var dataUrl=await new Promise(function(resolve,reject){
+    var image=new Image();image.onload=function(){
+     try{var canvas=document.createElement('canvas');var scale=Math.min(1,1280/Math.max(image.width,image.height));canvas.width=Math.max(1,Math.round(image.width*scale));canvas.height=Math.max(1,Math.round(image.height*scale));canvas.getContext('2d').drawImage(image,0,0,canvas.width,canvas.height);resolve(canvas.toDataURL('image/jpeg',0.82));}
+     catch(e){reject(e);}finally{URL.revokeObjectURL(sourceUrl);}
+    };image.onerror=function(){URL.revokeObjectURL(sourceUrl);reject(new Error('Could not prepare the generated image for chat history.'));};image.src=sourceUrl;
+   });
+   var image=document.createElement('img');image.className='dts-inline-generated-image';image.src=dataUrl;image.alt=prompt;image.addEventListener('click',function(){if(window.openGeneratedImage)window.openGeneratedImage(dataUrl,prompt);else{var a=document.createElement('a');a.href=dataUrl;a.download='xzily-generated-image.jpg';a.click();}});
+   var content=item.querySelector('.dts-msg-content');content.innerHTML='';content.appendChild(image);
+   var actions=document.createElement('div');actions.className='dts-image-actions';actions.innerHTML='<button type="button" class="dts-image-preview">View image</button><a download="xzily-generated-image.jpg">Download</a>';
+   actions.querySelector('a').href=dataUrl;actions.querySelector('button').addEventListener('click',function(){var ev=new CustomEvent('dts-open-generated-image',{detail:{src:dataUrl,title:prompt}});document.dispatchEvent(ev);});
+   content.appendChild(actions);
+   var caption=document.createElement('p');caption.className='dts-image-caption';caption.textContent='Generated with XZILY AI';content.appendChild(caption);
+   return {type:'generated-image',dataUrl:dataUrl,prompt:prompt};
   }catch(error){
-   item.querySelector('.dts-msg-content').innerHTML='<div style="padding:14px 16px;border:1px solid #eee2d3;border-radius:14px;background:#fff;color:#9f2d2d;line-height:1.6">Image generation failed: '+String(error&&error.message||error).replace(/[<>]/g,'')+'</div>';return null;
+   item.querySelector('.dts-msg-content').innerHTML='<div class="dts-inline-image-error">Image generation failed: '+String(error&&error.message||error).replace(/[<>]/g,'')+'</div>';
+   return null;
   }
  };
 })();
+</script>
+<script>
+document.addEventListener('dts-open-generated-image',function(e){
+ var d=e.detail||{};if(!d.src)return;
+ var old=document.getElementById('dts-image-preview-modal');if(old)old.remove();
+ var modal=document.createElement('div');modal.id='dts-image-preview-modal';modal.className='dts-image-preview-modal';
+ modal.innerHTML='<div class="dts-image-preview-panel"><button type="button" class="dts-image-preview-close" aria-label="Close">×</button><img alt=""><div class="dts-image-preview-actions"><a download="xzily-generated-image.jpg">Download image</a></div></div>';
+ modal.querySelector('img').src=d.src;modal.querySelector('img').alt=d.title||'Generated image';modal.querySelector('a').href=d.src;
+ modal.addEventListener('click',function(ev){if(ev.target===modal||ev.target.closest('.dts-image-preview-close'))modal.remove();});document.body.appendChild(modal);
+});
 </script>
 <script>
 (function(){
