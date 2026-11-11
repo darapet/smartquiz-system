@@ -831,7 +831,7 @@
 
         /* IMAGE INTENT: route to in-chat generation instead of text AI */
         var IMG_INTENT = /\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait)\b/i.test(text) && /\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want)\b/i.test(text) || /^\s*(show me|give me)\s+(an?\s+)?(image|picture|photo|logo|illustration)\b/i.test(text);
-        if (text && !attachedFileText && !attachedImageData && IMG_INTENT.test(text)) {
+        if (text && !attachedFileText && !attachedImageData && IMG_INTENT) {
             isSending = true; setSendState(true);
             var inp0 = document.getElementById('dts-input');
             if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
