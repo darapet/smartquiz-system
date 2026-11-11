@@ -681,59 +681,74 @@
     function appendMessage(role, content) {
         var messages = document.getElementById('dts-messages');
         if (!messages) return;
-
         var welcome = document.getElementById('dts-welcome');
         if (welcome) welcome.style.display = 'none';
-
         var wrap = document.createElement('div');
         wrap.className = 'dts-message dts-' + (role === 'user' ? 'user' : 'ai');
-
         var avatarLetter = role === 'user' ? 'U' : '\u2736';
-        var bubbleHtml   = role === 'user'
-            ? escHtml(content)
-            : renderMessage(content);
-
-        wrap.innerHTML =
-            '<div class="dts-msg-avatar">' + avatarLetter + '</div>' +
-            '<div class="dts-msg-content">' +
-              '<div class="dts-msg-bubble">' + bubbleHtml + '</div>' +
-            '</div>';
-
+        var isSavedImage = role === 'assistant' && content && typeof content === 'object' && content.type === 'generated-image' && content.dataUrl;
+        var bubbleHtml = role === 'user' ? escHtml(content) : (isSavedImage ? '' : renderMessage(content));
+        wrap.innerHTML = '<div class="dts-msg-avatar">' + avatarLetter + '</div><div class="dts-msg-content"><div class="dts-msg-bubble">' + bubbleHtml + '</div></div>';
+        var bubble = wrap.querySelector('.dts-msg-bubble');
+        if (isSavedImage) {
+            var image = document.createElement('img');
+            image.className = 'dts-inline-generated-image';
+            image.src = content.dataUrl;
+            image.alt = content.prompt || 'Generated image';
+            image.loading = 'lazy';
+            image.addEventListener('click', function(){ openGeneratedImage(content.dataUrl, content.prompt || 'Generated image'); });
+            bubble.appendChild(image);
+            var actions = document.createElement('div');
+            actions.className = 'dts-image-actions';
+            actions.innerHTML = '<button type="button" class="dts-image-preview">View image</button><a class="dts-image-download" download="xzily-generated-image.jpg">Download</a>';
+            actions.querySelector('.dts-image-preview').addEventListener('click', function(){ openGeneratedImage(content.dataUrl, content.prompt || 'Generated image'); });
+            actions.querySelector('.dts-image-download').href = content.dataUrl;
+            bubble.appendChild(actions);
+            var caption = document.createElement('p');
+            caption.className = 'dts-image-caption';
+            caption.textContent = content.prompt || 'Generated with XZILY AI';
+            bubble.appendChild(caption);
+        }
+        if (role === 'assistant' && !isSavedImage) applyMathAndHighlight(wrap);
         if (role === 'assistant') {
-            applyMathAndHighlight(wrap);
             var msgContent = wrap.querySelector('.dts-msg-content');
             if (msgContent) {
                 var copyBtn = document.createElement('button');
                 copyBtn.className = 'dts-msg-copy-btn';
                 copyBtn.textContent = '📋 Copy';
                 copyBtn.addEventListener('click', function() {
-                    var bubble = wrap.querySelector('.dts-msg-bubble');
-                    var text = bubble ? (bubble.innerText || bubble.textContent || '') : content;
-                    function doFallback() {
-                        var ta = document.createElement('textarea');
-                        ta.value = text; ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
+                    var text = isSavedImage ? (content.prompt || 'Generated image') : ((bubble.innerText || bubble.textContent || ''));
+                    function fallbackCopy() {
+                        var ta = document.createElement('textarea'); ta.value = text;
+                        ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
                         document.body.appendChild(ta); ta.focus(); ta.select();
-                        try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
-                        catch(e2) { copyBtn.textContent = '❌ Error'; }
-                        document.body.removeChild(ta);
-                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
+                        try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; } catch(e) { copyBtn.textContent = '❌ Error'; }
+                        document.body.removeChild(ta); setTimeout(function(){copyBtn.textContent='📋 Copy';},1800);
                     }
-                    if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
-                        navigator.clipboard.writeText(text).then(function() {
-                            copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
-                            setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
-                        }).catch(doFallback);
-                    } else { doFallback(); }
+                    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){copyBtn.textContent='✅ Copied!';setTimeout(function(){copyBtn.textContent='📋 Copy';},1800);}).catch(fallbackCopy);
+                    else fallbackCopy();
                 });
                 msgContent.appendChild(copyBtn);
             }
         }
-
         messages.appendChild(wrap);
         scrollToBottom();
         return wrap;
     }
 
+    function openGeneratedImage(src, title) {
+        var old = document.getElementById('dts-image-preview-modal');
+        if (old) old.remove();
+        var modal = document.createElement('div');
+        modal.id = 'dts-image-preview-modal';
+        modal.className = 'dts-image-preview-modal';
+        modal.innerHTML = '<div class="dts-image-preview-panel"><button type="button" class="dts-image-preview-close" aria-label="Close">×</button><img alt=""><div class="dts-image-preview-actions"><a download="xzily-generated-image.jpg">Download image</a></div></div>';
+        modal.querySelector('img').src = src;
+        modal.querySelector('img').alt = title || 'Generated image';
+        modal.querySelector('a').href = src;
+        modal.addEventListener('click', function(e){if(e.target===modal||e.target.closest('.dts-image-preview-close'))modal.remove();});
+        document.body.appendChild(modal);
+    }
 
 
     /* ═══════════════════════════════════════════════════════════
@@ -744,55 +759,36 @@
         var welcome = document.getElementById('dts-welcome');
         if (!messages) { if (onDone) onDone(); return; }
         if (welcome) welcome.style.display = 'none';
-
-        /* Render the full reply immediately. Previously idx was initialized
-           to content.length, so the render loop skipped painting the bubble. */
         content = String(content || '');
         var wrap = document.createElement('div');
         wrap.className = 'dts-message dts-ai';
         wrap.innerHTML = '<div class="dts-msg-avatar">✶</div><div class="dts-msg-content"><div class="dts-msg-bubble"></div></div>';
         var bubble = wrap.querySelector('.dts-msg-bubble');
-        bubble.innerHTML = renderMessage(content);
-        if (/Deep search:/i.test(content)) {
-            var badge = document.createElement('span');
-            badge.className = 'dts-deep-badge';
-            badge.textContent = '🔍 Deep search';
-            bubble.insertBefore(badge, bubble.firstChild);
-        }
         messages.appendChild(wrap);
-        applyMathAndHighlight(wrap);
-
         var msgContent = wrap.querySelector('.dts-msg-content');
-        if (msgContent) {
-            var copyBtn = document.createElement('button');
-            copyBtn.className = 'dts-msg-copy-btn';
-            copyBtn.textContent = '📋 Copy';
-            copyBtn.addEventListener('click', function() {
-                var copyText = bubble.innerText || bubble.textContent || content;
-                function fallbackCopy() {
-                    var ta = document.createElement('textarea');
-                    ta.value = copyText;
-                    ta.style.cssText = 'position:fixed;top:-9999px;left:-9999px;opacity:0;';
-                    document.body.appendChild(ta); ta.focus(); ta.select();
-                    try { document.execCommand('copy'); copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied'); }
-                    catch(e) { copyBtn.textContent = '❌ Error'; }
-                    document.body.removeChild(ta);
-                    setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
-                }
-                if (navigator.clipboard && navigator.clipboard.writeText) {
-                    navigator.clipboard.writeText(copyText).then(function() {
-                        copyBtn.textContent = '✅ Copied!'; copyBtn.classList.add('copied');
-                        setTimeout(function(){ copyBtn.textContent = '📋 Copy'; copyBtn.classList.remove('copied'); }, 2000);
-                    }).catch(fallbackCopy);
-                } else { fallbackCopy(); }
-            });
-            msgContent.appendChild(copyBtn);
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'dts-msg-copy-btn'; copyBtn.textContent = '📋 Copy';
+        copyBtn.addEventListener('click', function(){
+            var text = bubble.innerText || bubble.textContent || content;
+            if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){copyBtn.textContent='✅ Copied!';setTimeout(function(){copyBtn.textContent='📋 Copy';},1800);});
+        });
+        msgContent.appendChild(copyBtn);
+        var index = 0, step = 5;
+        function typeNext(){
+            index = Math.min(index + step, content.length);
+            bubble.textContent = content.slice(0,index);
+            scrollToBottom(true);
+            if(index < content.length){setTimeout(typeNext, 16);return;}
+            bubble.innerHTML = renderMessage(content);
+            if (/Deep search:/i.test(content)) {
+                var badge=document.createElement('span');badge.className='dts-deep-badge';badge.textContent='🔍 Deep search';bubble.insertBefore(badge,bubble.firstChild);
+            }
+            applyMathAndHighlight(wrap);
+            if(onDone)onDone();
         }
-        scrollToBottom(true);
-        if (onDone) onDone();
+        typeNext();
         return wrap;
     }
-
     /* ═══════════════════════════════════════════════════════════
        SEND MESSAGE — with web search + Groq
     ═══════════════════════════════════════════════════════════ */
@@ -810,20 +806,17 @@
             chatHistory.push({ role: 'user', content: text });
             appendMessage('user', text);
             if (typeof window.dtsGenerateInline === 'function') {
-                Promise.resolve(window.dtsGenerateInline(text)).then(function (imageUrl) {
-                    chatHistory.push({
-                        role: 'assistant',
-                        content: imageUrl ? 'Image generated successfully for: ' + text : 'Image generation failed for: ' + text
-                    });
-                    saveSession();
-                    renderHistoryList();
-                }).catch(function () {
-                    chatHistory.push({ role: 'assistant', content: 'Image generation failed for: ' + text });
-                    saveSession();
-                    renderHistoryList();
-                }).finally(function () {
-                    isSending = false; setSendState(false);
-                });
+                Promise.resolve(window.dtsGenerateInline(text)).then(function (imageData) {
+                    if (imageData && imageData.type === 'generated-image') {
+                        chatHistory.push({ role: 'assistant', content: imageData });
+                    } else {
+                        chatHistory.push({ role: 'assistant', content: 'Image generation failed. Please try again.' });
+                    }
+                    saveSession(); renderHistoryList();
+                }).catch(function (error) {
+                    chatHistory.push({ role: 'assistant', content: 'Image generation failed: ' + (error && error.message || 'Please try again.') });
+                    saveSession(); renderHistoryList();
+                }).finally(function () { isSending = false; setSendState(false); });
             } else {
                 appendMessage('assistant', 'The image generator is not available right now.');
                 chatHistory.push({ role: 'assistant', content: 'The image generator is not available right now.' });
