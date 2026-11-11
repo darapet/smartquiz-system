@@ -392,7 +392,7 @@
             e.preventDefault();
             hideAlert('aqs-register-alert');
             var email = ((document.getElementById('reg-email') || {}).value || '').trim().toLowerCase();
-            if (!email || !/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/.test(email)) {
+            if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
                 return showAlert('aqs-register-alert', 'Enter a valid email address.', true);
             }
             registrationDraft.account.email = email;
@@ -488,6 +488,7 @@
                 education.school_name = school;
                 education.study_level = study;
                 education.department = ((document.getElementById('reg-department') || {}).value || '').trim();
+                if (!education.department) return showAlert('aqs-register-alert', 'Enter your department or course.', true);
             } else {
                 var grade = (document.getElementById('reg-grade') || {}).value || '';
                 if (!grade) return showAlert('aqs-register-alert', 'Choose your grade, class, or programme.', true);
