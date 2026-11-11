@@ -467,7 +467,7 @@
         if (show) {
             /* Update status text if provided */
             if (statusText) {
-                var span = el.querySelector('span');
+                var span = el.querySelector('.dts-typing-label');
                 if (span) span.textContent = statusText;
             }
             if (msgs) msgs.appendChild(el);
@@ -475,7 +475,7 @@
             scrollToBottom();
         } else {
             /* Reset text */
-            var span2 = el.querySelector('span');
+            var span2 = el.querySelector('.dts-typing-label');
             if (span2) span2.textContent = 'xzily AI is thinking\u2026';
             el.style.display = 'none';
         }
