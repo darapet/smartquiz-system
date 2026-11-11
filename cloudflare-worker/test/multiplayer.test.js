@@ -130,6 +130,7 @@ test('full game: first correct answer gets 5 points, others none', async () => {
   r.deadlineAt = { timestampValue: new Date(Date.now() + 9000).toISOString() };
   const early = await call('p1', { action: 'answer', roomId: id, questionIndex: 0, option: 0 });
   assert.equal(early.status, 200); assert.equal(early.firstCorrect, true); assert.equal(early.scoreDelta, 5);
+  assert.equal(Object.hasOwn(early, 'correctIndex'), false, 'answer response must not expose the correct option index');
   const late = await call('p2', { action: 'answer', roomId: id, questionIndex: 0, option: 0 });
   assert.equal(late.correct, true); assert.equal(late.firstCorrect, false); assert.equal(late.scoreDelta, 0);
   assert.equal((await call('p1', { action: 'answer', roomId: id, questionIndex: 0, option: 1 })).status, 409, 'one attempt only');
