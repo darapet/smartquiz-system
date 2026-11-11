@@ -487,6 +487,7 @@
                 if (res && res.success) {
                     sessionStorage.removeItem(DRAFT_KEY);
                     sessionStorage.removeItem('aqs_registration_step');
+                    if (res.data && res.data.username) setText('aqs-complete-copy', 'Your account is ready. Your username is @' + res.data.username + '. You can sign in with your email or @username.');
                     window._aqsIsRegistering = false;
                     updateProgress(6);
                     showAlert('aqs-register-alert', 'Profile saved successfully.', false);
