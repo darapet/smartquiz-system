@@ -533,7 +533,7 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js" defer></script>
 <script>document.addEventListener('DOMContentLoaded',function(){if(typeof window.pdfjsLib!=='undefined'){window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';}});</script>
 <script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js" defer></script>
-<script src="js/aqs-studio.js?v=20261111-studio-features-3"></script>
+<script src="js/aqs-studio.js?v=20261111-studio-features-4"></script>
 <script src="js/aqs-studio-flyer-overlay.js"></script>
 <script>
 (function(){
@@ -580,6 +580,17 @@ var AQS_SPLASH={enabled:'0',once:'1',template:'1',app_name:'XZILY AI',tagline:'P
 </div>
 
 
+<style id="dts-final-studio-polish">
+#dts-typing.dts-typing{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;gap:9px;flex-wrap:nowrap;width:max-content;max-width:calc(100% - 28px);white-space:nowrap;line-height:1.2;padding:9px 14px;border-radius:999px}
+#dts-typing .dts-typing-label{display:inline-block;white-space:nowrap;overflow:visible;line-height:1.2}
+#dts-typing .dts-typing-dots{display:inline-flex;flex-direction:row;align-items:center;gap:4px;flex:0 0 auto}
+#dts-typing .dts-typing-dots span{display:block;flex:0 0 5px;width:5px;height:5px;border-radius:50%;animation:dts-typing-pulse 1s infinite ease-in-out}
+.dts-inline-image-loading{display:flex;flex-direction:column;align-items:flex-start;gap:8px;max-width:100%;padding:14px 16px;border:1px solid rgba(232,145,45,.2);border-radius:14px;background:#fffaf3;color:#526579}
+.dts-inline-image-loading strong{color:#1c2b3a}
+.dts-inline-image-progress{display:block;width:min(240px,70vw);height:4px;overflow:hidden;border-radius:8px;background:#f0dfca}
+.dts-inline-image-progress>span{display:block;width:35%;height:100%;border-radius:8px;background:linear-gradient(90deg,#e8912d,#8b5cf6,#22c1c3);animation:dts-progress-slide 1.4s ease-in-out infinite}
+@keyframes dts-progress-slide{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+</style>
 </body>
 <script src="js/median-bridge.js"></script>
 </html>
