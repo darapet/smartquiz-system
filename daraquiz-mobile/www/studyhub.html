@@ -1101,8 +1101,8 @@ a{text-decoration:none;color:inherit;}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/marked@4.3.0/marked.min.js"></script>
-<script type="module" src="js/aqs-firebase.js?v=351e289c"></script>
-<script src="js/aqs-groq-key.js"></script>
+<script type="module" src="js/aqs-firebase.js?v=client-keys-1"></script>
+<script src="js/aqs-groq-key.js?v=client-keys-1"></script>
 <script src="js/aqs-gemini-tts.js"></script>
 <script src="js/aqs-voice.js"></script>
 <script>
@@ -1355,11 +1355,11 @@ function shToast(msg, dur=3000){
   setTimeout(()=>el.remove(), dur);
 }
 
-/* AI generation now uses the authenticated Cloudflare Worker. No provider keys belong in this public page. */
+/* AI generation now uses the Study Hub key pool loaded from Admin Settings. No provider keys belong in this public page. */
 async function shAI(prompt, maxTokens=1200){
-  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
-  const response = await window.aqsWorkerAI({
-    model: 'llama-3.3-70b-versatile',
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: 'openai/gpt-oss-20b',
     messages: [{role:'user', content:String(prompt || '')}],
     max_tokens: maxTokens,
     temperature: 0.7
@@ -1949,9 +1949,9 @@ function aitSetSpeed(rate, el){
 const AIT_DEFAULT_KEYS = [];
 function aitGetKeys(){ return []; }
 async function aitMistral(messages, maxTokens=1200){
-  if(typeof window.aqsWorkerAI !== 'function') throw new Error('Secure AI service is unavailable. Refresh the page and try again.');
-  const response = await window.aqsWorkerAI({
-    model: 'llama-3.3-70b-versatile',
+  if(typeof window.studyhubGroqFetch !== 'function') throw new Error('Study Hub AI pool is unavailable. Refresh the page and try again.');
+  const response = await window.studyhubGroqFetch({
+    model: 'openai/gpt-oss-20b',
     messages: Array.isArray(messages) ? messages : [{role:'user', content:String(messages || '')}],
     max_tokens: maxTokens,
     temperature: 0.7
@@ -2968,8 +2968,8 @@ function aitMicSetUI(on){
 
 async function aitMicTranscribe(blob, target){
   try{
-    if(typeof window.aqsWorkerTranscribe !== 'function') throw new Error('Secure transcription service is unavailable. Refresh the page and try again.');
-    var txt = await window.aqsWorkerTranscribe(blob);
+    if(typeof window.aqsTranscribe !== 'function') throw new Error('Speech to text is unavailable. Refresh the page and try again.');
+    var txt = await window.aqsTranscribe(blob);
     if(!txt) return;
     if(_ait._autoContTimer){ clearTimeout(_ait._autoContTimer); _ait._autoContTimer = null; }
     if(target === 'qa'){
