@@ -438,6 +438,7 @@ a second line"></textarea><div class="dts-flyer-options"><label for="dts-flyer-e
    var content=item.querySelector('.dts-msg-content');content.innerHTML='';content.appendChild(image);
    var actions=document.createElement('div');actions.className='dts-image-actions';actions.innerHTML='<button type="button" class="dts-image-preview">View image</button><a download="xzily-generated-image.jpg">Download</a>';
    actions.querySelector('a').href=dataUrl;actions.querySelector('button').addEventListener('click',function(){var ev=new CustomEvent('dts-open-generated-image',{detail:{src:dataUrl,title:prompt}});document.dispatchEvent(ev);});
+   var editButton=document.createElement('button');editButton.type='button';editButton.textContent='Edit image';editButton.addEventListener('click',function(){document.dispatchEvent(new CustomEvent('dts-attach-generated-image',{detail:{dataUrl:dataUrl}}));});actions.appendChild(editButton);
    content.appendChild(actions);
    var caption=document.createElement('p');caption.className='dts-image-caption';caption.textContent='Generated with XZILY AI';content.appendChild(caption);
    return {type:'generated-image',dataUrl:dataUrl,prompt:prompt};
