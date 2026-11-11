@@ -58,8 +58,63 @@
     }
   }
 
+  function openImageHistoryDb() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) { reject(new Error('IndexedDB is unavailable')); return; }
+      var request = indexedDB.open('aqs-imagegen-history', 1);
+      request.onupgradeneeded = function () {
+        var db = request.result;
+        if (!db.objectStoreNames.contains('images')) db.createObjectStore('images', { keyPath: 'id' });
+      };
+      request.onsuccess = function () { resolve(request.result); };
+      request.onerror = function () { reject(request.error || new Error('Could not open image history')); };
+    });
+  }
+
+  async function saveImageBlob(result) {
+    if (!result || !result.blob) return;
+    var db = await openImageHistoryDb();
+    return new Promise(function (resolve, reject) {
+      var tx = db.transaction('images', 'readwrite');
+      tx.objectStore('images').put({
+        id: result.id, prompt: result.prompt, category: result.category,
+        provider: result.provider, createdAt: result.createdAt, blob: result.blob
+      });
+      tx.oncomplete = function () { db.close(); resolve(); };
+      tx.onerror = function () { db.close(); reject(tx.error || new Error('Could not save image')); };
+    });
+  }
+
+  async function indexedImageHistory() {
+    try {
+      var db = await openImageHistoryDb();
+      return await new Promise(function (resolve) {
+        var tx = db.transaction('images', 'readonly');
+        var request = tx.objectStore('images').getAll();
+        request.onsuccess = function () {
+          var items = (request.result || []).sort(function (a, b) {
+            return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
+          }).slice(0, maxHistory).map(function (item) {
+            return {
+              id: item.id, prompt: item.prompt, category: item.category,
+              provider: item.provider, createdAt: item.createdAt,
+              url: URL.createObjectURL(item.blob)
+            };
+          });
+          db.close(); resolve(items);
+        };
+        request.onerror = function () { db.close(); resolve([]); };
+      });
+    } catch (error) { return []; }
+  }
+
   function saveLocalResult(result) {
-    if (!result || !result.url || /^blob:/i.test(String(result.url))) return;
+    if (!result) return;
+    if (result.blob) {
+      saveImageBlob(result).catch(function () {});
+      return;
+    }
+    if (!result.url || /^blob:/i.test(String(result.url))) return;
     try {
       var items = [result].concat(localHistory().filter(function (item) { return item.id !== result.id; })).slice(0, maxHistory);
       localStorage.setItem(localHistoryKey, JSON.stringify(items));
@@ -158,7 +213,7 @@
     if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');
     var blob = await response.blob();
     if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) throw new Error('The Cloudflare engine returned an invalid image.');
-    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), prompt: payload.prompt, provider: 'Cloudflare Workers AI · Flux', createdAt: new Date().toISOString(), mediaType: 'image' };
+    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Flux', createdAt: new Date().toISOString(), mediaType: 'image' };
   }
 
   function chooseEngine() {
@@ -236,14 +291,18 @@
 
   async function loadHistory() {
     var local = localHistory();
-    if (!firebaseEnabled || !remoteHistoryEnabled || !firebaseEndpoint) return local;
+    var indexed = await indexedImageHistory();
+    var saved = indexed.concat(local.filter(function (item) {
+      return !indexed.some(function (savedItem) { return savedItem.id === item.id; });
+    })).slice(0, maxHistory);
+    if (!firebaseEnabled || !remoteHistoryEnabled || !firebaseEndpoint) return saved;
     try {
       var response = await fetch(firebaseEndpoint + '?clientId=' + encodeURIComponent(getClientId()));
       var remote = await response.json().catch(function () { return []; });
-      if (!response.ok || !Array.isArray(remote)) return local;
-      return remote.concat(local.filter(function (item) { return !remote.some(function (remoteItem) { return remoteItem.id === item.id; }); })).slice(0, maxHistory);
+      if (!response.ok || !Array.isArray(remote)) return saved;
+      return remote.concat(saved.filter(function (item) { return !remote.some(function (remoteItem) { return remoteItem.id === item.id; }); })).slice(0, maxHistory);
     } catch (error) {
-      return local;
+      return saved;
     }
   }
 
