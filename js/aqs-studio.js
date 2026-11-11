@@ -19,6 +19,7 @@
     var voiceOperationId   = 0;
     var voiceRestartTimer  = null;
     var chatHistory        = [];
+    var imageDesignSessionActive = false;
     var conversationId     = null;
     var attachedFileText   = null;
     var attachedFileName   = null;
@@ -859,36 +860,59 @@
         if (!text && !attachedFileText && !attachedImageData) return;
         if (isSending) return;
 
-        /* IMAGE INTENT: route to in-chat generation instead of text AI */
-        var IMG_INTENT = /\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait)\b/i.test(text) && /\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want)\b/i.test(text) || /^\s*(show me|give me)\s+(an?\s+)?(image|picture|photo|logo|illustration)\b/i.test(text);
-        if (text && !attachedFileText && !attachedImageData && IMG_INTENT) {
+        /* CONVERSATIONAL IMAGE DESIGNER: clarify professional briefs before generation. */
+        var IMG_INTENT = /\\b(image|picture|photo|illustration|artwork|logo|poster|flyer|banner|thumbnail|wallpaper|avatar|portrait|graphic|design)\\b/i.test(text) &&
+            /\\b(create|generate|make|draw|design|produce|illustrate|render|come up with|i need|i want|help me|build me)\\b/i.test(text) ||
+            /^\\s*(show me|give me)\\s+(an?\\s+)?(image|picture|photo|logo|illustration)\\b/i.test(text);
+        if (text && !attachedFileText && !attachedImageData && (IMG_INTENT || imageDesignSessionActive)) {
             isSending = true; setSendState(true);
             var inp0 = document.getElementById('dts-input');
             if (inp0) { inp0.value = ''; inp0.style.height = 'auto'; }
             chatHistory.push({ role: 'user', content: text });
             appendMessage('user', text);
-            if (typeof window.dtsGenerateInline === 'function') {
-                Promise.resolve(window.dtsGenerateInline(text)).then(function (imageData) {
-                    if (imageData && imageData.type === 'generated-image') {
-                        chatHistory.push({ role: 'assistant', content: imageData });
-                    } else {
-                        chatHistory.push({ role: 'assistant', content: 'Image generation failed. Please try again.' });
-                    }
+            showTyping(true, 'XZILY is planning your design…');
+            try {
+                if (typeof window.groqFetch !== 'function') throw new Error('Design assistant is not ready. Please try again.');
+                var recentDesignHistory = chatHistory.slice(-12).map(function(m) {
+                    return { role: m.role === 'assistant' ? 'assistant' : 'user',
+                        content: typeof m.content === 'string' ? m.content : (m.content && m.content.prompt ? '[Previously generated image: '+m.content.prompt+']' : '[image attachment]') };
+                });
+                var plannerSystem = 'You are a professional graphic designer conducting a natural chat intake. Decide whether the request is a simple image that can be generated immediately or a professional design brief that needs essential details. Simple requests such as a dog photo should generate immediately. For business logos, banners, flyers, posters, adverts and branded graphics, ask concise follow-up questions only for missing essentials. Use details already present in the conversation; never ask twice. For a business banner, consider brand/business name, services or message, contact details, brand colours, target audience and aspect ratio, but ask only what is genuinely missing. Do not invent names, phone numbers, addresses, offers or services. If enough details exist, produce a detailed image-generation prompt with clear layout, typography, hierarchy, visual style, readable text and composition. Return ONLY valid JSON: {"action":"ask","message":"one natural concise question"} OR {"action":"generate","prompt":"complete detailed image prompt","category":"general|logo|banner|flyer|poster","aspectRatio":"square|landscape|portrait"}. Choose landscape for banners, portrait for flyers/posters, square for logos unless the user specifies otherwise. Do not include markdown.';
+                var plannerRes = await window.groqFetch({model:'openai/gpt-oss-20b',messages:[{role:'system',content:plannerSystem}].concat(recentDesignHistory),max_tokens:700,temperature:0.35});
+                var plannerData = await plannerRes.json();
+                var plannerText = plannerData.choices && plannerData.choices[0] && plannerData.choices[0].message && plannerData.choices[0].message.content || '';
+                plannerText = plannerText.replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'').trim();
+                var plan = JSON.parse(plannerText);
+                showTyping(false);
+                if (plan.action === 'ask' && plan.message) {
+                    imageDesignSessionActive = true;
+                    chatHistory.push({role:'assistant',content:plan.message});
+                    appendMessage('assistant',plan.message);
                     saveSession(); renderHistoryList();
-                }).catch(function (error) {
-                    chatHistory.push({ role: 'assistant', content: 'Image generation failed: ' + (error && error.message || 'Please try again.') });
+                } else if (plan.action === 'generate' && plan.prompt) {
+                    imageDesignSessionActive = false;
+                    var imageData = await window.dtsGenerateInline(plan.prompt,{category:plan.category,aspectRatio:plan.aspectRatio});
+                    if (imageData && imageData.type === 'generated-image') chatHistory.push({role:'assistant',content:imageData});
+                    else chatHistory.push({role:'assistant',content:'Image generation failed. Please try again.'});
                     saveSession(); renderHistoryList();
-                }).finally(function () { isSending = false; setSendState(false); });
-            } else {
-                appendMessage('assistant', 'The image generator is not available right now.');
-                chatHistory.push({ role: 'assistant', content: 'The image generator is not available right now.' });
+                } else {
+                    throw new Error('The design plan was incomplete. Please describe the design again.');
+                }
+            } catch (designError) {
+                showTyping(false);
+                imageDesignSessionActive = false;
+                var designMessage = 'I could not prepare that design yet. ' + (designError && designError.message || 'Please try again.');
+                chatHistory.push({role:'assistant',content:designMessage});
+                appendMessage('assistant',designMessage);
                 saveSession(); renderHistoryList();
-                isSending = false; setSendState(false);
-            }
+            } finally { isSending = false; setSendState(false); }
             return;
         }
 
         isSending = true;
+        setSendState(true);
+
+        /* Snapshot and clear attachments before async work */        isSending = true;
         setSendState(true);
 
         /* Snapshot and clear attachments before async work */
