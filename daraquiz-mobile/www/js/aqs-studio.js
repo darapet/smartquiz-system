@@ -875,9 +875,9 @@
         clearFileAttachment();
 
         /* Route explicit image-edit requests to the image-to-image service. */
-        var editIntent = /\\b(edit|change|modify|replace|remove|add to|redesign|retouch|restyle)\\b/i.test(text || '');
+        var editIntent = /\b(edit|change|modify|replace|remove|add to|redesign|retouch|restyle)\b/i.test(text || '');
         if (snapImageData && editIntent && typeof window.dtsEditInline === 'function') {
-            var editPrompt = (text || '').replace(/^\\s*edit this image[:\\s-]*/i, '').trim();
+            var editPrompt = (text || '').replace(/^\s*edit this image[:\s-]*/i, '').trim();
             if (!editPrompt) editPrompt = 'Improve this image while preserving its main subject and composition.';
             chatHistory.push({ role: 'user', content: userContent });
             appendMessage('user', userContent);
