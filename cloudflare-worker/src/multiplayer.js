@@ -333,7 +333,7 @@ const actions = {
     const [rooms, claims] = await Promise.all([fs.getMany([roomP(id)]), fs.list(`${roomP(id)}/avatarClaims`, { fields: ['uid'] })]);
     const d = rooms.get(roomP(id));
     if (!d) throw new Error('Room not found.');
-    return { title: d.title, phase: d.phase, startAt: d.startAt && typeof d.startAt.toMillis === 'function' ? d.startAt.toMillis() : 0, capacity: d.capacity, playerCount: d.playerCount, secondsPerQuestion: d.secondsPerQuestion, questionCount: d.questionCount, difficulty: d.difficulty, takenAvatars: claims.map(x => Number(x.id)) };
+    return { title: d.title, hostUid: d.hostUid, phase: d.phase, startAt: d.startAt && typeof d.startAt.toMillis === 'function' ? d.startAt.toMillis() : 0, capacity: d.capacity, playerCount: d.playerCount, secondsPerQuestion: d.secondsPerQuestion, questionCount: d.questionCount, difficulty: d.difficulty, takenAvatars: claims.map(x => Number(x.id)) };
   },
 
   async generate({ fs, uid, body, deps, env }) {
