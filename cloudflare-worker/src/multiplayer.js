@@ -512,7 +512,7 @@ const actions = {
     await runTransaction(fs, async tx => {
       const room = await tx.get(roomP(id));
       requireHost(room, uid);
-      if (room.phase !== 'question' || !room.deadlineAt || (room.deadlineAt.toMillis() > Date.now() && !(room.lastWinner && room.lastWinner.questionIndex === room.currentQuestion))) throw new Error('Room state changed; try again.');
+      if (room.phase !== 'question' || !room.deadlineAt || room.deadlineAt.toMillis() > Date.now()) throw new Error('Room state changed; try again.');
       if (room.revealIndex !== undefined && room.revealIndex !== null && room.revealedQuestion === room.currentQuestion) return;
       const question = await loadQuestion(tx, id, room.currentQuestion);
       tx.update(roomP(id), { revealIndex: M.correctIndex(question), revealedQuestion: room.currentQuestion });
