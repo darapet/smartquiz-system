@@ -55,7 +55,7 @@ const S = {
   joinPhase: 'lobby', playerIds: null, joinNoticeTimer: 0,
   skew: 0, token: '', link: '', unsubs: [], tiles: new Map(), renderTimer: 0,
   level: 'Easy', docs: [], docSeq: 0, gen: null, hostPicker: null, joinPicker: null, dialogPicker: null,
-  voice: null, speaking: new Set(), voiceSyncTimer: 0,
+  voice: null, speaking: new Set(), voiceSyncTimer: 0, lastSpokenWinner: '',
   musicDraft: null, musicAudio: null, musicTrackKey: '', musicEnabledLocally: true, musicPlayBlocked: false,
   q: { index: -1, start: 0, end: 0, answered: false, picked: -1, result: null, timeUp: false, revealTries: 0, autoAdvanceScheduled: false }, tick: 0
 };
@@ -1263,12 +1263,33 @@ function applyReveal(right) {
   if (S.isHost) $('next-btn').disabled = false;
 }
 
+function speakCharacterVictory(w, info, key) {
+  if (S.lastSpokenWinner === key) return;
+  S.lastSpokenWinner = key;
+  if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return;
+  try {
+    window.speechSynthesis.cancel();
+    const line = new SpeechSynthesisUtterance(info.speech || 'I answered correctly first!');
+    line.lang = 'en-NG';
+    line.pitch = Math.max(0.6, Math.min(1.5, Number(info.pitch) || 1));
+    line.rate = Math.max(0.75, Math.min(1.25, Number(info.rate) || 1));
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => /^en-NG$/i.test(v.lang)) || voices.find(v => /^en-GB/i.test(v.lang)) || voices.find(v => /^en-US/i.test(v.lang));
+    if (voice) line.voice = voice;
+    window.speechSynthesis.speak(line);
+  } catch (_) { /* Character text remains visible if speech is unavailable. */ }
+}
+
 function paintWinner(d) {
   const w = d.lastWinner, box = $('winner-banner');
   if (!w || w.questionIndex !== d.currentQuestion) { box.hidden = true; return; }
   const mine = w.uid === auth.currentUser.uid;
-  box.innerHTML = `<span class="a">${avatarSvg(w.avatar, { still: true })}</span><span>${mine ? 'You were' : `${esc(w.name)} was`} first to answer correctly · +${POINTS} points</span>`;
+  const info = avatarInfo(w.avatar);
+  const line = info.speech || 'I answered correctly first!';
+  const key = `${w.questionIndex}:${w.uid}`;
+  box.innerHTML = `<span class="winner-character"><span class="a">${avatarSvg(w.avatar, { still: true })}</span><span class="winner-character-name">${esc(info.name)}</span></span><span class="winner-copy"><strong>${mine ? 'You were' : `${esc(w.name)} was`} first to answer correctly · +${POINTS} points</strong><span class="winner-speech" aria-live="polite">“${esc(line)}”</span></span>`;
   box.hidden = false;
+  speakCharacterVictory(w, info, key);
 }
 
 function renderGameBar() {
