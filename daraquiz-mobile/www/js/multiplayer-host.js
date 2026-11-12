@@ -443,7 +443,7 @@ async function searchLicensedMusic() {
       action: 'query', format: 'json', origin: '*',
       generator: 'search', gsrnamespace: '6', gsrlimit: '30',
       gsrsearch: query + ' filemime:audio',
-      prop: 'imageinfo', iiprop: 'url|extmetadata'
+      prop: 'imageinfo', iiprop: 'url|mime|extmetadata', iiextmetadatafilter: 'LicenseShortName|LicenseUrl|Artist|Credit'
     });
     const response = await fetch(COMMONS_API + '?' + params.toString());
     if (!response.ok) throw new Error('The music catalogue is temporarily unavailable.');
@@ -460,7 +460,7 @@ async function searchLicensedMusic() {
       const artist = cleanMeta(meta.Artist && meta.Artist.value) || cleanMeta(meta.Credit && meta.Credit.value) || 'Artist not listed';
       const licenseUrl = cleanMeta(meta.LicenseUrl && meta.LicenseUrl.value);
       const pageUrl = 'https://commons.wikimedia.org/wiki/' + encodeURIComponent(String(page.title || '').replace(/ /g, '_'));
-      const credit = license.toUpperCase() === 'CC0' || /^public domain$/i.test(license) ? 'No attribution required by licence' : 'Credit: ' + artist + ' — ' + license;
+      const credit = /^CC0/i.test(license) || /^public domain$/i.test(license) ? 'No attribution required by licence' : 'Credit: ' + artist + ' — ' + license;
       return { id: String(page.pageid), title: title.slice(0, 100), artist: artist.slice(0, 140), license, licenseUrl, pageUrl, url, mime, credit };
     }).filter(Boolean).slice(0, 12);
     const host = $('music-results');
