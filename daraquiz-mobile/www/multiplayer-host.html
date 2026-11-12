@@ -130,6 +130,22 @@
         <input id="host-name" maxlength="35" placeholder="Host" autocomplete="nickname">
         <small>Players see this next to the crown in the lobby.</small>
       </label>
+      <section class="music-settings field wide" aria-labelledby="music-settings-title">
+        <div class="music-settings-head">
+          <div><span class="label" id="music-settings-title">Lobby & game background music</span><small>Optional · Streams online; SmartQuiz does not upload or store audio.</small></div>
+          <label class="music-switch"><input id="music-enabled" type="checkbox"><span>Turn music on</span></label>
+        </div>
+        <div id="music-search-area" hidden>
+          <div class="music-search-row">
+            <input id="music-search" type="search" maxlength="100" placeholder="Search calm, upbeat, piano, ambient…" autocomplete="off">
+            <button class="btn ghost" id="music-search-btn" type="button">Search music</button>
+          </div>
+          <p class="music-note">Only CC0, Public Domain and CC BY tracks are listed. CC BY requires artist and licence credit.</p>
+          <p class="msg" id="music-search-status" role="status" aria-live="polite"></p>
+          <div id="music-results" class="music-results" aria-live="polite"></div>
+          <div id="music-selected" class="music-selected" hidden></div>
+        </div>
+      </section>
       <h2>Your avatar</h2>
       <div id="host-picker"></div>
       <div class="row">
@@ -263,6 +279,8 @@
 </dialog>
 
 <div id="voice-audio" hidden></div>
+<audio id="room-music" preload="none" loop playsinline></audio>
+<div id="room-music-control" class="room-music-control" hidden><span id="room-music-label">Background music</span><button type="button" id="room-music-toggle" class="btn ghost">Enable music</button><label>Volume <input id="room-music-volume" type="range" min="0" max="30" value="12"></label></div>
 
 <script type="module" src="js/multiplayer-host.js"></script>
 </body>
