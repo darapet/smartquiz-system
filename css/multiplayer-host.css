@@ -307,3 +307,10 @@ body[data-view="lobby"] .shell,body[data-view="game"] .shell{padding-bottom:96px
 /* Scheduled multiplayer countdown */
 .schedule-fields{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:9px;max-width:520px}.schedule-fields label{display:grid;gap:6px}.schedule-fields input{width:100%;min-width:0;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);font:inherit;font-size:1.1rem;font-weight:800;text-align:center}.schedule-fields label span{font-size:.78rem;color:var(--muted);text-align:center}.countdown-card{text-align:center;max-width:760px;margin:8vh auto}.countdown-clock{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:30px auto;max-width:560px}.countdown-clock>div{display:grid;gap:8px;padding:22px 10px;border:1px solid var(--line);border-radius:18px;background:var(--card);box-shadow:0 10px 32px rgba(0,0,0,.08)}.countdown-clock strong{font-size:clamp(2.2rem,9vw,4.6rem);line-height:1;font-variant-numeric:tabular-nums;letter-spacing:-.05em}.countdown-clock span{font-size:.82rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.08em}.countdown-card .eyebrow{color:var(--teal)}
 @media(max-width:480px){.countdown-clock{gap:7px}.countdown-clock>div{padding:18px 5px;border-radius:14px}.countdown-clock strong{font-size:clamp(2rem,12vw,3rem)}}
+
+
+/* Lobby rules and live join notifications */
+.mp-rules h2{margin:0 0 10px}.mp-rules ul{margin:0;padding-left:1.25rem;display:grid;gap:8px;color:var(--ink-2);line-height:1.5}.mp-rules li::marker{color:var(--teal)}
+.join-notice{margin:10px 0 0;padding:11px 14px;border:1px solid #b6e3d8;border-radius:12px;background:var(--teal-soft);color:var(--teal);font-weight:800}
+.join-notice[hidden]{display:none}
+.game-join-notice{margin:12px 0}
