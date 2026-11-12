@@ -26,6 +26,8 @@ const HAIR_STYLES = [
 
 /* Headgear replaces hair for roles that wear something on their head. */
 const GEAR = {
+  singer: hair => `<path d="M33 36Q25 10 50 12Q75 10 67 36L70 72Q62 78 62 48L60 27Q50 18 40 27L38 48Q38 78 30 72Z" fill="${hair}"/><path d="M36 24Q50 7 64 24" fill="none" stroke="#f8fafc" stroke-opacity=".35" stroke-width="2"/>`,
+  fashion: hair => `<path d="M32 34Q28 12 50 12Q72 12 68 34L65 27Q50 19 35 27Z" fill="${hair}"/><path d="M36 18Q50 7 64 18" fill="none" stroke="#f9a8d4" stroke-width="3"/><circle cx="65" cy="20" r="4" fill="#f9a8d4"/>`,
   wizard: () => '<path d="M32 28L50 -2L68 28Z" fill="#5b21b6"/><rect x="30" y="26" width="40" height="6" rx="3" fill="#7c3aed"/><path d="M50 8l1.8 4 4.2.4-3.2 2.8 1 4.2-3.8-2.2-3.8 2.2 1-4.2-3.2-2.8 4.2-.4z" fill="#fde047"/>',
   chef: () => '<rect x="36" y="22" width="28" height="8" rx="3" fill="#fff"/><g fill="#fff" stroke="#e2e8f0" stroke-width="1"><circle cx="38" cy="14" r="8"/><circle cx="50" cy="9" r="9"/><circle cx="62" cy="14" r="8"/></g><rect x="36" y="20" width="28" height="10" rx="3" fill="#fff"/>',
   pirate: () => '<path d="M30 28Q50 2 70 28Q50 22 30 28Z" fill="#111827"/><rect x="28" y="26" width="44" height="5" rx="2.5" fill="#1f2937"/><circle cx="50" cy="18" r="3.4" fill="#f8fafc"/><rect x="48.4" y="21" width="3.2" height="3" fill="#f8fafc"/>',
@@ -104,8 +106,8 @@ const FX = {
 
 const ROLES = [
   { name: 'Drummer', skill: 'Plays a big victory drum solo', anim: 'drum', gear: null, prop: 'drumsticks', fx: 'music', speech: 'That answer hit like a drum solo! Let us go!', pitch: 0.92, rate: 1.02 },
-  { name: 'Singer', skill: 'Sings a bright victory note', anim: 'sing', gear: 'fairy', prop: 'mic', fx: 'music', speech: 'This is my moment! Everybody sing along!', pitch: 1.28, rate: 0.94 },
-  { name: 'Fashion Icon', skill: 'Shows off a signature runway pose', anim: 'pose', gear: null, prop: 'fashionbag', fx: 'sparkle', speech: 'A perfect answer and a perfect look. Iconic!', pitch: 1.18, rate: 1.0 },
+  { name: 'Singer', skill: 'Sings a bright victory note', anim: 'sing', gear: 'singer', prop: 'mic', fx: 'music', speech: 'This is my moment! Everybody sing along!', pitch: 1.28, rate: 0.94 },
+  { name: 'Fashion Icon', skill: 'Shows off a signature runway pose', anim: 'pose', gear: 'fashion', prop: 'fashionbag', fx: 'sparkle', speech: 'A perfect answer and a perfect look. Iconic!', pitch: 1.18, rate: 1.0 },
   { name: 'Bird Keeper', skill: 'Celebrates with a clever little bird', anim: 'bird', gear: null, prop: 'bird', fx: 'heart', speech: 'We did it! My little bird says well played!', pitch: 1.12, rate: 0.96 },
   { name: 'Pet Trainer', skill: 'Celebrates with a loyal pet companion', anim: 'pet', gear: null, prop: 'pet', fx: 'heart', speech: 'Good job, team! My best friend is celebrating too!', pitch: 0.98, rate: 0.98 },
   { name: 'Guitarist', skill: 'Plays a quick electric guitar riff', anim: 'guitar', gear: 'rocker', prop: 'guitar', fx: 'music', speech: 'That was a winning riff! Rock on!', pitch: 0.9, rate: 1.08 },
