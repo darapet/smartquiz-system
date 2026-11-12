@@ -485,6 +485,20 @@ async function bootPlayer(rid, pinParam, notice) {
   else $('join-btn').disabled = false;
 }
 
+async function findRoom() {
+  const rid = String($('join-room-code').value || '').trim().toUpperCase();
+  $('join-room-code').value = rid;
+  if (!ROOM_ID.test(rid)) return say('msg-join', 'Enter the 16-character room code from the host.');
+  $('find-room-btn').disabled = true;
+  $('join-btn').disabled = true;
+  say('msg-join', 'Finding room…', 'ok');
+  try {
+    await bootPlayer(rid, '');
+  } finally {
+    $('find-room-btn').disabled = false;
+  }
+}
+
 async function joinRoom() {
   const name = $('join-name').value.trim();
   const pin = $('join-pin').value.trim();
