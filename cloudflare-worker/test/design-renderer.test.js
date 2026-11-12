@@ -69,3 +69,15 @@ test('escapes ampersands and quotes in all supplied copy fields', () => {
   assert.match(svg, /Quality &quot;first&quot;/);
   assert.match(svg, /Let’s go/);
 });
+
+test('creates a dedicated birthday layout with a prominent recipient name', () => {
+  const svg = composeDesignSvg(bytes,
+    { category: 'birthday', dimensions: { width: 576, height: 1024 } },
+    'Create a birthday flyer',
+    { recipientName: 'AMARA', subline: 'Wishing you joy and happiness' });
+  assert.match(svg, /HAPPY BIRTHDAY/);
+  assert.match(svg, /AMARA/);
+  assert.match(svg, /Wishing you joy and happiness/);
+  assert.match(svg, /stroke="#d6ad58"/);
+  assert.match(svg, /text-anchor="middle"/);
+});
