@@ -8,7 +8,7 @@
   <meta name="description" content="A voice-first AI learning assistant for clear explanations and study conversations.">
   <link rel="stylesheet" href="css/aqs-category-nav.css">
   <link rel="stylesheet" href="css/aqs-bottom-nav.css" data-aqs-bottom-nav-css="true">
-  <link rel="stylesheet" href="css/aqs-ai-teacher.css?v=20261112-5">
+  <link rel="stylesheet" href="css/aqs-ai-teacher.css?v=20261112-6">
   <script defer src="js/aqs-category-nav.js"></script>
   <script defer src="js/aqs-bottom-nav.js"></script>
   <script>
@@ -19,15 +19,15 @@
 <body data-aqs-page="ai-teacher" data-aqs-page-group="studio AI">
   <div class="ait-app" id="ait-app">
     <header class="ait-topbar">
-      <a class="ait-back" href="studyhub.html" aria-label="Back to Study Hub">← <span>Study Hub</span></a>
+      <a class="ait-back" href="studyhub.html" aria-label="Back to Study Hub">←</a>
       <div class="ait-brand"><span class="ait-brand-mark">✦</span><span>AI Teacher</span></div>
       <div class="ait-top-actions">
         <div class="ait-mode-switch" role="group" aria-label="AI Teacher mode">
-          <button class="ait-mode-btn active" id="ait-mode-voice" type="button" aria-pressed="true">Voice</button>
-          <button class="ait-mode-btn" id="ait-mode-text" type="button" aria-pressed="false">Text</button>
+          <button class="ait-mode-btn active" id="ait-mode-voice" type="button" aria-label="Voice mode" title="Voice mode" aria-pressed="true">◉</button>
+          <button class="ait-mode-btn" id="ait-mode-text" type="button" aria-label="Text mode" title="Text mode" aria-pressed="false">▤</button>
         </div>
         <button class="ait-icon-btn" id="ait-voice-toggle" type="button" aria-label="Turn voice off" title="Voice on">🔊</button>
-        <button class="ait-history-btn" id="ait-history-open" type="button"><span>History</span><span class="ait-history-count" id="ait-history-count">0</span></button>
+        <button class="ait-history-btn" id="ait-history-open" type="button" aria-label="Conversation history" title="History">☷<span class="ait-history-count" id="ait-history-count">0</span></button>
         <button class="ait-icon-btn" id="ait-new-chat" type="button" aria-label="New conversation" title="New conversation">＋</button>
       </div>
     </header>
@@ -36,16 +36,9 @@
         <section class="ait-hero" id="ait-hero" aria-label="AI Teacher voice visualizer">
           <div class="ait-orb-stage">
             <div class="ait-orb-halo ait-halo-one"></div><div class="ait-orb-halo ait-halo-two"></div><div class="ait-orb-halo ait-halo-three"></div>
-            <div class="ait-orb" id="ait-orb"><div class="ait-orb-core"></div><div class="ait-orb-shine"></div><div class="ait-orb-wave ait-wave-one"></div><div class="ait-orb-wave ait-wave-two"></div></div>
+            <div class="ait-orb" id="ait-orb" aria-hidden="true"><div class="ait-orb-core"></div><div class="ait-orb-shine"></div><div class="ait-orb-wave ait-wave-one"></div><div class="ait-orb-wave ait-wave-two"></div><div class="ait-orb-ribbon ait-ribbon-one"></div><div class="ait-orb-ribbon ait-ribbon-two"></div><div class="ait-orb-mist"></div></div>
           </div>
-          <h1 class="ait-hero-title">Your personal AI tutor</h1>
-          <p class="ait-hero-sub" id="ait-status">Tap the microphone and speak to your AI Teacher.</p>
-          <div class="ait-state-pills">
-            <span class="ait-state-pill"><i class="ait-state-dot"></i><span id="ait-state-label">Ready</span></span>
-            <span class="ait-state-pill ait-state-voice" id="ait-voice-state">Voice enabled</span>
-          </div>
-          <button class="ait-mic-btn ait-voice-mic" id="ait-mic" type="button" aria-label="Speak your question" title="Tap to speak"><span id="ait-mic-icon">🎙</span><span>Tap to speak</span></button>
-          <p class="ait-voice-note">Your AI Teacher will answer aloud. Switch to Text to read the conversation.</p>
+          <button class="ait-mic-btn ait-voice-mic" id="ait-mic" type="button" aria-label="Speak your question" title="Speak" aria-pressed="false"><span id="ait-mic-icon">🎙</span></button>
         </section>
       </section>
       <section class="ait-screen ait-screen-text" id="ait-text-screen" aria-label="Text conversation screen">
