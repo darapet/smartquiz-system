@@ -66,12 +66,8 @@ function newChat(){
  renderMessages();persist();closeHistory();input.value='';input.focus();
  setState('','New conversation. What would you like to learn?');
 }
-function waitForAIKeys(){
- return new Promise(function(resolve){
-  var tries=0;function count(){try{return(window.getFeatureGroqKeyCount?window.getFeatureGroqKeyCount('studyhub'):0)+(window._aqsGroqKeyCount?window._aqsGroqKeyCount():0);}catch(e){return 0;}}
-  if(count()>0){resolve(true);return;}var timer=setInterval(function(){tries++;if(count()>0||tries>=24){clearInterval(timer);resolve(count()>0);}},150);
- });
-}
+/* Let the shared provider pool finish loading its keys and handle fallback.
+   A short UI-side key check can incorrectly block Groq/Mistral/HF while Firebase is still loading. */
 function readAIResponse(response){
  if(response&&typeof response.json==='function'&&'ok'in response){
   if(!response.ok)return response.json().catch(function(){return null;}).then(function(data){
@@ -93,7 +89,7 @@ function requestAI(){
  setState('thinking','Thinking through your question…');
  var model=(window.AQS_CONFIG&&window.AQS_CONFIG.groqModel)||window._AQS_GROQ_MODEL||'openai/gpt-oss-20b';
  var body={model:model,messages:[{role:'system',content:'You are a patient, highly capable university study tutor. Explain ideas in clear, simple English. Break difficult concepts into numbered steps, define technical words, and use practical examples. Be accurate and honest when uncertain. Keep answers focused and readable, using short paragraphs, numbered steps and simple bullet points. Avoid Markdown heading, bold or italic markers, code fences and special board tags. Use LaTeX only when it helps explain mathematics. Finish with one short question that checks the student understands.'}].concat(messages.filter(function(m){return m.role==='user'||m.role==='assistant';}).slice(-MAX_CONTEXT)),temperature:0.55,max_tokens:1200};
- waitForAIKeys().then(function(hasKeys){if(!hasKeys)throw new Error('The AI key pool is not ready. Please try again or contact the administrator.');return fetcher(body,{signal:(window.AbortSignal&&AbortSignal.timeout)?AbortSignal.timeout(60000):undefined});})
+ Promise.resolve().then(function(){return fetcher(body,{signal:(window.AbortSignal&&AbortSignal.timeout)?AbortSignal.timeout(60000):undefined});})
  .then(readAIResponse).then(function(data){var answer=extractAIText(data).trim();if(!answer)throw new Error('The AI returned an empty answer. Please try again.');addMessage('assistant',answer);setState('','Answer ready. You can ask a follow-up question.');if(voiceEnabled)speakAnswer(answer);})
  .catch(function(error){var message=error&&error.message?error.message:'Something went wrong.';addMessage('assistant','I could not answer that just now. '+message);setState('error','I could not complete that answer. Try again.');console.error('[AI Teacher]',error);});
 }
