@@ -50,9 +50,9 @@ function modelFor(env, requestedModel, category) {
     PROFESSIONAL_IMAGE_MODEL,
   ]);
   if (allowed.has(requested)) return requested;
-  if (['logo', 'banner', 'flyer', 'birthday', 'poster', 'social', 'design', 'fiverr', 'youtube-thumbnail', 'event-poster', 'product-ad', 'business-card', 'menu', 'infographic', 'packaging', 'certificate', 'invitation', 'mockup', '3d-design', '2d-design'].includes(String(category || '').toLowerCase())) {
-    return PROFESSIONAL_IMAGE_MODEL;
-  }
+  // Prefer the fast Flux model for reliable response times. The professional
+  // model remains explicitly selectable, but is not forced on every design
+  // request where its longer inference time can trigger gateway timeouts.
   return allowed.has(configured) ? configured : DEFAULT_IMAGE_MODEL;
 }
 
