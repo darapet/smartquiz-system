@@ -523,7 +523,8 @@ function enterRoom(rid) {
     getPlayers: () => S.players,
     audioHost: $('voice-audio'),
     onState: setMicUI,
-    onSpeaking: set => { S.speaking = set; paintSpeaking(); }
+    onSpeaking: set => { S.speaking = set; paintSpeaking(); },
+    onError: message => toast(message)
   });
   setMicUI('off');
 
