@@ -187,6 +187,9 @@ kbd { padding:3px 5px; border:1px solid #dbe2ea; border-bottom-width:2px; border
 .aqs-imagegen-detection-pill { padding:5px 9px; border-radius:999px; background:#fff7eb; color:#12304a; font-size:10px; font-weight:800; }
 .aqs-imagegen-detection-confidence { color:#12304a; font-size:10px; }
 .aqs-imagegen-options { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.aqs-imagegen-model-option { margin-top:10px; }
+.aqs-imagegen-model-option select { width:100%; margin-top:7px; padding:10px 11px; border:1px solid #dbe2ea; border-radius:9px; background:#fff; color:#334155; font-size:11px; }
+.aqs-imagegen-model-note { margin:6px 0 0; color:#64748b; font-size:11px; line-height:1.5; }
 .aqs-imagegen-option select { width:100%; margin-top:7px; padding:10px 11px; border:1px solid #dbe2ea; border-radius:9px; background:#fff; color:#334155; font-size:11px; }
 .aqs-imagegen-option select:focus { border-color:#e8912d; outline:0; }
 .aqs-imagegen-preset-heading { margin:19px 0 9px; color:#526579; font-size:10px; font-weight:800; letter-spacing:.03em; text-transform:uppercase; }
