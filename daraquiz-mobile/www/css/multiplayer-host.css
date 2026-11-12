@@ -132,6 +132,7 @@ code{flex:1;min-width:0;display:block;padding:11px 13px;border-radius:10px;backg
 .pin-box{padding:10px 18px;border-radius:14px;background:var(--brand);color:#fff;text-align:center}
 .pin-box small,.share small{display:block;font-size:.72rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.85}
 .pin-box strong{font-size:2rem;letter-spacing:.2em;line-height:1.1}
+.pin-box #room-code{font-size:1rem;letter-spacing:.07em;overflow-wrap:anywhere}
 .share small{color:var(--muted)}
 .share{min-width:260px}
 #qr{width:96px;height:96px;border-radius:10px;border:1px solid var(--line)}
