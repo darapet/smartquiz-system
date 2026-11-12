@@ -298,6 +298,22 @@ async function loadQuestion(tx, id, qi) {
   return question;
 }
 
+function validateMusicTrack(track) {
+  if (!track || typeof track !== 'object') throw new Error('Choose a licensed track first.');
+  const url = String(track.url || '');
+  let parsed;
+  try { parsed = new URL(url); } catch (_) { throw new Error('Invalid music stream URL.'); }
+  if (parsed.protocol !== 'https:' || parsed.hostname !== 'upload.wikimedia.org') throw new Error('Only approved Wikimedia Commons audio streams are allowed.');
+  const license = String(track.license || '').trim();
+  if (!/^(CC0|CC BY(?:-[0-9.]+)?|Public domain|Public Domain)$/i.test(license)) throw new Error('This music licence is not approved for multiplayer.');
+  const title = String(track.title || '').trim().slice(0, 100);
+  const id = String(track.id || '').trim().slice(0, 40);
+  if (!title || !id) throw new Error('The selected music track is missing its details.');
+  const pageUrl = String(track.pageUrl || '');
+  if (!pageUrl.startsWith('https://commons.wikimedia.org/wiki/')) throw new Error('Invalid music source page.');
+  return { id, title, artist: String(track.artist || 'Artist not listed').slice(0, 140), license, licenseUrl: String(track.licenseUrl || '').slice(0, 240), pageUrl, url, mime: String(track.mime || '').slice(0, 60), credit: String(track.credit || '').slice(0, 240) };
+}
+
 function requireHost(room, uid, message) {
   if (!room) throw new Error('Room not found.');
   if (room.hostUid !== uid) throw new Error(message || 'Only the host can change game state.');
@@ -341,13 +357,28 @@ const actions = {
     tx.create(roomP(id), {
       roomId: id, title: input.title, hostUid: uid, pin: input.pin, capacity: input.capacity,
       playerCount: 1, voiceCount: 0, difficulty: input.difficulty, secondsPerQuestion: input.secondsPerQuestion,
-      questionCount: input.questions.length, phase: 'lobby', currentQuestion: -1, createdAt: SERVER_TS
+      questionCount: input.questions.length, phase: 'lobby', currentQuestion: -1,
+      music: body.room && body.room.music && body.room.music.enabled === true && body.room.music.track
+        ? { enabled: true, track: validateMusicTrack(body.room.music.track) } : { enabled: false, track: null },
+      createdAt: SERVER_TS
     });
     shards.forEach((questions, i) => tx.create(`${roomP(id)}/private/quiz_${i}`, { json: JSON.stringify(questions) }));
     tx.create(playerP(id, uid), freshPlayer(String(body.hostName || 'Host').trim().slice(0, 35) || 'Host', avatar, true));
     tx.create(claimP(id, avatar), { uid });
     await fs.commit(tx.writes);
     return { roomId: id };
+  },
+
+  async setMusic({ fs, id, uid, body }) {
+    await runTransaction(fs, async tx => {
+      const room = await tx.get(roomP(id));
+      requireHost(room, uid);
+      if (!['lobby', 'question'].includes(room.phase)) throw new Error('Music can only be changed while the room is active.');
+      const enabled = body.enabled === true;
+      const track = enabled ? validateMusicTrack(body.track) : null;
+      tx.update(roomP(id), { music: { enabled, track }, musicUpdatedAt: SERVER_TS });
+    });
+    return { ok: true };
   },
 
   async join({ fs, id, uid, body }) {
