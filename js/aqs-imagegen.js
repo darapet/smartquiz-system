@@ -124,6 +124,7 @@
   function detectCategory(prompt) {
     var text = String(prompt || '').toLowerCase();
     var rules = [
+      { value: 'birthday', label: 'Birthday flyer', words: ['birthday', 'happy birthday', 'birthday flyer', 'birthday poster'] },
       { value: 'logo', label: 'Logo / brand mark', words: ['logo', 'logomark', 'brand mark', 'brand identity', 'monogram', 'wordmark', 'emblem'] },
       { value: 'banner', label: 'Banner / hero graphic', words: ['banner', 'hero image', 'header image', 'cover photo', 'website header', 'wide graphic', 'billboard'] },
       { value: 'social', label: 'Social media visual', words: ['social media', 'instagram', 'facebook post', 'linkedin', 'tiktok', 'twitter', 'x post', 'social post', 'carousel'] },
@@ -136,7 +137,7 @@
   }
 
   function displayCategory(value) {
-    var labels = { logo: 'Logo / brand mark', banner: 'Banner / hero graphic', social: 'Social media visual', portrait: 'Portrait / character', general: 'General creative' };
+    var labels = { birthday: 'Birthday flyer', logo: 'Logo / brand mark', banner: 'Banner / hero graphic', social: 'Social media visual', portrait: 'Portrait / character', general: 'General creative' };
     return labels[value] || labels.general;
   }
 
@@ -146,6 +147,8 @@
     var detected = detectCategory(typed);
     var active = selected === 'auto' ? detected : { value: selected, label: displayCategory(selected) };
     detectionPill.textContent = active.label;
+    var birthdayFields = $('#aqs-birthday-fields');
+    if (birthdayFields) birthdayFields.classList.toggle('is-visible', active.value === 'birthday');
     detectionConfidence.textContent = !typed ? 'Waiting for a prompt' : selected === 'auto' ? (detected.value === 'general' ? 'No format keyword found' : 'Matched from your wording') : 'Manual direction selected';
     promptCount.textContent = promptInput.value.length + ' / 2000';
   }
@@ -179,7 +182,21 @@
     var detected = detectCategory(promptInput.value);
     var category = categorySelect.value === 'auto' ? detected.value : categorySelect.value;
     var ratio = ratioSelect.value === 'auto' ? (category === 'banner' ? 'landscape' : category === 'portrait' || category === 'social' ? 'portrait' : 'square') : ratioSelect.value;
-    return { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId() };
+    var payload = { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId() };
+    if (category === 'birthday') {
+      var name = ($('#aqs-birthday-name').value || '').trim();
+      var relationship = $('#aqs-birthday-relationship').value;
+      var tone = $('#aqs-birthday-tone').value;
+      var details = ($('#aqs-birthday-details').value || '').trim();
+      if (!name) throw new Error('Please enter the birthday celebrant’s name.');
+      var greeting = tone + ' birthday wishes for ' + name + ', ' + relationship + '. ' +
+        (details ? details + '. ' : '') +
+        'May this new year bring happiness, good health, growth and beautiful memories.';
+      payload.copy = { recipientName: name, headline: 'HAPPY BIRTHDAY TO', subline: greeting, details: greeting, cta: 'CELEBRATING YOU' };
+      payload.prompt = 'Create a premium, elegant birthday celebration flyer with tasteful celebratory decorations, beautiful lighting, refined gold accents and a clear central space for the celebrant name. Keep the layout balanced and text-safe. ' + greeting;
+      payload.aspectRatio = ratio === 'auto' ? 'portrait' : ratio;
+    }
+    return payload;
   }
 
   async function fetchGemini(payload) {
@@ -200,6 +217,18 @@
   }
 
   async function fetchCloudflare(payload) {
+    if (payload.category === 'birthday') {
+      var birthdayResponse = await fetch(cloudflareEndpoint, {
+        method: 'POST', mode: 'cors', cache: 'no-store',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: window.AbortSignal && AbortSignal.timeout ? AbortSignal.timeout(125000) : undefined
+      });
+      if (!birthdayResponse.ok) throw new Error('The birthday flyer engine is unavailable (HTTP ' + birthdayResponse.status + ').');
+      var birthdayBlob = await birthdayResponse.blob();
+      if (!birthdayBlob.size || (birthdayBlob.type && birthdayBlob.type.indexOf('image/') !== 0)) throw new Error('The birthday flyer engine returned an invalid image.');
+      return { id: 'creator-birthday-cloudflare-' + Date.now(), url: URL.createObjectURL(birthdayBlob), blob: birthdayBlob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Birthday Studio', createdAt: new Date().toISOString(), mediaType: 'image' };
+    }
     var query = '?prompt=' + encodeURIComponent(payload.prompt);
     query += '&category=' + encodeURIComponent(payload.category || 'general');
     query += '&aspectRatio=' + encodeURIComponent(payload.aspectRatio || 'square');
@@ -246,7 +275,8 @@
     if (event) event.preventDefault();
     if (state.busy) return;
     setError('');
-    var payload = requestPayload();
+    var payload;
+    try { payload = requestPayload(); } catch (validationError) { setError(validationError.message); return; }
     if (payload.prompt.length < 3) {
       setError('Enter at least three characters so the image engine knows what to create.');
       promptInput.focus();
@@ -343,6 +373,8 @@
 
   function clearAll() {
     promptInput.value = '';
+    $('#aqs-birthday-name').value = '';
+    $('#aqs-birthday-details').value = '';
     categorySelect.value = 'auto';
     ratioSelect.value = 'auto';
     setError('');
