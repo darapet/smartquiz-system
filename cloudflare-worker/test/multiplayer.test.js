@@ -172,6 +172,36 @@ test('avatar swap, ready, voice cap, leave and kick keep counts right', async ()
   assert.equal(Number(world.docs.get(`multiplayerRooms/${id}`).playerCount.integerValue), 1);
 });
 
+test('late players can join an active question without choosing an avatar or restarting it', async () => {
+  const id = await hostRoom();
+  assert.equal((await call('host', { action: 'start', roomId: id })).status, 200);
+  const roomPath = `multiplayerRooms/${id}`;
+  const liveRoom = world.docs.get(roomPath);
+  liveRoom.questionStartedAt = { timestampValue: new Date(Date.now() - 500).toISOString() };
+  liveRoom.deadlineAt = { timestampValue: new Date(Date.now() + 5000).toISOString() };
+
+  const joined = await call('late_player', { action: 'join', roomId: id, name: 'Late Player', pin: '1234' });
+  assert.equal(joined.status, 200, JSON.stringify(joined));
+
+  const player = world.docs.get(`${roomPath}/players/late_player`);
+  assert.ok(player, 'late player record is created');
+  const avatar = Number(player.avatar.integerValue);
+  assert.ok(avatar >= 0 && avatar < 250, 'server assigns an available avatar');
+  assert.ok(world.docs.has(`${roomPath}/avatarClaims/${avatar}`), 'avatar is reserved');
+  assert.equal(liveRoom.phase.stringValue, 'question', 'active game remains active');
+  assert.equal(Number(liveRoom.currentQuestion.integerValue), 0, 'current question is not restarted');
+  assert.ok(liveRoom.publicQuestion, 'current question remains visible');
+
+  const answer = await call('late_player', { action: 'answer', roomId: id, questionIndex: 0, option: 0 });
+  assert.equal(answer.status, 200, JSON.stringify(answer));
+  assert.equal(answer.firstCorrect, true);
+  assert.equal(Number(world.docs.get(`${roomPath}/players/late_player`).score.integerValue), 5);
+
+  await call('host', { action: 'finish', roomId: id });
+  const afterGame = await call('another_player', { action: 'join', roomId: id, name: 'After Game', pin: '1234' });
+  assert.equal(afterGame.status, 409, 'completed games do not accept new players');
+});
+
 test('capacity is enforced', async () => {
   const r = await call('host', { action: 'create', room: { ...room, capacity: 1 }, avatar: 0 });
   assert.equal((await call('p1', { action: 'join', roomId: r.roomId, name: 'Ann', pin: '1234', avatar: 1 })).status, 409);
