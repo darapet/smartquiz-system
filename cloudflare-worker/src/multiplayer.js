@@ -351,6 +351,8 @@ const actions = {
 
   async create({ fs, uid, body }) {
     const input = M.validateRoom(body.room);
+    const scheduledDelaySeconds = Number(body.room.scheduledDelaySeconds || 0);
+    if (!Number.isInteger(scheduledDelaySeconds) || scheduledDelaySeconds < 0 || scheduledDelaySeconds > 604800) throw new Error('Scheduled opening must be between 0 seconds and 7 days.');
     const avatar = M.validateAvatar(body.avatar);
     const shards = M.shardQuestions(input.questions);
     await takeQuota(fs, uid, 'create');
@@ -360,7 +362,7 @@ const actions = {
       roomId: id, title: input.title, hostUid: uid, pin: input.pin, capacity: input.capacity,
       playerCount: 1, voiceCount: 0, difficulty: input.difficulty, secondsPerQuestion: input.secondsPerQuestion,
       questionCount: input.questions.length, phase: 'lobby', currentQuestion: -1,
-      startAt: ts(Date.now() + Math.max(0, Math.min(604800, Number(body.room.scheduledDelaySeconds) || 0)) * 1000),
+      startAt: ts(Date.now() + scheduledDelaySeconds * 1000),
       music: body.room && body.room.music && body.room.music.enabled === true && body.room.music.track
         ? { enabled: true, track: validateMusicTrack(body.room.music.track) } : { enabled: false, track: null },
       createdAt: SERVER_TS
