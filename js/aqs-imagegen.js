@@ -19,6 +19,7 @@
   var submitLabel = $('#aqs-imagegen-submit-label');
   var categorySelect = $('#aqs-imagegen-category');
   var ratioSelect = $('#aqs-imagegen-ratio');
+  var modelSelect = $('#aqs-imagegen-model');
   var promptCount = $('#aqs-imagegen-prompt-count');
   var detectionPill = $('#aqs-imagegen-detection-pill');
   var detectionConfidence = $('#aqs-imagegen-detection-confidence');
@@ -164,6 +165,7 @@
     promptInput.disabled = isLoading;
     categorySelect.disabled = isLoading;
     ratioSelect.disabled = isLoading;
+    modelSelect.disabled = isLoading;
     $('#aqs-imagegen-clear').disabled = isLoading;
     if (isLoading) {
       emptyState.hidden = true;
@@ -182,7 +184,7 @@
     var detected = detectCategory(promptInput.value);
     var category = categorySelect.value === 'auto' ? detected.value : categorySelect.value;
     var ratio = ratioSelect.value === 'auto' ? (category === 'banner' ? 'landscape' : category === 'portrait' || category === 'social' ? 'portrait' : 'square') : ratioSelect.value;
-    var payload = { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId() };
+    var payload = { prompt: promptInput.value.trim(), category: category, aspectRatio: ratio, clientId: getClientId(), engineModel: modelSelect.value };
     if (category === 'birthday') {
       var name = ($('#aqs-birthday-name').value || '').trim();
       var relationship = $('#aqs-birthday-relationship').value;
@@ -227,12 +229,12 @@
       if (!birthdayResponse.ok) throw new Error('The birthday flyer engine is unavailable (HTTP ' + birthdayResponse.status + ').');
       var birthdayBlob = await birthdayResponse.blob();
       if (!birthdayBlob.size || (birthdayBlob.type && birthdayBlob.type.indexOf('image/') !== 0)) throw new Error('The birthday flyer engine returned an invalid image.');
-      return { id: 'creator-birthday-cloudflare-' + Date.now(), url: URL.createObjectURL(birthdayBlob), blob: birthdayBlob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Birthday Studio', createdAt: new Date().toISOString(), mediaType: 'image' };
+      return { id: 'creator-birthday-cloudflare-' + Date.now(), url: URL.createObjectURL(birthdayBlob), blob: birthdayBlob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · ' + (payload.engineModel === '@cf/leonardo/lucid-origin' ? 'Lucid Origin' : 'FLUX.1 schnell') + ' · Birthday Studio', createdAt: new Date().toISOString(), mediaType: 'image' };
     }
     var query = '?prompt=' + encodeURIComponent(payload.prompt);
     query += '&category=' + encodeURIComponent(payload.category || 'general');
     query += '&aspectRatio=' + encodeURIComponent(payload.aspectRatio || 'square');
-    if (String(config.cloudflareModel || '').trim()) query += '&model=' + encodeURIComponent(String(config.cloudflareModel).trim());
+    if (payload.engineModel) query += '&model=' + encodeURIComponent(payload.engineModel);
     var response = await fetch(cloudflareEndpoint + query, {
       method: 'GET',
       mode: 'cors',
@@ -242,7 +244,7 @@
     if (!response.ok) throw new Error('The Cloudflare image engine is unavailable (HTTP ' + response.status + ').');
     var blob = await response.blob();
     if (!blob.size || (blob.type && blob.type.indexOf('image/') !== 0)) throw new Error('The Cloudflare engine returned an invalid image.');
-    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · Flux', createdAt: new Date().toISOString(), mediaType: 'image' };
+    return { id: 'creator-image-cloudflare-' + Date.now(), url: URL.createObjectURL(blob), blob: blob, prompt: payload.prompt, provider: 'Cloudflare Workers AI · ' + (payload.engineModel === '@cf/leonardo/lucid-origin' ? 'Lucid Origin' : 'FLUX.1 schnell'), createdAt: new Date().toISOString(), mediaType: 'image' };
   }
 
   function chooseEngine() {
@@ -377,6 +379,7 @@
     $('#aqs-birthday-details').value = '';
     categorySelect.value = 'auto';
     ratioSelect.value = 'auto';
+    modelSelect.value = '@cf/black-forest-labs/flux-1-schnell';
     setError('');
     updateDetection();
     emptyState.hidden = false;
