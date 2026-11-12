@@ -4,7 +4,7 @@
    The server (functions/multiplayer-functions.js) owns every rule; this file only shows state. */
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getAuth, signInAnonymously, onAuthStateChanged, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
 import * as fs from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
 import {
   LIMITS, extractJsonArray, normalizeQuestions, validateSetup, validateRoomSettings,
@@ -19,6 +19,9 @@ import { createVoice } from './mp-voice.js';
 const firebaseConfig = { apiKey: 'AIzaSyCFVx82QXdKdufbUIHBBOOzDefNoFBYxtY', authDomain: 'smartquiz-darapet.firebaseapp.com', databaseURL: 'https://smartquiz-darapet-default-rtdb.firebaseio.com', projectId: 'smartquiz-darapet', storageBucket: 'smartquiz-darapet.firebasestorage.app', messagingSenderId: '915234258423', appId: '1:915234258423:web:0c8fc183e9e3ce0852c2f2', measurementId: 'G-W4G9C4X9H0' };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+/* Keep the anonymous Firebase identity on this browser across refreshes.
+   The room's stored hostUid then identifies the original host, including old rooms. */
+const authPersistence = setPersistence(auth, browserLocalPersistence);
 let db;
 try {
   db = fs.initializeFirestore(app, { experimentalForceLongPolling: true, useFetchStreams: false });
@@ -123,8 +126,9 @@ function updateHeader() {
 
 /* No account is needed to host or join. Everyone gets a guest session from Firebase. */
 async function ensureSignedIn() {
-  if (auth.currentUser) return '';
   try {
+    await authPersistence;
+    if (auth.currentUser) return '';
     await signInAnonymously(auth);
     return '';
   } catch (e) {
@@ -640,10 +644,13 @@ async function bootPlayer(rid, pinParam, notice) {
   S.roomId = rid;
   if (info.startAt && info.startAt > now()) return showScheduledCountdown(info.startAt, () => bootPlayer(rid, pinParam));
 
-  /* Existing member (refresh or host returning) can re-enter after the scheduled opening. */
+  /* Re-enter only if this Firebase identity is already a room member.
+     The old room-document check was too broad: that document exists for every visitor.
+     Host identity is checked against hostUid, so previously created rooms still work. */
+  if (auth.currentUser.uid === info.hostUid) return enterRoom(rid);
   try {
-    const snap = await fs.getDoc(fs.doc(db, 'multiplayerRooms', rid));
-    if (snap.exists()) return enterRoom(rid);
+    const member = await fs.getDoc(fs.doc(db, 'multiplayerRooms', rid, 'players', auth.currentUser.uid));
+    if (member.exists()) return enterRoom(rid);
   } catch (e) { /* not a member yet */ }
 
   $('join-room-code').value = rid;
@@ -1340,6 +1347,7 @@ let booted = false;
 onAuthStateChanged(auth, async user => {
   if (booted) return;
   booted = true;
+  try { await authPersistence; } catch (e) { /* ensureSignedIn reports sign-in problems */ }
   bindEvents();
   const params = new URLSearchParams(location.search);
   const rid = (params.get('room') || '').toUpperCase();
