@@ -40,6 +40,12 @@
       <h1>Build your quiz</h1>
       <p class="lead">No account or login required. Host a quiz or join a friend using a room code and PIN.</p>
       <div class="row"><button class="btn ghost" id="open-join" type="button">Have a room code? Join a quiz →</button></div>
+      <section class="card host-history" id="host-history" hidden aria-labelledby="host-history-title">
+        <p class="eyebrow">Your previous rooms</p>
+        <h2 id="host-history-title">Host History</h2>
+        <p class="hint">Return to a room you hosted on this browser.</p>
+        <div id="host-history-list" aria-live="polite"></div>
+      </section>
       <div class="grid">
         <label class="field wide">Quiz name
           <input id="title" maxlength="100" placeholder="e.g. Biology Showdown" autocomplete="off">
