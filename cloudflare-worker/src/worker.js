@@ -197,19 +197,28 @@ export async function handleImage(request, env) {
     const category = design.category;
     const model = modelFor(env, payload.engineModel, category);
     if (model === PROFESSIONAL_IMAGE_MODEL) {
-      const slotAvailable = await reserveLucidDailySlot(env);
-      if (!slotAvailable) {
-        return json(request, env, {
-          error: 'XZILY has reached its three professional-design generations for today on the free allowance. Ordinary image generation is still available. The professional-design allowance resets at 00:00 UTC.',
-          code: 'LUCID_DAILY_LIMIT',
-        }, 429);
+      let image;
+      let imageModel = model;
+      try {
+        const slotAvailable = await reserveLucidDailySlot(env);
+        if (!slotAvailable) {
+          throw new Error('The daily professional-design allowance has been reached.');
+        }
+        image = await env.AI.run(model, {
+          prompt: design.prompt + ' Create the visual artwork/background only. Do not render any words, letters, numbers, captions, labels, logos or watermarks; reserve clean contrast space for separately typeset copy.',
+          ...design.dimensions,
+          num_steps: 12,
+          guidance: 5,
+        });
+      } catch (professionalError) {
+        console.warn('XZILY professional image model unavailable; trying the standard image model:', professionalError && professionalError.message || professionalError);
+        imageModel = DEFAULT_IMAGE_MODEL;
+        image = await env.AI.run(DEFAULT_IMAGE_MODEL, {
+          prompt: design.prompt + ' Create a polished visual artwork/background only. Do not render words, letters, numbers, captions, labels, logos or watermarks; reserve clean contrast space for separately typeset copy.',
+          steps: 8,
+        });
       }
-      const image = await env.AI.run(model, {
-        prompt: design.prompt + ' Create the visual artwork/background only. Do not render any words, letters, numbers, captions, labels, logos or watermarks; reserve clean contrast space for separately typeset copy.',
-        ...design.dimensions,
-        num_steps: 12,
-        guidance: 5,
-      });
+
       const rawBody = imageBody(image);
       if (rawBody instanceof ArrayBuffer || ArrayBuffer.isView(rawBody)) {
         const svg = composeDesignSvg(new Uint8Array(rawBody.buffer || rawBody, rawBody.byteOffset || 0, rawBody.byteLength), design, prompt, payload.copy);
@@ -221,12 +230,12 @@ export async function handleImage(request, env) {
               'Content-Type': 'image/svg+xml; charset=utf-8',
               'Content-Disposition': 'inline; filename="xzily-professional-design.svg"',
               'X-Image-Engine': 'xzily-design-renderer',
-              'X-Image-Model': String(model),
+              'X-Image-Model': String(imageModel),
             },
           });
         }
       }
-      return imageResponse(request, env, image, model);
+      return imageResponse(request, env, image, imageModel);
     }
     const image = await env.AI.run(model, {
       prompt: design.prompt,
@@ -234,8 +243,12 @@ export async function handleImage(request, env) {
     return imageResponse(request, env, image, model);
   } catch (error) {
     console.error('Cloudflare Workers AI image generation error:', error);
+    const detail = String(error && error.message || 'Unknown image-generation error')
+      .replace(/[\\r\\n\\t]/g, ' ')
+      .slice(0, 220);
     return json(request, env, {
       error: 'Cloudflare Workers AI could not generate the image.',
+      detail,
     }, 502);
   }
 }
